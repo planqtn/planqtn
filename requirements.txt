@@ -1,0 +1,5 @@
+quimb
+numpy
+galois
+matplotlib
+networkx
