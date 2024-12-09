@@ -2,4 +2,4 @@
 
 export PYTHONPATH="."
 
-find . *.py -type f | entr -r $@
+find . -type f -name '*.py' | entr -r $@
