@@ -14,7 +14,7 @@ def test_422_code_stabilizer_enumerator():
                     # fmt: on
                 ]
             )
-        ).get_stabilizer_enumerator()
+        ).stabilizer_enumerator
         == {0: 1, 4: 3}
     )
 
@@ -30,6 +30,6 @@ def test_422_code_normalizer_enumerator():
                     # fmt: on
                 ]
             )
-        ).get_normalizer_enumerator()
+        ).normalizer_enumerator
         == {0: 1, 2: 18, 3: 24, 4: 21}
     )

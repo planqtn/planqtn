@@ -3,3 +3,5 @@ numpy
 galois
 matplotlib
 networkx
+scipy
+sympy
