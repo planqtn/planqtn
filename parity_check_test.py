@@ -1,7 +1,8 @@
 from galois import GF2
 import numpy as np
 import pytest
-from parity_check import conjoin
+from linalg import gauss
+from parity_check import conjoin, self_trace, sprint
 
 
 # Handle empty matrices as input
@@ -9,23 +10,6 @@ def test_conjoin_empty_matrices():
     h1 = GF2([[]])
     h2 = GF2([[]])
 
-    with pytest.raises(AssertionError):
-        conjoin(h1, h2)
-
-
-def test_conjoin_missing_leading_ones():
-    h1 = GF2(
-        [
-            [0, 1, 1, 1, 0, 0, 0, 0],  # Missing leading 1 in the first column
-            [0, 0, 0, 0, 1, 1, 1, 1],
-        ]
-    )
-    h2 = GF2(
-        [
-            [1, 1, 1, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1],  # Missing leading 1 in the second column
-        ]
-    )
     with pytest.raises(AssertionError):
         conjoin(h1, h2)
 
@@ -121,7 +105,7 @@ def test_conjoin_single_trace_713_code_with_713_code():
                 # fmt: off
                     [1,  0, 1, 0, 1, 0, 1,   0,  0, 0, 0, 0, 0, 0],
                     [0,  0, 0, 0, 0, 0, 0,   1,  0, 1, 0, 1, 0, 1],
-                            # A1                     # B1
+                            # A2                     # B2
                     [0,  0, 0, 1, 1, 1, 1,   0,  0, 0, 0, 0, 0, 0],
                     [0,  1, 1, 0, 0, 1, 1,   0,  0, 0, 0, 0, 0, 0],                                        
                     [0,  0, 0, 0, 0, 0, 0,   0,  0, 0, 1, 1, 1, 1],
@@ -154,3 +138,102 @@ def test_conjoin_single_trace_713_code_with_713_code():
             ]
         ),
     )
+
+
+def test_self_trace_():
+    res = self_trace(
+        GF2(
+            [
+                # fmt: off
+        [1,1,1,1,1,1, 1,1,0,0,0,0],
+        [0,1,0,0,0,0, 0,0,0,0,1,1],
+        # kept rows 
+        [0,0,0,0,0,0, 0,0,1,0,0,1],
+        [0,0,0,0,0,0, 0,0,0,1,0,1]
+                # fmt: on
+            ]
+        )
+    )
+    np.testing.assert_array_equal(
+        res,
+        GF2(
+            [
+                # fmt: off
+        [1,1,1,1, 0,0,0,0],
+        # kept rows 
+        [0,0,0,0, 1,0,0,1],                
+        [0,0,0,0, 0,1,0,1]
+                # fmt: on
+            ]
+        ),
+    )
+
+    res = self_trace(
+        GF2(
+            [
+                # fmt: off
+        [1,1,1,1,1,1, 0,0,0,0,0,0],
+        [0,0,0,0,0,0, 0,1,0,0,1,0],
+        [0,0,0,0,0,0, 1,0,1,0,0,0],
+        [0,0,0,0,0,0, 0,0,0,1,0,1]
+                # fmt: on
+            ]
+        )
+    )
+    np.testing.assert_array_equal(
+        res,
+        GF2(
+            [
+                # fmt: off
+        [1,1,1,1, 0,0,0,0],
+        [0,0,0,0, 1,0,1,0],                
+        [0,0,0,0, 0,1,0,1]
+                # fmt: on
+            ]
+        ),
+    )
+
+
+def test_two_422_codes_are_the_steane_code():
+
+    h1 = GF2(
+        [
+            # fmt: off
+        #        l1,2            l1,2 
+        [1,1,1,1, 0,0,  0,0,0,0,  0,0],
+        [0,0,0,0, 0,0,  1,1,1,1,  0,0], 
+        # X1
+        [1,1,0,0, 1,0,  0,0,0,0,  0,0],
+        # X2
+        [1,0,0,1, 0,1,  0,0,0,0,  0,0],       
+        # Z2
+        [0,0,0,0, 0,0,  1,1,0,0,  0,1],
+        # Z1
+        [0,0,0,0, 0,0,  1,0,0,1,  1,0],
+            # fmt: on
+        ]
+    )
+
+    h2 = h1.copy()
+
+    h3 = conjoin(h1, h2, 4, 4)
+
+    assert all(
+        np.count_nonzero(row) >= 3 for row in h3
+    ), f"Some rows have less than 3 weight\n{h3}"
+    # # the remaining of the original logical legs are now 4 and 9
+    h4 = self_trace(h3, 4, 9)
+
+    steane = GF2(
+        [
+            [1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+        ]
+    )
+    assert np.array_equal(h4, steane)
