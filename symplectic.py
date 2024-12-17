@@ -1,11 +1,14 @@
+from typing import List
 from galois import GF2
 import numpy as np
 
 
-def weight(op: GF2):
+def weight(op: GF2, skip_indices: List[int] = []):
     """Calculate the weight of a symplectic operator."""
     n = len(op) // 2
-    return np.count_nonzero(op[:n] | op[n:])
+    x_inds = np.array([i for i in range(n) if i not in skip_indices])
+    z_inds = x_inds + n
+    return np.count_nonzero(op[x_inds] | op[z_inds])
 
 
 def symp_to_str(vec, swapxz=False):
