@@ -16,6 +16,11 @@ def sprint(h):
         )
 
 
+def bring_col_to_front(h, col, target_col):
+    for c in range(col - 1, target_col - 1, -1):
+        h[:, [c, c + 1]] = h[:, [c + 1, c]]
+
+
 def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     """Conjoins two parity check matrices via single trace on one leg.
 
@@ -35,10 +40,13 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     h1 = gauss(h1, col_subset=[leg1, leg1 + n1])
     h2 = gauss(h2, col_subset=[leg2, leg2 + n2])
 
-    # temporarily swap to the first col
+    # swap to the first col for easier indexing - they'll be removed anyway
 
-    h1[:, [0, leg1, n1, leg1 + n1]] = h1[:, [leg1, 0, leg1 + n1, n1]]
-    h2[:, [0, leg2, n2, leg2 + n2]] = h2[:, [leg2, 0, leg2 + n2, n2]]
+    bring_col_to_front(h1, leg1, 0)
+    bring_col_to_front(h1, leg1 + n1, n1)
+
+    bring_col_to_front(h2, leg2, 0)
+    bring_col_to_front(h2, leg2 + n2, n2)
 
     assert np.array_equal(
         h1[[0, 1]][:, [0, n1]], GF2.Identity(2)
@@ -46,6 +54,11 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     assert np.array_equal(
         h2[[0, 1]][:, [0, n2]], GF2.Identity(2)
     ), f"Error correction property fails on h2 {leg2} leg: {h2[:, [0, n2]]}"
+
+    print("h1")
+    sprint(h1)
+    print("h2")
+    sprint(h2)
 
     n3 = n1 + n2 - 2
     r3 = r1 + r2 - 2
@@ -65,10 +78,6 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
 
     # B1 and B2
     result[2:, n3:] = block_diag(h1[2:, n1 + 1 :], h2[2:, n2 + 1 :])
-
-    # undo temporary swap to the first col
-    h1[:, [0, leg1, n1, leg1 + n1]] = h1[:, [leg1, 0, leg1 + n1, n1]]
-    h2[:, [0, leg2, n2, leg2 + n2]] = h2[:, [leg2, 0, leg2 + n2, n2]]
 
     return result
 
@@ -119,10 +128,10 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     mx = mx[kept_rows][:, kept_cols]
     # print("after removals:")
     # print(mx)
-    mx = gauss(mx)
-    kept_rows = list(range(len(mx)))
-    for row in range(len(mx)):
-        if np.count_nonzero(mx[row]) == 0:
-            kept_rows.remove(row)
-    mx = mx[kept_rows]
+    # mx = gauss(mx)
+    # kept_rows = list(range(len(mx)))
+    # for row in range(len(mx)):
+    #     if np.count_nonzero(mx[row]) == 0:
+    #         kept_rows.remove(row)
+    # mx = mx[kept_rows]
     return mx
