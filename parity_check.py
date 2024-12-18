@@ -55,11 +55,6 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
         h2[[0, 1]][:, [0, n2]], GF2.Identity(2)
     ), f"Error correction property fails on h2 {leg2} leg: {h2[:, [0, n2]]}"
 
-    print("h1")
-    sprint(h1)
-    print("h2")
-    sprint(h2)
-
     n3 = n1 + n2 - 2
     r3 = r1 + r2 - 2
     result = GF2.Zeros((r3, 2 * n3))
