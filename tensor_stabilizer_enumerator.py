@@ -41,22 +41,29 @@ def sslice(op, indices):
         return GF2(np.concatenate([op[x], op[z]]))
 
 
-def _equal_on_indices(indices, op, e):
-    # print(f"Equality check: {op} vs {e} on {self.indices}")
-    # print(f"op[J]_X = {op[self.indices]}")
-    # print(f"E[J]_X = {e[:self.m]}")
-
-    # print(f"op[J]_Z = {op[self.indices + self.n]}")
-    # print(f"E[J]_Z= {e[self.m:]}")
-    m = len(indices)
+def _suboperator_matches_on_support(support, op, subop):
+    m = len(support)
     n = len(op) // 2
-    indices = np.array(indices)
+    support = np.array(support)
     return (
         # Xs equal
-        np.array_equal(op[indices], e[:m])
+        np.array_equal(op[support], subop[:m])
         and
         # Zs equal
-        np.array_equal(op[indices + n], e[m:])
+        np.array_equal(op[support + n], subop[m:])
+    )
+
+
+def _equal_on_support(support, op1, op2):
+    n1 = len(op1) // 2
+    n2 = len(op2) // 2
+    support = np.array(support)
+    return (
+        # Xs equal
+        np.array_equal(op1[support], op2[support])
+        and
+        # Zs equal
+        np.array_equal(op1[support + n1], op2[support + n2])
     )
 
 
@@ -90,8 +97,6 @@ def sconcat(op1, op2):
 class TensorNetwork:
     def __init__(self, nodes):
         self.nodes = nodes
-        self.components = [n for n in self.nodes]
-        self.nodes_to_components = {n: n for n in range(len(self.nodes))}
         self.traces = []
 
     def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
@@ -193,6 +198,81 @@ class PartiallyTracedEnumerator:
 
         return self.tensor[indices]
 
+    def trace_with(
+        self,
+        other: "TensorStabilizerCodeEnumerator",
+        join_legs1,
+        join_legs2,
+        traced_legs,
+        e: GF2,
+        eprime: GF2,
+        open_legs1,
+        open_legs2,
+    ):
+
+        assert len(join_legs1) == len(join_legs2)
+        join_length = len(join_legs1)
+
+        t2 = other.stabilizer_enumerator_polynomial(
+            traced_legs, e, eprime, join_legs2 + open_legs2
+        )
+
+        open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
+
+        wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
+
+        join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
+        join_indices2 = join_legs2
+
+        kept_indices1 = [
+            i for i in range(len(self.tracable_legs)) if i not in join_indices1
+        ]
+        kept_indices2 = list(range(len(join_legs2), len(join_legs2 + open_legs2)))
+
+        for k1 in self.tensor.keys():
+            for k2 in t2.keys():
+                if not np.array_equal(
+                    sslice(GF2(k1[0]), join_indices1),
+                    sslice(GF2(k2[0]), join_indices2),
+                ) or not np.array_equal(
+                    sslice(GF2(k1[1]), join_indices1),
+                    sslice(GF2(k2[1]), join_indices2),
+                ):
+                    continue
+
+                wep1 = self.tensor[k1]
+                wep2 = t2[k2]
+                k1 = GF2(k1[0]), GF2(k1[1])
+                k2 = GF2(k2[0]), GF2(k2[1])
+
+                # we have to cut off the join legs from both keys and concatenate them
+
+                key = (
+                    # e
+                    tuple(
+                        sconcat(
+                            sslice(k1[0], kept_indices1),
+                            sslice(k2[0], kept_indices2),
+                        ).tolist()
+                    ),
+                    # eprime
+                    tuple(
+                        sconcat(
+                            sslice(k1[1], kept_indices1),
+                            sslice(k2[1], kept_indices2),
+                        ).tolist()
+                    ),
+                )
+
+                wep[key] += wep1 * wep2
+
+        tracable_legs = [(idx, leg) for idx, leg in open_legs1]
+        tracable_legs += [(other.idx, leg) for leg in open_legs2]
+
+        return PartiallyTracedEnumerator(
+            self.nodes + [other.idx], tracable_legs=tracable_legs, tensor=wep
+        )
+
 
 class TensorStabilizerCodeEnumerator:
     """The tensor enumerator from Cao & Lackey"""
@@ -231,42 +311,74 @@ class TensorStabilizerCodeEnumerator:
         other: "TensorStabilizerCodeEnumerator",
         join_legs1,
         join_legs2,
-        tracable_legs1,
-        tracable_legs2,
+        traced_legs1,
+        traced_legs2,
+        e1: GF2,
+        eprime1: GF2,
+        e2: GF2,
+        eprime2: GF2,
+        open_legs1,
+        open_legs2,
     ):
-        assert len(set(join_legs1).intersection(tracable_legs1)) == 0
-        assert len(set(join_legs2).intersection(tracable_legs2)) == 0
 
-        assert self.idx != other.idx
+        assert len(join_legs1) == len(join_legs2)
+        join_length = len(join_legs1)
 
-        tracable_legs = [(self.idx, leg) for leg in tracable_legs1]
-        tracable_legs += [(other.idx, leg) for leg in tracable_legs2]
+        t1 = self.stabilizer_enumerator_polynomial(
+            traced_legs1, e1, eprime1, join_legs1 + open_legs1
+        )
+        t2 = other.stabilizer_enumerator_polynomial(
+            traced_legs2, e2, eprime2, join_legs2 + open_legs2
+        )
 
-        # each leg has 2 Paulis E, E' - so 4 bits per leg
-        tensor = np.zeros((2,) * (len(tracable_legs) * 4), dtype=object)
+        open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
 
-        for e in _paulis(len(tracable_legs)):
-            for eprime in _paulis(len(tracable_legs)):
-                for join_e in _paulis(len(join_legs1)):
+        wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
 
-                    # print(len(sconcat(sslice(e, slice(len(tracable_legs1))), join_e)))
-                    wep1 = self.stabilizer_enumerator_polynomial(
-                        tracable_legs1 + join_legs1,
-                        sconcat(sslice(e, slice(len(tracable_legs1))), join_e),
-                        sconcat(sslice(eprime, slice(len(tracable_legs1))), join_e),
-                    )
-                    wep2 = other.stabilizer_enumerator_polynomial(
-                        tracable_legs2 + join_legs2,
-                        sconcat(sslice(e, slice(len(tracable_legs1), None)), join_e),
+        for k1 in t1.keys():
+            for k2 in t2.keys():
+                if not _equal_on_support(
+                    list(range(join_length)),
+                    GF2(k1[0]),
+                    GF2(k2[0]),
+                ) or not _equal_on_support(
+                    list(range(join_length)),
+                    GF2(k1[1]),
+                    GF2(k2[1]),
+                ):
+                    continue
+
+                wep1 = t1[k1]
+                wep2 = t2[k2]
+                k1 = GF2(k1[0]), GF2(k1[1])
+                k2 = GF2(k2[0]), GF2(k2[1])
+
+                # we have to cut off the join legs from both keys and concatenate them
+
+                key = (
+                    # e
+                    tuple(
                         sconcat(
-                            sslice(eprime, slice(len(tracable_legs1), None)), join_e
-                        ),
-                    )
+                            sslice(k1[0], slice(join_length, None)),
+                            sslice(k2[0], slice(join_length, None)),
+                        ).tolist()
+                    ),
+                    # eprime
+                    tuple(
+                        sconcat(
+                            sslice(k1[1], slice(join_length, None)),
+                            sslice(k2[1], slice(join_length, None)),
+                        ).tolist()
+                    ),
+                )
 
-                    tensor[np.concatenate([e, eprime])] = wep1 * wep2
+                wep[key] += wep1 * wep2
+
+        tracable_legs = [(self.idx, leg) for leg in open_legs1]
+        tracable_legs += [(other.idx, leg) for leg in open_legs2]
 
         return PartiallyTracedEnumerator(
-            [self.idx, other.idx], tracable_legs=tracable_legs, tensor=tensor
+            [self.idx, other.idx], tracable_legs=tracable_legs, tensor=wep
         )
 
     def conjoin(
@@ -328,11 +440,7 @@ class TensorStabilizerCodeEnumerator:
                 self.wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
 
             def collect(self, stabilizer):
-                # stab_weight = weight(stabilizer, skip_indices=self.skip_indices)
                 self.matching_stabilizers.append(stabilizer)
-                # self.wep[
-                #     tuple(sslice(stabilizer, open_legs).tolist())
-                # ] += sympy.Poly(z**stab_weight * w ** (n - stab_weight))
 
             def _scale_one(self, wep):
                 return (4**self.k * wep).simplify()
@@ -349,12 +457,14 @@ class TensorStabilizerCodeEnumerator:
                         w2 = weight(s1, tlc)
                         if w2 != w1:
                             continue
-                        if not _equal_on_indices(olc, s1, sslice(s2, olc)):
+                        if not _suboperator_matches_on_support(
+                            olc, s1, sslice(s2, olc)
+                        ):
                             continue
                         self.wep[
-                            tuple(
-                                sslice(s1, open_legs).tolist()
-                                + sslice(s2, open_legs).tolist()
+                            (
+                                tuple(sslice(s1, open_legs).tolist()),
+                                tuple(sslice(s2, open_legs).tolist()),
                             )
                         ] += sympy.Poly(z**stab_weight * w ** (self.n - stab_weight))
 
@@ -373,7 +483,7 @@ class TensorStabilizerCodeEnumerator:
             )
             stabilizer = picked_generators @ self.h
 
-            if is_diagonal_element and not _equal_on_indices(
+            if is_diagonal_element and not _suboperator_matches_on_support(
                 traced_legs, stabilizer, e
             ):
                 # we are only interested in stabilizers that have the diagonal element on indices
@@ -382,12 +492,12 @@ class TensorStabilizerCodeEnumerator:
                 # we want to count stabilizers that one of the off-diagonal components
                 # a non-zero count would mean that there is a stabilizer for both
                 matching_off_diagonals = (
-                    _equal_on_indices(traced_legs, stabilizer, e)
+                    _suboperator_matches_on_support(traced_legs, stabilizer, e)
                     and self.is_stabilizer(
                         replace_with_op_on_indices(traced_legs, eprime, stabilizer)
                     )
                 ) or (
-                    _equal_on_indices(traced_legs, stabilizer, eprime)
+                    _suboperator_matches_on_support(traced_legs, stabilizer, eprime)
                     and self.is_stabilizer(
                         replace_with_op_on_indices(traced_legs, e, stabilizer)
                     )
@@ -399,10 +509,10 @@ class TensorStabilizerCodeEnumerator:
         return collector.wep
 
     def stabilizer_enumerator_polynomial(
-        self, legs: List[int], e: GF2 = None, eprime: GF2 = None, open_legs=[]
+        self, traced_legs: List[int], e: GF2 = None, eprime: GF2 = None, open_legs=[]
     ):
         """Stabilizer enumerator polynomial."""
-        m = len(legs)
+        m = len(traced_legs)
         if e is None:
             e = GF2.Zeros(2 * m)
         if eprime is None:
@@ -411,7 +521,7 @@ class TensorStabilizerCodeEnumerator:
         assert len(eprime) == m * 2, f"{len(eprime)} != {m*2}"
 
         wep = self._brute_force_stabilizer_enumerator_from_parity(
-            np.array(legs), e, eprime, open_legs=open_legs
+            traced_legs, e, eprime, open_legs=open_legs
         )
         return wep
 
@@ -439,6 +549,10 @@ class TensorStabilizerCodeEnumerator:
         kept_cols.remove(leg + self.n)
         kept_cols = np.array(kept_cols)
         h_new = GF2(
-            [row[kept_cols] for row in self.h if _equal_on_indices([leg], row, stopper)]
+            [
+                row[kept_cols]
+                for row in self.h
+                if _suboperator_matches_on_support([leg], row, stopper)
+            ]
         )
         return TensorStabilizerCodeEnumerator(h_new)

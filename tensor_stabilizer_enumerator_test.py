@@ -13,6 +13,9 @@ from tensor_stabilizer_enumerator import (
     TensorStabilizerCodeEnumerator,
 )
 
+from sympy.abc import w, z
+from sympy import Poly
+
 
 def test_422_logical_legs_enumerator():
     enc_tens_422 = GF2(
@@ -235,19 +238,16 @@ def test_open_legged_enumerator():
 
     t2 = t1.stabilizer_enumerator_polynomial([4, 5], open_legs=[0, 1])
 
-    from sympy.abc import w, z
-    from sympy import Poly
-
     assert t2 == {
-        (0, 0, 0, 0, 0, 0, 0, 0): Poly(w**6, w, z, domain="ZZ"),
-        (0, 0, 1, 1, 0, 0, 1, 1): Poly(w**4 * z**2, w, z, domain="ZZ"),
-        (1, 1, 0, 0, 1, 1, 0, 0): Poly(w**4 * z**2, w, z, domain="ZZ"),
-        (1, 1, 1, 1, 1, 1, 1, 1): Poly(w**4 * z**2, w, z, domain="ZZ"),
-    }
+        ((0, 0, 0, 0), (0, 0, 0, 0)): Poly(w**6, w, z, domain="ZZ"),
+        ((0, 0, 1, 1), (0, 0, 1, 1)): Poly(w**4 * z**2, w, z, domain="ZZ"),
+        ((1, 1, 0, 0), (1, 1, 0, 0)): Poly(w**4 * z**2, w, z, domain="ZZ"),
+        ((1, 1, 1, 1), (1, 1, 1, 1)): Poly(w**4 * z**2, w, z, domain="ZZ"),
+    }, f"not equal:\n{t2}"
 
 
 def test_partially_traced_enumerator():
-    pytest.skip()
+    # pytest.skip()
     enc_tens_422 = GF2(
         [
             # fmt: off
@@ -269,16 +269,57 @@ def test_partially_traced_enumerator():
     t1 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=5)
     t2 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=3)
 
-    pytest.fail()
+    # pytest.fail()
     pte = t1.trace_with(
         t2,
         join_legs1=[2],
         join_legs2=[1],
-        tracable_legs1=[1, 4, 5],
-        tracable_legs2=[2, 3, 4, 5],
+        traced_legs1=[4, 5],
+        traced_legs2=[4, 5],
+        e1=GF2.Zeros(4),
+        eprime1=GF2.Zeros(4),
+        e2=GF2.Zeros(4),
+        eprime2=GF2.Zeros(4),
+        open_legs1=[1],
+        open_legs2=[2, 3],
     )
 
-    assert pte.tracable_legs == [(5, 1), (5, 4), (5, 5), (3, 2), (3, 3), (3, 4), (3, 5)]
+    assert pte.tracable_legs == [(5, 1), (3, 2), (3, 3)]
+    assert pte.tensor == {
+        ((0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)): Poly(w**12, w, z, domain="ZZ"),
+        ((0, 0, 0, 1, 1, 1), (0, 0, 0, 1, 1, 1)): Poly(w**9 * z**3, w, z, domain="ZZ"),
+        ((1, 1, 1, 0, 0, 0), (1, 1, 1, 0, 0, 0)): Poly(w**9 * z**3, w, z, domain="ZZ"),
+        ((1, 1, 1, 1, 1, 1), (1, 1, 1, 1, 1, 1)): Poly(w**9 * z**3, w, z, domain="ZZ"),
+    }
+
+    t3 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=4)
+
+    pte = pte.trace_with(
+        t3,
+        join_legs1=[(5, 1)],
+        join_legs2=[0],
+        traced_legs=[4, 5],
+        e=GF2.Zeros(4),
+        eprime=GF2.Zeros(4),
+        open_legs1=[(3, 2), (3, 3)],
+        open_legs2=[2, 3],
+    )
+    assert pte.nodes == [5, 3, 4]
+    assert pte.tracable_legs == [(3, 2), (3, 3), (4, 2), (4, 3)]
+    assert pte.tensor == {
+        ((0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0)): Poly(
+            w**18, w, z, domain="ZZ"
+        ),
+        ((0, 0, 0, 0, 1, 1, 1, 1), (0, 0, 0, 0, 1, 1, 1, 1)): Poly(
+            w**14 * z**4, w, z, domain="ZZ"
+        ),
+        ((1, 1, 1, 1, 0, 0, 0, 0), (1, 1, 1, 1, 0, 0, 0, 0)): Poly(
+            w**14 * z**4, w, z, domain="ZZ"
+        ),
+        ((1, 1, 1, 1, 1, 1, 1, 1), (1, 1, 1, 1, 1, 1, 1, 1)): Poly(
+            w**14 * z**4, w, z, domain="ZZ"
+        ),
+    }
 
 
 def test_double_trace_422():
@@ -314,7 +355,7 @@ def test_double_trace_422():
 
 
 def test_d3_rotated_surface_code():
-    pytest.skip()
+    # pytest.skip()
     rsc = GF2(
         [
             [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
