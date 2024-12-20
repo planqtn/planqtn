@@ -379,8 +379,10 @@ class PartiallyTracedEnumerator:
                 ), f"key length: {len(key[0])} != 2*({len(open_legs1)}  + {len(open_legs2)}) = {2 * (
                     len(open_legs1) + len(open_legs2)
                 )}"
-
-                wep[key] += wep1 * wep2
+                print(f"key: {key}")
+                print(f"wep1: {wep1}")
+                print(f"wep2: {wep2}")
+                wep[key].add_inplace(wep1 * wep2)
 
         tracable_legs = [(idx, leg) for idx, leg in open_legs1]
         tracable_legs += [(other.idx, leg) for leg in open_legs2]
@@ -546,7 +548,7 @@ class TensorStabilizerCodeEnumerator:
         # as legs2_offset = 5
         # {2: 0, 3: 1, 4: 2, 7: 3, 11: 4, 13: 5}
         legs.update(
-            {leg + legs2_offset: legs2_offset + i for i, leg in enumerate(other.legs)}
+            {leg + legs2_offset: len(self.legs) + i for i, leg in enumerate(other.legs)}
         )
 
         new_h = conjoin(
@@ -559,7 +561,7 @@ class TensorStabilizerCodeEnumerator:
             self._remove_legs(legs, [leg1, leg2 + legs2_offset])
 
         new_legs = [leg for leg in self.legs if leg not in legs1]
-        new_legs += [len(new_legs) + i for i in range(n2 - len(legs2))]
+        new_legs += [legs2_offset + leg for leg in other.legs if leg not in legs2]
 
         return TensorStabilizerCodeEnumerator(new_h, idx=self.idx, legs=new_legs)
 
@@ -734,7 +736,11 @@ class TensorStabilizerCodeEnumerator:
         kept_cols = list(range(2 * self.n))
         kept_cols.remove(self.legs.index(traced_leg))
         kept_cols.remove(self.legs.index(traced_leg) + self.n)
+        print(
+            f"to remove: {self.legs.index(traced_leg)}, {self.legs.index(traced_leg)+self.n}"
+        )
         kept_cols = np.array(kept_cols)
+        print(f"kept cols {kept_cols}")
         h_new = gauss(
             self.h,
             col_subset=[
@@ -743,15 +749,36 @@ class TensorStabilizerCodeEnumerator:
             ],
         )
 
+        print(f"h_new {traced_leg}")
+        print(h_new)
+        print(h_new[:, kept_cols])
+        for row in h_new:
+            print(
+                row[kept_cols],
+                _suboperator_matches_on_support(
+                    [self.legs.index(traced_leg)], row, stopper
+                )
+                or _suboperator_matches_on_support(
+                    [self.legs.index(traced_leg)], row, GF2([0, 0])
+                ),
+            )
+
         h_new = GF2(
             [
                 row[kept_cols]
                 for row in h_new
-                if _suboperator_matches_on_support([traced_leg], row, stopper)
-                or _suboperator_matches_on_support([traced_leg], row, GF2([0, 0]))
+                if _suboperator_matches_on_support(
+                    [self.legs.index(traced_leg)], row, stopper
+                )
+                or _suboperator_matches_on_support(
+                    [self.legs.index(traced_leg)], row, GF2([0, 0])
+                )
             ]
         )
         kept_legs = self.legs.copy()
         kept_legs.remove(traced_leg)
+
+        print(f"h_new {traced_leg}")
+        print(h_new)
 
         return TensorStabilizerCodeEnumerator(h=h_new, idx=self.idx, legs=kept_legs)

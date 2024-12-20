@@ -366,7 +366,7 @@ def test_step_by_step_to_d2_surface_code():
     # X1
     [1,1,0,0, 1,  0,0,0,0,  0,],        
     # Z1
-    [0,0,0,0, 0,  1,0,0,1,  1,],
+    [0,0,0,0, 0,  0,1,1,0,  1,],
             # fmt: on
         ]
     )
@@ -380,20 +380,50 @@ def test_step_by_step_to_d2_surface_code():
     print(t0.legs)
     print(t0.h)
 
-    t1 = (
-        TensorStabilizerCodeEnumerator(enc_tens_512, idx=1)
-        .trace_with_stopper(PAULI_Z, 0)
-        .trace_with_stopper(PAULI_X, 3)
+    t1 = TensorStabilizerCodeEnumerator(enc_tens_512, idx=1).trace_with_stopper(
+        PAULI_Z, 0
     )
+    assert np.array_equal(
+        t1.h,
+        GF2(
+            [
+                # fmt: off
+    [0,0,0, 0,  1,1,1,  0,], 
+    # X1
+    [0,1,1, 1,  0,0,0,  0,],        
+    # Z1
+    [0,0,0, 0,  1,1,0,  1,],
+                # fmt: on
+            ]
+        ),
+    ), "Fail on first..."
 
     print(t1.legs)
     print(t1.h)
 
+    t1 = t1.trace_with_stopper(PAULI_X, 3)
+
+    print(t1.legs)
+    print(t1.h)
+    assert np.array_equal(
+        t1.h,
+        GF2(
+            [
+                # fmt: off
+    [0,1, 1,  0,0,  0,],              
+    [0,0, 0,  1,1,  1,],
+                # fmt: on
+            ]
+        ),
+    ), "Fail on second..."
+
     h_pte = t0.conjoin(t1, [2], [1])
 
+    print(h_pte.legs)
     print(h_pte.h)
-    for i in range(2**3):
-        picked_generators = GF2(list(np.binary_repr(i, width=3)), dtype=int)
+
+    for i in range(2 ** (len(h_pte.h))):
+        picked_generators = GF2(list(np.binary_repr(i, width=len(h_pte.h))), dtype=int)
         stabilizer = picked_generators @ h_pte.h
         print(
             stabilizer,
@@ -405,7 +435,6 @@ def test_step_by_step_to_d2_surface_code():
     brute_force_wep = h_pte.stabilizer_enumerator()
     print(brute_force_wep)
 
-    # pytest.fail()
     pte = t0.trace_with(
         t1,
         join_legs1=[2],
@@ -431,19 +460,124 @@ def test_step_by_step_to_d2_surface_code():
 
     assert brute_force_wep == total_wep._dict
 
-    pytest.fail()
-
     t2 = (
         TensorStabilizerCodeEnumerator(enc_tens_512, idx=2)
         .trace_with_stopper(PAULI_X, 1)
         .trace_with_stopper(PAULI_Z, 2)
     )
 
+    # H PTE
+    #   1 4 7 9
+    #  [0 0 0 0 | 1 1 1 0]
+    #  [0 0 1 1 | 0 0 0 0]
+    #  [1 1 0 0 | 0 0 0 0]
+    h_pte = h_pte.conjoin(t2, [1], [0])
+    print("H pte (t0,t1,t2)")
+    print(h_pte.h)
+    print(h_pte.legs)
+
+    for i in range(2 ** (len(h_pte.h))):
+        picked_generators = GF2(list(np.binary_repr(i, width=len(h_pte.h))), dtype=int)
+        stabilizer = picked_generators @ h_pte.h
+        print(
+            stabilizer,
+            weight(stabilizer),
+            sslice(stabilizer, [1, 2]),
+            weight(stabilizer, [1, 2]),
+        )
+
+    brute_force_wep = h_pte.stabilizer_enumerator()
+    print(brute_force_wep)
+
+    pte = pte.trace_with(
+        t2,
+        join_legs1=[(0, 1)],
+        join_legs2=[0],
+        traced_legs=[],
+        e=GF2([]),
+        eprime=GF2([]),
+        open_legs1=[(1, 2)],
+        open_legs2=[3],
+    )
+
+    assert pte.nodes == {0, 1, 2}
+    assert pte.tracable_legs == [(1, 2), (2, 3)]
+
+    total_wep = SimplePoly()
+    for k, sub_wep in pte.tensor.items():
+
+        print(
+            k,
+            "->",
+            sub_wep / 16 / 4,
+            sub_wep / 16 / 4 * SimplePoly({weight(GF2(k[0])): 1}),
+        )
+        total_wep.add_inplace(sub_wep / 16 / 4 * SimplePoly({weight(GF2(k[0])): 1}))
+
+    assert brute_force_wep == dict(total_wep._dict)
+
     t3 = (
         TensorStabilizerCodeEnumerator(enc_tens_512, idx=3)
         .trace_with_stopper(PAULI_X, 2)
         .trace_with_stopper(PAULI_Z, 1)
     )
+
+    # H PTE (t0, t1, t2 )
+    #   4 -> (0,4) ("logical")
+    #   7 -> (1,2)
+    #   9 -> (1,4) ("logical")
+    #   13 ->(2,3)
+    #   14 ->(2,4) ("logical")
+    #  [4 7 9 13 14]
+    # [[1 0 0 0 1 0 0 0 0 0]
+    #  [0 0 0 0 0 1 1 0 1 1]
+    #  [0 1 1 0 0 0 0 0 0 0]]
+
+    h_pte = h_pte.conjoin(t3, [13, 7], [0, 3])
+    print("H pte (t0,t1,t2,t3)")
+    print(h_pte.h)
+    print(h_pte.legs)
+
+    brute_force_wep = h_pte.stabilizer_enumerator()
+    print(brute_force_wep)
+
+    pte = pte.trace_with(
+        t3,
+        join_legs1=[(2, 3), (1, 2)],
+        join_legs2=[0, 3],
+        traced_legs=[],
+        e=GF2([]),
+        eprime=GF2([]),
+        open_legs1=[],
+        open_legs2=[],
+    )
+
+    assert pte.nodes == {0, 1, 2, 3}
+    assert pte.tracable_legs == []
+
+    total_wep = SimplePoly()
+    for k, sub_wep in pte.tensor.items():
+
+        print(
+            k,
+            "->",
+            sub_wep / 16 / 4 / 4,
+            sub_wep / 16 / 4 / 4 * SimplePoly({weight(GF2(k[0])): 1}),
+        )
+        total_wep.add_inplace(sub_wep / 16 / 4 / 4 * SimplePoly({weight(GF2(k[0])): 1}))
+
+    assert brute_force_wep == dict(total_wep._dict)
+
+    assert np.array_equal(
+        h_pte.h,
+        GF2(
+            [
+                [0, 1, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 1, 1, 1],
+                [1, 0, 1, 0, 0, 0, 0, 0],
+            ]
+        ),
+    ), f"not equal\n{h_pte.h}"
 
 
 def test_double_trace_422():
