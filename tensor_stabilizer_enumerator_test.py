@@ -304,7 +304,7 @@ def test_partially_traced_enumerator():
         open_legs1=[(3, 2), (3, 3)],
         open_legs2=[2, 3],
     )
-    assert pte.nodes == [5, 3, 4]
+    assert pte.nodes == {5, 3, 4}
     assert pte.tracable_legs == [(3, 2), (3, 3), (4, 2), (4, 3)]
     assert pte.tensor == {
         ((0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0)): Poly(
@@ -385,7 +385,7 @@ def test_d3_rotated_surface_code():
         ]
     )
 
-    nodes = [TensorStabilizerCodeEnumerator(enc_tens_512) for _ in range(9)]
+    nodes = [TensorStabilizerCodeEnumerator(enc_tens_512, idx=i) for i in range(9)]
 
     # top Z boundary
     nodes[0].trace_with_stopper(PAULI_Z, 3)
@@ -410,12 +410,7 @@ def test_d3_rotated_surface_code():
     tn = TensorNetwork(nodes)
 
     tn.self_trace(0, 3, [1], [0])
-    tn.self_trace(1, 4, [2], [3])
-    tn.self_trace(2, 5, [1], [0])
-
-    tn.self_trace(3, 6, [1], [0])
-    tn.self_trace(4, 7, [2], [3])
-    tn.self_trace(5, 8, [1], [0])
+    tn.self_trace(3, 6, [2], [3])
 
     tn.self_trace(0, 1, [2], [1])
     tn.self_trace(3, 4, [3], [0])
@@ -425,20 +420,27 @@ def test_d3_rotated_surface_code():
     tn.self_trace(4, 5, [2], [1])
     tn.self_trace(7, 8, [3], [0])
 
+    tn.self_trace(1, 4, [2], [3])
+    tn.self_trace(2, 5, [1], [0])
+
+    tn.self_trace(4, 7, [1], [0])
+    tn.self_trace(5, 8, [2], [3])
+
+    assert tn.open_legs == [
+        [1, 2],
+        [1, 3, 2],
+        [0, 1],
+        [0, 2, 3],
+        [0, 2, 3, 1],
+        [1, 0, 2],
+        [3, 2],
+        [1, 3, 0],
+        [0, 3],
+    ]
+
     we = tn.stabilizer_enumerator(
         0,
-        legs=[
-            (node, 4)
-            for node in [
-                0,
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-            ]
-        ],
+        legs=[(node, 4) for node in range(9)],
     )
 
     assert we == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}

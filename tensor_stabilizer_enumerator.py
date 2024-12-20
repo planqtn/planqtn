@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Set, Tuple, Union
 from galois import GF2
 import numpy as np
 import sympy
@@ -42,6 +42,8 @@ def sslice(op, indices):
 
 
 def _suboperator_matches_on_support(support, op, subop):
+    if len(support) == 0:
+        return len(subop) == 0
     m = len(support)
     n = len(op) // 2
     support = np.array(support)
@@ -95,12 +97,15 @@ def sconcat(op1, op2):
 
 
 class TensorNetwork:
-    def __init__(self, nodes):
+    def __init__(self, nodes: List["TensorStabilizerCodeEnumerator"]):
         self.nodes = nodes
         self.traces = []
+        self.open_legs = [[] for _ in self.nodes]
 
     def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
         self.traces.append((node_idx1, node_idx2, join_legs1, join_legs2))
+        self.open_legs[node_idx1] += join_legs1
+        self.open_legs[node_idx2] += join_legs2
 
     def stabilizer_enumerator_polynomial(
         self, legs: List[Tuple[int, int]], e: GF2 = None, eprime: GF2 = None
@@ -118,9 +123,11 @@ class TensorNetwork:
         assert len(e) == m * 2
         assert len(eprime) == m * 2
 
-        wep = sympy.Poly(0, gens=[w, z], domain="ZZ")
+        pte: PartiallyTracedEnumerator = None
 
-        for node_idx1, node_idx2, legs1, legs2 in self.traces:
+        for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+
             traced_legs_with_op_indices1 = node_legs[node_idx1]
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
             e1_indices = [idx for l, idx in traced_legs_with_op_indices1]
@@ -137,43 +144,77 @@ class TensorNetwork:
 
             assert len(e2) == len(eprime2)
 
-            # print(
-            #     f"we have {node_idx1}, {node_idx2} merged on {legs1} and {legs2} and traced node legs: {traced_legs_with_op_indices1}, {traced_legs_with_op_indices2}"
-            # )
-            # print(
-            #     f"For node[{node_idx1}] \n {traced_legs1} \n {e1_indices} \n {e1} \n {eprime1}"
-            # )
-            # print(
-            #     f"For node[{node_idx2}] \n {traced_legs2} \n {e2_indices} \n {e2} \n {eprime2}"
-            # )
-            t1 = self.nodes[node_idx1]
             t2 = self.nodes[node_idx2]
 
-            for f in _paulis(len(legs1)):
-                f_ext1 = sconcat(e1, f)
-                f_ext2 = sconcat(e2, f)
-                # print(f_ext1, f_ext2)
-                fprime_ext1 = f_ext1
-                fprime_ext2 = f_ext2
-                # for fprime in _paulis(len(legs2)):
-                #     fprime_ext1 = sconcat(eprime1, fprime)
-                #     fprime_ext2 = sconcat(eprime2, fprime)
-                #     # print(fprime, "->", fprime_ext1, fprime_ext2)
-                wep1 = t1.stabilizer_enumerator_polynomial(
-                    traced_legs1 + legs1, f_ext1, fprime_ext1
+            if pte is None:
+                t1: TensorStabilizerCodeEnumerator = self.nodes[node_idx1]
+                open_legs1 = [
+                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                ]
+                open_legs2 = [
+                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                ]
+
+                pte = t1.trace_with(
+                    t2,
+                    join_legs1=join_legs1,
+                    join_legs2=join_legs2,
+                    traced_legs1=traced_legs1,
+                    traced_legs2=traced_legs2,
+                    e1=e1,
+                    eprime1=eprime1,
+                    e2=e2,
+                    eprime2=eprime2,
+                    open_legs1=open_legs1,
+                    open_legs2=open_legs2,
                 )
-                wep2 = t2.stabilizer_enumerator_polynomial(
-                    traced_legs2 + legs2, f_ext2, fprime_ext2
+                self.open_legs[node_idx1] = open_legs1
+                self.open_legs[node_idx2] = open_legs2
+            else:
+                if node_idx1 not in pte.nodes:
+                    raise ValueError(
+                        f"Disconnected contraction schedule. {node_idx1} is not in the contracted nodes: {pte.nodes}."
+                    )
+                open_legs1 = [
+                    (node_idx, leg)
+                    for node_idx, leg in pte.tracable_legs
+                    if (node_idx == node_idx1 and leg not in join_legs1)
+                    or (node_idx == node_idx2 and leg not in join_legs2)
+                    or (node_idx not in [node_idx1, node_idx2])
+                ]
+                print(f"open_legs: {open_legs1}")
+                open_legs2 = [
+                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                ]
+                pte = pte.trace_with(
+                    t2,
+                    join_legs1=[(node_idx1, leg) for leg in join_legs1],
+                    join_legs2=join_legs2,
+                    traced_legs=traced_legs2,
+                    e=e2,
+                    eprime=eprime2,
+                    open_legs1=open_legs1,
+                    open_legs2=open_legs2,
                 )
-                wep += wep1 * wep2
-        return wep
+
+                self.open_legs[node_idx1] = [
+                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                ]
+                self.open_legs[node_idx2] = open_legs2
+
+            print(f"PTE nodes: {pte.nodes}")
+            print(f"PTE tracable legs: {pte.tracable_legs}")
+            print(f"PTE tensor: {dict(pte.tensor)}")
+
+        return pte.tensor[((), ())]
 
     def stabilizer_enumerator(
         self, k, legs: List[Tuple[int, List[int]]], e: GF2 = None, eprime: GF2 = None
     ):
-        unnormalized_poly = (
-            self.stabilizer_enumerator_polynomial(legs, e, eprime) / 4**k
-        ).as_poly()
+        wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
+        if wep == 0:
+            return {}
+        unnormalized_poly = (wep / 4**k).as_poly()
         coeffs = unnormalized_poly.coeffs()
         z_degrees = [m[0] for m in unnormalized_poly.monoms()]
         return {d: c for d, c in zip(z_degrees, coeffs)}
@@ -181,11 +222,16 @@ class TensorNetwork:
 
 class PartiallyTracedEnumerator:
     def __init__(
-        self, nodes: List[int], tracable_legs: List[Tuple[int, int]], tensor: np.ndarray
+        self, nodes: Set[int], tracable_legs: List[Tuple[int, int]], tensor: np.ndarray
     ):
         self.nodes = nodes
         self.tracable_legs = tracable_legs
         self.tensor = tensor
+
+        tensor_key_length = len(list(self.tensor.keys())[0][0])
+        assert tensor_key_length == 2 * len(
+            tracable_legs
+        ), f"tensor keys of length {tensor_key_length} != {2 * len(tracable_legs)} (2 * len tracable legs)"
 
     def stabilizer_enumerator(self, legs: List[Tuple[int, int]], e, eprime):
         filtered_axes = [self.tracable_legs.index(leg) for leg in legs]
@@ -208,7 +254,7 @@ class PartiallyTracedEnumerator:
         eprime: GF2,
         open_legs1,
         open_legs2,
-    ):
+    ) -> "PartiallyTracedEnumerator":
 
         assert len(join_legs1) == len(join_legs2)
         join_length = len(join_legs1)
@@ -221,13 +267,19 @@ class PartiallyTracedEnumerator:
 
         wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
 
+        print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
-        join_indices2 = join_legs2
+
+        print(f"join indices1: {join_indices1}")
+        join_indices2 = list(range(len(join_legs2)))
 
         kept_indices1 = [
-            i for i in range(len(self.tracable_legs)) if i not in join_indices1
+            i for i, leg in enumerate(self.tracable_legs) if leg in open_legs1
         ]
+        print(f"kept indices 1: {kept_indices1}")
         kept_indices2 = list(range(len(join_legs2), len(join_legs2 + open_legs2)))
+
+        print(f"kept indices 2: {kept_indices2}")
 
         for k1 in self.tensor.keys():
             for k2 in t2.keys():
@@ -264,13 +316,19 @@ class PartiallyTracedEnumerator:
                     ),
                 )
 
+                assert len(key[0]) == 2 * (
+                    len(open_legs1) + len(open_legs2)
+                ), f"key length: {len(key[0])} != 2*({len(open_legs1)}  + {len(open_legs2)}) = {2 * (
+                    len(open_legs1) + len(open_legs2)
+                )}"
+
                 wep[key] += wep1 * wep2
 
         tracable_legs = [(idx, leg) for idx, leg in open_legs1]
         tracable_legs += [(other.idx, leg) for leg in open_legs2]
 
         return PartiallyTracedEnumerator(
-            self.nodes + [other.idx], tracable_legs=tracable_legs, tensor=wep
+            self.nodes.union({other.idx}), tracable_legs=tracable_legs, tensor=wep
         )
 
 
@@ -378,7 +436,7 @@ class TensorStabilizerCodeEnumerator:
         tracable_legs += [(other.idx, leg) for leg in open_legs2]
 
         return PartiallyTracedEnumerator(
-            [self.idx, other.idx], tracable_legs=tracable_legs, tensor=wep
+            {self.idx, other.idx}, tracable_legs=tracable_legs, tensor=wep
         )
 
     def conjoin(

@@ -8,6 +8,8 @@ def weight(op: GF2, skip_indices: List[int] = []):
     n = len(op) // 2
     x_inds = np.array([i for i in range(n) if i not in skip_indices])
     z_inds = x_inds + n
+    if len(x_inds) == 0 and len(z_inds) == 0:
+        return 0
     return np.count_nonzero(op[x_inds] | op[z_inds])
 
 
