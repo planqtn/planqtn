@@ -1,5 +1,6 @@
 from galois import GF2
 import numpy as np
+import scipy
 from scipy.linalg import block_diag
 
 from linalg import gauss
@@ -37,8 +38,68 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     assert n1 > 1, "Need at least 2 qubits in h1 for tracing."
     assert n2 > 1, "Need at least 2 qubits in h2 for tracing."
 
+    # print("H1x")
+    # print(h1[:, :n1])
+    # print("H2x")
+    # print(h2[:, :n2])
+
+    # print("blockdiag")
+    # print(scipy.linalg.block_diag(h1[:, :n1], h2[:, :n2]))
+
+    # print("H1z")
+    # print(h1[:, n1:])
+    # print("H2z")
+    # print(h2[:, n2:])
+
+    # print("bd")
+    # print(
+    #     scipy.linalg.block_diag(h1[:, n1:], h2[:, n2:]),
+    # )
+
+    h = GF2(
+        np.hstack(
+            (
+                # X
+                scipy.linalg.block_diag(h1[:, :n1], h2[:, :n2]),
+                # Z
+                scipy.linalg.block_diag(h1[:, n1:], h2[:, n2:]),
+            )
+        )
+    )
+
+    assert h.shape == (
+        r1 + r2,
+        2 * (n1 + n2),
+    ), f"{h.shape} != {(r1 + r2, 2 * (n1 + n2))}"
+
+    h = self_trace(h, leg1, n1 + leg2)
+
+    return h
+
+
+def conjoin_old(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
+    """Conjoins two parity check matrices via single trace on one leg.
+
+    Key simplifying assumptions compared to the full Cao & Lackey protocol:
+        - D=2, i.e. we're working with qubits (elements are 0 and 1)
+        - both codes can correct erasures on the two legs
+    """
+
+    r1, n1 = h1.shape
+    r2, n2 = h2.shape
+    n1 //= 2
+    n2 //= 2
+
+    assert n1 > 1, "Need at least 2 qubits in h1 for tracing."
+    assert n2 > 1, "Need at least 2 qubits in h2 for tracing."
+
     h1 = gauss(h1, col_subset=[leg1, leg1 + n1])
     h2 = gauss(h2, col_subset=[leg2, leg2 + n2])
+
+    print("h1")
+    print(repr(h1))
+    print("h2")
+    print(repr(h2))
 
     # swap to the first col for easier indexing - they'll be removed anyway
 
@@ -85,15 +146,10 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     mx = gauss(h, col_subset=legs)
 
-    pivot_rows = [np.flatnonzero(mx[:, leg]).tolist()[0] for leg in legs]
+    pivot_rows = [np.flatnonzero(mx[:, leg]).tolist() for leg in legs]
+    pivot_rows = [-1 if len(pivots) == 0 else pivots[0] for pivots in pivot_rows]
 
     # print(mx)
-    # print(pivot_rows)
-
-    # we should have 1 at the top left corner after gauss
-    assert (
-        mx[0, x1] == 1
-    ), "mx has an all zero column, remove before using this function"
 
     kept_rows = list(range(r))
 

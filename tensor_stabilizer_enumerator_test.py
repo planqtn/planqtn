@@ -123,20 +123,20 @@ def test_trace_two_422_codes_into_steane():
     t1 = TensorStabilizerCodeEnumerator(enc_tens_422)
     t2 = deepcopy(t1)
 
-    # we join the two tensors via the tracked legs (4,4) and track a new leg 0
-    t3 = t2.conjoin(t1, [0], [4, 5], [4, 5])
+    # we join the two tensors via the tracked legs (4,4)
+    t3 = t2.conjoin(t1, [4, 5], [4, 5])
 
     steane = GF2(
         [
             # fmt: off
             [1, 0, 0, 1, 1, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 1, 1, 0, 0],
-            [1, 1, 1, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 1, 1, 0, 0],            
             [0, 0, 0, 0, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 1, 1, 0, 0, 1],
-            [1, 1, 0, 0, 1, 1, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 1, 1, 0, 0, 0, 0],            
+            [0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 1, 1, 0, 0, 1],
+            [1, 1, 1, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],
+            [1, 1, 0, 0, 1, 1, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],
             # fmt: on
         ]
     )
@@ -198,21 +198,49 @@ def test_stopper_tensors():
     )
 
     node = TensorStabilizerCodeEnumerator(enc_tens_422)
-    node = node.trace_with_stopper(stopper=GF2([0, 1]), leg=0)
+    node = node.trace_with_stopper(stopper=PAULI_Z, traced_leg=3)
 
     assert np.array_equal(
         node.h,
         GF2(
             [
-                # fmt: off
-    #        l1,2            l1,2 
-            [0,0,0, 0,0,  1,1,1,  0,0], 
-            [0,0,0, 0,0,  1,0,0,  0,1],
-            [0,0,0, 0,0,  0,0,1,  1,0],
-                # fmt: on
+                # 0  1  2  4  5  0  1  2  4  5
+                [0, 0, 0, 0, 0, 1, 1, 1, 0, 0],
+                # X1
+                [1, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+                # X2
+                [0, 1, 1, 0, 1, 0, 0, 0, 0, 0],
+                # Z2
+                [0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+                # Z1
+                [0, 0, 0, 0, 0, 0, 1, 1, 1, 0],
             ]
         ),
-    ), f"Not equal: \n{node.h}"
+    ), f"Not equal: \n{repr(node.h)}"
+
+    assert node.legs == [0, 1, 2, 4, 5]
+
+    with pytest.raises(ValueError):
+        node.trace_with_stopper(stopper=GF2([0, 1]), traced_leg=3)
+
+    node = node.trace_with_stopper(stopper=PAULI_X, traced_leg=0)
+
+    assert np.array_equal(
+        node.h,
+        GF2(
+            [
+                # 1  2  4  5  1  2  4  5
+                # X1
+                [1, 0, 1, 0, 0, 0, 0, 0],
+                # X2
+                [1, 1, 0, 1, 0, 0, 0, 0],
+                # Z2
+                [0, 0, 0, 0, 0, 1, 0, 1],
+                # Z1
+                [0, 0, 0, 0, 1, 1, 1, 0],
+            ]
+        ),
+    ), f"Not equal: \n{repr(node.h)}"
 
 
 def test_open_legged_enumerator():
@@ -247,7 +275,7 @@ def test_open_legged_enumerator():
 
 
 def test_partially_traced_enumerator():
-    # pytest.skip()
+    pytest.skip()
     enc_tens_422 = GF2(
         [
             # fmt: off
@@ -322,6 +350,82 @@ def test_partially_traced_enumerator():
     }
 
 
+def test_step_by_step_to_d2_surface_code():
+    # pytest.skip()
+
+    enc_tens_512 = GF2(
+        [
+            # fmt: off
+    #        l1,2            l1,2 
+    [1,1,1,1, 0,  0,0,0,0,  0,],
+    [0,0,0,0, 0,  1,1,1,1,  0,], 
+    # X1
+    [1,1,0,0, 1,  0,0,0,0,  0,],        
+    # Z1
+    [0,0,0,0, 0,  1,0,0,1,  1,],
+            # fmt: on
+        ]
+    )
+
+    t0 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=0)
+        .trace_with_stopper(PAULI_Z, 3)
+        .trace_with_stopper(PAULI_X, 0)
+    )
+
+    # print(t0.legs)
+    # print(t0.h)
+
+    t1 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=1)
+        .trace_with_stopper(PAULI_Z, 0)
+        .trace_with_stopper(PAULI_X, 3)
+    )
+
+    t2 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=2)
+        .trace_with_stopper(PAULI_X, 1)
+        .trace_with_stopper(PAULI_Z, 2)
+    )
+
+    t3 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=3)
+        .trace_with_stopper(PAULI_X, 2)
+        .trace_with_stopper(PAULI_Z, 1)
+    )
+
+    # pytest.fail()
+    pte = t0.trace_with(
+        t1,
+        join_legs1=[2],
+        join_legs2=[1],
+        traced_legs1=[],
+        traced_legs2=[],
+        e1=GF2([]),
+        eprime1=GF2([]),
+        e2=GF2([]),
+        eprime2=GF2([]),
+        open_legs1=[1],
+        open_legs2=[2],
+    )
+
+    assert pte.nodes == {0, 1}
+
+    wep = 0
+    for sub_wep in pte.tensor.values():
+        print(sub_wep)
+        wep = sub_wep + wep
+
+    h_pte = t0.conjoin(t1, [2], [1])
+
+    brute_force_wep = h_pte.stabilizer_enumerator_polynomial()
+    print(brute_force_wep)
+
+    assert brute_force_wep == wep
+
+    pytest.fail()
+
+
 def test_double_trace_422():
     enc_tens_422 = GF2(
         [
@@ -355,7 +459,7 @@ def test_double_trace_422():
 
 
 def test_d3_rotated_surface_code():
-    # pytest.skip()
+    pytest.skip()
     rsc = GF2(
         [
             [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -388,24 +492,24 @@ def test_d3_rotated_surface_code():
     nodes = [TensorStabilizerCodeEnumerator(enc_tens_512, idx=i) for i in range(9)]
 
     # top Z boundary
-    nodes[0].trace_with_stopper(PAULI_Z, 3)
-    nodes[1].trace_with_stopper(PAULI_Z, 0)
-    nodes[2].trace_with_stopper(PAULI_Z, 3)
+    nodes[0] = nodes[0].trace_with_stopper(PAULI_Z, 3)
+    nodes[1] = nodes[1].trace_with_stopper(PAULI_Z, 0)
+    nodes[2] = nodes[2].trace_with_stopper(PAULI_Z, 3)
 
     # bottom Z boundary
-    nodes[6].trace_with_stopper(PAULI_Z, 1)
-    nodes[7].trace_with_stopper(PAULI_Z, 2)
-    nodes[8].trace_with_stopper(PAULI_Z, 1)
+    nodes[6] = nodes[6].trace_with_stopper(PAULI_Z, 1)
+    nodes[7] = nodes[7].trace_with_stopper(PAULI_Z, 2)
+    nodes[8] = nodes[8].trace_with_stopper(PAULI_Z, 1)
 
     # left X boundary
-    nodes[0].trace_with_stopper(PAULI_X, 0)
-    nodes[3].trace_with_stopper(PAULI_X, 1)
-    nodes[6].trace_with_stopper(PAULI_X, 0)
+    nodes[0] = nodes[0].trace_with_stopper(PAULI_X, 0)
+    nodes[3] = nodes[3].trace_with_stopper(PAULI_X, 1)
+    nodes[6] = nodes[6].trace_with_stopper(PAULI_X, 0)
 
     # right X boundary
-    nodes[2].trace_with_stopper(PAULI_X, 2)
-    nodes[5].trace_with_stopper(PAULI_X, 3)
-    nodes[8].trace_with_stopper(PAULI_X, 2)
+    nodes[2] = nodes[2].trace_with_stopper(PAULI_X, 2)
+    nodes[5] = nodes[5].trace_with_stopper(PAULI_X, 3)
+    nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 2)
 
     tn = TensorNetwork(nodes)
 
@@ -440,7 +544,7 @@ def test_d3_rotated_surface_code():
 
     we = tn.stabilizer_enumerator(
         0,
-        legs=[],
+        legs=[(idx, 4) for idx in range(9)],
     )
 
     assert we == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}

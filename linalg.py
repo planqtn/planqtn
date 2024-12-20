@@ -20,6 +20,7 @@ def gauss(mx, noswaps=False, col_subset=None):
         col_subset = range(cols)
 
     for c in col_subset:
+        assert c < cols, f"Column {c} does not exist in mx: \n{mx}"
         # if a col is all zero below, we leave it without increasing idx
         nzs = (np.flatnonzero(res[idx:, c]) + idx).tolist()
         if len(nzs) == 0:
