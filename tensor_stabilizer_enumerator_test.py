@@ -440,7 +440,7 @@ def test_d3_rotated_surface_code():
 
     we = tn.stabilizer_enumerator(
         0,
-        legs=[(node, 4) for node in range(9)],
+        legs=[],
     )
 
     assert we == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
