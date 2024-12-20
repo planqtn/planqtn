@@ -3,14 +3,18 @@ from galois import GF2
 import numpy as np
 import pytest
 import scipy
+import sympy
 
 from parity_check import conjoin
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from symplectic import weight
 from tensor_stabilizer_enumerator import (
     PAULI_X,
     PAULI_Z,
+    SimplePoly,
     TensorNetwork,
     TensorStabilizerCodeEnumerator,
+    sslice,
 )
 
 from sympy.abc import w, z
@@ -62,8 +66,8 @@ def test_422_physical_legs_off_diagonlas():
         ]
     )
     vec_enum_phys_legs = TensorStabilizerCodeEnumerator(enc_tens_422)
-    assert {6: 2} == vec_enum_phys_legs.stabilizer_enumerator(
-        legs=[0, 1, 2, 3], e=GF2([1, 1, 1, 1, 0, 0, 0, 0]), eprime=GF2.Zeros(8)
+    assert {0: 2} == vec_enum_phys_legs.stabilizer_enumerator(
+        traced_legs=[0, 1, 2, 3], e=GF2([1, 1, 1, 1, 0, 0, 0, 0]), eprime=GF2.Zeros(8)
     )
 
 
@@ -97,7 +101,7 @@ def test_steane_logical_legs():
     we = ScalarStabilizerCodeEnumerator(steane_parity).stabilizer_enumerator
 
     assert we == tensorwe_on_log_legs.stabilizer_enumerator(
-        legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
+        traced_legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
     )
 
 
@@ -144,7 +148,7 @@ def test_trace_two_422_codes_into_steane():
     assert np.array_equal(t3.h, steane), f"Not equal:\n{t3.h}"
 
     assert {6: 42, 4: 21, 0: 1} == t3.stabilizer_enumerator(
-        legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
+        traced_legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
     )
 
 
@@ -267,10 +271,10 @@ def test_open_legged_enumerator():
     t2 = t1.stabilizer_enumerator_polynomial([4, 5], open_legs=[0, 1])
 
     assert t2 == {
-        ((0, 0, 0, 0), (0, 0, 0, 0)): Poly(w**6, w, z, domain="ZZ"),
-        ((0, 0, 1, 1), (0, 0, 1, 1)): Poly(w**4 * z**2, w, z, domain="ZZ"),
-        ((1, 1, 0, 0), (1, 1, 0, 0)): Poly(w**4 * z**2, w, z, domain="ZZ"),
-        ((1, 1, 1, 1), (1, 1, 1, 1)): Poly(w**4 * z**2, w, z, domain="ZZ"),
+        ((0, 0, 0, 0), (0, 0, 0, 0)): SimplePoly({0: 1}),
+        ((0, 0, 1, 1), (0, 0, 1, 1)): SimplePoly({2: 1}),
+        ((1, 1, 0, 0), (1, 1, 0, 0)): SimplePoly({2: 1}),
+        ((1, 1, 1, 1), (1, 1, 1, 1)): SimplePoly({2: 1}),
     }, f"not equal:\n{t2}"
 
 
@@ -373,8 +377,8 @@ def test_step_by_step_to_d2_surface_code():
         .trace_with_stopper(PAULI_X, 0)
     )
 
-    # print(t0.legs)
-    # print(t0.h)
+    print(t0.legs)
+    print(t0.h)
 
     t1 = (
         TensorStabilizerCodeEnumerator(enc_tens_512, idx=1)
@@ -382,17 +386,24 @@ def test_step_by_step_to_d2_surface_code():
         .trace_with_stopper(PAULI_X, 3)
     )
 
-    t2 = (
-        TensorStabilizerCodeEnumerator(enc_tens_512, idx=2)
-        .trace_with_stopper(PAULI_X, 1)
-        .trace_with_stopper(PAULI_Z, 2)
-    )
+    print(t1.legs)
+    print(t1.h)
 
-    t3 = (
-        TensorStabilizerCodeEnumerator(enc_tens_512, idx=3)
-        .trace_with_stopper(PAULI_X, 2)
-        .trace_with_stopper(PAULI_Z, 1)
-    )
+    h_pte = t0.conjoin(t1, [2], [1])
+
+    print(h_pte.h)
+    for i in range(2**3):
+        picked_generators = GF2(list(np.binary_repr(i, width=3)), dtype=int)
+        stabilizer = picked_generators @ h_pte.h
+        print(
+            stabilizer,
+            weight(stabilizer),
+            sslice(stabilizer, [1, 2]),
+            weight(stabilizer, [1, 2]),
+        )
+
+    brute_force_wep = h_pte.stabilizer_enumerator()
+    print(brute_force_wep)
 
     # pytest.fail()
     pte = t0.trace_with(
@@ -410,20 +421,29 @@ def test_step_by_step_to_d2_surface_code():
     )
 
     assert pte.nodes == {0, 1}
+    assert pte.tracable_legs == [(0, 1), (1, 2)]
 
-    wep = 0
-    for sub_wep in pte.tensor.values():
-        print(sub_wep)
-        wep = sub_wep + wep
+    total_wep = SimplePoly()
+    for k, sub_wep in pte.tensor.items():
 
-    h_pte = t0.conjoin(t1, [2], [1])
+        print(k, "->", sub_wep / 16, sub_wep / 16 * SimplePoly({weight(GF2(k[0])): 1}))
+        total_wep.add_inplace(sub_wep / 16 * SimplePoly({weight(GF2(k[0])): 1}))
 
-    brute_force_wep = h_pte.stabilizer_enumerator_polynomial()
-    print(brute_force_wep)
-
-    assert brute_force_wep == wep
+    assert brute_force_wep == total_wep._dict
 
     pytest.fail()
+
+    t2 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=2)
+        .trace_with_stopper(PAULI_X, 1)
+        .trace_with_stopper(PAULI_Z, 2)
+    )
+
+    t3 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=3)
+        .trace_with_stopper(PAULI_X, 2)
+        .trace_with_stopper(PAULI_Z, 1)
+    )
 
 
 def test_double_trace_422():

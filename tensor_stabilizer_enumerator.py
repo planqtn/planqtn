@@ -18,6 +18,65 @@ PAULI_Z = GF2([0, 1])
 PAULI_Y = GF2([1, 1])
 
 
+class SimplePoly:
+    def __init__(self, d=None):
+        self._dict = defaultdict(int) if d is None else d
+
+    def add_inplace(self, other):
+
+        for k, v in other._dict.items():
+            self._dict[k] += v
+
+    def __add__(self, other):
+        if isinstance(other, SimplePoly):
+            res = SimplePoly(self._dict.copy())
+            for k, v in other._dict.items():
+                res._dict[k] += v
+            return res
+        elif isinstance(other, int):
+            res = SimplePoly(self._dict.copy())
+            for k in self._dict.keys():
+                res._dict[k] += other
+            return res
+        else:
+            raise ValueError(f"Unsupported type to add to SimplePoly: {type(other)}")
+
+    def __str__(self):
+        return str(dict(self._dict))
+
+    def __repr__(self):
+        return f"SimplePoly({repr(self._dict)})"
+
+    def __truediv__(self, n):
+        if isinstance(n, int | float):
+            # TODO: is this really a good idea to always keep coeffs integer?
+            return SimplePoly({k: v // n for k, v in self._dict.items()})
+
+    def __lmul__(self, n):
+        return self.__mul__(n)
+
+    def __rmul__(self, n):
+        return self.__mul__(n)
+
+    def __eq__(self, value):
+        if isinstance(value, int | float):
+            return self._dict[0] == value
+        return self._dict == value._dict
+
+    def __hash__(self):
+        return hash(self._dict)
+
+    def __mul__(self, n):
+        if isinstance(n, int | float):
+            return SimplePoly({k: n * v for k, v in self._dict.items()})
+        elif isinstance(n, SimplePoly):
+            res = SimplePoly()
+            for d1, coeff1 in self._dict.items():
+                for d2, coeff2 in n._dict.items():
+                    res._dict[d1 + d2] += coeff1 * coeff2
+            return res
+
+
 def _paulis(n):
     """Yields the length 2*n GF2 symplectic Pauli operators on n qubits."""
     for i in range(2 ** (2 * n)):
@@ -110,7 +169,7 @@ class TensorNetwork:
 
     def stabilizer_enumerator_polynomial(
         self, legs: List[Tuple[int, int]], e: GF2 = None, eprime: GF2 = None
-    ) -> sympy.Poly:
+    ) -> SimplePoly:
         m = len(legs)
         node_legs = {node: [] for node in range(len(self.nodes))}
         for idx, (node, leg) in enumerate(legs):
@@ -215,10 +274,8 @@ class TensorNetwork:
         wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
         if wep == 0:
             return {}
-        unnormalized_poly = (wep / 4**k).as_poly()
-        coeffs = unnormalized_poly.coeffs()
-        z_degrees = [m[0] for m in unnormalized_poly.monoms()]
-        return {d: c for d, c in zip(z_degrees, coeffs)}
+        unnormalized_poly = wep / 4**k
+        return unnormalized_poly._dict
 
 
 class PartiallyTracedEnumerator:
@@ -266,7 +323,7 @@ class PartiallyTracedEnumerator:
 
         open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
 
-        wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
+        wep = defaultdict(lambda: SimplePoly())
 
         print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
@@ -355,7 +412,7 @@ class TensorStabilizerCodeEnumerator:
             len(self.legs) == self.n
         ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
         # a dict is a wonky tensor - TODO: rephrase this to proper tensor
-        self._stabilizer_enums: Dict[sympy.Tuple, sympy.Poly] = {}
+        self._stabilizer_enums: Dict[sympy.Tuple, SimplePoly] = {}
 
     def _key(self, e, eprime):
 
@@ -425,7 +482,7 @@ class TensorStabilizerCodeEnumerator:
 
         open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
 
-        wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
+        wep = defaultdict(lambda: SimplePoly())
 
         for k1 in t1.keys():
             for k2 in t2.keys():
@@ -464,7 +521,7 @@ class TensorStabilizerCodeEnumerator:
                     ),
                 )
 
-                wep[key] += wep1 * wep2
+                wep[key].add_inplace(wep1 * wep2)
 
         tracable_legs = [(self.idx, leg) for leg in open_legs1]
         tracable_legs += [(other.idx, leg) for leg in open_legs2]
@@ -480,7 +537,6 @@ class TensorStabilizerCodeEnumerator:
         tensor preserved.
         """
         assert len(legs1) == len(legs2)
-        n1 = self.n
         n2 = other.n
 
         legs2_offset = max(self.legs) + 1
@@ -532,15 +588,15 @@ class TensorStabilizerCodeEnumerator:
             def __init__(self, k, n):
                 self.k = k
                 self.n = n
-                self.wep = sympy.Poly(0, gens=[w, z], domain="ZZ")
+                self.wep = SimplePoly()
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
             def collect(self, stabilizer):
                 stab_weight = weight(stabilizer, skip_indices=self.skip_indices)
-                self.wep += sympy.Poly(z**stab_weight * w ** (self.n - stab_weight))
+                self.wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
-                self.wep = (4**self.k * self.wep).simplify()
+                self.wep = 4**self.k * self.wep
 
         class DoubleStabilizerCollector:
             def __init__(self, k, n):
@@ -550,15 +606,17 @@ class TensorStabilizerCodeEnumerator:
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
                 self.matching_stabilizers = []
-                self.wep = defaultdict(lambda: sympy.Poly(0, gens=[w, z], domain="ZZ"))
+                self.wep = defaultdict(lambda: SimplePoly())
 
             def collect(self, stabilizer):
+                print(stabilizer)
                 self.matching_stabilizers.append(stabilizer)
 
             def _scale_one(self, wep):
-                return (4**self.k * wep).simplify()
+                return 4**self.k * wep
 
             def finalize(self):
+                print("finalizing...")
                 # complement indices
                 tlc = [leg for leg in range(self.n) if leg not in traced_cols]
                 olc = [leg for leg in range(self.n) if leg not in open_cols]
@@ -579,7 +637,7 @@ class TensorStabilizerCodeEnumerator:
                                 tuple(sslice(s1, open_cols).tolist()),
                                 tuple(sslice(s2, open_cols).tolist()),
                             )
-                        ] += sympy.Poly(z**stab_weight * w ** (self.n - stab_weight))
+                        ].add_inplace(SimplePoly({stab_weight: 1}))
 
                 for key in self.wep.keys():
                     self.wep[key] = self._scale_one(self.wep[key])
@@ -627,7 +685,7 @@ class TensorStabilizerCodeEnumerator:
         e: GF2 = None,
         eprime: GF2 = None,
         open_legs=[],
-    ):
+    ) -> SimplePoly:
         """Stabilizer enumerator polynomial.
 
         If traced_legs and open_legs left empty, it gives the scalar stabilizer enumerator polynomial.
@@ -648,22 +706,25 @@ class TensorStabilizerCodeEnumerator:
         return wep
 
     def stabilizer_enumerator(
-        self, legs: List[int], e: GF2 = None, eprime: GF2 = None, open_legs=[]
+        self,
+        traced_legs: List[int] = [],
+        e: GF2 = None,
+        eprime: GF2 = None,
+        open_legs=[],
     ):
         if open_legs is not None and len(open_legs) > 0:
             raise ValueError("only polynomials are allowed with open legs.")
         unnormalized_poly = (
             self.stabilizer_enumerator_polynomial(
-                legs,
+                traced_legs,
                 e,
                 eprime,
                 open_legs=open_legs,
             )
             / 4**self.k
-        ).as_poly()
-        coeffs = unnormalized_poly.coeffs()
-        z_degrees = [m[0] for m in unnormalized_poly.monoms()]
-        return {d: c for d, c in zip(z_degrees, coeffs)}
+        )
+
+        return unnormalized_poly._dict
 
     def trace_with_stopper(self, stopper: GF2, traced_leg: int):
         if traced_leg not in self.legs:
