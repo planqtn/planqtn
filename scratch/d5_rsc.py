@@ -1,3 +1,4 @@
+import time
 from galois import GF2
 
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
@@ -51,11 +52,42 @@ rsc = GF2(
 #     ScalarStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
 # )
 
-tn = TensorNetwork.make_rsc(d=5)
+tn = TensorNetwork.make_rsc(d=7)
 
 # tn.traces_to_dot()
 # tn.analyze_traces()
 
-
-we = tn.stabilizer_enumerator_polynomial() / 4**25
+start = time.time()
+we = tn.stabilizer_enumerator_polynomial() / 4**49
 print(we)
+end = time.time()
+print(f"Total time: {end-start:0.3f}s")
+
+# d=7
+{
+    0: 1,
+    2: 12,
+    4: 146,
+    6: 1438,
+    8: 13110,
+    10: 111468,
+    12: 901846,
+    14: 7084452,
+    16: 54340601,
+    18: 404319480,
+    20: 2869566420,
+    22: 18990627284,
+    24: 114175781660,
+    26: 592680271224,
+    28: 2539126411884,
+    30: 8670858392640,
+    32: 22908295560555,
+    34: 45433218275516,
+    36: 65454548064506,
+    38: 66042347051358,
+    40: 44733453993950,
+    42: 19315057841244,
+    44: 4952144318046,
+    46: 662842379852,
+    48: 33901401963,
+}
