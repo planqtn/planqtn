@@ -161,15 +161,23 @@ class TensorNetwork:
         self.nodes = nodes
         self.traces = []
         self.open_legs = [[] for _ in self.nodes]
+        self._wep = None
+        self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
 
     def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
+        if self._wep is not None:
+            raise ValueError(
+                "Tensor network weight enumerator is already traced no new tracing schedule is allowed."
+            )
         self.traces.append((node_idx1, node_idx2, join_legs1, join_legs2))
         self.open_legs[node_idx1] += join_legs1
         self.open_legs[node_idx2] += join_legs2
 
     def stabilizer_enumerator_polynomial(
-        self, legs: List[Tuple[int, int]], e: GF2 = None, eprime: GF2 = None
+        self, legs: List[Tuple[int, int]] = [], e: GF2 = None, eprime: GF2 = None
     ) -> SimplePoly:
+        if self._wep is not None:
+            return self._wep
         m = len(legs)
         node_legs = {node: [] for node in range(len(self.nodes))}
         for idx, (node, leg) in enumerate(legs):
@@ -182,8 +190,6 @@ class TensorNetwork:
             eprime = GF2.Zeros(2 * m)
         assert len(e) == m * 2
         assert len(eprime) == m * 2
-
-        pte: PartiallyTracedEnumerator = None
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
@@ -206,7 +212,12 @@ class TensorNetwork:
 
             t2 = self.nodes[node_idx2]
 
-            if pte is None:
+            node1_pte = None if node_idx1 not in self.ptes else self.ptes[node_idx1]
+            node2_pte = None if node_idx2 not in self.ptes else self.ptes[node_idx2]
+
+            print(f"PTEs: {node1_pte}, {node2_pte}")
+
+            if node1_pte is None and node2_pte is None:
                 t1: TensorStabilizerCodeEnumerator = self.nodes[node_idx1]
                 open_legs1 = [
                     leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
@@ -230,14 +241,22 @@ class TensorNetwork:
                 )
                 self.open_legs[node_idx1] = open_legs1
                 self.open_legs[node_idx2] = open_legs2
-            else:
-                if node_idx1 not in pte.nodes:
-                    raise ValueError(
-                        f"Disconnected contraction schedule. {node_idx1} is not in the contracted nodes: {pte.nodes}."
-                    )
+
+                self.ptes[node_idx1] = pte
+                self.ptes[node_idx2] = pte
+
+            elif (node1_pte is None and node2_pte is not None) or (
+                node2_pte is None and node1_pte is not None
+            ):
+                if node1_pte is None:
+                    # swap node 1 and 2 so node 1 is in the PTE
+                    join_legs1, join_legs2 = join_legs2, join_legs1
+                    node_idx1, node_idx2 = node_idx2, node_idx1
+                    node1_pte, node2_pte = node2_pte, node1_pte
+
                 open_legs1 = [
                     (node_idx, leg)
-                    for node_idx, leg in pte.tracable_legs
+                    for node_idx, leg in node1_pte.tracable_legs
                     if (node_idx == node_idx1 and leg not in join_legs1)
                     or (node_idx == node_idx2 and leg not in join_legs2)
                     or (node_idx not in [node_idx1, node_idx2])
@@ -246,7 +265,7 @@ class TensorNetwork:
                 open_legs2 = [
                     leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
                 ]
-                pte = pte.trace_with(
+                pte = node1_pte.trace_with(
                     t2,
                     join_legs1=[(node_idx1, leg) for leg in join_legs1],
                     join_legs2=join_legs2,
@@ -256,17 +275,36 @@ class TensorNetwork:
                     open_legs1=open_legs1,
                     open_legs2=open_legs2,
                 )
+                for node in pte.nodes:
+                    self.ptes[node] = pte
 
                 self.open_legs[node_idx1] = [
                     leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
                 ]
                 self.open_legs[node_idx2] = open_legs2
+            elif node1_pte == node2_pte:
+                # both nodes are in the same PTE!
+                pte = node1_pte.self_trace(
+                    join_legs1=[(node_idx1, leg) for leg in join_legs1],
+                    join_legs2=[(node_idx2, leg) for leg in join_legs2],
+                )
+                for node in pte.nodes:
+                    self.ptes[node] = pte
+            else:
+                # merging two PTEs
+                raise NotImplementedError(
+                    f"Merging two independent PTEs is not implemented yet! {node1_pte.nodes}, {node2_pte.nodes}"
+                )
 
-            print(f"PTE nodes: {pte.nodes}")
-            print(f"PTE tracable legs: {pte.tracable_legs}")
-            print(f"PTE tensor: {dict(pte.tensor)}")
+            node1_pte = None if node_idx1 not in self.ptes else self.ptes[node_idx1]
 
-        return pte.tensor[((), ())]
+            print(f"PTE nodes: {node1_pte.nodes}")
+            print(f"PTE tracable legs: {node1_pte.tracable_legs}")
+            print(f"PTE tensor: {dict(node1_pte.tensor)}")
+            print(f"PTEs: {self.ptes}")
+
+        self._wep = node1_pte.tensor[((), ())]
+        return self._wep
 
     def stabilizer_enumerator(
         self, k, legs: List[Tuple[int, List[int]]], e: GF2 = None, eprime: GF2 = None
@@ -291,6 +329,20 @@ class PartiallyTracedEnumerator:
             tracable_legs
         ), f"tensor keys of length {tensor_key_length} != {2 * len(tracable_legs)} (2 * len tracable legs)"
 
+    def __str__(self):
+        return f"PartiallyTracedEnumerator[nodes={self.nodes}, tracable_legs={self.tracable_legs}]"
+
+    def __repr__(self):
+        return f"PartiallyTracedEnumerator[nodes={self.nodes}, tracable_legs={self.tracable_legs}]"
+
+    def __eq__(self, other):
+        if not isinstance(other, PartiallyTracedEnumerator):
+            return False
+        return self.nodes == other.nodes
+
+    def __hash__(self):
+        return hash((frozenset(self.nodes)))
+
     def stabilizer_enumerator(self, legs: List[Tuple[int, int]], e, eprime):
         filtered_axes = [self.tracable_legs.index(leg) for leg in legs]
         indices = [slice(None) for _ in range(self.tracable_legs)]
@@ -301,6 +353,66 @@ class PartiallyTracedEnumerator:
             indices[axis] = int(eprime[idx])
 
         return self.tensor[indices]
+
+    def self_trace(self, join_legs1, join_legs2):
+        assert len(join_legs1) == len(join_legs2)
+        join_length = len(join_legs1)
+
+        wep = defaultdict(lambda: SimplePoly())
+        open_legs = [
+            leg
+            for leg in self.tracable_legs
+            if leg not in join_legs1 and leg not in join_legs2
+        ]
+
+        print(f"traceable legs: {self.tracable_legs} <- {open_legs}")
+        join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
+
+        print(f"join indices1: {join_indices1}")
+        join_indices2 = [self.tracable_legs.index(leg) for leg in join_legs2]
+        print(f"join indices2: {join_indices2}")
+
+        kept_indices = [
+            i for i, leg in enumerate(self.tracable_legs) if leg in open_legs
+        ]
+        print(f"kept indices: {kept_indices}")
+
+        for old_key in self.tensor.keys():
+            if not np.array_equal(
+                sslice(GF2(old_key[0]), join_indices1),
+                sslice(GF2(old_key[0]), join_indices2),
+            ) or not np.array_equal(
+                sslice(GF2(old_key[1]), join_indices1),
+                sslice(GF2(old_key[1]), join_indices2),
+            ):
+                continue
+
+            wep1 = self.tensor[old_key]
+
+            k1_gf2 = GF2(old_key[0]), GF2(old_key[1])
+
+            # we have to cut off the join legs from both keys and concatenate them
+
+            key = (
+                # e
+                tuple(sslice(k1_gf2[0], kept_indices).tolist()),
+                # eprime
+                tuple(sslice(k1_gf2[1], kept_indices).tolist()),
+            )
+
+            assert len(key[0]) == 2 * (
+                len(open_legs)
+            ), f"key length: {len(key[0])} != 2*{len(open_legs)} = {2 * len(open_legs)}"
+            print(f"key: {key}")
+            print(f"wep: {wep1}")
+
+            wep[key].add_inplace(wep1)
+
+        tracable_legs = [(idx, leg) for idx, leg in open_legs]
+
+        return PartiallyTracedEnumerator(
+            self.nodes, tracable_legs=tracable_legs, tensor=wep
+        )
 
     def trace_with(
         self,
@@ -315,13 +427,10 @@ class PartiallyTracedEnumerator:
     ) -> "PartiallyTracedEnumerator":
 
         assert len(join_legs1) == len(join_legs2)
-        join_length = len(join_legs1)
 
         t2 = other.stabilizer_enumerator_polynomial(
             traced_legs, e, eprime, join_legs2 + open_legs2
         )
-
-        open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
 
         wep = defaultdict(lambda: SimplePoly())
 
@@ -352,8 +461,8 @@ class PartiallyTracedEnumerator:
 
                 wep1 = self.tensor[k1]
                 wep2 = t2[k2]
-                k1 = GF2(k1[0]), GF2(k1[1])
-                k2 = GF2(k2[0]), GF2(k2[1])
+                k1_gf2 = GF2(k1[0]), GF2(k1[1])
+                k2_gf2 = GF2(k2[0]), GF2(k2[1])
 
                 # we have to cut off the join legs from both keys and concatenate them
 
@@ -361,15 +470,15 @@ class PartiallyTracedEnumerator:
                     # e
                     tuple(
                         sconcat(
-                            sslice(k1[0], kept_indices1),
-                            sslice(k2[0], kept_indices2),
+                            sslice(k1_gf2[0], kept_indices1),
+                            sslice(k2_gf2[0], kept_indices2),
                         ).tolist()
                     ),
                     # eprime
                     tuple(
                         sconcat(
-                            sslice(k1[1], kept_indices1),
-                            sslice(k2[1], kept_indices2),
+                            sslice(k1_gf2[1], kept_indices1),
+                            sslice(k2_gf2[1], kept_indices2),
                         ).tolist()
                     ),
                 )

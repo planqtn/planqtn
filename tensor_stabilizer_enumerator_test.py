@@ -354,6 +354,53 @@ def test_partially_traced_enumerator():
     }
 
 
+def test_stoppers_in_different_order():
+    enc_tens_512 = GF2(
+        [
+            # fmt: off
+    #        l1,2            l1,2 
+    [1,1,1,1, 0,  0,0,0,0,  0,],
+    [0,0,0,0, 0,  1,1,1,1,  0,], 
+    # X1
+    [1,1,0,0, 1,  0,0,0,0,  0,],        
+    # Z1
+    [0,0,0,0, 0,  0,1,1,0,  1,],
+            # fmt: on
+        ]
+    )
+    t1 = TensorStabilizerCodeEnumerator(enc_tens_512, idx=1).trace_with_stopper(
+        PAULI_Z, 0
+    )
+    assert np.array_equal(
+        t1.h,
+        GF2(
+            [
+                # fmt: off
+    [0,0,0, 0,  1,1,1,  0,], 
+    # X1
+    [0,1,1, 1,  0,0,0,  0,],        
+    # Z1
+    [0,0,0, 0,  1,1,0,  1,],
+                # fmt: on
+            ]
+        ),
+    )
+
+    t1 = t1.trace_with_stopper(PAULI_X, 3)
+
+    assert np.array_equal(
+        t1.h,
+        GF2(
+            [
+                # fmt: off
+    [0,1, 1,  0,0,  0,],              
+    [0,0, 0,  1,1,  1,],
+                # fmt: on
+            ]
+        ),
+    )
+
+
 def test_step_by_step_to_d2_surface_code():
     # pytest.skip()
 
@@ -377,45 +424,13 @@ def test_step_by_step_to_d2_surface_code():
         .trace_with_stopper(PAULI_X, 0)
     )
 
-    print(t0.legs)
-    print(t0.h)
-
-    t1 = TensorStabilizerCodeEnumerator(enc_tens_512, idx=1).trace_with_stopper(
-        PAULI_Z, 0
+    t1 = (
+        TensorStabilizerCodeEnumerator(enc_tens_512, idx=1)
+        .trace_with_stopper(PAULI_Z, 0)
+        .trace_with_stopper(PAULI_X, 3)
     )
-    assert np.array_equal(
-        t1.h,
-        GF2(
-            [
-                # fmt: off
-    [0,0,0, 0,  1,1,1,  0,], 
-    # X1
-    [0,1,1, 1,  0,0,0,  0,],        
-    # Z1
-    [0,0,0, 0,  1,1,0,  1,],
-                # fmt: on
-            ]
-        ),
-    ), "Fail on first..."
 
-    print(t1.legs)
-    print(t1.h)
-
-    t1 = t1.trace_with_stopper(PAULI_X, 3)
-
-    print(t1.legs)
-    print(t1.h)
-    assert np.array_equal(
-        t1.h,
-        GF2(
-            [
-                # fmt: off
-    [0,1, 1,  0,0,  0,],              
-    [0,0, 0,  1,1,  1,],
-                # fmt: on
-            ]
-        ),
-    ), "Fail on second..."
+    ### Getting Conjoined Parities brute force WEP
 
     h_pte = t0.conjoin(t1, [2], [1])
 
@@ -434,6 +449,8 @@ def test_step_by_step_to_d2_surface_code():
 
     brute_force_wep = h_pte.stabilizer_enumerator()
     print(brute_force_wep)
+
+    ### Checking PartiallyTracedEnumerator equivalence
 
     pte = t0.trace_with(
         t1,
@@ -460,11 +477,24 @@ def test_step_by_step_to_d2_surface_code():
 
     assert brute_force_wep == total_wep._dict
 
+    ### Checking TensorNetwork equivalence
+
+    tn = TensorNetwork([t0, t1])
+    tn.self_trace(0, 1, [2], [1])
+
+    tn_wep = tn.stabilizer_enumerator_polynomial()
+
+    assert total_wep == tn_wep / 16
+
+    ################ NODE 2 ###################
+
     t2 = (
         TensorStabilizerCodeEnumerator(enc_tens_512, idx=2)
         .trace_with_stopper(PAULI_X, 1)
         .trace_with_stopper(PAULI_Z, 2)
     )
+
+    ### Getting Conjoined Parities brute force WEP
 
     # H PTE
     #   1 4 7 9
@@ -488,6 +518,8 @@ def test_step_by_step_to_d2_surface_code():
 
     brute_force_wep = h_pte.stabilizer_enumerator()
     print(brute_force_wep)
+
+    ### Checking PartiallyTracedEnumerator equivalence
 
     pte = pte.trace_with(
         t2,
@@ -516,11 +548,24 @@ def test_step_by_step_to_d2_surface_code():
 
     assert brute_force_wep == dict(total_wep._dict)
 
+    ### Checking TensorNetwork equivalence
+
+    tn = TensorNetwork([t0, t1, t2])
+    tn.self_trace(0, 1, [2], [1])
+    tn.self_trace(0, 2, [1], [0])
+
+    tn_wep = tn.stabilizer_enumerator_polynomial()
+    assert total_wep == tn_wep / 16 / 4
+
+    ################ NODE 3 ###################
+
     t3 = (
         TensorStabilizerCodeEnumerator(enc_tens_512, idx=3)
         .trace_with_stopper(PAULI_X, 2)
         .trace_with_stopper(PAULI_Z, 1)
     )
+
+    ### Getting Conjoined Parities brute force WEP
 
     # H PTE (t0, t1, t2 )
     #   4 -> (0,4) ("logical")
@@ -540,6 +585,8 @@ def test_step_by_step_to_d2_surface_code():
 
     brute_force_wep = h_pte.stabilizer_enumerator()
     print(brute_force_wep)
+
+    ### Checking PartiallyTracedEnumerator equivalence
 
     pte = pte.trace_with(
         t3,
@@ -579,6 +626,20 @@ def test_step_by_step_to_d2_surface_code():
         ),
     ), f"not equal\n{h_pte.h}"
 
+    ### Checking TensorNetwork equivalence
+    print(
+        "=============================== final TN check ==============================="
+    )
+
+    tn = TensorNetwork([t0, t1, t2, t3])
+    tn.self_trace(0, 1, [2], [1])
+    tn.self_trace(0, 2, [1], [0])
+    tn.self_trace(2, 3, [3], [0])
+    tn.self_trace(3, 1, [3], [2])
+
+    tn_wep = tn.stabilizer_enumerator_polynomial() / 256
+    assert tn_wep == total_wep, f"not equal:\n{tn_wep}"
+
 
 def test_double_trace_422():
     enc_tens_422 = GF2(
@@ -613,7 +674,7 @@ def test_double_trace_422():
 
 
 def test_d3_rotated_surface_code():
-    pytest.skip()
+    # pytest.skip()
     rsc = GF2(
         [
             [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -696,12 +757,8 @@ def test_d3_rotated_surface_code():
         [0, 3],
     ]
 
-    we = tn.stabilizer_enumerator(
-        0,
-        legs=[(idx, 4) for idx in range(9)],
-    )
-
-    assert we == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+    we = tn.stabilizer_enumerator_polynomial() / 4**9
+    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 # # legs - left, bottom, right, top
