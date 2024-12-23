@@ -1,12 +1,16 @@
 from collections import defaultdict
+import time
 from typing import List, Dict, Set, Tuple, Union
 from galois import GF2
 import numpy as np
 import sympy
+from tqdm import tqdm
 
+from legos import Legos
 from linalg import gauss
 from parity_check import conjoin, self_trace, sprint
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from simple_poly import SimplePoly
 from symplectic import omega, weight
 
 from sympy.abc import w, z
@@ -16,65 +20,6 @@ from tensor_legs import TensorLegs
 PAULI_X = GF2([1, 0])
 PAULI_Z = GF2([0, 1])
 PAULI_Y = GF2([1, 1])
-
-
-class SimplePoly:
-    def __init__(self, d=None):
-        self._dict = defaultdict(int) if d is None else d
-
-    def add_inplace(self, other):
-
-        for k, v in other._dict.items():
-            self._dict[k] += v
-
-    def __add__(self, other):
-        if isinstance(other, SimplePoly):
-            res = SimplePoly(self._dict.copy())
-            for k, v in other._dict.items():
-                res._dict[k] += v
-            return res
-        elif isinstance(other, int):
-            res = SimplePoly(self._dict.copy())
-            for k in self._dict.keys():
-                res._dict[k] += other
-            return res
-        else:
-            raise ValueError(f"Unsupported type to add to SimplePoly: {type(other)}")
-
-    def __str__(self):
-        return str(dict(self._dict))
-
-    def __repr__(self):
-        return f"SimplePoly({repr(self._dict)})"
-
-    def __truediv__(self, n):
-        if isinstance(n, int | float):
-            # TODO: is this really a good idea to always keep coeffs integer?
-            return SimplePoly({k: v // n for k, v in self._dict.items()})
-
-    def __lmul__(self, n):
-        return self.__mul__(n)
-
-    def __rmul__(self, n):
-        return self.__mul__(n)
-
-    def __eq__(self, value):
-        if isinstance(value, int | float):
-            return self._dict[0] == value
-        return self._dict == value._dict
-
-    def __hash__(self):
-        return hash(self._dict)
-
-    def __mul__(self, n):
-        if isinstance(n, int | float):
-            return SimplePoly({k: n * v for k, v in self._dict.items()})
-        elif isinstance(n, SimplePoly):
-            res = SimplePoly()
-            for d1, coeff1 in self._dict.items():
-                for d2, coeff2 in n._dict.items():
-                    res._dict[d1 + d2] += coeff1 * coeff2
-            return res
 
 
 def _paulis(n):
@@ -164,6 +109,75 @@ class TensorNetwork:
         self._wep = None
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
 
+    @classmethod
+    def make_rsc(cls, d: int):
+
+        nodes = [
+            TensorStabilizerCodeEnumerator(Legos.econding_tensor_512, idx=i)
+            for i in range(d**2)
+        ]
+
+        # row major ordering
+        idx = lambda r, c: r * d + c
+
+        for c in range(d):
+            # top Z boundary
+            nodes[idx(0, c)] = nodes[idx(0, c)].trace_with_stopper(
+                PAULI_Z, 3 if c % 2 == 0 else 0
+            )
+            # bottom Z boundary
+            nodes[idx(d - 1, c)] = nodes[idx(d - 1, c)].trace_with_stopper(
+                PAULI_Z, 1 if c % 2 == 0 else 2
+            )
+
+        for r in range(d):
+            # left X boundary
+            nodes[idx(r, 0)] = nodes[idx(r, 0)].trace_with_stopper(
+                PAULI_X, 0 if r % 2 == 0 else 1
+            )
+            # right X boundary
+            nodes[idx(r, d - 1)] = nodes[idx(r, d - 1)].trace_with_stopper(
+                PAULI_X, 2 if r % 2 == 0 else 3
+            )
+
+        # for r in range(1,4):
+        #     # bulk
+        #     for c in range(1,4):
+
+        tn = TensorNetwork(nodes)
+
+        # go down the left boundary
+        for r in range(d - 1):
+            tn.self_trace(
+                idx(r, 0),
+                idx(r + 1, 0),
+                [1 if r % 2 == 0 else 2],
+                [0 if r % 2 == 0 else 3],
+            )
+
+        # connect each col with the next one from left to right
+        for c in range(d - 1):
+            for r in range(d):
+                tn.self_trace(
+                    idx(r, c),
+                    idx(r, c + 1),
+                    [2 if idx(r, c) % 2 == 0 else 3],
+                    [1 if idx(r, c) % 2 == 0 else 0],
+                )
+
+        # connect the disconnected columns
+        for c in range(1, d):
+            # connect each row within each col with the next row
+            for r in range(d - 1):
+                tn.self_trace(
+                    idx(r, c),
+                    idx(r + 1, c),
+                    [1 if idx(r, c) % 2 == 0 else 2],
+                    [0 if idx(r, c) % 2 == 0 else 3],
+                )
+
+        return tn
+
     def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
         if self._wep is not None:
             raise ValueError(
@@ -191,8 +205,9 @@ class TensorNetwork:
         assert len(e) == m * 2
         assert len(eprime) == m * 2
 
-        for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+        for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+            print(f"Total open legs: {sum(len(legs) for legs in self.open_legs)}")
 
             traced_legs_with_op_indices1 = node_legs[node_idx1]
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
@@ -215,7 +230,7 @@ class TensorNetwork:
             node1_pte = None if node_idx1 not in self.ptes else self.ptes[node_idx1]
             node2_pte = None if node_idx2 not in self.ptes else self.ptes[node_idx2]
 
-            print(f"PTEs: {node1_pte}, {node2_pte}")
+            # print(f"PTEs: {node1_pte}, {node2_pte}")
 
             if node1_pte is None and node2_pte is None:
                 t1: TensorStabilizerCodeEnumerator = self.nodes[node_idx1]
@@ -254,6 +269,8 @@ class TensorNetwork:
                     node_idx1, node_idx2 = node_idx2, node_idx1
                     node1_pte, node2_pte = node2_pte, node1_pte
 
+                print(f"PTE open legs: {len(node1_pte.tracable_legs)}")
+                print(f"Node {node_idx2}: {len(self.open_legs[node_idx2])}")
                 open_legs1 = [
                     (node_idx, leg)
                     for node_idx, leg in node1_pte.tracable_legs
@@ -261,7 +278,7 @@ class TensorNetwork:
                     or (node_idx == node_idx2 and leg not in join_legs2)
                     or (node_idx not in [node_idx1, node_idx2])
                 ]
-                print(f"open_legs: {open_legs1}")
+                # print(f"open_legs: {open_legs1}")
                 open_legs2 = [
                     leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
                 ]
@@ -290,6 +307,12 @@ class TensorNetwork:
                 )
                 for node in pte.nodes:
                     self.ptes[node] = pte
+                self.open_legs[node_idx1] = [
+                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                ]
+                self.open_legs[node_idx2] = [
+                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                ]
             else:
                 # merging two PTEs
                 raise NotImplementedError(
@@ -298,10 +321,10 @@ class TensorNetwork:
 
             node1_pte = None if node_idx1 not in self.ptes else self.ptes[node_idx1]
 
-            print(f"PTE nodes: {node1_pte.nodes}")
-            print(f"PTE tracable legs: {node1_pte.tracable_legs}")
-            print(f"PTE tensor: {dict(node1_pte.tensor)}")
-            print(f"PTEs: {self.ptes}")
+            # print(f"PTE nodes: {node1_pte.nodes}")
+            # print(f"PTE tracable legs: {node1_pte.tracable_legs}")
+            # print(f"PTE tensor: {dict(node1_pte.tensor)}")
+            # print(f"PTEs: {self.ptes}")
 
         self._wep = node1_pte.tensor[((), ())]
         return self._wep
@@ -365,19 +388,19 @@ class PartiallyTracedEnumerator:
             if leg not in join_legs1 and leg not in join_legs2
         ]
 
-        print(f"traceable legs: {self.tracable_legs} <- {open_legs}")
+        # print(f"traceable legs: {self.tracable_legs} <- {open_legs}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
 
-        print(f"join indices1: {join_indices1}")
+        # print(f"join indices1: {join_indices1}")
         join_indices2 = [self.tracable_legs.index(leg) for leg in join_legs2]
-        print(f"join indices2: {join_indices2}")
+        # print(f"join indices2: {join_indices2}")
 
         kept_indices = [
             i for i, leg in enumerate(self.tracable_legs) if leg in open_legs
         ]
-        print(f"kept indices: {kept_indices}")
+        # print(f"kept indices: {kept_indices}")
 
-        for old_key in self.tensor.keys():
+        for old_key in tqdm(self.tensor.keys()):
             if not np.array_equal(
                 sslice(GF2(old_key[0]), join_indices1),
                 sslice(GF2(old_key[0]), join_indices2),
@@ -403,8 +426,8 @@ class PartiallyTracedEnumerator:
             assert len(key[0]) == 2 * (
                 len(open_legs)
             ), f"key length: {len(key[0])} != 2*{len(open_legs)} = {2 * len(open_legs)}"
-            print(f"key: {key}")
-            print(f"wep: {wep1}")
+            # print(f"key: {key}")
+            # print(f"wep: {wep1}")
 
             wep[key].add_inplace(wep1)
 
@@ -434,38 +457,37 @@ class PartiallyTracedEnumerator:
 
         wep = defaultdict(lambda: SimplePoly())
 
-        print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
+        # print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
 
-        print(f"join indices1: {join_indices1}")
+        # print(f"join indices1: {join_indices1}")
         join_indices2 = list(range(len(join_legs2)))
 
         kept_indices1 = [
             i for i, leg in enumerate(self.tracable_legs) if leg in open_legs1
         ]
-        print(f"kept indices 1: {kept_indices1}")
+        # print(f"kept indices 1: {kept_indices1}")
         kept_indices2 = list(range(len(join_legs2), len(join_legs2 + open_legs2)))
 
-        print(f"kept indices 2: {kept_indices2}")
+        # print(f"kept indices 2: {kept_indices2}")
 
-        for k1 in self.tensor.keys():
-            for k2 in t2.keys():
+        for k1 in tqdm(self.tensor.keys(), leave=False):
+            k1_gf2 = GF2(k1[0]), GF2(k1[1])
+            for k2 in tqdm(t2.keys(), leave=False):
+                k2_gf2 = GF2(k2[0]), GF2(k2[1])
                 if not np.array_equal(
-                    sslice(GF2(k1[0]), join_indices1),
-                    sslice(GF2(k2[0]), join_indices2),
+                    sslice(k1_gf2[0], join_indices1),
+                    sslice(k2_gf2[0], join_indices2),
                 ) or not np.array_equal(
-                    sslice(GF2(k1[1]), join_indices1),
-                    sslice(GF2(k2[1]), join_indices2),
+                    sslice(k1_gf2[1], join_indices1),
+                    sslice(k2_gf2[1], join_indices2),
                 ):
                     continue
 
                 wep1 = self.tensor[k1]
                 wep2 = t2[k2]
-                k1_gf2 = GF2(k1[0]), GF2(k1[1])
-                k2_gf2 = GF2(k2[0]), GF2(k2[1])
 
                 # we have to cut off the join legs from both keys and concatenate them
-
                 key = (
                     # e
                     tuple(
@@ -483,14 +505,14 @@ class PartiallyTracedEnumerator:
                     ),
                 )
 
-                assert len(key[0]) == 2 * (
-                    len(open_legs1) + len(open_legs2)
-                ), f"key length: {len(key[0])} != 2*({len(open_legs1)}  + {len(open_legs2)}) = {2 * (
-                    len(open_legs1) + len(open_legs2)
-                )}"
-                print(f"key: {key}")
-                print(f"wep1: {wep1}")
-                print(f"wep2: {wep2}")
+                # assert len(key[0]) == 2 * (
+                #     len(open_legs1) + len(open_legs2)
+                # ), f"key length: {len(key[0])} != 2*({len(open_legs1)}  + {len(open_legs2)}) = {2 * (
+                #     len(open_legs1) + len(open_legs2)
+                # )}"
+                # print(f"key: {key}")
+                # print(f"wep1: {wep1}")
+                # print(f"wep2: {wep2}")
                 wep[key].add_inplace(wep1 * wep2)
 
         tracable_legs = [(idx, leg) for idx, leg in open_legs1]
@@ -720,14 +742,13 @@ class TensorStabilizerCodeEnumerator:
                 self.wep = defaultdict(lambda: SimplePoly())
 
             def collect(self, stabilizer):
-                print(stabilizer)
                 self.matching_stabilizers.append(stabilizer)
 
             def _scale_one(self, wep):
                 return 4**self.k * wep
 
             def finalize(self):
-                print("finalizing...")
+                # print("finalizing...")
                 # complement indices
                 tlc = [leg for leg in range(self.n) if leg not in traced_cols]
                 olc = [leg for leg in range(self.n) if leg not in open_cols]
@@ -845,11 +866,11 @@ class TensorStabilizerCodeEnumerator:
         kept_cols = list(range(2 * self.n))
         kept_cols.remove(self.legs.index(traced_leg))
         kept_cols.remove(self.legs.index(traced_leg) + self.n)
-        print(
-            f"to remove: {self.legs.index(traced_leg)}, {self.legs.index(traced_leg)+self.n}"
-        )
+        # print(
+        #     f"to remove: {self.legs.index(traced_leg)}, {self.legs.index(traced_leg)+self.n}"
+        # )
         kept_cols = np.array(kept_cols)
-        print(f"kept cols {kept_cols}")
+        # print(f"kept cols {kept_cols}")
         h_new = gauss(
             self.h,
             col_subset=[
@@ -858,19 +879,19 @@ class TensorStabilizerCodeEnumerator:
             ],
         )
 
-        print(f"h_new {traced_leg}")
-        print(h_new)
-        print(h_new[:, kept_cols])
-        for row in h_new:
-            print(
-                row[kept_cols],
-                _suboperator_matches_on_support(
-                    [self.legs.index(traced_leg)], row, stopper
-                )
-                or _suboperator_matches_on_support(
-                    [self.legs.index(traced_leg)], row, GF2([0, 0])
-                ),
-            )
+        # print(f"h_new {traced_leg}")
+        # print(h_new)
+        # print(h_new[:, kept_cols])
+        # for row in h_new:
+        #     print(
+        #         row[kept_cols],
+        #         _suboperator_matches_on_support(
+        #             [self.legs.index(traced_leg)], row, stopper
+        #         )
+        #         or _suboperator_matches_on_support(
+        #             [self.legs.index(traced_leg)], row, GF2([0, 0])
+        #         ),
+        #     )
 
         h_new = GF2(
             [
@@ -887,7 +908,7 @@ class TensorStabilizerCodeEnumerator:
         kept_legs = self.legs.copy()
         kept_legs.remove(traced_leg)
 
-        print(f"h_new {traced_leg}")
-        print(h_new)
+        # print(f"h_new {traced_leg}")
+        # print(h_new)
 
         return TensorStabilizerCodeEnumerator(h=h_new, idx=self.idx, legs=kept_legs)

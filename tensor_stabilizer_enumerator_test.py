@@ -5,6 +5,7 @@ import pytest
 import scipy
 import sympy
 
+from legos import Legos
 from parity_check import conjoin
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from symplectic import weight
@@ -98,7 +99,7 @@ def test_steane_logical_legs():
 
     steane_parity = GF2(scipy.linalg.block_diag(h, h))
 
-    we = ScalarStabilizerCodeEnumerator(steane_parity).stabilizer_enumerator
+    we = ScalarStabilizerCodeEnumerator(steane_parity).stabilizer_enumerator()
 
     assert we == tensorwe_on_log_legs.stabilizer_enumerator(
         traced_legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
@@ -690,21 +691,20 @@ def test_d3_rotated_surface_code():
 
     scalar = ScalarStabilizerCodeEnumerator(rsc)
     print(scalar.stabilizer_enumerator)
-    enc_tens_512 = GF2(
-        [
-            # fmt: off
-    #        l1            l1 
-    [1,1,1,1, 0,  0,0,0,0,  0],
-    [0,0,0,0, 0,  1,1,1,1,  0], 
-    # X1
-    [1,1,0,0, 1,  0,0,0,0,  0],    
-    # Z1
-    [0,0,0,0, 0,  1,0,0,1,  1],
-            # fmt: on
-        ]
-    )
 
-    nodes = [TensorStabilizerCodeEnumerator(enc_tens_512, idx=i) for i in range(9)]
+    tn = TensorNetwork.make_rsc(d=3)
+
+    we = tn.stabilizer_enumerator_polynomial() / 4**9
+    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+
+
+def test_d3_creation():
+    tn = TensorNetwork.make_rsc(3)
+
+    nodes = [
+        TensorStabilizerCodeEnumerator(Legos.econding_tensor_512, idx=i)
+        for i in range(9)
+    ]
 
     # top Z boundary
     nodes[0] = nodes[0].trace_with_stopper(PAULI_Z, 3)
@@ -726,24 +726,26 @@ def test_d3_rotated_surface_code():
     nodes[5] = nodes[5].trace_with_stopper(PAULI_X, 3)
     nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 2)
 
-    tn = TensorNetwork(nodes)
+    for i, node in enumerate(tn.nodes):
+        assert node.idx == i
+        assert np.array_equal(
+            node.h, nodes[i].h
+        ), f"Parities don't match at node {i},\n{node.h}\n{nodes[i].h}"
 
-    tn.self_trace(0, 3, [1], [0])
-    tn.self_trace(3, 6, [2], [3])
-
-    tn.self_trace(0, 1, [2], [1])
-    tn.self_trace(3, 4, [3], [0])
-    tn.self_trace(6, 7, [2], [1])
-
-    tn.self_trace(1, 2, [3], [0])
-    tn.self_trace(4, 5, [2], [1])
-    tn.self_trace(7, 8, [3], [0])
-
-    tn.self_trace(1, 4, [2], [3])
-    tn.self_trace(2, 5, [1], [0])
-
-    tn.self_trace(4, 7, [1], [0])
-    tn.self_trace(5, 8, [2], [3])
+    assert tn.traces == [
+        (0, 3, [1], [0]),
+        (3, 6, [2], [3]),
+        (0, 1, [2], [1]),
+        (3, 4, [3], [0]),
+        (6, 7, [2], [1]),
+        (1, 2, [3], [0]),
+        (4, 5, [2], [1]),
+        (7, 8, [3], [0]),
+        (1, 4, [2], [3]),
+        (4, 7, [1], [0]),
+        (2, 5, [1], [0]),
+        (5, 8, [2], [3]),
+    ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
     assert tn.open_legs == [
         [1, 2],
@@ -757,8 +759,31 @@ def test_d3_rotated_surface_code():
         [0, 3],
     ]
 
-    we = tn.stabilizer_enumerator_polynomial() / 4**9
-    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+
+def test_d5_rotated_surface_code():
+    pytest.skip()
+    rsc5_enum = SimplePoly(
+        {
+            0: 4,
+            4: 288,
+            8: 14860,
+            6: 2136,
+            10: 103264,
+            2: 32,
+            12: 633792,
+            14: 3130128,
+            16: 10904188,
+            18: 20461504,
+            20: 20546528,
+            22: 9748824,
+            24: 1563316,
+        }
+    )
+    print(rsc5_enum)
+    tn = TensorNetwork.make_rsc(d=5)
+
+    we = tn.stabilizer_enumerator_polynomial()
+    assert we == rsc5_enum
 
 
 # # legs - left, bottom, right, top
