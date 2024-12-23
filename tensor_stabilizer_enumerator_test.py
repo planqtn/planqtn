@@ -733,56 +733,59 @@ def test_d3_creation():
         ), f"Parities don't match at node {i},\n{node.h}\n{nodes[i].h}"
 
     assert tn.traces == [
-        (0, 3, [1], [0]),
-        (3, 6, [2], [3]),
         (0, 1, [2], [1]),
+        (0, 3, [1], [0]),
         (3, 4, [3], [0]),
-        (6, 7, [2], [1]),
-        (1, 2, [3], [0]),
-        (4, 5, [2], [1]),
-        (7, 8, [3], [0]),
         (1, 4, [2], [3]),
-        (4, 7, [1], [0]),
+        (1, 2, [3], [0]),
+        (3, 6, [2], [3]),
+        (4, 5, [2], [1]),
         (2, 5, [1], [0]),
+        (4, 7, [1], [0]),
+        (6, 7, [2], [1]),
+        (7, 8, [3], [0]),
         (5, 8, [2], [3]),
     ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
-    assert tn.open_legs == [
-        [1, 2],
-        [1, 3, 2],
+    assert tn.legs_to_trace == [
+        [2, 1],
+        [1, 2, 3],
         [0, 1],
-        [0, 2, 3],
-        [0, 2, 3, 1],
+        [0, 3, 2],
+        [0, 3, 2, 1],
         [1, 0, 2],
         [3, 2],
-        [1, 3, 0],
+        [0, 1, 3],
         [0, 3],
-    ]
+    ], f"Legs to trace are not equal, got:\n{tn.legs_to_trace}"
 
 
 def test_d5_rotated_surface_code():
-    pytest.skip()
-    rsc5_enum = SimplePoly(
-        {
-            0: 4,
-            4: 288,
-            8: 14860,
-            6: 2136,
-            10: 103264,
-            2: 32,
-            12: 633792,
-            14: 3130128,
-            16: 10904188,
-            18: 20461504,
-            20: 20546528,
-            22: 9748824,
-            24: 1563316,
-        }
+    # pytest.skip()
+    rsc5_enum = (
+        SimplePoly(
+            {
+                0: 4,
+                4: 288,
+                8: 14860,
+                6: 2136,
+                10: 103264,
+                2: 32,
+                12: 633792,
+                14: 3130128,
+                16: 10904188,
+                18: 20461504,
+                20: 20546528,
+                22: 9748824,
+                24: 1563316,
+            }
+        )
+        / 4
     )
     print(rsc5_enum)
     tn = TensorNetwork.make_rsc(d=5)
 
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial() / 4**25
     assert we == rsc5_enum
 
 

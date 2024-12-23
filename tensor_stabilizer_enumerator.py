@@ -105,7 +105,9 @@ class TensorNetwork:
     def __init__(self, nodes: List["TensorStabilizerCodeEnumerator"]):
         self.nodes = nodes
         self.traces = []
-        self.open_legs = [[] for _ in self.nodes]
+        self.legs_to_trace = [[] for _ in self.nodes]
+        # self.open_legs = [n.legs for n in self.nodes]
+
         self._wep = None
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
 
@@ -146,35 +148,66 @@ class TensorNetwork:
 
         tn = TensorNetwork(nodes)
 
-        # go down the left boundary
-        for r in range(d - 1):
-            tn.self_trace(
-                idx(r, 0),
-                idx(r + 1, 0),
-                [1 if r % 2 == 0 else 2],
-                [0 if r % 2 == 0 else 3],
-            )
-
-        # connect each col with the next one from left to right
-        for c in range(d - 1):
-            for r in range(d):
+        for radius in range(1, d):
+            for i in range(radius + 1):
+                # extending the right boundary
                 tn.self_trace(
-                    idx(r, c),
-                    idx(r, c + 1),
-                    [2 if idx(r, c) % 2 == 0 else 3],
-                    [1 if idx(r, c) % 2 == 0 else 0],
+                    idx(i, radius - 1),
+                    idx(i, radius),
+                    [3 if idx(i, radius) % 2 == 0 else 2],
+                    [0 if idx(i, radius) % 2 == 0 else 1],
                 )
-
-        # connect the disconnected columns
-        for c in range(1, d):
-            # connect each row within each col with the next row
-            for r in range(d - 1):
+                if i > 0 and i < radius:
+                    tn.self_trace(
+                        idx(i - 1, radius),
+                        idx(i, radius),
+                        [2 if idx(i, radius) % 2 == 0 else 1],
+                        [3 if idx(i, radius) % 2 == 0 else 0],
+                    )
+                # extending the bottom boundary
                 tn.self_trace(
-                    idx(r, c),
-                    idx(r + 1, c),
-                    [1 if idx(r, c) % 2 == 0 else 2],
-                    [0 if idx(r, c) % 2 == 0 else 3],
+                    idx(radius - 1, i),
+                    idx(radius, i),
+                    [2 if idx(i, radius) % 2 == 0 else 1],
+                    [3 if idx(i, radius) % 2 == 0 else 0],
                 )
+                if i > 0 and i < radius:
+                    tn.self_trace(
+                        idx(radius, i - 1),
+                        idx(radius, i),
+                        [3 if idx(i, radius) % 2 == 0 else 2],
+                        [0 if idx(i, radius) % 2 == 0 else 1],
+                    )
+
+        # # go down the left boundary
+        # for r in range(d - 1):
+        #     tn.self_trace(
+        #         idx(r, 0),
+        #         idx(r + 1, 0),
+        #         [1 if r % 2 == 0 else 2],
+        #         [0 if r % 2 == 0 else 3],
+        #     )
+
+        # # connect each col with the next one from left to right
+        # for c in range(d - 1):
+        #     for r in range(d):
+        #         tn.self_trace(
+        #             idx(r, c),
+        #             idx(r, c + 1),
+        #             [2 if idx(r, c) % 2 == 0 else 3],
+        #             [1 if idx(r, c) % 2 == 0 else 0],
+        #         )
+
+        # # connect the disconnected columns
+        # for c in range(1, d):
+        #     # connect each row within each col with the next row
+        #     for r in range(d - 1):
+        #         tn.self_trace(
+        #             idx(r, c),
+        #             idx(r + 1, c),
+        #             [1 if idx(r, c) % 2 == 0 else 2],
+        #             [0 if idx(r, c) % 2 == 0 else 3],
+        #         )
 
         return tn
 
@@ -184,8 +217,73 @@ class TensorNetwork:
                 "Tensor network weight enumerator is already traced no new tracing schedule is allowed."
             )
         self.traces.append((node_idx1, node_idx2, join_legs1, join_legs2))
-        self.open_legs[node_idx1] += join_legs1
-        self.open_legs[node_idx2] += join_legs2
+        self.legs_to_trace[node_idx1] += join_legs1
+        self.legs_to_trace[node_idx2] += join_legs2
+
+    def traces_to_dot(self):
+        print("-----")
+        # print(self.open_legs)
+        # for n, legs in enumerate(self.open_legs):
+        #     for leg in legs:
+        #         print(f"n{n} -> n{n}_{leg}")
+
+        for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+            for leg1, leg2 in zip(join_legs1, join_legs2):
+                print(f"n{node_idx1} -> n{node_idx2} ")
+
+    def analyze_traces(self):
+        new_tn = TensorNetwork(self.nodes.copy())
+        new_tn.traces = self.traces.copy()
+        new_tn.legs_to_trace = self.legs_to_trace.copy()
+
+        pte_nodes = []
+        max_pte_legs = 0
+        print(
+            "========================== ======= === === === == ==============================="
+        )
+        print(
+            "========================== TRACE SCHEDULE ANALYSIS ============================="
+        )
+        print(
+            "========================== ======= === === === == ==============================="
+        )
+        print(f"    pte nodes: {pte_nodes}")
+        print(
+            f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_to_trace)}"
+        )
+        for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn.traces:
+            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+
+            for leg in join_legs1:
+                new_tn.legs_to_trace[node_idx1].remove(leg)
+            for leg in join_legs2:
+                new_tn.legs_to_trace[node_idx2].remove(leg)
+
+            if pte_nodes == []:
+                pte_nodes.append(node_idx1)
+                pte_nodes.append(node_idx2)
+            else:
+                assert (
+                    node_idx1 in pte_nodes
+                ), f"For now node 1 should be in the traced component. This is violated with {node_idx1}."
+                if node_idx2 not in pte_nodes:
+                    pte_nodes.append(node_idx2)
+
+            print(f"    pte nodes: {pte_nodes}")
+            print(
+                f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_to_trace)}"
+            )
+            num_pte_legs = sum(len(new_tn.legs_to_trace[node]) for node in pte_nodes)
+            max_pte_legs = max(max_pte_legs, num_pte_legs)
+            print(f"    PTE legs: {num_pte_legs}")
+
+        print("=== Final state ==== ")
+        print(
+            f"pte nodes: {pte_nodes} is all nodes {set(pte_nodes) == set(range(len(new_tn.nodes)))} "
+        )
+        print(f"Total legs to trace: {sum(len(legs) for legs in new_tn.legs_to_trace)}")
+        print(f"PTE legs: {sum(len(new_tn.legs_to_trace[node]) for node in pte_nodes)}")
+        print(f"Maximum PTE legs: {max_pte_legs}")
 
     def stabilizer_enumerator_polynomial(
         self, legs: List[Tuple[int, int]] = [], e: GF2 = None, eprime: GF2 = None
@@ -207,7 +305,7 @@ class TensorNetwork:
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
-            print(f"Total open legs: {sum(len(legs) for legs in self.open_legs)}")
+            print(f"Total open legs: {sum(len(legs) for legs in self.legs_to_trace)}")
 
             traced_legs_with_op_indices1 = node_legs[node_idx1]
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
@@ -235,10 +333,14 @@ class TensorNetwork:
             if node1_pte is None and node2_pte is None:
                 t1: TensorStabilizerCodeEnumerator = self.nodes[node_idx1]
                 open_legs1 = [
-                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                    leg
+                    for leg in self.legs_to_trace[node_idx1]
+                    if leg not in join_legs1
                 ]
                 open_legs2 = [
-                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                    leg
+                    for leg in self.legs_to_trace[node_idx2]
+                    if leg not in join_legs2
                 ]
 
                 pte = t1.trace_with(
@@ -254,8 +356,8 @@ class TensorNetwork:
                     open_legs1=open_legs1,
                     open_legs2=open_legs2,
                 )
-                self.open_legs[node_idx1] = open_legs1
-                self.open_legs[node_idx2] = open_legs2
+                self.legs_to_trace[node_idx1] = open_legs1
+                self.legs_to_trace[node_idx2] = open_legs2
 
                 self.ptes[node_idx1] = pte
                 self.ptes[node_idx2] = pte
@@ -270,7 +372,7 @@ class TensorNetwork:
                     node1_pte, node2_pte = node2_pte, node1_pte
 
                 print(f"PTE open legs: {len(node1_pte.tracable_legs)}")
-                print(f"Node {node_idx2}: {len(self.open_legs[node_idx2])}")
+                print(f"Node {node_idx2}: {len(self.legs_to_trace[node_idx2])}")
                 open_legs1 = [
                     (node_idx, leg)
                     for node_idx, leg in node1_pte.tracable_legs
@@ -280,7 +382,9 @@ class TensorNetwork:
                 ]
                 # print(f"open_legs: {open_legs1}")
                 open_legs2 = [
-                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                    leg
+                    for leg in self.legs_to_trace[node_idx2]
+                    if leg not in join_legs2
                 ]
                 pte = node1_pte.trace_with(
                     t2,
@@ -295,10 +399,12 @@ class TensorNetwork:
                 for node in pte.nodes:
                     self.ptes[node] = pte
 
-                self.open_legs[node_idx1] = [
-                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                self.legs_to_trace[node_idx1] = [
+                    leg
+                    for leg in self.legs_to_trace[node_idx1]
+                    if leg not in join_legs1
                 ]
-                self.open_legs[node_idx2] = open_legs2
+                self.legs_to_trace[node_idx2] = open_legs2
             elif node1_pte == node2_pte:
                 # both nodes are in the same PTE!
                 pte = node1_pte.self_trace(
@@ -307,11 +413,15 @@ class TensorNetwork:
                 )
                 for node in pte.nodes:
                     self.ptes[node] = pte
-                self.open_legs[node_idx1] = [
-                    leg for leg in self.open_legs[node_idx1] if leg not in join_legs1
+                self.legs_to_trace[node_idx1] = [
+                    leg
+                    for leg in self.legs_to_trace[node_idx1]
+                    if leg not in join_legs1
                 ]
-                self.open_legs[node_idx2] = [
-                    leg for leg in self.open_legs[node_idx2] if leg not in join_legs2
+                self.legs_to_trace[node_idx2] = [
+                    leg
+                    for leg in self.legs_to_trace[node_idx2]
+                    if leg not in join_legs2
                 ]
             else:
                 # merging two PTEs

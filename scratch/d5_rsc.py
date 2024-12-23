@@ -53,4 +53,9 @@ rsc = GF2(
 
 tn = TensorNetwork.make_rsc(d=5)
 
-we = tn.stabilizer_enumerator_polynomial()
+# tn.traces_to_dot()
+# tn.analyze_traces()
+
+
+we = tn.stabilizer_enumerator_polynomial() / 4**25
+print(we)
