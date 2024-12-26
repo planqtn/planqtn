@@ -147,6 +147,7 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     mx = gauss(h, col_subset=legs)
 
     pivot_rows = [np.flatnonzero(mx[:, leg]).tolist() for leg in legs]
+
     pivot_rows = [-1 if len(pivots) == 0 else pivots[0] for pivots in pivot_rows]
 
     # print(mx)
@@ -157,21 +158,27 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     # measuring ZZ - if x1 and x2 are the same then we have nothing to do, ZZ commutes with all generators
     # otherwise we have to pick one of them to be the main row, the other will be removed
-    if pivot_rows[0] != pivot_rows[1]:
+    if pivot_rows[0] != pivot_rows[1] and pivot_rows[0] != -1 and pivot_rows[1] != -1:
         mx[pivot_rows[0]] += mx[pivot_rows[1]]
         kept_rows.remove(pivot_rows[1])
+    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two legs match with
+    # any combination of the generators, thus we'll remove the offending remaining row
+    elif pivot_rows[0] == -1 and pivot_rows[1] != -1:
+        kept_rows.remove(pivot_rows[1])
+    elif pivot_rows[0] != -1 and pivot_rows[1] == -1:
+        kept_rows.remove(pivot_rows[0])
 
     # measuring XX - if z1 and z2 are the same then we have nothing to do, XX commutes with all generators
     # otherwise we have to pick one of them to be the main row, the other will be removed
-    if pivot_rows[2] != pivot_rows[3]:
-        # ensuring that we didn't remove this row in the previous step
-        row_to_keep, row_to_remove = (
-            (pivot_rows[2], pivot_rows[3])
-            if pivot_rows[2] in kept_rows
-            else (pivot_rows[3], pivot_rows[2])
-        )
-        mx[row_to_keep] += mx[row_to_remove]
-        kept_rows.remove(row_to_remove)
+    if pivot_rows[2] != pivot_rows[3] and pivot_rows[2] != -1 and pivot_rows[3] != -1:
+        mx[pivot_rows[2]] += mx[pivot_rows[3]]
+        kept_rows.remove(pivot_rows[3])
+    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two legs match with
+    # any combination of the generators, thus we'll remove the offending remaining row
+    elif pivot_rows[2] == -1 and pivot_rows[3] != -1:
+        kept_rows.remove(pivot_rows[3])
+    elif pivot_rows[2] != -1 and pivot_rows[3] == -1:
+        kept_rows.remove(pivot_rows[2])
 
     kept_cols = np.array([col for col in range(2 * n) if col not in legs])
     kept_rows = np.array(kept_rows)

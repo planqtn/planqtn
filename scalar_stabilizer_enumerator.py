@@ -71,7 +71,6 @@ class ScalarStabilizerCodeEnumerator:
             .homogenize(self.n)
             .to_sympy([z, w])
             .subs({w: (w + 3 * z) / 2, z: (w - z) / 2})
-            .simplify()
         )
 
     def normalizer_enumerator(self, num_workers=1):

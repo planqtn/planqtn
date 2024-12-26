@@ -52,7 +52,7 @@ rsc = GF2(
 #     ScalarStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
 # )
 
-tn = TensorNetwork.make_rsc(d=7)
+tn = TensorNetwork.make_rsc(d=5)
 
 # tn.traces_to_dot()
 # tn.analyze_traces()

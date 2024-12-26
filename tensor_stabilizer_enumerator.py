@@ -103,7 +103,7 @@ def sconcat(op1, op2):
 
 class TensorNetwork:
     def __init__(self, nodes: List["TensorStabilizerCodeEnumerator"]):
-        self.nodes = nodes
+        self.nodes: List["TensorStabilizerCodeEnumerator"] = nodes
         self.traces = []
         self.legs_to_trace = [[] for _ in self.nodes]
         # self.open_legs = [n.legs for n in self.nodes]
@@ -112,12 +112,9 @@ class TensorNetwork:
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
 
     @classmethod
-    def make_rsc(cls, d: int):
+    def make_rsc(cls, d: int, lego=lambda i: Legos.econding_tensor_512):
 
-        nodes = [
-            TensorStabilizerCodeEnumerator(Legos.econding_tensor_512, idx=i)
-            for i in range(d**2)
-        ]
+        nodes = [TensorStabilizerCodeEnumerator(lego(i), idx=i) for i in range(d**2)]
 
         # row major ordering
         idx = lambda r, c: r * d + c
@@ -285,6 +282,36 @@ class TensorNetwork:
         print(f"PTE legs: {sum(len(new_tn.legs_to_trace[node]) for node in pte_nodes)}")
         print(f"Maximum PTE legs: {max_pte_legs}")
 
+    def conjoin_nodes(self):
+        pte_nodes = []
+
+        pte: TensorStabilizerCodeEnumerator = None
+        for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
+            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+
+            join_legs1 = self.nodes[node_idx1]._index_legs(node_idx1, join_legs1)
+            join_legs2 = self.nodes[node_idx2]._index_legs(node_idx2, join_legs2)
+
+            if pte_nodes == []:
+                pte_nodes.append(node_idx1)
+                pte_nodes.append(node_idx2)
+                pte = self.nodes[node_idx1].conjoin(
+                    self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
+                )
+            elif node_idx2 not in pte_nodes:
+                assert (
+                    node_idx1 in pte_nodes
+                ), f"For now node 1 should be in the traced component. This is violated with {node_idx1}."
+                if node_idx2 not in pte_nodes:
+                    pte_nodes.append(node_idx2)
+                    pte = pte.conjoin(
+                        self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
+                    )
+            else:
+                pte = pte.self_trace(join_legs1, join_legs2)
+
+        return pte
+
     def stabilizer_enumerator_polynomial(
         self, legs: List[Tuple[int, int]] = [], e: GF2 = None, eprime: GF2 = None
     ) -> SimplePoly:
@@ -445,7 +472,7 @@ class TensorNetwork:
         wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
         if wep == 0:
             return {}
-        unnormalized_poly = wep / 4**k
+        unnormalized_poly = wep
         return unnormalized_poly._dict
 
 
@@ -567,7 +594,7 @@ class PartiallyTracedEnumerator:
 
         wep = defaultdict(lambda: SimplePoly())
 
-        # print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
+        print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
 
         # print(f"join indices1: {join_indices1}")
@@ -650,7 +677,7 @@ class TensorStabilizerCodeEnumerator:
             self.n = self.h.shape[1] // 2
             self.k = self.n - self.h.shape[0]
 
-        self.legs = list(range(self.n)) if legs is None else legs
+        self.legs = [(self.idx, leg) for leg in range(self.n)] if legs is None else legs
         assert (
             len(self.legs) == self.n
         ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
@@ -668,9 +695,10 @@ class TensorStabilizerCodeEnumerator:
         return 0 == np.count_nonzero(op @ omega(self.n) @ self.h.T)
 
     def _remove_leg(self, legs, leg):
+        pos = legs[leg]
         del legs[leg]
         for k in legs.keys():
-            if k > leg:
+            if legs[k] > pos:
                 legs[k] -= 1
 
     def _remove_legs(self, legs, legs_to_remove):
@@ -679,6 +707,11 @@ class TensorStabilizerCodeEnumerator:
 
     def validate_legs(self, legs):
         return [leg for leg in legs if not leg in self.legs]
+
+    def _index_legs(self, idx, legs):
+        if legs is not None and len(legs) > 0 and isinstance(legs[0], int):
+            return [(idx, leg) for leg in legs]
+        return legs
 
     def trace_with(
         self,
@@ -694,6 +727,14 @@ class TensorStabilizerCodeEnumerator:
         open_legs1,
         open_legs2,
     ):
+        """If legs are not indexed, they will be based on the first index of this component (if it is a conjoining of multiple nodes)."""
+
+        join_legs1 = self._index_legs(self.idx, join_legs1)
+        join_legs2 = self._index_legs(other.idx, join_legs2)
+        traced_legs1 = self._index_legs(self.idx, traced_legs1)
+        traced_legs2 = self._index_legs(other.idx, traced_legs2)
+        open_legs1 = self._index_legs(self.idx, open_legs1)
+        open_legs2 = self._index_legs(other.idx, open_legs2)
 
         invalid_legs = self.validate_legs(join_legs1)
         assert (
@@ -766,49 +807,64 @@ class TensorStabilizerCodeEnumerator:
 
                 wep[key].add_inplace(wep1 * wep2)
 
-        tracable_legs = [(self.idx, leg) for leg in open_legs1]
-        tracable_legs += [(other.idx, leg) for leg in open_legs2]
+        tracable_legs = open_legs1 + open_legs2
 
         return PartiallyTracedEnumerator(
             {self.idx, other.idx}, tracable_legs=tracable_legs, tensor=wep
         )
 
+    def self_trace(self, legs1, legs2) -> "TensorStabilizerCodeEnumerator":
+        assert len(legs1) == len(legs2)
+        legs1 = self._index_legs(self.idx, legs1)
+        legs2 = self._index_legs(self.idx, legs2)
+        leg2col = {leg: i for i, leg in enumerate(self.legs)}
+        new_h = self.h
+        for leg1, leg2 in zip(legs1, legs2):
+            new_h = self_trace(new_h, leg2col[leg1], leg2col[leg2])
+            self._remove_legs(leg2col, [leg1, leg2])
+
+        new_legs = [leg for leg in self.legs if leg not in legs1 and leg not in legs2]
+        return TensorStabilizerCodeEnumerator(new_h, idx=self.idx, legs=new_legs)
+
     def conjoin(self, other, legs1, legs2) -> "TensorStabilizerCodeEnumerator":
         """Creates a new brute force tensor enumerator by conjoining two of them.
 
-        The legs of the other will become the legs of the new one. Only the index of this
-        tensor preserved.
+        The legs of the other will become the legs of the new one.
         """
+        assert (
+            self.idx != other.idx
+        ), f"Both stabilizer nodes have {self.idx} index - can't conjoin them."
         assert len(legs1) == len(legs2)
+        legs1 = self._index_legs(self.idx, legs1)
+        legs2 = self._index_legs(other.idx, legs2)
+
         n2 = other.n
 
-        legs2_offset = max(self.legs) + 1
-
-        legs = {leg: i for i, leg in enumerate(self.legs)}
+        leg2col = {leg: i for i, leg in enumerate(self.legs)}
         # for example 2 3 4 | 2 4 8 will become
         # as legs2_offset = 5
         # {2: 0, 3: 1, 4: 2, 7: 3, 11: 4, 13: 5}
-        legs.update(
-            {leg + legs2_offset: len(self.legs) + i for i, leg in enumerate(other.legs)}
-        )
+        leg2col.update({leg: len(self.legs) + i for i, leg in enumerate(other.legs)})
 
         new_h = conjoin(
             self.h, other.h, self.legs.index(legs1[0]), other.legs.index(legs2[0])
         )
-        self._remove_legs(legs, [legs1[0], legs2_offset + legs2[0]])
+        self._remove_legs(leg2col, [legs1[0], legs2[0]])
 
         for leg1, leg2 in zip(legs1[1:], legs2[1:]):
-            new_h = self_trace(new_h, legs[leg1], legs[leg2 + legs2_offset])
-            self._remove_legs(legs, [leg1, leg2 + legs2_offset])
+            new_h = self_trace(new_h, leg2col[leg1], leg2col[leg2])
+            self._remove_legs(leg2col, [leg1, leg2])
 
         new_legs = [leg for leg in self.legs if leg not in legs1]
-        new_legs += [legs2_offset + leg for leg in other.legs if leg not in legs2]
+        new_legs += [leg for leg in other.legs if leg not in legs2]
 
         return TensorStabilizerCodeEnumerator(new_h, idx=self.idx, legs=new_legs)
 
     def _brute_force_stabilizer_enumerator_from_parity(
         self, traced_legs: List[int], e=None, eprime=None, open_legs=[]
     ):
+        traced_legs = self._index_legs(self.idx, traced_legs)
+        open_legs = self._index_legs(self.idx, open_legs)
 
         traced_cols = [self.legs.index(leg) for leg in traced_legs]
         open_cols = [self.legs.index(leg) for leg in open_legs]
@@ -839,7 +895,7 @@ class TensorStabilizerCodeEnumerator:
                 self.wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
-                self.wep = 4**self.k * self.wep
+                self.wep = self.wep
 
         class DoubleStabilizerCollector:
             def __init__(self, k, n):
@@ -855,7 +911,7 @@ class TensorStabilizerCodeEnumerator:
                 self.matching_stabilizers.append(stabilizer)
 
             def _scale_one(self, wep):
-                return 4**self.k * wep
+                return wep
 
             def finalize(self):
                 # print("finalizing...")
@@ -956,19 +1012,18 @@ class TensorStabilizerCodeEnumerator:
     ):
         if open_legs is not None and len(open_legs) > 0:
             raise ValueError("only polynomials are allowed with open legs.")
-        unnormalized_poly = (
-            self.stabilizer_enumerator_polynomial(
-                traced_legs,
-                e,
-                eprime,
-                open_legs=open_legs,
-            )
-            / 4**self.k
+        unnormalized_poly = self.stabilizer_enumerator_polynomial(
+            traced_legs,
+            e,
+            eprime,
+            open_legs=open_legs,
         )
 
         return unnormalized_poly._dict
 
-    def trace_with_stopper(self, stopper: GF2, traced_leg: int):
+    def trace_with_stopper(self, stopper: GF2, traced_leg: Union[int, Tuple[int, int]]):
+        if isinstance(traced_leg, int):
+            traced_leg = (self.idx, traced_leg)
         if traced_leg not in self.legs:
             raise ValueError(f"can't trace on {traced_leg} - no such leg.")
         # other = TensorStabilizerCodeEnumerator(stopper, legs=[0])
