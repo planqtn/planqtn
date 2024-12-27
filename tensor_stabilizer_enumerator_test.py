@@ -1,4 +1,5 @@
 from copy import deepcopy
+import sys
 from galois import GF2
 import numpy as np
 import pytest
@@ -6,15 +7,18 @@ import scipy
 import sympy
 
 from legos import Legos
-from parity_check import conjoin
+from linalg import gauss
+from parity_check import conjoin, sprint
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from symplectic import weight
 from tensor_stabilizer_enumerator import (
     PAULI_X,
+    PAULI_Y,
     PAULI_Z,
     SimplePoly,
     TensorNetwork,
     TensorStabilizerCodeEnumerator,
+    sconcat,
     sslice,
 )
 
@@ -672,7 +676,7 @@ def test_d3_creation():
         (5, 8, [2], [3]),
     ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
-    assert tn.legs_to_trace == {
+    assert tn.legs_left_to_join == {
         0: [2, 1],
         1: [1, 2, 3],
         2: [0, 1],
@@ -682,7 +686,7 @@ def test_d3_creation():
         6: [3, 2],
         7: [0, 1, 3],
         8: [0, 3],
-    }, f"Legs to trace are not equal, got:\n{tn.legs_to_trace}"
+    }, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
 
 
 def test_d5_rotated_surface_code():
