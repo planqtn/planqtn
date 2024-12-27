@@ -325,6 +325,19 @@ class TensorNetwork:
 
         return tn
 
+    @classmethod
+    def make_compass_sq(clz, coloring):
+        d = len(coloring) + 1
+        tn = clz.make_surface_code(d)
+        gauge_idxs = [
+            (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
+        ]
+        for n, color in zip(gauge_idxs, np.reshape(coloring, (d - 1) ** 2)):
+            tn.nodes[n] = tn.nodes[n].trace_with_stopper(
+                PAULI_Z if color == 2 else PAULI_X, 4
+            )
+        return tn
+
     def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
         if self._wep is not None:
             raise ValueError(

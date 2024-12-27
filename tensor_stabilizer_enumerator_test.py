@@ -795,3 +795,33 @@ def test_d3_unrotated_surface_code():
     )
 
     assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"
+
+
+def test_compass_code():
+    tn = TensorNetwork.make_compass_sq(
+        [
+            [1, 1],
+            [2, 1],
+        ]
+    )
+
+    tn_wep = tn.stabilizer_enumerator_polynomial()
+    expected_wep = (
+        ScalarStabilizerCodeEnumerator(
+            GF2(
+                [
+                    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+                ]
+            )
+        ).stabilizer_enumerator_polynomial()
+        / 4
+    )
+
+    assert tn_wep == expected_wep
