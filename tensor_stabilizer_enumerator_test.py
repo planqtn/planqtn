@@ -172,8 +172,8 @@ def test_trace_two_422_codes_into_steane_v2():
         ]
     )
 
-    t1 = TensorStabilizerCodeEnumerator(enc_tens_422)
-    t2 = deepcopy(t1)
+    t1 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=0)
+    t2 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=1)
 
     t3 = TensorNetwork(nodes=[t1, t2])
     t3.self_trace(0, 1, [4, 5], [4, 5])
@@ -586,8 +586,8 @@ def test_double_trace_422():
         ]
     )
     nodes = [
-        TensorStabilizerCodeEnumerator(enc_tens_422),
-        TensorStabilizerCodeEnumerator(enc_tens_422),
+        TensorStabilizerCodeEnumerator(enc_tens_422, idx=0),
+        TensorStabilizerCodeEnumerator(enc_tens_422, idx=1),
     ]
 
     tn = TensorNetwork(nodes)
@@ -651,7 +651,7 @@ def test_d3_creation():
     nodes[5] = nodes[5].trace_with_stopper(PAULI_X, 3)
     nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 2)
 
-    for i, node in enumerate(tn.nodes):
+    for i, node in tn.nodes.items():
         assert node.idx == i
         assert np.array_equal(
             node.h, nodes[i].h
@@ -672,17 +672,17 @@ def test_d3_creation():
         (5, 8, [2], [3]),
     ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
-    assert tn.legs_to_trace == [
-        [2, 1],
-        [1, 2, 3],
-        [0, 1],
-        [0, 3, 2],
-        [0, 3, 2, 1],
-        [1, 0, 2],
-        [3, 2],
-        [0, 1, 3],
-        [0, 3],
-    ], f"Legs to trace are not equal, got:\n{tn.legs_to_trace}"
+    assert tn.legs_to_trace == {
+        0: [2, 1],
+        1: [1, 2, 3],
+        2: [0, 1],
+        3: [0, 3, 2],
+        4: [0, 3, 2, 1],
+        5: [1, 0, 2],
+        6: [3, 2],
+        7: [0, 1, 3],
+        8: [0, 3],
+    }, f"Legs to trace are not equal, got:\n{tn.legs_to_trace}"
 
 
 def test_d5_rotated_surface_code():
@@ -734,25 +734,60 @@ def test_d5_rotated_surface_code_x_only():
     )
 
 
-# # legs - left, bottom, right, top
-# even and odd nodes are rotated by 90 degrees
-# phys = [[0,1], [1,2],[2,3],[3,0]]
-# left, bottom, right, top = range(4)
-# idx = lambda r, c: r*3 + c
+def test_d2_unrotated_surface_code():
+    tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    we = tn.stabilizer_enumerator_polynomial()
 
-# r = 0
-# for c in range(3):
-#     n = idx[r,c]
-#     nodes[n].trace_with_stopper(PAULI_Z, phys[top][n%2])
-# r = 2
-# for c in range(3):
-#     n = idx[r,c]
-#     nodes[n].trace_with_stopper(PAULI_Z, phys[bottom][n%2])
-# c = 0
-# for r in range(3):
-#     n = idx[r,c]
-#     nodes[n].trace_with_stopper(PAULI_X, phys[left][n%2])
-# c = 3
-# for r in range(3):
-#     n = idx[r,c]
-#     nodes[n].trace_with_stopper(PAULI_X, phys[right][n%2])
+    h = GF2(
+        [
+            [1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+        ]
+    )
+
+    expected_we = (
+        ScalarStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial() / 4
+    )
+
+    assert we == expected_we, f"Not equal, got:\n{we}, expected\n{expected_we}"
+
+
+def test_d3_unrotated_surface_code():
+    tn = TensorNetwork.make_surface_code(d=3, lego=lambda i: Legos.econding_tensor_512)
+    we = tn.stabilizer_enumerator_polynomial()
+
+    hx_sparse = [
+        [0, 1, 3],
+        [1, 2, 4],
+        [3, 5, 6, 8],
+        [4, 6, 7, 9],
+        [8, 10, 11],
+        [9, 11, 12],
+    ]
+
+    hz_sparse = [
+        [0, 3, 5],
+        [1, 3, 4, 6],
+        [2, 4, 7],
+        [5, 8, 10],
+        [6, 8, 9, 11],
+        [7, 9, 12],
+    ]
+
+    hz = GF2.Zeros((6, 13))
+    for r, g in enumerate(hz_sparse):
+        hz[r][np.array(g)] = 1
+
+    hx = GF2.Zeros((6, 13))
+    for r, g in enumerate(hx_sparse):
+        hx[r][np.array(g)] = 1
+
+    h = GF2(scipy.linalg.block_diag(hx, hz))
+
+    expected_we = (
+        ScalarStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial() / 4
+    )
+
+    assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"

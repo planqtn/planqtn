@@ -1,6 +1,6 @@
 from collections import defaultdict
 import time
-from typing import List, Dict, Set, Tuple, Union
+from typing import Any, Iterable, List, Dict, Set, Tuple, Union
 from galois import GF2
 import numpy as np
 import sympy
@@ -102,10 +102,28 @@ def sconcat(op1, op2):
 
 
 class TensorNetwork:
-    def __init__(self, nodes: List["TensorStabilizerCodeEnumerator"]):
-        self.nodes: List["TensorStabilizerCodeEnumerator"] = nodes
+    def __init__(
+        self,
+        nodes: Union[
+            Iterable["TensorStabilizerCodeEnumerator"],
+            Dict[Any, "TensorStabilizerCodeEnumerator"],
+        ],
+    ):
+        if isinstance(nodes, dict):
+            for k, v in nodes.items():
+                if k != v.idx:
+                    raise ValueError(
+                        f"Nodes dict passed in with inconsitent indexing, {k} != {v.idx} for {v}."
+                    )
+            self.nodes: Dict["TensorStabilizerCodeEnumerator"] = nodes
+        else:
+            nodes_dict = {node.idx: node for node in nodes}
+            if len(nodes_dict) < len(nodes):
+                raise ValueError(f"There are colliding index values of nodes: {nodes}")
+            self.nodes = nodes_dict
+
         self.traces = []
-        self.legs_to_trace = [[] for _ in self.nodes]
+        self.legs_to_trace = {idx: [] for idx, _ in self.nodes.items()}
         # self.open_legs = [n.legs for n in self.nodes]
 
         self._wep = None
@@ -175,36 +193,140 @@ class TensorNetwork:
                         [3 if idx(i, radius) % 2 == 0 else 2],
                         [0 if idx(i, radius) % 2 == 0 else 1],
                     )
+        return tn
 
-        # # go down the left boundary
-        # for r in range(d - 1):
-        #     tn.self_trace(
-        #         idx(r, 0),
-        #         idx(r + 1, 0),
-        #         [1 if r % 2 == 0 else 2],
-        #         [0 if r % 2 == 0 else 3],
-        #     )
+    @classmethod
+    def make_surface_code(clz, d: int, lego=lambda i: Legos.econding_tensor_512):
 
-        # # connect each col with the next one from left to right
-        # for c in range(d - 1):
-        #     for r in range(d):
-        #         tn.self_trace(
-        #             idx(r, c),
-        #             idx(r, c + 1),
-        #             [2 if idx(r, c) % 2 == 0 else 3],
-        #             [1 if idx(r, c) % 2 == 0 else 0],
-        #         )
+        if d < 2:
+            raise ValueError("Only d=2+ is supported.")
 
-        # # connect the disconnected columns
-        # for c in range(1, d):
-        #     # connect each row within each col with the next row
-        #     for r in range(d - 1):
-        #         tn.self_trace(
-        #             idx(r, c),
-        #             idx(r + 1, c),
-        #             [1 if idx(r, c) % 2 == 0 else 2],
-        #             [0 if idx(r, c) % 2 == 0 else 3],
-        #         )
+        # numbering convention:
+
+        # (0,0)  (0,2)  (0,4)
+        #    (1,1)   (1,3)
+        # (2,0)  (2,2)  (2,4)
+        #    (3,1)   (3,3)
+        # (4,0)  (4,2)  (4,4)
+
+        last_row = 2 * d - 2
+        last_col = 2 * d - 2
+
+        tn = TensorNetwork(
+            [
+                TensorStabilizerCodeEnumerator(lego((r, c)), idx=(r, c))
+                for r in range(last_row + 1)
+                for c in range(r % 2, last_col + 1, 2)
+            ]
+        )
+
+        nodes = tn.nodes
+        print(nodes)
+
+        # we take care of corners first
+
+        nodes[(0, 0)] = (
+            nodes[(0, 0)]
+            .trace_with_stopper(PAULI_Z, 0)
+            .trace_with_stopper(PAULI_Z, 1)
+            .trace_with_stopper(PAULI_X, 3)
+        )
+        nodes[(0, last_col)] = (
+            nodes[(0, last_col)]
+            .trace_with_stopper(PAULI_Z, 2)
+            .trace_with_stopper(PAULI_Z, 3)
+            .trace_with_stopper(PAULI_X, 0)
+        )
+        nodes[(last_row, 0)] = (
+            nodes[(last_row, 0)]
+            .trace_with_stopper(PAULI_Z, 0)
+            .trace_with_stopper(PAULI_Z, 1)
+            .trace_with_stopper(PAULI_X, 2)
+        )
+        nodes[(last_row, last_col)] = (
+            nodes[(last_row, last_col)]
+            .trace_with_stopper(PAULI_Z, 2)
+            .trace_with_stopper(PAULI_Z, 3)
+            .trace_with_stopper(PAULI_X, 1)
+        )
+
+        for k in range(2, last_col, 2):
+            # X boundaries on the top and bottom
+            nodes[(0, k)] = (
+                nodes[(0, k)]
+                .trace_with_stopper(PAULI_X, 0)
+                .trace_with_stopper(PAULI_X, 3)
+            )
+            nodes[(last_row, k)] = (
+                nodes[(last_row, k)]
+                .trace_with_stopper(PAULI_X, 1)
+                .trace_with_stopper(PAULI_X, 2)
+            )
+
+            # Z boundaries on left and right
+            nodes[(k, 0)] = (
+                nodes[(k, 0)]
+                .trace_with_stopper(PAULI_Z, 0)
+                .trace_with_stopper(PAULI_Z, 1)
+            )
+            nodes[(k, last_col)] = (
+                nodes[(k, last_col)]
+                .trace_with_stopper(PAULI_Z, 2)
+                .trace_with_stopper(PAULI_Z, 3)
+            )
+
+        # we'll trace diagonally
+        for diag in range(1, last_row):
+            print(f"---- diag --- {diag,diag} -----")
+            # connecting the middle to the previous diagonal's middle
+            tn.self_trace(
+                (diag - 1, diag - 1),
+                (diag, diag),
+                [2 if diag % 2 == 1 else 1],
+                [3 if diag % 2 == 1 else 0],
+            )
+            # go left until hitting the left column or the bottom row
+            # and at the same time go right until hitting the right col or the top row (symmetric)
+            row, col = diag + 1, diag - 1
+            while row <= last_row and col >= 0:
+                print(f"\t\t --- {row,col} -----")
+                # going left
+                tn.self_trace(
+                    (row - 1, col + 1),
+                    (row, col),
+                    [0 if row % 2 == 0 else 1],
+                    [3 if row % 2 == 0 else 2],
+                )
+
+                # going right
+                print(f"\t\t --- {col,row} -----")
+                tn.self_trace(
+                    (col + 1, row - 1),
+                    (col, row),
+                    [3 if row % 2 == 1 else 2],
+                    [0 if row % 2 == 1 else 1],
+                )
+
+                if row - 1 >= 0 and col - 1 >= 0:
+                    # connect to previous diagonal
+                    # on the left
+                    tn.self_trace(
+                        (row - 1, col - 1),
+                        (row, col),
+                        [2 if row % 2 == 1 else 1],
+                        [3 if row % 2 == 1 else 0],
+                    )
+                    # on the right
+                    tn.self_trace(
+                        (col - 1, row - 1),
+                        (col, row),
+                        [2 if row % 2 == 1 else 1],
+                        [3 if row % 2 == 1 else 0],
+                    )
+
+                row += 1
+                col -= 1
+            # go right until hitting the right column
 
         return tn
 
@@ -318,7 +440,7 @@ class TensorNetwork:
         if self._wep is not None:
             return self._wep
         m = len(legs)
-        node_legs = {node: [] for node in range(len(self.nodes))}
+        node_legs = {node: [] for node in self.nodes.keys()}
         for idx, (node, leg) in enumerate(legs):
             node_legs[node].append((leg, idx))
 
@@ -330,9 +452,17 @@ class TensorNetwork:
         assert len(e) == m * 2
         assert len(eprime) == m * 2
 
+        node1_pte = None
+        if len(self.traces) == 0:
+            raise ValueError(
+                "Completely disconnected nodes is unsupported. TODO: implement tensoring of disconnected component weight enumerators."
+            )
+
         for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
-            print(f"Total open legs: {sum(len(legs) for legs in self.legs_to_trace)}")
+            print(
+                f"Total open legs: {sum(len(legs) for legs in self.legs_to_trace.values())}"
+            )
 
             traced_legs_with_op_indices1 = node_legs[node_idx1]
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
@@ -663,6 +793,12 @@ class PartiallyTracedEnumerator:
 class TensorStabilizerCodeEnumerator:
     """The tensor enumerator from Cao & Lackey"""
 
+    def __str__(self):
+        return f"TensorEnum({self.idx})"
+
+    def __repr__(self):
+        return f"TensorEnum({self.idx})"
+
     def __init__(self, h, idx=0, legs=None):
         self.h = h
 
@@ -865,6 +1001,16 @@ class TensorStabilizerCodeEnumerator:
     ):
         traced_legs = self._index_legs(self.idx, traced_legs)
         open_legs = self._index_legs(self.idx, open_legs)
+        invalid_legs = self.validate_legs(traced_legs)
+        if len(invalid_legs) > 0:
+            raise ValueError(
+                f"Can't trace legs: {invalid_legs}, they don't exist on node {self.idx}"
+            )
+        invalid_legs = self.validate_legs(open_legs)
+        if len(invalid_legs) > 0:
+            raise ValueError(
+                f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node {self.idx}"
+            )
 
         traced_cols = [self.legs.index(leg) for leg in traced_legs]
         open_cols = [self.legs.index(leg) for leg in open_legs]
