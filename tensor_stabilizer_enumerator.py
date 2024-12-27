@@ -275,7 +275,6 @@ class TensorNetwork:
 
         # we'll trace diagonally
         for diag in range(1, last_row + 1):
-            print(f"---- diag --- {diag,diag} -----")
             # connecting the middle to the previous diagonal's middle
             tn.self_trace(
                 (diag - 1, diag - 1),
@@ -287,7 +286,6 @@ class TensorNetwork:
             # and at the same time go right until hitting the right col or the top row (symmetric)
             row, col = diag + 1, diag - 1
             while row <= last_row and col >= 0:
-                print(f"\t\t --- {row,col} -----")
                 # going left
                 tn.self_trace(
                     (row - 1, col + 1),
@@ -297,7 +295,6 @@ class TensorNetwork:
                 )
 
                 # going right
-                print(f"\t\t --- {col,row} -----")
                 tn.self_trace(
                     (col + 1, row - 1),
                     (col, row),
@@ -413,7 +410,7 @@ class TensorNetwork:
 
         pte: TensorStabilizerCodeEnumerator = None
         for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
-            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+            # print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
 
             join_legs1 = self.nodes[node_idx1]._index_legs(node_idx1, join_legs1)
             join_legs2 = self.nodes[node_idx2]._index_legs(node_idx2, join_legs2)
@@ -439,7 +436,11 @@ class TensorNetwork:
         return pte
 
     def stabilizer_enumerator_polynomial(
-        self, legs: List[Tuple[int, int]] = [], e: GF2 = None, eprime: GF2 = None
+        self,
+        legs: List[Tuple[int, int]] = [],
+        e: GF2 = None,
+        eprime: GF2 = None,
+        verbose: bool = False,
     ) -> SimplePoly:
         if self._wep is not None:
             return self._wep
@@ -463,10 +464,13 @@ class TensorNetwork:
             )
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in tqdm(self.traces):
-            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
-            print(
-                f"Total legs left to join: {sum(len(legs) for legs in self.legs_left_to_join.values())}"
-            )
+            if verbose:
+                print(
+                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                )
+                print(
+                    f"Total legs left to join: {sum(len(legs) for legs in self.legs_left_to_join.values())}"
+                )
 
             traced_legs_with_op_indices1 = node_legs_to_trace[node_idx1]
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
@@ -532,8 +536,9 @@ class TensorNetwork:
                     node_idx1, node_idx2 = node_idx2, node_idx1
                     node1_pte, node2_pte = node2_pte, node1_pte
 
-                print(f"PTE open legs: {len(node1_pte.tracable_legs)}")
-                print(f"Node {node_idx2}: {len(self.legs_left_to_join[node_idx2])}")
+                if verbose:
+                    print(f"PTE open legs: {len(node1_pte.tracable_legs)}")
+                    print(f"Node {node_idx2}: {len(self.legs_left_to_join[node_idx2])}")
                 open_legs1 = [
                     (node_idx, leg)
                     for node_idx, leg in node1_pte.tracable_legs
@@ -718,6 +723,7 @@ class PartiallyTracedEnumerator:
         eprime: GF2,
         open_legs1,
         open_legs2,
+        progress_bar: bool = False,
     ) -> "PartiallyTracedEnumerator":
 
         assert len(join_legs1) == len(join_legs2)
@@ -728,7 +734,7 @@ class PartiallyTracedEnumerator:
 
         wep = defaultdict(lambda: SimplePoly())
 
-        print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
+        # print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
 
         # print(f"join indices1: {join_indices1}")
@@ -742,9 +748,11 @@ class PartiallyTracedEnumerator:
 
         # print(f"kept indices 2: {kept_indices2}")
 
-        for k1 in tqdm(self.tensor.keys(), leave=False):
+        prog = lambda k: tqdm(k, leave=False) if progress_bar else k
+
+        for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1[0]), GF2(k1[1])
-            for k2 in tqdm(t2.keys(), leave=False):
+            for k2 in prog(t2.keys()):
                 k2_gf2 = GF2(k2[0]), GF2(k2[1])
                 if not np.array_equal(
                     sslice(k1_gf2[0], join_indices1),

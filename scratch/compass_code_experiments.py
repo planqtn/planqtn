@@ -25,24 +25,34 @@ if __name__ == "__main__":
     #     ),
     # )
 
+    d = 3
+
     tn = TensorNetwork.make_surface_code(
-        3,
+        d,
         lambda idx: (Legos.econding_tensor_512),
     )
 
-    trace_logicals = [(idx, 4) for idx in tn.nodes.keys() if idx[0] % 2 == 1]
-
-    print(
-        "WEP from TN:",
-        tn.stabilizer_enumerator_polynomial(
-            legs=trace_logicals,
-            e=sconcat(*([PAULI_Z] * len(trace_logicals))),
-        ),
+    coloring = np.array(
+        [
+            [1, 1],
+            [2, 1],
+        ]
     )
 
+    gauge_idxs = [
+        (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
+    ]
+    print(gauge_idxs)
+    for n, color in zip(gauge_idxs, coloring.reshape(coloring.size)):
+        tn.nodes[n] = tn.nodes[n].trace_with_stopper(
+            PAULI_Z if color == 2 else PAULI_X, 4
+        )
+
+    print("WEP from TN:", tn.stabilizer_enumerator_polynomial())
+
     conjoined = tn.conjoin_nodes()
-    for leg in trace_logicals:
-        conjoined = conjoined.trace_with_stopper(PAULI_Z, leg)
+    # for leg in [(idx, 4) for idx in tn.nodes.keys() if idx[0] % 2 == 1]:
+    #     conjoined = conjoined.trace_with_stopper(PAULI_Z, leg)
 
     np.set_printoptions(threshold=sys.maxsize, linewidth=800)
 
@@ -51,16 +61,31 @@ if __name__ == "__main__":
     print(conjoined.legs)
     print(ScalarStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
 
-    for gi, g in enumerate(s):
-        for v in [
-            (
-                conjoined.legs[idx][0]
-                if idx < conjoined.n
-                else conjoined.legs[idx - conjoined.n][0]
+    print(
+        ScalarStabilizerCodeEnumerator(
+            GF2(
+                [
+                    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+                ]
             )
-            for idx in np.nonzero(g)[0]
-        ]:
+        ).stabilizer_enumerator(10)
+    )
 
-            print(f"{gi} -- n{v[0]}_{v[1]}")
+    # for gi, g in enumerate(s):
+    #     for v in [
+    #         (
+    #             conjoined.legs[idx][0]
+    #             if idx < conjoined.n
+    #             else conjoined.legs[idx - conjoined.n][0]
+    #         )
+    #         for idx in np.nonzero(g)[0]
+    #     ]:
 
-    # {0: 1, 2: 4, 4: 22, 6: 100, 8: 129}
+    #         print(f"{gi} -- n{v[0]}_{v[1]}")
