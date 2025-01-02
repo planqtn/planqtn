@@ -58,7 +58,12 @@ tn = TensorNetwork.make_rsc(d=5)
 # tn.analyze_traces()
 
 start = time.time()
-we = tn.stabilizer_enumerator_polynomial() / 4**49
+we = (
+    tn.stabilizer_enumerator_polynomial(
+        progress_bar=True, summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
+    / 4**49
+)
 print(we)
 end = time.time()
 print(f"Total time: {end-start:0.3f}s")

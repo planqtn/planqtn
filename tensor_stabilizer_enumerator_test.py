@@ -331,7 +331,7 @@ def test_stoppers_in_different_order():
 
 
 def test_step_by_step_to_d2_surface_code():
-    # pytest.skip()
+    # see fig/d2_surface_code.png for the numberings
 
     enc_tens_512 = GF2(
         [
@@ -391,12 +391,12 @@ def test_step_by_step_to_d2_surface_code():
         eprime1=GF2([]),
         e2=GF2([]),
         eprime2=GF2([]),
-        open_legs1=[1],
-        open_legs2=[2],
+        open_legs1=[1, 4],
+        open_legs2=[2, 4],
     )
 
     assert pte.nodes == {0, 1}
-    assert pte.tracable_legs == [(0, 1), (1, 2)]
+    assert pte.tracable_legs == [(0, 1), (0, 4), (1, 2), (1, 4)]
 
     total_wep = SimplePoly()
     for k, sub_wep in pte.tensor.items():
@@ -411,7 +411,7 @@ def test_step_by_step_to_d2_surface_code():
     tn = TensorNetwork([t0, t1])
     tn.self_trace(0, 1, [2], [1])
 
-    tn_wep = tn.stabilizer_enumerator_polynomial()
+    tn_wep = tn.stabilizer_enumerator_polynomial(verbose=True)
 
     assert total_wep == tn_wep
 
@@ -457,12 +457,12 @@ def test_step_by_step_to_d2_surface_code():
         traced_legs=[],
         e=GF2([]),
         eprime=GF2([]),
-        open_legs1=[(1, 2)],
-        open_legs2=[3],
+        open_legs1=[(0, 4), (1, 2), (1, 4)],
+        open_legs2=[3, 4],
     )
 
     assert pte.nodes == {0, 1, 2}
-    assert pte.tracable_legs == [(1, 2), (2, 3)]
+    assert pte.tracable_legs == [(0, 4), (1, 2), (1, 4), (2, 3), (2, 4)]
 
     total_wep = SimplePoly()
     for k, sub_wep in pte.tensor.items():
@@ -483,7 +483,8 @@ def test_step_by_step_to_d2_surface_code():
     tn.self_trace(0, 1, [2], [1])
     tn.self_trace(0, 2, [1], [0])
 
-    tn_wep = tn.stabilizer_enumerator_polynomial()
+    tn_wep = tn.stabilizer_enumerator_polynomial(verbose=True)
+
     assert total_wep == tn_wep
 
     ################ NODE 3 ###################
@@ -525,12 +526,12 @@ def test_step_by_step_to_d2_surface_code():
         traced_legs=[],
         e=GF2([]),
         eprime=GF2([]),
-        open_legs1=[],
-        open_legs2=[],
+        open_legs1=[(0, 4), (1, 4), (2, 4)],
+        open_legs2=[(3, 4)],
     )
 
     assert pte.nodes == {0, 1, 2, 3}
-    assert pte.tracable_legs == []
+    assert pte.tracable_legs == [(0, 4), (1, 4), (2, 4), (3, 4)]
 
     total_wep = SimplePoly()
     for k, sub_wep in pte.tensor.items():
@@ -662,31 +663,44 @@ def test_d3_creation():
         ), f"Parities don't match at node {i},\n{node.h}\n{nodes[i].h}"
 
     assert tn.traces == [
-        (0, 1, [2], [1]),
-        (0, 3, [1], [0]),
-        (3, 4, [3], [0]),
-        (1, 4, [2], [3]),
-        (1, 2, [3], [0]),
-        (3, 6, [2], [3]),
-        (4, 5, [2], [1]),
-        (2, 5, [1], [0]),
-        (4, 7, [1], [0]),
-        (6, 7, [2], [1]),
-        (7, 8, [3], [0]),
-        (5, 8, [2], [3]),
+        (0, 1, [(0, 2)], [(1, 1)]),
+        (0, 3, [(0, 1)], [(3, 0)]),
+        (3, 4, [(3, 3)], [(4, 0)]),
+        (1, 4, [(1, 2)], [(4, 3)]),
+        (1, 2, [(1, 3)], [(2, 0)]),
+        (3, 6, [(3, 2)], [(6, 3)]),
+        (4, 5, [(4, 2)], [(5, 1)]),
+        (2, 5, [(2, 1)], [(5, 0)]),
+        (4, 7, [(4, 1)], [(7, 0)]),
+        (6, 7, [(6, 2)], [(7, 1)]),
+        (7, 8, [(7, 3)], [(8, 0)]),
+        (5, 8, [(5, 2)], [(8, 3)]),
     ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
     assert tn.legs_left_to_join == {
-        0: [2, 1],
-        1: [1, 2, 3],
-        2: [0, 1],
-        3: [0, 3, 2],
-        4: [0, 3, 2, 1],
-        5: [1, 0, 2],
-        6: [3, 2],
-        7: [0, 1, 3],
-        8: [0, 3],
-    }, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
+        0: [(0, 2), (0, 1)],
+        1: [(1, 1), (1, 2), (1, 3)],
+        2: [(2, 0), (2, 1)],
+        3: [(3, 0), (3, 3), (3, 2)],
+        4: [(4, 0), (4, 3), (4, 2), (4, 1)],
+        5: [(5, 1), (5, 0), (5, 2)],
+        6: [(6, 3), (6, 2)],
+        7: [(7, 0), (7, 1), (7, 3)],
+        8: [(8, 0), (8, 3)],
+    }
+
+
+assert {
+    0: [(0, 2), (0, 1)],
+    1: [(1, 1), (1, 2), (1, 3)],
+    2: [(2, 0), (2, 1)],
+    3: [(3, 0), (3, 3), (3, 2)],
+    4: [(4, 0), (4, 3), (4, 2), (4, 1)],
+    5: [(5, 1), (5, 0), (5, 2)],
+    6: [(6, 3), (6, 2)],
+    7: [(7, 0), (7, 1), (7, 3)],
+    8: [(8, 0), (8, 3)],
+}, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
 
 
 def test_d5_rotated_surface_code():
@@ -714,13 +728,17 @@ def test_d5_rotated_surface_code():
     print(rsc5_enum)
     tn = TensorNetwork.make_rsc(d=5)
 
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial(
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
     assert we == rsc5_enum
 
 
 def test_d5_rotated_surface_code_x_only():
     tn = TensorNetwork.make_rsc(d=5, lego=lambda i: Legos.econding_tensor_512_x)
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial(
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
     assert we == SimplePoly(
         {
             12: 1154,
@@ -740,7 +758,9 @@ def test_d5_rotated_surface_code_x_only():
 
 def test_d2_unrotated_surface_code():
     tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial(
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
 
     h = GF2(
         [
@@ -760,7 +780,9 @@ def test_d2_unrotated_surface_code():
 
 def test_d3_unrotated_surface_code():
     tn = TensorNetwork.make_surface_code(d=3, lego=lambda i: Legos.econding_tensor_512)
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial(
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
 
     hx_sparse = [
         [0, 1, 3],
@@ -805,7 +827,9 @@ def test_compass_code():
         ]
     )
 
-    tn_wep = tn.stabilizer_enumerator_polynomial()
+    tn_wep = tn.stabilizer_enumerator_polynomial(
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+    )
     expected_wep = (
         ScalarStabilizerCodeEnumerator(
             GF2(
