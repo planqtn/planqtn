@@ -150,8 +150,6 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     pivot_rows = [-1 if len(pivots) == 0 else pivots[0] for pivots in pivot_rows]
 
-    # print(mx)
-
     kept_rows = list(range(r))
 
     # interpret the self trace as measuring ZZ and XX
@@ -173,10 +171,12 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     if pivot_rows[2] != pivot_rows[3] and pivot_rows[2] != -1 and pivot_rows[3] != -1:
         mx[pivot_rows[2]] += mx[pivot_rows[3]]
         kept_rows.remove(pivot_rows[3])
+
     # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two legs match with
     # any combination of the generators, thus we'll remove the offending remaining row
     elif pivot_rows[2] == -1 and pivot_rows[3] != -1:
         kept_rows.remove(pivot_rows[3])
+
     elif pivot_rows[2] != -1 and pivot_rows[3] == -1:
         kept_rows.remove(pivot_rows[2])
 
@@ -184,12 +184,13 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     kept_rows = np.array(kept_rows)
 
     mx = mx[kept_rows][:, kept_cols]
+
     # print("after removals:")
     # print(mx)
-    # mx = gauss(mx)
-    # kept_rows = list(range(len(mx)))
-    # for row in range(len(mx)):
-    #     if np.count_nonzero(mx[row]) == 0:
-    #         kept_rows.remove(row)
-    # mx = mx[kept_rows]
+    mx = gauss(mx, noswaps=True)
+    kept_rows = list(range(len(mx)))
+    for row in range(len(mx)):
+        if np.count_nonzero(mx[row]) == 0:
+            kept_rows.remove(row)
+    mx = mx[kept_rows]
     return mx

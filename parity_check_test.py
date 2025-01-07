@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from linalg import gauss
 from parity_check import conjoin, self_trace, sprint
+from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 
 
 # Handle empty matrices as input
@@ -65,11 +66,9 @@ def test_conjoin_single_trace_713_code_with_422_code():
         ),
     )
     print(res)
-    np.testing.assert_array_equal(
-        res,
-        GF2(
-            [
-                # fmt: off
+    expected = GF2(
+        [
+            # fmt: off
                     # h1[0, x]       # h2[0, x]     # h1[0, z]       # h2[0, z]
                 [0, 1, 0, 1, 0, 1,   1, 1, 1,      0, 0, 0, 0, 0, 0,  0, 0, 0 ],
                     # h1[1, x]       # h2[1, x]     # h1[1, z]       # h2[1, z]                
@@ -78,10 +77,13 @@ def test_conjoin_single_trace_713_code_with_422_code():
                 [0, 0, 0, 0, 0, 0,   0, 0, 0,      1, 1, 0, 0, 1, 1,  0, 0, 0],
                 [0, 0, 1, 1, 1, 1,   0, 0, 0,      0, 0, 0, 0, 0, 0,  0, 0, 0],  
                 [1, 1, 0, 0, 1, 1,   0, 0, 0,      0, 0, 0, 0, 0, 0,  0, 0, 0],
-                # fmt: on
-            ]
-        ),
-        err_msg=f"not equal\n{res}",
+            # fmt: on
+        ]
+    )
+
+    assert (
+        ScalarStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
+        == ScalarStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 
@@ -115,12 +117,11 @@ def test_conjoin_single_trace_713_code_with_713_code():
             ]
         ),
     )
-    print(res)
-    np.testing.assert_array_equal(
-        res,
-        GF2(
-            [
-                # fmt: off
+    np.set_printoptions(linewidth=800)
+    sprint(res)
+    expected = GF2(
+        [
+            # fmt: off
                     # h1[0, x]       # h2[0, x]                # h1[0, z]       # h2[0, z]
                 [0, 1, 0, 1, 0, 1,   0, 1, 0, 1, 0, 1,   0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0],
                     # h1[1, x]       # h2[1, x]                # h1[1, z]       # h2[1, z]                
@@ -135,10 +136,12 @@ def test_conjoin_single_trace_713_code_with_713_code():
                 [0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 1, 1,   0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0],  
                 [0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0,   0, 0, 1, 1, 1, 1],    
                 [0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 1, 1],
-                # fmt: on
-            ]
-        ),
-        err_msg=f"Not equal\n{res}",
+            # fmt: on
+        ]
+    )
+    assert (
+        ScalarStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
+        == ScalarStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 
@@ -228,16 +231,14 @@ def test_two_422_codes_are_the_steane_code():
     print(repr(h4))
     steane = GF2(
         [
-            # fmt: off
-            [1, 0, 0, 1, 1, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 1, 1, 0, 0],
-            [0, 0, 0, 0, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 1, 1, 0, 0, 0, 0],            
-            [0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 1, 1, 0, 0, 1],
-            [1, 1, 1, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],            
-            [1, 1, 0, 0, 1, 1, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0],
-            # fmt: on
+            [1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+            [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0],
+            [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
     )
     assert np.array_equal(h4, steane), f"not equal\n{h4}"

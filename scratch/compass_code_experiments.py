@@ -1,3 +1,4 @@
+import json
 import sys
 from galois import GF2
 from matplotlib import pyplot as plt
@@ -8,6 +9,7 @@ from linalg import gauss
 from parity_check import sprint
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from tensor_stabilizer_enumerator import (
+    PAULI_I,
     PAULI_X,
     PAULI_Z,
     TensorNetwork,
@@ -27,21 +29,21 @@ def compass_code_from_surface_code_via_gauge_fixing():
     #     ),
     # )
 
-    d = 10
+    d = 3
 
     tn = TensorNetwork.make_surface_code(
         d,
-        lambda idx: (Legos.econding_tensor_512_z),
+        lambda idx: (Legos.econding_tensor_512),
     )
 
-    # coloring = np.array(
-    #     [
-    #         [1, 1],
-    #         [2, 1],
-    #     ]
-    # )
+    coloring = np.array(
+        [
+            [1, 1],
+            [2, 1],
+        ]
+    )
 
-    coloring = np.random.randint(1, 2, (6, 6))
+    # coloring = np.random.randint(1, 2, (6, 6))
 
     gauge_idxs = [
         (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
@@ -51,10 +53,10 @@ def compass_code_from_surface_code_via_gauge_fixing():
             PAULI_Z if color == 2 else PAULI_X, 4
         )
 
-    tn.analyze_traces()
+    # tn.analyze_traces()
 
     print(
-        "WEP from TN:",
+        "WEP from compass TN:",
         tn.stabilizer_enumerator_polynomial(progress_bar=True),
     )
 
@@ -70,6 +72,9 @@ def compass_code_from_surface_code_via_gauge_fixing():
     if d <= 8:
         print(ScalarStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
 
+        #  {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
+        # {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
+    # enumerator: {0: 1,  2: 3, 4: 15, 6: 21, 8: 24}
     # for gi, g in enumerate(s):
     #     for v in [
     #         (
@@ -121,14 +126,18 @@ def cotengra_fun(tensor_network: TensorNetwork):
                 free_legs.append(leg)
             current_index += 1
 
+    print("free legs: ", free_legs)
     inputs = []
     output = tuple(leg_indices[leg] for leg in free_legs)
+    print("outputs: ", output)
     size_dict = {leg: 4 for leg in leg_indices.values()}
 
+    input_names = []
     # Print the indices for each node
     for node_idx, node in tensor_network.nodes.items():
         print(f"Node {node_idx}:")
         inputs.append(tuple(leg_indices[leg] for leg in node.legs))
+        input_names.append(node_idx)
 
         for leg in node.legs:
 
@@ -136,45 +145,136 @@ def cotengra_fun(tensor_network: TensorNetwork):
                 f"  Leg {leg}: Index {leg_indices[leg]} {'OPEN' if leg in free_legs else 'traced'}"
             )
 
+    print(input_names)
     print(inputs)
     print(output)
     print(size_dict)
 
-    ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
-    opt = ctg.HyperOptimizer()
+    traces = dict()
+    for node_idx1, node_idx2, join_legs1, join_legs2 in tensor_network.traces:
+        if (node_idx1, node_idx2) in traces:
+            raise ValueError("double trace...")
+        node1, node2 = input_names.index(node_idx1), input_names.index(node_idx2)
+        traces[(node1, node2)] = (join_legs1, join_legs2)
+        traces[(node2, node1)] = (join_legs1, join_legs2)
 
-    tree = opt.search(inputs, output, size_dict)
-    print(tree)
-    tree.plot_flat()
+    # ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
+    opt = ctg.HyperOptimizer(
+        minimize="combo",
+        reconf_opts={},
+        progbar=True,
+    )
+
+    tree: ctg.ContractionTree = opt.search(inputs, output, size_dict)
+    print(type(tree))
     print(tree.contraction_width(), tree.contraction_cost())
+    print(len(tree.get_path()))
+    print(tree.get_path())
+    print(
+        len(
+            [
+                (node_idx1, node_idx2)
+                for node_idx1, node_idx2, _, _ in tensor_network.traces
+            ]
+        )
+    )
+    # print(traces)
+    print(tree.nslices, " slices")
+
+    leaves = list(tree.gen_leaves())
+    for parent, l, r in tree.traverse():
+        # print((i, j), (inputs[i], inputs[j]), (leaves[i], leaves[j]))
+        print(parent, l, r)
+
+    #     print(input_names[i], input_names[j])
+    #     # print(traces[pair])
+
+    # print(json.dumps({str(k): v for k, v in tree.info.items()}, indent=4))
+    # tree.plot_tent()
+    # tree.print_contractions()
+    # tree.plot_contractions()
+    # print(tree.flat_tree())
+
+
+def compass_code_from_tanner():
+    hz = GF2(
+        [
+            [1, 1, 0, 1, 1, 0, 1, 1, 0],
+            [0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 0, 1, 1],
+        ]
+    )
+
+    hx = GF2(
+        [
+            [1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 1, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 1],
+        ]
+    )
+
+    # hz = GF2([[1, 1, 1, 1]])
+    # hx = GF2([[1, 1, 1, 1]])
+    tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
+
+    print(
+        "enumerator:",
+        tn.stabilizer_enumerator_polynomial(
+            # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
+            verbose=False,
+            progress_bar=True,
+            summed_legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
+        ),
+    )
+
+    # conjoined = tn.conjoin_nodes(verbose=False, progress_bar=False)
+    # print("---")
+    # sprint(conjoined.h)
+
+    # for leg in [(f"q{i}", 0) for i in range(hx.shape[1])]:
+    #     conjoined = conjoined.trace_with_stopper(PAULI_I, leg)
+    # print("after tracing out the logical legs---")
+
+    # sprint(conjoined.h)
+    # print(conjoined.legs)
+
+    # print(conjoined.stabilizer_enumerator_polynomial())
+    # tn.stabilizer_enumerator_polynomial()
+    # tn.analyze_traces()
+    # cotengra_fun(tn)
 
 
 # Example usage
 # Assuming `tn` is an instance of TensorNetwork
 # extract_leg_indices(tn)
 if __name__ == "__main__":
+    # print("---- compass from surface code -----")
+    # compass_code_from_surface_code_via_gauge_fixing()
+    # print("---- compass from tanner graph -----")
+    # compass_code_from_tanner()
 
-    # hz = GF2(
-    #     [
-    #         [1, 1, 0, 1, 1, 0, 1, 1, 0],
-    #         [0, 1, 1, 0, 0, 0, 0, 0, 0],
-    #         [0, 0, 0, 0, 1, 1, 0, 1, 1],
-    #     ]
-    # )
+    hz = GF2(
+        [
+            [1, 1, 0, 1, 1, 0, 1, 1, 0],
+            [0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 0, 1, 1],
+        ]
+    )
 
-    # hx = GF2(
-    #     [
-    #         [1, 0, 0, 1, 0, 0, 0, 0, 0],
-    #         [0, 1, 1, 0, 1, 1, 0, 0, 0],
-    #         [0, 0, 0, 1, 0, 0, 1, 0, 0],
-    #         [0, 0, 0, 0, 1, 0, 0, 1, 0],
-    #         [0, 0, 0, 0, 0, 1, 0, 0, 1],
-    #     ]
-    # )
+    hx = GF2(
+        [
+            [1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 1, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 1],
+        ]
+    )
 
-    hz = GF2([[1, 1, 1, 1]])
-    hx = GF2([[1, 1, 1, 1]])
+    # hz = GF2([[1, 1, 1, 1]])
+    # hx = GF2([[1, 1, 1, 1]])
     tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
-    print("enumerator:", tn.stabilizer_enumerator_polynomial(verbose=True))
-    # tn.analyze_traces()
-    # cotengra_fun(tn)
+
+    cotengra_fun(tn)

@@ -19,6 +19,7 @@ from sympy.abc import w, z
 
 from tensor_legs import TensorLegs
 
+PAULI_I = GF2([0, 0])
 PAULI_X = GF2([1, 0])
 PAULI_Z = GF2([0, 1])
 PAULI_Y = GF2([1, 1])
@@ -351,7 +352,7 @@ class TensorNetwork:
             n_x_legs = len(x_stabs)
             z_stabs = np.nonzero(hz[:, q])[0]
             n_z_legs = len(z_stabs)
-            print(q, x_stabs, z_stabs)
+            # print(q, x_stabs, z_stabs)
             h0 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h0")
             h1 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h1")
 
@@ -368,9 +369,11 @@ class TensorNetwork:
                 .conjoin(h1, [(f"q{q}.z", 1)], [0])
                 .conjoin(x, [(f"q{q}.h1", 1)], [0])
             )
+
             q_tensor.set_idx(f"q{q}")
+            q_tensor = q_tensor.trace_with_stopper(PAULI_I, (f"q{q}", 0))
             q_tensors.append(q_tensor)
-            print(q_tensor.legs)
+            # print(q_tensor.legs)
         traces = []
 
         q_legs = [2] * n
@@ -380,7 +383,7 @@ class TensorNetwork:
             g_tensor = TensorStabilizerCodeEnumerator(
                 Legos.z_rep_code(len(qs)), f"x{i}"
             )
-            print(f"=== x tensor {g_tensor.idx} -> {qs} === ")
+            # print(f"=== x tensor {g_tensor.idx} -> {qs} === ")
 
             gx_tensors.append(g_tensor)
             for g_leg, q in enumerate(qs):
@@ -512,13 +515,16 @@ class TensorNetwork:
         )
         print(f"Maximum PTE legs: {max_pte_legs}")
 
-    def conjoin_nodes(self, progress_bar: bool = False):
+    def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False):
         pte_nodes = []
 
         pte: TensorStabilizerCodeEnumerator = None
-        prog = lambda x: x if not progress_bar else tqdm
+        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
-            # print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+            if verbose:
+                print(
+                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                )
 
             join_legs1 = self.nodes[node_idx1]._index_legs(node_idx1, join_legs1)
             join_legs2 = self.nodes[node_idx2]._index_legs(node_idx2, join_legs2)
@@ -529,18 +535,33 @@ class TensorNetwork:
                 pte = self.nodes[node_idx1].conjoin(
                     self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
                 )
-            elif node_idx2 not in pte_nodes:
-                assert (
-                    node_idx1 in pte_nodes
-                ), f"For now node 1 should be in the traced component. This is violated with {node_idx1}."
-                if node_idx2 not in pte_nodes:
-                    pte_nodes.append(node_idx2)
-                    pte = pte.conjoin(
-                        self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
+            elif node_idx1 in pte_nodes and node_idx2 not in pte_nodes:
+                if verbose:
+                    print(f"adding {node_idx2} to PTE (contains {node_idx1})")
+                pte_nodes.append(node_idx2)
+                pte = pte.conjoin(
+                    self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
+                )
+            elif node_idx1 not in pte_nodes and node_idx2 in pte_nodes:
+                if verbose:
+                    print(f"adding {node_idx1} to PTE (contains {node_idx2})")
+                pte_nodes.append(node_idx1)
+                pte = pte.conjoin(
+                    self.nodes[node_idx1], legs1=join_legs2, legs2=join_legs1
+                )
+            elif node_idx1 in pte_nodes and node_idx2 in pte_nodes:
+                if verbose:
+                    print(
+                        f"self trace on PTE in which both {node_idx1, node_idx2} are contained"
                     )
-            else:
                 pte = pte.self_trace(join_legs1, join_legs2)
-
+            else:
+                raise ValueError(
+                    f"independent components are not yet supported by conjoin_nodes. PTE nodes: {pte_nodes}, new nodes: {node_idx1}, {node_idx2}"
+                )
+            if verbose:
+                print("H:")
+                sprint(pte.h)
         return pte
 
     def stabilizer_enumerator_polynomial(
@@ -573,9 +594,7 @@ class TensorNetwork:
                 "Completely disconnected nodes is unsupported. TODO: implement tensoring of disconnected component weight enumerators."
             )
 
-        prog = tqdm
-        if not progress_bar:
-            prog = lambda x: x
+        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
             if verbose:
                 print(
@@ -757,13 +776,15 @@ class TensorNetwork:
 
             node1_pte = None if node_idx1 not in self.ptes else self.ptes[node_idx1]
 
-            # print(f"PTE nodes: {node1_pte.nodes}")
-            # print(f"PTE tracable legs: {node1_pte.tracable_legs}")
+            if verbose:
+                print(f"PTE nodes: {node1_pte.nodes}")
+                print(f"PTE tracable legs: {node1_pte.tracable_legs}")
             # print("PTE tensor: ")
             # for k, v in node1_pte.tensor.items():
             #     print(k, v)
             # print(f"PTEs: {self.ptes}")
 
+        # TODO: this is valid for the reduced WEP only - but it's okay as we'll switch over to reduced WEP shortly
         self._wep = SimplePoly()
         for k, sub_wep in pte.tensor.items():
             self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
@@ -841,9 +862,7 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = tqdm
-        if not progress_bar:
-            prog = lambda x: x
+        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1[0]), GF2(k1[1])
             for k2 in prog(pte2.tensor.keys()):
@@ -922,9 +941,7 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = tqdm
-        if not progress_bar:
-            prog = lambda x: x
+        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for old_key in prog(self.tensor.keys()):
             if not np.array_equal(
                 sslice(GF2(old_key[0]), join_indices1),
@@ -999,7 +1016,7 @@ class PartiallyTracedEnumerator:
 
         # print(f"kept indices 2: {kept_indices2}")
 
-        prog = lambda k: tqdm(k, leave=False) if progress_bar else k
+        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
 
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1[0]), GF2(k1[1])
@@ -1061,12 +1078,6 @@ class PartiallyTracedEnumerator:
 class TensorStabilizerCodeEnumerator:
     """The tensor enumerator from Cao & Lackey"""
 
-    def __str__(self):
-        return f"TensorEnum({self.idx})"
-
-    def __repr__(self):
-        return f"TensorEnum({self.idx})"
-
     def __init__(self, h, idx=0, legs=None):
         self.h = h
 
@@ -1087,6 +1098,12 @@ class TensorStabilizerCodeEnumerator:
         ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
         # a dict is a wonky tensor - TODO: rephrase this to proper tensor
         self._stabilizer_enums: Dict[sympy.Tuple, SimplePoly] = {}
+
+    def __str__(self):
+        return f"TensorEnum({self.idx})"
+
+    def __repr__(self):
+        return f"TensorEnum({self.idx})"
 
     def set_idx(self, idx):
         for l in range(len(self.legs)):
@@ -1235,6 +1252,10 @@ class TensorStabilizerCodeEnumerator:
         legs1 = self._index_legs(self.idx, legs1)
         legs2 = self._index_legs(self.idx, legs2)
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
+        # print(f"legs1 {legs1}")
+        # print(f"legs2 {legs2}")
+        # print(f"self.legs {self.legs}")
+
         new_h = self.h
         for leg1, leg2 in zip(legs1, legs2):
             new_h = self_trace(new_h, leg2col[leg1], leg2col[leg2])

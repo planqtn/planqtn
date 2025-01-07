@@ -6,3 +6,5 @@ networkx
 scipy
 sympy
 pyzx
+kahypar
+cotengra

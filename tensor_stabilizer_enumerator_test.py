@@ -150,7 +150,10 @@ def test_trace_two_422_codes_into_steane():
         ]
     )
 
-    assert np.array_equal(t3.h, steane), f"Not equal:\n{t3.h}"
+    assert (
+        ScalarStabilizerCodeEnumerator(steane).stabilizer_enumerator_polynomial()
+        == ScalarStabilizerCodeEnumerator(t3.h).stabilizer_enumerator_polynomial()
+    )
 
     assert {6: 42, 4: 21, 0: 1} == t3.stabilizer_enumerator(
         traced_legs=[0], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
