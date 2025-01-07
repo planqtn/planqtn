@@ -1,7 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
-import dataclasses
-import time
+import cotengra as ctg
+
 from typing import Any, Iterable, List, Dict, Set, Tuple, Union
 from galois import GF2
 import numpy as np
@@ -15,14 +15,21 @@ from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from simple_poly import SimplePoly
 from symplectic import omega, weight
 
-from sympy.abc import w, z
-
-from tensor_legs import TensorLegs
 
 PAULI_I = GF2([0, 0])
 PAULI_X = GF2([1, 0])
 PAULI_Z = GF2([0, 1])
 PAULI_Y = GF2([1, 1])
+
+
+def _index_leg(idx, leg):
+    return (idx, leg) if isinstance(leg, int) else leg
+
+
+def _index_legs(idx, legs):
+    if legs is not None and isinstance(legs, Iterable):
+        return [_index_leg(idx, leg) for leg in legs]
+    return legs
 
 
 def _paulis(n):
@@ -421,19 +428,19 @@ class TensorNetwork:
             tn.self_trace(*t)
         return tn
 
-    def self_trace(self, node_idx1, node_idx2, join_legs1, join_legs2):
+    def self_trace(self, node_idx1, node_idx2, join_leg1, join_leg2):
         if self._wep is not None:
             raise ValueError(
                 "Tensor network weight enumerator is already traced no new tracing schedule is allowed."
             )
-        join_legs1 = self.nodes[node_idx1]._index_legs(node_idx1, join_legs1)
-        join_legs2 = self.nodes[node_idx2]._index_legs(node_idx2, join_legs2)
+        join_leg1 = _index_legs(node_idx1, join_leg1)
+        join_leg2 = _index_legs(node_idx2, join_leg2)
 
         # print(f"adding trace {node_idx1, node_idx2, join_legs1, join_legs2}")
-        self.traces.append((node_idx1, node_idx2, join_legs1, join_legs2))
+        self.traces.append((node_idx1, node_idx2, join_leg1, join_leg2))
 
-        self.legs_left_to_join[node_idx1] += join_legs1
-        self.legs_left_to_join[node_idx2] += join_legs2
+        self.legs_left_to_join[node_idx1] += join_leg1
+        self.legs_left_to_join[node_idx2] += join_leg2
 
     def traces_to_dot(self):
         print("-----")
@@ -526,8 +533,8 @@ class TensorNetwork:
                     f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
                 )
 
-            join_legs1 = self.nodes[node_idx1]._index_legs(node_idx1, join_legs1)
-            join_legs2 = self.nodes[node_idx2]._index_legs(node_idx2, join_legs2)
+            join_legs1 = _index_legs(node_idx1, join_legs1)
+            join_legs2 = _index_legs(node_idx2, join_legs2)
 
             if pte_nodes == []:
                 pte_nodes.append(node_idx1)
@@ -564,6 +571,106 @@ class TensorNetwork:
                 sprint(pte.h)
         return pte
 
+    def _cotengra_contraction(self, verbose=False, progress_bar=False):
+        # Dictionary to store the index for each leg
+        leg_indices = {}
+        index_to_legs = {}
+        # Start with the first letter of the alphabet
+        current_index = 0
+        free_legs = []
+        # Iterate over each node in the tensor network
+        for node_idx, node in self.nodes.items():
+            # Iterate over each leg in the node
+            for leg in node.legs:
+                current_idx_name = f"i{current_index}"
+                # If the leg is already indexed, skip it
+                if leg in leg_indices:
+                    continue
+                # Assign the current index to the leg
+                leg_indices[leg] = current_idx_name
+                index_to_legs[current_idx_name] = [(node_idx, leg)]
+                open_leg = True
+                # Check for traces and assign the same index to traced legs
+                for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+                    idx = -1
+                    if leg in join_legs1:
+                        idx = join_legs1.index(leg)
+                    elif leg in join_legs2:
+                        idx = join_legs2.index(leg)
+                    else:
+                        continue
+                    open_leg = False
+                    leg_indices[join_legs1[idx]] = current_idx_name
+                    leg_indices[join_legs2[idx]] = current_idx_name
+                    index_to_legs[current_idx_name] = [
+                        (node_idx1, join_legs1[idx]),
+                        (node_idx2, join_legs2[idx]),
+                    ]
+                # Move to the next index
+                if open_leg:
+                    free_legs.append(leg)
+                current_index += 1
+
+        inputs = []
+        output = tuple(leg_indices[leg] for leg in free_legs)
+        size_dict = {leg: 4 for leg in leg_indices.values()}
+
+        input_names = []
+
+        for node_idx, node in self.nodes.items():
+            inputs.append(tuple(leg_indices[leg] for leg in node.legs))
+            input_names.append(node_idx)
+            if verbose:
+                # Print the indices for each node
+                for leg in node.legs:
+                    print(
+                        f"  Leg {leg}: Index {leg_indices[leg]} {'OPEN' if leg in free_legs else 'traced'}"
+                    )
+        if verbose:
+            print(input_names)
+            print(inputs)
+            print(output)
+            print(size_dict)
+
+        # ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
+        opt = ctg.HyperOptimizer(
+            minimize="combo",
+            reconf_opts={},
+            progbar=progress_bar,
+        )
+
+        tree: ctg.ContractionTree = opt.search(inputs, output, size_dict)
+
+        def legs_to_contract(l: frozenset, r: frozenset):
+            res = []
+            left_indices = sum((list(inputs[leaf_idx]) for leaf_idx in l), [])
+            right_indices = sum((list(inputs[leaf_idx]) for leaf_idx in r), [])
+            for idx1 in left_indices:
+                if idx1 in right_indices:
+                    legs = index_to_legs[idx1]
+                    res.append((legs[0][0], legs[1][0], [legs[0][1]], [legs[1][1]]))
+            return res
+
+        # We convert the tree back to a list of traces
+        traces = []
+        for parent, l, r in tree.traverse():
+            # at each step we have to find the nodes that share indices in the two merged subsets
+            new_traces = legs_to_contract(l, r)
+            print(parent, l, r, new_traces)
+            traces += new_traces
+
+        trace_indices = []
+        for t in traces:
+            assert t in self.traces, f"{t} not in traces. Traces: {self.traces}"
+            idx = self.traces.index(t)
+            trace_indices.append(idx)
+
+        assert set(trace_indices) == set(
+            range(len(self.traces))
+        ), "Some traces are missing!"
+
+        return traces, free_legs
+
     def stabilizer_enumerator_polynomial(
         self,
         legs: List[Tuple[int, int]] = [],
@@ -571,8 +678,11 @@ class TensorNetwork:
         eprime: GF2 = None,
         verbose: bool = False,
         progress_bar: bool = False,
-        summed_legs: List[Tuple[int, int]] = [],
+        summed_legs: List[Tuple[int, int]] = None,
     ) -> SimplePoly:
+        self.traces, free_legs = self._cotengra_contraction(verbose, progress_bar)
+        if summed_legs is None:
+            summed_legs = free_legs
         if self._wep is not None:
             return self._wep
         m = len(legs)
@@ -795,10 +905,7 @@ class TensorNetwork:
         self, k, legs: List[Tuple[int, List[int]]], e: GF2 = None, eprime: GF2 = None
     ):
         wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
-        if wep == 0:
-            return {}
-        unnormalized_poly = wep
-        return unnormalized_poly._dict
+        return wep._dict
 
 
 class PartiallyTracedEnumerator:
@@ -1135,11 +1242,6 @@ class TensorStabilizerCodeEnumerator:
     def validate_legs(self, legs):
         return [leg for leg in legs if not leg in self.legs]
 
-    def _index_legs(self, idx, legs):
-        if legs is not None:
-            return [(idx, leg) if isinstance(leg, int) else leg for leg in legs]
-        return legs
-
     def trace_with(
         self,
         other: "TensorStabilizerCodeEnumerator",
@@ -1156,12 +1258,12 @@ class TensorStabilizerCodeEnumerator:
     ):
         """If legs are not indexed, they will be based on the first index of this component (if it is a conjoining of multiple nodes)."""
 
-        join_legs1 = self._index_legs(self.idx, join_legs1)
-        join_legs2 = self._index_legs(other.idx, join_legs2)
-        traced_legs1 = self._index_legs(self.idx, traced_legs1)
-        traced_legs2 = self._index_legs(other.idx, traced_legs2)
-        open_legs1 = self._index_legs(self.idx, open_legs1)
-        open_legs2 = self._index_legs(other.idx, open_legs2)
+        join_legs1 = _index_legs(self.idx, join_legs1)
+        join_legs2 = _index_legs(other.idx, join_legs2)
+        traced_legs1 = _index_legs(self.idx, traced_legs1)
+        traced_legs2 = _index_legs(other.idx, traced_legs2)
+        open_legs1 = _index_legs(self.idx, open_legs1)
+        open_legs2 = _index_legs(other.idx, open_legs2)
 
         invalid_legs = self.validate_legs(join_legs1)
         assert (
@@ -1249,8 +1351,8 @@ class TensorStabilizerCodeEnumerator:
 
     def self_trace(self, legs1, legs2) -> "TensorStabilizerCodeEnumerator":
         assert len(legs1) == len(legs2)
-        legs1 = self._index_legs(self.idx, legs1)
-        legs2 = self._index_legs(self.idx, legs2)
+        legs1 = _index_legs(self.idx, legs1)
+        legs2 = _index_legs(self.idx, legs2)
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
         # print(f"legs1 {legs1}")
         # print(f"legs2 {legs2}")
@@ -1273,8 +1375,8 @@ class TensorStabilizerCodeEnumerator:
             self.idx != other.idx
         ), f"Both stabilizer nodes have {self.idx} index - can't conjoin them."
         assert len(legs1) == len(legs2)
-        legs1 = self._index_legs(self.idx, legs1)
-        legs2 = self._index_legs(other.idx, legs2)
+        legs1 = _index_legs(self.idx, legs1)
+        legs2 = _index_legs(other.idx, legs2)
 
         n2 = other.n
 
@@ -1301,9 +1403,9 @@ class TensorStabilizerCodeEnumerator:
     def _brute_force_stabilizer_enumerator_from_parity(
         self, basis_element_legs: List[int], e=None, eprime=None, open_legs=[]
     ):
-        basis_element_legs = self._index_legs(self.idx, basis_element_legs)
+        basis_element_legs = _index_legs(self.idx, basis_element_legs)
         # print(f"passed open legs: {open_legs}")
-        open_legs = self._index_legs(self.idx, open_legs)
+        open_legs = _index_legs(self.idx, open_legs)
         invalid_legs = self.validate_legs(basis_element_legs)
         if len(invalid_legs) > 0:
             raise ValueError(
@@ -1364,7 +1466,6 @@ class TensorStabilizerCodeEnumerator:
                 return wep
 
             def finalize(self):
-                # print("finalizing...")
                 # complement indices for traced cols
                 # tlc = [leg for leg in range(self.n) if leg not in traced_cols]
                 # complement indices for open cols
@@ -1483,16 +1584,10 @@ class TensorStabilizerCodeEnumerator:
             traced_leg = (self.idx, traced_leg)
         if traced_leg not in self.legs:
             raise ValueError(f"can't trace on {traced_leg} - no such leg.")
-        # other = TensorStabilizerCodeEnumerator(stopper, legs=[0])
-        # return self.conjoin(other, [traced_leg], [0])
         kept_cols = list(range(2 * self.n))
         kept_cols.remove(self.legs.index(traced_leg))
         kept_cols.remove(self.legs.index(traced_leg) + self.n)
-        # print(
-        #     f"to remove: {self.legs.index(traced_leg)}, {self.legs.index(traced_leg)+self.n}"
-        # )
         kept_cols = np.array(kept_cols)
-        # print(f"kept cols {kept_cols}")
         h_new = gauss(
             self.h,
             col_subset=[
@@ -1500,20 +1595,6 @@ class TensorStabilizerCodeEnumerator:
                 self.legs.index(traced_leg) + self.n,
             ],
         )
-
-        # print(f"h_new {traced_leg}")
-        # print(h_new)
-        # print(h_new[:, kept_cols])
-        # for row in h_new:
-        #     print(
-        #         row[kept_cols],
-        #         _suboperator_matches_on_support(
-        #             [self.legs.index(traced_leg)], row, stopper
-        #         )
-        #         or _suboperator_matches_on_support(
-        #             [self.legs.index(traced_leg)], row, GF2([0, 0])
-        #         ),
-        #     )
 
         h_new = GF2(
             [
@@ -1529,8 +1610,5 @@ class TensorStabilizerCodeEnumerator:
         )
         kept_legs = self.legs.copy()
         kept_legs.remove(traced_leg)
-
-        # print(f"h_new {traced_leg}")
-        # print(h_new)
 
         return TensorStabilizerCodeEnumerator(h=h_new, idx=self.idx, legs=kept_legs)

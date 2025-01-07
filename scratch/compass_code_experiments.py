@@ -53,27 +53,28 @@ def compass_code_from_surface_code_via_gauge_fixing():
             PAULI_Z if color == 2 else PAULI_X, 4
         )
 
-    # tn.analyze_traces()
+    tn.traces = cotengra_fun(tn)
+    tn.analyze_traces()
 
     print(
         "WEP from compass TN:",
         tn.stabilizer_enumerator_polynomial(progress_bar=True),
     )
 
-    conjoined = tn.conjoin_nodes()
-    # for leg in [(idx, 4) for idx in tn.nodes.keys() if idx[0] % 2 == 1]:
-    #     conjoined = conjoined.trace_with_stopper(PAULI_Z, leg)
+    # conjoined = tn.conjoin_nodes()
+    # # for leg in [(idx, 4) for idx in tn.nodes.keys() if idx[0] % 2 == 1]:
+    # #     conjoined = conjoined.trace_with_stopper(PAULI_Z, leg)
 
-    np.set_printoptions(threshold=sys.maxsize, linewidth=800)
+    # np.set_printoptions(threshold=sys.maxsize, linewidth=800)
 
-    s = gauss(conjoined.h)
-    sprint(s)
-    print(conjoined.legs)
-    if d <= 8:
-        print(ScalarStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
+    # s = gauss(conjoined.h)
+    # sprint(s)
+    # print(conjoined.legs)
+    # if d <= 8:
+    #     print(ScalarStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
 
-        #  {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
-        # {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
+    #  {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
+    # {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
     # enumerator: {0: 1,  2: 3, 4: 15, 6: 21, 8: 24}
     # for gi, g in enumerate(s):
     #     for v in [
@@ -299,3 +300,5 @@ if __name__ == "__main__":
             summed_legs=[(f"q{i}.x", 1) for i in range(hx.shape[1])],
         ),
     )
+
+    compass_code_from_surface_code_via_gauge_fixing()

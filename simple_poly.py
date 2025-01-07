@@ -37,21 +37,6 @@ class SimplePoly:
         for k, v in other._dict.items():
             self._dict[k] += v
 
-    def __add__(self, other):
-        if isinstance(other, SimplePoly):
-            assert other.num_vars == self.num_vars
-            res = SimplePoly(self._dict.copy())
-            for k, v in other._dict.items():
-                res._dict[k] += v
-            return res
-        elif isinstance(other, int):
-            res = SimplePoly(self._dict.copy())
-            for k in self._dict.keys():
-                res._dict[k] += other
-            return res
-        else:
-            raise ValueError(f"Unsupported type to add to SimplePoly: {type(other)}")
-
     def __str__(self):
         return str(dict(self._dict))
 
@@ -62,12 +47,6 @@ class SimplePoly:
         if isinstance(n, int | float):
             # TODO: is this really a good idea to always keep coeffs integer?
             return SimplePoly({k: v // n for k, v in self._dict.items()})
-
-    def __lmul__(self, n):
-        return self.__mul__(n)
-
-    def __rmul__(self, n):
-        return self.__mul__(n)
 
     def __eq__(self, value):
         if isinstance(value, int | float):

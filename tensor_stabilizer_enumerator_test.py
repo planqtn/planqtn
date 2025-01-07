@@ -183,7 +183,8 @@ def test_trace_two_422_codes_into_steane_v2():
     t2 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=1)
 
     t3 = TensorNetwork(nodes=[t1, t2])
-    t3.self_trace(0, 1, [4, 5], [4, 5])
+    t3.self_trace(0, 1, [4], [4])
+    t3.self_trace(0, 1, [5], [5])
 
     assert {6: 42, 4: 21, 0: 1} == t3.stabilizer_enumerator(
         0, legs=[(0, 0)], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
@@ -625,7 +626,8 @@ def test_double_trace_422():
     ]
 
     tn = TensorNetwork(nodes)
-    tn.self_trace(0, 1, [1, 2], [2, 1])
+    tn.self_trace(0, 1, [1], [2])
+    tn.self_trace(0, 1, [2], [1])
 
     wep = tn.stabilizer_enumerator(0, [(0, 4), (0, 5), (1, 4), (1, 5)])
     print(wep)
@@ -765,9 +767,7 @@ def test_d5_rotated_surface_code():
 
 def test_d5_rotated_surface_code_x_only():
     tn = TensorNetwork.make_rsc(d=5, lego=lambda i: Legos.econding_tensor_512_x)
-    we = tn.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
-    )
+    we = tn.stabilizer_enumerator_polynomial()
     assert we == SimplePoly(
         {
             12: 1154,
@@ -785,11 +785,21 @@ def test_d5_rotated_surface_code_x_only():
     )
 
 
-def test_d2_unrotated_surface_code():
+def test_d2_unrotated_surface_code_with_summed_legs():
     tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
-    we = tn.stabilizer_enumerator_polynomial(
+    we = tn.stabilizer_enumerator_polynomial()
+
+    tn2 = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    expected_we = tn2.stabilizer_enumerator_polynomial(
         summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
     )
+
+    assert we == expected_we, f"Not equal, got:\n{we}, expected\n{expected_we}"
+
+
+def test_d2_unrotated_surface_code():
+    tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    we = tn.stabilizer_enumerator_polynomial()
 
     h = GF2(
         [
@@ -809,9 +819,7 @@ def test_d2_unrotated_surface_code():
 
 def test_d3_unrotated_surface_code():
     tn = TensorNetwork.make_surface_code(d=3, lego=lambda i: Legos.econding_tensor_512)
-    we = tn.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
-    )
+    we = tn.stabilizer_enumerator_polynomial()
 
     hx_sparse = [
         [0, 1, 3],
@@ -856,9 +864,7 @@ def test_compass_code():
         ]
     )
 
-    tn_wep = tn.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
-    )
+    tn_wep = tn.stabilizer_enumerator_polynomial()
     expected_wep = (
         ScalarStabilizerCodeEnumerator(
             GF2(
@@ -878,3 +884,37 @@ def test_compass_code():
     )
 
     assert tn_wep == expected_wep
+
+
+def test_tanner_graph_enumerator():
+    hz = GF2(
+        [
+            [1, 1, 0, 1, 1, 0, 1, 1, 0],
+            [0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 0, 1, 1],
+        ]
+    )
+
+    hx = GF2(
+        [
+            [1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 1, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 1],
+        ]
+    )
+
+    tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
+
+    wep = tn.stabilizer_enumerator_polynomial(verbose=True)
+    tn = TensorNetwork.make_compass_sq(
+        [
+            [1, 1],
+            [2, 1],
+        ]
+    )
+
+    expected_wep = tn.stabilizer_enumerator_polynomial()
+
+    assert wep == expected_wep
