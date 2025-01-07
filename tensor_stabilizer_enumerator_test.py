@@ -575,6 +575,32 @@ def test_step_by_step_to_d2_surface_code():
     assert tn_wep == total_wep, f"not equal:\n{tn_wep}"
 
 
+def test_d3_rsc_with_merged_ptes():
+    tn = TensorNetwork.make_rsc(d=3)
+    tn_single_pte = TensorNetwork.make_rsc(d=3)
+
+    print(tn.traces)
+    tn.traces = [
+        (0, 1, [(0, 2)], [(1, 1)]),
+        (0, 3, [(0, 1)], [(3, 0)]),
+        (7, 8, [(7, 3)], [(8, 0)]),
+        (5, 8, [(5, 2)], [(8, 3)]),
+        (3, 4, [(3, 3)], [(4, 0)]),
+        (1, 4, [(1, 2)], [(4, 3)]),
+        (1, 2, [(1, 3)], [(2, 0)]),
+        (3, 6, [(3, 2)], [(6, 3)]),
+        (4, 5, [(4, 2)], [(5, 1)]),
+        (2, 5, [(2, 1)], [(5, 0)]),
+        (4, 7, [(4, 1)], [(7, 0)]),
+        (6, 7, [(6, 2)], [(7, 1)]),
+    ]
+
+    assert (
+        tn.stabilizer_enumerator_polynomial(verbose=True)
+        == tn_single_pte.stabilizer_enumerator_polynomial()
+    )
+
+
 def test_double_trace_422():
     enc_tens_422 = GF2(
         [

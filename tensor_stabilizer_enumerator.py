@@ -747,7 +747,7 @@ class TensorNetwork:
                 ]
             else:
                 if verbose:
-                    print(f"MERGING to components {node1_pte} and {node2_pte}")
+                    print(f"MERGING two components {node1_pte} and {node2_pte}")
                 pte = node1_pte.merge_with(
                     node2_pte,
                     join_legs1=[
@@ -915,7 +915,7 @@ class PartiallyTracedEnumerator:
         ]
 
         return PartiallyTracedEnumerator(
-            self.nodes, tracable_legs=tracable_legs, tensor=wep
+            self.nodes.union(pte2.nodes), tracable_legs=tracable_legs, tensor=wep
         )
 
     def self_trace(self, join_legs1, join_legs2, progress_bar: bool = False):

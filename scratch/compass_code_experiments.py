@@ -88,27 +88,30 @@ def compass_code_from_surface_code_via_gauge_fixing():
     #         print(f"{gi} -- n{v[0]}_{v[1]}")
 
 
-def cotengra_fun(tensor_network: TensorNetwork):
+def cotengra_fun(tn: TensorNetwork):
     # Dictionary to store the index for each leg
     leg_indices = {}
+    index_to_legs = {}
     # Start with the first letter of the alphabet
     current_index = 0
 
     free_legs = []
     # Iterate over each node in the tensor network
-    for node_idx, node in tensor_network.nodes.items():
+    for node_idx, node in tn.nodes.items():
         # Iterate over each leg in the node
         for leg in node.legs:
+            current_idx_name = f"i{current_index}"
             # If the leg is already indexed, skip it
             if leg in leg_indices:
                 continue
 
             # Assign the current index to the leg
-            leg_indices[leg] = f"i{current_index}"
+            leg_indices[leg] = current_idx_name
+            index_to_legs[current_idx_name] = [(node_idx, leg)]
 
             open_leg = True
             # Check for traces and assign the same index to traced legs
-            for node_idx1, node_idx2, join_legs1, join_legs2 in tensor_network.traces:
+            for node_idx1, node_idx2, join_legs1, join_legs2 in tn.traces:
                 idx = -1
                 if leg in join_legs1:
                     idx = join_legs1.index(leg)
@@ -117,8 +120,12 @@ def cotengra_fun(tensor_network: TensorNetwork):
                 else:
                     continue
                 open_leg = False
-                leg_indices[join_legs1[idx]] = f"i{current_index}"
-                leg_indices[join_legs2[idx]] = f"i{current_index}"
+                leg_indices[join_legs1[idx]] = current_idx_name
+                leg_indices[join_legs2[idx]] = current_idx_name
+                index_to_legs[current_idx_name] = [
+                    (node_idx1, join_legs1[idx]),
+                    (node_idx2, join_legs2[idx]),
+                ]
             #
             # Move to the next inde
             # x
@@ -134,7 +141,7 @@ def cotengra_fun(tensor_network: TensorNetwork):
 
     input_names = []
     # Print the indices for each node
-    for node_idx, node in tensor_network.nodes.items():
+    for node_idx, node in tn.nodes.items():
         print(f"Node {node_idx}:")
         inputs.append(tuple(leg_indices[leg] for leg in node.legs))
         input_names.append(node_idx)
@@ -150,14 +157,6 @@ def cotengra_fun(tensor_network: TensorNetwork):
     print(output)
     print(size_dict)
 
-    traces = dict()
-    for node_idx1, node_idx2, join_legs1, join_legs2 in tensor_network.traces:
-        if (node_idx1, node_idx2) in traces:
-            raise ValueError("double trace...")
-        node1, node2 = input_names.index(node_idx1), input_names.index(node_idx2)
-        traces[(node1, node2)] = (join_legs1, join_legs2)
-        traces[(node2, node1)] = (join_legs1, join_legs2)
-
     # ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
     opt = ctg.HyperOptimizer(
         minimize="combo",
@@ -168,24 +167,36 @@ def cotengra_fun(tensor_network: TensorNetwork):
     tree: ctg.ContractionTree = opt.search(inputs, output, size_dict)
     print(type(tree))
     print(tree.contraction_width(), tree.contraction_cost())
-    print(len(tree.get_path()))
-    print(tree.get_path())
-    print(
-        len(
-            [
-                (node_idx1, node_idx2)
-                for node_idx1, node_idx2, _, _ in tensor_network.traces
-            ]
-        )
-    )
-    # print(traces)
-    print(tree.nslices, " slices")
 
-    leaves = list(tree.gen_leaves())
+    def legs_to_contract(l: frozenset, r: frozenset):
+        res = []
+        left_indices = sum((list(inputs[leaf_idx]) for leaf_idx in l), [])
+        right_indices = sum((list(inputs[leaf_idx]) for leaf_idx in r), [])
+        for idx1 in left_indices:
+            if idx1 in right_indices:
+                legs = index_to_legs[idx1]
+                res.append((legs[0][0], legs[1][0], [legs[0][1]], [legs[1][1]]))
+        return res
+
+    # leaves = list(tree.gen_leaves())
+    # I want to convert the tree to a list of traces
+    traces = []
     for parent, l, r in tree.traverse():
+        # at each step we have to find the nodes that share indices in the two merged subsets
         # print((i, j), (inputs[i], inputs[j]), (leaves[i], leaves[j]))
-        print(parent, l, r)
+        new_traces = legs_to_contract(l, r)
+        print(parent, l, r, new_traces)
+        traces += new_traces
 
+    trace_indices = []
+    for t in traces:
+        idx = tn.traces.index(t)
+        trace_indices.append(idx)
+        print(t, idx if t in tn.traces else "NOT in TN")
+
+    assert set(trace_indices) == set(range(len(tn.traces))), "Some traces are missing!"
+
+    return traces
     #     print(input_names[i], input_names[j])
     #     # print(traces[pair])
 
@@ -277,4 +288,14 @@ if __name__ == "__main__":
     # hx = GF2([[1, 1, 1, 1]])
     tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
 
-    cotengra_fun(tn)
+    tn.traces = cotengra_fun(tn)
+
+    print(
+        "enumerator:",
+        tn.stabilizer_enumerator_polynomial(
+            # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
+            verbose=True,
+            progress_bar=False,
+            summed_legs=[(f"q{i}.x", 1) for i in range(hx.shape[1])],
+        ),
+    )
