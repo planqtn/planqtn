@@ -1,6 +1,7 @@
 import time
 from galois import GF2
 
+from legos import Legos
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from tensor_stabilizer_enumerator import TensorNetwork
 
@@ -52,19 +53,17 @@ rsc = GF2(
 #     ScalarStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
 # )
 
-tn = TensorNetwork.make_rsc(d=5)
+tn = TensorNetwork.make_rsc(d=9, lego=lambda i: Legos.econding_tensor_512_z)
 
 # tn.traces_to_dot()
 # tn.analyze_traces()
 
 start = time.time()
-we = (
-    tn.stabilizer_enumerator_polynomial(
-        progress_bar=True, summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
-    )
-    / 4**49
-)
-print(we)
+
+tn.analyze_traces(cotengra=False)
+# we = tn.stabilizer_enumerator_polynomial(progress_bar=True, cotengra=True)
+
+# print(we)
 end = time.time()
 print(f"Total time: {end-start:0.3f}s")
 

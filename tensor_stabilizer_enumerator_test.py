@@ -182,13 +182,13 @@ def test_trace_two_422_codes_into_steane_v2():
     t1 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=0)
     t2 = TensorStabilizerCodeEnumerator(enc_tens_422, idx=1)
 
-    t3 = TensorNetwork(nodes=[t1, t2])
-    t3.self_trace(0, 1, [4], [4])
-    t3.self_trace(0, 1, [5], [5])
+    tn = TensorNetwork(nodes=[t1, t2])
+    tn.self_trace(0, 1, [4], [4])
+    tn.self_trace(0, 1, [5], [5])
 
-    assert {6: 42, 4: 21, 0: 1} == t3.stabilizer_enumerator(
-        0, legs=[(0, 0)], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
-    )
+    assert {6: 42, 4: 21, 0: 1} == tn.stabilizer_enumerator_polynomial(
+        verbose=True, legs=[(0, 0)], e=GF2.Zeros(2), eprime=GF2.Zeros(2)
+    )._dict
 
 
 def test_stopper_tensors():
@@ -280,10 +280,10 @@ def test_open_legged_enumerator():
     t2 = t1.stabilizer_enumerator_polynomial([4, 5], open_legs=[0, 1])
 
     assert t2 == {
-        ((0, 0, 0, 0), (0, 0, 0, 0)): SimplePoly({0: 1}),
-        ((0, 0, 1, 1), (0, 0, 1, 1)): SimplePoly({2: 1}),
-        ((1, 1, 0, 0), (1, 1, 0, 0)): SimplePoly({2: 1}),
-        ((1, 1, 1, 1), (1, 1, 1, 1)): SimplePoly({2: 1}),
+        (0, 0, 0, 0): SimplePoly({0: 1}),
+        (0, 0, 1, 1): SimplePoly({2: 1}),
+        (1, 1, 0, 0): SimplePoly({2: 1}),
+        (1, 1, 1, 1): SimplePoly({2: 1}),
     }, f"not equal:\n{t2}"
 
 
@@ -405,8 +405,8 @@ def test_step_by_step_to_d2_surface_code():
     total_wep = SimplePoly()
     for k, sub_wep in pte.tensor.items():
 
-        print(k, "->", sub_wep, sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
+        print(k, "->", sub_wep, sub_wep * SimplePoly({weight(GF2(k)): 1}))
+        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == total_wep._dict
 
@@ -475,9 +475,9 @@ def test_step_by_step_to_d2_surface_code():
             k,
             "->",
             sub_wep,
-            sub_wep * SimplePoly({weight(GF2(k[0])): 1}),
+            sub_wep * SimplePoly({weight(GF2(k)): 1}),
         )
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
+        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == dict(total_wep._dict)
 
@@ -544,9 +544,9 @@ def test_step_by_step_to_d2_surface_code():
             k,
             "->",
             sub_wep,
-            sub_wep * SimplePoly({weight(GF2(k[0])): 1}),
+            sub_wep * SimplePoly({weight(GF2(k)): 1}),
         )
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
+        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == dict(total_wep._dict)
 
@@ -767,7 +767,7 @@ def test_d5_rotated_surface_code():
 
 def test_d5_rotated_surface_code_x_only():
     tn = TensorNetwork.make_rsc(d=5, lego=lambda i: Legos.econding_tensor_512_x)
-    we = tn.stabilizer_enumerator_polynomial()
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     assert we == SimplePoly(
         {
             12: 1154,

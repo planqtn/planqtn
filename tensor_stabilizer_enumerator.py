@@ -131,6 +131,7 @@ class TensorNetwork:
             self.nodes = nodes_dict
 
         self.traces = []
+        self._cot_traces = None
         self.legs_left_to_join = {idx: [] for idx in self.nodes.keys()}
         # self.open_legs = [n.legs for n in self.nodes]
 
@@ -335,9 +336,9 @@ class TensorNetwork:
         return tn
 
     @classmethod
-    def make_compass_sq(clz, coloring):
+    def make_compass_sq(clz, coloring, lego=lambda node: Legos.econding_tensor_512):
         d = len(coloring) + 1
-        tn = clz.make_surface_code(d)
+        tn = clz.make_surface_code(d, lego)
         gauge_idxs = [
             (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
         ]
@@ -453,9 +454,17 @@ class TensorNetwork:
             for leg1, leg2 in zip(join_legs1, join_legs2):
                 print(f"n{node_idx1} -> n{node_idx2} ")
 
-    def analyze_traces(self):
+    def analyze_traces(self, cotengra: bool = False, **cotengra_opts):
+        free_legs, leg_indices, index_to_legs = self._collect_legs()
+
         new_tn = TensorNetwork(deepcopy(self.nodes))
         new_tn.traces = deepcopy(self.traces)
+        if cotengra:
+            new_tn.traces, tree = self._cotengra_contraction(
+                free_legs, leg_indices, index_to_legs, True, True, **cotengra_opts
+            )
+            tree.plot_ring()
+
         new_tn.legs_left_to_join = deepcopy(self.legs_left_to_join)
 
         pte_nodes = dict()
@@ -471,7 +480,7 @@ class TensorNetwork:
         )
         print(f"    pte nodes: {pte_nodes}")
         print(
-            f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join)}"
+            f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn.traces:
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
@@ -571,11 +580,9 @@ class TensorNetwork:
                 sprint(pte.h)
         return pte
 
-    def _cotengra_contraction(self, verbose=False, progress_bar=False):
-        # Dictionary to store the index for each leg
+    def _collect_legs(self):
         leg_indices = {}
         index_to_legs = {}
-        # Start with the first letter of the alphabet
         current_index = 0
         free_legs = []
         # Iterate over each node in the tensor network
@@ -610,10 +617,22 @@ class TensorNetwork:
                 if open_leg:
                     free_legs.append(leg)
                 current_index += 1
+        return free_legs, leg_indices, index_to_legs
 
+    def _cotengra_contraction(
+        self,
+        free_legs,
+        leg_indices,
+        index_to_legs,
+        verbose=False,
+        progress_bar=False,
+        **cotengra_opts,
+    ):
+        if self._cot_traces is not None:
+            return self._cot_traces
         inputs = []
         output = tuple(leg_indices[leg] for leg in free_legs)
-        size_dict = {leg: 4 for leg in leg_indices.values()}
+        size_dict = {leg: 1 for leg in leg_indices.values()}
 
         input_names = []
 
@@ -632,10 +651,14 @@ class TensorNetwork:
             print(output)
             print(size_dict)
 
+        contengra_params = {
+            "minimize": "write",
+            "parallel": True,
+        }
+        contengra_params.update(cotengra_opts)
         # ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
         opt = ctg.HyperOptimizer(
-            minimize="combo",
-            reconf_opts={},
+            **contengra_params,
             progbar=progress_bar,
         )
 
@@ -652,15 +675,14 @@ class TensorNetwork:
             return res
 
         # We convert the tree back to a list of traces
-        traces = []
+        self._cot_traces = []
         for parent, l, r in tree.traverse():
             # at each step we have to find the nodes that share indices in the two merged subsets
             new_traces = legs_to_contract(l, r)
-            print(parent, l, r, new_traces)
-            traces += new_traces
+            self._cot_traces += new_traces
 
         trace_indices = []
-        for t in traces:
+        for t in self._cot_traces:
             assert t in self.traces, f"{t} not in traces. Traces: {self.traces}"
             idx = self.traces.index(t)
             trace_indices.append(idx)
@@ -669,7 +691,7 @@ class TensorNetwork:
             range(len(self.traces))
         ), "Some traces are missing!"
 
-        return traces, free_legs
+        return self._cot_traces, tree
 
     def stabilizer_enumerator_polynomial(
         self,
@@ -679,8 +701,14 @@ class TensorNetwork:
         verbose: bool = False,
         progress_bar: bool = False,
         summed_legs: List[Tuple[int, int]] = None,
+        cotengra: bool = True,
     ) -> SimplePoly:
-        self.traces, free_legs = self._cotengra_contraction(verbose, progress_bar)
+        free_legs, leg_indices, index_to_legs = self._collect_legs()
+        traces = self.traces
+        if cotengra:
+            traces, _ = self._cotengra_contraction(
+                free_legs, leg_indices, index_to_legs, verbose, progress_bar
+            )
         if summed_legs is None:
             summed_legs = free_legs
         if self._wep is not None:
@@ -705,7 +733,7 @@ class TensorNetwork:
             )
 
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
-        for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
+        for node_idx1, node_idx2, join_legs1, join_legs2 in prog(traces):
             if verbose:
                 print(
                     f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
@@ -752,7 +780,10 @@ class TensorNetwork:
                     and leg not in summed_legs
                 ]
 
-                # print(f"joining two nodes with open legs: {open_legs1}, {open_legs2}")
+                if verbose:
+                    print(
+                        f"joining two nodes with open legs: {open_legs1}, {open_legs2}"
+                    )
 
                 pte = t1.trace_with(
                     t2,
@@ -897,7 +928,7 @@ class TensorNetwork:
         # TODO: this is valid for the reduced WEP only - but it's okay as we'll switch over to reduced WEP shortly
         self._wep = SimplePoly()
         for k, sub_wep in pte.tensor.items():
-            self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k[0])): 1}))
+            self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
         # self._wep = node1_pte.tensor[((), ())]
         return self._wep
 
@@ -910,13 +941,18 @@ class TensorNetwork:
 
 class PartiallyTracedEnumerator:
     def __init__(
-        self, nodes: Set[int], tracable_legs: List[Tuple[int, int]], tensor: np.ndarray
+        self,
+        nodes: Set[int],
+        tracable_legs: List[Tuple[int, int]],
+        tensor: Dict[Tuple, SimplePoly],
     ):
         self.nodes = nodes
         self.tracable_legs = tracable_legs
         self.tensor = tensor
 
-        tensor_key_length = len(list(self.tensor.keys())[0][0])
+        tensor_key_length = (
+            len(list(self.tensor.keys())[0]) if len(self.tensor) > 0 else 0
+        )
         assert tensor_key_length == 2 * len(
             tracable_legs
         ), f"tensor keys of length {tensor_key_length} != {2 * len(tracable_legs)} (2 * len tracable legs)"
@@ -971,15 +1007,12 @@ class PartiallyTracedEnumerator:
 
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for k1 in prog(self.tensor.keys()):
-            k1_gf2 = GF2(k1[0]), GF2(k1[1])
+            k1_gf2 = GF2(k1)
             for k2 in prog(pte2.tensor.keys()):
-                k2_gf2 = GF2(k2[0]), GF2(k2[1])
+                k2_gf2 = GF2(k2)
                 if not np.array_equal(
-                    sslice(k1_gf2[0], join_indices1),
-                    sslice(k2_gf2[0], join_indices2),
-                ) or not np.array_equal(
-                    sslice(k1_gf2[1], join_indices1),
-                    sslice(k2_gf2[1], join_indices2),
+                    sslice(k1_gf2, join_indices1),
+                    sslice(k2_gf2, join_indices2),
                 ):
                     continue
 
@@ -987,21 +1020,11 @@ class PartiallyTracedEnumerator:
                 wep2 = pte2.tensor[k2]
 
                 # we have to cut off the join legs from both keys and concatenate them
-                key = (
-                    # e
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[0], kept_indices1),
-                            sslice(k2_gf2[0], kept_indices2),
-                        ).tolist()
-                    ),
-                    # eprime
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[1], kept_indices1),
-                            sslice(k2_gf2[1], kept_indices2),
-                        ).tolist()
-                    ),
+                key = tuple(
+                    sconcat(
+                        sslice(k1_gf2, kept_indices1),
+                        sslice(k2_gf2, kept_indices2),
+                    ).tolist()
                 )
 
                 # assert len(key[0]) == 2 * (
@@ -1051,30 +1074,22 @@ class PartiallyTracedEnumerator:
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for old_key in prog(self.tensor.keys()):
             if not np.array_equal(
-                sslice(GF2(old_key[0]), join_indices1),
-                sslice(GF2(old_key[0]), join_indices2),
-            ) or not np.array_equal(
-                sslice(GF2(old_key[1]), join_indices1),
-                sslice(GF2(old_key[1]), join_indices2),
+                sslice(GF2(old_key), join_indices1),
+                sslice(GF2(old_key), join_indices2),
             ):
                 continue
 
             wep1 = self.tensor[old_key]
 
-            k1_gf2 = GF2(old_key[0]), GF2(old_key[1])
+            k1_gf2 = GF2(old_key)
 
             # we have to cut off the join legs from both keys and concatenate them
 
-            key = (
-                # e
-                tuple(sslice(k1_gf2[0], kept_indices).tolist()),
-                # eprime
-                tuple(sslice(k1_gf2[1], kept_indices).tolist()),
-            )
+            key = tuple(sslice(k1_gf2, kept_indices).tolist())
 
-            assert len(key[0]) == 2 * (
+            assert len(key) == 2 * (
                 len(open_legs)
-            ), f"key length: {len(key[0])} != 2*{len(open_legs)} = {2 * len(open_legs)}"
+            ), f"key length: {len(key)} != 2*{len(open_legs)} = {2 * len(open_legs)}"
             # print(f"key: {key}")
             # print(f"wep: {wep1}")
 
@@ -1126,15 +1141,12 @@ class PartiallyTracedEnumerator:
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
 
         for k1 in prog(self.tensor.keys()):
-            k1_gf2 = GF2(k1[0]), GF2(k1[1])
+            k1_gf2 = GF2(k1)
             for k2 in prog(t2.keys()):
-                k2_gf2 = GF2(k2[0]), GF2(k2[1])
+                k2_gf2 = GF2(k2)
                 if not np.array_equal(
-                    sslice(k1_gf2[0], join_indices1),
-                    sslice(k2_gf2[0], join_indices2),
-                ) or not np.array_equal(
-                    sslice(k1_gf2[1], join_indices1),
-                    sslice(k2_gf2[1], join_indices2),
+                    sslice(k1_gf2, join_indices1),
+                    sslice(k2_gf2, join_indices2),
                 ):
                     continue
 
@@ -1142,21 +1154,11 @@ class PartiallyTracedEnumerator:
                 wep2 = t2[k2]
 
                 # we have to cut off the join legs from both keys and concatenate them
-                key = (
-                    # e
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[0], kept_indices1),
-                            sslice(k2_gf2[0], kept_indices2),
-                        ).tolist()
-                    ),
-                    # eprime
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[1], kept_indices1),
-                            sslice(k2_gf2[1], kept_indices2),
-                        ).tolist()
-                    ),
+                key = tuple(
+                    sconcat(
+                        sslice(k1_gf2, kept_indices1),
+                        sslice(k2_gf2, kept_indices2),
+                    ).tolist()
                 )
 
                 # assert len(key[0]) == 2 * (
@@ -1294,46 +1296,34 @@ class TensorStabilizerCodeEnumerator:
             traced_legs2, e2, eprime2, join_legs2 + open_legs2
         )
 
-        open_length = len(join_legs1 + open_legs1) + len(join_legs2 + open_legs2)
-
         wep = defaultdict(lambda: SimplePoly())
-
+        # print(f"t1: {t1}, open legs: {open_legs1}")
+        # print(f"t2: {t2}, open legs: {open_legs2}")
         for k1 in t1.keys():
             for k2 in t2.keys():
                 if not _equal_on_support(
+                    # key indexes correspond to join_legs then open_legs
                     list(range(join_length)),
-                    GF2(k1[0]),
-                    GF2(k2[0]),
-                ) or not _equal_on_support(
-                    list(range(join_length)),
-                    GF2(k1[1]),
-                    GF2(k2[1]),
+                    GF2(k1),
+                    GF2(k2),
                 ):
                     continue
 
+                # print(f"match! {k1} ~ {k2}")
                 wep1 = t1[k1]
                 wep2 = t2[k2]
-                k1_gf2 = GF2(k1[0]), GF2(k1[1])
-                k2_gf2 = GF2(k2[0]), GF2(k2[1])
+                k1_gf2 = GF2(k1)
+                k2_gf2 = GF2(k2)
 
                 # we have to cut off the join legs from both keys and concatenate them
 
-                key = (
-                    # e
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[0], slice(join_length, None)),
-                            sslice(k2_gf2[0], slice(join_length, None)),
-                        ).tolist()
-                    ),
-                    # eprime
-                    tuple(
-                        sconcat(
-                            sslice(k1_gf2[1], slice(join_length, None)),
-                            sslice(k2_gf2[1], slice(join_length, None)),
-                        ).tolist()
-                    ),
+                key = tuple(
+                    sconcat(
+                        sslice(k1_gf2, slice(join_length, None)),
+                        sslice(k2_gf2, slice(join_length, None)),
+                    ).tolist()
                 )
+                # print(f"key - {key} - {k1_gf2}")
 
                 wep[key].add_inplace(wep1 * wep2)
 
@@ -1344,6 +1334,7 @@ class TensorStabilizerCodeEnumerator:
         #     open_legs1,
         #     open_legs2,
         # )
+        # print(wep)
 
         return PartiallyTracedEnumerator(
             {self.idx, other.idx}, tracable_legs=tracable_legs, tensor=wep
@@ -1449,7 +1440,7 @@ class TensorStabilizerCodeEnumerator:
             def finalize(self):
                 self.wep = self.wep
 
-        class DoubleStabilizerCollector:
+        class TensorElementCollector:
             def __init__(self, k, n):
                 self.k = k
                 self.n = n
@@ -1466,33 +1457,14 @@ class TensorStabilizerCodeEnumerator:
                 return wep
 
             def finalize(self):
-                # complement indices for traced cols
-                # tlc = [leg for leg in range(self.n) if leg not in traced_cols]
-                # complement indices for open cols
-                # olc = [leg for leg in range(self.n) if leg not in open_cols]
-
-                # we are counting the number of stabilizers that are already matching
-                # on the traced legs with E, E' - either they are diagonal or offdiagonal
-                # if we are in diagonal land, then it is enough to just simply count them up with the right keys
                 if not is_diagonal_element:
                     raise ValueError(
                         "TODO: non-diagonal elements are not fully supported yet."
                     )
-                for s1 in self.matching_stabilizers:
-                    stab_weight = weight(s1, skip_indices=self.skip_indices)
-                    # for s2 in self.matching_stabilizers:
-
-                    #     if not _suboperator_matches_on_support(
-                    #         olc, s1, sslice(s2, olc)
-                    #     ):
-                    #         continue
-                    key1 = tuple(sslice(s1, open_cols).tolist())
-                    self.wep[
-                        (
-                            key1,
-                            key1,
-                        )
-                    ].add_inplace(SimplePoly({stab_weight: 1}))
+                for s in self.matching_stabilizers:
+                    stab_weight = weight(s, skip_indices=self.skip_indices)
+                    key = tuple(sslice(s, open_cols).tolist())
+                    self.wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
                 for key in self.wep.keys():
                     self.wep[key] = self._scale_one(self.wep[key])
@@ -1500,7 +1472,7 @@ class TensorStabilizerCodeEnumerator:
         collector = (
             SimpleStabilizerCollector(self.k, self.n)
             if open_cols == []
-            else DoubleStabilizerCollector(self.k, self.n)
+            else TensorElementCollector(self.k, self.n)
         )
         # assuming a full rank parity check
         for i in range(2 ** (self.n - self.k)):

@@ -1,5 +1,6 @@
 import json
 import sys
+import time
 from galois import GF2
 from matplotlib import pyplot as plt
 import numpy as np
@@ -262,43 +263,73 @@ def compass_code_from_tanner():
 # Assuming `tn` is an instance of TensorNetwork
 # extract_leg_indices(tn)
 if __name__ == "__main__":
+    import faulthandler
+
+    faulthandler.enable()
+    d = 5
+    coloring = np.random.randint(1, 3, (d - 1, d - 1))
+    # coloring = [
+    #     [2, 1],
+    #     [1, 1],
+    # ]
+    print(repr(coloring))
+    tn = TensorNetwork.make_compass_sq(
+        coloring=coloring, lego=lambda node: Legos.econding_tensor_512_z
+    )
+    start = time.time()
+    # print(
+    #     tn.stabilizer_enumerator_polynomial(
+    #         verbose=False, progress_bar=True, cotengra=False
+    #     )
+    # )
+    tn.analyze_traces(
+        cotengra=True,
+        parallel=True,
+        methods=["greedy"],
+        optlib="nevergrad",
+        on_trial_error="raise",
+    )
+
+    end = time.time()
+    print(f"total time {end-start:0.1f} s")
+
     # print("---- compass from surface code -----")
     # compass_code_from_surface_code_via_gauge_fixing()
     # print("---- compass from tanner graph -----")
     # compass_code_from_tanner()
 
-    hz = GF2(
-        [
-            [1, 1, 0, 1, 1, 0, 1, 1, 0],
-            [0, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 1, 0, 1, 1],
-        ]
-    )
+    # hz = GF2(
+    #     [
+    #         [1, 1, 0, 1, 1, 0, 1, 1, 0],
+    #         [0, 1, 1, 0, 0, 0, 0, 0, 0],
+    #         [0, 0, 0, 0, 1, 1, 0, 1, 1],
+    #     ]
+    # )
 
-    hx = GF2(
-        [
-            [1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 1, 1, 0, 1, 1, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 1, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 1],
-        ]
-    )
+    # hx = GF2(
+    #     [
+    #         [1, 0, 0, 1, 0, 0, 0, 0, 0],
+    #         [0, 1, 1, 0, 1, 1, 0, 0, 0],
+    #         [0, 0, 0, 1, 0, 0, 1, 0, 0],
+    #         [0, 0, 0, 0, 1, 0, 0, 1, 0],
+    #         [0, 0, 0, 0, 0, 1, 0, 0, 1],
+    #     ]
+    # )
 
-    # hz = GF2([[1, 1, 1, 1]])
-    # hx = GF2([[1, 1, 1, 1]])
-    tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
+    # # hz = GF2([[1, 1, 1, 1]])
+    # # hx = GF2([[1, 1, 1, 1]])
+    # tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
 
-    tn.traces = cotengra_fun(tn)
+    # tn.traces = cotengra_fun(tn)
 
-    print(
-        "enumerator:",
-        tn.stabilizer_enumerator_polynomial(
-            # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
-            verbose=True,
-            progress_bar=False,
-            summed_legs=[(f"q{i}.x", 1) for i in range(hx.shape[1])],
-        ),
-    )
+    # print(
+    #     "enumerator:",
+    #     tn.stabilizer_enumerator_polynomial(
+    #         # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
+    #         verbose=True,
+    #         progress_bar=False,
+    #         summed_legs=[(f"q{i}.x", 1) for i in range(hx.shape[1])],
+    #     ),
+    # )
 
-    compass_code_from_surface_code_via_gauge_fixing()
+    # compass_code_from_surface_code_via_gauge_fixing()
