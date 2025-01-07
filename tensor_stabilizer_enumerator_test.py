@@ -760,7 +760,7 @@ def test_d5_rotated_surface_code():
     tn = TensorNetwork.make_rsc(d=5)
 
     we = tn.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
+        summed_legs=[(idx, 4) for idx in tn.nodes.keys()], cotengra=False
     )
     assert we == rsc5_enum
 
