@@ -483,7 +483,9 @@ class TensorNetwork:
             inputs, output, size_dict, path=path, check=True
         )
 
-    def analyze_traces(self, cotengra: bool = False, details=False, **cotengra_opts):
+    def analyze_traces(
+        self, cotengra: bool = False, each_step=False, details=False, **cotengra_opts
+    ):
         free_legs, leg_indices, index_to_legs = self._collect_legs()
         tree = None
 
@@ -519,13 +521,15 @@ class TensorNetwork:
         print(
             "========================== ======= === === === == ==============================="
         )
-        print(f"    pte nodes: {pte_nodes}")
         print(
             f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn.traces:
-            print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
+            if each_step:
+                print(
+                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                )
 
             for leg in join_legs1:
                 new_tn.legs_left_to_join[node_idx1].remove(leg)
@@ -534,7 +538,8 @@ class TensorNetwork:
 
             if node_idx1 not in pte_nodes and node_idx2 not in pte_nodes:
                 next_pte = 0 if len(pte_nodes) == 0 else max(pte_nodes.values()) + 1
-                print(f"New PTE: {next_pte}")
+                if each_step:
+                    print(f"New PTE: {next_pte}")
                 pte_nodes[node_idx1] = next_pte
                 pte_nodes[node_idx2] = next_pte
             elif node_idx1 in pte_nodes and node_idx2 not in pte_nodes:
@@ -542,9 +547,11 @@ class TensorNetwork:
             elif node_idx2 in pte_nodes and node_idx1 not in pte_nodes:
                 pte_nodes[node_idx1] = pte_nodes[node_idx2]
             elif pte_nodes[node_idx1] == pte_nodes[node_idx2]:
-                print(f"self trace in PTE {pte_nodes[node_idx1]}")
+                if each_step:
+                    print(f"self trace in PTE {pte_nodes[node_idx1]}")
             else:
-                print(f"MERGE of {pte_nodes[node_idx1]} and {pte_nodes[node_idx2]}")
+                if each_step:
+                    print(f"MERGE of {pte_nodes[node_idx1]} and {pte_nodes[node_idx2]}")
                 removed_pte = pte_nodes[node_idx2]
                 merged_pte = pte_nodes[node_idx1]
                 for node in pte_nodes.keys():
@@ -553,21 +560,24 @@ class TensorNetwork:
 
             if details:
                 print(f"    pte nodes: {pte_nodes}")
-            print(
-                f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
-            )
+            if each_step:
+                print(
+                    f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
+                )
 
             pte_leg_numbers = defaultdict(int)
 
             for node in pte_nodes.keys():
                 pte_leg_numbers[pte_nodes[node]] += len(new_tn.legs_left_to_join[node])
 
-            print(f"     PTEs num legs: {pte_leg_numbers}")
+            if each_step:
+                print(f"     PTEs num tracable legs: {dict(pte_leg_numbers)}")
 
             biggest_legs = max(pte_leg_numbers.values())
 
             max_pte_legs = max(max_pte_legs, biggest_legs)
-            print(f"    Biggest PTE legs: {biggest_legs} vs MAX: {max_pte_legs}")
+            if each_step:
+                print(f"    Biggest PTE legs: {biggest_legs} vs MAX: {max_pte_legs}")
 
         print("=== Final state ==== ")
         if details:
@@ -577,14 +587,9 @@ class TensorNetwork:
             f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
         )
         print(
-            f"Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}: { new_tn.legs_left_to_join}"
+            f"Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
-        print(
-            f"PTE legs: {sum(len(new_tn.legs_left_to_join[node]) for node in pte_nodes.keys())}"
-        )
-        print(
-            f"PTE legs: {[new_tn.legs_left_to_join[node] for node in pte_nodes.keys()]}"
-        )
+        print(f"PTEs num tracable legs: {dict(pte_leg_numbers)}")
         print(f"Maximum PTE legs: {max_pte_legs}")
         return tree, max_pte_legs
 
