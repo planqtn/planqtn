@@ -454,16 +454,57 @@ class TensorNetwork:
             for leg1, leg2 in zip(join_legs1, join_legs2):
                 print(f"n{node_idx1} -> n{node_idx2} ")
 
-    def analyze_traces(self, cotengra: bool = False, **cotengra_opts):
+    def _cotengra_tree_from_traces(self, free_legs, leg_indices, index_to_legs):
+        inputs, output, size_dict, input_names = self._prep_cotengra_inputs(
+            leg_indices, free_legs, True
+        )
+
+        path = []
+        terms = [{node_idx} for node_idx in input_names]
+
+        def idx(node_id):
+            for i, term in enumerate(terms):
+                if node_id in term:
+                    return i
+            assert (
+                False
+            ), "This should not happen, nodes should be always present in at least one of the terms."
+
+        for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+            i, j = sorted([idx(node_idx1), idx(node_idx2)])
+            # print((node_idx1, node_idx2), f"=> {i,j}", terms)
+            if i == j:
+                continue
+            path.append({i, j})
+            term2 = terms.pop(j)
+            term1 = terms.pop(i)
+            terms.append(term1.union(term2))
+        return ctg.ContractionTree.from_path(
+            inputs, output, size_dict, path=path, check=True
+        )
+
+    def analyze_traces(self, cotengra: bool = False, details=False, **cotengra_opts):
         free_legs, leg_indices, index_to_legs = self._collect_legs()
+        tree = None
+
+        node_to_free_legs = defaultdict(list)
+        for leg in free_legs:
+            for node_idx, node in self.nodes.items():
+                if leg in node.legs:
+                    node_to_free_legs[node.idx].append(leg)
 
         new_tn = TensorNetwork(deepcopy(self.nodes))
+
         new_tn.traces = deepcopy(self.traces)
         if cotengra:
+            print("Calculating best contraction path...")
             new_tn.traces, tree = self._cotengra_contraction(
-                free_legs, leg_indices, index_to_legs, True, True, **cotengra_opts
+                free_legs, leg_indices, index_to_legs, details, True, **cotengra_opts
             )
-            tree.plot_ring()
+        else:
+            tree = self._cotengra_tree_from_traces(
+                free_legs, leg_indices, index_to_legs
+            )
 
         new_tn.legs_left_to_join = deepcopy(self.legs_left_to_join)
 
@@ -482,6 +523,7 @@ class TensorNetwork:
         print(
             f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
+
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn.traces:
             print(f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== ")
 
@@ -492,6 +534,7 @@ class TensorNetwork:
 
             if node_idx1 not in pte_nodes and node_idx2 not in pte_nodes:
                 next_pte = 0 if len(pte_nodes) == 0 else max(pte_nodes.values()) + 1
+                print(f"New PTE: {next_pte}")
                 pte_nodes[node_idx1] = next_pte
                 pte_nodes[node_idx2] = next_pte
             elif node_idx1 in pte_nodes and node_idx2 not in pte_nodes:
@@ -501,24 +544,37 @@ class TensorNetwork:
             elif pte_nodes[node_idx1] == pte_nodes[node_idx2]:
                 print(f"self trace in PTE {pte_nodes[node_idx1]}")
             else:
-                print("MERGE")
+                print(f"MERGE of {pte_nodes[node_idx1]} and {pte_nodes[node_idx2]}")
+                removed_pte = pte_nodes[node_idx2]
+                merged_pte = pte_nodes[node_idx1]
                 for node in pte_nodes.keys():
-                    if pte_nodes[node] == pte_nodes[node_idx2]:
-                        pte_nodes[node] = pte_nodes[node_idx1]
+                    if pte_nodes[node] == removed_pte:
+                        pte_nodes[node] = merged_pte
 
-            print(f"    pte nodes: {pte_nodes}")
+            if details:
+                print(f"    pte nodes: {pte_nodes}")
             print(
                 f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
             )
-            num_pte_legs = sum(
-                len(new_tn.legs_left_to_join[node]) for node in pte_nodes.keys()
-            )
-            max_pte_legs = max(max_pte_legs, num_pte_legs)
-            print(f"    PTE legs: {num_pte_legs}")
+
+            pte_leg_numbers = defaultdict(int)
+
+            for node in pte_nodes.keys():
+                pte_leg_numbers[pte_nodes[node]] += len(new_tn.legs_left_to_join[node])
+
+            print(f"     PTEs num legs: {pte_leg_numbers}")
+
+            biggest_legs = max(pte_leg_numbers.values())
+
+            max_pte_legs = max(max_pte_legs, biggest_legs)
+            print(f"    Biggest PTE legs: {biggest_legs} vs MAX: {max_pte_legs}")
 
         print("=== Final state ==== ")
+        if details:
+            print(f"pte nodes: {pte_nodes}")
+
         print(
-            f"pte nodes: {pte_nodes} is all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} "
+            f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
         )
         print(
             f"Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}: { new_tn.legs_left_to_join}"
@@ -530,6 +586,7 @@ class TensorNetwork:
             f"PTE legs: {[new_tn.legs_left_to_join[node] for node in pte_nodes.keys()]}"
         )
         print(f"Maximum PTE legs: {max_pte_legs}")
+        return tree, max_pte_legs
 
     def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False):
         pte_nodes = []
@@ -589,7 +646,7 @@ class TensorNetwork:
         for node_idx, node in self.nodes.items():
             # Iterate over each leg in the node
             for leg in node.legs:
-                current_idx_name = f"i{current_index}"
+                current_idx_name = f"{leg}"
                 # If the leg is already indexed, skip it
                 if leg in leg_indices:
                     continue
@@ -607,6 +664,7 @@ class TensorNetwork:
                     else:
                         continue
                     open_leg = False
+                    current_idx_name = f"{join_legs1[idx]}_{join_legs2[idx]}"
                     leg_indices[join_legs1[idx]] = current_idx_name
                     leg_indices[join_legs2[idx]] = current_idx_name
                     index_to_legs[current_idx_name] = [
@@ -619,20 +677,10 @@ class TensorNetwork:
                 current_index += 1
         return free_legs, leg_indices, index_to_legs
 
-    def _cotengra_contraction(
-        self,
-        free_legs,
-        leg_indices,
-        index_to_legs,
-        verbose=False,
-        progress_bar=False,
-        **cotengra_opts,
-    ):
-        if self._cot_traces is not None:
-            return self._cot_traces
+    def _prep_cotengra_inputs(self, leg_indices, free_legs, verbose=False):
         inputs = []
-        output = tuple(leg_indices[leg] for leg in free_legs)
-        size_dict = {leg: 1 for leg in leg_indices.values()}
+        output = []  #  tuple(leg_indices[leg] for leg in free_legs)
+        size_dict = {leg: 2 for leg in leg_indices.values()}
 
         input_names = []
 
@@ -650,20 +698,11 @@ class TensorNetwork:
             print(inputs)
             print(output)
             print(size_dict)
+        return inputs, output, size_dict, input_names
 
-        contengra_params = {
-            "minimize": "write",
-            "parallel": True,
-        }
-        contengra_params.update(cotengra_opts)
-        # ctg.HyperGraph(inputs, output, size_dict).plot(ax=plt.gca())
-        opt = ctg.HyperOptimizer(
-            **contengra_params,
-            progbar=progress_bar,
-        )
-
-        tree: ctg.ContractionTree = opt.search(inputs, output, size_dict)
-
+    def _traces_from_cotengra_tree(
+        self, tree: ctg.ContractionTree, index_to_legs, inputs
+    ):
         def legs_to_contract(l: frozenset, r: frozenset):
             res = []
             left_indices = sum((list(inputs[leaf_idx]) for leaf_idx in l), [])
@@ -675,14 +714,14 @@ class TensorNetwork:
             return res
 
         # We convert the tree back to a list of traces
-        self._cot_traces = []
+        traces = []
         for parent, l, r in tree.traverse():
             # at each step we have to find the nodes that share indices in the two merged subsets
             new_traces = legs_to_contract(l, r)
-            self._cot_traces += new_traces
+            traces += new_traces
 
         trace_indices = []
-        for t in self._cot_traces:
+        for t in traces:
             assert t in self.traces, f"{t} not in traces. Traces: {self.traces}"
             idx = self.traces.index(t)
             trace_indices.append(idx)
@@ -690,8 +729,42 @@ class TensorNetwork:
         assert set(trace_indices) == set(
             range(len(self.traces))
         ), "Some traces are missing!"
+        return traces
 
-        return self._cot_traces, tree
+    def _cotengra_contraction(
+        self,
+        free_legs,
+        leg_indices,
+        index_to_legs,
+        verbose=False,
+        progress_bar=False,
+        **cotengra_opts,
+    ):
+
+        if self._cot_traces is not None:
+            return self._cot_traces, self._cot_tree
+
+        inputs, output, size_dict, input_names = self._prep_cotengra_inputs(
+            leg_indices, free_legs, verbose
+        )
+
+        contengra_params = {
+            "minimize": "size",
+            "parallel": True,
+        }
+        contengra_params.update(cotengra_opts)
+        opt = ctg.HyperOptimizer(
+            **contengra_params,
+            progbar=progress_bar,
+        )
+
+        self._cot_tree = opt.search(inputs, output, size_dict)
+
+        self._cot_traces = self._traces_from_cotengra_tree(
+            self._cot_tree, index_to_legs=index_to_legs, inputs=inputs
+        )
+
+        return self._cot_traces, self._cot_tree
 
     def stabilizer_enumerator_polynomial(
         self,
@@ -732,7 +805,11 @@ class TensorNetwork:
                 "Completely disconnected nodes is unsupported. TODO: implement tensoring of disconnected component weight enumerators."
             )
 
-        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
+        prog = lambda x: (
+            x
+            if not progress_bar
+            else tqdm(x, leave=False, desc=f"{len(traces)} traces")
+        )
         for node_idx1, node_idx2, join_legs1, join_legs2 in prog(traces):
             if verbose:
                 print(
@@ -1005,10 +1082,18 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
+        prog = lambda x: (
+            x
+            if not progress_bar
+            else tqdm(
+                x,
+                leave=False,
+                desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
+            )
+        )
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1)
-            for k2 in prog(pte2.tensor.keys()):
+            for k2 in pte2.tensor.keys():
                 k2_gf2 = GF2(k2)
                 if not np.array_equal(
                     sslice(k1_gf2, join_indices1),
@@ -1071,7 +1156,15 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
+        prog = lambda x: (
+            x
+            if not progress_bar
+            else tqdm(
+                x,
+                leave=False,
+                desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
+            )
+        )
         for old_key in prog(self.tensor.keys()):
             if not np.array_equal(
                 sslice(GF2(old_key), join_indices1),
@@ -1138,7 +1231,15 @@ class PartiallyTracedEnumerator:
 
         # print(f"kept indices 2: {kept_indices2}")
 
-        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
+        prog = lambda x: (
+            x
+            if not progress_bar
+            else tqdm(
+                x,
+                leave=False,
+                desc=f"PTE with {len(self.tensor)} tensor vs node {other.idx} with {len(t2)} tensor | {join_legs1[0]} - {join_legs2[0]}",
+            )
+        )
 
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1)

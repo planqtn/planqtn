@@ -266,8 +266,8 @@ if __name__ == "__main__":
     import faulthandler
 
     faulthandler.enable()
-    d = 5
-    coloring = np.random.randint(1, 3, (d - 1, d - 1))
+    d = 11
+    coloring = np.random.RandomState(0).randint(1, 3, (d - 1, d - 1))
     # coloring = [
     #     [2, 1],
     #     [1, 1],
@@ -276,18 +276,12 @@ if __name__ == "__main__":
     tn = TensorNetwork.make_compass_sq(
         coloring=coloring, lego=lambda node: Legos.econding_tensor_512_z
     )
+    tn.analyze_traces(cotengra=True, minimize="size")
     start = time.time()
-    # print(
-    #     tn.stabilizer_enumerator_polynomial(
-    #         verbose=False, progress_bar=True, cotengra=False
-    #     )
-    # )
-    tn.analyze_traces(
-        cotengra=True,
-        parallel=True,
-        methods=["greedy"],
-        optlib="nevergrad",
-        on_trial_error="raise",
+    print(
+        tn.stabilizer_enumerator_polynomial(
+            verbose=False, progress_bar=True, cotengra=True
+        )
     )
 
     end = time.time()

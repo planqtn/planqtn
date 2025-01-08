@@ -1,5 +1,7 @@
 import time
 from galois import GF2
+from matplotlib import pyplot as plt
+import numpy as np
 
 from legos import Legos
 from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
@@ -53,19 +55,60 @@ rsc = GF2(
 #     ScalarStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
 # )
 
-tn = TensorNetwork.make_rsc(d=9, lego=lambda i: Legos.econding_tensor_512_z)
+d = 7
+plt.style.use("dark_background")
 
-# tn.traces_to_dot()
-# tn.analyze_traces()
+fig, axs = plt.subplots(2, 2, figsize=(16, 12))
 
-start = time.time()
+for axrow, cotengra in zip(axs, [True, False]):
 
-tn.analyze_traces(cotengra=False)
-# we = tn.stabilizer_enumerator_polynomial(progress_bar=True, cotengra=True)
+    coloring = np.random.randint(1, 3, (d - 1, d - 1))
+    tn = TensorNetwork.make_rsc(d=d, lego=lambda i: Legos.econding_tensor_512_x)
+    # tn = TensorNetwork.make_compass_sq(
+    #     coloring=coloring, lego=lambda i: Legos.econding_tensor_512_x
+    # )
+    # tn.traces_to_dot()
+    # tn.analyze_traces()
 
-# print(we)
-end = time.time()
-print(f"Total time: {end-start:0.3f}s")
+    tree, max_pte_legs = tn.analyze_traces(
+        cotengra=cotengra, minimize="size", methods=["kahypar"], max_repeats=128
+    )
+    # fig, axs = plt.subplots(1, 2)
+    # tree.plot_ring(ax=axs[0])
+
+    # free_legs, leg_indices, index_to_legs = tn._collect_legs()
+    # inputs, output, size_dict, input_names = tn._prep_cotengra_inputs(
+    #     leg_indices, free_legs, False
+    # )
+    # tree = tn._cotengra_tree_from_traces(free_legs, leg_indices, index_to_legs)
+    # traces = tn._traces_from_cotengra_tree(tree, index_to_legs, inputs)
+    # print("-------- traces from tree -------")
+    # for t in traces:
+    #     print(t)
+
+    # print("-------- traces originally -------")
+    # for t in tn.traces:
+    #     print(t)
+
+    start = time.time()
+
+    we = tn.stabilizer_enumerator_polynomial(progress_bar=True, cotengra=cotengra)
+
+    end = time.time()
+    print(f"Total time cotengra={cotengra}: {end-start:0.3f}s")
+
+    axrow[0].set_title(
+        f"RSC cotengra={cotengra}, d={d}, max_legs={max_pte_legs}, time={end-start:0.3f}s"
+    )
+    tree.plot_contractions(ax=axrow[0])
+    axrow[1].set_title(
+        f"RSC cotengra={cotengra}, d={d}, max_legs={max_pte_legs}, time={end-start:0.3f}s"
+    )
+    tree.plot_rubberband(ax=axrow[1])
+
+
+fig.savefig(f"rsc_rubberplots_d{d}.pdf")
+
 
 # d=7
 {
