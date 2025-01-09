@@ -1670,9 +1670,9 @@ class TensorStabilizerCodeEnumerator:
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
                 coset[self.legs.index(leg)] = pauli[0]
                 coset[self.legs.index(leg) + self.n] = pauli[1]
-                print(
-                    f"brute force - {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
-                )
+                # print(
+                #     f"brute force - {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
+                # )
 
         collector = (
             SimpleStabilizerCollector(self.k, self.n, coset)
