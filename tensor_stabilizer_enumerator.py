@@ -114,7 +114,6 @@ def _update_512_qubit_nodes_with_coset(
 ):
     if coset_error is not None:
         n = len(coset_error) // 2
-        print(n)
 
         z_errors = np.argwhere(coset_error[n:] == 1).flatten()
         x_errors = np.argwhere(coset_error[:n] == 1).flatten()
@@ -123,9 +122,9 @@ def _update_512_qubit_nodes_with_coset(
             pauli = PAULI_Z
             if q in x_errors:
                 pauli = PAULI_Y
-                print(f"pauli Y: {q} -> {qubit_to_node(q)}")
-            else:
-                print(f"pauli Z: {q} -> {qubit_to_node(q)}")
+            #     print(f"pauli Y: {q} -> {qubit_to_node(q)}")
+            # else:
+            #     print(f"pauli Z: {q} -> {qubit_to_node(q)}")
             node = tn.nodes[qubit_to_node(q)]
             tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
                 [((node.idx, 4), pauli)]
@@ -133,7 +132,7 @@ def _update_512_qubit_nodes_with_coset(
         for q in x_errors:
             if q in z_errors:
                 continue
-            print(f"pauli X: {q} -> {qubit_to_node(q)}")
+            # print(f"pauli X: {q} -> {qubit_to_node(q)}")
             node = tn.nodes[qubit_to_node(q)]
             tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
                 [((node.idx, 4), PAULI_X)]
