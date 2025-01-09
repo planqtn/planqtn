@@ -6,6 +6,9 @@ import pytest
 import scipy
 import sympy
 
+from qlego.codes.css_tanner_code import CssTannerCode
+from qlego.codes.surface_code import SurfaceCode
+from qlego.codes.compass_code import CompassCode
 from qlego.legos import Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, sprint
@@ -24,6 +27,8 @@ from qlego.tensor_stabilizer_enumerator import (
 
 from sympy.abc import w, z
 from sympy import Poly
+
+from tnqec.qlego.codes.rotated_surface_code import RotatedSurfaceCode
 
 
 def test_422_logical_legs_enumerator():
@@ -577,8 +582,8 @@ def test_step_by_step_to_d2_surface_code():
 
 
 def test_d3_rsc_with_merged_ptes():
-    tn = TensorNetwork.make_rsc(d=3)
-    tn_single_pte = TensorNetwork.make_rsc(d=3)
+    tn = RotatedSurfaceCode(d=3)
+    tn_single_pte = RotatedSurfaceCode(d=3)
 
     print(tn.traces)
     tn.traces = [
@@ -653,14 +658,14 @@ def test_d3_rotated_surface_code():
     scalar = ScalarStabilizerCodeEnumerator(rsc)
     print(scalar.stabilizer_enumerator)
 
-    tn = TensorNetwork.make_rsc(d=3)
+    tn = RotatedSurfaceCode(d=3)
 
     we = tn.stabilizer_enumerator_polynomial()
     assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 def test_d3_creation():
-    tn = TensorNetwork.make_rsc(3)
+    tn = RotatedSurfaceCode(3)
 
     nodes = [
         TensorStabilizerCodeEnumerator(Legos.econding_tensor_512, idx=i)
@@ -759,7 +764,7 @@ def test_d5_rotated_surface_code():
         / 4
     )
     print(rsc5_enum)
-    tn = TensorNetwork.make_rsc(d=5)
+    tn = RotatedSurfaceCode(d=5)
 
     we = tn.stabilizer_enumerator_polynomial(
         summed_legs=[(idx, 4) for idx in tn.nodes.keys()], cotengra=False
@@ -768,7 +773,7 @@ def test_d5_rotated_surface_code():
 
 
 def test_d5_rotated_surface_code_x_only():
-    tn = TensorNetwork.make_rsc(d=5, lego=lambda i: Legos.econding_tensor_512_x)
+    tn = RotatedSurfaceCode(d=5, lego=lambda i: Legos.econding_tensor_512_x)
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     assert we == SimplePoly(
         {
@@ -788,10 +793,10 @@ def test_d5_rotated_surface_code_x_only():
 
 
 def test_d2_unrotated_surface_code_with_summed_legs():
-    tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCode(d=2, lego=lambda i: Legos.econding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
-    tn2 = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn2 = SurfaceCode(d=2, lego=lambda i: Legos.econding_tensor_512)
     expected_we = tn2.stabilizer_enumerator_polynomial(
         summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
     )
@@ -800,7 +805,7 @@ def test_d2_unrotated_surface_code_with_summed_legs():
 
 
 def test_d2_unrotated_surface_code():
-    tn = TensorNetwork.make_surface_code(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCode(d=2, lego=lambda i: Legos.econding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
     h = GF2(
@@ -820,7 +825,7 @@ def test_d2_unrotated_surface_code():
 
 
 def test_d3_unrotated_surface_code():
-    tn = TensorNetwork.make_surface_code(d=3, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCode(d=3, lego=lambda i: Legos.econding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
     hx_sparse = [
@@ -859,7 +864,7 @@ def test_d3_unrotated_surface_code():
 
 
 def test_compass_code():
-    tn = TensorNetwork.make_compass_sq(
+    tn = CompassCode(
         [
             [1, 1],
             [2, 1],
@@ -907,10 +912,10 @@ def test_tanner_graph_enumerator():
         ]
     )
 
-    tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
+    tn = CssTannerCode(hx, hz)
 
     wep = tn.stabilizer_enumerator_polynomial(verbose=True)
-    tn = TensorNetwork.make_compass_sq(
+    tn = CompassCode(
         [
             [1, 1],
             [2, 1],
@@ -929,7 +934,7 @@ def test_compass_code_z_coset_weight_enumerator_weight1():
             [2, 1],
         ]
     )
-    tn = TensorNetwork.make_compass_sq(
+    tn = CompassCode(
         coloring,
         lego=lambda i: Legos.econding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
@@ -945,7 +950,7 @@ def test_compass_code_z_coset_weight_enumerator_weight2():
             [2, 1],
         ]
     )
-    tn = TensorNetwork.make_compass_sq(
+    tn = CompassCode(
         coloring,
         lego=lambda i: Legos.econding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]),
@@ -988,7 +993,7 @@ def test_rsc3_x_and_z_coset_wep():
         coset_error[b] = 1
     for b in z_error_bits:
         coset_error[b + 9] = 1
-    tn = TensorNetwork.make_rsc(
+    tn = RotatedSurfaceCode(
         d=3,
         coset_error=coset_error,
     )
@@ -1009,7 +1014,7 @@ def test_d3_unrotated_surface_code_coset_weight_enumerator():
     for b in z_error_bits:
         coset_error[b + 13] = 1
 
-    tn = TensorNetwork.make_surface_code(
+    tn = SurfaceCode(
         d=3, lego=lambda i: Legos.econding_tensor_512, coset_error=coset_error
     )
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)

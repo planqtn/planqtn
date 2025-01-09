@@ -2,7 +2,7 @@ from collections import defaultdict
 from copy import deepcopy
 import cotengra as ctg
 
-from typing import Any, Iterable, List, Dict, Set, Tuple, Union
+from typing import Any, Callable, Iterable, List, Dict, Set, Tuple, Union
 from galois import GF2
 import numpy as np
 import sympy
@@ -109,36 +109,6 @@ def sconcat(*ops):
     )
 
 
-def _update_512_qubit_nodes_with_coset(
-    tn: "TensorNetwork", coset_error: GF2, qubit_to_node=lambda i: i
-):
-    if coset_error is not None:
-        n = len(coset_error) // 2
-
-        z_errors = np.argwhere(coset_error[n:] == 1).flatten()
-        x_errors = np.argwhere(coset_error[:n] == 1).flatten()
-
-        for q in z_errors:
-            pauli = PAULI_Z
-            if q in x_errors:
-                pauli = PAULI_Y
-            #     print(f"pauli Y: {q} -> {qubit_to_node(q)}")
-            # else:
-            #     print(f"pauli Z: {q} -> {qubit_to_node(q)}")
-            node = tn.nodes[qubit_to_node(q)]
-            tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
-                [((node.idx, 4), pauli)]
-            )
-        for q in x_errors:
-            if q in z_errors:
-                continue
-            # print(f"pauli X: {q} -> {qubit_to_node(q)}")
-            node = tn.nodes[qubit_to_node(q)]
-            tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
-                [((node.idx, 4), PAULI_X)]
-            )
-
-
 class TensorNetwork:
     def __init__(
         self,
@@ -147,6 +117,7 @@ class TensorNetwork:
             Dict[Any, "TensorStabilizerCodeEnumerator"],
         ],
     ):
+
         if isinstance(nodes, dict):
             for k, v in nodes.items():
                 if k != v.idx:
@@ -161,332 +132,55 @@ class TensorNetwork:
             self.nodes = nodes_dict
 
         self.traces = []
+        self._cot_tree = None
         self._cot_traces = None
         self.legs_left_to_join = {idx: [] for idx in self.nodes.keys()}
         # self.open_legs = [n.legs for n in self.nodes]
 
         self._wep = None
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
+        self._coset = None
 
-    @classmethod
-    def make_rsc(
-        cls,
-        d: int,
-        lego=lambda i: Legos.econding_tensor_512,
-        coset_error=None,
-    ):
-
-        nodes = [TensorStabilizerCodeEnumerator(lego(i), idx=i) for i in range(d**2)]
-
-        # row major ordering
-        idx = lambda r, c: r * d + c
-
-        for c in range(d):
-            # top Z boundary
-            nodes[idx(0, c)] = nodes[idx(0, c)].trace_with_stopper(
-                PAULI_Z, 3 if c % 2 == 0 else 0
-            )
-            # bottom Z boundary
-            nodes[idx(d - 1, c)] = nodes[idx(d - 1, c)].trace_with_stopper(
-                PAULI_Z, 1 if c % 2 == 0 else 2
-            )
-
-        for r in range(d):
-            # left X boundary
-            nodes[idx(r, 0)] = nodes[idx(r, 0)].trace_with_stopper(
-                PAULI_X, 0 if r % 2 == 0 else 1
-            )
-            # right X boundary
-            nodes[idx(r, d - 1)] = nodes[idx(r, d - 1)].trace_with_stopper(
-                PAULI_X, 2 if r % 2 == 0 else 3
-            )
-
-        # for r in range(1,4):
-        #     # bulk
-        #     for c in range(1,4):
-
-        tn = TensorNetwork(nodes)
-
-        for radius in range(1, d):
-            for i in range(radius + 1):
-                # extending the right boundary
-                tn.self_trace(
-                    idx(i, radius - 1),
-                    idx(i, radius),
-                    [3 if idx(i, radius) % 2 == 0 else 2],
-                    [0 if idx(i, radius) % 2 == 0 else 1],
-                )
-                if i > 0 and i < radius:
-                    tn.self_trace(
-                        idx(i - 1, radius),
-                        idx(i, radius),
-                        [2 if idx(i, radius) % 2 == 0 else 1],
-                        [3 if idx(i, radius) % 2 == 0 else 0],
-                    )
-                # extending the bottom boundary
-                tn.self_trace(
-                    idx(radius - 1, i),
-                    idx(radius, i),
-                    [2 if idx(i, radius) % 2 == 0 else 1],
-                    [3 if idx(i, radius) % 2 == 0 else 0],
-                )
-                if i > 0 and i < radius:
-                    tn.self_trace(
-                        idx(radius, i - 1),
-                        idx(radius, i),
-                        [3 if idx(i, radius) % 2 == 0 else 2],
-                        [0 if idx(i, radius) % 2 == 0 else 1],
-                    )
-
-        _update_512_qubit_nodes_with_coset(tn, coset_error)
-
-        return tn
-
-    @classmethod
-    def make_surface_code(
-        clz, d: int, lego=lambda i: Legos.econding_tensor_512, coset_error=None
-    ):
-
-        if d < 2:
-            raise ValueError("Only d=2+ is supported.")
-
-        # numbering convention:
-
-        # (0,0)  (0,2)  (0,4)
-        #    (1,1)   (1,3)
-        # (2,0)  (2,2)  (2,4)
-        #    (3,1)   (3,3)
-        # (4,0)  (4,2)  (4,4)
-
-        last_row = 2 * d - 2
-        last_col = 2 * d - 2
-
-        tn = TensorNetwork(
-            [
-                TensorStabilizerCodeEnumerator(lego((r, c)), idx=(r, c))
-                for r in range(last_row + 1)
-                for c in range(r % 2, last_col + 1, 2)
-            ]
-        )
-        q_to_node = [
-            (r, c) for r in range(last_row + 1) for c in range(r % 2, last_col + 1, 2)
-        ]
-
-        nodes = tn.nodes
-
-        # we take care of corners first
-
-        nodes[(0, 0)] = (
-            nodes[(0, 0)]
-            .trace_with_stopper(PAULI_Z, 0)
-            .trace_with_stopper(PAULI_Z, 1)
-            .trace_with_stopper(PAULI_X, 3)
-        )
-        nodes[(0, last_col)] = (
-            nodes[(0, last_col)]
-            .trace_with_stopper(PAULI_Z, 2)
-            .trace_with_stopper(PAULI_Z, 3)
-            .trace_with_stopper(PAULI_X, 0)
-        )
-        nodes[(last_row, 0)] = (
-            nodes[(last_row, 0)]
-            .trace_with_stopper(PAULI_Z, 0)
-            .trace_with_stopper(PAULI_Z, 1)
-            .trace_with_stopper(PAULI_X, 2)
-        )
-        nodes[(last_row, last_col)] = (
-            nodes[(last_row, last_col)]
-            .trace_with_stopper(PAULI_Z, 2)
-            .trace_with_stopper(PAULI_Z, 3)
-            .trace_with_stopper(PAULI_X, 1)
+    def qubit_to_node(self, q: int):
+        raise NotImplementedError(
+            f"qubit_to_node() is not implemented for {type(self)}!"
         )
 
-        for k in range(2, last_col, 2):
-            # X boundaries on the top and bottom
-            nodes[(0, k)] = (
-                nodes[(0, k)]
-                .trace_with_stopper(PAULI_X, 0)
-                .trace_with_stopper(PAULI_X, 3)
-            )
-            nodes[(last_row, k)] = (
-                nodes[(last_row, k)]
-                .trace_with_stopper(PAULI_X, 1)
-                .trace_with_stopper(PAULI_X, 2)
-            )
+    def n_qubits(self):
+        raise NotImplementedError(f"n_qubits() is not implemented for {type(self)}")
 
-            # Z boundaries on left and right
-            nodes[(k, 0)] = (
-                nodes[(k, 0)]
-                .trace_with_stopper(PAULI_Z, 0)
-                .trace_with_stopper(PAULI_Z, 1)
-            )
-            nodes[(k, last_col)] = (
-                nodes[(k, last_col)]
-                .trace_with_stopper(PAULI_Z, 2)
-                .trace_with_stopper(PAULI_Z, 3)
-            )
+    def set_coset(self, coset_error: GF2):
+        """Sets the coset_error to the tensornetwork.
 
-        # we'll trace diagonally
-        for diag in range(1, last_row + 1):
-            # connecting the middle to the previous diagonal's middle
-            tn.self_trace(
-                (diag - 1, diag - 1),
-                (diag, diag),
-                [2 if diag % 2 == 1 else 1],
-                [3 if diag % 2 == 1 else 0],
-            )
-            # go left until hitting the left column or the bottom row
-            # and at the same time go right until hitting the right col or the top row (symmetric)
-            row, col = diag + 1, diag - 1
-            while row <= last_row and col >= 0:
-                # going left
-                tn.self_trace(
-                    (row - 1, col + 1),
-                    (row, col),
-                    [0 if row % 2 == 0 else 1],
-                    [3 if row % 2 == 0 else 2],
-                )
-
-                # going right
-                tn.self_trace(
-                    (col + 1, row - 1),
-                    (col, row),
-                    [3 if row % 2 == 1 else 2],
-                    [0 if row % 2 == 1 else 1],
-                )
-
-                if row - 1 >= 0 and col - 1 >= 0:
-                    # connect to previous diagonal
-                    # on the left
-                    tn.self_trace(
-                        (row - 1, col - 1),
-                        (row, col),
-                        [2 if row % 2 == 1 else 1],
-                        [3 if row % 2 == 1 else 0],
-                    )
-                    # on the right
-                    tn.self_trace(
-                        (col - 1, row - 1),
-                        (col, row),
-                        [2 if row % 2 == 1 else 1],
-                        [3 if row % 2 == 1 else 0],
-                    )
-
-                row += 1
-                col -= 1
-            # go right until hitting the right column
-        _update_512_qubit_nodes_with_coset(tn, coset_error, lambda q: q_to_node[q])
-        return tn
-
-    @classmethod
-    def make_compass_sq(
-        clz,
-        coloring,
-        *,
-        lego=lambda node: Legos.econding_tensor_512,
-        coset_error: GF2 = None,
-    ):
-        """Creates a square compass code based on the coloring.
-
-        Uses the dual doubled surface code equivalence described by Cao & Lackey in the expansion pack paper.
+        The coset_error should follow the qubit numbering defined in tn.qubit_to_node which maps the index to a node ID.
+        If this is not setup, a ValueError is raised. It is assumed that this TN is built from [[5,1,2]] or [[6,0,2]] legos (or one of their X or Z only variants),
+        and the coset is applied on leg 4 (the logical leg) at the moment. This will fail on the Tanner graph TN, we'll have to figure that one out next (TODO).
         """
-        # See d3_compass_code_numbering.png for numbering - for an (r,c) qubit in the compass code,
-        # the (2r, 2c) is the coordinate of the lego in the dual surface code.
-        d = len(coloring) + 1
-        tn = clz.make_surface_code(d, lego)
-        gauge_idxs = [
-            (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
-        ]
-        for n, color in zip(gauge_idxs, np.reshape(coloring, (d - 1) ** 2)):
-            tn.nodes[n] = tn.nodes[n].trace_with_stopper(
-                PAULI_Z if color == 2 else PAULI_X, 4
+        if coset_error is None:
+            raise ValueError("Can't set coset to None.")
+
+        n = len(coset_error) // 2
+        if n != self.n_qubits():
+            raise ValueError(
+                f"Can't set coset with {n} qubits for a {self.n_qubits()} qubit code."
             )
 
-        q_to_node = [(2 * r, 2 * c) for r in range(d) for c in range(d)]
-        _update_512_qubit_nodes_with_coset(tn, coset_error, lambda q: q_to_node[q])
-
-        return tn
-
-    @classmethod
-    def from_css_parity_check_matrix(clz, hx, hz):
-        rx, n = hx.shape
-        rz = hz.shape[0]
-
-        q_tensors = []
+        z_errors = np.argwhere(coset_error[n:] == 1).flatten()
+        x_errors = np.argwhere(coset_error[:n] == 1).flatten()
 
         for q in range(n):
-            x_stabs = np.nonzero(hx[:, q])[0]
-            n_x_legs = len(x_stabs)
-            z_stabs = np.nonzero(hz[:, q])[0]
-            n_z_legs = len(z_stabs)
-            # print(q, x_stabs, z_stabs)
-            h0 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h0")
-            h1 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h1")
+            is_z = q in z_errors
+            is_x = q in x_errors
+            node_idx = self.qubit_to_node(q)
+            self.nodes[node_idx].coset_flipped_legs = []
+            if not is_z and not is_x:
+                continue
 
-            x = TensorStabilizerCodeEnumerator(
-                Legos.x_rep_code(2 + n_x_legs), idx=f"q{q}.x"
+            pauli = GF2([is_x, is_z])
+
+            self.nodes[node_idx] = self.nodes[node_idx].with_coset_flipped_legs(
+                [((node_idx, 4), pauli)]
             )
-            z = TensorStabilizerCodeEnumerator(
-                Legos.x_rep_code(2 + n_z_legs), idx=f"q{q}.z"
-            )
-            # leg numbering for the spiders: 0 for logical, 1 for physical,
-            # rest is to the check nodes
-            q_tensor = (
-                h0.conjoin(z, [1], [0])
-                .conjoin(h1, [(f"q{q}.z", 1)], [0])
-                .conjoin(x, [(f"q{q}.h1", 1)], [0])
-            )
-
-            q_tensor.set_idx(f"q{q}")
-            q_tensor = q_tensor.trace_with_stopper(PAULI_I, (f"q{q}", 0))
-            q_tensors.append(q_tensor)
-            # print(q_tensor.legs)
-        traces = []
-
-        q_legs = [2] * n
-        gx_tensors = []
-        for i, gx in enumerate(hx):
-            qs = np.nonzero(gx)[0]
-            g_tensor = TensorStabilizerCodeEnumerator(
-                Legos.z_rep_code(len(qs)), f"x{i}"
-            )
-            # print(f"=== x tensor {g_tensor.idx} -> {qs} === ")
-
-            gx_tensors.append(g_tensor)
-            for g_leg, q in enumerate(qs):
-                traces.append(
-                    (
-                        g_tensor.idx,
-                        q_tensors[q].idx,
-                        [g_leg],
-                        [(f"q{q}.x", q_legs[q])],
-                    )
-                )
-                q_legs[q] += 1
-        gz_tensors = []
-        q_legs = [2] * n
-
-        for i, gz in enumerate(hz):
-            qs = np.nonzero(gz)[0]
-            g_tensor = TensorStabilizerCodeEnumerator(
-                Legos.z_rep_code(len(qs)), f"z{i}"
-            )
-            gz_tensors.append(g_tensor)
-            for g_leg, q in enumerate(qs):
-                traces.append(
-                    (
-                        g_tensor.idx,
-                        q_tensors[q].idx,
-                        [g_leg],
-                        [(f"q{q}.z", q_legs[q])],
-                    )
-                )
-                q_legs[q] += 1
-        tn = TensorNetwork(q_tensors + gx_tensors + gz_tensors)
-
-        for t in traces:
-            tn.self_trace(*t)
-        return tn
 
     def self_trace(self, node_idx1, node_idx2, join_leg1, join_leg2):
         if self._wep is not None:
@@ -1146,15 +840,17 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = lambda x: (
-            x
-            if not progress_bar
-            else tqdm(
-                x,
-                leave=False,
-                desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
+        def prog(x):
+            return (
+                x
+                if not progress_bar
+                else tqdm(
+                    x,
+                    leave=False,
+                    desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
+                )
             )
-        )
+
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1)
             for k2 in pte2.tensor.keys():
@@ -1201,7 +897,7 @@ class PartiallyTracedEnumerator:
         assert len(join_legs1) == len(join_legs2)
         join_length = len(join_legs1)
 
-        wep = defaultdict(lambda: SimplePoly())
+        wep = defaultdict(SimplePoly)
         open_legs = [
             leg
             for leg in self.tracable_legs
@@ -1220,15 +916,17 @@ class PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        prog = lambda x: (
-            x
-            if not progress_bar
-            else tqdm(
-                x,
-                leave=False,
-                desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
+        def prog(x):
+            return (
+                x
+                if not progress_bar
+                else tqdm(
+                    x,
+                    leave=False,
+                    desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
+                )
             )
-        )
+
         for old_key in prog(self.tensor.keys()):
             if not np.array_equal(
                 sslice(GF2(old_key), join_indices1),
@@ -1277,7 +975,7 @@ class PartiallyTracedEnumerator:
             traced_legs, e, eprime, join_legs2 + open_legs2
         )
 
-        wep = defaultdict(lambda: SimplePoly())
+        wep = defaultdict(SimplePoly)
 
         # print(f"traceable legs: {self.tracable_legs} <- {open_legs1}")
         # print(f"join_legs1: {join_legs1}")
@@ -1295,15 +993,16 @@ class PartiallyTracedEnumerator:
 
         # print(f"kept indices 2: {kept_indices2}")
 
-        prog = lambda x: (
-            x
-            if not progress_bar
-            else tqdm(
-                x,
-                leave=False,
-                desc=f"PTE with {len(self.tensor)} tensor vs node {other.idx} with {len(t2)} tensor | {join_legs1[0]} - {join_legs2[0]}",
+        def prog(x):
+            return (
+                x
+                if not progress_bar
+                else tqdm(
+                    x,
+                    leave=False,
+                    desc=f"PTE with {len(self.tensor)} tensor vs node {other.idx} with {len(t2)} tensor | {join_legs1[0]} - {join_legs2[0]}",
+                )
             )
-        )
 
         for k1 in prog(self.tensor.keys()):
             k1_gf2 = GF2(k1)
@@ -1428,9 +1127,7 @@ class TensorStabilizerCodeEnumerator:
 
     def with_coset_flipped_legs(self, coset):
 
-        return TensorStabilizerCodeEnumerator(
-            self.h, self.idx, self.legs, self.coset_flipped_legs + coset
-        )
+        return TensorStabilizerCodeEnumerator(self.h, self.idx, self.legs, coset)
 
     def trace_with(
         self,
