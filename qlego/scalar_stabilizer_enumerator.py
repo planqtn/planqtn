@@ -5,8 +5,8 @@ from galois import GF2
 import numpy as np
 import sympy
 from tqdm import tqdm
-from simple_poly import SimplePoly
-from symplectic import weight
+from qlego.simple_poly import SimplePoly
+from qlego.symplectic import weight
 from sympy.abc import w, z
 from tqdm.contrib.concurrent import thread_map
 

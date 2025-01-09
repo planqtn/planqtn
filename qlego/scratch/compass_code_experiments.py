@@ -5,11 +5,11 @@ from galois import GF2
 from matplotlib import pyplot as plt
 import numpy as np
 
-from legos import Legos
-from linalg import gauss
-from parity_check import sprint
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
-from tensor_stabilizer_enumerator import (
+from qlego.linalg import gauss
+from qlego.parity_check import sprint
+from qlego.legos import Legos
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.tensor_stabilizer_enumerator import (
     PAULI_I,
     PAULI_X,
     PAULI_Z,

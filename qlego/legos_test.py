@@ -1,6 +1,5 @@
-import pytest
-from legos import Legos
-from tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.legos import Legos
+from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
 
 
 def test_x_spider_h_is_z_spider():

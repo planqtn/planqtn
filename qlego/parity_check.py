@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from scipy.linalg import block_diag
 
-from linalg import gauss
+from qlego.linalg import gauss
 
 
 def sprint(h):

@@ -6,12 +6,12 @@ import pytest
 import scipy
 import sympy
 
-from legos import Legos
-from linalg import gauss
-from parity_check import conjoin, sprint
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
-from symplectic import weight
-from tensor_stabilizer_enumerator import (
+from qlego.legos import Legos
+from qlego.linalg import gauss
+from qlego.parity_check import conjoin, sprint
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.symplectic import weight
+from qlego.tensor_stabilizer_enumerator import (
     PAULI_X,
     PAULI_Y,
     PAULI_Z,

@@ -8,12 +8,12 @@ import numpy as np
 import sympy
 from tqdm import tqdm
 
-from legos import Legos
-from linalg import gauss
-from parity_check import conjoin, self_trace, sprint
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
-from simple_poly import SimplePoly
-from symplectic import omega, weight
+from qlego.legos import Legos
+from qlego.linalg import gauss
+from qlego.parity_check import conjoin, self_trace, sprint
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.simple_poly import SimplePoly
+from qlego.symplectic import omega, weight
 
 
 PAULI_I = GF2([0, 0])

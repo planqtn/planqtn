@@ -3,9 +3,9 @@ from galois import GF2
 from matplotlib import pyplot as plt
 import numpy as np
 
-from legos import Legos
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
-from tensor_stabilizer_enumerator import TensorNetwork
+from qlego.legos import Legos
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.tensor_stabilizer_enumerator import TensorNetwork
 
 
 rsc = GF2(

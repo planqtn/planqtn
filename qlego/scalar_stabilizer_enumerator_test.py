@@ -1,6 +1,6 @@
 from galois import GF2
 import numpy as np
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 
 
 def test_422_code_stabilizer_enumerator():

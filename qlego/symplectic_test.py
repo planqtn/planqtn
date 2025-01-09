@@ -1,6 +1,6 @@
 from galois import GF2
 import numpy as np
-from symplectic import omega, symp_to_str, weight
+from qlego.symplectic import omega, symp_to_str, weight
 
 
 def test_weight():
