@@ -17,7 +17,7 @@ if __name__ == "__main__":
         ]
     )
 
-    tn = TensorNetwork.make_rsc(3, Legos.econding_tensor_512)
+    tn = TensorNetwork.make_rsc(3, lambda i: Legos.econding_tensor_512)
     stab_poly = tn.stabilizer_enumerator_polynomial()
     print(stab_poly)
 
