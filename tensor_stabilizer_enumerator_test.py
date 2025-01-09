@@ -689,6 +689,8 @@ def test_d3_creation():
 
     for i, node in tn.nodes.items():
         assert node.idx == i
+        print(node.h)
+        print(nodes[i].h)
         assert np.array_equal(
             node.h, nodes[i].h
         ), f"Parities don't match at node {i},\n{node.h}\n{nodes[i].h}"
@@ -864,7 +866,7 @@ def test_compass_code():
         ]
     )
 
-    tn_wep = tn.stabilizer_enumerator_polynomial()
+    tn_wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
     expected_wep = (
         ScalarStabilizerCodeEnumerator(
             GF2(
@@ -918,3 +920,153 @@ def test_tanner_graph_enumerator():
     expected_wep = tn.stabilizer_enumerator_polynomial()
 
     assert wep == expected_wep
+
+
+def test_compass_code_z_coset_weight_enumerator_weight1():
+    coloring = np.array(
+        [
+            [1, 2],
+            [2, 1],
+        ]
+    )
+    tn = TensorNetwork.make_compass_sq(
+        coloring,
+        lego=lambda i: Legos.econding_tensor_512_z,
+        coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
+    )
+    wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    assert wep == SimplePoly({5: 9, 3: 4, 7: 2, 1: 1}), f"Not equal, got:\n{wep}"
+
+
+def test_compass_code_z_coset_weight_enumerator_weight2():
+    coloring = np.array(
+        [
+            [1, 2],
+            [2, 1],
+        ]
+    )
+    tn = TensorNetwork.make_compass_sq(
+        coloring,
+        lego=lambda i: Legos.econding_tensor_512_z,
+        coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]),
+    )
+    wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    assert wep == SimplePoly({4: 10, 6: 5, 2: 1}), f"Not equal, got:\n{wep}"
+
+
+def test_rsc3_x_and_z_coset_wep():
+    rsc = GF2(
+        [
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+        ]
+    )
+
+    x_error_bits = [0, 2]
+    z_error_bits = [1, 2]
+
+    scalar = TensorStabilizerCodeEnumerator(
+        rsc,
+        coset_flipped_legs=[
+            ((0, q), PAULI_X) for q in x_error_bits if q not in z_error_bits
+        ]
+        + [((0, q), PAULI_Z) for q in z_error_bits if q not in x_error_bits]
+        + [
+            ((0, q), PAULI_Y) for q in set(x_error_bits).intersection(set(z_error_bits))
+        ],
+    )
+    print(scalar.stabilizer_enumerator())
+
+    coset_error = GF2.Zeros(18)
+    for b in x_error_bits:
+        coset_error[b] = 1
+    for b in z_error_bits:
+        coset_error[b + 9] = 1
+    tn = TensorNetwork.make_rsc(
+        d=3,
+        coset_error=coset_error,
+    )
+
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    print("----")
+    assert we == scalar.stabilizer_enumerator_polynomial()
+
+
+def test_d3_unrotated_surface_code_coset_weight_enumerator():
+
+    x_error_bits = [0, 2, 3, 7]
+    z_error_bits = [1, 2, 7, 9]
+
+    coset_error = GF2.Zeros(2 * 13)
+    for b in x_error_bits:
+        coset_error[b] = 1
+    for b in z_error_bits:
+        coset_error[b + 13] = 1
+
+    tn = TensorNetwork.make_surface_code(
+        d=3, lego=lambda i: Legos.econding_tensor_512, coset_error=coset_error
+    )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+
+    hx_sparse = [
+        [0, 1, 3],
+        [1, 2, 4],
+        [3, 5, 6, 8],
+        [4, 6, 7, 9],
+        [8, 10, 11],
+        [9, 11, 12],
+    ]
+
+    hz_sparse = [
+        [0, 3, 5],
+        [1, 3, 4, 6],
+        [2, 4, 7],
+        [5, 8, 10],
+        [6, 8, 9, 11],
+        [7, 9, 12],
+    ]
+
+    hz = GF2.Zeros((6, 13))
+
+    for r, g in enumerate(hz_sparse):
+        hz[r][np.array(g)] = 1
+
+    hx = GF2.Zeros((6, 13))
+    for r, g in enumerate(hx_sparse):
+        hx[r][np.array(g)] = 1
+
+    h = GF2(scipy.linalg.block_diag(hx, hz))
+
+    # x_errors = [
+    #     (0, 0),
+    #     (0, 4),
+    #     (2, 4),
+    #     (1, 1),
+    # ]
+    # z_errors = [
+    #     (0, 2),
+    #     (0, 4),
+    #     (0, 4),
+    #     (2, 4),
+    #     (2, 4),
+    #     (3, 3),
+    # ]
+
+    print("----")
+    expected_we = TensorStabilizerCodeEnumerator(
+        h,
+        coset_flipped_legs=[
+            ((0, q), PAULI_X) for q in x_error_bits if q not in z_error_bits
+        ]
+        + [((0, q), PAULI_Z) for q in z_error_bits if q not in x_error_bits]
+        + [
+            ((0, q), PAULI_Y) for q in set(x_error_bits).intersection(set(z_error_bits))
+        ],
+    ).stabilizer_enumerator_polynomial()
+    assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"

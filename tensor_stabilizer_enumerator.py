@@ -109,6 +109,37 @@ def sconcat(*ops):
     )
 
 
+def _update_512_qubit_nodes_with_coset(
+    tn: "TensorNetwork", coset_error: GF2, qubit_to_node=lambda i: i
+):
+    if coset_error is not None:
+        n = len(coset_error) // 2
+        print(n)
+
+        z_errors = np.argwhere(coset_error[n:] == 1).flatten()
+        x_errors = np.argwhere(coset_error[:n] == 1).flatten()
+
+        for q in z_errors:
+            pauli = PAULI_Z
+            if q in x_errors:
+                pauli = PAULI_Y
+                print(f"pauli Y: {q} -> {qubit_to_node(q)}")
+            else:
+                print(f"pauli Z: {q} -> {qubit_to_node(q)}")
+            node = tn.nodes[qubit_to_node(q)]
+            tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
+                [((node.idx, 4), pauli)]
+            )
+        for q in x_errors:
+            if q in z_errors:
+                continue
+            print(f"pauli X: {q} -> {qubit_to_node(q)}")
+            node = tn.nodes[qubit_to_node(q)]
+            tn.nodes[qubit_to_node(q)] = node.with_coset_flipped_legs(
+                [((node.idx, 4), PAULI_X)]
+            )
+
+
 class TensorNetwork:
     def __init__(
         self,
@@ -123,7 +154,7 @@ class TensorNetwork:
                     raise ValueError(
                         f"Nodes dict passed in with inconsitent indexing, {k} != {v.idx} for {v}."
                     )
-            self.nodes: Dict["TensorStabilizerCodeEnumerator"] = nodes
+            self.nodes: Dict[Any, "TensorStabilizerCodeEnumerator"] = nodes
         else:
             nodes_dict = {node.idx: node for node in nodes}
             if len(nodes_dict) < len(nodes):
@@ -139,7 +170,12 @@ class TensorNetwork:
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
 
     @classmethod
-    def make_rsc(cls, d: int, lego=lambda i: Legos.econding_tensor_512):
+    def make_rsc(
+        cls,
+        d: int,
+        lego=lambda i: Legos.econding_tensor_512,
+        coset_error=None,
+    ):
 
         nodes = [TensorStabilizerCodeEnumerator(lego(i), idx=i) for i in range(d**2)]
 
@@ -202,10 +238,15 @@ class TensorNetwork:
                         [3 if idx(i, radius) % 2 == 0 else 2],
                         [0 if idx(i, radius) % 2 == 0 else 1],
                     )
+
+        _update_512_qubit_nodes_with_coset(tn, coset_error)
+
         return tn
 
     @classmethod
-    def make_surface_code(clz, d: int, lego=lambda i: Legos.econding_tensor_512):
+    def make_surface_code(
+        clz, d: int, lego=lambda i: Legos.econding_tensor_512, coset_error=None
+    ):
 
         if d < 2:
             raise ValueError("Only d=2+ is supported.")
@@ -228,6 +269,9 @@ class TensorNetwork:
                 for c in range(r % 2, last_col + 1, 2)
             ]
         )
+        q_to_node = [
+            (r, c) for r in range(last_row + 1) for c in range(r % 2, last_col + 1, 2)
+        ]
 
         nodes = tn.nodes
 
@@ -332,11 +376,23 @@ class TensorNetwork:
                 row += 1
                 col -= 1
             # go right until hitting the right column
-
+        _update_512_qubit_nodes_with_coset(tn, coset_error, lambda q: q_to_node[q])
         return tn
 
     @classmethod
-    def make_compass_sq(clz, coloring, lego=lambda node: Legos.econding_tensor_512):
+    def make_compass_sq(
+        clz,
+        coloring,
+        *,
+        lego=lambda node: Legos.econding_tensor_512,
+        coset_error: GF2 = None,
+    ):
+        """Creates a square compass code based on the coloring.
+
+        Uses the dual doubled surface code equivalence described by Cao & Lackey in the expansion pack paper.
+        """
+        # See d3_compass_code_numbering.png for numbering - for an (r,c) qubit in the compass code,
+        # the (2r, 2c) is the coordinate of the lego in the dual surface code.
         d = len(coloring) + 1
         tn = clz.make_surface_code(d, lego)
         gauge_idxs = [
@@ -346,6 +402,10 @@ class TensorNetwork:
             tn.nodes[n] = tn.nodes[n].trace_with_stopper(
                 PAULI_Z if color == 2 else PAULI_X, 4
             )
+
+        q_to_node = [(2 * r, 2 * c) for r in range(d) for c in range(d)]
+        _update_512_qubit_nodes_with_coset(tn, coset_error, lambda q: q_to_node[q])
+
         return tn
 
     @classmethod
@@ -1293,7 +1353,13 @@ class PartiallyTracedEnumerator:
 class TensorStabilizerCodeEnumerator:
     """The tensor enumerator from Cao & Lackey"""
 
-    def __init__(self, h, idx=0, legs=None):
+    def __init__(
+        self,
+        h,
+        idx=0,
+        legs=None,
+        coset_flipped_legs: List[Tuple[Tuple[Any, int], GF2]] = None,
+    ):
         self.h = h
 
         self.idx = idx
@@ -1313,6 +1379,17 @@ class TensorStabilizerCodeEnumerator:
         ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
         # a dict is a wonky tensor - TODO: rephrase this to proper tensor
         self._stabilizer_enums: Dict[sympy.Tuple, SimplePoly] = {}
+
+        self.coset_flipped_legs = []
+        if coset_flipped_legs is not None:
+            self.coset_flipped_legs = coset_flipped_legs
+            for leg, pauli in self.coset_flipped_legs:
+                assert (
+                    leg in self.legs
+                ), f"Leg in coset not found: {leg} - legs: {self.legs}"
+                assert len(pauli) == 2 and isinstance(
+                    pauli, GF2
+                ), f"Invalid pauli in coset: {pauli} on leg {leg}"
 
     def __str__(self):
         return f"TensorEnum({self.idx})"
@@ -1349,6 +1426,12 @@ class TensorStabilizerCodeEnumerator:
 
     def validate_legs(self, legs):
         return [leg for leg in legs if not leg in self.legs]
+
+    def with_coset_flipped_legs(self, coset):
+
+        return TensorStabilizerCodeEnumerator(
+            self.h, self.idx, self.legs, self.coset_flipped_legs + coset
+        )
 
     def trace_with(
         self,
@@ -1533,23 +1616,27 @@ class TensorStabilizerCodeEnumerator:
                 return 0
 
         class SimpleStabilizerCollector:
-            def __init__(self, k, n):
+            def __init__(self, k, n, coset):
                 self.k = k
                 self.n = n
+                self.coset = coset
                 self.wep = SimplePoly()
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
             def collect(self, stabilizer):
-                stab_weight = weight(stabilizer, skip_indices=self.skip_indices)
+                stab_weight = weight(
+                    stabilizer + self.coset, skip_indices=self.skip_indices
+                )
                 self.wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
                 self.wep = self.wep
 
         class TensorElementCollector:
-            def __init__(self, k, n):
+            def __init__(self, k, n, coset):
                 self.k = k
                 self.n = n
+                self.coset = coset
                 self.simple = len(open_cols) == 0
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
@@ -1568,17 +1655,30 @@ class TensorStabilizerCodeEnumerator:
                         "TODO: non-diagonal elements are not fully supported yet."
                     )
                 for s in self.matching_stabilizers:
-                    stab_weight = weight(s, skip_indices=self.skip_indices)
+                    stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
                     key = tuple(sslice(s, open_cols).tolist())
                     self.wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
                 for key in self.wep.keys():
                     self.wep[key] = self._scale_one(self.wep[key])
 
+        coset = GF2.Zeros(2 * self.n)
+        if self.coset_flipped_legs is not None:
+            for leg, pauli in self.coset_flipped_legs:
+                assert leg in self.legs, f"Leg in coset not found: {leg}"
+                assert len(pauli) == 2 and isinstance(
+                    pauli, GF2
+                ), f"Invalid pauli in coset: {pauli} on leg {leg}"
+                coset[self.legs.index(leg)] = pauli[0]
+                coset[self.legs.index(leg) + self.n] = pauli[1]
+                print(
+                    f"brute force - {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
+                )
+
         collector = (
-            SimpleStabilizerCollector(self.k, self.n)
+            SimpleStabilizerCollector(self.k, self.n, coset)
             if open_cols == []
-            else TensorElementCollector(self.k, self.n)
+            else TensorElementCollector(self.k, self.n, coset)
         )
         # assuming a full rank parity check
         for i in range(2 ** (self.n - self.k)):

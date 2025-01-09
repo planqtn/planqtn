@@ -262,11 +262,10 @@ def compass_code_from_tanner():
 # Example usage
 # Assuming `tn` is an instance of TensorNetwork
 # extract_leg_indices(tn)
-if __name__ == "__main__":
-    import faulthandler
 
-    faulthandler.enable()
-    d = 9
+
+def time_compass_code_cotengra_contraction():
+    d = 3
     coloring = np.random.RandomState(0).randint(1, 3, (d - 1, d - 1))
     # coloring = [
     #     [2, 1],
@@ -287,43 +286,9 @@ if __name__ == "__main__":
     end = time.time()
     print(f"total time {end-start:0.1f} s")
 
-    # print("---- compass from surface code -----")
-    # compass_code_from_surface_code_via_gauge_fixing()
-    # print("---- compass from tanner graph -----")
-    # compass_code_from_tanner()
 
-    # hz = GF2(
-    #     [
-    #         [1, 1, 0, 1, 1, 0, 1, 1, 0],
-    #         [0, 1, 1, 0, 0, 0, 0, 0, 0],
-    #         [0, 0, 0, 0, 1, 1, 0, 1, 1],
-    #     ]
-    # )
+if __name__ == "__main__":
+    import faulthandler
 
-    # hx = GF2(
-    #     [
-    #         [1, 0, 0, 1, 0, 0, 0, 0, 0],
-    #         [0, 1, 1, 0, 1, 1, 0, 0, 0],
-    #         [0, 0, 0, 1, 0, 0, 1, 0, 0],
-    #         [0, 0, 0, 0, 1, 0, 0, 1, 0],
-    #         [0, 0, 0, 0, 0, 1, 0, 0, 1],
-    #     ]
-    # )
-
-    # # hz = GF2([[1, 1, 1, 1]])
-    # # hx = GF2([[1, 1, 1, 1]])
-    # tn = TensorNetwork.from_css_parity_check_matrix(hx, hz)
-
-    # tn.traces = cotengra_fun(tn)
-
-    # print(
-    #     "enumerator:",
-    #     tn.stabilizer_enumerator_polynomial(
-    #         # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
-    #         verbose=True,
-    #         progress_bar=False,
-    #         summed_legs=[(f"q{i}.x", 1) for i in range(hx.shape[1])],
-    #     ),
-    # )
-
-    # compass_code_from_surface_code_via_gauge_fixing()
+    faulthandler.enable()
+    time_compass_code_cotengra_contraction()
