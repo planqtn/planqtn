@@ -24,7 +24,9 @@ class MonomialPowers:
 
 class SimplePoly:
     def __init__(self, d=None):
-        self._dict = defaultdict(int) if d is None else d
+        self._dict = defaultdict(int)
+        if d is not None:
+            self._dict.update(d)
         if not d:
             self.num_vars = 1
         elif isinstance(list(d.keys())[0], int):
