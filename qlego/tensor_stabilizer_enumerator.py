@@ -134,6 +134,7 @@ class TensorNetwork:
         self.traces = []
         self._cot_tree = None
         self._cot_traces = None
+
         self.legs_left_to_join = {idx: [] for idx in self.nodes.keys()}
         # self.open_legs = [n.legs for n in self.nodes]
 
@@ -149,6 +150,24 @@ class TensorNetwork:
     def n_qubits(self):
         raise NotImplementedError(f"n_qubits() is not implemented for {type(self)}")
 
+    def _reset_wep(self):
+
+        self._wep = None
+
+        prev_traces = deepcopy(self.traces)
+        self.traces = []
+        self.legs_left_to_join = {idx: [] for idx in self.nodes.keys()}
+
+        for trace in prev_traces:
+            self.self_trace(trace[0], trace[1], [trace[2][0]], [trace[3][0]])
+
+        self._cot_tree = None
+        self._cot_traces = None
+
+        self._wep = None
+        self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
+        self._coset = None
+
     def set_coset(self, coset_error: GF2):
         """Sets the coset_error to the tensornetwork.
 
@@ -156,6 +175,9 @@ class TensorNetwork:
         If this is not setup, a ValueError is raised. It is assumed that this TN is built from [[5,1,2]] or [[6,0,2]] legos (or one of their X or Z only variants),
         and the coset is applied on leg 4 (the logical leg) at the moment. This will fail on the Tanner graph TN, we'll have to figure that one out next (TODO).
         """
+
+        self._reset_wep()
+
         if coset_error is None:
             raise ValueError("Can't set coset to None.")
 

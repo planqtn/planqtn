@@ -31,6 +31,7 @@ class CompassCodeTN(SurfaceCodeTN):
 
         self._q_to_node = [(2 * r, 2 * c) for r in range(d) for c in range(d)]
         self.n = d * d
+        self.coloring = coloring
         if coset_error is None:
             coset_error = GF2.Zeros(2 * self.n)
         self.set_coset(coset_error if coset_error is not None else [])

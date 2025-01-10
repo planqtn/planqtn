@@ -37,6 +37,13 @@ class SimplePoly:
         for k, v in other._dict.items():
             self._dict[k] += v
 
+    def __add__(self, other):
+        assert other.num_vars == self.num_vars
+        res = SimplePoly(self._dict)
+        for k, v in other._dict.items():
+            res._dict[k] += v
+        return res
+
     def __str__(self):
         return str(dict(self._dict))
 
