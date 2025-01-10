@@ -1,14 +1,14 @@
 from galois import GF2
 from qlego.tensor_stabilizer_enumerator import TensorNetwork
-from tnqec.qlego.legos import Legos
-from tnqec.qlego.tensor_stabilizer_enumerator import (
+from qlego.legos import Legos
+from qlego.tensor_stabilizer_enumerator import (
     PAULI_X,
     PAULI_Z,
     TensorStabilizerCodeEnumerator,
 )
 
 
-class SurfaceCode(TensorNetwork):
+class SurfaceCodeTN(TensorNetwork):
     def __init__(
         self, d: int, lego=lambda i: Legos.econding_tensor_512, coset_error=None
     ):

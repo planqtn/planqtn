@@ -8,7 +8,7 @@ from qlego.tensor_stabilizer_enumerator import (
 )
 
 
-class RotatedSurfaceCode(TensorNetwork):
+class RotatedSurfaceCodeTN(TensorNetwork):
     def __init__(
         self,
         d: int,

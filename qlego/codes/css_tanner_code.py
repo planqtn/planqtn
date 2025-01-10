@@ -1,13 +1,13 @@
 import numpy as np
 from qlego.tensor_stabilizer_enumerator import TensorNetwork
-from tnqec.qlego.legos import Legos
-from tnqec.qlego.tensor_stabilizer_enumerator import (
+from qlego.legos import Legos
+from qlego.tensor_stabilizer_enumerator import (
     PAULI_I,
     TensorStabilizerCodeEnumerator,
 )
 
 
-class CssTannerCode(TensorNetwork):
+class CssTannerCodeTN(TensorNetwork):
     def __init__(self, hx, hz):
         rx, n = hx.shape
         rz = hz.shape[0]

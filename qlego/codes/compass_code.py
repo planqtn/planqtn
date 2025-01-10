@@ -1,11 +1,11 @@
 from galois import GF2
 import numpy as np
 from qlego.legos import Legos
-from qlego.codes.surface_code import SurfaceCode
+from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.tensor_stabilizer_enumerator import PAULI_X, PAULI_Z
 
 
-class CompassCode(SurfaceCode):
+class CompassCodeTN(SurfaceCodeTN):
     def __init__(
         self,
         coloring,
