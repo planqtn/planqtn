@@ -12,7 +12,7 @@ class RotatedSurfaceCodeTN(TensorNetwork):
     def __init__(
         self,
         d: int,
-        lego=lambda i: Legos.econding_tensor_512,
+        lego=lambda i: Legos.enconding_tensor_512,
         coset_error=None,
     ):
 

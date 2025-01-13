@@ -4,7 +4,7 @@ import numpy as np
 
 class Legos:
 
-    econding_tensor_602 = GF2(
+    enconding_tensor_602 = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
@@ -44,7 +44,7 @@ class Legos:
         gens.append(g)
         return GF2(gens)
 
-    econding_tensor_512 = GF2(
+    enconding_tensor_512 = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
@@ -53,14 +53,14 @@ class Legos:
         ]
     )
 
-    econding_tensor_512_x = GF2(
+    enconding_tensor_512_x = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
         ]
     )
 
-    econding_tensor_512_z = GF2(
+    enconding_tensor_512_z = GF2(
         [
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],

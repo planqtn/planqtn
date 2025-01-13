@@ -10,7 +10,7 @@ from qlego.tensor_stabilizer_enumerator import (
 
 class SurfaceCodeTN(TensorNetwork):
     def __init__(
-        self, d: int, lego=lambda i: Legos.econding_tensor_512, coset_error=None
+        self, d: int, lego=lambda i: Legos.enconding_tensor_512, coset_error=None
     ):
 
         if d < 2:

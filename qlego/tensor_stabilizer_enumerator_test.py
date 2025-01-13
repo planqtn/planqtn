@@ -668,7 +668,7 @@ def test_d3_creation():
     tn = RotatedSurfaceCodeTN(3)
 
     nodes = [
-        TensorStabilizerCodeEnumerator(Legos.econding_tensor_512, idx=i)
+        TensorStabilizerCodeEnumerator(Legos.enconding_tensor_512, idx=i)
         for i in range(9)
     ]
 
@@ -773,7 +773,7 @@ def test_d5_rotated_surface_code():
 
 
 def test_d5_rotated_surface_code_x_only():
-    tn = RotatedSurfaceCodeTN(d=5, lego=lambda i: Legos.econding_tensor_512_x)
+    tn = RotatedSurfaceCodeTN(d=5, lego=lambda i: Legos.enconding_tensor_512_x)
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     assert we == SimplePoly(
         {
@@ -793,10 +793,10 @@ def test_d5_rotated_surface_code_x_only():
 
 
 def test_d2_unrotated_surface_code_with_summed_legs():
-    tn = SurfaceCodeTN(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCodeTN(d=2, lego=lambda i: Legos.enconding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
-    tn2 = SurfaceCodeTN(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn2 = SurfaceCodeTN(d=2, lego=lambda i: Legos.enconding_tensor_512)
     expected_we = tn2.stabilizer_enumerator_polynomial(
         summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
     )
@@ -805,7 +805,7 @@ def test_d2_unrotated_surface_code_with_summed_legs():
 
 
 def test_d2_unrotated_surface_code():
-    tn = SurfaceCodeTN(d=2, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCodeTN(d=2, lego=lambda i: Legos.enconding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
     h = GF2(
@@ -825,7 +825,7 @@ def test_d2_unrotated_surface_code():
 
 
 def test_d3_unrotated_surface_code():
-    tn = SurfaceCodeTN(d=3, lego=lambda i: Legos.econding_tensor_512)
+    tn = SurfaceCodeTN(d=3, lego=lambda i: Legos.enconding_tensor_512)
     we = tn.stabilizer_enumerator_polynomial()
 
     hx_sparse = [
@@ -936,7 +936,7 @@ def test_compass_code_z_coset_weight_enumerator_weight1():
     )
     tn = CompassCodeTN(
         coloring,
-        lego=lambda i: Legos.econding_tensor_512_z,
+        lego=lambda i: Legos.enconding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
     )
     wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
@@ -952,7 +952,7 @@ def test_compass_code_z_coset_weight_enumerator_weight2():
     )
     tn = CompassCodeTN(
         coloring,
-        lego=lambda i: Legos.econding_tensor_512_z,
+        lego=lambda i: Legos.enconding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]),
     )
     wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
@@ -1015,7 +1015,7 @@ def test_d3_unrotated_surface_code_coset_weight_enumerator():
         coset_error[b + 13] = 1
 
     tn = SurfaceCodeTN(
-        d=3, lego=lambda i: Legos.econding_tensor_512, coset_error=coset_error
+        d=3, lego=lambda i: Legos.enconding_tensor_512, coset_error=coset_error
     )
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
 

@@ -34,7 +34,7 @@ def compass_code_from_surface_code_via_gauge_fixing():
 
     tn = TensorNetwork.make_surface_code(
         d,
-        lambda idx: (Legos.econding_tensor_512),
+        lambda idx: (Legos.enconding_tensor_512),
     )
 
     coloring = np.array(
@@ -273,7 +273,7 @@ def time_compass_code_cotengra_contraction():
     # ]
     print(repr(coloring))
     tn = TensorNetwork.make_compass_sq(
-        coloring=coloring, lego=lambda node: Legos.econding_tensor_512_z
+        coloring=coloring, lego=lambda node: Legos.enconding_tensor_512_z
     )
     tn.analyze_traces(cotengra=True, minimize="combo", max_repeats=300)
     start = time.time()

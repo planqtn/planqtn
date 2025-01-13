@@ -63,7 +63,7 @@ fig, axs = plt.subplots(2, 2, figsize=(16, 12))
 for axrow, cotengra in zip(axs, [True, False]):
 
     coloring = np.random.randint(1, 3, (d - 1, d - 1))
-    tn = TensorNetwork.make_rsc(d=d, lego=lambda i: Legos.econding_tensor_512_x)
+    tn = TensorNetwork.make_rsc(d=d, lego=lambda i: Legos.enconding_tensor_512_x)
     # tn = TensorNetwork.make_compass_sq(
     #     coloring=coloring, lego=lambda i: Legos.econding_tensor_512_x
     # )
