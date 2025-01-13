@@ -46,8 +46,24 @@ class SimplePoly:
             res._dict[k] += v
         return res
 
+    def minw(self):
+        min_w = min(self._dict.keys())
+        min_coeff = self._dict[min_w]
+        return min_w, min_coeff
+
+    def leading_order_poly(self):
+        min_w = min(self._dict.keys())
+        min_coeff = self._dict[min_w]
+        return SimplePoly({min_w: min_coeff})
+
     def __str__(self):
-        return str(dict(self._dict))
+        return (
+            "{"
+            + ", ".join(
+                [f"{w}:{self._dict[w]}" for w in sorted(list(self._dict.keys()))]
+            )
+            + "}"
+        )
 
     def __repr__(self):
         return f"SimplePoly({repr(self._dict)})"

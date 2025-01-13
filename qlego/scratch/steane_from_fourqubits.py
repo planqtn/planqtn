@@ -1,6 +1,6 @@
 from galois import GF2
 
-from parity_check import conjoin, self_trace, sprint
+from qlego.parity_check import conjoin, self_trace, sprint
 
 
 if __name__ == "__main__":

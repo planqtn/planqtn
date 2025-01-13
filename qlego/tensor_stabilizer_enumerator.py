@@ -32,12 +32,6 @@ def _index_legs(idx, legs):
     return legs
 
 
-def _paulis(n):
-    """Yields the length 2*n GF2 symplectic Pauli operators on n qubits."""
-    for i in range(2 ** (2 * n)):
-        yield GF2(list(np.binary_repr(i, width=2 * n)))
-
-
 def sslice(op, indices):
     n = len(op) // 2
 
@@ -116,6 +110,7 @@ class TensorNetwork:
             Iterable["TensorStabilizerCodeEnumerator"],
             Dict[Any, "TensorStabilizerCodeEnumerator"],
         ],
+        truncate_length=None,
     ):
 
         if isinstance(nodes, dict):
@@ -141,6 +136,7 @@ class TensorNetwork:
         self._wep = None
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
         self._coset = None
+        self.truncate_length = truncate_length
 
     def qubit_to_node(self, q: int):
         raise NotImplementedError(
@@ -150,7 +146,7 @@ class TensorNetwork:
     def n_qubits(self):
         raise NotImplementedError(f"n_qubits() is not implemented for {type(self)}")
 
-    def _reset_wep(self):
+    def _reset_wep(self, keep_cot=False):
 
         self._wep = None
 
@@ -161,12 +157,12 @@ class TensorNetwork:
         for trace in prev_traces:
             self.self_trace(trace[0], trace[1], [trace[2][0]], [trace[3][0]])
 
-        self._cot_tree = None
-        self._cot_traces = None
-
-        self._wep = None
         self.ptes: Dict[int, PartiallyTracedEnumerator] = {}
         self._coset = None
+
+        if keep_cot:
+            self._cot_tree = None
+            self._cot_traces = None
 
     def set_coset(self, coset_error: GF2):
         """Sets the coset_error to the tensornetwork.
@@ -178,17 +174,28 @@ class TensorNetwork:
 
         self._reset_wep()
 
-        if coset_error is None:
-            raise ValueError("Can't set coset to None.")
+        if isinstance(coset_error, tuple):
+            self._coset = GF2.Zeros(2 * self.n)
+            for i in coset_error[0]:
+                self._coset[i] = 1
+            for i in coset_error[1]:
+                self._coset[i + self.n] = 1
+        elif coset_error is None:
+            self._coset = GF2.Zeros(2 * self.n)
+        else:
+            assert isinstance(
+                coset_error, GF2
+            ), f"coset error neither tuple, None or GF2, {coset_error}"
+            self._coset = coset_error
 
-        n = len(coset_error) // 2
+        n = len(self._coset) // 2
         if n != self.n_qubits():
             raise ValueError(
                 f"Can't set coset with {n} qubits for a {self.n_qubits()} qubit code."
             )
 
-        z_errors = np.argwhere(coset_error[n:] == 1).flatten()
-        x_errors = np.argwhere(coset_error[:n] == 1).flatten()
+        z_errors = np.argwhere(self._coset[n:] == 1).flatten()
+        x_errors = np.argwhere(self._coset[:n] == 1).flatten()
 
         for q in range(n):
             is_z = q in z_errors
@@ -777,12 +784,31 @@ class TensorNetwork:
             if verbose:
                 print(f"PTE nodes: {node1_pte.nodes}")
                 print(f"PTE tracable legs: {node1_pte.tracable_legs}")
-            # print("PTE tensor: ")
-            # for k, v in node1_pte.tensor.items():
-            #     print(k, v)
+            if verbose:
+                print("PTE tensor: ")
+            for k in list(node1_pte.tensor.keys()):
+                v = node1_pte.tensor[k]
+                if verbose:
+                    print(k, v, end="")
+                if self.truncate_length is None:
+                    if verbose:
+                        print()
+                    continue
+                if v.minw()[0] > self.truncate_length:
+                    del pte.tensor[k]
+                    if verbose:
+                        print(" -- removed")
+                else:
+                    if v.leading_order_poly() != v:
+                        if verbose:
+                            print(" -- truncated")
+                        pte.tensor[k] = v.leading_order_poly()
+                    else:
+                        if verbose:
+                            print()
+
             # print(f"PTEs: {self.ptes}")
 
-        # TODO: this is valid for the reduced WEP only - but it's okay as we'll switch over to reduced WEP shortly
         self._wep = SimplePoly()
         for k, sub_wep in pte.tensor.items():
             self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
@@ -795,6 +821,12 @@ class TensorNetwork:
         wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
         return wep._dict
 
+    def set_truncate_length(self, truncate_length):
+        self.truncate_length = truncate_length
+        for node in self.nodes.values():
+            node.truncate_length = truncate_length
+        self._reset_wep(keep_cot=True)
+
 
 class PartiallyTracedEnumerator:
     def __init__(
@@ -802,6 +834,7 @@ class PartiallyTracedEnumerator:
         nodes: Set[int],
         tracable_legs: List[Tuple[int, int]],
         tensor: Dict[Tuple, SimplePoly],
+        truncate_length: int,
     ):
         self.nodes = nodes
         self.tracable_legs = tracable_legs
@@ -813,6 +846,7 @@ class PartiallyTracedEnumerator:
         assert tensor_key_length == 2 * len(
             tracable_legs
         ), f"tensor keys of length {tensor_key_length} != {2 * len(tracable_legs)} (2 * len tracable legs)"
+        self.truncate_length = truncate_length
 
     def __str__(self):
         return f"PartiallyTracedEnumerator[nodes={self.nodes}, tracable_legs={self.tracable_legs}]"
@@ -912,8 +946,16 @@ class PartiallyTracedEnumerator:
         ]
 
         return PartiallyTracedEnumerator(
-            self.nodes.union(pte2.nodes), tracable_legs=tracable_legs, tensor=wep
+            self.nodes.union(pte2.nodes),
+            tracable_legs=tracable_legs,
+            tensor=wep,
+            truncate_length=self.truncate_length,
         )
+
+    def truncate_if_needed(self, key, wep):
+        if self.truncate_length is not None:
+            if np.count_nonzero(key) + wep[key].minw()[0] > self.truncate_length:
+                del wep[key]
 
     def self_trace(self, join_legs1, join_legs2, progress_bar: bool = False):
         assert len(join_legs1) == len(join_legs2)
@@ -971,11 +1013,13 @@ class PartiallyTracedEnumerator:
             # print(f"wep: {wep1}")
 
             wep[key].add_inplace(wep1)
-
         tracable_legs = [(idx, leg) for idx, leg in open_legs]
 
         return PartiallyTracedEnumerator(
-            self.nodes, tracable_legs=tracable_legs, tensor=wep
+            self.nodes,
+            tracable_legs=tracable_legs,
+            tensor=wep,
+            truncate_length=self.truncate_length,
         )
 
     def trace_with(
@@ -1066,7 +1110,10 @@ class PartiallyTracedEnumerator:
         # print("new tracable legs:", tracable_legs)
 
         return PartiallyTracedEnumerator(
-            self.nodes.union({other.idx}), tracable_legs=tracable_legs, tensor=wep
+            self.nodes.union({other.idx}),
+            tracable_legs=tracable_legs,
+            tensor=wep,
+            truncate_length=self.truncate_length,
         )
 
 
@@ -1079,7 +1126,9 @@ class TensorStabilizerCodeEnumerator:
         idx=0,
         legs=None,
         coset_flipped_legs: List[Tuple[Tuple[Any, int], GF2]] = None,
+        truncate_length=None,
     ):
+
         self.h = h
 
         self.idx = idx
@@ -1110,6 +1159,7 @@ class TensorStabilizerCodeEnumerator:
                 assert len(pauli) == 2 and isinstance(
                     pauli, GF2
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
+        self.truncate_length = truncate_length
 
     def __str__(self):
         return f"TensorEnum({self.idx})"
@@ -1149,7 +1199,9 @@ class TensorStabilizerCodeEnumerator:
 
     def with_coset_flipped_legs(self, coset):
 
-        return TensorStabilizerCodeEnumerator(self.h, self.idx, self.legs, coset)
+        return TensorStabilizerCodeEnumerator(
+            self.h, self.idx, self.legs, coset, self.truncate_length
+        )
 
     def trace_with(
         self,
@@ -1244,7 +1296,10 @@ class TensorStabilizerCodeEnumerator:
         # print(wep)
 
         return PartiallyTracedEnumerator(
-            {self.idx, other.idx}, tracable_legs=tracable_legs, tensor=wep
+            {self.idx, other.idx},
+            tracable_legs=tracable_legs,
+            tensor=wep,
+            truncate_length=self.truncate_length,
         )
 
     def self_trace(self, legs1, legs2) -> "TensorStabilizerCodeEnumerator":
@@ -1296,7 +1351,9 @@ class TensorStabilizerCodeEnumerator:
         new_legs = [leg for leg in self.legs if leg not in legs1]
         new_legs += [leg for leg in other.legs if leg not in legs2]
 
-        return TensorStabilizerCodeEnumerator(new_h, idx=self.idx, legs=new_legs)
+        return TensorStabilizerCodeEnumerator(
+            new_h, idx=self.idx, legs=new_legs, truncate_length=self.truncate_length
+        )
 
     def _brute_force_stabilizer_enumerator_from_parity(
         self, basis_element_legs: List[int], e=None, eprime=None, open_legs=[]
@@ -1338,17 +1395,17 @@ class TensorStabilizerCodeEnumerator:
                 self.k = k
                 self.n = n
                 self.coset = coset
-                self.wep = SimplePoly()
+                self.tensor_wep = SimplePoly()
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
             def collect(self, stabilizer):
                 stab_weight = weight(
                     stabilizer + self.coset, skip_indices=self.skip_indices
                 )
-                self.wep.add_inplace(SimplePoly({stab_weight: 1}))
+                self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
-                self.wep = self.wep
+                self.tensor_wep = self.tensor_wep
 
         class TensorElementCollector:
             def __init__(self, k, n, coset):
@@ -1359,7 +1416,7 @@ class TensorStabilizerCodeEnumerator:
                 self.skip_indices = np.concatenate([traced_cols, open_cols])
 
                 self.matching_stabilizers = []
-                self.wep = defaultdict(lambda: SimplePoly())
+                self.tensor_wep = defaultdict(lambda: SimplePoly())
 
             def collect(self, stabilizer):
                 self.matching_stabilizers.append(stabilizer)
@@ -1375,10 +1432,10 @@ class TensorStabilizerCodeEnumerator:
                 for s in self.matching_stabilizers:
                     stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
                     key = tuple(sslice(s, open_cols).tolist())
-                    self.wep[key].add_inplace(SimplePoly({stab_weight: 1}))
+                    self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
-                for key in self.wep.keys():
-                    self.wep[key] = self._scale_one(self.wep[key])
+                for key in self.tensor_wep.keys():
+                    self.tensor_wep[key] = self._scale_one(self.tensor_wep[key])
 
         coset = GF2.Zeros(2 * self.n)
         if self.coset_flipped_legs is not None:
@@ -1428,7 +1485,7 @@ class TensorStabilizerCodeEnumerator:
                     continue
             collector.collect(stabilizer)
         collector.finalize()
-        return collector.wep
+        return collector.tensor_wep
 
     def stabilizer_enumerator_polynomial(
         self,
@@ -1507,4 +1564,6 @@ class TensorStabilizerCodeEnumerator:
         kept_legs = self.legs.copy()
         kept_legs.remove(traced_leg)
 
-        return TensorStabilizerCodeEnumerator(h=h_new, idx=self.idx, legs=kept_legs)
+        return TensorStabilizerCodeEnumerator(
+            h=h_new, idx=self.idx, legs=kept_legs, truncate_length=self.truncate_length
+        )

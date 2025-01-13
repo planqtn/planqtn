@@ -14,9 +14,17 @@ class RotatedSurfaceCodeTN(TensorNetwork):
         d: int,
         lego=lambda i: Legos.enconding_tensor_512,
         coset_error=None,
+        truncate_length=None,
     ):
 
-        nodes = [TensorStabilizerCodeEnumerator(lego(i), idx=i) for i in range(d**2)]
+        nodes = [
+            TensorStabilizerCodeEnumerator(
+                lego(i),
+                idx=i,
+                truncate_length=truncate_length,
+            )
+            for i in range(d**2)
+        ]
 
         # row major ordering
         idx = lambda r, c: r * d + c
@@ -45,7 +53,7 @@ class RotatedSurfaceCodeTN(TensorNetwork):
         #     # bulk
         #     for c in range(1,4):
 
-        super().__init__(nodes)
+        super().__init__(nodes, truncate_length=truncate_length)
 
         for radius in range(1, d):
             for i in range(radius + 1):
@@ -78,9 +86,8 @@ class RotatedSurfaceCodeTN(TensorNetwork):
                         [0 if idx(i, radius) % 2 == 0 else 1],
                     )
         self.n = d * d
-        if coset_error is None:
-            coset_error = GF2.Zeros(2 * self.n)
-        self.set_coset(coset_error)
+
+        self.set_coset(coset_error=coset_error)
 
     def qubit_to_node(self, q):
         return q
