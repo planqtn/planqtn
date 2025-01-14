@@ -10,7 +10,11 @@ from qlego.tensor_stabilizer_enumerator import (
 
 class SurfaceCodeTN(TensorNetwork):
     def __init__(
-        self, d: int, lego=lambda i: Legos.enconding_tensor_512, coset_error=None
+        self,
+        d: int,
+        lego=lambda i: Legos.enconding_tensor_512,
+        coset_error=None,
+        truncate_length=None,
     ):
 
         if d < 2:
@@ -32,7 +36,8 @@ class SurfaceCodeTN(TensorNetwork):
                 TensorStabilizerCodeEnumerator(lego((r, c)), idx=(r, c))
                 for r in range(last_row + 1)
                 for c in range(r % 2, last_col + 1, 2)
-            ]
+            ],
+            truncate_length=truncate_length,
         )
         self._q_to_node = [
             (r, c) for r in range(last_row + 1) for c in range(r % 2, last_col + 1, 2)

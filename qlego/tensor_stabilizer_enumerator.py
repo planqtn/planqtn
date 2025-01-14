@@ -206,6 +206,7 @@ class TensorNetwork:
                 continue
 
             pauli = GF2([is_x, is_z])
+            # print(self.qubit_to_node(q), f" has pauli {pauli}")
 
             self.nodes[node_idx] = self.nodes[node_idx].with_coset_flipped_legs(
                 [((node_idx, 4), pauli)]
@@ -1405,7 +1406,7 @@ class TensorStabilizerCodeEnumerator:
                 self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
-                self.tensor_wep = self.tensor_wep
+                pass
 
         class TensorElementCollector:
             def __init__(self, k, n, coset):

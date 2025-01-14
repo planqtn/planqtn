@@ -1,5 +1,6 @@
 from galois import GF2
 import numpy as np
+import pytest
 
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
@@ -14,29 +15,37 @@ from qlego.tensor_stabilizer_enumerator import (
 
 
 def test_d3_rsc_with_merged_ptes():
+    # this test forces the merging of PTEs branch of the tracing logic
+
     tn = RotatedSurfaceCodeTN(d=3)
     tn_single_pte = RotatedSurfaceCodeTN(d=3)
 
     print(tn.traces)
     tn.traces = [
-        (0, 1, [(0, 2)], [(1, 1)]),
-        (0, 3, [(0, 1)], [(3, 0)]),
-        (7, 8, [(7, 3)], [(8, 0)]),
-        (5, 8, [(5, 2)], [(8, 3)]),
-        (3, 4, [(3, 3)], [(4, 0)]),
-        (1, 4, [(1, 2)], [(4, 3)]),
-        (1, 2, [(1, 3)], [(2, 0)]),
-        (3, 6, [(3, 2)], [(6, 3)]),
-        (4, 5, [(4, 2)], [(5, 1)]),
-        (2, 5, [(2, 1)], [(5, 0)]),
-        (4, 7, [(4, 1)], [(7, 0)]),
-        (6, 7, [(6, 2)], [(7, 1)]),
+        # starting a PTE island with the bottom right corner
+        ((2, 1), (2, 2), [((2, 1), 3)], [((2, 2), 0)]),
+        ((1, 2), (2, 2), [((1, 2), 2)], [((2, 2), 3)]),
+        # and then starting another PTE island in the top left corner
+        ((0, 0), (0, 1), [((0, 0), 2)], [((0, 1), 1)]),
+        ((0, 0), (1, 0), [((0, 0), 1)], [((1, 0), 0)]),
+        ((1, 0), (1, 1), [((1, 0), 3)], [((1, 1), 0)]),
+        ((0, 1), (1, 1), [((0, 1), 2)], [((1, 1), 3)]),
+        ((0, 1), (0, 2), [((0, 1), 3)], [((0, 2), 0)]),
+        ((1, 0), (2, 0), [((1, 0), 2)], [((2, 0), 3)]),
+        # and here they start to connect
+        ((1, 1), (1, 2), [((1, 1), 2)], [((1, 2), 1)]),
+        ((0, 2), (1, 2), [((0, 2), 1)], [((1, 2), 0)]),
+        ((1, 1), (2, 1), [((1, 1), 1)], [((2, 1), 0)]),
+        ((2, 0), (2, 1), [((2, 0), 2)], [((2, 1), 1)]),
     ]
 
-    assert (
-        tn.stabilizer_enumerator_polynomial(verbose=True)
-        == tn_single_pte.stabilizer_enumerator_polynomial()
+    wep = tn.stabilizer_enumerator_polynomial(cotengra=False, verbose=True)
+
+    wep2 = tn_single_pte.stabilizer_enumerator_polynomial(
+        cotengra=False,
     )
+    print(tn_single_pte.traces)
+    assert (wep == wep2, f"Not eq: {wep} vs {wep2}")
 
 
 def test_rsc3_x_and_z_coset_wep():
@@ -74,8 +83,9 @@ def test_rsc3_x_and_z_coset_wep():
     )
 
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    expected_we = scalar.stabilizer_enumerator_polynomial()
     print("----")
-    assert we == scalar.stabilizer_enumerator_polynomial()
+    assert we == expected_we, f"Not equal: {we} != {expected_we}"
 
 
 def test_d3_rotated_surface_code():
@@ -111,72 +121,61 @@ def test_d3_creation():
     ]
 
     # top Z boundary
-    nodes[0] = nodes[0].trace_with_stopper(PAULI_Z, 3)
-    nodes[1] = nodes[1].trace_with_stopper(PAULI_Z, 0)
-    nodes[2] = nodes[2].trace_with_stopper(PAULI_Z, 3)
+    nodes[0] = nodes[0].trace_with_stopper(PAULI_X, 3)
+    nodes[1] = nodes[1].trace_with_stopper(PAULI_X, 0)
+    nodes[2] = nodes[2].trace_with_stopper(PAULI_X, 3)
 
     # bottom Z boundary
-    nodes[6] = nodes[6].trace_with_stopper(PAULI_Z, 1)
-    nodes[7] = nodes[7].trace_with_stopper(PAULI_Z, 2)
-    nodes[8] = nodes[8].trace_with_stopper(PAULI_Z, 1)
+    nodes[6] = nodes[6].trace_with_stopper(PAULI_X, 1)
+    nodes[7] = nodes[7].trace_with_stopper(PAULI_X, 2)
+    nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 1)
 
     # left X boundary
-    nodes[0] = nodes[0].trace_with_stopper(PAULI_X, 0)
-    nodes[3] = nodes[3].trace_with_stopper(PAULI_X, 1)
-    nodes[6] = nodes[6].trace_with_stopper(PAULI_X, 0)
+    nodes[0] = nodes[0].trace_with_stopper(PAULI_Z, 0)
+    nodes[3] = nodes[3].trace_with_stopper(PAULI_Z, 1)
+    nodes[6] = nodes[6].trace_with_stopper(PAULI_Z, 0)
 
     # right X boundary
-    nodes[2] = nodes[2].trace_with_stopper(PAULI_X, 2)
-    nodes[5] = nodes[5].trace_with_stopper(PAULI_X, 3)
-    nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 2)
+    nodes[2] = nodes[2].trace_with_stopper(PAULI_Z, 2)
+    nodes[5] = nodes[5].trace_with_stopper(PAULI_Z, 3)
+    nodes[8] = nodes[8].trace_with_stopper(PAULI_Z, 2)
 
-    for i, node in tn.nodes.items():
-        assert node.idx == i
+    for idx, node in tn.nodes.items():
+        assert node.idx == idx
+        node_seq = idx[0] * 3 + idx[1]
         print(node.h)
-        print(nodes[i].h)
+        print(nodes[node_seq].h)
         assert np.array_equal(
-            node.h, nodes[i].h
-        ), f"Parities don't match at node {i},\n{node.h}\n{nodes[i].h}"
+            node.h, nodes[node_seq].h
+        ), f"Parities don't match at node {idx},\n{node.h}\n{nodes[node_seq].h}"
 
     assert tn.traces == [
-        (0, 1, [(0, 2)], [(1, 1)]),
-        (0, 3, [(0, 1)], [(3, 0)]),
-        (3, 4, [(3, 3)], [(4, 0)]),
-        (1, 4, [(1, 2)], [(4, 3)]),
-        (1, 2, [(1, 3)], [(2, 0)]),
-        (3, 6, [(3, 2)], [(6, 3)]),
-        (4, 5, [(4, 2)], [(5, 1)]),
-        (2, 5, [(2, 1)], [(5, 0)]),
-        (4, 7, [(4, 1)], [(7, 0)]),
-        (6, 7, [(6, 2)], [(7, 1)]),
-        (7, 8, [(7, 3)], [(8, 0)]),
-        (5, 8, [(5, 2)], [(8, 3)]),
+        ((0, 0), (0, 1), [((0, 0), 2)], [((0, 1), 1)]),
+        ((0, 0), (1, 0), [((0, 0), 1)], [((1, 0), 0)]),
+        ((1, 0), (1, 1), [((1, 0), 3)], [((1, 1), 0)]),
+        ((0, 1), (1, 1), [((0, 1), 2)], [((1, 1), 3)]),
+        ((0, 1), (0, 2), [((0, 1), 3)], [((0, 2), 0)]),
+        ((1, 0), (2, 0), [((1, 0), 2)], [((2, 0), 3)]),
+        ((1, 1), (1, 2), [((1, 1), 2)], [((1, 2), 1)]),
+        ((0, 2), (1, 2), [((0, 2), 1)], [((1, 2), 0)]),
+        ((1, 1), (2, 1), [((1, 1), 1)], [((2, 1), 0)]),
+        ((2, 0), (2, 1), [((2, 0), 2)], [((2, 1), 1)]),
+        ((2, 1), (2, 2), [((2, 1), 3)], [((2, 2), 0)]),
+        ((1, 2), (2, 2), [((1, 2), 2)], [((2, 2), 3)]),
     ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
 
+    print(tn.legs_left_to_join)
     assert tn.legs_left_to_join == {
-        0: [(0, 2), (0, 1)],
-        1: [(1, 1), (1, 2), (1, 3)],
-        2: [(2, 0), (2, 1)],
-        3: [(3, 0), (3, 3), (3, 2)],
-        4: [(4, 0), (4, 3), (4, 2), (4, 1)],
-        5: [(5, 1), (5, 0), (5, 2)],
-        6: [(6, 3), (6, 2)],
-        7: [(7, 0), (7, 1), (7, 3)],
-        8: [(8, 0), (8, 3)],
-    }
-
-
-assert {
-    0: [(0, 2), (0, 1)],
-    1: [(1, 1), (1, 2), (1, 3)],
-    2: [(2, 0), (2, 1)],
-    3: [(3, 0), (3, 3), (3, 2)],
-    4: [(4, 0), (4, 3), (4, 2), (4, 1)],
-    5: [(5, 1), (5, 0), (5, 2)],
-    6: [(6, 3), (6, 2)],
-    7: [(7, 0), (7, 1), (7, 3)],
-    8: [(8, 0), (8, 3)],
-}, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
+        (0, 0): [((0, 0), 2), ((0, 0), 1)],
+        (1, 0): [((1, 0), 0), ((1, 0), 3), ((1, 0), 2)],
+        (2, 0): [((2, 0), 3), ((2, 0), 2)],
+        (0, 1): [((0, 1), 1), ((0, 1), 2), ((0, 1), 3)],
+        (1, 1): [((1, 1), 0), ((1, 1), 3), ((1, 1), 2), ((1, 1), 1)],
+        (2, 1): [((2, 1), 0), ((2, 1), 1), ((2, 1), 3)],
+        (0, 2): [((0, 2), 0), ((0, 2), 1)],
+        (1, 2): [((1, 2), 1), ((1, 2), 0), ((1, 2), 2)],
+        (2, 2): [((2, 2), 0), ((2, 2), 3)],
+    }, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
 
 
 def test_d5_rotated_surface_code():
@@ -226,5 +225,42 @@ def test_d5_rotated_surface_code_x_only():
             4: 22,
             2: 4,
             0: 1,
+        }
+    )
+
+
+def test_d5_rsc_z_coset():
+    tn = RotatedSurfaceCodeTN(
+        d=5, lego=lambda i: Legos.enconding_tensor_512_z, coset_error=((), (11, 21, 22))
+    )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+
+    assert we == SimplePoly(
+        {
+            3: 6,
+            5: 30,
+            7: 181,
+            9: 576,
+            11: 971,
+            13: 1106,
+            15: 771,
+            17: 356,
+            19: 87,
+            21: 12,
+        }
+    )
+
+
+def test_d3_rsc_z_coset():
+    tn = RotatedSurfaceCodeTN(
+        d=3, lego=lambda i: Legos.enconding_tensor_512_z, coset_error=((), (0, 5))
+    )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    print(we)
+    assert we == SimplePoly(
+        {
+            2: 1,
+            4: 10,
+            6: 5,
         }
     )

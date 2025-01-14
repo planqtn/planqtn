@@ -12,6 +12,7 @@ class CompassCodeTN(SurfaceCodeTN):
         *,
         lego=lambda node: Legos.enconding_tensor_512,
         coset_error: GF2 = None,
+        truncate_length: int = None
     ):
         """Creates a square compass code based on the coloring.
 
@@ -20,7 +21,7 @@ class CompassCodeTN(SurfaceCodeTN):
         # See d3_compass_code_numbering.png for numbering - for an (r,c) qubit in the compass code,
         # the (2r, 2c) is the coordinate of the lego in the dual surface code.
         d = len(coloring) + 1
-        super().__init__(d, lego)
+        super().__init__(d=d, lego=lego, truncate_length=truncate_length)
         gauge_idxs = [
             (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
         ]
@@ -29,7 +30,7 @@ class CompassCodeTN(SurfaceCodeTN):
                 PAULI_Z if color == 2 else PAULI_X, 4
             )
 
-        self._q_to_node = [(2 * r, 2 * c) for r in range(d) for c in range(d)]
+        self._q_to_node = [(2 * r, 2 * c) for c in range(d) for r in range(d)]
         self.n = d * d
         self.coloring = coloring
         if coset_error is None:
