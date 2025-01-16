@@ -172,7 +172,7 @@ class TensorNetwork:
         and the coset is applied on leg 4 (the logical leg) at the moment. This will fail on the Tanner graph TN, we'll have to figure that one out next (TODO).
         """
 
-        self._reset_wep()
+        self._reset_wep(keep_cot=True)
 
         if isinstance(coset_error, tuple):
             self._coset = GF2.Zeros(2 * self.n)
