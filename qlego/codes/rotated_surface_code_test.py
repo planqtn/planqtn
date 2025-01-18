@@ -251,10 +251,61 @@ def test_d5_rsc_z_coset():
     )
 
 
+def test_d5_rsc_z_coset_group26():
+
+    tn = RotatedSurfaceCodeTN(
+        d=5,
+        lego=lambda i: Legos.enconding_tensor_512_z,
+        coset_error=((), (0, 1, 3, 20, 22)),
+    )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+
+    assert we == SimplePoly(
+        {
+            5: 35,
+            7: 124,
+            9: 553,
+            11: 1046,
+            13: 1173,
+            15: 768,
+            17: 319,
+            19: 78,
+        }
+    )
+
+
 def test_d3_rsc_z_coset():
     tn = RotatedSurfaceCodeTN(
         d=3, lego=lambda i: Legos.enconding_tensor_512_z, coset_error=((), (0, 5))
     )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    print(we)
+    assert we == SimplePoly(
+        {
+            2: 1,
+            4: 10,
+            6: 5,
+        }
+    )
+
+
+def test_d3_rsc_z_coset_reset():
+    # this is to ensure that the coset can be set multiple times (I had a bug with this)
+    tn = RotatedSurfaceCodeTN(d=3, lego=lambda i: Legos.enconding_tensor_512_z)
+    tn.set_coset(((), (1,)))
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    print(we)
+    assert we == SimplePoly(
+        {
+            1: 2,
+            3: 3,
+            5: 8,
+            7: 3,
+        }
+    )
+
+    tn.set_coset(((), (0, 5)))
+
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     print(we)
     assert we == SimplePoly(

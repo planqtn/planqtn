@@ -175,11 +175,11 @@ class TensorNetwork:
         self._reset_wep(keep_cot=True)
 
         if isinstance(coset_error, tuple):
-            self._coset = GF2.Zeros(2 * self.n)
+            self._coset = GF2.Zeros(2 * self.n_qubits())
             for i in coset_error[0]:
                 self._coset[i] = 1
             for i in coset_error[1]:
-                self._coset[i + self.n] = 1
+                self._coset[i + self.n_qubits()] = 1
         elif coset_error is None:
             self._coset = GF2.Zeros(2 * self.n)
         else:
@@ -204,9 +204,10 @@ class TensorNetwork:
             is_x = q in x_errors
             node_idx, leg = self.qubit_to_node_and_leg(q)
 
+            self.nodes[node_idx].coset_flipped_legs = []
             if not is_z and not is_x:
                 continue
-
+            # print(f"q{q} -> {node_idx, leg}")
             node_legs_to_flip[node_idx].append((leg, GF2([is_x, is_z])))
 
         for node_idx, coset_flipped_legs in node_legs_to_flip.items():
@@ -1408,6 +1409,7 @@ class TensorStabilizerCodeEnumerator:
                 stab_weight = weight(
                     stabilizer + self.coset, skip_indices=self.skip_indices
                 )
+                # print(f"simple {stabilizer + self.coset} => {stab_weight}")
                 self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
 
             def finalize(self):
@@ -1437,6 +1439,7 @@ class TensorStabilizerCodeEnumerator:
                     )
                 for s in self.matching_stabilizers:
                     stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
+                    # print(f"tensor {s + self.coset} => {stab_weight}")
                     key = tuple(sslice(s, open_cols).tolist())
                     self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
@@ -1453,7 +1456,7 @@ class TensorStabilizerCodeEnumerator:
                 coset[self.legs.index(leg)] = pauli[0]
                 coset[self.legs.index(leg) + self.n] = pauli[1]
                 # print(
-                #     f"brute force - {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
+                #     f"brute force - node {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
         collector = (
             SimpleStabilizerCollector(self.k, self.n, coset)
