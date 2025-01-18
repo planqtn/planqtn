@@ -91,8 +91,8 @@ class RotatedSurfaceCodeTN(TensorNetwork):
 
     def qubit_to_node_and_leg(self, q):
         # col major ordering
-
-        return (q % self.d, q // self.d)
+        node = (q % self.d, q // self.d)
+        return node, (node, 4)
 
     def n_qubits(self):
         return self.n

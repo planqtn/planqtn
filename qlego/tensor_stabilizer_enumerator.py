@@ -209,7 +209,7 @@ class TensorNetwork:
 
             node_legs_to_flip[node_idx].append((leg, GF2([is_x, is_z])))
 
-        for node, coset_flipped_legs in node_legs_to_flip.items():
+        for node_idx, coset_flipped_legs in node_legs_to_flip.items():
 
             # print(node, f" will have flipped {coset_flipped_legs}")
 

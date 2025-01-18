@@ -33,11 +33,11 @@ class SimplePoly:
             self._dict.update(d)
             if len(d) > 0:
                 first_key = list(self._dict.keys())[0]
-                if isinstance(first_key, tuple):
+                if isinstance(first_key, tuple | MonomialPowers):
                     self.num_vars = len(first_key)
                 elif not isinstance(first_key, int):
                     raise ValueError(
-                        f"Unrecognized key type: {type(first_key)} for {first_key} in dictionary pased:\n{d}"
+                        f"Unrecognized key type: {type(first_key)} for {first_key} in dictionary passed:\n{d}"
                     )
 
     def add_inplace(self, other):

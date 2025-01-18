@@ -152,7 +152,7 @@ class SurfaceCodeTN(TensorNetwork):
         self.set_coset(coset_error)
 
     def qubit_to_node_and_leg(self, q: int):
-        return self._q_to_node[q]
+        return self._q_to_node[q], (self._q_to_node[q], 4)
 
     def n_qubits(self):
         return self.n
