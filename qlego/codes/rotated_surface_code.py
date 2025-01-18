@@ -89,7 +89,7 @@ class RotatedSurfaceCodeTN(TensorNetwork):
 
         self.set_coset(coset_error=coset_error)
 
-    def qubit_to_node(self, q):
+    def qubit_to_node_and_leg(self, q):
         # col major ordering
 
         return (q % self.d, q // self.d)

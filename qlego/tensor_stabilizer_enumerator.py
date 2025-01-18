@@ -138,9 +138,9 @@ class TensorNetwork:
         self._coset = None
         self.truncate_length = truncate_length
 
-    def qubit_to_node(self, q: int):
+    def qubit_to_node_and_leg(self, q: int):
         raise NotImplementedError(
-            f"qubit_to_node() is not implemented for {type(self)}!"
+            f"qubit_to_node_and_leg() is not implemented for {type(self)}!"
         )
 
     def n_qubits(self):
@@ -197,19 +197,24 @@ class TensorNetwork:
         z_errors = np.argwhere(self._coset[n:] == 1).flatten()
         x_errors = np.argwhere(self._coset[:n] == 1).flatten()
 
+        node_legs_to_flip = defaultdict(list)
+
         for q in range(n):
             is_z = q in z_errors
             is_x = q in x_errors
-            node_idx = self.qubit_to_node(q)
-            self.nodes[node_idx].coset_flipped_legs = []
+            node_idx, leg = self.qubit_to_node_and_leg(q)
+
             if not is_z and not is_x:
                 continue
 
-            pauli = GF2([is_x, is_z])
-            # print(self.qubit_to_node(q), f" has pauli {pauli}")
+            node_legs_to_flip[node_idx].append((leg, GF2([is_x, is_z])))
+
+        for node, coset_flipped_legs in node_legs_to_flip.items():
+
+            # print(node, f" will have flipped {coset_flipped_legs}")
 
             self.nodes[node_idx] = self.nodes[node_idx].with_coset_flipped_legs(
-                [((node_idx, 4), pauli)]
+                coset_flipped_legs
             )
 
     def self_trace(self, node_idx1, node_idx2, join_leg1, join_leg2):
@@ -307,6 +312,7 @@ class TensorNetwork:
         print(
             f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
+        pte_leg_numbers = defaultdict(int)
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn.traces:
             if each_step:
@@ -1133,10 +1139,7 @@ class TensorStabilizerCodeEnumerator:
         self.h = h
 
         self.idx = idx
-        if len(self.h) == 0:
-            self.n = 0
-            self.k = 0
-        elif len(self.h.shape) == 1:
+        if len(self.h.shape) == 1:
             self.n = self.h.shape[0] // 2
             self.k = self.n - 1
         else:
@@ -1144,6 +1147,7 @@ class TensorStabilizerCodeEnumerator:
             self.k = self.n - self.h.shape[0]
 
         self.legs = [(self.idx, leg) for leg in range(self.n)] if legs is None else legs
+        # print(f"Legs: {self.legs} because n = {self.n}, {self.h.shape}")
         assert (
             len(self.legs) == self.n
         ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
@@ -1160,6 +1164,7 @@ class TensorStabilizerCodeEnumerator:
                 assert len(pauli) == 2 and isinstance(
                     pauli, GF2
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
+            # print(f"Coset flipped legs validated. Setting to {self.coset_flipped_legs}")
         self.truncate_length = truncate_length
 
     def __str__(self):
@@ -1198,10 +1203,10 @@ class TensorStabilizerCodeEnumerator:
     def validate_legs(self, legs):
         return [leg for leg in legs if not leg in self.legs]
 
-    def with_coset_flipped_legs(self, coset):
+    def with_coset_flipped_legs(self, coset_flipped_legs):
 
         return TensorStabilizerCodeEnumerator(
-            self.h, self.idx, self.legs, coset, self.truncate_length
+            self.h, self.idx, self.legs, coset_flipped_legs, self.truncate_length
         )
 
     def trace_with(
@@ -1450,7 +1455,6 @@ class TensorStabilizerCodeEnumerator:
                 # print(
                 #     f"brute force - {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
-
         collector = (
             SimpleStabilizerCollector(self.k, self.n, coset)
             if open_cols == []
@@ -1461,7 +1465,13 @@ class TensorStabilizerCodeEnumerator:
             picked_generators = GF2(
                 list(np.binary_repr(i, width=(self.n - self.k))), dtype=int
             )
-            stabilizer = picked_generators @ self.h
+            if len(self.h) == 0:
+                if i > 0:
+                    continue
+                else:
+                    stabilizer = GF2.Zeros(self.n * 2)
+            else:
+                stabilizer = picked_generators @ self.h
 
             if is_diagonal_element and not _suboperator_matches_on_support(
                 traced_cols, stabilizer, e

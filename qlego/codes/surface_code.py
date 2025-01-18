@@ -151,7 +151,7 @@ class SurfaceCodeTN(TensorNetwork):
             coset_error = GF2.Zeros(2 * self.n)
         self.set_coset(coset_error)
 
-    def qubit_to_node(self, q: int):
+    def qubit_to_node_and_leg(self, q: int):
         return self._q_to_node[q]
 
     def n_qubits(self):
