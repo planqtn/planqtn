@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from typing import Tuple
+from typing import Dict, Tuple, Union
 
 from sympy import Poly
 
@@ -23,16 +23,22 @@ class MonomialPowers:
 
 
 class SimplePoly:
-    def __init__(self, d=None):
+    def __init__(self, d: Union["SimplePoly" | Dict] = None):
         self._dict = defaultdict(int)
-        if d is not None:
+        self.num_vars = 1
+        if isinstance(d, SimplePoly):
+            self._dict.update(d._dict)
+            self.num_vars = d.num_vars
+        elif d is not None and isinstance(d, Dict):
             self._dict.update(d)
-        if not d:
-            self.num_vars = 1
-        elif isinstance(list(d.keys())[0], int):
-            self.num_vars = 1
-        else:
-            self.num_vars = len(list(d.keys())[0])
+            if len(d) > 0:
+                first_key = list(self._dict.keys())[0]
+                if isinstance(first_key, tuple):
+                    self.num_vars = len(first_key)
+                elif not isinstance(first_key, int):
+                    raise ValueError(
+                        f"Unrecognized key type: {type(first_key)} for {first_key} in dictionary pased:\n{d}"
+                    )
 
     def add_inplace(self, other):
         assert other.num_vars == self.num_vars
@@ -55,6 +61,9 @@ class SimplePoly:
         min_w = min(self._dict.keys())
         min_coeff = self._dict[min_w]
         return SimplePoly({min_w: min_coeff})
+
+    def items(self):
+        yield from self._dict.items()
 
     def __str__(self):
         return (
