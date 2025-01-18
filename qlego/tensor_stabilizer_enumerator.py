@@ -211,7 +211,7 @@ class TensorNetwork:
 
         for node_idx, coset_flipped_legs in node_legs_to_flip.items():
 
-            # print(node, f" will have flipped {coset_flipped_legs}")
+            # print(node_idx, f" will have flipped {coset_flipped_legs}")
 
             self.nodes[node_idx] = self.nodes[node_idx].with_coset_flipped_legs(
                 coset_flipped_legs
