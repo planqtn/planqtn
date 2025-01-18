@@ -62,6 +62,9 @@ class SimplePoly:
         min_coeff = self._dict[min_w]
         return SimplePoly({min_w: min_coeff})
 
+    def __getitem__(self, i):
+        return self._dict[i]
+
     def items(self):
         yield from self._dict.items()
 
