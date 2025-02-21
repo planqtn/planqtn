@@ -3,3 +3,5 @@
 .tmp 
 .pytest_cache
 .vscode
+qlego.egg-info
+build
