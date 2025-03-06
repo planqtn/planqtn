@@ -1,5 +1,5 @@
 import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable } from 'react-icons/fa'
 
@@ -18,11 +18,29 @@ interface DroppedLego extends LegoPiece {
     y: number
 }
 
+interface DragState {
+    isDragging: boolean
+    draggedLegoIndex: number
+    startX: number
+    startY: number
+    originalX: number
+    originalY: number
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
     const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
     const [error, setError] = useState<string>('')
+    const [dragState, setDragState] = useState<DragState>({
+        isDragging: false,
+        draggedLegoIndex: -1,
+        startX: 0,
+        startY: 0,
+        originalX: 0,
+        originalY: 0
+    })
+    const canvasRef = useRef<HTMLDivElement>(null)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -36,7 +54,6 @@ function App() {
                 ])
                 setMessage(healthResponse.data.message)
                 setLegos(legosResponse.data)
-                console.log(legosResponse.data)
             } catch (error) {
                 setMessage('Error connecting to backend')
                 setError('Failed to fetch data')
@@ -75,6 +92,51 @@ function App() {
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
             setDroppedLegos(prev => [...prev, { ...lego, x, y }])
+        }
+    }
+
+    const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
+        e.stopPropagation()
+        const lego = droppedLegos[index]
+        setDragState({
+            isDragging: true,
+            draggedLegoIndex: index,
+            startX: e.clientX,
+            startY: e.clientY,
+            originalX: lego.x,
+            originalY: lego.y
+        })
+    }
+
+    const handleCanvasMouseMove = (e: React.MouseEvent) => {
+        if (!dragState.isDragging) return
+
+        const deltaX = e.clientX - dragState.startX
+        const deltaY = e.clientY - dragState.startY
+
+        setDroppedLegos(prev => prev.map((lego, index) => {
+            if (index === dragState.draggedLegoIndex) {
+                return {
+                    ...lego,
+                    x: dragState.originalX + deltaX,
+                    y: dragState.originalY + deltaY
+                }
+            }
+            return lego
+        }))
+    }
+
+    const handleCanvasMouseUp = () => {
+        setDragState(prev => ({
+            ...prev,
+            isDragging: false,
+            draggedLegoIndex: -1
+        }))
+    }
+
+    const handleCanvasMouseLeave = () => {
+        if (dragState.isDragging) {
+            handleCanvasMouseUp()
         }
     }
 
@@ -133,6 +195,7 @@ function App() {
 
                 {/* Gray Panel */}
                 <Box
+                    ref={canvasRef}
                     flex={1}
                     bg="gray.100"
                     borderRadius="lg"
@@ -140,6 +203,9 @@ function App() {
                     position="relative"
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseLeave}
                 >
                     {droppedLegos.map((lego, index) => (
                         <Box
@@ -156,10 +222,18 @@ function App() {
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
-                            cursor="pointer"
+                            cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
                             title={lego.name}
                             boxShadow="md"
                             _hover={{ boxShadow: "lg" }}
+                            onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                            style={{
+                                transform: dragState.isDragging && dragState.draggedLegoIndex === index
+                                    ? 'scale(1.05)'
+                                    : 'scale(1)',
+                                transition: 'transform 0.1s',
+                                userSelect: 'none'
+                            }}
                         >
                             <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
                                 {lego.shortName}
