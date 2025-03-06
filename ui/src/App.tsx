@@ -994,7 +994,7 @@ function App() {
         setRedoHistory(prev => prev.slice(0, -1));
     }, [redoHistory]);
 
-    // Update keyboard event listener for both Ctrl+Z and Ctrl+Y
+    // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -1003,12 +1003,59 @@ function App() {
             } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
                 e.preventDefault();
                 handleRedo();
+            } else if (e.key === 'Delete') {
+                // Handle deletion of selected legos
+                let legosToRemove: DroppedLego[] = [];
+
+                if (selectedNetwork) {
+                    legosToRemove = selectedNetwork.legos;
+                } else if (manuallySelectedLegos.length > 0) {
+                    legosToRemove = manuallySelectedLegos;
+                } else if (selectedLego) {
+                    legosToRemove = [selectedLego];
+                }
+
+                if (legosToRemove.length > 0) {
+                    // Get all connections involving the legos to be removed
+                    const connectionsToRemove = connections.filter(conn =>
+                        legosToRemove.some(lego =>
+                            conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+                        )
+                    );
+
+                    // Add to history
+                    addToHistory({
+                        type: 'remove',
+                        data: {
+                            legos: legosToRemove,
+                            connections: connectionsToRemove
+                        }
+                    });
+
+                    // Remove the connections and legos
+                    setConnections(prev => prev.filter(conn =>
+                        !legosToRemove.some(lego =>
+                            conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+                        )
+                    ));
+                    setDroppedLegos(prev => prev.filter(lego =>
+                        !legosToRemove.some(l => l.instanceId === lego.instanceId)
+                    ));
+
+                    // Clear selection states
+                    setSelectedLego(null);
+                    setSelectedNetwork(null);
+                    setManuallySelectedLegos([]);
+
+                    // Update URL state
+                    encodeCanvasState(droppedLegos, connections);
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo]);
+    }, [handleUndo, handleRedo, selectedNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState]);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
