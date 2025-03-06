@@ -12,9 +12,15 @@ interface LegoPiece {
     parameters?: Record<string, any>
 }
 
+interface DroppedLego extends LegoPiece {
+    x: number
+    y: number
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
+    const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
     const [error, setError] = useState<string>('')
 
     const bgColor = useColorModeValue('white', 'gray.800')
@@ -50,6 +56,26 @@ function App() {
         }
     }
 
+    const handleDragStart = (e: React.DragEvent, lego: LegoPiece) => {
+        e.dataTransfer.setData('application/json', JSON.stringify(lego))
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        const legoData = e.dataTransfer.getData('application/json')
+        if (legoData) {
+            const lego = JSON.parse(legoData)
+            const rect = e.currentTarget.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            const y = e.clientY - rect.top
+            setDroppedLegos(prev => [...prev, { ...lego, x, y }])
+        }
+    }
+
     return (
         <HStack spacing={0} align="stretch" h="100vh">
             {/* Left Panel */}
@@ -71,7 +97,9 @@ function App() {
                                 borderWidth="1px"
                                 borderRadius="md"
                                 _hover={{ bg: 'gray.50' }}
-                                cursor="pointer"
+                                cursor="move"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, lego)}
                             >
                                 <HStack spacing={2}>
                                     <Icon as={getLegoIcon(lego.type)} boxSize={5} />
@@ -107,7 +135,36 @@ function App() {
                     bg="gray.100"
                     borderRadius="lg"
                     boxShadow="inner"
-                />
+                    position="relative"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                >
+                    {droppedLegos.map((lego, index) => (
+                        <Box
+                            key={`${lego.id}-${index}`}
+                            position="absolute"
+                            left={`${lego.x - 25}px`}
+                            top={`${lego.y - 25}px`}
+                            w="50px"
+                            h="50px"
+                            borderRadius="full"
+                            bg="white"
+                            border="2px"
+                            borderColor="blue.500"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            cursor="pointer"
+                            title={lego.name}
+                            boxShadow="md"
+                            _hover={{ boxShadow: "lg" }}
+                        >
+                            <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                {lego.name.split(' ')[0]}
+                            </Text>
+                        </Box>
+                    ))}
+                </Box>
             </Box>
         </HStack>
     )
