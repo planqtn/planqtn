@@ -204,15 +204,41 @@ function App() {
     const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
         e.preventDefault();
         e.stopPropagation();
-        const lego = droppedLegos[index]
-        setDragState({
-            isDragging: true,
-            draggedLegoIndex: index,
-            startX: e.clientX,
-            startY: e.clientY,
-            originalX: lego.x,
-            originalY: lego.y
-        })
+        const lego = droppedLegos[index];
+
+        if (e.shiftKey) {
+            // Create a new instance with a new instanceId
+            const newInstanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const newLego = {
+                ...lego,
+                instanceId: newInstanceId,
+                x: lego.x + 20, // Offset slightly to make it visible
+                y: lego.y + 20
+            };
+
+            // Add the new lego to the list
+            setDroppedLegos(prev => [...prev, newLego]);
+
+            // Set up drag state for the new lego
+            setDragState({
+                isDragging: true,
+                draggedLegoIndex: droppedLegos.length, // Index of the new lego
+                startX: e.clientX,
+                startY: e.clientY,
+                originalX: lego.x + 20,
+                originalY: lego.y + 20
+            });
+        } else {
+            // Original drag behavior
+            setDragState({
+                isDragging: true,
+                draggedLegoIndex: index,
+                startX: e.clientX,
+                startY: e.clientY,
+                originalX: lego.x,
+                originalY: lego.y
+            });
+        }
     }
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
