@@ -1,5 +1,5 @@
 import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable } from 'react-icons/fa'
 
@@ -28,6 +28,14 @@ interface DragState {
     originalY: number
 }
 
+interface CanvasState {
+    pieces: Array<{
+        id: string
+        x: number
+        y: number
+    }>
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -47,6 +55,48 @@ function App() {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
+    const encodeCanvasState = useCallback((pieces: DroppedLego[]) => {
+        const state: CanvasState = {
+            pieces: pieces.map(piece => ({
+                id: piece.id,
+                x: piece.x,
+                y: piece.y
+            }))
+        }
+        const encoded = btoa(JSON.stringify(state))
+        window.history.replaceState(null, '', `#state=${encoded}`)
+    }, [])
+
+    const decodeCanvasState = useCallback(async (encoded: string): Promise<DroppedLego[]> => {
+        try {
+            const decoded = JSON.parse(atob(encoded))
+            if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
+                return []
+            }
+
+            // Fetch legos if not already loaded
+            let legosList = legos
+            if (legos.length === 0) {
+                const response = await axios.get('/api/legos')
+                legosList = response.data
+            }
+
+            // Reconstruct dropped legos with full lego information
+            return decoded.pieces.map((piece: { id: string; x: number; y: number }) => {
+                const fullLego = legosList.find(l => l.id === piece.id)
+                if (!fullLego) return null
+                return {
+                    ...fullLego,
+                    x: piece.x,
+                    y: piece.y
+                }
+            }).filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
+        } catch (error) {
+            console.error('Error decoding canvas state:', error)
+            return []
+        }
+    }, [legos])
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -56,6 +106,14 @@ function App() {
                 ])
                 setMessage(healthResponse.data.message)
                 setLegos(legosResponse.data)
+
+                // Check for state in URL
+                const hashParams = new URLSearchParams(window.location.hash.slice(1))
+                const stateParam = hashParams.get('state')
+                if (stateParam) {
+                    const decodedLegos = await decodeCanvasState(stateParam)
+                    setDroppedLegos(decodedLegos)
+                }
             } catch (error) {
                 setMessage('Error connecting to backend')
                 setError('Failed to fetch data')
@@ -64,7 +122,16 @@ function App() {
         }
 
         fetchData()
-    }, [])
+    }, [decodeCanvasState])
+
+    // Update URL when dropped legos change
+    useEffect(() => {
+        if (droppedLegos.length > 0) {
+            encodeCanvasState(droppedLegos)
+        } else {
+            window.history.replaceState(null, '', window.location.pathname)
+        }
+    }, [droppedLegos, encodeCanvasState])
 
     const getLegoIcon = (type: string) => {
         switch (type) {
