@@ -141,15 +141,6 @@ function App() {
                 ])
                 setMessage(healthResponse.data.message)
                 setLegos(legosResponse.data)
-
-                // Check for state in URL
-                const hashParams = new URLSearchParams(window.location.hash.slice(1))
-                const stateParam = hashParams.get('state')
-                if (stateParam) {
-                    const decodedState = await decodeCanvasState(stateParam)
-                    setDroppedLegos(decodedState.pieces)
-                    setConnections(decodedState.connections)
-                }
             } catch (error) {
                 setMessage('Error connecting to backend')
                 setError('Failed to fetch data')
@@ -158,16 +149,36 @@ function App() {
         }
 
         fetchData()
-    }, [decodeCanvasState])
+    }, [])
 
     // Update URL when dropped legos change
     useEffect(() => {
         if (droppedLegos.length > 0 || connections.length > 0) {
             encodeCanvasState(droppedLegos, connections)
-        } else {
-            window.history.replaceState(null, '', window.location.pathname)
         }
     }, [droppedLegos, connections, encodeCanvasState])
+
+    // Add a new effect to handle initial URL state
+    useEffect(() => {
+        const handleHashChange = async () => {
+            const hashParams = new URLSearchParams(window.location.hash.slice(1))
+            const stateParam = hashParams.get('state')
+            if (stateParam) {
+                const decodedState = await decodeCanvasState(stateParam)
+                setDroppedLegos(decodedState.pieces)
+                setConnections(decodedState.connections)
+            }
+        }
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange)
+
+        // Initial load
+        handleHashChange()
+
+        // Cleanup
+        return () => window.removeEventListener('hashchange', handleHashChange)
+    }, [decodeCanvasState])
 
     const getLegoIcon = (type: string) => {
         switch (type) {
