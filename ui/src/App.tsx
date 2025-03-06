@@ -6,6 +6,7 @@ import { FaCube, FaCode, FaTable } from 'react-icons/fa'
 interface LegoPiece {
     id: string
     name: string
+    shortName: string
     type: string
     description: string
     is_dynamic?: boolean
@@ -35,6 +36,7 @@ function App() {
                 ])
                 setMessage(healthResponse.data.message)
                 setLegos(legosResponse.data)
+                console.log(legosResponse.data)
             } catch (error) {
                 setMessage('Error connecting to backend')
                 setError('Failed to fetch data')
@@ -160,7 +162,7 @@ function App() {
                             _hover={{ boxShadow: "lg" }}
                         >
                             <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
-                                {lego.name.split(' ')[0]}
+                                {lego.shortName}
                             </Text>
                         </Box>
                     ))}

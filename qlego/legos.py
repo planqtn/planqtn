@@ -82,36 +82,42 @@ class Legos:
             {
                 "id": "encoding_tensor_602",
                 "name": "Encoding Tensor 6-0-2",
+                "shortName": "ET602",
                 "type": "tensor",
                 "description": "6-0-2 encoding tensor for quantum error correction"
             },
             {
                 "id": "stab_code_parity_422",
                 "name": "Stabilizer Code Parity 4-2-2",
+                "shortName": "SC422",
                 "type": "stabilizer",
                 "description": "4-2-2 parity check matrix for stabilizer codes"
             },
             {
                 "id": "encoding_tensor_512",
                 "name": "Encoding Tensor 5-1-2",
+                "shortName": "ET512",
                 "type": "tensor",
                 "description": "5-1-2 encoding tensor for quantum error correction"
             },
             {
                 "id": "encoding_tensor_512_x",
                 "name": "Encoding Tensor 5-1-2 X",
+                "shortName": "ET51X",
                 "type": "tensor",
                 "description": "X component of 5-1-2 encoding tensor"
             },
             {
                 "id": "encoding_tensor_512_z",
                 "name": "Encoding Tensor 5-1-2 Z",
+                "shortName": "ET51Z",
                 "type": "tensor",
                 "description": "Z component of 5-1-2 encoding tensor"
             },
             {
                 "id": "h",
                 "name": "Hadamard Matrix",
+                "shortName": "HADAM",
                 "type": "matrix",
                 "description": "Hadamard matrix for quantum operations"
             }
@@ -122,6 +128,7 @@ class Legos:
             {
                 "id": "z_rep_code",
                 "name": "Z-Repetition Code",
+                "shortName": "ZREP3",
                 "type": "code",
                 "description": "Z-type repetition code with configurable distance",
                 "is_dynamic": True,
@@ -130,6 +137,7 @@ class Legos:
             {
                 "id": "x_rep_code",
                 "name": "X-Repetition Code",
+                "shortName": "XREP3",
                 "type": "code",
                 "description": "X-type repetition code with configurable distance",
                 "is_dynamic": True,

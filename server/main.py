@@ -31,6 +31,7 @@ class HealthResponse(BaseModel):
 class LegoPiece(BaseModel):
     id: str
     name: str
+    shortName: str
     type: str
     description: str
     is_dynamic: bool = False
