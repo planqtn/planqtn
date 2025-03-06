@@ -172,12 +172,12 @@ function App() {
         fetchData()
     }, [])
 
-    // Update URL when dropped legos change
+    // Remove the URL update from the general effect
     useEffect(() => {
         if (droppedLegos.length > 0 || connections.length > 0) {
-            encodeCanvasState(droppedLegos, connections)
+            // Don't update URL here anymore, it will be handled in mouse up events
         }
-    }, [droppedLegos, connections, encodeCanvasState])
+    }, [droppedLegos, connections, encodeCanvasState]);
 
     // Add a new effect to handle initial URL state
     useEffect(() => {
@@ -388,11 +388,16 @@ function App() {
                     conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
                 );
 
-                // Add to history before removing
+                // Store the original position instead of the final position
+                const legoWithOriginalPos = {
+                    ...legoToRemove,
+                    x: dragState.originalX,
+                    y: dragState.originalY
+                };
                 addToHistory({
                     type: 'remove',
                     data: {
-                        legos: [legoToRemove],
+                        legos: [legoWithOriginalPos],
                         connections: connectionsToRemove
                     }
                 });
@@ -409,7 +414,6 @@ function App() {
                     setSelectedNetwork(null);
                 }
             } else if (deltaX !== 0 || deltaY !== 0) {
-                // Record move operation only if the piece actually moved
                 addToHistory({
                     type: 'move',
                     data: {
@@ -427,6 +431,9 @@ function App() {
             if (canvas) {
                 canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
             }
+
+            // Update URL state after the drag operation is complete
+            encodeCanvasState(droppedLegos, connections);
         }
 
         // Handle leg connection
@@ -485,18 +492,15 @@ function App() {
             isDragging: false,
             draggedLegoIndex: -1
         }));
+
+        // Update URL state after the drag operation is complete
+        encodeCanvasState(droppedLegos, connections);
     };
 
     const handleCanvasMouseLeave = () => {
-        if (dragState.isDragging) {
-            setLegDragState(null);
-            setDragState(prev => ({
-                ...prev,
-                isDragging: false,
-                draggedLegoIndex: -1
-            }));
-        }
-    }
+        setLegDragState(null);
+        // Don't reset drag state here anymore, let it continue until mouse up
+    };
 
     const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
         const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
@@ -542,6 +546,90 @@ function App() {
         setOperationHistory(prev => [...prev, operation]);
         setRedoHistory([]); // Clear redo stack when new operation is performed
     };
+
+    // Add window-level mouse up handler
+    useEffect(() => {
+        const handleWindowMouseUp = (e: MouseEvent) => {
+            if (dragState.isDragging) {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const deltaX = e.clientX - dragState.startX;
+                const deltaY = e.clientY - dragState.startY;
+                const newX = dragState.originalX + deltaX;
+                const newY = dragState.originalY + deltaY;
+
+                // Always remove the Lego if the mouse is released outside the canvas bounds
+                const isOutsideCanvas =
+                    e.clientX < rect.left ||
+                    e.clientX > rect.right ||
+                    e.clientY < rect.top ||
+                    e.clientY > rect.bottom;
+
+                if (isOutsideCanvas) {
+                    const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
+                    const connectionsToRemove = connections.filter(conn =>
+                        conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
+                    );
+
+                    // Store the original position instead of the final position
+                    const legoWithOriginalPos = {
+                        ...legoToRemove,
+                        x: dragState.originalX,
+                        y: dragState.originalY
+                    };
+
+                    addToHistory({
+                        type: 'remove',
+                        data: {
+                            legos: [legoWithOriginalPos],
+                            connections: connectionsToRemove
+                        }
+                    });
+
+                    setConnections(prev => prev.filter(conn =>
+                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                    ));
+                    setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
+
+                    if (selectedLego?.instanceId === legoToRemove.instanceId) {
+                        setSelectedLego(null);
+                    }
+                    if (selectedNetwork?.legos.some(l => l.instanceId === legoToRemove.instanceId)) {
+                        setSelectedNetwork(null);
+                    }
+                } else if (deltaX !== 0 || deltaY !== 0) {
+                    addToHistory({
+                        type: 'move',
+                        data: {
+                            legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
+                            oldX: dragState.originalX,
+                            oldY: dragState.originalY,
+                            newX,
+                            newY
+                        }
+                    });
+                }
+
+                // Reset drag state
+                setDragState(prev => ({
+                    ...prev,
+                    isDragging: false,
+                    draggedLegoIndex: -1
+                }));
+
+                // Reset canvas visual feedback
+                canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
+
+                // Update URL state after the drag operation is complete
+                encodeCanvasState(droppedLegos, connections);
+            }
+        };
+
+        window.addEventListener('mouseup', handleWindowMouseUp);
+        return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+    }, [dragState, droppedLegos, connections, selectedLego, selectedNetwork, addToHistory, encodeCanvasState, canvasRef]);
 
     // Handle undo
     const handleUndo = useCallback(() => {
@@ -785,8 +873,28 @@ function App() {
                                             y2={toPoint.y}
                                             stroke="transparent"
                                             strokeWidth="10"
-                                            style={{ cursor: 'pointer' }}
+                                            style={{
+                                                cursor: 'pointer',
+                                            }}
                                             onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+                                            onMouseEnter={(e) => {
+                                                // Find and update the visible line
+                                                const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                if (visibleLine) {
+                                                    visibleLine.style.stroke = '#4299E1'; // brighter blue
+                                                    visibleLine.style.strokeWidth = '3';
+                                                    visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                // Reset the visible line
+                                                const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                if (visibleLine) {
+                                                    visibleLine.style.stroke = '#3182CE';
+                                                    visibleLine.style.strokeWidth = '2';
+                                                    visibleLine.style.filter = 'none';
+                                                }
+                                            }}
                                         />
                                         {/* Visible line */}
                                         <line
@@ -796,7 +904,10 @@ function App() {
                                             y2={toPoint.y}
                                             stroke="#3182CE"
                                             strokeWidth="2"
-                                            style={{ pointerEvents: 'none' }}
+                                            style={{
+                                                pointerEvents: 'none',
+                                                transition: 'all 0.2s ease'
+                                            }}
                                         />
                                     </g>
                                 );
