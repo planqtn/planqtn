@@ -17,6 +17,7 @@ interface LegoPiece {
 interface DroppedLego extends LegoPiece {
     x: number
     y: number
+    instanceId: string
 }
 
 interface DragState {
@@ -31,6 +32,7 @@ interface DragState {
 interface CanvasState {
     pieces: Array<{
         id: string
+        instanceId: string
         x: number
         y: number
     }>
@@ -59,6 +61,7 @@ function App() {
         const state: CanvasState = {
             pieces: pieces.map(piece => ({
                 id: piece.id,
+                instanceId: piece.instanceId,
                 x: piece.x,
                 y: piece.y
             }))
@@ -82,11 +85,12 @@ function App() {
             }
 
             // Reconstruct dropped legos with full lego information
-            return decoded.pieces.map((piece: { id: string; x: number; y: number }) => {
+            return decoded.pieces.map((piece: { id: string; instanceId: string; x: number; y: number }) => {
                 const fullLego = legosList.find(l => l.id === piece.id)
                 if (!fullLego) return null
                 return {
                     ...fullLego,
+                    instanceId: piece.instanceId,
                     x: piece.x,
                     y: piece.y
                 }
@@ -160,7 +164,8 @@ function App() {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
-            setDroppedLegos(prev => [...prev, { ...lego, x, y }])
+            const instanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            setDroppedLegos(prev => [...prev, { ...lego, x, y, instanceId }])
         }
     }
 
@@ -290,16 +295,16 @@ function App() {
                 >
                     {droppedLegos.map((lego, index) => (
                         <Box
-                            key={`${lego.id}-${index}`}
+                            key={`${lego.instanceId}`}
                             position="absolute"
                             left={`${lego.x - 25}px`}
                             top={`${lego.y - 25}px`}
                             w="50px"
                             h="50px"
                             borderRadius="full"
-                            bg={selectedLego?.id === lego.id ? "blue.100" : "white"}
+                            bg={selectedLego?.instanceId === lego.instanceId ? "blue.100" : "white"}
                             border="2px"
-                            borderColor={selectedLego?.id === lego.id ? "blue.600" : "blue.500"}
+                            borderColor={selectedLego?.instanceId === lego.instanceId ? "blue.600" : "blue.500"}
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
