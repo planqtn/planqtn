@@ -1,4 +1,4 @@
-import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
+import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable } from 'react-icons/fa'
@@ -58,6 +58,11 @@ interface CanvasState {
     connections: Array<Connection>
 }
 
+interface SelectedNetwork {
+    legos: DroppedLego[]
+    connections: Connection[]
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -75,6 +80,7 @@ function App() {
         originalY: 0
     })
     const canvasRef = useRef<HTMLDivElement>(null)
+    const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -254,13 +260,23 @@ function App() {
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
         if (!dragState.isDragging) {
-            e.stopPropagation()
-            setSelectedLego(lego)
+            e.stopPropagation();
+
+            if (selectedLego?.instanceId === lego.instanceId) {
+                // If clicking the same lego again, select the connected component
+                const network = findConnectedComponent(lego);
+                setSelectedNetwork(network);
+            } else {
+                // First click, just select the individual lego
+                setSelectedLego(lego);
+                setSelectedNetwork(null);
+            }
         }
     }
 
     const handleCanvasClick = () => {
-        setSelectedLego(null)
+        setSelectedLego(null);
+        setSelectedNetwork(null);
     }
 
     const handleLegMouseDown = (e: React.MouseEvent, legoId: string, legIndex: number) => {
@@ -402,6 +418,36 @@ function App() {
         if (selectedLego?.instanceId === lego.instanceId) {
             setSelectedLego(null);
         }
+    };
+
+    // Add this new function to find connected components
+    const findConnectedComponent = (startLego: DroppedLego) => {
+        const visited = new Set<string>();
+        const component: DroppedLego[] = [];
+        const componentConnections: Connection[] = [];
+
+        const dfs = (legoId: string) => {
+            if (visited.has(legoId)) return;
+            visited.add(legoId);
+
+            const lego = droppedLegos.find(l => l.instanceId === legoId);
+            if (!lego) return;
+            component.push(lego);
+
+            // Find all connections involving this lego
+            connections.forEach(conn => {
+                if (conn.from.legoId === legoId && !visited.has(conn.to.legoId)) {
+                    componentConnections.push(conn);
+                    dfs(conn.to.legoId);
+                } else if (conn.to.legoId === legoId && !visited.has(conn.from.legoId)) {
+                    componentConnections.push(conn);
+                    dfs(conn.from.legoId);
+                }
+            });
+        };
+
+        dfs(startLego.instanceId);
+        return { legos: component, connections: componentConnections };
     };
 
     return (
@@ -622,9 +668,21 @@ function App() {
                                 w="50px"
                                 h="50px"
                                 borderRadius="full"
-                                bg={selectedLego?.instanceId === lego.instanceId ? "blue.100" : "white"}
+                                bg={
+                                    selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                        ? "blue.200"
+                                        : selectedLego?.instanceId === lego.instanceId
+                                            ? "blue.100"
+                                            : "white"
+                                }
                                 border="2px"
-                                borderColor={selectedLego?.instanceId === lego.instanceId ? "blue.600" : "blue.500"}
+                                borderColor={
+                                    selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                        ? "blue.600"
+                                        : selectedLego?.instanceId === lego.instanceId
+                                            ? "blue.500"
+                                            : "blue.400"
+                                }
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -665,106 +723,131 @@ function App() {
                 borderColor={borderColor}
                 bg={bgColor}
                 overflowY="auto"
-                display={selectedLego ? "block" : "none"}
+                display={selectedLego || selectedNetwork ? "block" : "none"}
             >
                 <VStack align="stretch" spacing={4}>
-                    <Heading size="md">Matrix Details</Heading>
-                    {selectedLego && (
-                        <VStack align="stretch" spacing={3}>
-                            <Text fontWeight="bold">{selectedLego.name}</Text>
-                            <Text fontSize="sm" color="gray.600">
-                                {selectedLego.description}
-                            </Text>
-                            <Box overflowX="auto">
-                                <Table size="sm" variant="simple">
-                                    <Thead>
-                                        <Tr>
-                                            {selectedLego.parity_check_matrix[0] && (
-                                                <>
-                                                    <Td
-                                                        p={2}
-                                                        textAlign="center"
-                                                        borderWidth={0}
-                                                        colSpan={selectedLego.parity_check_matrix[0].length / 2}
-                                                        fontWeight="bold"
-                                                        color="blue.600"
-                                                    >
-                                                        X
-                                                    </Td>
-                                                    <Td
-                                                        p={2}
-                                                        textAlign="center"
-                                                        borderWidth={0}
-                                                        colSpan={selectedLego.parity_check_matrix[0].length / 2}
-                                                        fontWeight="bold"
-                                                        color="red.600"
-                                                    >
-                                                        Z
-                                                    </Td>
-                                                </>
-                                            )}
-                                        </Tr>
-                                        <Tr>
-                                            {selectedLego.parity_check_matrix[0] && (
-                                                <>
-                                                    {/* X indices */}
-                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                    {selectedNetwork ? (
+                        <>
+                            <Heading size="md">Tensor Network</Heading>
+                            <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
+                            <Button
+                                colorScheme="blue"
+                                onClick={() => {
+                                    // TODO: Implement parity check calculation
+                                    console.log("Calculate conjoined parity check");
+                                }}
+                            >
+                                Calculate Conjoined Parity Check
+                            </Button>
+                            <Button
+                                colorScheme="green"
+                                onClick={() => {
+                                    // TODO: Implement Python code export
+                                    console.log("Export Python code");
+                                }}
+                            >
+                                Export Python Code
+                            </Button>
+                        </>
+                    ) : selectedLego && (
+                        <>
+                            <Heading size="md">Matrix Details</Heading>
+                            <VStack align="stretch" spacing={3}>
+                                <Text fontWeight="bold">{selectedLego.name}</Text>
+                                <Text fontSize="sm" color="gray.600">
+                                    {selectedLego.description}
+                                </Text>
+                                <Box overflowX="auto">
+                                    <Table size="sm" variant="simple">
+                                        <Thead>
+                                            <Tr>
+                                                {selectedLego.parity_check_matrix[0] && (
+                                                    <>
                                                         <Td
-                                                            key={`x-idx-${i}`}
                                                             p={2}
                                                             textAlign="center"
                                                             borderWidth={0}
-                                                            colSpan={1}
-                                                            fontSize="sm"
-                                                            color="gray.600"
+                                                            colSpan={selectedLego.parity_check_matrix[0].length / 2}
+                                                            fontWeight="bold"
+                                                            color="blue.600"
                                                         >
-                                                            {i}
+                                                            X
                                                         </Td>
-                                                    ))}
-                                                    {/* Z indices */}
-                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
                                                         <Td
-                                                            key={`z-idx-${i}`}
                                                             p={2}
                                                             textAlign="center"
                                                             borderWidth={0}
-                                                            colSpan={1}
-                                                            fontSize="sm"
-                                                            color="gray.600"
+                                                            colSpan={selectedLego.parity_check_matrix[0].length / 2}
+                                                            fontWeight="bold"
+                                                            color="red.600"
                                                         >
-                                                            {i}
+                                                            Z
                                                         </Td>
-                                                    ))}
-                                                </>
-                                            )}
-                                        </Tr>
-                                    </Thead>
-                                    <Tbody>
-                                        {selectedLego.parity_check_matrix.map((row, rowIndex) => (
-                                            <Tr key={rowIndex}>
-                                                {row.map((cell, cellIndex) => {
-                                                    const isMiddle = cellIndex === row.length / 2 - 1;
-                                                    return (
-                                                        <Td
-                                                            key={cellIndex}
-                                                            p={2}
-                                                            textAlign="center"
-                                                            bg={cell === 1 ? "blue.100" : "transparent"}
-                                                            borderWidth={1}
-                                                            borderColor="gray.200"
-                                                            borderRightWidth={isMiddle ? 3 : 1}
-                                                            borderRightColor={isMiddle ? "gray.400" : "gray.200"}
-                                                        >
-                                                            {cell}
-                                                        </Td>
-                                                    )
-                                                })}
+                                                    </>
+                                                )}
                                             </Tr>
-                                        ))}
-                                    </Tbody>
-                                </Table>
-                            </Box>
-                        </VStack>
+                                            <Tr>
+                                                {selectedLego.parity_check_matrix[0] && (
+                                                    <>
+                                                        {/* X indices */}
+                                                        {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                            <Td
+                                                                key={`x-idx-${i}`}
+                                                                p={2}
+                                                                textAlign="center"
+                                                                borderWidth={0}
+                                                                colSpan={1}
+                                                                fontSize="sm"
+                                                                color="gray.600"
+                                                            >
+                                                                {i}
+                                                            </Td>
+                                                        ))}
+                                                        {/* Z indices */}
+                                                        {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                            <Td
+                                                                key={`z-idx-${i}`}
+                                                                p={2}
+                                                                textAlign="center"
+                                                                borderWidth={0}
+                                                                colSpan={1}
+                                                                fontSize="sm"
+                                                                color="gray.600"
+                                                            >
+                                                                {i}
+                                                            </Td>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </Tr>
+                                        </Thead>
+                                        <Tbody>
+                                            {selectedLego.parity_check_matrix.map((row, rowIndex) => (
+                                                <Tr key={rowIndex}>
+                                                    {row.map((cell, cellIndex) => {
+                                                        const isMiddle = cellIndex === row.length / 2 - 1;
+                                                        return (
+                                                            <Td
+                                                                key={cellIndex}
+                                                                p={2}
+                                                                textAlign="center"
+                                                                bg={cell === 1 ? "blue.100" : "transparent"}
+                                                                borderWidth={1}
+                                                                borderColor="gray.200"
+                                                                borderRightWidth={isMiddle ? 3 : 1}
+                                                                borderRightColor={isMiddle ? "gray.400" : "gray.200"}
+                                                            >
+                                                                {cell}
+                                                            </Td>
+                                                        )
+                                                    })}
+                                                </Tr>
+                                            ))}
+                                        </Tbody>
+                                    </Table>
+                                </Box>
+                            </VStack>
+                        </>
                     )}
                 </VStack>
             </Box>
