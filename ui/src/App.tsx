@@ -76,6 +76,12 @@ interface Operation {
     };
 }
 
+// Add a new interface for group drag state
+interface GroupDragState {
+    legoInstanceIds: string[];
+    originalPositions: { [instanceId: string]: { x: number; y: number } };
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -96,6 +102,7 @@ function App() {
     const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
     const [operationHistory, setOperationHistory] = useState<Operation[]>([])
     const [redoHistory, setRedoHistory] = useState<Operation[]>([])
+    const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -266,6 +273,20 @@ function App() {
                 originalY: lego.y + 20
             });
         } else {
+            // Check if the clicked lego is part of the selected network
+            if (selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
+                // Set up group drag state
+                const positions: { [instanceId: string]: { x: number; y: number } } = {};
+                selectedNetwork.legos.forEach(l => {
+                    positions[l.instanceId] = { x: l.x, y: l.y };
+                });
+
+                setGroupDragState({
+                    legoInstanceIds: selectedNetwork.legos.map(l => l.instanceId),
+                    originalPositions: positions
+                });
+            }
+
             // Original drag behavior
             setDragState({
                 isDragging: true,
@@ -333,14 +354,22 @@ function App() {
                 newY + 25 > rect.height;
 
             setDroppedLegos(prev => prev.map((lego, index) => {
-                if (index === dragState.draggedLegoIndex) {
+                if (groupDragState && groupDragState.legoInstanceIds.includes(lego.instanceId)) {
+                    // Move all selected legos together
+                    const originalPos = groupDragState.originalPositions[lego.instanceId];
+                    return {
+                        ...lego,
+                        x: originalPos.x + deltaX,
+                        y: originalPos.y + deltaY
+                    };
+                } else if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
                         x: newX,
                         y: newY
-                    }
+                    };
                 }
-                return lego
+                return lego;
             }));
 
             // Add visual feedback when touching edges
@@ -383,47 +412,94 @@ function App() {
                 newY + 25 > rect.height;
 
             if (isOutsideCanvas) {
-                const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
-                const connectionsToRemove = connections.filter(conn =>
-                    conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
-                );
+                if (groupDragState) {
+                    // Remove all selected legos and their connections
+                    const legosToRemove = droppedLegos.filter(lego =>
+                        groupDragState.legoInstanceIds.includes(lego.instanceId)
+                    );
+                    const connectionsToRemove = connections.filter(conn =>
+                        groupDragState.legoInstanceIds.includes(conn.from.legoId) ||
+                        groupDragState.legoInstanceIds.includes(conn.to.legoId)
+                    );
 
-                // Store the original position instead of the final position
-                const legoWithOriginalPos = {
-                    ...legoToRemove,
-                    x: dragState.originalX,
-                    y: dragState.originalY
-                };
-                addToHistory({
-                    type: 'remove',
-                    data: {
-                        legos: [legoWithOriginalPos],
-                        connections: connectionsToRemove
-                    }
-                });
+                    // Store original positions for all legos
+                    const legosWithOriginalPos = legosToRemove.map(lego => ({
+                        ...lego,
+                        x: groupDragState.originalPositions[lego.instanceId].x,
+                        y: groupDragState.originalPositions[lego.instanceId].y
+                    }));
 
-                setConnections(prev => prev.filter(conn =>
-                    conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
-                ));
-                setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
+                    addToHistory({
+                        type: 'remove',
+                        data: {
+                            legos: legosWithOriginalPos,
+                            connections: connectionsToRemove
+                        }
+                    });
 
-                if (selectedLego?.instanceId === legoToRemove.instanceId) {
-                    setSelectedLego(null);
+                    setConnections(prev => prev.filter(conn =>
+                        !groupDragState.legoInstanceIds.includes(conn.from.legoId) &&
+                        !groupDragState.legoInstanceIds.includes(conn.to.legoId)
+                    ));
+                    setDroppedLegos(prev => prev.filter(lego =>
+                        !groupDragState.legoInstanceIds.includes(lego.instanceId)
+                    ));
+                } else {
+                    const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
+                    const connectionsToRemove = connections.filter(conn =>
+                        conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
+                    );
+
+                    // Store the original position instead of the final position
+                    const legoWithOriginalPos = {
+                        ...legoToRemove,
+                        x: dragState.originalX,
+                        y: dragState.originalY
+                    };
+                    addToHistory({
+                        type: 'remove',
+                        data: {
+                            legos: [legoWithOriginalPos],
+                            connections: connectionsToRemove
+                        }
+                    });
+
+                    setConnections(prev => prev.filter(conn =>
+                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                    ));
+                    setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
                 }
-                if (selectedNetwork?.legos.some(l => l.instanceId === legoToRemove.instanceId)) {
-                    setSelectedNetwork(null);
-                }
+                setSelectedLego(null);
+                setSelectedNetwork(null);
             } else if (deltaX !== 0 || deltaY !== 0) {
-                addToHistory({
-                    type: 'move',
-                    data: {
-                        legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
-                        oldX: dragState.originalX,
-                        oldY: dragState.originalY,
-                        newX,
-                        newY
-                    }
-                });
+                if (groupDragState) {
+                    // Record move operation for all selected legos
+                    const moves = groupDragState.legoInstanceIds.map(instanceId => ({
+                        legoInstanceId: instanceId,
+                        oldX: groupDragState.originalPositions[instanceId].x,
+                        oldY: groupDragState.originalPositions[instanceId].y,
+                        newX: groupDragState.originalPositions[instanceId].x + deltaX,
+                        newY: groupDragState.originalPositions[instanceId].y + deltaY
+                    }));
+
+                    moves.forEach(move => {
+                        addToHistory({
+                            type: 'move',
+                            data: move
+                        });
+                    });
+                } else {
+                    addToHistory({
+                        type: 'move',
+                        data: {
+                            legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
+                            oldX: dragState.originalX,
+                            oldY: dragState.originalY,
+                            newX,
+                            newY
+                        }
+                    });
+                }
             }
 
             // Reset canvas visual feedback
@@ -492,6 +568,7 @@ function App() {
             isDragging: false,
             draggedLegoIndex: -1
         }));
+        setGroupDragState(null);
 
         // Update URL state after the drag operation is complete
         encodeCanvasState(droppedLegos, connections);
@@ -568,62 +645,78 @@ function App() {
                     e.clientY > rect.bottom;
 
                 if (isOutsideCanvas) {
-                    const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
-                    const connectionsToRemove = connections.filter(conn =>
-                        conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
-                    );
+                    if (groupDragState) {
+                        // Remove all selected legos and their connections
+                        const legosToRemove = droppedLegos.filter(lego =>
+                            groupDragState.legoInstanceIds.includes(lego.instanceId)
+                        );
+                        const connectionsToRemove = connections.filter(conn =>
+                            groupDragState.legoInstanceIds.includes(conn.from.legoId) ||
+                            groupDragState.legoInstanceIds.includes(conn.to.legoId)
+                        );
 
-                    // Store the original position instead of the final position
-                    const legoWithOriginalPos = {
-                        ...legoToRemove,
-                        x: dragState.originalX,
-                        y: dragState.originalY
-                    };
+                        // Store original positions for all legos
+                        const legosWithOriginalPos = legosToRemove.map(lego => ({
+                            ...lego,
+                            x: groupDragState.originalPositions[lego.instanceId].x,
+                            y: groupDragState.originalPositions[lego.instanceId].y
+                        }));
 
-                    addToHistory({
-                        type: 'remove',
-                        data: {
-                            legos: [legoWithOriginalPos],
-                            connections: connectionsToRemove
-                        }
-                    });
+                        addToHistory({
+                            type: 'remove',
+                            data: {
+                                legos: legosWithOriginalPos,
+                                connections: connectionsToRemove
+                            }
+                        });
 
-                    setConnections(prev => prev.filter(conn =>
-                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
-                    ));
-                    setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
+                        setConnections(prev => prev.filter(conn =>
+                            !groupDragState.legoInstanceIds.includes(conn.from.legoId) &&
+                            !groupDragState.legoInstanceIds.includes(conn.to.legoId)
+                        ));
+                        setDroppedLegos(prev => prev.filter(lego =>
+                            !groupDragState.legoInstanceIds.includes(lego.instanceId)
+                        ));
+                    } else {
+                        const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
+                        const connectionsToRemove = connections.filter(conn =>
+                            conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
+                        );
 
-                    if (selectedLego?.instanceId === legoToRemove.instanceId) {
-                        setSelectedLego(null);
+                        // Store the original position instead of the final position
+                        const legoWithOriginalPos = {
+                            ...legoToRemove,
+                            x: dragState.originalX,
+                            y: dragState.originalY
+                        };
+
+                        addToHistory({
+                            type: 'remove',
+                            data: {
+                                legos: [legoWithOriginalPos],
+                                connections: connectionsToRemove
+                            }
+                        });
+
+                        setConnections(prev => prev.filter(conn =>
+                            conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                        ));
+                        setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
                     }
-                    if (selectedNetwork?.legos.some(l => l.instanceId === legoToRemove.instanceId)) {
-                        setSelectedNetwork(null);
-                    }
-                } else if (deltaX !== 0 || deltaY !== 0) {
-                    addToHistory({
-                        type: 'move',
-                        data: {
-                            legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
-                            oldX: dragState.originalX,
-                            oldY: dragState.originalY,
-                            newX,
-                            newY
-                        }
-                    });
+
+                    // Reset drag state
+                    setDragState(prev => ({
+                        ...prev,
+                        isDragging: false,
+                        draggedLegoIndex: -1
+                    }));
+
+                    // Reset canvas visual feedback
+                    canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
+
+                    // Update URL state after the drag operation is complete
+                    encodeCanvasState(droppedLegos, connections);
                 }
-
-                // Reset drag state
-                setDragState(prev => ({
-                    ...prev,
-                    isDragging: false,
-                    draggedLegoIndex: -1
-                }));
-
-                // Reset canvas visual feedback
-                canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
-
-                // Update URL state after the drag operation is complete
-                encodeCanvasState(droppedLegos, connections);
             }
         };
 
