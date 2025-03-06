@@ -55,6 +55,7 @@ interface CanvasState {
         x: number
         y: number
     }>
+    connections: Array<Connection>
 }
 
 function App() {
@@ -78,24 +79,28 @@ function App() {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
-    const encodeCanvasState = useCallback((pieces: DroppedLego[]) => {
+    const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
         const state: CanvasState = {
             pieces: pieces.map(piece => ({
                 id: piece.id,
                 instanceId: piece.instanceId,
                 x: piece.x,
                 y: piece.y
-            }))
+            })),
+            connections: conns
         }
         const encoded = btoa(JSON.stringify(state))
         window.history.replaceState(null, '', `#state=${encoded}`)
     }, [])
 
-    const decodeCanvasState = useCallback(async (encoded: string): Promise<DroppedLego[]> => {
+    const decodeCanvasState = useCallback(async (encoded: string): Promise<{
+        pieces: DroppedLego[],
+        connections: Connection[]
+    }> => {
         try {
             const decoded = JSON.parse(atob(encoded))
             if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
-                return []
+                return { pieces: [], connections: [] }
             }
 
             // Fetch legos if not already loaded
@@ -106,7 +111,7 @@ function App() {
             }
 
             // Reconstruct dropped legos with full lego information
-            return decoded.pieces.map((piece: { id: string; instanceId: string; x: number; y: number }) => {
+            const reconstructedPieces = decoded.pieces.map((piece: { id: string; instanceId: string; x: number; y: number }) => {
                 const fullLego = legosList.find(l => l.id === piece.id)
                 if (!fullLego) return null
                 return {
@@ -116,9 +121,14 @@ function App() {
                     y: piece.y
                 }
             }).filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
+
+            return {
+                pieces: reconstructedPieces,
+                connections: decoded.connections || []
+            }
         } catch (error) {
             console.error('Error decoding canvas state:', error)
-            return []
+            return { pieces: [], connections: [] }
         }
     }, [legos])
 
@@ -136,8 +146,9 @@ function App() {
                 const hashParams = new URLSearchParams(window.location.hash.slice(1))
                 const stateParam = hashParams.get('state')
                 if (stateParam) {
-                    const decodedLegos = await decodeCanvasState(stateParam)
-                    setDroppedLegos(decodedLegos)
+                    const decodedState = await decodeCanvasState(stateParam)
+                    setDroppedLegos(decodedState.pieces)
+                    setConnections(decodedState.connections)
                 }
             } catch (error) {
                 setMessage('Error connecting to backend')
@@ -151,12 +162,12 @@ function App() {
 
     // Update URL when dropped legos change
     useEffect(() => {
-        if (droppedLegos.length > 0) {
-            encodeCanvasState(droppedLegos)
+        if (droppedLegos.length > 0 || connections.length > 0) {
+            encodeCanvasState(droppedLegos, connections)
         } else {
             window.history.replaceState(null, '', window.location.pathname)
         }
-    }, [droppedLegos, encodeCanvasState])
+    }, [droppedLegos, connections, encodeCanvasState])
 
     const getLegoIcon = (type: string) => {
         switch (type) {
