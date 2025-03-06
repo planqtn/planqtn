@@ -1,5 +1,6 @@
 from galois import GF2
 import numpy as np
+from typing import List, Dict, Any
 
 
 class Legos:
@@ -73,3 +74,67 @@ class Legos:
             [0, 1, 1, 0],
         ]
     )
+
+    @classmethod
+    def list_available_legos(cls) -> List[Dict[str, Any]]:
+        """Returns a list of all available lego pieces with their descriptions."""
+        legos = [
+            {
+                "id": "encoding_tensor_602",
+                "name": "Encoding Tensor 6-0-2",
+                "type": "tensor",
+                "description": "6-0-2 encoding tensor for quantum error correction"
+            },
+            {
+                "id": "stab_code_parity_422",
+                "name": "Stabilizer Code Parity 4-2-2",
+                "type": "stabilizer",
+                "description": "4-2-2 parity check matrix for stabilizer codes"
+            },
+            {
+                "id": "encoding_tensor_512",
+                "name": "Encoding Tensor 5-1-2",
+                "type": "tensor",
+                "description": "5-1-2 encoding tensor for quantum error correction"
+            },
+            {
+                "id": "encoding_tensor_512_x",
+                "name": "Encoding Tensor 5-1-2 X",
+                "type": "tensor",
+                "description": "X component of 5-1-2 encoding tensor"
+            },
+            {
+                "id": "encoding_tensor_512_z",
+                "name": "Encoding Tensor 5-1-2 Z",
+                "type": "tensor",
+                "description": "Z component of 5-1-2 encoding tensor"
+            },
+            {
+                "id": "h",
+                "name": "Hadamard Matrix",
+                "type": "matrix",
+                "description": "Hadamard matrix for quantum operations"
+            }
+        ]
+        
+        # Add dynamic lego pieces (methods)
+        legos.extend([
+            {
+                "id": "z_rep_code",
+                "name": "Z-Repetition Code",
+                "type": "code",
+                "description": "Z-type repetition code with configurable distance",
+                "is_dynamic": True,
+                "parameters": {"d": 3}
+            },
+            {
+                "id": "x_rep_code",
+                "name": "X-Repetition Code",
+                "type": "code",
+                "description": "X-type repetition code with configurable distance",
+                "is_dynamic": True,
+                "parameters": {"d": 3}
+            }
+        ])
+        
+        return legos
