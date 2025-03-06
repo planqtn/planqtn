@@ -20,6 +20,17 @@ interface DroppedLego extends LegoPiece {
     instanceId: string
 }
 
+interface Connection {
+    from: {
+        legoId: string
+        legIndex: number
+    }
+    to: {
+        legoId: string
+        legIndex: number
+    }
+}
+
 interface DragState {
     isDragging: boolean
     draggedLegoIndex: number
@@ -27,6 +38,14 @@ interface DragState {
     startY: number
     originalX: number
     originalY: number
+}
+
+interface LegDragState {
+    isDragging: boolean
+    legoId: string
+    legIndex: number
+    startX: number
+    startY: number
 }
 
 interface CanvasState {
@@ -42,8 +61,10 @@ function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
     const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
+    const [connections, setConnections] = useState<Connection[]>([])
     const [error, setError] = useState<string>('')
     const [selectedLego, setSelectedLego] = useState<DroppedLego | null>(null)
+    const [legDragState, setLegDragState] = useState<LegDragState | null>(null)
     const [dragState, setDragState] = useState<DragState>({
         isDragging: false,
         draggedLegoIndex: -1,
@@ -193,37 +214,129 @@ function App() {
         setSelectedLego(null)
     }
 
+    const handleLegMouseDown = (e: React.MouseEvent, legoId: string, legIndex: number) => {
+        e.stopPropagation();
+        setLegDragState({
+            isDragging: true,
+            legoId,
+            legIndex,
+            startX: e.clientX,
+            startY: e.clientY
+        });
+    };
+
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
-        if (!dragState.isDragging) return
+        if (dragState.isDragging) {
+            const deltaX = e.clientX - dragState.startX
+            const deltaY = e.clientY - dragState.startY
 
-        const deltaX = e.clientX - dragState.startX
-        const deltaY = e.clientY - dragState.startY
-
-        setDroppedLegos(prev => prev.map((lego, index) => {
-            if (index === dragState.draggedLegoIndex) {
-                return {
-                    ...lego,
-                    x: dragState.originalX + deltaX,
-                    y: dragState.originalY + deltaY
+            setDroppedLegos(prev => prev.map((lego, index) => {
+                if (index === dragState.draggedLegoIndex) {
+                    return {
+                        ...lego,
+                        x: dragState.originalX + deltaX,
+                        y: dragState.originalY + deltaY
+                    }
                 }
-            }
-            return lego
-        }))
-    }
+                return lego
+            }))
+        }
 
-    const handleCanvasMouseUp = () => {
+        // Handle leg dragging
+        if (legDragState?.isDragging) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (rect) {
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setLegDragState(prev => ({
+                    ...prev!,
+                    startX: x,
+                    startY: y
+                }));
+            }
+        }
+    };
+
+    const handleCanvasMouseUp = (e: React.MouseEvent) => {
+        if (legDragState?.isDragging) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (!rect) {
+                setLegDragState(null);
+                return;
+            }
+
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Find if we're over another leg
+            const targetLego = droppedLegos.find(lego => {
+                if (lego.instanceId === legDragState.legoId) return false; // Don't connect to self
+
+                const legCount = lego.parity_check_matrix[0].length / 2;
+                for (let i = 0; i < legCount; i++) {
+                    const legEndpoint = getLegEndpoint(lego, i);
+
+                    const distance = Math.sqrt(
+                        Math.pow(mouseX - legEndpoint.x, 2) +
+                        Math.pow(mouseY - legEndpoint.y, 2)
+                    );
+                    console.log("Leg ", i, " distance", distance)
+                    if (distance < 10) { // 10px snap distance
+                        // Check if connection already exists
+                        const connectionExists = connections.some(conn =>
+                            (conn.from.legoId === legDragState.legoId && conn.from.legIndex === legDragState.legIndex &&
+                                conn.to.legoId === lego.instanceId && conn.to.legIndex === i) ||
+                            (conn.from.legoId === lego.instanceId && conn.from.legIndex === i &&
+                                conn.to.legoId === legDragState.legoId && conn.to.legIndex === legDragState.legIndex)
+                        );
+
+
+                        if (!connectionExists) {
+                            setConnections(prev => [...prev, {
+                                from: {
+                                    legoId: legDragState.legoId,
+                                    legIndex: legDragState.legIndex
+                                },
+                                to: {
+                                    legoId: lego.instanceId,
+                                    legIndex: i
+                                }
+                            }]);
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+        }
+
+        setLegDragState(null);
         setDragState(prev => ({
             ...prev,
             isDragging: false,
             draggedLegoIndex: -1
-        }))
-    }
+        }));
+    };
 
     const handleCanvasMouseLeave = () => {
         if (dragState.isDragging) {
-            handleCanvasMouseUp()
+            setLegDragState(null);
+            setDragState(prev => ({
+                ...prev,
+                isDragging: false,
+                draggedLegoIndex: -1
+            }));
         }
     }
+
+    const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
+        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+        const legLength = 40;
+        return {
+            x: lego.x + legLength * Math.cos(angle),
+            y: lego.y + legLength * Math.sin(angle)
+        };
+    };
 
     return (
         <HStack spacing={0} align="stretch" h="100vh">
@@ -293,6 +406,61 @@ function App() {
                     onMouseLeave={handleCanvasMouseLeave}
                     onClick={handleCanvasClick}
                 >
+                    {/* Connection Lines */}
+                    <svg
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: 'none'
+                        }}
+                    >
+                        {/* Existing connections */}
+                        {connections.map((conn, index) => {
+                            const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                            const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                            if (!fromLego || !toLego) return null;
+
+                            const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
+                            const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
+
+                            return (
+                                <line
+                                    key={`conn-${index}`}
+                                    x1={fromPoint.x}
+                                    y1={fromPoint.y}
+                                    x2={toPoint.x}
+                                    y2={toPoint.y}
+                                    stroke="#3182CE"
+                                    strokeWidth="2"
+                                />
+                            );
+                        })}
+
+                        {/* Temporary line while dragging */}
+                        {legDragState?.isDragging && (() => {
+                            const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
+                            if (!fromLego) return null;
+
+                            const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
+
+                            return (
+                                <line
+                                    x1={fromPoint.x}
+                                    y1={fromPoint.y}
+                                    x2={legDragState.startX}
+                                    y2={legDragState.startY}
+                                    stroke="#3182CE"
+                                    strokeWidth="2"
+                                    strokeDasharray="4"
+                                    opacity={0.5}
+                                />
+                            );
+                        })()}
+                    </svg>
+
                     {droppedLegos.map((lego, index) => (
                         <Box
                             key={`${lego.instanceId}`}
@@ -303,11 +471,15 @@ function App() {
                             {/* Legs */}
                             {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
                                 const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                const legLength = 40; // Length of the leg line
+                                const legLength = 40;
                                 const endX = 25 + legLength * Math.cos(angle);
                                 const endY = 25 + legLength * Math.sin(angle);
-                                const labelX = 25 + (legLength + 10) * Math.cos(angle); // Position for the index label
+                                const labelX = 25 + (legLength + 10) * Math.cos(angle);
                                 const labelY = 25 + (legLength + 10) * Math.sin(angle);
+
+                                const isBeingDragged = legDragState?.isDragging &&
+                                    legDragState.legoId === lego.instanceId &&
+                                    legDragState.legIndex === legIndex;
 
                                 return (
                                     <Box key={`leg-${legIndex}`} position="absolute">
@@ -323,6 +495,23 @@ function App() {
                                             style={{
                                                 transform: `rotate(${angle}rad)`
                                             }}
+                                        />
+                                        {/* Draggable Endpoint */}
+                                        <Box
+                                            position="absolute"
+                                            left={`${endX}px`}
+                                            top={`${endY}px`}
+                                            w="10px"
+                                            h="10px"
+                                            borderRadius="full"
+                                            bg={isBeingDragged ? "blue.100" : "white"}
+                                            border="2px"
+                                            borderColor={isBeingDragged ? "blue.500" : "gray.400"}
+                                            transform="translate(-50%, -50%)"
+                                            cursor="pointer"
+                                            onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
+                                            _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+                                            transition="all 0.2s"
                                         />
                                         {/* Index Label */}
                                         <Text
@@ -400,34 +589,26 @@ function App() {
                                         <Tr>
                                             {selectedLego.parity_check_matrix[0] && (
                                                 <>
-                                                    {/* Pauli X columns */}
-                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
-                                                        <Td
-                                                            key={`x-${i}`}
-                                                            p={2}
-                                                            textAlign="center"
-                                                            borderWidth={0}
-                                                            colSpan={1}
-                                                            fontWeight="bold"
-                                                            color="blue.600"
-                                                        >
-                                                            X
-                                                        </Td>
-                                                    ))}
-                                                    {/* Pauli Z columns */}
-                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
-                                                        <Td
-                                                            key={`z-${i}`}
-                                                            p={2}
-                                                            textAlign="center"
-                                                            borderWidth={0}
-                                                            colSpan={1}
-                                                            fontWeight="bold"
-                                                            color="red.600"
-                                                        >
-                                                            Z
-                                                        </Td>
-                                                    ))}
+                                                    <Td
+                                                        p={2}
+                                                        textAlign="center"
+                                                        borderWidth={0}
+                                                        colSpan={selectedLego.parity_check_matrix[0].length / 2}
+                                                        fontWeight="bold"
+                                                        color="blue.600"
+                                                    >
+                                                        X
+                                                    </Td>
+                                                    <Td
+                                                        p={2}
+                                                        textAlign="center"
+                                                        borderWidth={0}
+                                                        colSpan={selectedLego.parity_check_matrix[0].length / 2}
+                                                        fontWeight="bold"
+                                                        color="red.600"
+                                                    >
+                                                        Z
+                                                    </Td>
                                                 </>
                                             )}
                                         </Tr>
