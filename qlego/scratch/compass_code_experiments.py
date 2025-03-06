@@ -5,6 +5,7 @@ from galois import GF2
 from matplotlib import pyplot as plt
 import numpy as np
 
+from qlego.codes.compass_code import CompassCodeTN
 from qlego.linalg import gauss
 from qlego.parity_check import sprint
 from qlego.legos import Legos
@@ -265,14 +266,14 @@ def compass_code_from_tanner():
 
 
 def time_compass_code_cotengra_contraction():
-    d = 3
+    d = 10
     coloring = np.random.RandomState(0).randint(1, 3, (d - 1, d - 1))
     # coloring = [
     #     [2, 1],
     #     [1, 1],
     # ]
     print(repr(coloring))
-    tn = TensorNetwork.make_compass_sq(
+    tn = CompassCodeTN(
         coloring=coloring, lego=lambda node: Legos.enconding_tensor_512_z
     )
     tn.analyze_traces(cotengra=True, minimize="combo", max_repeats=300)

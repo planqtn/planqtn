@@ -16,7 +16,7 @@ setup(
     description="An implementation of the Quantum Lego framework for weight enumerator calculations.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/qlego",
+    url="https://github.com/balopat/tnqec",
     classifiers=[
         "Programming Language :: Python :: 3s",
         "License :: OSI Approved :: MIT License",
