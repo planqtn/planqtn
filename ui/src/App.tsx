@@ -216,12 +216,15 @@ function App() {
 
     const handleLegMouseDown = (e: React.MouseEvent, legoId: string, legIndex: number) => {
         e.stopPropagation();
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
+
         setLegDragState({
             isDragging: true,
             legoId,
             legIndex,
-            startX: e.clientX,
-            startY: e.clientY
+            startX: e.clientX - rect.left,
+            startY: e.clientY - rect.top
         });
     };
 
@@ -246,12 +249,10 @@ function App() {
         if (legDragState?.isDragging) {
             const rect = canvasRef.current?.getBoundingClientRect();
             if (rect) {
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
                 setLegDragState(prev => ({
                     ...prev!,
-                    startX: x,
-                    startY: y
+                    startX: e.clientX - rect.left,
+                    startY: e.clientY - rect.top
                 }));
             }
         }
@@ -414,7 +415,8 @@ function App() {
                             left: 0,
                             width: '100%',
                             height: '100%',
-                            pointerEvents: 'none'
+                            pointerEvents: 'none',
+                            userSelect: 'none'
                         }}
                     >
                         {/* Existing connections */}
@@ -459,6 +461,31 @@ function App() {
                                 />
                             );
                         })()}
+
+                        {/* Leg Labels */}
+                        {droppedLegos.map((lego) => (
+                            Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                const legLength = 40;
+                                const labelX = lego.x + (legLength + 10) * Math.cos(angle);
+                                const labelY = lego.y + (legLength + 10) * Math.sin(angle);
+
+                                return (
+                                    <text
+                                        key={`${lego.instanceId}-label-${legIndex}`}
+                                        x={labelX}
+                                        y={labelY}
+                                        fontSize="12"
+                                        fill="#666666"
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                        style={{ pointerEvents: 'none' }}
+                                    >
+                                        {legIndex}
+                                    </text>
+                                );
+                            })
+                        ))}
                     </svg>
 
                     {droppedLegos.map((lego, index) => (
@@ -474,8 +501,6 @@ function App() {
                                 const legLength = 40;
                                 const endX = 25 + legLength * Math.cos(angle);
                                 const endY = 25 + legLength * Math.sin(angle);
-                                const labelX = 25 + (legLength + 10) * Math.cos(angle);
-                                const labelY = 25 + (legLength + 10) * Math.sin(angle);
 
                                 const isBeingDragged = legDragState?.isDragging &&
                                     legDragState.legoId === lego.instanceId &&
@@ -513,19 +538,6 @@ function App() {
                                             _hover={{ borderColor: "blue.400", bg: "blue.50" }}
                                             transition="all 0.2s"
                                         />
-                                        {/* Index Label */}
-                                        <Text
-                                            position="absolute"
-                                            left={`${labelX}px`}
-                                            top={`${labelY}px`}
-                                            fontSize="xs"
-                                            color="gray.600"
-                                            style={{
-                                                transform: 'translate(-50%, -50%)'
-                                            }}
-                                        >
-                                            {legIndex}
-                                        </Text>
                                     </Box>
                                 );
                             })}
@@ -556,7 +568,7 @@ function App() {
                                 position="relative"
                                 zIndex={1}
                             >
-                                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                <Text fontSize="xs" fontWeight="bold" noOfLines={1} style={{ pointerEvents: 'none' }}>
                                     {lego.shortName}
                                 </Text>
                             </Box>
