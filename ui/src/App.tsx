@@ -297,19 +297,37 @@ function App() {
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
         e.preventDefault();
         if (dragState.isDragging) {
-            const deltaX = e.clientX - dragState.startX
-            const deltaY = e.clientY - dragState.startY
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (!rect) return;
+
+            const deltaX = e.clientX - dragState.startX;
+            const deltaY = e.clientY - dragState.startY;
+            const newX = dragState.originalX + deltaX;
+            const newY = dragState.originalY + deltaY;
+
+            // Check if any part of the lego touches the canvas edges (considering 25px radius)
+            const isOutsideCanvas =
+                newX - 25 < 0 ||
+                newX + 25 > rect.width ||
+                newY - 25 < 0 ||
+                newY + 25 > rect.height;
 
             setDroppedLegos(prev => prev.map((lego, index) => {
                 if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
-                        x: dragState.originalX + deltaX,
-                        y: dragState.originalY + deltaY
+                        x: newX,
+                        y: newY
                     }
                 }
                 return lego
-            }))
+            }));
+
+            // Add visual feedback when touching edges
+            const canvas = canvasRef.current;
+            if (canvas) {
+                canvas.style.boxShadow = isOutsideCanvas ? 'inset 0 0 0 4px #FC8181' : 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
+            }
         }
 
         // Handle leg dragging
@@ -326,13 +344,51 @@ function App() {
     };
 
     const handleCanvasMouseUp = (e: React.MouseEvent) => {
-        if (legDragState?.isDragging) {
-            const rect = canvasRef.current?.getBoundingClientRect();
-            if (!rect) {
-                setLegDragState(null);
-                return;
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) {
+            setLegDragState(null);
+            return;
+        }
+
+        if (dragState.isDragging) {
+            const deltaX = e.clientX - dragState.startX;
+            const deltaY = e.clientY - dragState.startY;
+            const newX = dragState.originalX + deltaX;
+            const newY = dragState.originalY + deltaY;
+
+            // Check if any part of the lego touches the canvas edges (considering 25px radius)
+            const isOutsideCanvas =
+                newX - 25 < 0 ||
+                newX + 25 > rect.width ||
+                newY - 25 < 0 ||
+                newY + 25 > rect.height;
+
+            if (isOutsideCanvas) {
+                const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
+                // Remove all connections involving this lego
+                setConnections(prev => prev.filter(conn =>
+                    conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                ));
+                // Remove the lego
+                setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
+                // Clear selection if this was the selected lego
+                if (selectedLego?.instanceId === legoToRemove.instanceId) {
+                    setSelectedLego(null);
+                }
+                if (selectedNetwork?.legos.some(l => l.instanceId === legoToRemove.instanceId)) {
+                    setSelectedNetwork(null);
+                }
             }
 
+            // Reset canvas visual feedback
+            const canvas = canvasRef.current;
+            if (canvas) {
+                canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
+            }
+        }
+
+        // Handle leg connection
+        if (legDragState?.isDragging) {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
@@ -403,21 +459,6 @@ function App() {
             x: lego.x + legLength * Math.cos(angle),
             y: lego.y + legLength * Math.sin(angle)
         };
-    };
-
-    const handleLegoDoubleClick = (e: React.MouseEvent, lego: DroppedLego) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Remove all connections involving this lego
-        setConnections(prev => prev.filter(conn =>
-            conn.from.legoId !== lego.instanceId && conn.to.legoId !== lego.instanceId
-        ));
-        // Remove the lego
-        setDroppedLegos(prev => prev.filter(l => l.instanceId !== lego.instanceId));
-        // Clear selection if this was the selected lego
-        if (selectedLego?.instanceId === lego.instanceId) {
-            setSelectedLego(null);
-        }
     };
 
     // Add this new function to find connected components
@@ -551,9 +592,6 @@ function App() {
                                         stroke="#3182CE"
                                         strokeWidth="2"
                                         cursor="pointer"
-                                        onDoubleClick={() => {
-                                            setConnections(prev => prev.filter((_, i) => i !== index));
-                                        }}
                                         style={{ pointerEvents: 'all' }}
                                     />
                                 );
@@ -692,7 +730,6 @@ function App() {
                                 _hover={{ boxShadow: "lg" }}
                                 onMouseDown={(e) => handleLegoMouseDown(e, index)}
                                 onClick={(e) => handleLegoClick(e, lego)}
-                                onDoubleClick={(e) => handleLegoDoubleClick(e, lego)}
                                 style={{
                                     transform: dragState.isDragging && dragState.draggedLegoIndex === index
                                         ? 'scale(1.05)'
