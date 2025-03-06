@@ -191,7 +191,8 @@ function App() {
     }
 
     const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
-        e.stopPropagation()
+        e.preventDefault();
+        e.stopPropagation();
         const lego = droppedLegos[index]
         setDragState({
             isDragging: true,
@@ -215,6 +216,7 @@ function App() {
     }
 
     const handleLegMouseDown = (e: React.MouseEvent, legoId: string, legIndex: number) => {
+        e.preventDefault();
         e.stopPropagation();
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -229,6 +231,7 @@ function App() {
     };
 
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
+        e.preventDefault();
         if (dragState.isDragging) {
             const deltaX = e.clientX - dragState.startX
             const deltaY = e.clientY - dragState.startY
@@ -281,7 +284,6 @@ function App() {
                         Math.pow(mouseX - legEndpoint.x, 2) +
                         Math.pow(mouseY - legEndpoint.y, 2)
                     );
-                    console.log("Leg ", i, " distance", distance)
                     if (distance < 10) { // 10px snap distance
                         // Check if connection already exists
                         const connectionExists = connections.some(conn =>
@@ -406,6 +408,7 @@ function App() {
                     onMouseUp={handleCanvasMouseUp}
                     onMouseLeave={handleCanvasMouseLeave}
                     onClick={handleCanvasClick}
+                    style={{ userSelect: 'none' }}
                 >
                     {/* Connection Lines */}
                     <svg
@@ -420,26 +423,33 @@ function App() {
                         }}
                     >
                         {/* Existing connections */}
-                        {connections.map((conn, index) => {
-                            const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
-                            const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
-                            if (!fromLego || !toLego) return null;
+                        <g style={{ pointerEvents: 'all' }}>
+                            {connections.map((conn, index) => {
+                                const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                                const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                                if (!fromLego || !toLego) return null;
 
-                            const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
-                            const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
+                                const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
+                                const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
-                            return (
-                                <line
-                                    key={`conn-${index}`}
-                                    x1={fromPoint.x}
-                                    y1={fromPoint.y}
-                                    x2={toPoint.x}
-                                    y2={toPoint.y}
-                                    stroke="#3182CE"
-                                    strokeWidth="2"
-                                />
-                            );
-                        })}
+                                return (
+                                    <line
+                                        key={`conn-${index}`}
+                                        x1={fromPoint.x}
+                                        y1={fromPoint.y}
+                                        x2={toPoint.x}
+                                        y2={toPoint.y}
+                                        stroke="#3182CE"
+                                        strokeWidth="2"
+                                        cursor="pointer"
+                                        onDoubleClick={() => {
+                                            setConnections(prev => prev.filter((_, i) => i !== index));
+                                        }}
+                                        style={{ pointerEvents: 'all' }}
+                                    />
+                                );
+                            })}
+                        </g>
 
                         {/* Temporary line while dragging */}
                         {legDragState?.isDragging && (() => {
@@ -494,6 +504,7 @@ function App() {
                             position="absolute"
                             left={`${lego.x - 25}px`}
                             top={`${lego.y - 25}px`}
+                            style={{ userSelect: 'none' }}
                         >
                             {/* Legs */}
                             {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
@@ -507,7 +518,7 @@ function App() {
                                     legDragState.legIndex === legIndex;
 
                                 return (
-                                    <Box key={`leg-${legIndex}`} position="absolute">
+                                    <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
                                         {/* Line */}
                                         <Box
                                             position="absolute"
@@ -518,7 +529,8 @@ function App() {
                                             bg="gray.400"
                                             transformOrigin="0 0"
                                             style={{
-                                                transform: `rotate(${angle}rad)`
+                                                transform: `rotate(${angle}rad)`,
+                                                pointerEvents: 'none'
                                             }}
                                         />
                                         {/* Draggable Endpoint */}
@@ -537,6 +549,7 @@ function App() {
                                             onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
                                             _hover={{ borderColor: "blue.400", bg: "blue.50" }}
                                             transition="all 0.2s"
+                                            style={{ pointerEvents: 'all' }}
                                         />
                                     </Box>
                                 );
@@ -563,14 +576,17 @@ function App() {
                                         ? 'scale(1.05)'
                                         : 'scale(1)',
                                     transition: 'transform 0.1s',
-                                    userSelect: 'none'
+                                    userSelect: 'none',
+                                    touchAction: 'none'
                                 }}
                                 position="relative"
                                 zIndex={1}
                             >
-                                <Text fontSize="xs" fontWeight="bold" noOfLines={1} style={{ pointerEvents: 'none' }}>
-                                    {lego.shortName}
-                                </Text>
+                                <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                                    <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                        {lego.shortName}
+                                    </Text>
+                                </Box>
                             </Box>
                         </Box>
                     ))}
