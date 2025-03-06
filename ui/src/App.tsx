@@ -299,32 +299,78 @@ function App() {
                             position="absolute"
                             left={`${lego.x - 25}px`}
                             top={`${lego.y - 25}px`}
-                            w="50px"
-                            h="50px"
-                            borderRadius="full"
-                            bg={selectedLego?.instanceId === lego.instanceId ? "blue.100" : "white"}
-                            border="2px"
-                            borderColor={selectedLego?.instanceId === lego.instanceId ? "blue.600" : "blue.500"}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
-                            title={lego.name}
-                            boxShadow="md"
-                            _hover={{ boxShadow: "lg" }}
-                            onMouseDown={(e) => handleLegoMouseDown(e, index)}
-                            onClick={(e) => handleLegoClick(e, lego)}
-                            style={{
-                                transform: dragState.isDragging && dragState.draggedLegoIndex === index
-                                    ? 'scale(1.05)'
-                                    : 'scale(1)',
-                                transition: 'transform 0.1s',
-                                userSelect: 'none'
-                            }}
                         >
-                            <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
-                                {lego.shortName}
-                            </Text>
+                            {/* Legs */}
+                            {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                const legLength = 40; // Length of the leg line
+                                const endX = 25 + legLength * Math.cos(angle);
+                                const endY = 25 + legLength * Math.sin(angle);
+                                const labelX = 25 + (legLength + 10) * Math.cos(angle); // Position for the index label
+                                const labelY = 25 + (legLength + 10) * Math.sin(angle);
+
+                                return (
+                                    <Box key={`leg-${legIndex}`} position="absolute">
+                                        {/* Line */}
+                                        <Box
+                                            position="absolute"
+                                            left="25px"
+                                            top="25px"
+                                            w={`${legLength}px`}
+                                            h="2px"
+                                            bg="gray.400"
+                                            transformOrigin="0 0"
+                                            style={{
+                                                transform: `rotate(${angle}rad)`
+                                            }}
+                                        />
+                                        {/* Index Label */}
+                                        <Text
+                                            position="absolute"
+                                            left={`${labelX}px`}
+                                            top={`${labelY}px`}
+                                            fontSize="xs"
+                                            color="gray.600"
+                                            style={{
+                                                transform: 'translate(-50%, -50%)'
+                                            }}
+                                        >
+                                            {legIndex}
+                                        </Text>
+                                    </Box>
+                                );
+                            })}
+                            {/* Main Circle */}
+                            <Box
+                                w="50px"
+                                h="50px"
+                                borderRadius="full"
+                                bg={selectedLego?.instanceId === lego.instanceId ? "blue.100" : "white"}
+                                border="2px"
+                                borderColor={selectedLego?.instanceId === lego.instanceId ? "blue.600" : "blue.500"}
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
+                                title={lego.name}
+                                boxShadow="md"
+                                _hover={{ boxShadow: "lg" }}
+                                onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                                onClick={(e) => handleLegoClick(e, lego)}
+                                style={{
+                                    transform: dragState.isDragging && dragState.draggedLegoIndex === index
+                                        ? 'scale(1.05)'
+                                        : 'scale(1)',
+                                    transition: 'transform 0.1s',
+                                    userSelect: 'none'
+                                }}
+                                position="relative"
+                                zIndex={1}
+                            >
+                                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                    {lego.shortName}
+                                </Text>
+                            </Box>
                         </Box>
                     ))}
                 </Box>
