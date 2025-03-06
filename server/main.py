@@ -36,6 +36,7 @@ class LegoPiece(BaseModel):
     description: str
     is_dynamic: bool = False
     parameters: Dict[str, Any] = {}
+    parity_check_matrix: List[List[int]]
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():

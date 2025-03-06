@@ -1,4 +1,4 @@
-import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue } from '@chakra-ui/react'
+import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
 import { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable } from 'react-icons/fa'
@@ -11,6 +11,7 @@ interface LegoPiece {
     description: string
     is_dynamic?: boolean
     parameters?: Record<string, any>
+    parity_check_matrix: number[][]
 }
 
 interface DroppedLego extends LegoPiece {
@@ -32,6 +33,7 @@ function App() {
     const [legos, setLegos] = useState<LegoPiece[]>([])
     const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
     const [error, setError] = useState<string>('')
+    const [selectedLego, setSelectedLego] = useState<DroppedLego | null>(null)
     const [dragState, setDragState] = useState<DragState>({
         isDragging: false,
         draggedLegoIndex: -1,
@@ -106,6 +108,17 @@ function App() {
             originalX: lego.x,
             originalY: lego.y
         })
+    }
+
+    const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
+        if (!dragState.isDragging) {
+            e.stopPropagation()
+            setSelectedLego(lego)
+        }
+    }
+
+    const handleCanvasClick = () => {
+        setSelectedLego(null)
     }
 
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
@@ -206,6 +219,7 @@ function App() {
                     onMouseMove={handleCanvasMouseMove}
                     onMouseUp={handleCanvasMouseUp}
                     onMouseLeave={handleCanvasMouseLeave}
+                    onClick={handleCanvasClick}
                 >
                     {droppedLegos.map((lego, index) => (
                         <Box
@@ -216,9 +230,9 @@ function App() {
                             w="50px"
                             h="50px"
                             borderRadius="full"
-                            bg="white"
+                            bg={selectedLego?.id === lego.id ? "blue.100" : "white"}
                             border="2px"
-                            borderColor="blue.500"
+                            borderColor={selectedLego?.id === lego.id ? "blue.600" : "blue.500"}
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
@@ -227,6 +241,7 @@ function App() {
                             boxShadow="md"
                             _hover={{ boxShadow: "lg" }}
                             onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                            onClick={(e) => handleLegoClick(e, lego)}
                             style={{
                                 transform: dragState.isDragging && dragState.draggedLegoIndex === index
                                     ? 'scale(1.05)'
@@ -241,6 +256,51 @@ function App() {
                         </Box>
                     ))}
                 </Box>
+            </Box>
+
+            {/* Right Panel */}
+            <Box
+                w="400px"
+                p={4}
+                borderLeft="1px"
+                borderColor={borderColor}
+                bg={bgColor}
+                overflowY="auto"
+                display={selectedLego ? "block" : "none"}
+            >
+                <VStack align="stretch" spacing={4}>
+                    <Heading size="md">Matrix Details</Heading>
+                    {selectedLego && (
+                        <VStack align="stretch" spacing={3}>
+                            <Text fontWeight="bold">{selectedLego.name}</Text>
+                            <Text fontSize="sm" color="gray.600">
+                                {selectedLego.description}
+                            </Text>
+                            <Box overflowX="auto">
+                                <Table size="sm" variant="simple">
+                                    <Tbody>
+                                        {selectedLego.parity_check_matrix.map((row, rowIndex) => (
+                                            <Tr key={rowIndex}>
+                                                {row.map((cell, cellIndex) => (
+                                                    <Td
+                                                        key={cellIndex}
+                                                        p={2}
+                                                        textAlign="center"
+                                                        bg={cell === 1 ? "blue.100" : "transparent"}
+                                                        borderWidth={1}
+                                                        borderColor="gray.200"
+                                                    >
+                                                        {cell}
+                                                    </Td>
+                                                ))}
+                                            </Tr>
+                                        ))}
+                                    </Tbody>
+                                </Table>
+                            </Box>
+                        </VStack>
+                    )}
+                </VStack>
             </Box>
         </HStack>
     )

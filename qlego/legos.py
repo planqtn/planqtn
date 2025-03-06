@@ -84,42 +84,48 @@ class Legos:
                 "name": "Encoding Tensor 6-0-2",
                 "shortName": "ET602",
                 "type": "tensor",
-                "description": "6-0-2 encoding tensor for quantum error correction"
+                "description": "6-0-2 encoding tensor for quantum error correction",
+                "parity_check_matrix": cls.enconding_tensor_602.tolist()
             },
             {
                 "id": "stab_code_parity_422",
                 "name": "Stabilizer Code Parity 4-2-2",
                 "shortName": "SC422",
                 "type": "stabilizer",
-                "description": "4-2-2 parity check matrix for stabilizer codes"
+                "description": "4-2-2 parity check matrix for stabilizer codes",
+                "parity_check_matrix": cls.stab_code_parity_422.tolist()
             },
             {
                 "id": "encoding_tensor_512",
                 "name": "Encoding Tensor 5-1-2",
                 "shortName": "ET512",
                 "type": "tensor",
-                "description": "5-1-2 encoding tensor for quantum error correction"
+                "description": "5-1-2 encoding tensor for quantum error correction",
+                "parity_check_matrix": cls.enconding_tensor_512.tolist()
             },
             {
                 "id": "encoding_tensor_512_x",
                 "name": "Encoding Tensor 5-1-2 X",
                 "shortName": "ET51X",
                 "type": "tensor",
-                "description": "X component of 5-1-2 encoding tensor"
+                "description": "X component of 5-1-2 encoding tensor",
+                "parity_check_matrix": cls.enconding_tensor_512_x.tolist()
             },
             {
                 "id": "encoding_tensor_512_z",
                 "name": "Encoding Tensor 5-1-2 Z",
                 "shortName": "ET51Z",
                 "type": "tensor",
-                "description": "Z component of 5-1-2 encoding tensor"
+                "description": "Z component of 5-1-2 encoding tensor",
+                "parity_check_matrix": cls.enconding_tensor_512_z.tolist()
             },
             {
                 "id": "h",
                 "name": "Hadamard Matrix",
                 "shortName": "HADAM",
                 "type": "matrix",
-                "description": "Hadamard matrix for quantum operations"
+                "description": "Hadamard matrix for quantum operations",
+                "parity_check_matrix": cls.h.tolist()
             }
         ]
         
@@ -132,7 +138,8 @@ class Legos:
                 "type": "code",
                 "description": "Z-type repetition code with configurable distance",
                 "is_dynamic": True,
-                "parameters": {"d": 3}
+                "parameters": {"d": 3},
+                "parity_check_matrix": cls.z_rep_code().tolist()
             },
             {
                 "id": "x_rep_code",
@@ -141,7 +148,8 @@ class Legos:
                 "type": "code",
                 "description": "X-type repetition code with configurable distance",
                 "is_dynamic": True,
-                "parameters": {"d": 3}
+                "parameters": {"d": 3},
+                "parity_check_matrix": cls.x_rep_code().tolist()
             }
         ])
         
