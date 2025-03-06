@@ -341,6 +341,21 @@ function App() {
         };
     };
 
+    const handleLegoDoubleClick = (e: React.MouseEvent, lego: DroppedLego) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Remove all connections involving this lego
+        setConnections(prev => prev.filter(conn =>
+            conn.from.legoId !== lego.instanceId && conn.to.legoId !== lego.instanceId
+        ));
+        // Remove the lego
+        setDroppedLegos(prev => prev.filter(l => l.instanceId !== lego.instanceId));
+        // Clear selection if this was the selected lego
+        if (selectedLego?.instanceId === lego.instanceId) {
+            setSelectedLego(null);
+        }
+    };
+
     return (
         <HStack spacing={0} align="stretch" h="100vh">
             {/* Left Panel */}
@@ -571,6 +586,7 @@ function App() {
                                 _hover={{ boxShadow: "lg" }}
                                 onMouseDown={(e) => handleLegoMouseDown(e, index)}
                                 onClick={(e) => handleLegoClick(e, lego)}
+                                onDoubleClick={(e) => handleLegoDoubleClick(e, lego)}
                                 style={{
                                     transform: dragState.isDragging && dragState.draggedLegoIndex === index
                                         ? 'scale(1.05)'
