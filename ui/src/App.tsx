@@ -345,21 +345,96 @@ function App() {
                             </Text>
                             <Box overflowX="auto">
                                 <Table size="sm" variant="simple">
+                                    <Thead>
+                                        <Tr>
+                                            {selectedLego.parity_check_matrix[0] && (
+                                                <>
+                                                    {/* Pauli X columns */}
+                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                        <Td
+                                                            key={`x-${i}`}
+                                                            p={2}
+                                                            textAlign="center"
+                                                            borderWidth={0}
+                                                            colSpan={1}
+                                                            fontWeight="bold"
+                                                            color="blue.600"
+                                                        >
+                                                            X
+                                                        </Td>
+                                                    ))}
+                                                    {/* Pauli Z columns */}
+                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                        <Td
+                                                            key={`z-${i}`}
+                                                            p={2}
+                                                            textAlign="center"
+                                                            borderWidth={0}
+                                                            colSpan={1}
+                                                            fontWeight="bold"
+                                                            color="red.600"
+                                                        >
+                                                            Z
+                                                        </Td>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </Tr>
+                                        <Tr>
+                                            {selectedLego.parity_check_matrix[0] && (
+                                                <>
+                                                    {/* X indices */}
+                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                        <Td
+                                                            key={`x-idx-${i}`}
+                                                            p={2}
+                                                            textAlign="center"
+                                                            borderWidth={0}
+                                                            colSpan={1}
+                                                            fontSize="sm"
+                                                            color="gray.600"
+                                                        >
+                                                            {i}
+                                                        </Td>
+                                                    ))}
+                                                    {/* Z indices */}
+                                                    {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
+                                                        <Td
+                                                            key={`z-idx-${i}`}
+                                                            p={2}
+                                                            textAlign="center"
+                                                            borderWidth={0}
+                                                            colSpan={1}
+                                                            fontSize="sm"
+                                                            color="gray.600"
+                                                        >
+                                                            {i}
+                                                        </Td>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </Tr>
+                                    </Thead>
                                     <Tbody>
                                         {selectedLego.parity_check_matrix.map((row, rowIndex) => (
                                             <Tr key={rowIndex}>
-                                                {row.map((cell, cellIndex) => (
-                                                    <Td
-                                                        key={cellIndex}
-                                                        p={2}
-                                                        textAlign="center"
-                                                        bg={cell === 1 ? "blue.100" : "transparent"}
-                                                        borderWidth={1}
-                                                        borderColor="gray.200"
-                                                    >
-                                                        {cell}
-                                                    </Td>
-                                                ))}
+                                                {row.map((cell, cellIndex) => {
+                                                    const isMiddle = cellIndex === row.length / 2 - 1;
+                                                    return (
+                                                        <Td
+                                                            key={cellIndex}
+                                                            p={2}
+                                                            textAlign="center"
+                                                            bg={cell === 1 ? "blue.100" : "transparent"}
+                                                            borderWidth={1}
+                                                            borderColor="gray.200"
+                                                            borderRightWidth={isMiddle ? 3 : 1}
+                                                            borderRightColor={isMiddle ? "gray.400" : "gray.200"}
+                                                        >
+                                                            {cell}
+                                                        </Td>
+                                                    )
+                                                })}
                                             </Tr>
                                         ))}
                                     </Tbody>
