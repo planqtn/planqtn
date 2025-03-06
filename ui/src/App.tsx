@@ -63,6 +63,19 @@ interface SelectedNetwork {
     connections: Connection[]
 }
 
+interface Operation {
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect';
+    data: {
+        legos?: DroppedLego[];
+        connections?: Connection[];
+        legoInstanceId?: string;
+        oldX?: number;
+        oldY?: number;
+        newX?: number;
+        newY?: number;
+    };
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -81,6 +94,8 @@ function App() {
     })
     const canvasRef = useRef<HTMLDivElement>(null)
     const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
+    const [operationHistory, setOperationHistory] = useState<Operation[]>([])
+    const [redoHistory, setRedoHistory] = useState<Operation[]>([])
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -214,7 +229,12 @@ function App() {
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
             const instanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-            setDroppedLegos(prev => [...prev, { ...lego, x, y, instanceId }])
+            const newLego = { ...lego, x, y, instanceId }
+            setDroppedLegos(prev => [...prev, newLego])
+            addToHistory({
+                type: 'add',
+                data: { legos: [newLego] }
+            })
         }
     }
 
@@ -356,7 +376,6 @@ function App() {
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
 
-            // Check if any part of the lego touches the canvas edges (considering 25px radius)
             const isOutsideCanvas =
                 newX - 25 < 0 ||
                 newX + 25 > rect.width ||
@@ -365,19 +384,42 @@ function App() {
 
             if (isOutsideCanvas) {
                 const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
-                // Remove all connections involving this lego
+                const connectionsToRemove = connections.filter(conn =>
+                    conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
+                );
+
+                // Add to history before removing
+                addToHistory({
+                    type: 'remove',
+                    data: {
+                        legos: [legoToRemove],
+                        connections: connectionsToRemove
+                    }
+                });
+
                 setConnections(prev => prev.filter(conn =>
                     conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
                 ));
-                // Remove the lego
                 setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
-                // Clear selection if this was the selected lego
+
                 if (selectedLego?.instanceId === legoToRemove.instanceId) {
                     setSelectedLego(null);
                 }
                 if (selectedNetwork?.legos.some(l => l.instanceId === legoToRemove.instanceId)) {
                     setSelectedNetwork(null);
                 }
+            } else if (deltaX !== 0 || deltaY !== 0) {
+                // Record move operation only if the piece actually moved
+                addToHistory({
+                    type: 'move',
+                    data: {
+                        legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
+                        oldX: dragState.originalX,
+                        oldY: dragState.originalY,
+                        newX,
+                        newY
+                    }
+                });
             }
 
             // Reset canvas visual feedback
@@ -394,7 +436,7 @@ function App() {
 
             // Find if we're over another leg
             const targetLego = droppedLegos.find(lego => {
-                if (lego.instanceId === legDragState.legoId) return false; // Don't connect to self
+                if (lego.instanceId === legDragState.legoId) return false;
 
                 const legCount = lego.parity_check_matrix[0].length / 2;
                 for (let i = 0; i < legCount; i++) {
@@ -404,8 +446,7 @@ function App() {
                         Math.pow(mouseX - legEndpoint.x, 2) +
                         Math.pow(mouseY - legEndpoint.y, 2)
                     );
-                    if (distance < 10) { // 10px snap distance
-                        // Check if connection already exists
+                    if (distance < 10) {
                         const connectionExists = connections.some(conn =>
                             (conn.from.legoId === legDragState.legoId && conn.from.legIndex === legDragState.legIndex &&
                                 conn.to.legoId === lego.instanceId && conn.to.legIndex === i) ||
@@ -413,9 +454,8 @@ function App() {
                                 conn.to.legoId === legDragState.legoId && conn.to.legIndex === legDragState.legIndex)
                         );
 
-
                         if (!connectionExists) {
-                            setConnections(prev => [...prev, {
+                            const newConnection = {
                                 from: {
                                     legoId: legDragState.legoId,
                                     legIndex: legDragState.legIndex
@@ -424,7 +464,13 @@ function App() {
                                     legoId: lego.instanceId,
                                     legIndex: i
                                 }
-                            }]);
+                            };
+
+                            setConnections(prev => [...prev, newConnection]);
+                            addToHistory({
+                                type: 'connect',
+                                data: { connections: [newConnection] }
+                            });
                             return true;
                         }
                     }
@@ -489,6 +535,153 @@ function App() {
 
         dfs(startLego.instanceId);
         return { legos: component, connections: componentConnections };
+    };
+
+    // Update addToHistory to clear redo stack when new operations are added
+    const addToHistory = (operation: Operation) => {
+        setOperationHistory(prev => [...prev, operation]);
+        setRedoHistory([]); // Clear redo stack when new operation is performed
+    };
+
+    // Handle undo
+    const handleUndo = useCallback(() => {
+        if (operationHistory.length === 0) return;
+
+        const lastOperation = operationHistory[operationHistory.length - 1];
+
+        // Move the operation to redo history before undoing
+        setRedoHistory(prev => [...prev, lastOperation]);
+
+        switch (lastOperation.type) {
+            case 'add':
+                if (lastOperation.data.legos) {
+                    const legoToRemove = lastOperation.data.legos[0];
+                    setDroppedLegos(prev => prev.filter(lego => lego.instanceId !== legoToRemove.instanceId));
+                }
+                break;
+            case 'remove':
+                if (lastOperation.data.legos && lastOperation.data.connections) {
+                    setDroppedLegos(prev => [...prev, ...(lastOperation.data.legos || [])]);
+                    setConnections(prev => [...prev, ...(lastOperation.data.connections || [])]);
+                }
+                break;
+            case 'move':
+                if (lastOperation.data.legoInstanceId && lastOperation.data.oldX !== undefined && lastOperation.data.oldY !== undefined) {
+                    setDroppedLegos(prev => prev.map(lego =>
+                        lego.instanceId === lastOperation.data.legoInstanceId
+                            ? { ...lego, x: lastOperation.data.oldX!, y: lastOperation.data.oldY! }
+                            : lego
+                    ));
+                }
+                break;
+            case 'connect':
+                if (lastOperation.data.connections) {
+                    const connectionToRemove = lastOperation.data.connections[0];
+                    setConnections(prev => prev.filter(conn =>
+                        !(conn.from.legoId === connectionToRemove.from.legoId &&
+                            conn.from.legIndex === connectionToRemove.from.legIndex &&
+                            conn.to.legoId === connectionToRemove.to.legoId &&
+                            conn.to.legIndex === connectionToRemove.to.legIndex)
+                    ));
+                }
+                break;
+            case 'disconnect':
+                if (lastOperation.data.connections) {
+                    setConnections(prev => [...prev, ...(lastOperation.data.connections || [])]);
+                }
+                break;
+        }
+
+        setOperationHistory(prev => prev.slice(0, -1));
+    }, [operationHistory]);
+
+    // Handle redo
+    const handleRedo = useCallback(() => {
+        if (redoHistory.length === 0) return;
+
+        const nextOperation = redoHistory[redoHistory.length - 1];
+
+        switch (nextOperation.type) {
+            case 'add':
+                if (nextOperation.data.legos) {
+                    const legoToAdd = nextOperation.data.legos[0];
+                    setDroppedLegos(prev => [...prev, legoToAdd]);
+                }
+                break;
+            case 'remove':
+                if (nextOperation.data.legos) {
+                    const legoToRemove = nextOperation.data.legos[0];
+                    setDroppedLegos(prev => prev.filter(lego => lego.instanceId !== legoToRemove.instanceId));
+                    setConnections(prev => prev.filter(conn =>
+                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                    ));
+                }
+                break;
+            case 'move':
+                if (nextOperation.data.legoInstanceId && nextOperation.data.newX !== undefined && nextOperation.data.newY !== undefined) {
+                    setDroppedLegos(prev => prev.map(lego =>
+                        lego.instanceId === nextOperation.data.legoInstanceId
+                            ? { ...lego, x: nextOperation.data.newX!, y: nextOperation.data.newY! }
+                            : lego
+                    ));
+                }
+                break;
+            case 'connect':
+                if (nextOperation.data.connections) {
+                    setConnections(prev => [...prev, ...(nextOperation.data.connections || [])]);
+                }
+                break;
+            case 'disconnect':
+                if (nextOperation.data.connections) {
+                    const connectionToRemove = nextOperation.data.connections[0];
+                    setConnections(prev => prev.filter(conn =>
+                        !(conn.from.legoId === connectionToRemove.from.legoId &&
+                            conn.from.legIndex === connectionToRemove.from.legIndex &&
+                            conn.to.legoId === connectionToRemove.to.legoId &&
+                            conn.to.legIndex === connectionToRemove.to.legIndex)
+                    ));
+                }
+                break;
+        }
+
+        // Move the operation back to the history stack
+        setOperationHistory(prev => [...prev, nextOperation]);
+        setRedoHistory(prev => prev.slice(0, -1));
+    }, [redoHistory]);
+
+    // Update keyboard event listener for both Ctrl+Z and Ctrl+Y
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                handleUndo();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
+
+    const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Add to history before removing
+        addToHistory({
+            type: 'disconnect',
+            data: { connections: [connection] }
+        });
+
+        // Remove the connection
+        setConnections(prev => prev.filter(conn =>
+            !(conn.from.legoId === connection.from.legoId &&
+                conn.from.legIndex === connection.from.legIndex &&
+                conn.to.legoId === connection.to.legoId &&
+                conn.to.legIndex === connection.to.legIndex)
+        ));
     };
 
     return (
@@ -583,17 +776,29 @@ function App() {
                                 const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
                                 return (
-                                    <line
-                                        key={`conn-${index}`}
-                                        x1={fromPoint.x}
-                                        y1={fromPoint.y}
-                                        x2={toPoint.x}
-                                        y2={toPoint.y}
-                                        stroke="#3182CE"
-                                        strokeWidth="2"
-                                        cursor="pointer"
-                                        style={{ pointerEvents: 'all' }}
-                                    />
+                                    <g key={`conn-${index}`}>
+                                        {/* Invisible wider line for easier clicking */}
+                                        <line
+                                            x1={fromPoint.x}
+                                            y1={fromPoint.y}
+                                            x2={toPoint.x}
+                                            y2={toPoint.y}
+                                            stroke="transparent"
+                                            strokeWidth="10"
+                                            style={{ cursor: 'pointer' }}
+                                            onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+                                        />
+                                        {/* Visible line */}
+                                        <line
+                                            x1={fromPoint.x}
+                                            y1={fromPoint.y}
+                                            x2={toPoint.x}
+                                            y2={toPoint.y}
+                                            stroke="#3182CE"
+                                            strokeWidth="2"
+                                            style={{ pointerEvents: 'none' }}
+                                        />
+                                    </g>
                                 );
                             })}
                         </g>
