@@ -95,13 +95,19 @@ function App() {
             </Box>
 
             {/* Main Content */}
-            <Box flex={1} p={8}>
-                <VStack spacing={8}>
-                    <Heading>TNQEC UI</Heading>
-                    <Box p={6} borderWidth={1} borderRadius="lg">
-                        <Text>Backend Status: {message}</Text>
-                    </Box>
-                </VStack>
+            <Box flex={1} display="flex" flexDirection="column" p={4}>
+                {/* Status Bar */}
+                <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
+                    <Text fontSize="sm">Backend Status: {message}</Text>
+                </Box>
+
+                {/* Gray Panel */}
+                <Box
+                    flex={1}
+                    bg="gray.100"
+                    borderRadius="lg"
+                    boxShadow="inner"
+                />
             </Box>
         </HStack>
     )
