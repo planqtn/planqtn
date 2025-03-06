@@ -46,6 +46,8 @@ interface LegDragState {
     legIndex: number
     startX: number
     startY: number
+    currentX: number
+    currentY: number
 }
 
 interface CanvasState {
@@ -82,6 +84,15 @@ interface GroupDragState {
     originalPositions: { [instanceId: string]: { x: number; y: number } };
 }
 
+interface SelectionBoxState {
+    isSelecting: boolean;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    justFinished: boolean;  // New flag to track if selection box just finished
+}
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -103,6 +114,16 @@ function App() {
     const [operationHistory, setOperationHistory] = useState<Operation[]>([])
     const [redoHistory, setRedoHistory] = useState<Operation[]>([])
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
+    const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
+        isSelecting: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        justFinished: false  // Initialize the new flag
+    });
+    const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
+    const lastSelectionBoxEndTime = useRef<number>(0);
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -273,16 +294,20 @@ function App() {
                 originalY: lego.y + 20
             });
         } else {
-            // Check if the clicked lego is part of the selected network
-            if (selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
-                // Set up group drag state
+            // Check if the clicked lego is part of a manual selection or selected network
+            const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
+                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId);
+
+            if (isPartOfSelection) {
+                // Set up group drag state for all selected legos
+                const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : selectedNetwork?.legos || [];
                 const positions: { [instanceId: string]: { x: number; y: number } } = {};
-                selectedNetwork.legos.forEach(l => {
+                selectedLegos.forEach(l => {
                     positions[l.instanceId] = { x: l.x, y: l.y };
                 });
 
                 setGroupDragState({
-                    legoInstanceIds: selectedNetwork.legos.map(l => l.instanceId),
+                    legoInstanceIds: selectedLegos.map(l => l.instanceId),
                     originalPositions: positions
                 });
             }
@@ -315,10 +340,39 @@ function App() {
         }
     }
 
-    const handleCanvasClick = () => {
-        setSelectedLego(null);
-        setSelectedNetwork(null);
-    }
+    const handleCanvasClick = (e: React.MouseEvent) => {
+        // Only clear selection if clicking directly on canvas (not on a Lego)
+        // and not during or right after selection box usage
+        if (e.target === e.currentTarget && !selectionBox.isSelecting && !dragState.isDragging && !selectionBox.justFinished) {
+            setSelectedLego(null);
+            setSelectedNetwork(null);
+            setManuallySelectedLegos([]);
+        }
+        // Reset the justFinished flag after handling the click
+        if (selectionBox.justFinished) {
+            setSelectionBox(prev => ({ ...prev, justFinished: false }));
+        }
+    };
+
+    const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        // Only start selection box if clicking directly on canvas (not on a Lego)
+        if (e.target === e.currentTarget) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (!rect) return;
+
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            setSelectionBox({
+                isSelecting: true,
+                startX: x,
+                startY: y,
+                currentX: x,
+                currentY: y,
+                justFinished: false
+            });
+        }
+    };
 
     const handleLegMouseDown = (e: React.MouseEvent, legoId: string, legIndex: number) => {
         e.preventDefault();
@@ -326,21 +380,91 @@ function App() {
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) return;
 
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
         setLegDragState({
             isDragging: true,
             legoId,
             legIndex,
-            startX: e.clientX - rect.left,
-            startY: e.clientY - rect.top
+            startX: x,
+            startY: y,
+            currentX: x,
+            currentY: y
         });
+    };
+
+    // Helper function to handle selection box logic
+    const handleSelectionBoxUpdate = (left: number, right: number, top: number, bottom: number) => {
+        // Find Legos within the selection box
+        const selectedLegos = droppedLegos.filter(lego => {
+            return (
+                lego.x >= left &&
+                lego.x <= right &&
+                lego.y >= top &&
+                lego.y <= bottom
+            );
+        });
+
+        // Update selection state based on the selected Legos
+        if (selectedLegos.length === 1) {
+            setSelectedLego(selectedLegos[0]);
+            setSelectedNetwork(null);
+            setManuallySelectedLegos(selectedLegos);
+        } else if (selectedLegos.length > 1) {
+            // Check if all selected Legos form a complete connected component
+            const firstLego = selectedLegos[0];
+            const connectedComponent = findConnectedComponent(firstLego);
+            const isCompleteComponent =
+                selectedLegos.length === connectedComponent.legos.length &&
+                selectedLegos.every(lego =>
+                    connectedComponent.legos.some(l => l.instanceId === lego.instanceId)
+                );
+
+            if (isCompleteComponent) {
+                setSelectedLego(null);
+                setSelectedNetwork(connectedComponent);
+                setManuallySelectedLegos([]);
+            } else {
+                setSelectedLego(null);
+                setSelectedNetwork(null);
+                setManuallySelectedLegos(selectedLegos);
+            }
+        } else {
+            setSelectedLego(null);
+            setSelectedNetwork(null);
+            setManuallySelectedLegos([]);
+        }
     };
 
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
         e.preventDefault();
-        if (dragState.isDragging) {
-            const rect = canvasRef.current?.getBoundingClientRect();
-            if (!rect) return;
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
 
+        // Handle selection box dragging
+        if (selectionBox.isSelecting) {
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            setSelectionBox(prev => ({
+                ...prev,
+                currentX: x,
+                currentY: y
+            }));
+
+            // Calculate selection box bounds
+            const left = Math.min(selectionBox.startX, x);
+            const right = Math.max(selectionBox.startX, x);
+            const top = Math.min(selectionBox.startY, y);
+            const bottom = Math.max(selectionBox.startY, y);
+
+            handleSelectionBoxUpdate(left, right, top, bottom);
+            return;
+        }
+
+        // Handle Lego dragging
+        if (dragState.isDragging) {
             const deltaX = e.clientX - dragState.startX;
             const deltaY = e.clientY - dragState.startY;
             const newX = dragState.originalX + deltaX;
@@ -362,6 +486,17 @@ function App() {
                         x: originalPos.x + deltaX,
                         y: originalPos.y + deltaY
                     };
+                } else if (manuallySelectedLegos.length > 0 &&
+                    manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                    // If dragging a manually selected lego, move all manually selected legos
+                    if (manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)) {
+                        return {
+                            ...lego,
+                            x: lego.x + (e.movementX || 0),
+                            y: lego.y + (e.movementY || 0)
+                        };
+                    }
+                    return lego;
                 } else if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
@@ -381,14 +516,15 @@ function App() {
 
         // Handle leg dragging
         if (legDragState?.isDragging) {
-            const rect = canvasRef.current?.getBoundingClientRect();
-            if (rect) {
-                setLegDragState(prev => ({
-                    ...prev!,
-                    startX: e.clientX - rect.left,
-                    startY: e.clientY - rect.top
-                }));
-            }
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Update the current position in legDragState
+            setLegDragState(prev => ({
+                ...prev!,
+                currentX: mouseX,
+                currentY: mouseY
+            }));
         }
     };
 
@@ -396,6 +532,24 @@ function App() {
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) {
             setLegDragState(null);
+            return;
+        }
+
+        // Handle selection box end
+        if (selectionBox.isSelecting) {
+            // Calculate final selection box bounds
+            const left = Math.min(selectionBox.startX, selectionBox.currentX);
+            const right = Math.max(selectionBox.startX, selectionBox.currentX);
+            const top = Math.min(selectionBox.startY, selectionBox.currentY);
+            const bottom = Math.max(selectionBox.startY, selectionBox.currentY);
+
+            handleSelectionBoxUpdate(left, right, top, bottom);
+
+            setSelectionBox(prev => ({
+                ...prev,
+                isSelecting: false,
+                justFinished: true  // Set the flag when selection box operation ends
+            }));
             return;
         }
 
@@ -412,65 +566,57 @@ function App() {
                 newY + 25 > rect.height;
 
             if (isOutsideCanvas) {
+                // Determine which legos to remove based on selection state
+                let legosToRemove: DroppedLego[] = [];
                 if (groupDragState) {
-                    // Remove all selected legos and their connections
-                    const legosToRemove = droppedLegos.filter(lego =>
+                    // Remove all selected legos
+                    legosToRemove = droppedLegos.filter(lego =>
                         groupDragState.legoInstanceIds.includes(lego.instanceId)
                     );
-                    const connectionsToRemove = connections.filter(conn =>
-                        groupDragState.legoInstanceIds.includes(conn.from.legoId) ||
-                        groupDragState.legoInstanceIds.includes(conn.to.legoId)
-                    );
-
-                    // Store original positions for all legos
-                    const legosWithOriginalPos = legosToRemove.map(lego => ({
-                        ...lego,
-                        x: groupDragState.originalPositions[lego.instanceId].x,
-                        y: groupDragState.originalPositions[lego.instanceId].y
-                    }));
-
-                    addToHistory({
-                        type: 'remove',
-                        data: {
-                            legos: legosWithOriginalPos,
-                            connections: connectionsToRemove
-                        }
-                    });
-
-                    setConnections(prev => prev.filter(conn =>
-                        !groupDragState.legoInstanceIds.includes(conn.from.legoId) &&
-                        !groupDragState.legoInstanceIds.includes(conn.to.legoId)
-                    ));
-                    setDroppedLegos(prev => prev.filter(lego =>
-                        !groupDragState.legoInstanceIds.includes(lego.instanceId)
-                    ));
+                } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                    // If dragged lego is part of manual selection, remove all manually selected legos
+                    legosToRemove = manuallySelectedLegos;
                 } else {
-                    const legoToRemove = droppedLegos[dragState.draggedLegoIndex];
-                    const connectionsToRemove = connections.filter(conn =>
-                        conn.from.legoId === legoToRemove.instanceId || conn.to.legoId === legoToRemove.instanceId
-                    );
-
-                    // Store the original position instead of the final position
-                    const legoWithOriginalPos = {
-                        ...legoToRemove,
-                        x: dragState.originalX,
-                        y: dragState.originalY
-                    };
-                    addToHistory({
-                        type: 'remove',
-                        data: {
-                            legos: [legoWithOriginalPos],
-                            connections: connectionsToRemove
-                        }
-                    });
-
-                    setConnections(prev => prev.filter(conn =>
-                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
-                    ));
-                    setDroppedLegos(prev => prev.filter((_, index) => index !== dragState.draggedLegoIndex));
+                    // Remove just the dragged lego
+                    legosToRemove = [droppedLegos[dragState.draggedLegoIndex]];
                 }
+
+                // Get all connections involving the legos to be removed
+                const connectionsToRemove = connections.filter(conn =>
+                    legosToRemove.some(lego =>
+                        conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+                    )
+                );
+
+                // Store original positions for all legos
+                const legosWithOriginalPos = legosToRemove.map(lego => ({
+                    ...lego,
+                    x: groupDragState?.originalPositions[lego.instanceId]?.x || dragState.originalX,
+                    y: groupDragState?.originalPositions[lego.instanceId]?.y || dragState.originalY
+                }));
+
+                addToHistory({
+                    type: 'remove',
+                    data: {
+                        legos: legosWithOriginalPos,
+                        connections: connectionsToRemove
+                    }
+                });
+
+                // Remove the connections and legos
+                setConnections(prev => prev.filter(conn =>
+                    !legosToRemove.some(lego =>
+                        conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+                    )
+                ));
+                setDroppedLegos(prev => prev.filter(lego =>
+                    !legosToRemove.some(l => l.instanceId === lego.instanceId)
+                ));
+
+                // Clear selection states
                 setSelectedLego(null);
                 setSelectedNetwork(null);
+                setManuallySelectedLegos([]);
             } else if (deltaX !== 0 || deltaY !== 0) {
                 if (groupDragState) {
                     // Record move operation for all selected legos
@@ -486,6 +632,20 @@ function App() {
                         addToHistory({
                             type: 'move',
                             data: move
+                        });
+                    });
+                } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                    // Record move operations for all manually selected legos
+                    manuallySelectedLegos.forEach(lego => {
+                        addToHistory({
+                            type: 'move',
+                            data: {
+                                legoInstanceId: lego.instanceId,
+                                oldX: lego.x - deltaX,
+                                oldY: lego.y - deltaY,
+                                newX: lego.x,
+                                newY: lego.y
+                            }
                         });
                     });
                 } else {
@@ -689,7 +849,6 @@ function App() {
                             x: dragState.originalX,
                             y: dragState.originalY
                         };
-
                         addToHistory({
                             type: 'remove',
                             data: {
@@ -791,10 +950,15 @@ function App() {
                 break;
             case 'remove':
                 if (nextOperation.data.legos) {
-                    const legoToRemove = nextOperation.data.legos[0];
-                    setDroppedLegos(prev => prev.filter(lego => lego.instanceId !== legoToRemove.instanceId));
+                    // Handle removal of multiple legos for group deletions
+                    const legosToRemove = nextOperation.data.legos;
+                    setDroppedLegos(prev => prev.filter(lego =>
+                        !legosToRemove.some(removeMe => removeMe.instanceId === lego.instanceId)
+                    ));
                     setConnections(prev => prev.filter(conn =>
-                        conn.from.legoId !== legoToRemove.instanceId && conn.to.legoId !== legoToRemove.instanceId
+                        !legosToRemove.some(lego =>
+                            conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+                        )
                     ));
                 }
                 break;
@@ -932,6 +1096,7 @@ function App() {
                     onMouseUp={handleCanvasMouseUp}
                     onMouseLeave={handleCanvasMouseLeave}
                     onClick={handleCanvasClick}
+                    onMouseDown={handleCanvasMouseDown}
                     style={{ userSelect: 'none' }}
                 >
                     {/* Connection Lines */}
@@ -1018,18 +1183,19 @@ function App() {
                                 <line
                                     x1={fromPoint.x}
                                     y1={fromPoint.y}
-                                    x2={legDragState.startX}
-                                    y2={legDragState.startY}
+                                    x2={legDragState.currentX}
+                                    y2={legDragState.currentY}
                                     stroke="#3182CE"
                                     strokeWidth="2"
                                     strokeDasharray="4"
                                     opacity={0.5}
+                                    style={{ pointerEvents: 'none' }}
                                 />
                             );
                         })()}
 
                         {/* Leg Labels */}
-                        {droppedLegos.map((lego) => (
+                        {droppedLegos.map((lego, index) => (
                             Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
                                 const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
                                 const legLength = 40;
@@ -1053,6 +1219,22 @@ function App() {
                             })
                         ))}
                     </svg>
+
+                    {/* Selection Box */}
+                    {selectionBox.isSelecting && (
+                        <Box
+                            position="absolute"
+                            left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
+                            top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
+                            width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
+                            height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
+                            border="2px"
+                            borderColor="blue.500"
+                            bg="blue.50"
+                            opacity={0.3}
+                            pointerEvents="none"
+                        />
+                    )}
 
                     {droppedLegos.map((lego, index) => (
                         <Box
@@ -1120,7 +1302,9 @@ function App() {
                                         ? "blue.200"
                                         : selectedLego?.instanceId === lego.instanceId
                                             ? "blue.100"
-                                            : "white"
+                                            : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                ? "blue.100"
+                                                : "white"
                                 }
                                 border="2px"
                                 borderColor={
@@ -1128,7 +1312,9 @@ function App() {
                                         ? "blue.600"
                                         : selectedLego?.instanceId === lego.instanceId
                                             ? "blue.500"
-                                            : "blue.400"
+                                            : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                ? "blue.500"
+                                                : "blue.400"
                                 }
                                 display="flex"
                                 alignItems="center"
@@ -1169,7 +1355,7 @@ function App() {
                 borderColor={borderColor}
                 bg={bgColor}
                 overflowY="auto"
-                display={selectedLego || selectedNetwork ? "block" : "none"}
+                display={selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"}
             >
                 <VStack align="stretch" spacing={4}>
                     {selectedNetwork ? (
@@ -1195,7 +1381,7 @@ function App() {
                                 Export Python Code
                             </Button>
                         </>
-                    ) : selectedLego && (
+                    ) : selectedLego ? (
                         <>
                             <Heading size="md">Matrix Details</Heading>
                             <VStack align="stretch" spacing={3}>
@@ -1294,7 +1480,15 @@ function App() {
                                 </Box>
                             </VStack>
                         </>
-                    )}
+                    ) : manuallySelectedLegos.length > 0 ? (
+                        <>
+                            <Heading size="md">Selection</Heading>
+                            <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
+                            <Text color="gray.600">
+                                For details, select only one lego or a complete connected component
+                            </Text>
+                        </>
+                    ) : null}
                 </VStack>
             </Box>
         </HStack>
