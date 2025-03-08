@@ -1,4 +1,4 @@
-import { Box, Container, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, MenuDivider } from '@chakra-ui/react'
+import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable } from 'react-icons/fa'
@@ -123,7 +123,6 @@ function App() {
         justFinished: false  // Initialize the new flag
     });
     const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
-    const lastSelectionBoxEndTime = useRef<number>(0);
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -678,7 +677,7 @@ function App() {
             const mouseY = e.clientY - rect.top;
 
             // Find if we're over another leg
-            const targetLego = droppedLegos.find(lego => {
+            droppedLegos.find(lego => {
                 if (lego.instanceId === legDragState.legoId) return false;
 
                 const legCount = lego.parity_check_matrix[0].length / 2;
@@ -792,10 +791,6 @@ function App() {
                 if (!canvas) return;
 
                 const rect = canvas.getBoundingClientRect();
-                const deltaX = e.clientX - dragState.startX;
-                const deltaY = e.clientY - dragState.startY;
-                const newX = dragState.originalX + deltaX;
-                const newY = dragState.originalY + deltaY;
 
                 // Always remove the Lego if the mouse is released outside the canvas bounds
                 const isOutsideCanvas =
@@ -1298,7 +1293,7 @@ function App() {
                             })()}
 
                             {/* Leg Labels */}
-                            {droppedLegos.map((lego, index) => (
+                            {droppedLegos.map((lego) => (
                                 Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
                                     const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
                                     const legLength = 40;
