@@ -428,15 +428,22 @@ function App() {
         if (!dragState.isDragging) {
             e.stopPropagation();
 
-            if (selectedLego?.instanceId === lego.instanceId) {
+            if (selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
+                // If clicking a lego that's part of the selected network,
+                // deselect the network and select just this lego
+                setSelectedNetwork(null);
+                setSelectedLego(lego);
+            } else if (selectedLego?.instanceId === lego.instanceId) {
                 // If clicking the same lego again, select the connected component
                 const network = findConnectedComponent(lego);
                 setSelectedNetwork(network);
+                setSelectedLego(null);
             } else {
                 // First click, just select the individual lego
                 setSelectedLego(lego);
                 setSelectedNetwork(null);
             }
+            setManuallySelectedLegos([]);
         }
     }
 
@@ -1197,9 +1204,10 @@ function App() {
 
     const calculateParityCheckMatrix = async () => {
         if (!selectedNetwork) return;
-
+        console.log(selectedNetwork.connections);
         try {
             const response = await axios.post('/api/paritycheck', {
+
                 legos: selectedNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = lego;
                     return acc;

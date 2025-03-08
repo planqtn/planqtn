@@ -73,6 +73,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
     
     # Add traces for each connection
     for conn in network.connections:
+        print(conn)
         tn.self_trace(
             conn['from']['legoId'],
             conn['to']['legoId'],
