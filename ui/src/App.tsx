@@ -1,7 +1,7 @@
-import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react'
+import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
-import { FaCube, FaCode, FaTable } from 'react-icons/fa'
+import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes } from 'react-icons/fa'
 
 interface LegoPiece {
     id: string
@@ -1267,390 +1267,421 @@ function App() {
             </HStack>
 
             {/* Main Content */}
-            <HStack spacing={0} align="stretch" flex={1}>
-                {/* Left Panel */}
-                <Box
-                    w="300px"
-                    p={4}
-                    borderRight="1px"
-                    borderColor={borderColor}
-                    bg={bgColor}
-                    overflowY="auto"
-                >
-                    <VStack align="stretch" spacing={4}>
-                        <Heading size="md">Lego Pieces</Heading>
-                        <List spacing={3}>
-                            {legos.map((lego) => (
-                                <ListItem
-                                    key={lego.id}
-                                    p={3}
-                                    borderWidth="1px"
-                                    borderRadius="md"
-                                    _hover={{ bg: 'gray.50' }}
-                                    cursor="move"
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, lego)}
-                                >
-                                    <HStack spacing={2}>
-                                        <Icon as={getLegoIcon(lego.type)} boxSize={5} />
-                                        <VStack align="start" spacing={1}>
-                                            <Text fontWeight="bold">{lego.name}</Text>
-                                            <Text fontSize="sm" color="gray.600">
-                                                {lego.description}
-                                            </Text>
-                                            <HStack>
-                                                <Badge colorScheme="blue">{lego.type}</Badge>
-                                                {lego.is_dynamic && (
-                                                    <Badge colorScheme="green">Dynamic</Badge>
-                                                )}
-                                            </HStack>
-                                        </VStack>
-                                    </HStack>
-                                </ListItem>
-                            ))}
-                        </List>
-                    </VStack>
-                </Box>
-
-                {/* Main Content */}
-                <Box flex={1} display="flex" flexDirection="column" p={4}>
-                    {/* Status Bar */}
-                    <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
-                        <Text fontSize="sm">Backend Status: {message}</Text>
+            <Box flex={1} position="relative" overflow="hidden">
+                <HStack spacing={0} align="stretch" h="100%">
+                    {/* Left Panel */}
+                    <Box
+                        w="300px"
+                        p={4}
+                        borderRight="1px"
+                        borderColor={borderColor}
+                        bg={bgColor}
+                        overflowY="auto"
+                    >
+                        <VStack align="stretch" spacing={4}>
+                            <Heading size="md">Lego Pieces</Heading>
+                            <List spacing={3}>
+                                {legos.map((lego) => (
+                                    <ListItem
+                                        key={lego.id}
+                                        p={3}
+                                        borderWidth="1px"
+                                        borderRadius="md"
+                                        _hover={{ bg: 'gray.50' }}
+                                        cursor="move"
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, lego)}
+                                    >
+                                        <HStack spacing={2}>
+                                            <Icon as={getLegoIcon(lego.type)} boxSize={5} />
+                                            <VStack align="start" spacing={1}>
+                                                <Text fontWeight="bold">{lego.name}</Text>
+                                                <Text fontSize="sm" color="gray.600">
+                                                    {lego.description}
+                                                </Text>
+                                                <HStack>
+                                                    <Badge colorScheme="blue">{lego.type}</Badge>
+                                                    {lego.is_dynamic && (
+                                                        <Badge colorScheme="green">Dynamic</Badge>
+                                                    )}
+                                                </HStack>
+                                            </VStack>
+                                        </HStack>
+                                    </ListItem>
+                                ))}
+                            </List>
+                        </VStack>
                     </Box>
 
-                    {/* Gray Panel */}
-                    <Box
-                        ref={canvasRef}
-                        flex={1}
-                        bg="gray.100"
-                        borderRadius="lg"
-                        boxShadow="inner"
-                        position="relative"
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onMouseMove={handleCanvasMouseMove}
-                        onMouseUp={handleCanvasMouseUp}
-                        onMouseLeave={handleCanvasMouseLeave}
-                        onClick={handleCanvasClick}
-                        onMouseDown={handleCanvasMouseDown}
-                        style={{ userSelect: 'none' }}
-                    >
-                        {/* Connection Lines */}
-                        <svg
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                pointerEvents: 'none',
-                                userSelect: 'none'
-                            }}
+                    {/* Main Content */}
+                    <Box flex={1} display="flex" flexDirection="column" p={4}>
+                        {/* Status Bar */}
+                        <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
+                            <Text fontSize="sm">Backend Status: {message}</Text>
+                        </Box>
+
+                        {/* Gray Panel */}
+                        <Box
+                            ref={canvasRef}
+                            flex={1}
+                            bg="gray.100"
+                            borderRadius="lg"
+                            boxShadow="inner"
+                            position="relative"
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
+                            onMouseMove={handleCanvasMouseMove}
+                            onMouseUp={handleCanvasMouseUp}
+                            onMouseLeave={handleCanvasMouseLeave}
+                            onClick={handleCanvasClick}
+                            onMouseDown={handleCanvasMouseDown}
+                            style={{ userSelect: 'none' }}
                         >
-                            {/* Existing connections */}
-                            <g style={{ pointerEvents: 'all' }}>
-                                {connections.map((conn, index) => {
-                                    const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
-                                    const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
-                                    if (!fromLego || !toLego) return null;
-
-                                    const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
-                                    const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
-
-                                    return (
-                                        <g key={`conn-${index}`}>
-                                            {/* Invisible wider line for easier clicking */}
-                                            <line
-                                                x1={fromPoint.x}
-                                                y1={fromPoint.y}
-                                                x2={toPoint.x}
-                                                y2={toPoint.y}
-                                                stroke="transparent"
-                                                strokeWidth="10"
-                                                style={{
-                                                    cursor: 'pointer',
-                                                }}
-                                                onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
-                                                onMouseEnter={(e) => {
-                                                    // Find and update the visible line
-                                                    const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                    if (visibleLine) {
-                                                        visibleLine.style.stroke = '#4299E1'; // brighter blue
-                                                        visibleLine.style.strokeWidth = '3';
-                                                        visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
-                                                    }
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    // Reset the visible line
-                                                    const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                    if (visibleLine) {
-                                                        visibleLine.style.stroke = '#3182CE';
-                                                        visibleLine.style.strokeWidth = '2';
-                                                        visibleLine.style.filter = 'none';
-                                                    }
-                                                }}
-                                            />
-                                            {/* Visible line */}
-                                            <line
-                                                x1={fromPoint.x}
-                                                y1={fromPoint.y}
-                                                x2={toPoint.x}
-                                                y2={toPoint.y}
-                                                stroke="#3182CE"
-                                                strokeWidth="2"
-                                                style={{
-                                                    pointerEvents: 'none',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                            />
-                                        </g>
-                                    );
-                                })}
-                            </g>
-
-                            {/* Temporary line while dragging */}
-                            {legDragState?.isDragging && (() => {
-                                const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
-                                if (!fromLego) return null;
-
-                                const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
-
-                                return (
-                                    <line
-                                        x1={fromPoint.x}
-                                        y1={fromPoint.y}
-                                        x2={legDragState.currentX}
-                                        y2={legDragState.currentY}
-                                        stroke="#3182CE"
-                                        strokeWidth="2"
-                                        strokeDasharray="4"
-                                        opacity={0.5}
-                                        style={{ pointerEvents: 'none' }}
-                                    />
-                                );
-                            })()}
-
-                            {/* Leg Labels */}
-                            {droppedLegos.map((lego) => (
-                                Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                    const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                    const legLength = 40;
-                                    const labelX = lego.x + (legLength + 10) * Math.cos(angle);
-                                    const labelY = lego.y + (legLength + 10) * Math.sin(angle);
-
-                                    return (
-                                        <text
-                                            key={`${lego.instanceId}-label-${legIndex}`}
-                                            x={labelX}
-                                            y={labelY}
-                                            fontSize="12"
-                                            fill="#666666"
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
-                                            style={{ pointerEvents: 'none' }}
-                                        >
-                                            {legIndex}
-                                        </text>
-                                    );
-                                })
-                            ))}
-                        </svg>
-
-                        {/* Selection Box */}
-                        {selectionBox.isSelecting && (
-                            <Box
-                                position="absolute"
-                                left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
-                                top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
-                                width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
-                                height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
-                                border="2px"
-                                borderColor="blue.500"
-                                bg="blue.50"
-                                opacity={0.3}
-                                pointerEvents="none"
-                            />
-                        )}
-
-                        {droppedLegos.map((lego, index) => (
-                            <Box
-                                key={`${lego.instanceId}`}
-                                position="absolute"
-                                left={`${lego.x - 25}px`}
-                                top={`${lego.y - 25}px`}
-                                style={{ userSelect: 'none' }}
+                            {/* Connection Lines */}
+                            <svg
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    pointerEvents: 'none',
+                                    userSelect: 'none'
+                                }}
                             >
-                                {/* Legs */}
-                                {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                    const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                    const legLength = 40;
-                                    const endX = 25 + legLength * Math.cos(angle);
-                                    const endY = 25 + legLength * Math.sin(angle);
+                                {/* Existing connections */}
+                                <g style={{ pointerEvents: 'all' }}>
+                                    {connections.map((conn, index) => {
+                                        const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                                        const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                                        if (!fromLego || !toLego) return null;
 
-                                    const isBeingDragged = legDragState?.isDragging &&
-                                        legDragState.legoId === lego.instanceId &&
-                                        legDragState.legIndex === legIndex;
+                                        const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
+                                        const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
+
+                                        return (
+                                            <g key={`conn-${index}`}>
+                                                {/* Invisible wider line for easier clicking */}
+                                                <line
+                                                    x1={fromPoint.x}
+                                                    y1={fromPoint.y}
+                                                    x2={toPoint.x}
+                                                    y2={toPoint.y}
+                                                    stroke="transparent"
+                                                    strokeWidth="10"
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+                                                    onMouseEnter={(e) => {
+                                                        // Find and update the visible line
+                                                        const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                        if (visibleLine) {
+                                                            visibleLine.style.stroke = '#4299E1'; // brighter blue
+                                                            visibleLine.style.strokeWidth = '3';
+                                                            visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        // Reset the visible line
+                                                        const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                        if (visibleLine) {
+                                                            visibleLine.style.stroke = '#3182CE';
+                                                            visibleLine.style.strokeWidth = '2';
+                                                            visibleLine.style.filter = 'none';
+                                                        }
+                                                    }}
+                                                />
+                                                {/* Visible line */}
+                                                <line
+                                                    x1={fromPoint.x}
+                                                    y1={fromPoint.y}
+                                                    x2={toPoint.x}
+                                                    y2={toPoint.y}
+                                                    stroke="#3182CE"
+                                                    strokeWidth="2"
+                                                    style={{
+                                                        pointerEvents: 'none',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                />
+                                            </g>
+                                        );
+                                    })}
+                                </g>
+
+                                {/* Temporary line while dragging */}
+                                {legDragState?.isDragging && (() => {
+                                    const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
+                                    if (!fromLego) return null;
+
+                                    const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
 
                                     return (
-                                        <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
-                                            {/* Line */}
-                                            <Box
-                                                position="absolute"
-                                                left="25px"
-                                                top="25px"
-                                                w={`${legLength}px`}
-                                                h="2px"
-                                                bg="gray.400"
-                                                transformOrigin="0 0"
-                                                style={{
-                                                    transform: `rotate(${angle}rad)`,
-                                                    pointerEvents: 'none'
-                                                }}
-                                            />
-                                            {/* Draggable Endpoint */}
-                                            <Box
-                                                position="absolute"
-                                                left={`${endX}px`}
-                                                top={`${endY}px`}
-                                                w="10px"
-                                                h="10px"
-                                                borderRadius="full"
-                                                bg={isBeingDragged ? "blue.100" : "white"}
-                                                border="2px"
-                                                borderColor={isBeingDragged ? "blue.500" : "gray.400"}
-                                                transform="translate(-50%, -50%)"
-                                                cursor="pointer"
-                                                onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
-                                                _hover={{ borderColor: "blue.400", bg: "blue.50" }}
-                                                transition="all 0.2s"
-                                                style={{ pointerEvents: 'all' }}
-                                            />
-                                        </Box>
+                                        <line
+                                            x1={fromPoint.x}
+                                            y1={fromPoint.y}
+                                            x2={legDragState.currentX}
+                                            y2={legDragState.currentY}
+                                            stroke="#3182CE"
+                                            strokeWidth="2"
+                                            strokeDasharray="4"
+                                            opacity={0.5}
+                                            style={{ pointerEvents: 'none' }}
+                                        />
                                     );
-                                })}
-                                {/* Main Circle */}
+                                })()}
+
+                                {/* Leg Labels */}
+                                {droppedLegos.map((lego) => (
+                                    Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                        const legLength = 40;
+                                        const labelX = lego.x + (legLength + 10) * Math.cos(angle);
+                                        const labelY = lego.y + (legLength + 10) * Math.sin(angle);
+
+                                        return (
+                                            <text
+                                                key={`${lego.instanceId}-label-${legIndex}`}
+                                                x={labelX}
+                                                y={labelY}
+                                                fontSize="12"
+                                                fill="#666666"
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                                style={{ pointerEvents: 'none' }}
+                                            >
+                                                {legIndex}
+                                            </text>
+                                        );
+                                    })
+                                ))}
+                            </svg>
+
+                            {/* Selection Box */}
+                            {selectionBox.isSelecting && (
                                 <Box
-                                    w="50px"
-                                    h="50px"
-                                    borderRadius="full"
-                                    bg={
-                                        selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                            ? "blue.200"
-                                            : selectedLego?.instanceId === lego.instanceId
-                                                ? "blue.100"
-                                                : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                    ? "blue.100"
-                                                    : "white"
-                                    }
+                                    position="absolute"
+                                    left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
+                                    top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
+                                    width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
+                                    height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
                                     border="2px"
-                                    borderColor={
-                                        selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                            ? "blue.600"
-                                            : selectedLego?.instanceId === lego.instanceId
-                                                ? "blue.500"
-                                                : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                    ? "blue.500"
-                                                    : "blue.400"
-                                    }
-                                    display="flex"
-                                    alignItems="center"
-                                    justifyContent="center"
-                                    cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
-                                    title={lego.name}
-                                    boxShadow="md"
-                                    _hover={{ boxShadow: "lg" }}
-                                    onMouseDown={(e) => handleLegoMouseDown(e, index)}
-                                    onClick={(e) => handleLegoClick(e, lego)}
-                                    style={{
-                                        transform: dragState.isDragging && dragState.draggedLegoIndex === index
-                                            ? 'scale(1.05)'
-                                            : 'scale(1)',
-                                        transition: 'transform 0.1s',
-                                        userSelect: 'none',
-                                        touchAction: 'none'
-                                    }}
-                                    position="relative"
-                                    zIndex={1}
+                                    borderColor="blue.500"
+                                    bg="blue.50"
+                                    opacity={0.3}
+                                    pointerEvents="none"
+                                />
+                            )}
+
+                            {droppedLegos.map((lego, index) => (
+                                <Box
+                                    key={`${lego.instanceId}`}
+                                    position="absolute"
+                                    left={`${lego.x - 25}px`}
+                                    top={`${lego.y - 25}px`}
+                                    style={{ userSelect: 'none' }}
                                 >
-                                    <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                                        <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
-                                            {lego.shortName}
-                                        </Text>
+                                    {/* Legs */}
+                                    {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                        const legLength = 40;
+                                        const endX = 25 + legLength * Math.cos(angle);
+                                        const endY = 25 + legLength * Math.sin(angle);
+
+                                        const isBeingDragged = legDragState?.isDragging &&
+                                            legDragState.legoId === lego.instanceId &&
+                                            legDragState.legIndex === legIndex;
+
+                                        return (
+                                            <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
+                                                {/* Line */}
+                                                <Box
+                                                    position="absolute"
+                                                    left="25px"
+                                                    top="25px"
+                                                    w={`${legLength}px`}
+                                                    h="2px"
+                                                    bg="gray.400"
+                                                    transformOrigin="0 0"
+                                                    style={{
+                                                        transform: `rotate(${angle}rad)`,
+                                                        pointerEvents: 'none'
+                                                    }}
+                                                />
+                                                {/* Draggable Endpoint */}
+                                                <Box
+                                                    position="absolute"
+                                                    left={`${endX}px`}
+                                                    top={`${endY}px`}
+                                                    w="10px"
+                                                    h="10px"
+                                                    borderRadius="full"
+                                                    bg={isBeingDragged ? "blue.100" : "white"}
+                                                    border="2px"
+                                                    borderColor={isBeingDragged ? "blue.500" : "gray.400"}
+                                                    transform="translate(-50%, -50%)"
+                                                    cursor="pointer"
+                                                    onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
+                                                    _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+                                                    transition="all 0.2s"
+                                                    style={{ pointerEvents: 'all' }}
+                                                />
+                                            </Box>
+                                        );
+                                    })}
+                                    {/* Main Circle */}
+                                    <Box
+                                        w="50px"
+                                        h="50px"
+                                        borderRadius="full"
+                                        bg={
+                                            selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                                ? "blue.200"
+                                                : selectedLego?.instanceId === lego.instanceId
+                                                    ? "blue.100"
+                                                    : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                        ? "blue.100"
+                                                        : "white"
+                                        }
+                                        border="2px"
+                                        borderColor={
+                                            selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                                ? "blue.600"
+                                                : selectedLego?.instanceId === lego.instanceId
+                                                    ? "blue.500"
+                                                    : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                        ? "blue.500"
+                                                        : "blue.400"
+                                        }
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
+                                        title={lego.name}
+                                        boxShadow="md"
+                                        _hover={{ boxShadow: "lg" }}
+                                        onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                                        onClick={(e) => handleLegoClick(e, lego)}
+                                        style={{
+                                            transform: dragState.isDragging && dragState.draggedLegoIndex === index
+                                                ? 'scale(1.05)'
+                                                : 'scale(1)',
+                                            transition: 'transform 0.1s',
+                                            userSelect: 'none',
+                                            touchAction: 'none'
+                                        }}
+                                        position="relative"
+                                        zIndex={1}
+                                    >
+                                        <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                                            <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                                {lego.shortName}
+                                            </Text>
+                                        </Box>
                                     </Box>
                                 </Box>
-                            </Box>
-                        ))}
+                            ))}
+                        </Box>
                     </Box>
-                </Box>
 
-                {/* Right Panel */}
-                <Box
-                    w="400px"
-                    p={4}
-                    borderLeft="1px"
-                    borderColor={borderColor}
-                    bg={bgColor}
-                    overflowY="auto"
-                    display={selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"}
-                >
-                    <VStack align="stretch" spacing={4}>
-                        {selectedNetwork ? (
-                            <>
-                                <Heading size="md">Tensor Network</Heading>
-                                <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
+                    {/* Right Panel */}
+                    <Box
+                        w="400px"
+                        p={4}
+                        borderLeft="1px"
+                        borderColor={borderColor}
+                        bg={bgColor}
+                        overflowY="auto"
+                        display={selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"}
+                    >
+                        <VStack align="stretch" spacing={4}>
+                            {selectedNetwork ? (
+                                <>
+                                    <Heading size="md">Tensor Network</Heading>
+                                    <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
 
-                                <Button
-                                    colorScheme="green"
-                                    onClick={() => {
-                                        // TODO: Implement Python code export
-                                        console.log("Export Python code");
-                                    }}
-                                >
-                                    Export Python Code
-                                </Button>
-                            </>
-                        ) : selectedLego ? (
-                            <>
-                                <Heading size="md">Matrix Details</Heading>
-                                <VStack align="stretch" spacing={3}>
-                                    <Text fontWeight="bold">{selectedLego.name}</Text>
-                                    <Text fontSize="sm" color="gray.600">
-                                        {selectedLego.description}
+                                    <Button
+                                        colorScheme="green"
+                                        onClick={() => {
+                                            // TODO: Implement Python code export
+                                            console.log("Export Python code");
+                                        }}
+                                    >
+                                        Export Python Code
+                                    </Button>
+                                </>
+                            ) : selectedLego ? (
+                                <>
+                                    <Heading size="md">Matrix Details</Heading>
+                                    <VStack align="stretch" spacing={3}>
+                                        <Text fontWeight="bold">{selectedLego.name}</Text>
+                                        <Text fontSize="sm" color="gray.600">
+                                            {selectedLego.description}
+                                        </Text>
+                                        <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
+                                    </VStack>
+                                </>
+                            ) : manuallySelectedLegos.length > 0 ? (
+                                <>
+                                    <Heading size="md">Selection</Heading>
+                                    <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
+                                    <Text color="gray.600">
+                                        For details, select only one lego or a complete connected component
                                     </Text>
-                                    <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
-                                </VStack>
-                            </>
-                        ) : manuallySelectedLegos.length > 0 ? (
-                            <>
-                                <Heading size="md">Selection</Heading>
-                                <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
-                                <Text color="gray.600">
-                                    For details, select only one lego or a complete connected component
-                                </Text>
-                            </>
-                        ) : null}
-                        {selectedNetwork && (
-                            <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-                                <VStack align="stretch" spacing={4}>
-                                    <Heading size="md">Network Details</Heading>
-                                    <HStack>
-                                        <Button onClick={calculateParityCheckMatrix}>
-                                            Calculate Parity Check Matrix
-                                        </Button>
-                                    </HStack>
-                                    {selectedNetwork.parityCheckMatrix && (
-                                        <ParityCheckMatrixDisplay
-                                            matrix={selectedNetwork.parityCheckMatrix}
-                                            title="Parity Check Matrix"
-                                        />
-                                    )}
-                                </VStack>
-                            </Box>
-                        )}
-                    </VStack>
+                                </>
+                            ) : null}
+                            {selectedNetwork && (
+                                <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
+                                    <VStack align="stretch" spacing={4}>
+                                        <Heading size="md">Network Details</Heading>
+                                        <HStack>
+                                            <Button onClick={calculateParityCheckMatrix}>
+                                                Calculate Parity Check Matrix
+                                            </Button>
+                                        </HStack>
+                                        {selectedNetwork.parityCheckMatrix && (
+                                            <ParityCheckMatrixDisplay
+                                                matrix={selectedNetwork.parityCheckMatrix}
+                                                title="Parity Check Matrix"
+                                            />
+                                        )}
+                                    </VStack>
+                                </Box>
+                            )}
+                        </VStack>
+                    </Box>
+                </HStack>
+
+                {/* Error Panel */}
+                <Box
+                    position="absolute"
+                    bottom={0}
+                    left={0}
+                    right={0}
+                    bg="red.100"
+                    borderTop="1px"
+                    borderColor="red.300"
+                    transform={error ? "translateY(0)" : "translateY(100%)"}
+                    transition="transform 0.3s ease-in-out"
+                    zIndex={1000}
+                >
+                    <HStack spacing={3} p={4} justify="space-between">
+                        <HStack spacing={3}>
+                            <Icon as={FaExclamationCircle} color="red.500" boxSize={5} />
+                            <Text color="red.700">{error}</Text>
+                        </HStack>
+                        <IconButton
+                            aria-label="Dismiss error"
+                            icon={<Icon as={FaTimes} />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={() => setError('')}
+                        />
+                    </HStack>
                 </Box>
-            </HStack>
+            </Box>
         </VStack>
     )
 }

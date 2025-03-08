@@ -135,7 +135,7 @@ class Legos:
             {
                 "id": "stopper_x",
                 "name": "X Stopper",
-                "shortName": "STOPX",
+                "shortName": "X",
                 "type": "stopper",
                 "description": "X-type stopper tensor for boundary conditions",
                 "parity_check_matrix": cls.stopper_x.tolist()
@@ -143,7 +143,7 @@ class Legos:
             {
                 "id": "stopper_z", 
                 "name": "Z Stopper",
-                "shortName": "STOPZ",
+                "shortName": "Z",
                 "type": "stopper",
                 "description": "Z-type stopper tensor for boundary conditions",
                 "parity_check_matrix": cls.stopper_z.tolist()
@@ -151,7 +151,7 @@ class Legos:
             {
                 "id": "stopper_y",
                 "name": "Y Stopper",
-                "shortName": "STOPY", 
+                "shortName": "Y", 
                 "type": "stopper",
                 "description": "Y-type stopper tensor for boundary conditions",
                 "parity_check_matrix": cls.stopper_y.tolist()
@@ -159,7 +159,7 @@ class Legos:
             {
                 "id": "stopper_i",
                 "name": "Identity Stopper",
-                "shortName": "STOPI",
+                "shortName": "I",
                 "type": "stopper", 
                 "description": "Identity stopper tensor for boundary conditions",
                 "parity_check_matrix": cls.stopper_i.tolist()
