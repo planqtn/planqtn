@@ -1159,6 +1159,13 @@ function App() {
             } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
                 e.preventDefault();
                 handleRedo();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                if (droppedLegos.length > 0) {
+                    setSelectedLego(null);
+                    setSelectedNetwork(null);
+                    setManuallySelectedLegos(droppedLegos);
+                }
             } else if (e.key === 'Delete') {
                 // Handle deletion of selected legos
                 let legosToRemove: DroppedLego[] = [];
@@ -1649,15 +1656,6 @@ function App() {
                                     <Heading size="md">Tensor Network</Heading>
                                     <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
 
-                                    <Button
-                                        colorScheme="green"
-                                        onClick={() => {
-                                            // TODO: Implement Python code export
-                                            console.log("Export Python code");
-                                        }}
-                                    >
-                                        Export Python Code
-                                    </Button>
                                 </>
                             ) : selectedLego ? (
                                 <>

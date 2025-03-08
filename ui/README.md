@@ -166,8 +166,12 @@ User stories:
     - resizable canvas
 - a local database for caching tensornetwork weight enumerators / parity check matrices 
 - a global database and automated Github authenticated contribution workflow
+- handled disconnected networks too - this is good for educational purposes
     
 I want to put together the new compass code construction with Charles's construction and see the weight enumerators 
+
+Bugs:
+    - the network selection + changing + recalculating workflow is very wonky right now 
 
 
 ## License
