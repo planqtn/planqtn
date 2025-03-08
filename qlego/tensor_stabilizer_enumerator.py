@@ -383,8 +383,12 @@ class TensorNetwork:
         print(f"Maximum PTE legs: {max_pte_legs}")
         return tree, max_pte_legs
 
-    def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False):
+    def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False) -> 'TensorStabilizerCodeEnumerator':
         pte_nodes = []
+        if len(self.nodes) == 1:
+            # If there's only one node, return it directly
+            return list(self.nodes.values())[0]
+        
 
         pte: TensorStabilizerCodeEnumerator = None
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)

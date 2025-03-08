@@ -4,10 +4,12 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 import sys
 import os
+import numpy as np
 
 # Add the parent directory to the Python path to import qlego
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qlego.legos import Legos
+from qlego.tensor_stabilizer_enumerator import TensorNetwork, TensorStabilizerCodeEnumerator
 
 app = FastAPI(
     title="TNQEC API",
@@ -38,6 +40,14 @@ class LegoPiece(BaseModel):
     parameters: Dict[str, Any] = {}
     parity_check_matrix: List[List[int]]
 
+class TensorNetworkParityCheckRequest(BaseModel):
+    legos: Dict[str, LegoPiece]
+    connections: List[Dict[str, Any]]
+
+class ParityCheckResponse(BaseModel):
+    matrix: List[List[int]]
+    message: str = "Successfully calculated parity check matrix"
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(
@@ -48,6 +58,35 @@ async def health_check():
 @app.get("/legos", response_model=List[LegoPiece])
 async def list_legos():
     return Legos.list_available_legos()
+
+@app.post("/paritycheck", response_model=ParityCheckResponse)
+async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest):
+    # Create TensorStabilizerCodeEnumerator instances for each lego
+    nodes = {}
+    for instance_id, lego in network.legos.items():
+        # Convert the parity check matrix to numpy array
+        h = np.array(lego.parity_check_matrix)
+        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+    
+    # Create TensorNetwork instance
+    tn = TensorNetwork(nodes)
+    
+    # Add traces for each connection
+    for conn in network.connections:
+        tn.self_trace(
+            conn['from']['legoId'],
+            conn['to']['legoId'],
+            [conn['from']['legIndex']],
+            [conn['to']['legIndex']]
+        )
+    
+    # Conjoin all nodes to get the final parity check matrix
+    result = tn.conjoin_nodes()
+    
+    # Convert the resulting parity check matrix to a list for JSON serialization
+    matrix = result.h.tolist()
+    
+    return ParityCheckResponse(matrix=matrix)
 
 if __name__ == "__main__":
     import uvicorn

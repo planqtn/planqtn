@@ -63,6 +63,7 @@ interface CanvasState {
 interface SelectedNetwork {
     legos: DroppedLego[]
     connections: Connection[]
+    parityCheckMatrix?: number[][]
 }
 
 interface Operation {
@@ -91,6 +92,106 @@ interface SelectionBoxState {
     currentX: number;
     currentY: number;
     justFinished: boolean;  // New flag to track if selection box just finished
+}
+
+interface ParityCheckMatrixDisplayProps {
+    matrix: number[][]
+    title?: string
+}
+
+const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title }) => {
+    if (!matrix || matrix.length === 0) return null;
+
+    return (
+        <Box>
+            {title && <Heading size="sm" mb={2}>{title}</Heading>}
+            <Box overflowX="auto">
+                <Table size="sm" variant="simple">
+                    <Thead>
+                        <Tr>
+                            <>
+                                <Td
+                                    p={2}
+                                    textAlign="center"
+                                    borderWidth={0}
+                                    colSpan={matrix[0].length / 2}
+                                    fontWeight="bold"
+                                    color="blue.600"
+                                >
+                                    X
+                                </Td>
+                                <Td
+                                    p={2}
+                                    textAlign="center"
+                                    borderWidth={0}
+                                    colSpan={matrix[0].length / 2}
+                                    fontWeight="bold"
+                                    color="red.600"
+                                >
+                                    Z
+                                </Td>
+                            </>
+                        </Tr>
+                        <Tr>
+                            <>
+                                {/* X indices */}
+                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
+                                    <Td
+                                        key={`x-idx-${i}`}
+                                        p={2}
+                                        textAlign="center"
+                                        borderWidth={0}
+                                        colSpan={1}
+                                        fontSize="sm"
+                                        color="gray.600"
+                                    >
+                                        {i}
+                                    </Td>
+                                ))}
+                                {/* Z indices */}
+                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
+                                    <Td
+                                        key={`z-idx-${i}`}
+                                        p={2}
+                                        textAlign="center"
+                                        borderWidth={0}
+                                        colSpan={1}
+                                        fontSize="sm"
+                                        color="gray.600"
+                                    >
+                                        {i}
+                                    </Td>
+                                ))}
+                            </>
+                        </Tr>
+                    </Thead>
+                    <Tbody>
+                        {matrix.map((row, rowIndex) => (
+                            <Tr key={rowIndex}>
+                                {row.map((cell, cellIndex) => {
+                                    const isMiddle = cellIndex === row.length / 2 - 1;
+                                    return (
+                                        <Td
+                                            key={cellIndex}
+                                            p={2}
+                                            textAlign="center"
+                                            bg={cell === 1 ? "blue.100" : "transparent"}
+                                            borderWidth={1}
+                                            borderColor="gray.200"
+                                            borderRightWidth={isMiddle ? 3 : 1}
+                                            borderRightColor={isMiddle ? "gray.400" : "gray.200"}
+                                        >
+                                            {cell}
+                                        </Td>
+                                    )
+                                })}
+                            </Tr>
+                        ))}
+                    </Tbody>
+                </Table>
+            </Box>
+        </Box>
+    );
 }
 
 function App() {
@@ -1094,6 +1195,28 @@ function App() {
         encodeCanvasState([], []);
     };
 
+    const calculateParityCheckMatrix = async () => {
+        if (!selectedNetwork) return;
+
+        try {
+            const response = await axios.post('/api/paritycheck', {
+                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                    acc[lego.instanceId] = lego;
+                    return acc;
+                }, {} as Record<string, DroppedLego>),
+                connections: selectedNetwork.connections
+            });
+
+            setSelectedNetwork({
+                ...selectedNetwork,
+                parityCheckMatrix: response.data.matrix
+            });
+        } catch (error) {
+            console.error('Error calculating parity check matrix:', error);
+            setError('Failed to calculate parity check matrix');
+        }
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -1460,15 +1583,7 @@ function App() {
                             <>
                                 <Heading size="md">Tensor Network</Heading>
                                 <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
-                                <Button
-                                    colorScheme="blue"
-                                    onClick={() => {
-                                        // TODO: Implement parity check calculation
-                                        console.log("Calculate conjoined parity check");
-                                    }}
-                                >
-                                    Calculate Conjoined Parity Check
-                                </Button>
+
                                 <Button
                                     colorScheme="green"
                                     onClick={() => {
@@ -1487,95 +1602,7 @@ function App() {
                                     <Text fontSize="sm" color="gray.600">
                                         {selectedLego.description}
                                     </Text>
-                                    <Box overflowX="auto">
-                                        <Table size="sm" variant="simple">
-                                            <Thead>
-                                                <Tr>
-                                                    {selectedLego.parity_check_matrix[0] && (
-                                                        <>
-                                                            <Td
-                                                                p={2}
-                                                                textAlign="center"
-                                                                borderWidth={0}
-                                                                colSpan={selectedLego.parity_check_matrix[0].length / 2}
-                                                                fontWeight="bold"
-                                                                color="blue.600"
-                                                            >
-                                                                X
-                                                            </Td>
-                                                            <Td
-                                                                p={2}
-                                                                textAlign="center"
-                                                                borderWidth={0}
-                                                                colSpan={selectedLego.parity_check_matrix[0].length / 2}
-                                                                fontWeight="bold"
-                                                                color="red.600"
-                                                            >
-                                                                Z
-                                                            </Td>
-                                                        </>
-                                                    )}
-                                                </Tr>
-                                                <Tr>
-                                                    {selectedLego.parity_check_matrix[0] && (
-                                                        <>
-                                                            {/* X indices */}
-                                                            {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
-                                                                <Td
-                                                                    key={`x-idx-${i}`}
-                                                                    p={2}
-                                                                    textAlign="center"
-                                                                    borderWidth={0}
-                                                                    colSpan={1}
-                                                                    fontSize="sm"
-                                                                    color="gray.600"
-                                                                >
-                                                                    {i}
-                                                                </Td>
-                                                            ))}
-                                                            {/* Z indices */}
-                                                            {Array(selectedLego.parity_check_matrix[0].length / 2).fill(0).map((_, i) => (
-                                                                <Td
-                                                                    key={`z-idx-${i}`}
-                                                                    p={2}
-                                                                    textAlign="center"
-                                                                    borderWidth={0}
-                                                                    colSpan={1}
-                                                                    fontSize="sm"
-                                                                    color="gray.600"
-                                                                >
-                                                                    {i}
-                                                                </Td>
-                                                            ))}
-                                                        </>
-                                                    )}
-                                                </Tr>
-                                            </Thead>
-                                            <Tbody>
-                                                {selectedLego.parity_check_matrix.map((row, rowIndex) => (
-                                                    <Tr key={rowIndex}>
-                                                        {row.map((cell, cellIndex) => {
-                                                            const isMiddle = cellIndex === row.length / 2 - 1;
-                                                            return (
-                                                                <Td
-                                                                    key={cellIndex}
-                                                                    p={2}
-                                                                    textAlign="center"
-                                                                    bg={cell === 1 ? "blue.100" : "transparent"}
-                                                                    borderWidth={1}
-                                                                    borderColor="gray.200"
-                                                                    borderRightWidth={isMiddle ? 3 : 1}
-                                                                    borderRightColor={isMiddle ? "gray.400" : "gray.200"}
-                                                                >
-                                                                    {cell}
-                                                                </Td>
-                                                            )
-                                                        })}
-                                                    </Tr>
-                                                ))}
-                                            </Tbody>
-                                        </Table>
-                                    </Box>
+                                    <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
                                 </VStack>
                             </>
                         ) : manuallySelectedLegos.length > 0 ? (
@@ -1587,6 +1614,24 @@ function App() {
                                 </Text>
                             </>
                         ) : null}
+                        {selectedNetwork && (
+                            <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
+                                <VStack align="stretch" spacing={4}>
+                                    <Heading size="md">Network Details</Heading>
+                                    <HStack>
+                                        <Button onClick={calculateParityCheckMatrix}>
+                                            Calculate Parity Check Matrix
+                                        </Button>
+                                    </HStack>
+                                    {selectedNetwork.parityCheckMatrix && (
+                                        <ParityCheckMatrixDisplay
+                                            matrix={selectedNetwork.parityCheckMatrix}
+                                            title="Parity Check Matrix"
+                                        />
+                                    )}
+                                </VStack>
+                            </Box>
+                        )}
                     </VStack>
                 </Box>
             </HStack>
