@@ -1,7 +1,7 @@
-import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton } from '@chakra-ui/react'
+import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
-import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes } from 'react-icons/fa'
+import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes, FaCopy } from 'react-icons/fa'
 
 interface LegoPiece {
     id: string
@@ -67,6 +67,7 @@ interface SelectedNetwork {
     parityCheckMatrix?: number[][]
     weightEnumerator?: string
     isCalculatingWeightEnumerator?: boolean
+    constructionCode?: string
 }
 
 interface Operation {
@@ -204,7 +205,7 @@ const BlochSphereLoader: React.FC = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowLoader(true);
-        }, 500);
+        }, 100);
 
         return () => clearTimeout(timer);
     }, []);
@@ -305,6 +306,7 @@ function App() {
     const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
     const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
+    const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard("")
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -1434,6 +1436,35 @@ function App() {
         }
     };
 
+    const generateConstructionCode = async () => {
+        if (!selectedNetwork) return;
+
+        try {
+            const response = await axios.post('/api/constructioncode', {
+                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                    acc[lego.instanceId] = lego;
+                    return acc;
+                }, {} as Record<string, DroppedLego>),
+                connections: selectedNetwork.connections
+            });
+
+            setSelectedNetwork(prev => prev ? {
+                ...prev,
+                constructionCode: response.data.code
+            } : null);
+        } catch (error) {
+            console.error('Error generating Python code:', error);
+            setError('Failed to generate Python code');
+        }
+    };
+
+    // Update the useClipboard hook when code changes
+    useEffect(() => {
+        if (selectedNetwork?.constructionCode) {
+            onCopyCode(selectedNetwork.constructionCode);
+        }
+    }, [selectedNetwork?.constructionCode]);
+
     // Modify the existing useEffect to clear both caches
     useEffect(() => {
         // Clear caches when connections change
@@ -1839,14 +1870,35 @@ function App() {
                                 <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                                     <VStack align="stretch" spacing={4}>
                                         <Heading size="md">Network Details</Heading>
-                                        <HStack spacing={4}>
-                                            <Button onClick={calculateParityCheckMatrix}>
+                                        <VStack align="stretch" spacing={3}>
+                                            <Button
+                                                onClick={calculateParityCheckMatrix}
+                                                colorScheme="blue"
+                                                size="sm"
+                                                width="full"
+                                                leftIcon={<Icon as={FaTable} />}
+                                            >
                                                 Calculate Parity Check Matrix
                                             </Button>
-                                            <Button onClick={calculateWeightEnumerator}>
+                                            <Button
+                                                onClick={calculateWeightEnumerator}
+                                                colorScheme="teal"
+                                                size="sm"
+                                                width="full"
+                                                leftIcon={<Icon as={FaCube} />}
+                                            >
                                                 Calculate Weight Enumerator
                                             </Button>
-                                        </HStack>
+                                            <Button
+                                                onClick={generateConstructionCode}
+                                                colorScheme="purple"
+                                                size="sm"
+                                                width="full"
+                                                leftIcon={<Icon as={FaCode} />}
+                                            >
+                                                Python Code
+                                            </Button>
+                                        </VStack>
                                         {selectedNetwork.parityCheckMatrix && (
                                             <ParityCheckMatrixDisplay
                                                 matrix={selectedNetwork.parityCheckMatrix}
@@ -1863,6 +1915,47 @@ function App() {
                                         ) : selectedNetwork.isCalculatingWeightEnumerator ? (
                                             <BlochSphereLoader />
                                         ) : null}
+                                        {selectedNetwork.constructionCode && (
+                                            <VStack align="stretch" spacing={2}>
+                                                <HStack justify="space-between">
+                                                    <Heading size="sm">Construction Code</Heading>
+                                                    <IconButton
+                                                        aria-label="Copy code"
+                                                        icon={<Icon as={FaCopy} />}
+                                                        size="sm"
+                                                        onClick={onCopyCode}
+                                                        variant="ghost"
+                                                    />
+                                                </HStack>
+                                                <Box
+                                                    p={3}
+                                                    borderWidth={1}
+                                                    borderRadius="md"
+                                                    bg="gray.50"
+                                                    position="relative"
+                                                    fontFamily="mono"
+                                                    whiteSpace="pre"
+                                                    overflowX="auto"
+                                                >
+                                                    <Text>{selectedNetwork.constructionCode}</Text>
+                                                    {hasCopiedCode && (
+                                                        <Box
+                                                            position="absolute"
+                                                            top={2}
+                                                            right={2}
+                                                            px={2}
+                                                            py={1}
+                                                            bg="green.500"
+                                                            color="white"
+                                                            borderRadius="md"
+                                                            fontSize="sm"
+                                                        >
+                                                            Copied!
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            </VStack>
+                                        )}
                                     </VStack>
                                 </Box>
                             )}

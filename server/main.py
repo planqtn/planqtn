@@ -53,6 +53,10 @@ class WeightEnumeratorResponse(BaseModel):
     polynomial: str
     message: str = "Successfully calculated weight enumerator polynomial"
 
+class ConstructionCodeResponse(BaseModel):
+    code: str
+    message: str = "Successfully generated construction code"
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(
@@ -85,6 +89,8 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
             [conn['from']['legIndex']],
             [conn['to']['legIndex']]
         )
+        
+    print(tn.construction_code())
     
     # Conjoin all nodes to get the final parity check matrix
     result = tn.conjoin_nodes(verbose=True)
@@ -122,6 +128,32 @@ async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
     polynomial_str = str(polynomial)
     
     return WeightEnumeratorResponse(polynomial=polynomial_str)
+
+@app.post("/constructioncode", response_model=ConstructionCodeResponse)
+async def generate_construction_code(network: TensorNetworkParityCheckRequest):
+    # Create TensorStabilizerCodeEnumerator instances for each lego
+    nodes = {}
+    for instance_id, lego in network.legos.items():
+        # Convert the parity check matrix to numpy array
+        h = GF2(lego.parity_check_matrix)
+        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+    
+    # Create TensorNetwork instance
+    tn = TensorNetwork(nodes)
+    
+    # Add traces for each connection
+    for conn in network.connections:
+        tn.self_trace(
+            conn['from']['legoId'],
+            conn['to']['legoId'],
+            [conn['from']['legIndex']],
+            [conn['to']['legIndex']]
+        )
+    
+    # Get the construction code
+    code = tn.construction_code()
+    
+    return ConstructionCodeResponse(code=code)
 
 if __name__ == "__main__":
     import uvicorn

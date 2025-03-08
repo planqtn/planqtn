@@ -138,6 +138,113 @@ class TensorNetwork:
         self._coset = None
         self.truncate_length = truncate_length
 
+    def __eq__(self, other: "TensorNetwork") -> bool:
+        """Compare two TensorNetworks for equality."""
+        if not isinstance(other, TensorNetwork):
+            return False
+
+        # Compare nodes
+        if set(self.nodes.keys()) != set(other.nodes.keys()):
+            return False
+
+        for idx in self.nodes:
+            if (self.nodes[idx].h != other.nodes[idx].h).any():
+                return False
+            if self.nodes[idx].legs != other.nodes[idx].legs:
+                return False
+            if (
+                self.nodes[idx].coset_flipped_legs
+                != other.nodes[idx].coset_flipped_legs
+            ):
+                return False
+            if self.nodes[idx].truncate_length != other.nodes[idx].truncate_length:
+                return False
+
+        # Compare traces - convert only the hashable parts to tuples
+        def trace_to_comparable(trace):
+            node_idx1, node_idx2, join_legs1, join_legs2 = trace
+            return (node_idx1, node_idx2, tuple(join_legs1), tuple(join_legs2))
+
+        self_traces = {trace_to_comparable(t) for t in self.traces}
+        other_traces = {trace_to_comparable(t) for t in other.traces}
+
+        if self_traces != other_traces:
+            return False
+
+        return True
+
+    def __hash__(self) -> int:
+        """Generate hash for TensorNetwork."""
+        # Hash the nodes
+        nodes_hash = 0
+        for idx in sorted(self.nodes.keys()):
+            node = self.nodes[idx]
+            nodes_hash ^= hash(
+                (
+                    idx,
+                    tuple(map(tuple, node.h)),
+                    tuple(node.legs),
+                    (
+                        tuple(map(tuple, node.coset_flipped_legs))
+                        if node.coset_flipped_legs
+                        else None
+                    ),
+                    node.truncate_length,
+                )
+            )
+
+        # Hash the traces - convert only the hashable parts to tuples
+        def trace_to_hashable(trace):
+            node_idx1, node_idx2, join_legs1, join_legs2 = trace
+            return (node_idx1, node_idx2, tuple(join_legs1), tuple(join_legs2))
+
+        traces_hash = hash(tuple(sorted(trace_to_hashable(t) for t in self.traces)))
+
+        return nodes_hash ^ traces_hash
+
+    def construction_code(self) -> str:
+        """Returns Python code that will recreate this TensorNetwork instance."""
+        code = []
+
+        # Import statements would go at top of file
+        code.append(
+            "from qlego.tensor_stabilizer_enumerator import TensorNetwork, TensorStabilizerCodeEnumerator"
+        )
+        code.append("from qlego.utils import GF2")
+        code.append("")
+
+        # Create nodes dict
+        code.append("nodes = {}")
+        for idx, node in self.nodes.items():
+            matrix_str = f"GF2({str(node.h.tolist())})"
+            code.append(f"nodes[{repr(idx)}] = TensorStabilizerCodeEnumerator(")
+            code.append(f"    h={matrix_str},")
+            code.append(f"    idx={repr(idx)},")
+            if node.legs != [(idx, leg) for leg in range(node.n)]:
+                code.append(f"    legs={repr(node.legs)},")
+            if node.coset_flipped_legs:
+                code.append(f"    coset_flipped_legs={repr(node.coset_flipped_legs)},")
+            if node.truncate_length is not None:
+                code.append(f"    truncate_length={node.truncate_length},")
+            code.append(")")
+
+        code.append("")
+        code.append("# Create TensorNetwork")
+        code.append(
+            f"tn = TensorNetwork(nodes, truncate_length={repr(self.truncate_length)})"
+        )
+
+        # Add traces
+        if self.traces:
+            code.append("")
+            code.append("# Add traces")
+            for node1, node2, legs1, legs2 in self.traces:
+                code.append(
+                    f"tn.self_trace({repr(node1)}, {repr(node2)}, {repr([l[1] for l in legs1])}, {repr([l[1] for l in legs2])})"
+                )
+
+        return "\n".join(code)
+
     def qubit_to_node_and_leg(self, q: int):
         raise NotImplementedError(
             f"qubit_to_node_and_leg() is not implemented for {type(self)}!"
@@ -383,58 +490,111 @@ class TensorNetwork:
         print(f"Maximum PTE legs: {max_pte_legs}")
         return tree, max_pte_legs
 
-    def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False) -> 'TensorStabilizerCodeEnumerator':
-        pte_nodes = []
+    def conjoin_nodes(
+        self, verbose: bool = False, progress_bar: bool = False
+    ) -> "TensorStabilizerCodeEnumerator":
+        # If there's only one node and no traces, return it directly
         if len(self.nodes) == 1 and len(self.traces) == 0:
-            # If there's only one node, return it directly
             return list(self.nodes.values())[0]
-        
 
-        pte: TensorStabilizerCodeEnumerator = None
+        # Map from node_idx to the index of its PTE in ptes list
+        node_to_pte = {}
+        # List of (pte, node_indices) tuples, where pte is TensorStabilizerCodeEnumerator
+        # and node_indices is the set of nodes in that connected component
+        ptes = []
+
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
             if verbose:
                 print(
-                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                    f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
                 )
 
             join_legs1 = _index_legs(node_idx1, join_legs1)
             join_legs2 = _index_legs(node_idx2, join_legs2)
 
-            if pte_nodes == []:
-                pte_nodes.append(node_idx1)
-                pte_nodes.append(node_idx2)
-                pte = self.nodes[node_idx1].conjoin(
+            pte1_idx = node_to_pte.get(node_idx1)
+            pte2_idx = node_to_pte.get(node_idx2)
+
+            # Case 1: Neither node is in any PTE - create new PTE
+            if pte1_idx is None and pte2_idx is None:
+                if verbose:
+                    print(f"Creating new PTE with nodes {node_idx1} and {node_idx2}")
+                new_pte = self.nodes[node_idx1].conjoin(
                     self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
                 )
-            elif node_idx1 in pte_nodes and node_idx2 not in pte_nodes:
+                ptes.append((new_pte, {node_idx1, node_idx2}))
+                new_pte_idx = len(ptes) - 1
+                node_to_pte[node_idx1] = new_pte_idx
+                node_to_pte[node_idx2] = new_pte_idx
+
+            # Case 2: First node is in a PTE, second is not
+            elif pte1_idx is not None and pte2_idx is None:
                 if verbose:
-                    print(f"adding {node_idx2} to PTE (contains {node_idx1})")
-                pte_nodes.append(node_idx2)
-                pte = pte.conjoin(
+                    print(f"Adding {node_idx2} to PTE containing {node_idx1}")
+                pte, nodes = ptes[pte1_idx]
+                new_pte = pte.conjoin(
                     self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
                 )
-            elif node_idx1 not in pte_nodes and node_idx2 in pte_nodes:
+                nodes.add(node_idx2)
+                ptes[pte1_idx] = (new_pte, nodes)
+                node_to_pte[node_idx2] = pte1_idx
+
+            # Case 3: Second node is in a PTE, first is not
+            elif pte1_idx is None and pte2_idx is not None:
                 if verbose:
-                    print(f"adding {node_idx1} to PTE (contains {node_idx2})")
-                pte_nodes.append(node_idx1)
-                pte = pte.conjoin(
+                    print(f"Adding {node_idx1} to PTE containing {node_idx2}")
+                pte, nodes = ptes[pte2_idx]
+                new_pte = pte.conjoin(
                     self.nodes[node_idx1], legs1=join_legs2, legs2=join_legs1
                 )
-            elif node_idx1 in pte_nodes and node_idx2 in pte_nodes:
+                nodes.add(node_idx1)
+                ptes[pte2_idx] = (new_pte, nodes)
+                node_to_pte[node_idx1] = pte2_idx
+
+            # Case 4: Both nodes are in the same PTE
+            elif pte1_idx == pte2_idx:
                 if verbose:
                     print(
-                        f"self trace on PTE in which both {node_idx1, node_idx2} are contained"
+                        f"Self trace in PTE containing both {node_idx1} and {node_idx2}"
                     )
-                pte = pte.self_trace(join_legs1, join_legs2)
+                pte, nodes = ptes[pte1_idx]
+                new_pte = pte.self_trace(join_legs1, join_legs2)
+                ptes[pte1_idx] = (new_pte, nodes)
+
+            # Case 5: Nodes are in different PTEs - merge them
             else:
-                raise ValueError(
-                    f"independent components are not yet supported by conjoin_nodes. PTE nodes: {pte_nodes}, new nodes: {node_idx1}, {node_idx2}"
-                )
+                if verbose:
+                    print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
+                pte1, nodes1 = ptes[pte1_idx]
+                pte2, nodes2 = ptes[pte2_idx]
+                new_pte = pte1.conjoin(pte2, legs1=join_legs1, legs2=join_legs2)
+                merged_nodes = nodes1.union(nodes2)
+
+                # Update the first PTE with merged result
+                ptes[pte1_idx] = (new_pte, merged_nodes)
+                # Remove the second PTE
+                ptes.pop(pte2_idx)
+
+                # Update node_to_pte mappings
+                for node in nodes2:
+                    node_to_pte[node] = pte1_idx
+                # Adjust indices for all nodes in PTEs after the removed one
+                for node, pte_idx in node_to_pte.items():
+                    if pte_idx > pte2_idx:
+                        node_to_pte[node] = pte_idx - 1
+
             if verbose:
                 print("H:")
-                sprint(pte.h)
-        return pte
+                sprint(ptes[0][0].h)
+
+        # If we have multiple components at the end, merge them all
+        if len(ptes) > 1:
+            raise ValueError(
+                "Multiple disconnected components in the tensor network. This is not supported yet."
+            )
+
+        return ptes[0][0]
 
     def _collect_legs(self):
         leg_indices = {}
@@ -601,7 +761,7 @@ class TensorNetwork:
         node1_pte = None
         if len(self.traces) == 0 and len(self.nodes) == 1:
             return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial()
-        
+
         if len(self.traces) == 0 and len(self.nodes) > 1:
             raise ValueError(
                 "Completely disconnected nodes is unsupported. TODO: implement tensoring of disconnected component weight enumerators."
@@ -1553,5 +1713,9 @@ class TensorStabilizerCodeEnumerator:
         return unnormalized_poly._dict
 
     def trace_with_stopper(self, stopper: GF2, traced_leg: Union[int, Tuple[int, int]]):
-        
-        return self.conjoin(TensorStabilizerCodeEnumerator(GF2([stopper]), idx="stopper"), [traced_leg], [0])
+
+        return self.conjoin(
+            TensorStabilizerCodeEnumerator(GF2([stopper]), idx="stopper"),
+            [traced_leg],
+            [0],
+        )

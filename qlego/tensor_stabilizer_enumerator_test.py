@@ -1,11 +1,13 @@
 from copy import deepcopy
 import sys
-from galois import GF2
+from galois import GF, GF2
 import numpy as np
 import pytest
 import scipy
 import sympy
+import os
 
+from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.legos import Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, sprint
@@ -215,20 +217,22 @@ def test_stopper_tensors():
 
     assert np.array_equal(
         gauss(node.h),
-        gauss(GF2(
-            [
-                # 0  1  2  4  5  0  1  2  4  5
-                [0, 0, 0, 0, 0, 1, 1, 1, 0, 0],
-                # X1
-                [1, 1, 0, 1, 0, 0, 0, 0, 0, 0],
-                # X2
-                [0, 1, 1, 0, 1, 0, 0, 0, 0, 0],
-                # Z2
-                [0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
-                # Z1
-                [0, 0, 0, 0, 0, 0, 1, 1, 1, 0],
-            ]
-        )),
+        gauss(
+            GF2(
+                [
+                    # 0  1  2  4  5  0  1  2  4  5
+                    [0, 0, 0, 0, 0, 1, 1, 1, 0, 0],
+                    # X1
+                    [1, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+                    # X2
+                    [0, 1, 1, 0, 1, 0, 0, 0, 0, 0],
+                    # Z2
+                    [0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+                    # Z1
+                    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0],
+                ]
+            )
+        ),
     ), f"Not equal: \n{repr(node.h)}"
 
     assert node.legs == [(0, 0), (0, 1), (0, 2), (0, 4), (0, 5)]
@@ -240,19 +244,21 @@ def test_stopper_tensors():
 
     assert np.array_equal(
         gauss(node.h),
-        gauss(GF2(
-            [
-                # 1  2  4  5  1  2  4  5
-                # X1
-                [1, 0, 1, 0, 0, 0, 0, 0],
-                # X2
-                [1, 1, 0, 1, 0, 0, 0, 0],
-                # Z2
-                [0, 0, 0, 0, 0, 1, 0, 1],
-                # Z1
-                [0, 0, 0, 0, 1, 1, 1, 0],
-            ]
-        )),
+        gauss(
+            GF2(
+                [
+                    # 1  2  4  5  1  2  4  5
+                    # X1
+                    [1, 0, 1, 0, 0, 0, 0, 0],
+                    # X2
+                    [1, 1, 0, 1, 0, 0, 0, 0],
+                    # Z2
+                    [0, 0, 0, 0, 0, 1, 0, 1],
+                    # Z1
+                    [0, 0, 0, 0, 1, 1, 1, 0],
+                ]
+            )
+        ),
     ), f"Not equal: \n{repr(node.h)}"
 
 
@@ -306,31 +312,35 @@ def test_stoppers_in_different_order():
     )
     assert np.array_equal(
         gauss(t1.h),
-        gauss(GF2(
-            [
-                # fmt: off
+        gauss(
+            GF2(
+                [
+                    # fmt: off
     [0,0,0, 0,  1,1,1,  0,], 
     # X1
     [0,1,1, 1,  0,0,0,  0,],        
     # Z1
     [0,0,0, 0,  1,1,0,  1,],
-                # fmt: on
-            ]
-        )),
+                    # fmt: on
+                ]
+            )
+        ),
     )
 
     t1 = t1.trace_with_stopper(PAULI_X, 3)
 
     assert np.array_equal(
         gauss(t1.h),
-        gauss(GF2(
-            [
-                # fmt: off
+        gauss(
+            GF2(
+                [
+                    # fmt: off
     [0,1, 1,  0,0,  0,],              
     [0,0, 0,  1,1,  1,],
-                # fmt: on
-            ]
-        )),
+                    # fmt: on
+                ]
+            )
+        ),
     )
 
 
@@ -607,3 +617,360 @@ def test_double_trace_422():
     print(wep)
 
     assert wep == {4: 3, 0: 1}
+
+
+def test_construction_code():
+    # Add the parent directory to Python path to find qlego package
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    tn = SurfaceCodeTN(3)
+    code = tn.construction_code()
+
+    print(code)
+
+    # Split the code into imports and construction
+    code_lines = code.split("\n")
+
+    construction_lines = [
+        line
+        for line in code_lines
+        if not (line.startswith("from") or line.startswith("import"))
+    ]
+
+    # Create a namespace with required imports
+    namespace = {
+        "GF2": GF2,
+        "TensorNetwork": TensorNetwork,
+        "TensorStabilizerCodeEnumerator": TensorStabilizerCodeEnumerator,
+    }
+
+    # Execute construction code in the namespace
+    exec("\n".join(construction_lines), namespace)
+    tn_from_code = namespace["tn"]
+
+    assert tn_from_code == tn
+
+
+def test_disjoint_nodes():
+
+    nodes = {}
+    nodes["encoding_tensor_512-1741469569037-dtap10r8u"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469569037-dtap10r8u",
+        )
+    )
+    nodes["stopper_x-1741469771579-66rik1482"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469771579-66rik1482",
+    )
+    nodes["stopper_z-1741469873935-7x8lepkz0"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469873935-7x8lepkz0",
+    )
+    nodes["encoding_tensor_512-1741469573383-vywzti2i7"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469573383-vywzti2i7",
+        )
+    )
+    nodes["encoding_tensor_512-1741469806847-zh6tym4ir"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469806847-zh6tym4ir",
+        )
+    )
+    nodes["stopper_x-1741469775700-mqqxo9prq"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469775700-mqqxo9prq",
+    )
+    nodes["encoding_tensor_512-1741469792957-3buy4eynz"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469792957-3buy4eynz",
+        )
+    )
+    nodes["encoding_tensor_512-1741469808602-uoj183v5a"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469808602-uoj183v5a",
+        )
+    )
+    nodes["stopper_z-1741469888356-0g4nnrhvn"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469888356-0g4nnrhvn",
+    )
+    nodes["encoding_tensor_512-1741469811429-2iso8lzh2"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469811429-2iso8lzh2",
+        )
+    )
+    nodes["stopper_x-1741469797022-mxbutnmk4"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469797022-mxbutnmk4",
+    )
+    nodes["stopper_z-1741469886390-bi1budt2m"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469886390-bi1budt2m",
+    )
+    nodes["encoding_tensor_512-1741469809666-boitky627"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469809666-boitky627",
+        )
+    )
+    nodes["encoding_tensor_512-1741469812426-63xr66brk"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469812426-63xr66brk",
+        )
+    )
+    nodes["stopper_x-1741469821306-v1lj0052l"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469821306-v1lj0052l",
+    )
+    nodes["stopper_z-1741469890980-mrvl1054y"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469890980-mrvl1054y",
+    )
+    nodes["stopper_z-1741469892323-ur5jgaa88"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469892323-ur5jgaa88",
+    )
+    nodes["encoding_tensor_512-1741469813386-3cidseuj5"] = (
+        TensorStabilizerCodeEnumerator(
+            h=GF2(
+                [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+                ]
+            ),
+            idx="encoding_tensor_512-1741469813386-3cidseuj5",
+        )
+    )
+    nodes["stopper_x-1741469823864-5miztfum6"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469823864-5miztfum6",
+    )
+    nodes["stopper_x-1741469826392-9ruhud11d"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[1, 0]]),
+        idx="stopper_x-1741469826392-9ruhud11d",
+    )
+    nodes["stopper_z-1741469893043-9dwerhtds"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 1]]),
+        idx="stopper_z-1741469893043-9dwerhtds",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=None)
+
+    # Add traces
+    tn.self_trace(
+        "stopper_x-1741469771579-66rik1482",
+        "encoding_tensor_512-1741469569037-dtap10r8u",
+        [0],
+        [3],
+    )
+    tn.self_trace(
+        "stopper_x-1741469797022-mxbutnmk4",
+        "encoding_tensor_512-1741469792957-3buy4eynz",
+        [0],
+        [3],
+    )
+    tn.self_trace(
+        "stopper_x-1741469821306-v1lj0052l",
+        "encoding_tensor_512-1741469811429-2iso8lzh2",
+        [0],
+        [1],
+    )
+    tn.self_trace(
+        "stopper_x-1741469826392-9ruhud11d",
+        "encoding_tensor_512-1741469813386-3cidseuj5",
+        [0],
+        [1],
+    )
+    tn.self_trace(
+        "stopper_x-1741469775700-mqqxo9prq",
+        "encoding_tensor_512-1741469573383-vywzti2i7",
+        [0],
+        [0],
+    )
+    tn.self_trace(
+        "stopper_z-1741469873935-7x8lepkz0",
+        "encoding_tensor_512-1741469569037-dtap10r8u",
+        [0],
+        [0],
+    )
+    tn.self_trace(
+        "stopper_z-1741469888356-0g4nnrhvn",
+        "encoding_tensor_512-1741469806847-zh6tym4ir",
+        [0],
+        [1],
+    )
+    tn.self_trace(
+        "stopper_z-1741469886390-bi1budt2m",
+        "encoding_tensor_512-1741469792957-3buy4eynz",
+        [0],
+        [2],
+    )
+    tn.self_trace(
+        "stopper_z-1741469892323-ur5jgaa88",
+        "encoding_tensor_512-1741469809666-boitky627",
+        [0],
+        [3],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469569037-dtap10r8u",
+        "encoding_tensor_512-1741469573383-vywzti2i7",
+        [2],
+        [1],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469569037-dtap10r8u",
+        "encoding_tensor_512-1741469806847-zh6tym4ir",
+        [1],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469573383-vywzti2i7",
+        "encoding_tensor_512-1741469792957-3buy4eynz",
+        [3],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469573383-vywzti2i7",
+        "encoding_tensor_512-1741469808602-uoj183v5a",
+        [2],
+        [3],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469808602-uoj183v5a",
+        "encoding_tensor_512-1741469809666-boitky627",
+        [2],
+        [1],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469806847-zh6tym4ir",
+        "encoding_tensor_512-1741469808602-uoj183v5a",
+        [3],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469806847-zh6tym4ir",
+        "encoding_tensor_512-1741469811429-2iso8lzh2",
+        [2],
+        [3],
+    )
+    tn.self_trace(
+        "stopper_z-1741469890980-mrvl1054y",
+        "encoding_tensor_512-1741469811429-2iso8lzh2",
+        [0],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469811429-2iso8lzh2",
+        "encoding_tensor_512-1741469812426-63xr66brk",
+        [2],
+        [1],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469812426-63xr66brk",
+        "encoding_tensor_512-1741469813386-3cidseuj5",
+        [3],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469812426-63xr66brk",
+        "stopper_x-1741469823864-5miztfum6",
+        [2],
+        [0],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469808602-uoj183v5a",
+        "encoding_tensor_512-1741469812426-63xr66brk",
+        [1],
+        [0],
+    )
+    tn.self_trace(
+        "stopper_z-1741469893043-9dwerhtds",
+        "encoding_tensor_512-1741469813386-3cidseuj5",
+        [0],
+        [2],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469809666-boitky627",
+        "encoding_tensor_512-1741469813386-3cidseuj5",
+        [2],
+        [3],
+    )
+    tn.self_trace(
+        "encoding_tensor_512-1741469792957-3buy4eynz",
+        "encoding_tensor_512-1741469809666-boitky627",
+        [1],
+        [0],
+    )
+
+    node = tn.conjoin_nodes()
+    assert node.h.shape == (8, 18)
+
+    we = node.stabilizer_enumerator_polynomial()
+    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
