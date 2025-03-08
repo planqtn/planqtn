@@ -35,9 +35,6 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     n1 //= 2
     n2 //= 2
 
-    # assert n1 > 1, "Need at least 2 qubits in h1 for tracing."
-    # assert n2 > 1, "Need at least 2 qubits in h2 for tracing."
-
     # print("H1x")
     # print(h1[:, :n1])
     # print("H2x")
