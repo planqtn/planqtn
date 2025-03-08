@@ -65,6 +65,8 @@ interface SelectedNetwork {
     legos: DroppedLego[]
     connections: Connection[]
     parityCheckMatrix?: number[][]
+    weightEnumerator?: string
+    isCalculatingWeightEnumerator?: boolean
 }
 
 interface Operation {
@@ -195,6 +197,81 @@ const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ mat
     );
 }
 
+// Add the BlochSphereLoader component before the App component
+const BlochSphereLoader: React.FC = () => {
+    const [showLoader, setShowLoader] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowLoader(true);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!showLoader) return null;
+
+    return (
+        <Box p={4} display="flex" justifyContent="center" alignItems="center">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+                {/* Circle (sphere outline) */}
+                <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="#3182CE"
+                    strokeWidth="2"
+                    opacity="0.3"
+                />
+                {/* Rotating arrow (state vector) */}
+                <line
+                    x1="50"
+                    y1="50"
+                    x2="50"
+                    y2="10"
+                    stroke="#3182CE"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    opacity="0.8"
+                >
+                    <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0 50 50"
+                        to="360 50 50"
+                        dur="2s"
+                        repeatCount="indefinite"
+                    />
+                </line>
+                {/* Equator ellipse */}
+                <ellipse
+                    cx="50"
+                    cy="50"
+                    rx="40"
+                    ry="15"
+                    fill="none"
+                    stroke="#3182CE"
+                    strokeWidth="1"
+                    opacity="0.3"
+                >
+                    <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0 50 50"
+                        to="360 50 50"
+                        dur="4s"
+                        repeatCount="indefinite"
+                    />
+                </ellipse>
+            </svg>
+            <Text ml={4} color="blue.600" fontWeight="medium">
+                Calculating weight enumerator...
+            </Text>
+        </Box>
+    );
+};
+
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -226,9 +303,22 @@ function App() {
         justFinished: false  // Initialize the new flag
     });
     const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
+    const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
+    const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
+
+    // Add this function to generate a network signature
+    const getNetworkSignature = (network: SelectedNetwork) => {
+        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
+        const sortedConnections = [...network.connections].sort((a, b) => {
+            const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
+            const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
+            return aStr.localeCompare(bStr);
+        });
+        return JSON.stringify({ legos: sortedLegos, connections: sortedConnections });
+    };
 
     const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
         const state: CanvasState = {
@@ -1162,9 +1252,19 @@ function App() {
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
                 e.preventDefault();
                 if (droppedLegos.length > 0) {
-                    setSelectedLego(null);
-                    setSelectedNetwork(null);
-                    setManuallySelectedLegos(droppedLegos);
+                    // Check if all legos form a connected component
+                    const network = findConnectedComponent(droppedLegos[0]);
+                    if (network.legos.length === droppedLegos.length) {
+                        // All legos are connected - show as network
+                        setSelectedLego(null);
+                        setSelectedNetwork(network);
+                        setManuallySelectedLegos([]);
+                    } else {
+                        // Not all connected - show as manual selection
+                        setSelectedLego(null);
+                        setSelectedNetwork(null);
+                        setManuallySelectedLegos(droppedLegos);
+                    }
                 }
             } else if (e.key === 'Delete') {
                 // Handle deletion of selected legos
@@ -1270,7 +1370,6 @@ function App() {
         console.log(selectedNetwork.connections);
         try {
             const response = await axios.post('/api/paritycheck', {
-
                 legos: selectedNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = lego;
                     return acc;
@@ -1287,6 +1386,66 @@ function App() {
             setError('Failed to calculate parity check matrix');
         }
     };
+
+    const calculateWeightEnumerator = async () => {
+        if (!selectedNetwork) return;
+
+        const signature = getNetworkSignature(selectedNetwork);
+        const cachedEnumerator = weightEnumeratorCache.get(signature);
+        if (cachedEnumerator) {
+            setSelectedNetwork({
+                ...selectedNetwork,
+                weightEnumerator: cachedEnumerator,
+                isCalculatingWeightEnumerator: false
+            });
+            return;
+        }
+
+        try {
+            setSelectedNetwork(prev => prev ? {
+                ...prev,
+                isCalculatingWeightEnumerator: true,
+                weightEnumerator: undefined
+            } : null);
+
+            const response = await axios.post('/api/weightenumerator', {
+                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                    acc[lego.instanceId] = lego;
+                    return acc;
+                }, {} as Record<string, DroppedLego>),
+                connections: selectedNetwork.connections
+            });
+
+            // Cache the result
+            weightEnumeratorCache.set(signature, response.data.polynomial);
+
+            setSelectedNetwork(prev => prev ? {
+                ...prev,
+                weightEnumerator: response.data.polynomial,
+                isCalculatingWeightEnumerator: false
+            } : null);
+        } catch (error) {
+            console.error('Error calculating weight enumerator:', error);
+            setError('Failed to calculate weight enumerator');
+            setSelectedNetwork(prev => prev ? {
+                ...prev,
+                isCalculatingWeightEnumerator: false
+            } : null);
+        }
+    };
+
+    // Modify the existing useEffect to clear both caches
+    useEffect(() => {
+        // Clear caches when connections change
+        parityCheckMatrixCache.clear();
+        weightEnumeratorCache.clear();
+    }, [connections]);
+
+    useEffect(() => {
+        // Clear caches when legos are added/removed
+        parityCheckMatrixCache.clear();
+        weightEnumeratorCache.clear();
+    }, [droppedLegos.length]);
 
     return (
         <VStack spacing={0} align="stretch" h="100vh">
@@ -1655,7 +1814,6 @@ function App() {
                                 <>
                                     <Heading size="md">Tensor Network</Heading>
                                     <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
-
                                 </>
                             ) : selectedLego ? (
                                 <>
@@ -1681,9 +1839,12 @@ function App() {
                                 <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                                     <VStack align="stretch" spacing={4}>
                                         <Heading size="md">Network Details</Heading>
-                                        <HStack>
+                                        <HStack spacing={4}>
                                             <Button onClick={calculateParityCheckMatrix}>
                                                 Calculate Parity Check Matrix
+                                            </Button>
+                                            <Button onClick={calculateWeightEnumerator}>
+                                                Calculate Weight Enumerator
                                             </Button>
                                         </HStack>
                                         {selectedNetwork.parityCheckMatrix && (
@@ -1692,6 +1853,16 @@ function App() {
                                                 title="Parity Check Matrix"
                                             />
                                         )}
+                                        {selectedNetwork.weightEnumerator ? (
+                                            <VStack align="stretch" spacing={2}>
+                                                <Heading size="sm">Weight Enumerator Polynomial</Heading>
+                                                <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
+                                                    <Text fontFamily="mono">{selectedNetwork.weightEnumerator}</Text>
+                                                </Box>
+                                            </VStack>
+                                        ) : selectedNetwork.isCalculatingWeightEnumerator ? (
+                                            <BlochSphereLoader />
+                                        ) : null}
                                     </VStack>
                                 </Box>
                             )}

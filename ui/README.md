@@ -172,6 +172,8 @@ I want to put together the new compass code construction with Charles's construc
 
 Bugs:
     - the network selection + changing + recalculating workflow is very wonky right now 
+    - edge case: scalar (0-rank tensor) need to be worked out better 
+    -
 
 
 ## License

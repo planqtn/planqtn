@@ -49,6 +49,10 @@ class ParityCheckResponse(BaseModel):
     matrix: List[List[int]]
     message: str = "Successfully calculated parity check matrix"
 
+class WeightEnumeratorResponse(BaseModel):
+    polynomial: str
+    message: str = "Successfully calculated weight enumerator polynomial"
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(
@@ -89,6 +93,35 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
     matrix = result.h.tolist()
     
     return ParityCheckResponse(matrix=matrix)
+
+@app.post("/weightenumerator", response_model=WeightEnumeratorResponse)
+async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
+    # Create TensorStabilizerCodeEnumerator instances for each lego
+    nodes = {}
+    for instance_id, lego in network.legos.items():
+        # Convert the parity check matrix to numpy array
+        h = GF2(lego.parity_check_matrix)
+        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+    
+    # Create TensorNetwork instance
+    tn = TensorNetwork(nodes)
+    
+    # Add traces for each connection
+    for conn in network.connections:
+        tn.self_trace(
+            conn['from']['legoId'],
+            conn['to']['legoId'],
+            [conn['from']['legIndex']],
+            [conn['to']['legIndex']]
+        )
+    
+    # Conjoin all nodes to get the final tensor network
+    polynomial = tn.stabilizer_enumerator_polynomial(verbose=True, progress_bar=True, cotengra=len(nodes) > 4)    
+    
+    # Convert the polynomial to a string representation
+    polynomial_str = str(polynomial)
+    
+    return WeightEnumeratorResponse(polynomial=polynomial_str)
 
 if __name__ == "__main__":
     import uvicorn

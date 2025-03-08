@@ -599,7 +599,10 @@ class TensorNetwork:
         assert len(eprime) == m * 2
 
         node1_pte = None
-        if len(self.traces) == 0:
+        if len(self.traces) == 0 and len(self.nodes) == 1:
+            return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial()
+        
+        if len(self.traces) == 0 and len(self.nodes) > 1:
             raise ValueError(
                 "Completely disconnected nodes is unsupported. TODO: implement tensoring of disconnected component weight enumerators."
             )
