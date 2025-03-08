@@ -38,6 +38,7 @@ interface DragState {
     startY: number
     originalX: number
     originalY: number
+    justFinished: boolean  // New flag to track if drag just finished
 }
 
 interface LegDragState {
@@ -208,7 +209,8 @@ function App() {
         startX: 0,
         startY: 0,
         originalX: 0,
-        originalY: 0
+        originalY: 0,
+        justFinished: false  // Initialize the new flag
     })
     const canvasRef = useRef<HTMLDivElement>(null)
     const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
@@ -377,21 +379,21 @@ function App() {
             const newLego = {
                 ...lego,
                 instanceId: newInstanceId,
-                x: lego.x + 20, // Offset slightly to make it visible
+                x: lego.x + 20,
                 y: lego.y + 20
             };
 
-            // Add the new lego to the list
             setDroppedLegos(prev => [...prev, newLego]);
 
             // Set up drag state for the new lego
             setDragState({
-                isDragging: true,
-                draggedLegoIndex: droppedLegos.length, // Index of the new lego
+                isDragging: false,  // Start as false, will become true on movement
+                draggedLegoIndex: droppedLegos.length,
                 startX: e.clientX,
                 startY: e.clientY,
                 originalX: lego.x + 20,
-                originalY: lego.y + 20
+                originalY: lego.y + 20,
+                justFinished: false
             });
         } else {
             // Check if the clicked lego is part of a manual selection or selected network
@@ -399,7 +401,6 @@ function App() {
                 selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId);
 
             if (isPartOfSelection) {
-                // Set up group drag state for all selected legos
                 const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : selectedNetwork?.legos || [];
                 const positions: { [instanceId: string]: { x: number; y: number } } = {};
                 selectedLegos.forEach(l => {
@@ -412,35 +413,41 @@ function App() {
                 });
             }
 
-            // Original drag behavior
+            // Set up initial drag state, but don't start dragging yet
             setDragState({
-                isDragging: true,
+                isDragging: false,  // Start as false, will become true on movement
                 draggedLegoIndex: index,
                 startX: e.clientX,
                 startY: e.clientY,
                 originalX: lego.x,
-                originalY: lego.y
+                originalY: lego.y,
+                justFinished: false
             });
+
+            console.log("in handleLegoMouseDown", dragState, " just finished", dragState.justFinished);
         }
     }
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
-        if (!dragState.isDragging) {
+        // Reset the justFinished flag first
+        console.log("in click", dragState, " just finished", dragState.justFinished);
+        if (dragState.justFinished) {
+            setDragState(prev => ({ ...prev, justFinished: false }));
+            return; // Skip this click, but be ready for the next one
+        }
+
+        if (!dragState.isDragging) {  // Only handle click if not dragging
             e.stopPropagation();
 
             if (selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
-                // If clicking a lego that's part of the selected network,
-                // deselect the network and select just this lego
                 setSelectedNetwork(null);
                 setSelectedLego(lego);
             } else if (selectedLego?.instanceId === lego.instanceId) {
-                // If clicking the same lego again, select the connected component
                 const network = findConnectedComponent(lego);
                 console.log(network);
                 setSelectedNetwork(network);
                 setSelectedLego(null);
             } else {
-                // First click, just select the individual lego
                 setSelectedLego(lego);
                 setSelectedNetwork(null);
             }
@@ -568,6 +575,21 @@ function App() {
             const bottom = Math.max(selectionBox.startY, y);
 
             handleSelectionBoxUpdate(left, right, top, bottom);
+            return;
+        }
+
+        // Check if we should start dragging
+        if (!dragState.isDragging && dragState.draggedLegoIndex !== -1) {
+            const deltaX = e.clientX - dragState.startX;
+            const deltaY = e.clientY - dragState.startY;
+
+            // Only start dragging if the mouse has moved more than 3 pixels
+            if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                setDragState(prev => ({
+                    ...prev,
+                    isDragging: true
+                }));
+            }
             return;
         }
 
@@ -851,11 +873,14 @@ function App() {
         }
 
         setLegDragState(null);
+
         setDragState(prev => ({
             ...prev,
             isDragging: false,
-            draggedLegoIndex: -1
+            draggedLegoIndex: -1,
+            justFinished: dragState.isDragging
         }));
+
         setGroupDragState(null);
 
         // Update URL state after the drag operation is complete
@@ -1181,6 +1206,9 @@ function App() {
                     // Update URL state
                     encodeCanvasState(droppedLegos, connections);
                 }
+            } else if (e.key === 'Escape') {
+                // Dismiss error message when Escape is pressed
+                setError('');
             }
         };
 
