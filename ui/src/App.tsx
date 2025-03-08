@@ -787,8 +787,7 @@ function App() {
 
             // Find if we're over another leg
             droppedLegos.find(lego => {
-                if (lego.instanceId === legDragState.legoId) return false;
-
+                // Remove the self-connection check to allow connecting to the same lego
                 const legCount = lego.parity_check_matrix[0].length / 2;
                 for (let i = 0; i < legCount; i++) {
                     const legEndpoint = getLegEndpoint(lego, i);
@@ -798,6 +797,27 @@ function App() {
                         Math.pow(mouseY - legEndpoint.y, 2)
                     );
                     if (distance < 10) {
+                        // Check if either leg is already participating in a connection
+                        const isSourceLegConnected = connections.some(conn =>
+                            (conn.from.legoId === legDragState.legoId && conn.from.legIndex === legDragState.legIndex) ||
+                            (conn.to.legoId === legDragState.legoId && conn.to.legIndex === legDragState.legIndex)
+                        );
+                        const isTargetLegConnected = connections.some(conn =>
+                            (conn.from.legoId === lego.instanceId && conn.from.legIndex === i) ||
+                            (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
+                        );
+
+                        // Prevent connecting a leg to itself
+                        if (lego.instanceId === legDragState.legoId && i === legDragState.legIndex) {
+                            setError('Cannot connect a leg to itself');
+                            return true;
+                        }
+
+                        if (isSourceLegConnected || isTargetLegConnected) {
+                            setError('Cannot connect to a leg that is already connected');
+                            return true;
+                        }
+
                         const connectionExists = connections.some(conn =>
                             (conn.from.legoId === legDragState.legoId && conn.from.legIndex === legDragState.legIndex &&
                                 conn.to.legoId === lego.instanceId && conn.to.legIndex === i) ||

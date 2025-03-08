@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from galois import GF2
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import sys
@@ -65,7 +66,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
     nodes = {}
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
-        h = np.array(lego.parity_check_matrix)
+        h = GF2(lego.parity_check_matrix)
         nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
     
     # Create TensorNetwork instance
@@ -82,7 +83,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
         )
     
     # Conjoin all nodes to get the final parity check matrix
-    result = tn.conjoin_nodes()
+    result = tn.conjoin_nodes(verbose=True)
     
     # Convert the resulting parity check matrix to a list for JSON serialization
     matrix = result.h.tolist()

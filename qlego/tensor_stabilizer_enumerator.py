@@ -385,7 +385,7 @@ class TensorNetwork:
 
     def conjoin_nodes(self, verbose: bool = False, progress_bar: bool = False) -> 'TensorStabilizerCodeEnumerator':
         pte_nodes = []
-        if len(self.nodes) == 1:
+        if len(self.nodes) == 1 and len(self.traces) == 0:
             # If there's only one node, return it directly
             return list(self.nodes.values())[0]
         
@@ -1335,9 +1335,8 @@ class TensorStabilizerCodeEnumerator:
 
         The legs of the other will become the legs of the new one.
         """
-        assert (
-            self.idx != other.idx
-        ), f"Both stabilizer nodes have {self.idx} index - can't conjoin them."
+        if self.idx == other.idx:
+            return self.self_trace(legs1, legs2)
         assert len(legs1) == len(legs2)
         legs1 = _index_legs(self.idx, legs1)
         legs2 = _index_legs(other.idx, legs2)
