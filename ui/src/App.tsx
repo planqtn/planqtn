@@ -1,5 +1,6 @@
 import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes, FaCopy } from 'react-icons/fa'
 
@@ -272,6 +273,24 @@ const BlochSphereLoader: React.FC = () => {
         </Box>
     );
 };
+
+// Add ResizeHandle component before App
+const ResizeHandle = () => {
+    const bgColor = useColorModeValue('gray.200', 'gray.600')
+
+    return (
+        <PanelResizeHandle>
+            <Box
+                w="4px"
+                h="100%"
+                bg={bgColor}
+                cursor="col-resize"
+                transition="background-color 0.2s"
+                _hover={{ bg: 'blue.500' }}
+            />
+        </PanelResizeHandle>
+    )
+}
 
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
@@ -1539,463 +1558,476 @@ function App() {
 
             {/* Main Content */}
             <Box flex={1} position="relative" overflow="hidden">
-                <HStack spacing={0} align="stretch" h="100%">
+                <PanelGroup direction="horizontal">
                     {/* Left Panel */}
-                    <Box
-                        w="300px"
-                        p={4}
-                        borderRight="1px"
-                        borderColor={borderColor}
-                        bg={bgColor}
-                        overflowY="auto"
-                    >
-                        <VStack align="stretch" spacing={4}>
-                            <Heading size="md">Lego Pieces</Heading>
-                            <List spacing={3}>
-                                {legos.map((lego) => (
-                                    <ListItem
-                                        key={lego.id}
-                                        p={3}
-                                        borderWidth="1px"
-                                        borderRadius="md"
-                                        _hover={{ bg: 'gray.50' }}
-                                        cursor="move"
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, lego)}
-                                    >
-                                        <HStack spacing={2}>
-                                            <Icon as={getLegoIcon(lego.type)} boxSize={5} />
-                                            <VStack align="start" spacing={1}>
-                                                <Text fontWeight="bold">{lego.name}</Text>
-                                                <Text fontSize="sm" color="gray.600">
-                                                    {lego.description}
-                                                </Text>
-                                                <HStack>
-                                                    <Badge colorScheme="blue">{lego.type}</Badge>
-                                                    {lego.is_dynamic && (
-                                                        <Badge colorScheme="green">Dynamic</Badge>
-                                                    )}
-                                                </HStack>
-                                            </VStack>
-                                        </HStack>
-                                    </ListItem>
-                                ))}
-                            </List>
-                        </VStack>
-                    </Box>
+                    <Panel defaultSize={20} minSize={15}>
+                        <Box
+                            h="100%"
+                            borderRight="1px"
+                            borderColor={borderColor}
+                            bg={bgColor}
+                            overflowY="auto"
+                        >
+                            <VStack align="stretch" spacing={4} p={4}>
+                                <Heading size="md">Lego Pieces</Heading>
+                                <List spacing={3}>
+                                    {legos.map((lego) => (
+                                        <ListItem
+                                            key={lego.id}
+                                            p={3}
+                                            borderWidth="1px"
+                                            borderRadius="md"
+                                            _hover={{ bg: 'gray.50' }}
+                                            cursor="move"
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, lego)}
+                                        >
+                                            <HStack spacing={2}>
+                                                <Icon as={getLegoIcon(lego.type)} boxSize={5} />
+                                                <VStack align="start" spacing={1}>
+                                                    <Text fontWeight="bold">{lego.name}</Text>
+                                                    <Text fontSize="sm" color="gray.600">
+                                                        {lego.description}
+                                                    </Text>
+                                                    <HStack>
+                                                        <Badge colorScheme="blue">{lego.type}</Badge>
+                                                        {lego.is_dynamic && (
+                                                            <Badge colorScheme="green">Dynamic</Badge>
+                                                        )}
+                                                    </HStack>
+                                                </VStack>
+                                            </HStack>
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            </VStack>
+                        </Box>
+                    </Panel>
+
+                    <ResizeHandle />
 
                     {/* Main Content */}
-                    <Box flex={1} display="flex" flexDirection="column" p={4}>
-                        {/* Status Bar */}
-                        <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
-                            <HStack spacing={2}>
-                                <Box
-                                    w="8px"
-                                    h="8px"
-                                    borderRadius="full"
-                                    bg={isBackendHealthy ? "green.400" : "red.400"}
-                                />
-                                <Text fontSize="sm">Backend Status: {message}</Text>
-                            </HStack>
-                        </Box>
-
-                        {/* Gray Panel */}
-                        <Box
-                            ref={canvasRef}
-                            flex={1}
-                            bg="gray.100"
-                            borderRadius="lg"
-                            boxShadow="inner"
-                            position="relative"
-                            onDragOver={handleDragOver}
-                            onDrop={handleDrop}
-                            onMouseMove={handleCanvasMouseMove}
-                            onMouseUp={handleCanvasMouseUp}
-                            onMouseLeave={handleCanvasMouseLeave}
-                            onClick={handleCanvasClick}
-                            onMouseDown={handleCanvasMouseDown}
-                            style={{ userSelect: 'none' }}
-                        >
-                            {/* Connection Lines */}
-                            <svg
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none'
-                                }}
-                            >
-                                {/* Existing connections */}
-                                <g style={{ pointerEvents: 'all' }}>
-                                    {connections.map((conn, index) => {
-                                        const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
-                                        const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
-                                        if (!fromLego || !toLego) return null;
-
-                                        const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
-                                        const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
-
-                                        return (
-                                            <g key={`conn-${index}`}>
-                                                {/* Invisible wider line for easier clicking */}
-                                                <line
-                                                    x1={fromPoint.x}
-                                                    y1={fromPoint.y}
-                                                    x2={toPoint.x}
-                                                    y2={toPoint.y}
-                                                    stroke="transparent"
-                                                    strokeWidth="10"
-                                                    style={{
-                                                        cursor: 'pointer',
-                                                    }}
-                                                    onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
-                                                    onMouseEnter={(e) => {
-                                                        // Find and update the visible line
-                                                        const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                        if (visibleLine) {
-                                                            visibleLine.style.stroke = '#4299E1'; // brighter blue
-                                                            visibleLine.style.strokeWidth = '3';
-                                                            visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
-                                                        }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        // Reset the visible line
-                                                        const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                        if (visibleLine) {
-                                                            visibleLine.style.stroke = '#3182CE';
-                                                            visibleLine.style.strokeWidth = '2';
-                                                            visibleLine.style.filter = 'none';
-                                                        }
-                                                    }}
-                                                />
-                                                {/* Visible line */}
-                                                <line
-                                                    x1={fromPoint.x}
-                                                    y1={fromPoint.y}
-                                                    x2={toPoint.x}
-                                                    y2={toPoint.y}
-                                                    stroke="#3182CE"
-                                                    strokeWidth="2"
-                                                    style={{
-                                                        pointerEvents: 'none',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                />
-                                            </g>
-                                        );
-                                    })}
-                                </g>
-
-                                {/* Temporary line while dragging */}
-                                {legDragState?.isDragging && (() => {
-                                    const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
-                                    if (!fromLego) return null;
-
-                                    const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
-
-                                    return (
-                                        <line
-                                            x1={fromPoint.x}
-                                            y1={fromPoint.y}
-                                            x2={legDragState.currentX}
-                                            y2={legDragState.currentY}
-                                            stroke="#3182CE"
-                                            strokeWidth="2"
-                                            strokeDasharray="4"
-                                            opacity={0.5}
-                                            style={{ pointerEvents: 'none' }}
-                                        />
-                                    );
-                                })()}
-
-                                {/* Leg Labels */}
-                                {droppedLegos.map((lego) => (
-                                    Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                        const legLength = 40;
-                                        const labelX = lego.x + (legLength + 10) * Math.cos(angle);
-                                        const labelY = lego.y + (legLength + 10) * Math.sin(angle);
-
-                                        return (
-                                            <text
-                                                key={`${lego.instanceId}-label-${legIndex}`}
-                                                x={labelX}
-                                                y={labelY}
-                                                fontSize="12"
-                                                fill="#666666"
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                                style={{ pointerEvents: 'none' }}
-                                            >
-                                                {legIndex}
-                                            </text>
-                                        );
-                                    })
-                                ))}
-                            </svg>
-
-                            {/* Selection Box */}
-                            {selectionBox.isSelecting && (
-                                <Box
-                                    position="absolute"
-                                    left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
-                                    top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
-                                    width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
-                                    height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
-                                    border="2px"
-                                    borderColor="blue.500"
-                                    bg="blue.50"
-                                    opacity={0.3}
-                                    pointerEvents="none"
-                                />
-                            )}
-
-                            {droppedLegos.map((lego, index) => (
-                                <Box
-                                    key={`${lego.instanceId}`}
-                                    position="absolute"
-                                    left={`${lego.x - 25}px`}
-                                    top={`${lego.y - 25}px`}
-                                    style={{ userSelect: 'none' }}
-                                >
-                                    {/* Legs */}
-                                    {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                        const legLength = 40;
-                                        const endX = 25 + legLength * Math.cos(angle);
-                                        const endY = 25 + legLength * Math.sin(angle);
-
-                                        const isBeingDragged = legDragState?.isDragging &&
-                                            legDragState.legoId === lego.instanceId &&
-                                            legDragState.legIndex === legIndex;
-
-                                        return (
-                                            <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
-                                                {/* Line */}
-                                                <Box
-                                                    position="absolute"
-                                                    left="25px"
-                                                    top="25px"
-                                                    w={`${legLength}px`}
-                                                    h="2px"
-                                                    bg="gray.400"
-                                                    transformOrigin="0 0"
-                                                    style={{
-                                                        transform: `rotate(${angle}rad)`,
-                                                        pointerEvents: 'none'
-                                                    }}
-                                                />
-                                                {/* Draggable Endpoint */}
-                                                <Box
-                                                    position="absolute"
-                                                    left={`${endX}px`}
-                                                    top={`${endY}px`}
-                                                    w="10px"
-                                                    h="10px"
-                                                    borderRadius="full"
-                                                    bg={isBeingDragged ? "blue.100" : "white"}
-                                                    border="2px"
-                                                    borderColor={isBeingDragged ? "blue.500" : "gray.400"}
-                                                    transform="translate(-50%, -50%)"
-                                                    cursor="pointer"
-                                                    onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
-                                                    _hover={{ borderColor: "blue.400", bg: "blue.50" }}
-                                                    transition="all 0.2s"
-                                                    style={{ pointerEvents: 'all' }}
-                                                />
-                                            </Box>
-                                        );
-                                    })}
-                                    {/* Main Circle */}
+                    <Panel defaultSize={55} minSize={30}>
+                        <Box h="100%" display="flex" flexDirection="column" p={4}>
+                            {/* Status Bar */}
+                            <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
+                                <HStack spacing={2}>
                                     <Box
-                                        w="50px"
-                                        h="50px"
+                                        w="8px"
+                                        h="8px"
                                         borderRadius="full"
-                                        bg={
-                                            selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                                ? "blue.200"
-                                                : selectedLego?.instanceId === lego.instanceId
-                                                    ? "blue.100"
-                                                    : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                        ? "blue.100"
-                                                        : "white"
-                                        }
+                                        bg={isBackendHealthy ? "green.400" : "red.400"}
+                                    />
+                                    <Text fontSize="sm">Backend Status: {message}</Text>
+                                </HStack>
+                            </Box>
+
+                            {/* Gray Panel */}
+                            <Box
+                                ref={canvasRef}
+                                flex={1}
+                                bg="gray.100"
+                                borderRadius="lg"
+                                boxShadow="inner"
+                                position="relative"
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                                onMouseMove={handleCanvasMouseMove}
+                                onMouseUp={handleCanvasMouseUp}
+                                onMouseLeave={handleCanvasMouseLeave}
+                                onClick={handleCanvasClick}
+                                onMouseDown={handleCanvasMouseDown}
+                                style={{ userSelect: 'none' }}
+                            >
+                                {/* Connection Lines */}
+                                <svg
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        pointerEvents: 'none',
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    {/* Existing connections */}
+                                    <g style={{ pointerEvents: 'all' }}>
+                                        {connections.map((conn, index) => {
+                                            const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                                            const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                                            if (!fromLego || !toLego) return null;
+
+                                            const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
+                                            const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
+
+                                            return (
+                                                <g key={`conn-${index}`}>
+                                                    {/* Invisible wider line for easier clicking */}
+                                                    <line
+                                                        x1={fromPoint.x}
+                                                        y1={fromPoint.y}
+                                                        x2={toPoint.x}
+                                                        y2={toPoint.y}
+                                                        stroke="transparent"
+                                                        strokeWidth="10"
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                        }}
+                                                        onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+                                                        onMouseEnter={(e) => {
+                                                            // Find and update the visible line
+                                                            const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                            if (visibleLine) {
+                                                                visibleLine.style.stroke = '#4299E1'; // brighter blue
+                                                                visibleLine.style.strokeWidth = '3';
+                                                                visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
+                                                            }
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            // Reset the visible line
+                                                            const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
+                                                            if (visibleLine) {
+                                                                visibleLine.style.stroke = '#3182CE';
+                                                                visibleLine.style.strokeWidth = '2';
+                                                                visibleLine.style.filter = 'none';
+                                                            }
+                                                        }}
+                                                    />
+                                                    {/* Visible line */}
+                                                    <line
+                                                        x1={fromPoint.x}
+                                                        y1={fromPoint.y}
+                                                        x2={toPoint.x}
+                                                        y2={toPoint.y}
+                                                        stroke="#3182CE"
+                                                        strokeWidth="2"
+                                                        style={{
+                                                            pointerEvents: 'none',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    />
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
+
+                                    {/* Temporary line while dragging */}
+                                    {legDragState?.isDragging && (() => {
+                                        const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
+                                        if (!fromLego) return null;
+
+                                        const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
+
+                                        return (
+                                            <line
+                                                x1={fromPoint.x}
+                                                y1={fromPoint.y}
+                                                x2={legDragState.currentX}
+                                                y2={legDragState.currentY}
+                                                stroke="#3182CE"
+                                                strokeWidth="2"
+                                                strokeDasharray="4"
+                                                opacity={0.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        );
+                                    })()}
+
+                                    {/* Leg Labels */}
+                                    {droppedLegos.map((lego) => (
+                                        Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                            const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                            const legLength = 40;
+                                            const labelX = lego.x + (legLength + 10) * Math.cos(angle);
+                                            const labelY = lego.y + (legLength + 10) * Math.sin(angle);
+
+                                            return (
+                                                <text
+                                                    key={`${lego.instanceId}-label-${legIndex}`}
+                                                    x={labelX}
+                                                    y={labelY}
+                                                    fontSize="12"
+                                                    fill="#666666"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    style={{ pointerEvents: 'none' }}
+                                                >
+                                                    {legIndex}
+                                                </text>
+                                            );
+                                        })
+                                    ))}
+                                </svg>
+
+                                {/* Selection Box */}
+                                {selectionBox.isSelecting && (
+                                    <Box
+                                        position="absolute"
+                                        left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
+                                        top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
+                                        width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
+                                        height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
                                         border="2px"
-                                        borderColor={
-                                            selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                                ? "blue.600"
-                                                : selectedLego?.instanceId === lego.instanceId
-                                                    ? "blue.500"
-                                                    : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                        ? "blue.500"
-                                                        : "blue.400"
-                                        }
-                                        display="flex"
-                                        alignItems="center"
-                                        justifyContent="center"
-                                        cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
-                                        title={lego.name}
-                                        boxShadow="md"
-                                        _hover={{ boxShadow: "lg" }}
-                                        onMouseDown={(e) => handleLegoMouseDown(e, index)}
-                                        onClick={(e) => handleLegoClick(e, lego)}
-                                        style={{
-                                            transform: dragState.isDragging && dragState.draggedLegoIndex === index
-                                                ? 'scale(1.05)'
-                                                : 'scale(1)',
-                                            transition: 'transform 0.1s',
-                                            userSelect: 'none',
-                                            touchAction: 'none'
-                                        }}
-                                        position="relative"
-                                        zIndex={1}
+                                        borderColor="blue.500"
+                                        bg="blue.50"
+                                        opacity={0.3}
+                                        pointerEvents="none"
+                                    />
+                                )}
+
+                                {droppedLegos.map((lego, index) => (
+                                    <Box
+                                        key={`${lego.instanceId}`}
+                                        position="absolute"
+                                        left={`${lego.x - 25}px`}
+                                        top={`${lego.y - 25}px`}
+                                        style={{ userSelect: 'none' }}
                                     >
-                                        <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                                            <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
-                                                {lego.shortName}
-                                            </Text>
+                                        {/* Legs */}
+                                        {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                            const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
+                                            const legLength = 40;
+                                            const endX = 25 + legLength * Math.cos(angle);
+                                            const endY = 25 + legLength * Math.sin(angle);
+
+                                            const isBeingDragged = legDragState?.isDragging &&
+                                                legDragState.legoId === lego.instanceId &&
+                                                legDragState.legIndex === legIndex;
+
+                                            return (
+                                                <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
+                                                    {/* Line */}
+                                                    <Box
+                                                        position="absolute"
+                                                        left="25px"
+                                                        top="25px"
+                                                        w={`${legLength}px`}
+                                                        h="2px"
+                                                        bg="gray.400"
+                                                        transformOrigin="0 0"
+                                                        style={{
+                                                            transform: `rotate(${angle}rad)`,
+                                                            pointerEvents: 'none'
+                                                        }}
+                                                    />
+                                                    {/* Draggable Endpoint */}
+                                                    <Box
+                                                        position="absolute"
+                                                        left={`${endX}px`}
+                                                        top={`${endY}px`}
+                                                        w="10px"
+                                                        h="10px"
+                                                        borderRadius="full"
+                                                        bg={isBeingDragged ? "blue.100" : "white"}
+                                                        border="2px"
+                                                        borderColor={isBeingDragged ? "blue.500" : "gray.400"}
+                                                        transform="translate(-50%, -50%)"
+                                                        cursor="pointer"
+                                                        onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
+                                                        _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+                                                        transition="all 0.2s"
+                                                        style={{ pointerEvents: 'all' }}
+                                                    />
+                                                </Box>
+                                            );
+                                        })}
+                                        {/* Main Circle */}
+                                        <Box
+                                            w="50px"
+                                            h="50px"
+                                            borderRadius="full"
+                                            bg={
+                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                                    ? "blue.200"
+                                                    : selectedLego?.instanceId === lego.instanceId
+                                                        ? "blue.100"
+                                                        : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                            ? "blue.100"
+                                                            : "white"
+                                            }
+                                            border="2px"
+                                            borderColor={
+                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
+                                                    ? "blue.600"
+                                                    : selectedLego?.instanceId === lego.instanceId
+                                                        ? "blue.500"
+                                                        : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                            ? "blue.500"
+                                                            : "blue.400"
+                                            }
+                                            display="flex"
+                                            alignItems="center"
+                                            justifyContent="center"
+                                            cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
+                                            title={lego.name}
+                                            boxShadow="md"
+                                            _hover={{ boxShadow: "lg" }}
+                                            onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                                            onClick={(e) => handleLegoClick(e, lego)}
+                                            style={{
+                                                transform: dragState.isDragging && dragState.draggedLegoIndex === index
+                                                    ? 'scale(1.05)'
+                                                    : 'scale(1)',
+                                                transition: 'transform 0.1s',
+                                                userSelect: 'none',
+                                                touchAction: 'none'
+                                            }}
+                                            position="relative"
+                                            zIndex={1}
+                                        >
+                                            <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                                                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                                    {lego.shortName}
+                                                </Text>
+                                            </Box>
                                         </Box>
                                     </Box>
-                                </Box>
-                            ))}
+                                ))}
+                            </Box>
                         </Box>
-                    </Box>
+                    </Panel>
+
+                    <ResizeHandle />
 
                     {/* Right Panel */}
-                    <Box
-                        w="400px"
-                        p={4}
-                        borderLeft="1px"
-                        borderColor={borderColor}
-                        bg={bgColor}
-                        overflowY="auto"
-                        display={selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"}
+                    <Panel
+                        defaultSize={25}
+                        minSize={20}
+                        style={{
+                            display: selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"
+                        }}
                     >
-                        <VStack align="stretch" spacing={4}>
-                            {selectedNetwork ? (
-                                <>
-                                    <Heading size="md">Tensor Network</Heading>
-                                    <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
-                                </>
-                            ) : selectedLego ? (
-                                <>
-                                    <Heading size="md">Matrix Details</Heading>
-                                    <VStack align="stretch" spacing={3}>
-                                        <Text fontWeight="bold">{selectedLego.name}</Text>
-                                        <Text fontSize="sm" color="gray.600">
-                                            {selectedLego.description}
-                                        </Text>
-                                        <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
-                                    </VStack>
-                                </>
-                            ) : manuallySelectedLegos.length > 0 ? (
-                                <>
-                                    <Heading size="md">Selection</Heading>
-                                    <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
-                                    <Text color="gray.600">
-                                        For details, select only one lego or a complete connected component
-                                    </Text>
-                                </>
-                            ) : null}
-                            {selectedNetwork && (
-                                <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-                                    <VStack align="stretch" spacing={4}>
-                                        <Heading size="md">Network Details</Heading>
+                        <Box
+                            h="100%"
+                            borderLeft="1px"
+                            borderColor={borderColor}
+                            bg={bgColor}
+                            overflowY="auto"
+                        >
+                            <VStack align="stretch" spacing={4} p={4}>
+                                {selectedNetwork ? (
+                                    <>
+                                        <Heading size="md">Tensor Network</Heading>
+                                        <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
+                                    </>
+                                ) : selectedLego ? (
+                                    <>
+                                        <Heading size="md">Matrix Details</Heading>
                                         <VStack align="stretch" spacing={3}>
-                                            <Button
-                                                onClick={calculateParityCheckMatrix}
-                                                colorScheme="blue"
-                                                size="sm"
-                                                width="full"
-                                                leftIcon={<Icon as={FaTable} />}
-                                            >
-                                                Calculate Parity Check Matrix
-                                            </Button>
-                                            <Button
-                                                onClick={calculateWeightEnumerator}
-                                                colorScheme="teal"
-                                                size="sm"
-                                                width="full"
-                                                leftIcon={<Icon as={FaCube} />}
-                                            >
-                                                Calculate Weight Enumerator
-                                            </Button>
-                                            <Button
-                                                onClick={generateConstructionCode}
-                                                colorScheme="purple"
-                                                size="sm"
-                                                width="full"
-                                                leftIcon={<Icon as={FaCode} />}
-                                            >
-                                                Python Code
-                                            </Button>
+                                            <Text fontWeight="bold">{selectedLego.name}</Text>
+                                            <Text fontSize="sm" color="gray.600">
+                                                {selectedLego.description}
+                                            </Text>
+                                            <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
                                         </VStack>
-                                        {selectedNetwork.parityCheckMatrix && (
-                                            <ParityCheckMatrixDisplay
-                                                matrix={selectedNetwork.parityCheckMatrix}
-                                                title="Parity Check Matrix"
-                                            />
-                                        )}
-                                        {selectedNetwork.weightEnumerator ? (
-                                            <VStack align="stretch" spacing={2}>
-                                                <Heading size="sm">Weight Enumerator Polynomial</Heading>
-                                                <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                                                    <Text fontFamily="mono">{selectedNetwork.weightEnumerator}</Text>
-                                                </Box>
-                                            </VStack>
-                                        ) : selectedNetwork.isCalculatingWeightEnumerator ? (
-                                            <BlochSphereLoader />
-                                        ) : null}
-                                        {selectedNetwork.constructionCode && (
-                                            <VStack align="stretch" spacing={2}>
-                                                <HStack justify="space-between">
-                                                    <Heading size="sm">Construction Code</Heading>
-                                                    <IconButton
-                                                        aria-label="Copy code"
-                                                        icon={<Icon as={FaCopy} />}
-                                                        size="sm"
-                                                        onClick={onCopyCode}
-                                                        variant="ghost"
-                                                    />
-                                                </HStack>
-                                                <Box
-                                                    p={3}
-                                                    borderWidth={1}
-                                                    borderRadius="md"
-                                                    bg="gray.50"
-                                                    position="relative"
-                                                    fontFamily="mono"
-                                                    whiteSpace="pre"
-                                                    overflowX="auto"
+                                    </>
+                                ) : manuallySelectedLegos.length > 0 ? (
+                                    <>
+                                        <Heading size="md">Selection</Heading>
+                                        <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
+                                        <Text color="gray.600">
+                                            For details, select only one lego or a complete connected component
+                                        </Text>
+                                    </>
+                                ) : null}
+                                {selectedNetwork && (
+                                    <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
+                                        <VStack align="stretch" spacing={4}>
+                                            <Heading size="md">Network Details</Heading>
+                                            <VStack align="stretch" spacing={3}>
+                                                <Button
+                                                    onClick={calculateParityCheckMatrix}
+                                                    colorScheme="blue"
+                                                    size="sm"
+                                                    width="full"
+                                                    leftIcon={<Icon as={FaTable} />}
                                                 >
-                                                    <Text>{selectedNetwork.constructionCode}</Text>
-                                                    {hasCopiedCode && (
-                                                        <Box
-                                                            position="absolute"
-                                                            top={2}
-                                                            right={2}
-                                                            px={2}
-                                                            py={1}
-                                                            bg="green.500"
-                                                            color="white"
-                                                            borderRadius="md"
-                                                            fontSize="sm"
-                                                        >
-                                                            Copied!
-                                                        </Box>
-                                                    )}
-                                                </Box>
+                                                    Calculate Parity Check Matrix
+                                                </Button>
+                                                <Button
+                                                    onClick={calculateWeightEnumerator}
+                                                    colorScheme="teal"
+                                                    size="sm"
+                                                    width="full"
+                                                    leftIcon={<Icon as={FaCube} />}
+                                                >
+                                                    Calculate Weight Enumerator
+                                                </Button>
+                                                <Button
+                                                    onClick={generateConstructionCode}
+                                                    colorScheme="purple"
+                                                    size="sm"
+                                                    width="full"
+                                                    leftIcon={<Icon as={FaCode} />}
+                                                >
+                                                    Python Code
+                                                </Button>
                                             </VStack>
-                                        )}
-                                    </VStack>
-                                </Box>
-                            )}
-                        </VStack>
-                    </Box>
-                </HStack>
+                                            {selectedNetwork.parityCheckMatrix && (
+                                                <ParityCheckMatrixDisplay
+                                                    matrix={selectedNetwork.parityCheckMatrix}
+                                                    title="Parity Check Matrix"
+                                                />
+                                            )}
+                                            {selectedNetwork.weightEnumerator ? (
+                                                <VStack align="stretch" spacing={2}>
+                                                    <Heading size="sm">Weight Enumerator Polynomial</Heading>
+                                                    <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
+                                                        <Text fontFamily="mono">{selectedNetwork.weightEnumerator}</Text>
+                                                    </Box>
+                                                </VStack>
+                                            ) : selectedNetwork.isCalculatingWeightEnumerator ? (
+                                                <BlochSphereLoader />
+                                            ) : null}
+                                            {selectedNetwork.constructionCode && (
+                                                <VStack align="stretch" spacing={2}>
+                                                    <HStack justify="space-between">
+                                                        <Heading size="sm">Construction Code</Heading>
+                                                        <IconButton
+                                                            aria-label="Copy code"
+                                                            icon={<Icon as={FaCopy} />}
+                                                            size="sm"
+                                                            onClick={onCopyCode}
+                                                            variant="ghost"
+                                                        />
+                                                    </HStack>
+                                                    <Box
+                                                        p={3}
+                                                        borderWidth={1}
+                                                        borderRadius="md"
+                                                        bg="gray.50"
+                                                        position="relative"
+                                                        fontFamily="mono"
+                                                        whiteSpace="pre"
+                                                        overflowX="auto"
+                                                    >
+                                                        <Text>{selectedNetwork.constructionCode}</Text>
+                                                        {hasCopiedCode && (
+                                                            <Box
+                                                                position="absolute"
+                                                                top={2}
+                                                                right={2}
+                                                                px={2}
+                                                                py={1}
+                                                                bg="green.500"
+                                                                color="white"
+                                                                borderRadius="md"
+                                                                fontSize="sm"
+                                                            >
+                                                                Copied!
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                </VStack>
+                                            )}
+                                        </VStack>
+                                    </Box>
+                                )}
+                            </VStack>
+                        </Box>
+                    </Panel>
+                </PanelGroup>
 
                 {/* Error Panel */}
                 <Box
