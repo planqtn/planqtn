@@ -307,6 +307,7 @@ function App() {
     const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard("")
+    const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -375,24 +376,49 @@ function App() {
         }
     }, [legos])
 
+    // Add checkBackendHealth function
+    const checkBackendHealth = useCallback(async () => {
+        try {
+            const response = await axios.get('/api/health')
+            setMessage(response.data.message)
+            setIsBackendHealthy(true)
+            setError('') // Clear any previous backend errors
+        } catch (error) {
+            setMessage('Error connecting to backend')
+            setIsBackendHealthy(false)
+            setError('Backend connection lost')
+            console.error('Backend health check failed:', error)
+        }
+    }, [])
+
+    // Add periodic health check effect
+    useEffect(() => {
+        // Initial health check
+        checkBackendHealth()
+
+        // Set up periodic health check every 30 seconds
+        const healthCheckInterval = setInterval(checkBackendHealth, 1000)
+
+        // Cleanup interval on component unmount
+        return () => clearInterval(healthCheckInterval)
+    }, [checkBackendHealth])
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [healthResponse, legosResponse] = await Promise.all([
-                    axios.get('/api/health'),
-                    axios.get('/api/legos')
-                ])
-                setMessage(healthResponse.data.message)
+                const legosResponse = await axios.get('/api/legos')
                 setLegos(legosResponse.data)
             } catch (error) {
-                setMessage('Error connecting to backend')
-                setError('Failed to fetch data')
+                setError('Failed to fetch legos')
                 console.error('Error:', error)
             }
         }
 
-        fetchData()
-    }, [])
+        // Only fetch legos if backend is healthy
+        if (isBackendHealthy) {
+            fetchData()
+        }
+    }, [isBackendHealthy]) // Depend on backend health status
 
     // Remove the URL update from the general effect
     useEffect(() => {
@@ -1562,7 +1588,15 @@ function App() {
                     <Box flex={1} display="flex" flexDirection="column" p={4}>
                         {/* Status Bar */}
                         <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
-                            <Text fontSize="sm">Backend Status: {message}</Text>
+                            <HStack spacing={2}>
+                                <Box
+                                    w="8px"
+                                    h="8px"
+                                    borderRadius="full"
+                                    bg={isBackendHealthy ? "green.400" : "red.400"}
+                                />
+                                <Text fontSize="sm">Backend Status: {message}</Text>
+                            </HStack>
                         </Box>
 
                         {/* Gray Panel */}
