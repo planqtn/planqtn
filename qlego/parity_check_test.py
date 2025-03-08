@@ -2,8 +2,8 @@ from galois import GF2
 import numpy as np
 import pytest
 from qlego.linalg import gauss
-from parity_check import conjoin, self_trace, sprint
-from scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.parity_check import conjoin, self_trace, sprint
+from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 
 
 # Handle empty matrices as input

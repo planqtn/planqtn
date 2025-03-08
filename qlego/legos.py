@@ -74,6 +74,11 @@ class Legos:
             [0, 1, 1, 0],
         ]
     )
+    
+    stopper_x = GF2([[1,0]])
+    stopper_z = GF2([[0,1]])
+    stopper_y = GF2([[1,1]])
+    stopper_i = GF2([[0,0]])
 
     @classmethod
     def list_available_legos(cls) -> List[Dict[str, Any]]:
@@ -121,12 +126,44 @@ class Legos:
             },
             {
                 "id": "h",
-                "name": "Hadamard Matrix",
+                "name": "Hadamard Matrix", 
                 "shortName": "HADAM",
                 "type": "matrix",
                 "description": "Hadamard matrix for quantum operations",
                 "parity_check_matrix": cls.h.tolist()
-            }
+            },
+            {
+                "id": "stopper_x",
+                "name": "X Stopper",
+                "shortName": "STOPX",
+                "type": "stopper",
+                "description": "X-type stopper tensor for boundary conditions",
+                "parity_check_matrix": cls.stopper_x.tolist()
+            },
+            {
+                "id": "stopper_z", 
+                "name": "Z Stopper",
+                "shortName": "STOPZ",
+                "type": "stopper",
+                "description": "Z-type stopper tensor for boundary conditions",
+                "parity_check_matrix": cls.stopper_z.tolist()
+            },
+            {
+                "id": "stopper_y",
+                "name": "Y Stopper",
+                "shortName": "STOPY", 
+                "type": "stopper",
+                "description": "Y-type stopper tensor for boundary conditions",
+                "parity_check_matrix": cls.stopper_y.tolist()
+            },
+            {
+                "id": "stopper_i",
+                "name": "Identity Stopper",
+                "shortName": "STOPI",
+                "type": "stopper", 
+                "description": "Identity stopper tensor for boundary conditions",
+                "parity_check_matrix": cls.stopper_i.tolist()
+            },
         ]
         
         # Add dynamic lego pieces (methods)

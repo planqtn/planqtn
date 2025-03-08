@@ -214,8 +214,8 @@ def test_stopper_tensors():
     node = node.trace_with_stopper(stopper=PAULI_Z, traced_leg=3)
 
     assert np.array_equal(
-        node.h,
-        GF2(
+        gauss(node.h),
+        gauss(GF2(
             [
                 # 0  1  2  4  5  0  1  2  4  5
                 [0, 0, 0, 0, 0, 1, 1, 1, 0, 0],
@@ -228,7 +228,7 @@ def test_stopper_tensors():
                 # Z1
                 [0, 0, 0, 0, 0, 0, 1, 1, 1, 0],
             ]
-        ),
+        )),
     ), f"Not equal: \n{repr(node.h)}"
 
     assert node.legs == [(0, 0), (0, 1), (0, 2), (0, 4), (0, 5)]
@@ -239,8 +239,8 @@ def test_stopper_tensors():
     node = node.trace_with_stopper(stopper=PAULI_X, traced_leg=0)
 
     assert np.array_equal(
-        node.h,
-        GF2(
+        gauss(node.h),
+        gauss(GF2(
             [
                 # 1  2  4  5  1  2  4  5
                 # X1
@@ -252,7 +252,7 @@ def test_stopper_tensors():
                 # Z1
                 [0, 0, 0, 0, 1, 1, 1, 0],
             ]
-        ),
+        )),
     ), f"Not equal: \n{repr(node.h)}"
 
 
@@ -305,8 +305,8 @@ def test_stoppers_in_different_order():
         PAULI_Z, 0
     )
     assert np.array_equal(
-        t1.h,
-        GF2(
+        gauss(t1.h),
+        gauss(GF2(
             [
                 # fmt: off
     [0,0,0, 0,  1,1,1,  0,], 
@@ -316,21 +316,21 @@ def test_stoppers_in_different_order():
     [0,0,0, 0,  1,1,0,  1,],
                 # fmt: on
             ]
-        ),
+        )),
     )
 
     t1 = t1.trace_with_stopper(PAULI_X, 3)
 
     assert np.array_equal(
-        t1.h,
-        GF2(
+        gauss(t1.h),
+        gauss(GF2(
             [
                 # fmt: off
     [0,1, 1,  0,0,  0,],              
     [0,0, 0,  1,1,  1,],
                 # fmt: on
             ]
-        ),
+        )),
     )
 
 

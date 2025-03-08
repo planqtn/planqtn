@@ -127,6 +127,11 @@ ui/
 
 # Future ideas / backlog
 
+
+User stories: 
+- As a code designer I want to play around with legos, put them together and see the resulting code. I want to see whether I created an LDPC code, or not. What are the logical operators? 
+
+
  - The parity check matrix display should become "Stabilizers display" 
     - option to switch between stabilizers and symplectic view 
     - in both views one can drag a stabilizer onto another one and thus create a new generate from the product 
@@ -157,6 +162,10 @@ ui/
     - clicking on a lego type should display it's properties (WEP, stabilizer check)
     - stoppers 
     - searchable IBM database 
+- UI features 
+    - resizable canvas
+- a local database for caching tensornetwork weight enumerators / parity check matrices 
+- a global database and automated Github authenticated contribution workflow
     
 I want to put together the new compass code construction with Charles's construction and see the weight enumerators 
 

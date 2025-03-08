@@ -1551,37 +1551,39 @@ class TensorStabilizerCodeEnumerator:
         return unnormalized_poly._dict
 
     def trace_with_stopper(self, stopper: GF2, traced_leg: Union[int, Tuple[int, int]]):
-        if isinstance(traced_leg, int):
-            traced_leg = (self.idx, traced_leg)
-        if traced_leg not in self.legs:
-            raise ValueError(f"can't trace on {traced_leg} - no such leg.")
-        kept_cols = list(range(2 * self.n))
-        kept_cols.remove(self.legs.index(traced_leg))
-        kept_cols.remove(self.legs.index(traced_leg) + self.n)
-        kept_cols = np.array(kept_cols)
-        h_new = gauss(
-            self.h,
-            col_subset=[
-                self.legs.index(traced_leg),
-                self.legs.index(traced_leg) + self.n,
-            ],
-        )
+        # if isinstance(traced_leg, int):
+        #     traced_leg = (self.idx, traced_leg)
+        # if traced_leg not in self.legs:
+        #     raise ValueError(f"can't trace on {traced_leg} - no such leg.")
+        # kept_cols = list(range(2 * self.n))
+        # kept_cols.remove(self.legs.index(traced_leg))
+        # kept_cols.remove(self.legs.index(traced_leg) + self.n)
+        # kept_cols = np.array(kept_cols)
+        # h_new = gauss(
+        #     self.h,
+        #     col_subset=[
+        #         self.legs.index(traced_leg),
+        #         self.legs.index(traced_leg) + self.n,
+        #     ],
+        # )
 
-        h_new = GF2(
-            [
-                row[kept_cols]
-                for row in h_new
-                if _suboperator_matches_on_support(
-                    [self.legs.index(traced_leg)], row, stopper
-                )
-                or _suboperator_matches_on_support(
-                    [self.legs.index(traced_leg)], row, GF2([0, 0])
-                )
-            ]
-        )
-        kept_legs = self.legs.copy()
-        kept_legs.remove(traced_leg)
+        # h_new = GF2(
+        #     [
+        #         row[kept_cols]
+        #         for row in h_new
+        #         if _suboperator_matches_on_support(
+        #             [self.legs.index(traced_leg)], row, stopper
+        #         )
+        #         or _suboperator_matches_on_support(
+        #             [self.legs.index(traced_leg)], row, GF2([0, 0])
+        #         )
+        #     ]
+        # )
+        # kept_legs = self.legs.copy()
+        # kept_legs.remove(traced_leg)
+        
+        return self.conjoin(TensorStabilizerCodeEnumerator(GF2([stopper]), idx="stopper"), [traced_leg], [0])
 
-        return TensorStabilizerCodeEnumerator(
-            h=h_new, idx=self.idx, legs=kept_legs, truncate_length=self.truncate_length
-        )
+        # return TensorStabilizerCodeEnumerator(
+        #     h=h_new, idx=self.idx, legs=kept_legs, truncate_length=self.truncate_length
+        # )
