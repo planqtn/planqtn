@@ -3,6 +3,8 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import axios from 'axios'
 import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes, FaCopy } from 'react-icons/fa'
+import { LegoStyle, getLegoStyle } from './LegoStyles'
+
 
 interface LegoPiece {
     id: string
@@ -13,12 +15,15 @@ interface LegoPiece {
     is_dynamic?: boolean
     parameters?: Record<string, any>
     parity_check_matrix: number[][]
+    logical_legs: number[]
+    gauge_legs: number[]
 }
 
 interface DroppedLego extends LegoPiece {
     x: number
     y: number
     instanceId: string
+    style: LegoStyle
 }
 
 interface Connection {
@@ -102,10 +107,22 @@ interface SelectionBoxState {
 interface ParityCheckMatrixDisplayProps {
     matrix: number[][]
     title?: string
+    lego?: LegoPiece
 }
 
-const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title }) => {
+const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title, lego }) => {
     if (!matrix || matrix.length === 0) return null;
+
+    const getColumnStyle = (index: number) => {
+        const legIndex = index % (matrix[0].length / 2);
+        if (lego?.logical_legs.includes(legIndex)) {
+            return { fontWeight: "bold", color: "blue.600" };
+        }
+        if (lego?.gauge_legs.includes(legIndex)) {
+            return { fontWeight: "bold", color: "gray.700" };
+        }
+        return { color: "gray.600" };
+    };
 
     return (
         <Box>
@@ -148,7 +165,7 @@ const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ mat
                                         borderWidth={0}
                                         colSpan={1}
                                         fontSize="sm"
-                                        color="gray.600"
+                                        {...getColumnStyle(i)}
                                     >
                                         {i}
                                     </Td>
@@ -162,7 +179,7 @@ const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ mat
                                         borderWidth={0}
                                         colSpan={1}
                                         fontSize="sm"
-                                        color="gray.600"
+                                        {...getColumnStyle(i + matrix[0].length / 2)}
                                     >
                                         {i}
                                     </Td>
@@ -381,7 +398,8 @@ function App() {
                     ...fullLego,
                     instanceId: piece.instanceId,
                     x: piece.x,
-                    y: piece.y
+                    y: piece.y,
+                    style: getLegoStyle(fullLego)
                 }
             }).filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
 
@@ -496,7 +514,7 @@ function App() {
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
             const instanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-            const newLego = { ...lego, x, y, instanceId }
+            const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
             setDroppedLegos(prev => [...prev, newLego])
             addToHistory({
                 type: 'add',
@@ -1030,11 +1048,14 @@ function App() {
     };
 
     const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
-        const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-        const legLength = 40;
+        const legStyle = getLegStyle(lego, legIndex);
+        const startX = legStyle.from === "center" ? lego.x :
+            legStyle.from === "bottom" ? lego.x + legStyle.startOffset * Math.cos(legStyle.angle) : lego.x;
+        const startY = legStyle.from === "center" ? lego.y :
+            legStyle.from === "bottom" ? lego.y + legStyle.startOffset * Math.sin(legStyle.angle) : lego.y;
         return {
-            x: lego.x + legLength * Math.cos(angle),
-            y: lego.y + legLength * Math.sin(angle)
+            x: startX + legStyle.length * Math.cos(legStyle.angle),
+            y: startY + legStyle.length * Math.sin(legStyle.angle)
         };
     };
 
@@ -1523,6 +1544,57 @@ function App() {
         weightEnumeratorCache.clear();
     }, [droppedLegos.length]);
 
+    // Add this function before the App component
+    const getLegStyle = (lego: DroppedLego, legIndex: number) => {
+        const isLogical = lego.logical_legs.includes(legIndex);
+        const isGauge = lego.gauge_legs.includes(legIndex);
+        const legCount = lego.parity_check_matrix[0].length / 2;
+
+        if (isLogical) {
+            // For logical legs, calculate angle from center upwards
+            const logicalLegsCount = lego.logical_legs.length;
+            const logicalIndex = lego.logical_legs.indexOf(legIndex);
+            let angle;
+            if (logicalLegsCount === 1) {
+                angle = -Math.PI / 2; // Straight up
+            } else {
+                const spread = Math.PI / 3; // 60 degree spread
+                const startAngle = -Math.PI / 2 - (spread / 2);
+                angle = startAngle + (spread * logicalIndex / (logicalLegsCount - 1));
+            }
+            return {
+                angle,
+                length: 50, // Longer than normal legs
+                width: "3px", // Thicker line
+                style: "solid",
+                from: "center", // Start from center
+                startOffset: 0 // No offset for logical legs
+            };
+        } else if (isGauge) {
+            // For gauge legs, calculate angle from bottom
+            const angle = Math.PI + ((2 * Math.PI * legIndex) / legCount);
+            return {
+                angle,
+                length: 40,
+                width: "2px",
+                style: "dashed",
+                from: "bottom",
+                startOffset: 10 // Offset from edge for gauge legs
+            };
+        } else {
+            // Regular legs
+            const angle = (2 * Math.PI * legIndex) / legCount;
+            return {
+                angle,
+                length: 40,
+                width: "2px",
+                style: "solid",
+                from: "edge",
+                startOffset: 0 // No offset for regular legs
+            };
+        }
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -1717,7 +1789,15 @@ function App() {
                                         const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
                                         if (!fromLego) return null;
 
-                                        const fromPoint = getLegEndpoint(fromLego, legDragState.legIndex);
+                                        const legStyle = getLegStyle(fromLego, legDragState.legIndex);
+                                        const startX = legStyle.from === "center" ? fromLego.x :
+                                            legStyle.from === "bottom" ? fromLego.x + legStyle.startOffset * Math.cos(legStyle.angle) : fromLego.x;
+                                        const startY = legStyle.from === "center" ? fromLego.y :
+                                            legStyle.from === "bottom" ? fromLego.y + legStyle.startOffset * Math.sin(legStyle.angle) : fromLego.y;
+                                        const fromPoint = {
+                                            x: startX + legStyle.length * Math.cos(legStyle.angle),
+                                            y: startY + legStyle.length * Math.sin(legStyle.angle)
+                                        };
 
                                         return (
                                             <line
@@ -1737,10 +1817,9 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                            const legLength = 40;
-                                            const labelX = lego.x + (legLength + 10) * Math.cos(angle);
-                                            const labelY = lego.y + (legLength + 10) * Math.sin(angle);
+                                            const legStyle = getLegStyle(lego, legIndex);
+                                            const labelX = lego.x + (legStyle.length + 10) * Math.cos(legStyle.angle);
+                                            const labelY = lego.y + (legStyle.length + 10) * Math.sin(legStyle.angle);
 
                                             return (
                                                 <text
@@ -1780,35 +1859,48 @@ function App() {
                                     <Box
                                         key={`${lego.instanceId}`}
                                         position="absolute"
-                                        left={`${lego.x - 25}px`}
-                                        top={`${lego.y - 25}px`}
+                                        left={`${lego.x - (lego.style.size / 2)}px`}
+                                        top={`${lego.y - (lego.style.size / 2)}px`}
                                         style={{ userSelect: 'none' }}
                                     >
-                                        {/* Legs */}
+                                        {/* All Legs (rendered with z-index) */}
                                         {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const angle = (2 * Math.PI * legIndex) / (lego.parity_check_matrix[0].length / 2);
-                                            const legLength = 40;
-                                            const endX = 25 + legLength * Math.cos(angle);
-                                            const endY = 25 + legLength * Math.sin(angle);
+                                            const legStyle = getLegStyle(lego, legIndex);
+                                            const isLogical = lego.logical_legs.includes(legIndex);
+
+                                            const startX = legStyle.from === "center" ? (lego.style.size / 2) :
+                                                legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.cos(legStyle.angle) : (lego.style.size / 2);
+                                            const startY = legStyle.from === "center" ? (lego.style.size / 2) :
+                                                legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.sin(legStyle.angle) : (lego.style.size / 2);
+                                            const endX = startX + legStyle.length * Math.cos(legStyle.angle);
+                                            const endY = startY + legStyle.length * Math.sin(legStyle.angle);
 
                                             const isBeingDragged = legDragState?.isDragging &&
                                                 legDragState.legoId === lego.instanceId &&
                                                 legDragState.legIndex === legIndex;
 
                                             return (
-                                                <Box key={`leg-${legIndex}`} position="absolute" style={{ pointerEvents: 'none' }}>
+                                                <Box
+                                                    key={`leg-${legIndex}`}
+                                                    position="absolute"
+                                                    style={{
+                                                        pointerEvents: 'none',
+                                                        zIndex: isLogical ? 1 : 0  // Set z-index based on leg type
+                                                    }}
+                                                >
                                                     {/* Line */}
                                                     <Box
                                                         position="absolute"
-                                                        left="25px"
-                                                        top="25px"
-                                                        w={`${legLength}px`}
-                                                        h="2px"
-                                                        bg="gray.400"
+                                                        left={`${startX}px`}
+                                                        top={`${startY}px`}
+                                                        w={`${legStyle.length}px`}
+                                                        h={legStyle.width}
+                                                        bg={isLogical ? "blue.500" : "gray.400"}
                                                         transformOrigin="0 0"
                                                         style={{
-                                                            transform: `rotate(${angle}rad)`,
-                                                            pointerEvents: 'none'
+                                                            transform: `rotate(${legStyle.angle}rad)`,
+                                                            pointerEvents: 'none',
+                                                            borderStyle: legStyle.style
                                                         }}
                                                     />
                                                     {/* Draggable Endpoint */}
@@ -1821,7 +1913,7 @@ function App() {
                                                         borderRadius="full"
                                                         bg={isBeingDragged ? "blue.100" : "white"}
                                                         border="2px"
-                                                        borderColor={isBeingDragged ? "blue.500" : "gray.400"}
+                                                        borderColor={isBeingDragged ? "blue.500" : (isLogical ? "blue.400" : "gray.400")}
                                                         transform="translate(-50%, -50%)"
                                                         cursor="pointer"
                                                         onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
@@ -1834,27 +1926,19 @@ function App() {
                                         })}
                                         {/* Main Circle */}
                                         <Box
-                                            w="50px"
-                                            h="50px"
-                                            borderRadius="full"
+                                            w={`${lego.style.size}px`}
+                                            h={`${lego.style.size}px`}
+                                            borderRadius={lego.style.borderRadius}
                                             bg={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                                    ? "blue.200"
-                                                    : selectedLego?.instanceId === lego.instanceId
-                                                        ? "blue.100"
-                                                        : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                            ? "blue.100"
-                                                            : "white"
+                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                    ? lego.style.selectedBackgroundColor
+                                                    : lego.style.backgroundColor
                                             }
                                             border="2px"
                                             borderColor={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)
-                                                    ? "blue.600"
-                                                    : selectedLego?.instanceId === lego.instanceId
-                                                        ? "blue.500"
-                                                        : manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                            ? "blue.500"
-                                                            : "blue.400"
+                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                    ? lego.style.selectedBorderColor
+                                                    : lego.style.borderColor
                                             }
                                             display="flex"
                                             alignItems="center"
@@ -1874,9 +1958,15 @@ function App() {
                                                 touchAction: 'none'
                                             }}
                                             position="relative"
-                                            zIndex={1}
+                                            zIndex={0}  // Set circle to z-index 0
                                         >
-                                            <Box style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                                            <Box
+                                                style={{
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                    transform: lego.logical_legs.length > 0 ? 'translateY(8px)' : 'none'
+                                                }}
+                                            >
                                                 <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
                                                     {lego.shortName}
                                                 </Text>
@@ -1919,7 +2009,7 @@ function App() {
                                             <Text fontSize="sm" color="gray.600">
                                                 {selectedLego.description}
                                             </Text>
-                                            <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} />
+                                            <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} lego={selectedLego} />
                                         </VStack>
                                     </>
                                 ) : manuallySelectedLegos.length > 0 ? (
