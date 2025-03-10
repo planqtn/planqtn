@@ -1,9 +1,9 @@
 from galois import GF2
 import numpy as np
 
-from linalg import gauss
-from parity_check import conjoin, self_trace, sprint
-from symplectic import omega
+from qlego.linalg import gauss
+from qlego.parity_check import conjoin, self_trace, sprint
+from qlego.symplectic import omega
 
 
 if __name__ == "__main__":

@@ -750,7 +750,8 @@ function App() {
                 newY - 25 < 0 ||
                 newY + 25 > rect.height;
 
-            setDroppedLegos(prev => prev.map((lego, index) => {
+            // Create a new array with updated positions
+            const updatedLegos = droppedLegos.map((lego, index) => {
                 if (groupDragState && groupDragState.legoInstanceIds.includes(lego.instanceId)) {
                     // Move all selected legos together
                     const originalPos = groupDragState.originalPositions[lego.instanceId];
@@ -778,7 +779,10 @@ function App() {
                     };
                 }
                 return lego;
-            }));
+            });
+
+            // Update all legos at once to prevent lag
+            setDroppedLegos(updatedLegos);
 
             // Add visual feedback when touching edges
             const canvas = canvasRef.current;
@@ -1721,47 +1725,71 @@ function App() {
                                             const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
                                             const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
+                                            // Calculate control points for the curve
+                                            const fromLegStyle = getLegStyle(fromLego, conn.from.legIndex);
+                                            const toLegStyle = getLegStyle(toLego, conn.to.legIndex);
+
+                                            // Get vectors pointing in the direction of the legs
+                                            const fromVector = {
+                                                x: Math.cos(fromLegStyle.angle),
+                                                y: Math.sin(fromLegStyle.angle)
+                                            };
+                                            const toVector = {
+                                                x: Math.cos(toLegStyle.angle),
+                                                y: Math.sin(toLegStyle.angle)
+                                            };
+
+                                            // Calculate control points by extending the leg directions
+                                            const controlPointDistance = 30; // Distance of control points from endpoints
+                                            const cp1 = {
+                                                x: fromPoint.x + fromVector.x * controlPointDistance,
+                                                y: fromPoint.y + fromVector.y * controlPointDistance
+                                            };
+                                            const cp2 = {
+                                                x: toPoint.x + toVector.x * controlPointDistance,
+                                                y: toPoint.y + toVector.y * controlPointDistance
+                                            };
+
+                                            // Create the path string for the cubic Bezier curve
+                                            const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
+
                                             return (
                                                 <g key={`conn-${index}`}>
-                                                    {/* Invisible wider line for easier clicking */}
-                                                    <line
-                                                        x1={fromPoint.x}
-                                                        y1={fromPoint.y}
-                                                        x2={toPoint.x}
-                                                        y2={toPoint.y}
+                                                    {/* Invisible wider path for easier clicking */}
+                                                    <path
+                                                        d={pathString}
                                                         stroke="transparent"
                                                         strokeWidth="10"
+                                                        fill="none"
                                                         style={{
                                                             cursor: 'pointer',
                                                         }}
                                                         onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
                                                         onMouseEnter={(e) => {
-                                                            // Find and update the visible line
-                                                            const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                            if (visibleLine) {
-                                                                visibleLine.style.stroke = '#4299E1'; // brighter blue
-                                                                visibleLine.style.strokeWidth = '3';
-                                                                visibleLine.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
+                                                            // Find and update the visible path
+                                                            const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+                                                            if (visiblePath) {
+                                                                visiblePath.style.stroke = '#4299E1';
+                                                                visiblePath.style.strokeWidth = '3';
+                                                                visiblePath.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
                                                             }
                                                         }}
                                                         onMouseLeave={(e) => {
-                                                            // Reset the visible line
-                                                            const visibleLine = e.currentTarget.nextSibling as SVGLineElement;
-                                                            if (visibleLine) {
-                                                                visibleLine.style.stroke = '#3182CE';
-                                                                visibleLine.style.strokeWidth = '2';
-                                                                visibleLine.style.filter = 'none';
+                                                            // Reset the visible path
+                                                            const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+                                                            if (visiblePath) {
+                                                                visiblePath.style.stroke = '#3182CE';
+                                                                visiblePath.style.strokeWidth = '2';
+                                                                visiblePath.style.filter = 'none';
                                                             }
                                                         }}
                                                     />
-                                                    {/* Visible line */}
-                                                    <line
-                                                        x1={fromPoint.x}
-                                                        y1={fromPoint.y}
-                                                        x2={toPoint.x}
-                                                        y2={toPoint.y}
+                                                    {/* Visible path */}
+                                                    <path
+                                                        d={pathString}
                                                         stroke="#3182CE"
                                                         strokeWidth="2"
+                                                        fill="none"
                                                         style={{
                                                             pointerEvents: 'none',
                                                             transition: 'all 0.2s ease'
@@ -1787,15 +1815,26 @@ function App() {
                                             y: startY + legStyle.length * Math.sin(legStyle.angle)
                                         };
 
+                                        // Calculate control point for the temporary curve
+                                        const controlPointDistance = 30;
+                                        const cp1 = {
+                                            x: fromPoint.x + Math.cos(legStyle.angle) * controlPointDistance,
+                                            y: fromPoint.y + Math.sin(legStyle.angle) * controlPointDistance
+                                        };
+                                        const cp2 = {
+                                            x: legDragState.currentX,
+                                            y: legDragState.currentY
+                                        };
+
+                                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
+
                                         return (
-                                            <line
-                                                x1={fromPoint.x}
-                                                y1={fromPoint.y}
-                                                x2={legDragState.currentX}
-                                                y2={legDragState.currentY}
+                                            <path
+                                                d={pathString}
                                                 stroke="#3182CE"
                                                 strokeWidth="2"
                                                 strokeDasharray="4"
+                                                fill="none"
                                                 opacity={0.5}
                                                 style={{ pointerEvents: 'none' }}
                                             />
@@ -1972,9 +2011,6 @@ function App() {
                     <Panel
                         defaultSize={25}
                         minSize={20}
-                        style={{
-                            display: selectedLego || selectedNetwork || manuallySelectedLegos.length > 0 ? "block" : "none"
-                        }}
                     >
                         <Box
                             h="100%"
@@ -2008,7 +2044,14 @@ function App() {
                                             For details, select only one lego or a complete connected component
                                         </Text>
                                     </>
-                                ) : null}
+                                ) : (
+                                    <>
+                                        <Heading size="md">Canvas Overview</Heading>
+                                        <Text color="gray.600">
+                                            No legos are selected. There {droppedLegos.length === 1 ? 'is' : 'are'} {droppedLegos.length} {droppedLegos.length === 1 ? 'lego' : 'legos'} on the canvas.
+                                        </Text>
+                                    </>
+                                )}
 
                                 {selectedNetwork && (
                                     <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
