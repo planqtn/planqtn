@@ -218,25 +218,13 @@ const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ mat
 
 // Add the BlochSphereLoader component before the App component
 const BlochSphereLoader: React.FC = () => {
-    const [showLoader, setShowLoader] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowLoader(true);
-        }, 100);
-
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (!showLoader) return null;
-
     return (
         <Box p={4} display="flex" justifyContent="center" alignItems="center">
-            <svg width="100" height="100" viewBox="0 0 100 100">
+            <svg width="100" height="100" viewBox="-50 -50 100 100">
                 {/* Circle (sphere outline) */}
                 <circle
-                    cx="50"
-                    cy="50"
+                    cx="0"
+                    cy="0"
                     r="40"
                     fill="none"
                     stroke="#3182CE"
@@ -245,10 +233,10 @@ const BlochSphereLoader: React.FC = () => {
                 />
                 {/* Rotating arrow (state vector) */}
                 <line
-                    x1="50"
-                    y1="50"
-                    x2="50"
-                    y2="10"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="-40"
                     stroke="#3182CE"
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -257,16 +245,16 @@ const BlochSphereLoader: React.FC = () => {
                     <animateTransform
                         attributeName="transform"
                         type="rotate"
-                        from="0 50 50"
-                        to="360 50 50"
+                        from="0"
+                        to="360"
                         dur="2s"
                         repeatCount="indefinite"
                     />
                 </line>
                 {/* Equator ellipse */}
                 <ellipse
-                    cx="50"
-                    cy="50"
+                    cx="0"
+                    cy="0"
                     rx="40"
                     ry="15"
                     fill="none"
@@ -277,8 +265,8 @@ const BlochSphereLoader: React.FC = () => {
                     <animateTransform
                         attributeName="transform"
                         type="rotate"
-                        from="0 50 50"
-                        to="360 50 50"
+                        from="0"
+                        to="360"
                         dur="4s"
                         repeatCount="indefinite"
                     />
@@ -2021,6 +2009,7 @@ function App() {
                                         </Text>
                                     </>
                                 ) : null}
+
                                 {selectedNetwork && (
                                     <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                                         <VStack align="stretch" spacing={4}>
