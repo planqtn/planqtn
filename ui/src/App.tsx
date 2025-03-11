@@ -8,18 +8,7 @@ import LegoPanel from './components/LegoPanel'
 import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, SelectedNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
-
-
-interface CanvasState {
-    pieces: Array<{
-        id: string
-        instanceId: string
-        x: number
-        y: number
-    }>
-    connections: Array<Connection>
-}
-
+import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
@@ -39,6 +28,7 @@ function App() {
         justFinished: false  // Initialize the new flag
     })
     const canvasRef = useRef<HTMLDivElement>(null)
+    const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
     const [operationHistory, setOperationHistory] = useState<Operation[]>([])
     const [redoHistory, setRedoHistory] = useState<Operation[]>([])
@@ -60,6 +50,19 @@ function App() {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
+    // Update the serializer when legos change
+    useEffect(() => {
+        stateSerializerRef.current.updateLegos(legos)
+    }, [legos])
+
+    const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
+        stateSerializerRef.current.encode(pieces, conns)
+    }, [])
+
+    const decodeCanvasState = useCallback(async (encoded: string) => {
+        return stateSerializerRef.current.decode(encoded)
+    }, [])
+
     // Add this function to generate a network signature
     const getNetworkSignature = (network: SelectedNetwork) => {
         const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
@@ -70,60 +73,6 @@ function App() {
         });
         return JSON.stringify({ legos: sortedLegos, connections: sortedConnections });
     };
-
-    const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
-        const state: CanvasState = {
-            pieces: pieces.map(piece => ({
-                id: piece.id,
-                instanceId: piece.instanceId,
-                x: piece.x,
-                y: piece.y
-            })),
-            connections: conns
-        }
-        const encoded = btoa(JSON.stringify(state))
-        window.history.replaceState(null, '', `#state=${encoded}`)
-    }, [])
-
-    const decodeCanvasState = useCallback(async (encoded: string): Promise<{
-        pieces: DroppedLego[],
-        connections: Connection[]
-    }> => {
-        try {
-            const decoded = JSON.parse(atob(encoded))
-            if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
-                return { pieces: [], connections: [] }
-            }
-
-            // Fetch legos if not already loaded
-            let legosList = legos
-            if (legos.length === 0) {
-                const response = await axios.get('/api/legos')
-                legosList = response.data
-            }
-
-            // Reconstruct dropped legos with full lego information
-            const reconstructedPieces = decoded.pieces.map((piece: { id: string; instanceId: string; x: number; y: number }) => {
-                const fullLego = legosList.find(l => l.id === piece.id)
-                if (!fullLego) return null
-                return {
-                    ...fullLego,
-                    instanceId: piece.instanceId,
-                    x: piece.x,
-                    y: piece.y,
-                    style: getLegoStyle(fullLego)
-                }
-            }).filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
-
-            return {
-                pieces: reconstructedPieces,
-                connections: decoded.connections || []
-            }
-        } catch (error) {
-            console.error('Error decoding canvas state:', error)
-            return { pieces: [], connections: [] }
-        }
-    }, [legos])
 
     // Add checkBackendHealth function
     const checkBackendHealth = useCallback(async () => {

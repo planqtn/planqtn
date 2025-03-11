@@ -1,4 +1,3 @@
-import { DroppedLego } from "./types";
 
 export interface LegoPiece {
     id: string;

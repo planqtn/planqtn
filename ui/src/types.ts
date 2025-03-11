@@ -107,3 +107,14 @@ export interface SelectionBoxState {
     currentY: number;
     justFinished: boolean;  // New flag to track if selection box just finished
 }
+
+
+export interface CanvasState {
+    pieces: Array<{
+        id: string
+        instanceId: string
+        x: number
+        y: number
+    }>
+    connections: Array<Connection>
+}
