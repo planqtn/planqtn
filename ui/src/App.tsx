@@ -1598,9 +1598,8 @@ function App() {
                             selectedLego={selectedLego}
                             manuallySelectedLegos={manuallySelectedLegos}
                             droppedLegos={droppedLegos}
-                            onCalculateParityCheckMatrix={calculateParityCheckMatrix}
-                            onCalculateWeightEnumerator={calculateWeightEnumerator}
-                            onGenerateConstructionCode={generateConstructionCode}
+                            setSelectedNetwork={setSelectedNetwork}
+                            setError={setError}
                         />
                     </Panel>
                 </PanelGroup>
