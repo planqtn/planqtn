@@ -1,3 +1,5 @@
+import { LegoStyle } from "./LegoStyles"
+
 export interface LegoPiece {
     id: string
     name: string
@@ -18,14 +20,6 @@ export interface DroppedLego extends LegoPiece {
     style: LegoStyle
 }
 
-export interface LegoStyle {
-    size: number
-    borderRadius: string
-    backgroundColor: string
-    selectedBackgroundColor: string
-    borderColor: string
-    selectedBorderColor: string
-}
 
 export interface Connection {
     from: {

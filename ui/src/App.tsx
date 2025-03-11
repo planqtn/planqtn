@@ -1,9 +1,8 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
-import { FaCube, FaCode, FaTable } from 'react-icons/fa'
-import { getLegoStyle, getLegStyle } from './LegoStyles'
+import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
 import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, SelectedNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
@@ -170,13 +169,6 @@ function App() {
         }
     }, [isBackendHealthy]) // Depend on backend health status
 
-    // Remove the URL update from the general effect
-    useEffect(() => {
-        if (droppedLegos.length > 0 || connections.length > 0) {
-            // Don't update URL here anymore, it will be handled in mouse up events
-        }
-    }, [droppedLegos, connections, encodeCanvasState]);
-
     // Add a new effect to handle initial URL state
     useEffect(() => {
         const handleHashChange = async () => {
@@ -199,16 +191,6 @@ function App() {
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [decodeCanvasState])
 
-    const getLegoIcon = (type: string) => {
-        switch (type) {
-            case 'tensor':
-                return FaCube
-            case 'code':
-                return FaCode
-            default:
-                return FaTable
-        }
-    }
 
     const handleDragStart = (e: React.DragEvent, lego: LegoPiece) => {
         e.dataTransfer.setData('application/json', JSON.stringify(lego))
@@ -763,7 +745,7 @@ function App() {
     };
 
     const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
-        const legStyle = getLegStyle(lego, legIndex);
+        const legStyle = lego.style.getLegStyle(legIndex);
         const startX = legStyle.from === "center" ? lego.x :
             legStyle.from === "bottom" ? lego.x + legStyle.startOffset * Math.cos(legStyle.angle) : lego.x;
         const startY = legStyle.from === "center" ? lego.y :
@@ -1379,8 +1361,8 @@ function App() {
                                             const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
                                             // Calculate control points for the curve
-                                            const fromLegStyle = getLegStyle(fromLego, conn.from.legIndex);
-                                            const toLegStyle = getLegStyle(toLego, conn.to.legIndex);
+                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex);
+                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex);
 
                                             // Get vectors pointing in the direction of the legs
                                             const fromVector = {
@@ -1458,7 +1440,7 @@ function App() {
                                         const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
                                         if (!fromLego) return null;
 
-                                        const legStyle = getLegStyle(fromLego, legDragState.legIndex);
+                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex);
                                         const startX = legStyle.from === "center" ? fromLego.x :
                                             legStyle.from === "bottom" ? fromLego.x + legStyle.startOffset * Math.cos(legStyle.angle) : fromLego.x;
                                         const startY = legStyle.from === "center" ? fromLego.y :
@@ -1497,7 +1479,7 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const legStyle = getLegStyle(lego, legIndex);
+                                            const legStyle = lego.style.getLegStyle(legIndex);
                                             const labelX = lego.x + (legStyle.length + 10) * Math.cos(legStyle.angle);
                                             const labelY = lego.y + (legStyle.length + 10) * Math.sin(legStyle.angle);
 
@@ -1545,7 +1527,7 @@ function App() {
                                     >
                                         {/* All Legs (rendered with z-index) */}
                                         {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const legStyle = getLegStyle(lego, legIndex);
+                                            const legStyle = lego.style.getLegStyle(legIndex);
                                             const isLogical = lego.logical_legs.includes(legIndex);
 
                                             const startX = legStyle.from === "center" ? (lego.style.size / 2) :
