@@ -132,7 +132,7 @@ export class HadamardStyle extends LegoStyle {
     }
 
     get selectedBackgroundColor(): string {
-        return "yellow.300";
+        return "yellow.500";
     }
 
     get selectedBorderColor(): string {

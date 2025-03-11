@@ -1,4 +1,4 @@
-import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard } from '@chakra-ui/react'
+import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard, useToken } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import axios from 'axios'
@@ -86,6 +86,13 @@ interface Operation {
         oldY?: number;
         newX?: number;
         newY?: number;
+        groupMoves?: Array<{
+            legoInstanceId: string;
+            oldX: number;
+            oldY: number;
+            newX: number;
+            newY: number;
+        }>;
     };
 }
 
@@ -893,8 +900,8 @@ function App() {
                 setManuallySelectedLegos([]);
             } else if (deltaX !== 0 || deltaY !== 0) {
                 if (groupDragState) {
-                    // Record move operation for all selected legos
-                    const moves = groupDragState.legoInstanceIds.map(instanceId => ({
+                    // Record a single group move operation
+                    const groupMoves = groupDragState.legoInstanceIds.map(instanceId => ({
                         legoInstanceId: instanceId,
                         oldX: groupDragState.originalPositions[instanceId].x,
                         oldY: groupDragState.originalPositions[instanceId].y,
@@ -902,25 +909,23 @@ function App() {
                         newY: groupDragState.originalPositions[instanceId].y + deltaY
                     }));
 
-                    moves.forEach(move => {
-                        addToHistory({
-                            type: 'move',
-                            data: move
-                        });
+                    addToHistory({
+                        type: 'move',
+                        data: { groupMoves }
                     });
                 } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
-                    // Record move operations for all manually selected legos
-                    manuallySelectedLegos.forEach(lego => {
-                        addToHistory({
-                            type: 'move',
-                            data: {
-                                legoInstanceId: lego.instanceId,
-                                oldX: lego.x - deltaX,
-                                oldY: lego.y - deltaY,
-                                newX: lego.x,
-                                newY: lego.y
-                            }
-                        });
+                    // Record a single group move operation for manually selected legos
+                    const groupMoves = manuallySelectedLegos.map(lego => ({
+                        legoInstanceId: lego.instanceId,
+                        oldX: lego.x - deltaX,
+                        oldY: lego.y - deltaY,
+                        newX: lego.x,
+                        newY: lego.y
+                    }));
+
+                    addToHistory({
+                        type: 'move',
+                        data: { groupMoves }
                     });
                 } else {
                     addToHistory({
@@ -1209,7 +1214,17 @@ function App() {
                 }
                 break;
             case 'move':
-                if (lastOperation.data.legoInstanceId && lastOperation.data.oldX !== undefined && lastOperation.data.oldY !== undefined) {
+                if (lastOperation.data.groupMoves) {
+                    // Handle group move undo
+                    setDroppedLegos(prev => prev.map(lego => {
+                        const move = lastOperation.data.groupMoves?.find(m => m.legoInstanceId === lego.instanceId);
+                        if (move) {
+                            return { ...lego, x: move.oldX, y: move.oldY };
+                        }
+                        return lego;
+                    }));
+                } else if (lastOperation.data.legoInstanceId && lastOperation.data.oldX !== undefined && lastOperation.data.oldY !== undefined) {
+                    // Handle single lego move undo
                     setDroppedLegos(prev => prev.map(lego =>
                         lego.instanceId === lastOperation.data.legoInstanceId
                             ? { ...lego, x: lastOperation.data.oldX!, y: lastOperation.data.oldY! }
@@ -1266,7 +1281,17 @@ function App() {
                 }
                 break;
             case 'move':
-                if (nextOperation.data.legoInstanceId && nextOperation.data.newX !== undefined && nextOperation.data.newY !== undefined) {
+                if (nextOperation.data.groupMoves) {
+                    // Handle group move redo
+                    setDroppedLegos(prev => prev.map(lego => {
+                        const move = nextOperation.data.groupMoves?.find(m => m.legoInstanceId === lego.instanceId);
+                        if (move) {
+                            return { ...lego, x: move.newX, y: move.newY };
+                        }
+                        return lego;
+                    }));
+                } else if (nextOperation.data.legoInstanceId && nextOperation.data.newX !== undefined && nextOperation.data.newY !== undefined) {
+                    // Handle single lego move redo
                     setDroppedLegos(prev => prev.map(lego =>
                         lego.instanceId === nextOperation.data.legoInstanceId
                             ? { ...lego, x: nextOperation.data.newX!, y: nextOperation.data.newY! }
@@ -2020,20 +2045,20 @@ function App() {
                                                             >
                                                                 <polygon
                                                                     points={points}
-                                                                    fill={
+                                                                    fill={useToken('colors', [
                                                                         selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
                                                                             selectedLego?.instanceId === lego.instanceId ||
                                                                             manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
                                                                             ? lego.style.selectedBackgroundColor
                                                                             : lego.style.backgroundColor
-                                                                    }
-                                                                    stroke={
+                                                                    ])[0]}
+                                                                    stroke={useToken('colors', [
                                                                         selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
                                                                             selectedLego?.instanceId === lego.instanceId ||
                                                                             manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
                                                                             ? lego.style.selectedBorderColor
                                                                             : lego.style.borderColor
-                                                                    }
+                                                                    ])[0]}
                                                                     strokeWidth="2"
                                                                     style={{
                                                                         filter: 'drop-shadow(2px 4px 4px rgba(0,0,0,0.2))'
