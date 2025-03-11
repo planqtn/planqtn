@@ -1629,18 +1629,21 @@ class TensorStabilizerCodeEnumerator:
             if open_cols == []
             else TensorElementCollector(self.k, self.n, coset)
         )
-        # assuming a full rank parity check
-        for i in range(2 ** (self.n - self.k)):
+
+        h_reduced = gauss(self.h)
+        h_reduced = h_reduced[~np.all(h_reduced == 0, axis=1)]
+
+        for i in range(2 ** len(h_reduced)):
             picked_generators = GF2(
                 list(np.binary_repr(i, width=(self.n - self.k))), dtype=int
             )
-            if len(self.h) == 0:
+            if len(h_reduced) == 0:
                 if i > 0:
                     continue
                 else:
                     stabilizer = GF2.Zeros(self.n * 2)
             else:
-                stabilizer = picked_generators @ self.h
+                stabilizer = picked_generators @ h_reduced
 
             if is_diagonal_element and not _suboperator_matches_on_support(
                 traced_cols, stabilizer, e

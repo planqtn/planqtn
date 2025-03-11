@@ -976,6 +976,24 @@ def test_disjoint_nodes():
     assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
+@pytest.mark.parametrize(
+    "h,expected_wep",
+    [
+        (GF2([[0, 0]]), {0: 1}),
+        (GF2([[1, 0]]), {0: 1, 1: 1}),
+        (GF2([[0, 1]]), {0: 1, 1: 1}),
+    ],
+)
+def test_stopper_weight_enumerators(h, expected_wep):
+    te = TensorStabilizerCodeEnumerator(
+        h=h,
+        idx="stopper-test",
+    )
+    assert (
+        te.stabilizer_enumerator_polynomial()._dict == expected_wep
+    ), f"For {h}, expected {expected_wep}, got {te.stabilizer_enumerator_polynomial()._dict}"
+
+
 def test_double_trace_602_identity_stopper_to_422():
 
     nodes = {}
@@ -1000,6 +1018,8 @@ def test_double_trace_602_identity_stopper_to_422():
         h=GF2([[0, 0]]),
         idx="stop2",
     )
+
+    print(nodes["stop1"].stabilizer_enumerator_polynomial())
 
     # Create TensorNetwork
     tn = TensorNetwork(nodes, truncate_length=None)
