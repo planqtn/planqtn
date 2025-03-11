@@ -567,13 +567,11 @@ function App() {
                 justFinished: false
             });
 
-            console.log("in handleLegoMouseDown", dragState, " just finished", dragState.justFinished);
         }
     }
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
         // Reset the justFinished flag first
-        console.log("in click", dragState, " just finished", dragState.justFinished);
         if (dragState.justFinished) {
             setDragState(prev => ({ ...prev, justFinished: false }));
             return; // Skip this click, but be ready for the next one
@@ -587,7 +585,6 @@ function App() {
                 setSelectedLego(lego);
             } else if (selectedLego?.instanceId === lego.instanceId) {
                 const network = findConnectedComponent(lego);
-                console.log(network);
                 setSelectedNetwork(network);
                 setSelectedLego(null);
             } else {
@@ -1540,7 +1537,9 @@ function App() {
     const getLegStyle = (lego: DroppedLego, legIndex: number) => {
         const isLogical = lego.logical_legs.includes(legIndex);
         const isGauge = lego.gauge_legs.includes(legIndex);
-        const legCount = lego.parity_check_matrix[0].length / 2;
+        const regularLegIndices = Array.from(Array(lego.parity_check_matrix[0].length / 2).keys())
+            .filter(i => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i));
+        const regularLegCount = regularLegIndices.length;
 
         if (isLogical) {
             // For logical legs, calculate angle from center upwards
@@ -1564,7 +1563,7 @@ function App() {
             };
         } else if (isGauge) {
             // For gauge legs, calculate angle from bottom
-            const angle = Math.PI + ((2 * Math.PI * legIndex) / legCount);
+            const angle = Math.PI + ((2 * Math.PI * legIndex) / regularLegCount);
             return {
                 angle,
                 length: 40,
@@ -1574,17 +1573,31 @@ function App() {
                 startOffset: 10 // Offset from edge for gauge legs
             };
         } else {
-            // Regular legs
-            const angle = (2 * Math.PI * legIndex) / legCount;
+            // Regular legs - position at polygon vertices
+            const regularLegIndex = regularLegIndices.indexOf(legIndex);
+            const angle = (2 * Math.PI * regularLegIndex) / regularLegCount;
             return {
                 angle,
                 length: 40,
                 width: "2px",
                 style: "solid",
-                from: "edge",
-                startOffset: 0 // No offset for regular legs
+                from: "vertex",
+                startOffset: 0
             };
         }
+    };
+
+    // Add this helper function to generate polygon points
+    const getPolygonPoints = (centerX: number, centerY: number, radius: number, sides: number, rotation: number = 0) => {
+        const points = [];
+        for (let i = 0; i < sides; i++) {
+            const angle = rotation + (i * 2 * Math.PI) / sides;
+            points.push({
+                x: centerX + radius * Math.cos(angle),
+                y: centerY + radius * Math.sin(angle)
+            });
+        }
+        return points;
     };
 
     return (
@@ -1951,31 +1964,11 @@ function App() {
                                                 </Box>
                                             );
                                         })}
-                                        {/* Main Circle */}
+                                        {/* Main Circle/Polygon */}
                                         <Box
+                                            position="relative"
                                             w={`${lego.style.size}px`}
                                             h={`${lego.style.size}px`}
-                                            borderRadius={lego.style.borderRadius}
-                                            bg={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                    ? lego.style.selectedBackgroundColor
-                                                    : lego.style.backgroundColor
-                                            }
-                                            border="2px"
-                                            borderColor={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                                                    ? lego.style.selectedBorderColor
-                                                    : lego.style.borderColor
-                                            }
-                                            display="flex"
-                                            alignItems="center"
-                                            justifyContent="center"
-                                            cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
-                                            title={lego.name}
-                                            boxShadow="md"
-                                            _hover={{ boxShadow: "lg" }}
-                                            onMouseDown={(e) => handleLegoMouseDown(e, index)}
-                                            onClick={(e) => handleLegoClick(e, lego)}
                                             style={{
                                                 transform: dragState.isDragging && dragState.draggedLegoIndex === index
                                                     ? 'scale(1.05)'
@@ -1984,14 +1977,116 @@ function App() {
                                                 userSelect: 'none',
                                                 touchAction: 'none'
                                             }}
-                                            position="relative"
-                                            zIndex={0}  // Set circle to z-index 0
                                         >
+                                            {/* Render polygon for regular legos, circle for special ones */}
+                                            {(() => {
+                                                const regularLegIndices = Array.from(Array(lego.parity_check_matrix[0].length / 2).keys())
+                                                    .filter(i => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i));
+                                                const regularLegCount = regularLegIndices.length;
+                                                const isSpecialLego = lego.style.isSpecial || regularLegCount <= 2;
+
+                                                if (!isSpecialLego && regularLegCount > 2) {
+                                                    // Calculate polygon points
+                                                    const radius = lego.style.size / 2;
+                                                    const rotation = -Math.PI / 2; // Start from top
+                                                    const points = getPolygonPoints(radius, radius, radius - 1, regularLegCount, rotation)
+                                                        .map(p => `${p.x},${p.y}`)
+                                                        .join(' ');
+
+                                                    return (
+                                                        <Box
+                                                            position="relative"
+                                                            w={`${lego.style.size}px`}
+                                                            h={`${lego.style.size}px`}
+                                                            style={{
+                                                                transform: 'perspective(400px) rotateX(45deg) rotateY(-15deg)',
+                                                                transformStyle: 'preserve-3d'
+                                                            }}
+                                                            sx={{
+                                                                transformOrigin: 'center center'
+                                                            }}
+                                                        >
+                                                            <svg
+                                                                width={lego.style.size}
+                                                                height={lego.style.size}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: 0,
+                                                                    left: 0,
+                                                                    cursor: dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab",
+                                                                }}
+                                                                onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                                                                onClick={(e) => handleLegoClick(e, lego)}
+                                                            >
+                                                                <polygon
+                                                                    points={points}
+                                                                    fill={
+                                                                        selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
+                                                                            selectedLego?.instanceId === lego.instanceId ||
+                                                                            manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                                            ? lego.style.selectedBackgroundColor
+                                                                            : lego.style.backgroundColor
+                                                                    }
+                                                                    stroke={
+                                                                        selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
+                                                                            selectedLego?.instanceId === lego.instanceId ||
+                                                                            manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                                            ? lego.style.selectedBorderColor
+                                                                            : lego.style.borderColor
+                                                                    }
+                                                                    strokeWidth="2"
+                                                                    style={{
+                                                                        filter: 'drop-shadow(2px 4px 4px rgba(0,0,0,0.2))'
+                                                                    }}
+                                                                />
+                                                            </svg>
+                                                        </Box>
+                                                    );
+                                                } else {
+                                                    // Render circle for special legos or legos with 2 or fewer regular legs
+                                                    return (
+                                                        <Box
+                                                            w={`${lego.style.size}px`}
+                                                            h={`${lego.style.size}px`}
+                                                            borderRadius={lego.style.borderRadius}
+                                                            bg={
+                                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
+                                                                    selectedLego?.instanceId === lego.instanceId ||
+                                                                    manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                                    ? lego.style.selectedBackgroundColor
+                                                                    : lego.style.backgroundColor
+                                                            }
+                                                            border="2px"
+                                                            borderColor={
+                                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
+                                                                    selectedLego?.instanceId === lego.instanceId ||
+                                                                    manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                                    ? lego.style.selectedBorderColor
+                                                                    : lego.style.borderColor
+                                                            }
+                                                            cursor={dragState.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
+                                                            onMouseDown={(e) => handleLegoMouseDown(e, index)}
+                                                            onClick={(e) => handleLegoClick(e, lego)}
+                                                            style={{
+                                                                transform: 'perspective(400px) rotateX(45deg) rotateY(-15deg)',
+                                                                transformStyle: 'preserve-3d',
+                                                                transformOrigin: 'center center',
+                                                                boxShadow: '2px 4px 4px rgba(0,0,0,0.2)'
+                                                            }}
+                                                        />
+                                                    );
+                                                }
+                                            })()}
+
                                             <Box
+                                                position="absolute"
+                                                top="50%"
+                                                left="50%"
+                                                transform="translate(-50%, -50%)"
                                                 style={{
                                                     pointerEvents: 'none',
                                                     userSelect: 'none',
-                                                    transform: lego.logical_legs.length > 0 ? 'translateY(8px)' : 'none'
+                                                    marginTop: lego.logical_legs.length > 0 ? '8px' : '0'
                                                 }}
                                             >
                                                 <Text fontSize="xs" fontWeight="bold" noOfLines={1}>

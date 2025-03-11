@@ -61,6 +61,7 @@ export abstract class LegoStyle {
     abstract get borderColor(): string;
     abstract get selectedBackgroundColor(): string;
     abstract get selectedBorderColor(): string;
+    abstract get isSpecial(): boolean;
 
     getLegStyle(legIndex: number): LegStyle {
         const isLogical = this.logical_legs.includes(legIndex);
@@ -137,6 +138,10 @@ export class HadamardStyle extends LegoStyle {
     get selectedBorderColor(): string {
         return "yellow.600";
     }
+
+    get isSpecial(): boolean {
+        return true;
+    }
 }
 
 export class GenericStyle extends LegoStyle {
@@ -162,6 +167,10 @@ export class GenericStyle extends LegoStyle {
 
     get selectedBorderColor(): string {
         return "blue.500";
+    }
+
+    get isSpecial(): boolean {
+        return false;
     }
 }
 

@@ -974,3 +974,53 @@ def test_disjoint_nodes():
 
     we = node.stabilizer_enumerator_polynomial()
     assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+
+
+def test_double_trace_602_identity_stopper_to_422():
+
+    nodes = {}
+    nodes["0"] = TensorStabilizerCodeEnumerator(
+        h=GF2(
+            [
+                [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+                [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0],
+                [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+            ]
+        ),
+        idx="0",
+    )
+    nodes["stop1"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 0]]),
+        idx="stop1",
+    )
+    nodes["stop2"] = TensorStabilizerCodeEnumerator(
+        h=GF2([[0, 0]]),
+        idx="stop2",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=None)
+
+    # Add traces
+    tn.self_trace(
+        "stop1",
+        "0",
+        [0],
+        [4],
+    )
+    tn.self_trace(
+        "stop2",
+        "0",
+        [0],
+        [5],
+    )
+
+    conjoined = tn.conjoin_nodes()
+    assert np.array_equal(conjoined.h, Legos.stab_code_parity_422)
+
+    assert tn.stabilizer_enumerator_polynomial(
+        verbose=True, progress_bar=True
+    )._dict == {0: 1, 4: 3}
