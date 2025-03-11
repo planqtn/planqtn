@@ -1,61 +1,15 @@
-import { Box, Heading, Text, VStack, HStack, List, ListItem, Icon, Badge, useColorModeValue, Table, Thead, Tbody, Tr, Td, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard, useToken } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, IconButton, useClipboard } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
-import { FaCube, FaCode, FaTable, FaExclamationCircle, FaTimes, FaCopy } from 'react-icons/fa'
-import { LegoStyle, getLegoStyle } from './LegoStyles'
+import { FaCube, FaCode, FaTable } from 'react-icons/fa'
+import { getLegoStyle, getLegStyle } from './LegoStyles'
+import ErrorPanel from './components/ErrorPanel'
+import LegoPanel from './components/LegoPanel'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, SelectedNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
+import DetailsPanel from './components/DetailsPanel'
+import { ResizeHandle } from './components/ResizeHandle'
 
-
-interface LegoPiece {
-    id: string
-    name: string
-    shortName: string
-    type: string
-    description: string
-    is_dynamic?: boolean
-    parameters?: Record<string, any>
-    parity_check_matrix: number[][]
-    logical_legs: number[]
-    gauge_legs: number[]
-}
-
-interface DroppedLego extends LegoPiece {
-    x: number
-    y: number
-    instanceId: string
-    style: LegoStyle
-}
-
-interface Connection {
-    from: {
-        legoId: string
-        legIndex: number
-    }
-    to: {
-        legoId: string
-        legIndex: number
-    }
-}
-
-interface DragState {
-    isDragging: boolean
-    draggedLegoIndex: number
-    startX: number
-    startY: number
-    originalX: number
-    originalY: number
-    justFinished: boolean  // New flag to track if drag just finished
-}
-
-interface LegDragState {
-    isDragging: boolean
-    legoId: string
-    legIndex: number
-    startX: number
-    startY: number
-    currentX: number
-    currentY: number
-}
 
 interface CanvasState {
     pieces: Array<{
@@ -67,242 +21,6 @@ interface CanvasState {
     connections: Array<Connection>
 }
 
-interface SelectedNetwork {
-    legos: DroppedLego[]
-    connections: Connection[]
-    parityCheckMatrix?: number[][]
-    weightEnumerator?: string
-    isCalculatingWeightEnumerator?: boolean
-    constructionCode?: string
-}
-
-interface Operation {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect';
-    data: {
-        legos?: DroppedLego[];
-        connections?: Connection[];
-        legoInstanceId?: string;
-        oldX?: number;
-        oldY?: number;
-        newX?: number;
-        newY?: number;
-        groupMoves?: Array<{
-            legoInstanceId: string;
-            oldX: number;
-            oldY: number;
-            newX: number;
-            newY: number;
-        }>;
-    };
-}
-
-// Add a new interface for group drag state
-interface GroupDragState {
-    legoInstanceIds: string[];
-    originalPositions: { [instanceId: string]: { x: number; y: number } };
-}
-
-interface SelectionBoxState {
-    isSelecting: boolean;
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-    justFinished: boolean;  // New flag to track if selection box just finished
-}
-
-interface ParityCheckMatrixDisplayProps {
-    matrix: number[][]
-    title?: string
-    lego?: LegoPiece
-}
-
-const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title, lego }) => {
-    if (!matrix || matrix.length === 0) return null;
-
-    const getColumnStyle = (index: number) => {
-        const legIndex = index % (matrix[0].length / 2);
-        if (lego?.logical_legs.includes(legIndex)) {
-            return { fontWeight: "bold", color: "blue.600" };
-        }
-        if (lego?.gauge_legs.includes(legIndex)) {
-            return { fontWeight: "bold", color: "gray.700" };
-        }
-        return { color: "gray.600" };
-    };
-
-    return (
-        <Box>
-            {title && <Heading size="sm" mb={2}>{title}</Heading>}
-            <Box overflowX="auto">
-                <Table size="sm" variant="simple">
-                    <Thead>
-                        <Tr>
-                            <>
-                                <Td
-                                    p={2}
-                                    textAlign="center"
-                                    borderWidth={0}
-                                    colSpan={matrix[0].length / 2}
-                                    fontWeight="bold"
-                                    color="blue.600"
-                                >
-                                    X
-                                </Td>
-                                <Td
-                                    p={2}
-                                    textAlign="center"
-                                    borderWidth={0}
-                                    colSpan={matrix[0].length / 2}
-                                    fontWeight="bold"
-                                    color="red.600"
-                                >
-                                    Z
-                                </Td>
-                            </>
-                        </Tr>
-                        <Tr>
-                            <>
-                                {/* X indices */}
-                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
-                                    <Td
-                                        key={`x-idx-${i}`}
-                                        p={2}
-                                        textAlign="center"
-                                        borderWidth={0}
-                                        colSpan={1}
-                                        fontSize="sm"
-                                        {...getColumnStyle(i)}
-                                    >
-                                        {i}
-                                    </Td>
-                                ))}
-                                {/* Z indices */}
-                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
-                                    <Td
-                                        key={`z-idx-${i}`}
-                                        p={2}
-                                        textAlign="center"
-                                        borderWidth={0}
-                                        colSpan={1}
-                                        fontSize="sm"
-                                        {...getColumnStyle(i + matrix[0].length / 2)}
-                                    >
-                                        {i}
-                                    </Td>
-                                ))}
-                            </>
-                        </Tr>
-                    </Thead>
-                    <Tbody>
-                        {matrix.map((row, rowIndex) => (
-                            <Tr key={rowIndex}>
-                                {row.map((cell, cellIndex) => {
-                                    const isMiddle = cellIndex === row.length / 2 - 1;
-                                    return (
-                                        <Td
-                                            key={cellIndex}
-                                            p={2}
-                                            textAlign="center"
-                                            bg={cell === 1 ? "blue.100" : "transparent"}
-                                            borderWidth={1}
-                                            borderColor="gray.200"
-                                            borderRightWidth={isMiddle ? 3 : 1}
-                                            borderRightColor={isMiddle ? "gray.400" : "gray.200"}
-                                        >
-                                            {cell}
-                                        </Td>
-                                    )
-                                })}
-                            </Tr>
-                        ))}
-                    </Tbody>
-                </Table>
-            </Box>
-        </Box>
-    );
-}
-
-// Add the BlochSphereLoader component before the App component
-const BlochSphereLoader: React.FC = () => {
-    return (
-        <Box p={4} display="flex" justifyContent="center" alignItems="center">
-            <svg width="100" height="100" viewBox="-50 -50 100 100">
-                {/* Circle (sphere outline) */}
-                <circle
-                    cx="0"
-                    cy="0"
-                    r="40"
-                    fill="none"
-                    stroke="#3182CE"
-                    strokeWidth="2"
-                    opacity="0.3"
-                />
-                {/* Rotating arrow (state vector) */}
-                <line
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="-40"
-                    stroke="#3182CE"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    opacity="0.8"
-                >
-                    <animateTransform
-                        attributeName="transform"
-                        type="rotate"
-                        from="0"
-                        to="360"
-                        dur="2s"
-                        repeatCount="indefinite"
-                    />
-                </line>
-                {/* Equator ellipse */}
-                <ellipse
-                    cx="0"
-                    cy="0"
-                    rx="40"
-                    ry="15"
-                    fill="none"
-                    stroke="#3182CE"
-                    strokeWidth="1"
-                    opacity="0.3"
-                >
-                    <animateTransform
-                        attributeName="transform"
-                        type="rotate"
-                        from="0"
-                        to="360"
-                        dur="4s"
-                        repeatCount="indefinite"
-                    />
-                </ellipse>
-            </svg>
-            <Text ml={4} color="blue.600" fontWeight="medium">
-                Calculating weight enumerator...
-            </Text>
-        </Box>
-    );
-};
-
-// Add ResizeHandle component before App
-const ResizeHandle = () => {
-    const bgColor = useColorModeValue('gray.200', 'gray.600')
-
-    return (
-        <PanelResizeHandle>
-            <Box
-                w="4px"
-                h="100%"
-                bg={bgColor}
-                cursor="col-resize"
-                transition="background-color 0.2s"
-                _hover={{ bg: 'blue.500' }}
-            />
-        </PanelResizeHandle>
-    )
-}
 
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
@@ -1561,56 +1279,6 @@ function App() {
         weightEnumeratorCache.clear();
     }, [droppedLegos.length]);
 
-    // Add this function before the App component
-    const getLegStyle = (lego: DroppedLego, legIndex: number) => {
-        const isLogical = lego.logical_legs.includes(legIndex);
-        const isGauge = lego.gauge_legs.includes(legIndex);
-        const legCount = lego.parity_check_matrix[0].length / 2;
-
-        if (isLogical) {
-            // For logical legs, calculate angle from center upwards
-            const logicalLegsCount = lego.logical_legs.length;
-            const logicalIndex = lego.logical_legs.indexOf(legIndex);
-            let angle;
-            if (logicalLegsCount === 1) {
-                angle = -Math.PI / 2; // Straight up
-            } else {
-                const spread = Math.PI / 3; // 60 degree spread
-                const startAngle = -Math.PI / 2 - (spread / 2);
-                angle = startAngle + (spread * logicalIndex / (logicalLegsCount - 1));
-            }
-            return {
-                angle,
-                length: 50, // Longer than normal legs
-                width: "3px", // Thicker line
-                style: "solid",
-                from: "center", // Start from center
-                startOffset: 0 // No offset for logical legs
-            };
-        } else if (isGauge) {
-            // For gauge legs, calculate angle from bottom
-            const angle = Math.PI + ((2 * Math.PI * legIndex) / legCount);
-            return {
-                angle,
-                length: 40,
-                width: "2px",
-                style: "dashed",
-                from: "bottom",
-                startOffset: 10 // Offset from edge for gauge legs
-            };
-        } else {
-            // Regular legs
-            const angle = (2 * Math.PI * legIndex) / legCount;
-            return {
-                angle,
-                length: 40,
-                width: "2px",
-                style: "solid",
-                from: "edge",
-                startOffset: 0 // No offset for regular legs
-            };
-        }
-    };
 
     return (
         <VStack spacing={0} align="stretch" h="100vh">
@@ -1650,53 +1318,13 @@ function App() {
                 <PanelGroup direction="horizontal">
                     {/* Left Panel */}
                     <Panel defaultSize={20} minSize={15}>
-                        <Box
-                            h="100%"
-                            borderRight="1px"
-                            borderColor={borderColor}
-                            bg={bgColor}
-                            overflowY="auto"
-                        >
-                            <VStack align="stretch" spacing={4} p={4}>
-                                <Heading size="md">Lego Pieces</Heading>
-                                <List spacing={3}>
-                                    {legos.map((lego) => (
-                                        <ListItem
-                                            key={lego.id}
-                                            p={3}
-                                            borderWidth="1px"
-                                            borderRadius="md"
-                                            _hover={{ bg: 'gray.50' }}
-                                            cursor="move"
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e, lego)}
-                                        >
-                                            <HStack spacing={2}>
-                                                <Icon as={getLegoIcon(lego.type)} boxSize={5} />
-                                                <VStack align="start" spacing={1}>
-                                                    <Text fontWeight="bold">{lego.name}</Text>
-                                                    <Text fontSize="sm" color="gray.600">
-                                                        {lego.description}
-                                                    </Text>
-                                                    <HStack>
-                                                        <Badge colorScheme="blue">{lego.type}</Badge>
-                                                        {lego.is_dynamic && (
-                                                            <Badge colorScheme="green">Dynamic</Badge>
-                                                        )}
-                                                    </HStack>
-                                                </VStack>
-                                            </HStack>
-                                        </ListItem>
-                                    ))}
-                                </List>
-                            </VStack>
-                        </Box>
+                        <LegoPanel legos={legos} onDragStart={handleDragStart} />
                     </Panel>
 
-                    <ResizeHandle />
+                    <ResizeHandle position="right" />
 
                     {/* Main Content */}
-                    <Panel defaultSize={55} minSize={30}>
+                    <Panel defaultSize={60} minSize={30}>
                         <Box h="100%" display="flex" flexDirection="column" p={4}>
                             {/* Status Bar */}
                             <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
@@ -2030,180 +1658,24 @@ function App() {
                         </Box>
                     </Panel>
 
-                    <ResizeHandle />
+                    <ResizeHandle position="left" />
 
                     {/* Right Panel */}
-                    <Panel
-                        defaultSize={25}
-                        minSize={20}
-                    >
-                        <Box
-                            h="100%"
-                            borderLeft="1px"
-                            borderColor={borderColor}
-                            bg={bgColor}
-                            overflowY="auto"
-                        >
-                            <VStack align="stretch" spacing={4} p={4}>
-                                {selectedNetwork ? (
-                                    <>
-                                        <Heading size="md">Tensor Network</Heading>
-                                        <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
-                                    </>
-                                ) : selectedLego ? (
-                                    <>
-                                        <Heading size="md">Matrix Details</Heading>
-                                        <VStack align="stretch" spacing={3}>
-                                            <Text fontWeight="bold">{selectedLego.name}</Text>
-                                            <Text fontSize="sm" color="gray.600">
-                                                {selectedLego.description}
-                                            </Text>
-                                            <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} lego={selectedLego} />
-                                        </VStack>
-                                    </>
-                                ) : manuallySelectedLegos.length > 0 ? (
-                                    <>
-                                        <Heading size="md">Selection</Heading>
-                                        <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
-                                        <Text color="gray.600">
-                                            For details, select only one lego or a complete connected component
-                                        </Text>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Heading size="md">Canvas Overview</Heading>
-                                        <Text color="gray.600">
-                                            No legos are selected. There {droppedLegos.length === 1 ? 'is' : 'are'} {droppedLegos.length} {droppedLegos.length === 1 ? 'lego' : 'legos'} on the canvas.
-                                        </Text>
-                                    </>
-                                )}
-
-                                {selectedNetwork && (
-                                    <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-                                        <VStack align="stretch" spacing={4}>
-                                            <Heading size="md">Network Details</Heading>
-                                            <VStack align="stretch" spacing={3}>
-                                                <Button
-                                                    onClick={calculateParityCheckMatrix}
-                                                    colorScheme="blue"
-                                                    size="sm"
-                                                    width="full"
-                                                    leftIcon={<Icon as={FaTable} />}
-                                                >
-                                                    Calculate Parity Check Matrix
-                                                </Button>
-                                                <Button
-                                                    onClick={calculateWeightEnumerator}
-                                                    colorScheme="teal"
-                                                    size="sm"
-                                                    width="full"
-                                                    leftIcon={<Icon as={FaCube} />}
-                                                >
-                                                    Calculate Weight Enumerator
-                                                </Button>
-                                                <Button
-                                                    onClick={generateConstructionCode}
-                                                    colorScheme="purple"
-                                                    size="sm"
-                                                    width="full"
-                                                    leftIcon={<Icon as={FaCode} />}
-                                                >
-                                                    Python Code
-                                                </Button>
-                                            </VStack>
-                                            {selectedNetwork.parityCheckMatrix && (
-                                                <ParityCheckMatrixDisplay
-                                                    matrix={selectedNetwork.parityCheckMatrix}
-                                                    title="Parity Check Matrix"
-                                                />
-                                            )}
-                                            {selectedNetwork.weightEnumerator ? (
-                                                <VStack align="stretch" spacing={2}>
-                                                    <Heading size="sm">Weight Enumerator Polynomial</Heading>
-                                                    <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                                                        <Text fontFamily="mono">{selectedNetwork.weightEnumerator}</Text>
-                                                    </Box>
-                                                </VStack>
-                                            ) : selectedNetwork.isCalculatingWeightEnumerator ? (
-                                                <BlochSphereLoader />
-                                            ) : null}
-                                            {selectedNetwork.constructionCode && (
-                                                <VStack align="stretch" spacing={2}>
-                                                    <HStack justify="space-between">
-                                                        <Heading size="sm">Construction Code</Heading>
-                                                        <IconButton
-                                                            aria-label="Copy code"
-                                                            icon={<Icon as={FaCopy} />}
-                                                            size="sm"
-                                                            onClick={onCopyCode}
-                                                            variant="ghost"
-                                                        />
-                                                    </HStack>
-                                                    <Box
-                                                        p={3}
-                                                        borderWidth={1}
-                                                        borderRadius="md"
-                                                        bg="gray.50"
-                                                        position="relative"
-                                                        fontFamily="mono"
-                                                        whiteSpace="pre"
-                                                        overflowX="auto"
-                                                    >
-                                                        <Text>{selectedNetwork.constructionCode}</Text>
-                                                        {hasCopiedCode && (
-                                                            <Box
-                                                                position="absolute"
-                                                                top={2}
-                                                                right={2}
-                                                                px={2}
-                                                                py={1}
-                                                                bg="green.500"
-                                                                color="white"
-                                                                borderRadius="md"
-                                                                fontSize="sm"
-                                                            >
-                                                                Copied!
-                                                            </Box>
-                                                        )}
-                                                    </Box>
-                                                </VStack>
-                                            )}
-                                        </VStack>
-                                    </Box>
-                                )}
-                            </VStack>
-                        </Box>
+                    <Panel defaultSize={20} minSize={20}>
+                        <DetailsPanel
+                            selectedNetwork={selectedNetwork}
+                            selectedLego={selectedLego}
+                            manuallySelectedLegos={manuallySelectedLegos}
+                            droppedLegos={droppedLegos}
+                            onCalculateParityCheckMatrix={calculateParityCheckMatrix}
+                            onCalculateWeightEnumerator={calculateWeightEnumerator}
+                            onGenerateConstructionCode={generateConstructionCode}
+                        />
                     </Panel>
                 </PanelGroup>
 
                 {/* Error Panel */}
-                <Box
-                    position="absolute"
-                    bottom={0}
-                    left={0}
-                    right={0}
-                    bg="red.100"
-                    borderTop="1px"
-                    borderColor="red.300"
-                    transform={error ? "translateY(0)" : "translateY(100%)"}
-                    transition="transform 0.3s ease-in-out"
-                    zIndex={1000}
-                >
-                    <HStack spacing={3} p={4} justify="space-between">
-                        <HStack spacing={3}>
-                            <Icon as={FaExclamationCircle} color="red.500" boxSize={5} />
-                            <Text color="red.700">{error}</Text>
-                        </HStack>
-                        <IconButton
-                            aria-label="Dismiss error"
-                            icon={<Icon as={FaTimes} />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="red"
-                            onClick={() => setError('')}
-                        />
-                    </HStack>
-                </Box>
+                <ErrorPanel error={error} onDismiss={() => setError('')} />
             </Box>
         </VStack>
     )
