@@ -1,4 +1,4 @@
-import { Box, Heading, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
+import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
 import { LegoPiece, TensorNetworkLeg } from '../types.ts'
 
 interface ParityCheckMatrixDisplayProps {
@@ -27,9 +27,13 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         return Array(matrix[0].length / 2).fill(0).map((_, i) => i);
     }
 
+    const numLegs = matrix[0].length / 2;
+    const n_stabilizers = matrix.length;
+
     return (
         <Box>
             {title && <Heading size="sm" mb={2}>{title}</Heading>}
+            <Text>[[{numLegs}, {numLegs - n_stabilizers}]]</Text>
             <Box overflowX="auto">
                 <Table size="sm" variant="simple">
                     <Thead>

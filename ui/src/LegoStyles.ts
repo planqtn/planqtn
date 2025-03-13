@@ -56,6 +56,10 @@ export abstract class LegoStyle {
         return this.lego.gauge_legs;
     }
 
+    get displayShortName(): boolean {
+        return true;
+    }
+
     abstract get size(): number;
     abstract get borderRadius(): string;
     abstract get backgroundColor(): string;
@@ -142,6 +146,10 @@ export class HadamardStyle extends LegoStyle {
     get selectedBorderColor(): string {
         return "yellow.600";
     }
+
+    get displayShortName(): boolean {
+        return false;
+    }
 }
 
 export class GenericStyle extends LegoStyle {
@@ -174,11 +182,135 @@ export class GenericStyle extends LegoStyle {
     }
 }
 
+export class RepetitionCodeStyle extends LegoStyle {
+    get size(): number {
+        return 20;
+    }
+
+    get borderRadius(): string {
+        return "full";
+    }
+
+    get backgroundColor(): string {
+        return this.lego.id === "z_rep_code" ? "green.200" : "red.200";
+    }
+
+    get borderColor(): string {
+        return this.lego.id === "z_rep_code" ? "green.400" : "red.400";
+    }
+
+    get selectedBackgroundColor(): string {
+        return this.lego.id === "z_rep_code" ? "green.300" : "red.300";
+    }
+
+    get selectedBorderColor(): string {
+        return this.lego.id === "z_rep_code" ? "green.700" : "red.700";
+    }
+
+    get is_special(): boolean {
+        return false;
+    }
+
+    get displayShortName(): boolean {
+        return false;
+    }
+
+}
+
+export class StopperStyle extends LegoStyle {
+    get size(): number {
+        return 20;
+    }
+    get borderRadius(): string {
+        return "full";
+    }
+
+    get backgroundColor(): string {
+        switch (this.lego.id) {
+            case "stopper_i":
+                return "white";
+            case "stopper_x":
+                return "red.200";
+            case "stopper_z":
+                return "green.200";
+            case "stopper_y":
+                return "purple.200";
+            default:
+                return "gray.200";
+        }
+    }
+
+    get borderColor(): string {
+        switch (this.lego.id) {
+            case "stopper_i":
+                return "gray.400";
+            case "stopper_x":
+                return "red.400";
+            case "stopper_z":
+                return "green.400";
+            case "stopper_y":
+                return "purple.400";
+            default:
+                return "gray.400";
+        }
+    }
+
+    get selectedBackgroundColor(): string {
+        switch (this.lego.id) {
+            case "stopper_i":
+                return "gray.200";
+            case "stopper_x":
+                return "red.300";
+            case "stopper_z":
+                return "green.300";
+            case "stopper_y":
+                return "purple.300";
+            default:
+                return "gray.300";
+        }
+    }
+
+    get selectedBorderColor(): string {
+        switch (this.lego.id) {
+            case "stopper_i":
+                return "gray.600";
+            case "stopper_x":
+                return "red.700";
+            case "stopper_z":
+                return "green.700";
+            case "stopper_y":
+                return "purple.700";
+            default:
+                return "gray.700";
+        }
+    }
+
+    get is_special(): boolean {
+        return false;
+    }
+
+    get displayShortName(): boolean {
+        return false;
+    }
+
+}
 export function getLegoStyle(lego: LegoPiece): LegoStyle {
     if (lego.id === "h") {
         return new HadamardStyle(lego);
+    } else if (lego.id === "z_rep_code") {
+        return new RepetitionCodeStyle(lego);
+    } else if (lego.id === "x_rep_code") {
+        return new RepetitionCodeStyle(lego);
+    } else if (lego.id === "stopper_i") {
+        return new StopperStyle(lego);
+    } else if (lego.id === "stopper_x") {
+        return new StopperStyle(lego);
+    } else if (lego.id === "stopper_z") {
+        return new StopperStyle(lego);
+    } else if (lego.id === "stopper_y") {
+        return new StopperStyle(lego);
+    } else {
+        return new GenericStyle(lego);
     }
-    return new GenericStyle(lego);
 }
-
 

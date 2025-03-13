@@ -198,7 +198,7 @@ class Legos:
                     "is_dynamic": True,
                     "parameters": {"d": 3},
                     "parity_check_matrix": cls.z_rep_code().tolist(),
-                    "logical_legs": [2],
+                    "logical_legs": [],
                     "gauge_legs": [],
                 },
                 {
@@ -210,7 +210,7 @@ class Legos:
                     "is_dynamic": True,
                     "parameters": {"d": 3},
                     "parity_check_matrix": cls.x_rep_code().tolist(),
-                    "logical_legs": [2],
+                    "logical_legs": [],
                     "gauge_legs": [],
                 },
             ]
