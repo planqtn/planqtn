@@ -1,14 +1,24 @@
 import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
 import { LegoPiece, TensorNetworkLeg } from '../types.ts'
+import { useState } from 'react'
 
 interface ParityCheckMatrixDisplayProps {
     matrix: number[][]
     title?: string
     lego?: LegoPiece
     legOrdering?: TensorNetworkLeg[]
+    onMatrixChange?: (newMatrix: number[][]) => void
 }
 
-export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title, lego, legOrdering }) => {
+export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({
+    matrix,
+    title,
+    lego,
+    legOrdering,
+    onMatrixChange
+}) => {
+    const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+
     if (!matrix || matrix.length === 0) return null;
 
     const getColumnStyle = (index: number) => {
@@ -22,13 +32,49 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         return { color: "gray.600" };
     };
 
-
     const getLegIndices = () => {
         return Array(matrix[0].length / 2).fill(0).map((_, i) => i);
     }
 
     const numLegs = matrix[0].length / 2;
     const n_stabilizers = matrix.length;
+
+    const handleDragStart = (e: React.DragEvent, rowIndex: number) => {
+        setDraggedRowIndex(rowIndex);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent, targetRowIndex: number) => {
+        e.preventDefault();
+        if (draggedRowIndex === null || draggedRowIndex === targetRowIndex) return;
+
+        // Create a new matrix with the rows added
+        const newMatrix = matrix.map((row, index) => {
+            if (index === targetRowIndex) {
+                // Add the dragged row to the target row (modulo 2)
+                return row.map((cell, cellIndex) =>
+                    (cell + matrix[draggedRowIndex][cellIndex]) % 2
+                );
+            }
+            return row;
+        });
+
+        // Update the matrix through the callback
+        if (onMatrixChange) {
+            onMatrixChange(newMatrix);
+        }
+
+        setDraggedRowIndex(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedRowIndex(null);
+    };
 
     return (
         <Box>
@@ -108,11 +154,20 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                 ))}
                             </Tr>
                         }
-
                     </Thead>
                     <Tbody>
                         {matrix.map((row, rowIndex) => (
-                            <Tr key={rowIndex}>
+                            <Tr
+                                key={rowIndex}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, rowIndex)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, rowIndex)}
+                                onDragEnd={handleDragEnd}
+                                cursor="move"
+                                bg={draggedRowIndex === rowIndex ? "blue.50" : "transparent"}
+                                _hover={{ bg: "gray.50" }}
+                            >
                                 {row.map((cell, cellIndex) => {
                                     const isMiddle = cellIndex === row.length / 2 - 1;
                                     return (

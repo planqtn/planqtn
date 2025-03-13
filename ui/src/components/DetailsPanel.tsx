@@ -200,6 +200,26 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             title="Parity Check Matrix"
                                             legOrdering={tensorNetwork.legOrdering ||
                                                 parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork))!.data.legs}
+                                            onMatrixChange={(newMatrix) => {
+                                                // Update the tensor network state
+                                                setTensorNetwork(prev => prev ? {
+                                                    ...prev,
+                                                    parityCheckMatrix: newMatrix
+                                                } : null);
+
+                                                // Update the cache
+                                                const signature = getNetworkSignature(tensorNetwork);
+                                                const cachedResponse = parityCheckMatrixCache.get(signature);
+                                                if (cachedResponse) {
+                                                    parityCheckMatrixCache.set(signature, {
+                                                        ...cachedResponse,
+                                                        data: {
+                                                            ...cachedResponse.data,
+                                                            matrix: newMatrix
+                                                        }
+                                                    });
+                                                }
+                                            }}
                                         />
                                     )}
                                 {(tensorNetwork.weightEnumerator ||
