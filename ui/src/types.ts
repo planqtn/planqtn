@@ -32,13 +32,19 @@ export interface Connection {
     }
 }
 
-export interface SelectedNetwork {
+export interface TensorNetworkLeg {
+    instanceId: string
+    legIndex: number
+}
+
+export interface TensorNetwork {
     legos: DroppedLego[]
     connections: Connection[]
     parityCheckMatrix?: number[][]
     weightEnumerator?: string
     isCalculatingWeightEnumerator?: boolean
     constructionCode?: string
+    legOrdering?: TensorNetworkLeg[]
 }
 
 export interface LegDragState {

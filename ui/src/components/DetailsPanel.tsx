@@ -1,36 +1,36 @@
 import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
-import { DroppedLego, SelectedNetwork } from '../types.ts'
+import { DroppedLego, TensorNetwork, TensorNetworkLeg } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 import { useState } from 'react'
 
 interface DetailsPanelProps {
-    selectedNetwork: SelectedNetwork | null
+    tensorNetwork: TensorNetwork | null
     selectedLego: DroppedLego | null
     manuallySelectedLegos: DroppedLego[]
     droppedLegos: DroppedLego[]
-    setSelectedNetwork: (value: SelectedNetwork | null | ((prev: SelectedNetwork | null) => SelectedNetwork | null)) => void
+    setTensorNetwork: (value: TensorNetwork | null | ((prev: TensorNetwork | null) => TensorNetwork | null)) => void
     setError: (error: string) => void
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
-    selectedNetwork,
+    tensorNetwork: tensorNetwork,
     selectedLego,
     manuallySelectedLegos,
     droppedLegos,
-    setSelectedNetwork,
+    setTensorNetwork: setTensorNetwork,
     setError
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
-    const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(selectedNetwork?.constructionCode || "")
-    const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
+    const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
+    const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
 
     // Helper function to generate network signature for caching
-    const getNetworkSignature = (network: SelectedNetwork) => {
+    const getNetworkSignature = (network: TensorNetwork) => {
         const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
         const sortedConnections = [...network.connections].sort((a, b) => {
             const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
@@ -41,22 +41,30 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     };
 
     const calculateParityCheckMatrix = async () => {
-        if (!selectedNetwork) return;
+        if (!tensorNetwork) return;
         try {
             const response = await axios.post('/api/paritycheck', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                legos: tensorNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = lego;
                     return acc;
                 }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
+                connections: tensorNetwork.connections
             });
 
-            setSelectedNetwork({
-                ...selectedNetwork,
-                parityCheckMatrix: response.data.matrix
+            const legOrdering = response.data.legs.map((leg: TensorNetworkLeg) => ({
+                instanceId: leg.instanceId,
+                legIndex: leg.legIndex
+            }));
+
+            console.log("legOrdering", legOrdering)
+
+            setTensorNetwork({
+                ...tensorNetwork,
+                parityCheckMatrix: response.data.matrix,
+                legOrdering: legOrdering
             });
 
-            parityCheckMatrixCache.set(getNetworkSignature(selectedNetwork), response.data.matrix);
+            parityCheckMatrixCache.set(getNetworkSignature(tensorNetwork), response);
         } catch (error) {
             console.error('Error calculating parity check matrix:', error);
             setError('Failed to calculate parity check matrix');
@@ -64,13 +72,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     };
 
     const calculateWeightEnumerator = async () => {
-        if (!selectedNetwork) return;
+        if (!tensorNetwork) return;
 
-        const signature = getNetworkSignature(selectedNetwork);
+        const signature = getNetworkSignature(tensorNetwork);
         const cachedEnumerator = weightEnumeratorCache.get(signature);
         if (cachedEnumerator) {
-            setSelectedNetwork({
-                ...selectedNetwork,
+            setTensorNetwork({
+                ...tensorNetwork,
                 weightEnumerator: cachedEnumerator,
                 isCalculatingWeightEnumerator: false
             });
@@ -78,24 +86,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
 
         try {
-            setSelectedNetwork((prev: SelectedNetwork | null) => prev ? {
+            setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 isCalculatingWeightEnumerator: true,
                 weightEnumerator: undefined
             } : null);
 
             const response = await axios.post('/api/weightenumerator', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                legos: tensorNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = lego;
                     return acc;
                 }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
+                connections: tensorNetwork.connections
             });
 
             // Cache the result
             weightEnumeratorCache.set(signature, response.data.polynomial);
 
-            setSelectedNetwork((prev: SelectedNetwork | null) => prev ? {
+            setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 weightEnumerator: response.data.polynomial,
                 isCalculatingWeightEnumerator: false
@@ -103,7 +111,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         } catch (error) {
             console.error('Error calculating weight enumerator:', error);
             setError('Failed to calculate weight enumerator');
-            setSelectedNetwork((prev: SelectedNetwork | null) => prev ? {
+            setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 isCalculatingWeightEnumerator: false
             } : null);
@@ -111,18 +119,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     };
 
     const generateConstructionCode = async () => {
-        if (!selectedNetwork) return;
+        if (!tensorNetwork) return;
 
         try {
             const response = await axios.post('/api/constructioncode', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
+                legos: tensorNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = lego;
                     return acc;
                 }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
+                connections: tensorNetwork.connections
             });
 
-            setSelectedNetwork(prev => prev ? {
+            setTensorNetwork(prev => prev ? {
                 ...prev,
                 constructionCode: response.data.code
             } : null);
@@ -141,16 +149,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             overflowY="auto"
         >
             <VStack align="stretch" spacing={4} p={4}>
-                {selectedNetwork ? (
+                {tensorNetwork ? (
                     <>
                         <Heading size="md">Tensor Network</Heading>
-                        <Text>Selected components: {selectedNetwork.legos.length} Legos</Text>
+                        <Text>Selected components: {tensorNetwork.legos.length} Legos</Text>
                         <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                             <VStack align="stretch" spacing={4}>
                                 <Heading size="md">Network Details</Heading>
                                 <VStack align="stretch" spacing={3}>
-                                    {!selectedNetwork.parityCheckMatrix &&
-                                        !parityCheckMatrixCache.get(getNetworkSignature(selectedNetwork)) && (
+                                    {!tensorNetwork.parityCheckMatrix &&
+                                        !parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)) && (
                                             <Button
                                                 onClick={calculateParityCheckMatrix}
                                                 colorScheme="blue"
@@ -161,9 +169,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 Calculate Parity Check Matrix
                                             </Button>
                                         )}
-                                    {!selectedNetwork.weightEnumerator &&
-                                        !weightEnumeratorCache.get(getNetworkSignature(selectedNetwork)) &&
-                                        !selectedNetwork.isCalculatingWeightEnumerator && (
+                                    {!tensorNetwork.weightEnumerator &&
+                                        !weightEnumeratorCache.get(getNetworkSignature(tensorNetwork)) &&
+                                        !tensorNetwork.isCalculatingWeightEnumerator && (
                                             <Button
                                                 onClick={calculateWeightEnumerator}
                                                 colorScheme="teal"
@@ -184,29 +192,31 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         Python Code
                                     </Button>
                                 </VStack>
-                                {(selectedNetwork.parityCheckMatrix ||
-                                    (selectedNetwork && parityCheckMatrixCache.get(getNetworkSignature(selectedNetwork)))) && (
+                                {(tensorNetwork.parityCheckMatrix ||
+                                    (tensorNetwork && parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)))) && (
                                         <ParityCheckMatrixDisplay
-                                            matrix={selectedNetwork.parityCheckMatrix ||
-                                                parityCheckMatrixCache.get(getNetworkSignature(selectedNetwork))!}
+                                            matrix={tensorNetwork.parityCheckMatrix ||
+                                                parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork))!.data.matrix}
                                             title="Parity Check Matrix"
+                                            legOrdering={tensorNetwork.legOrdering ||
+                                                parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork))!.data.legs}
                                         />
                                     )}
-                                {(selectedNetwork.weightEnumerator ||
-                                    (selectedNetwork && weightEnumeratorCache.get(getNetworkSignature(selectedNetwork)))) ? (
+                                {(tensorNetwork.weightEnumerator ||
+                                    (tensorNetwork && weightEnumeratorCache.get(getNetworkSignature(tensorNetwork)))) ? (
                                     <VStack align="stretch" spacing={2}>
                                         <Heading size="sm">Weight Enumerator Polynomial</Heading>
                                         <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                             <Text fontFamily="mono">
-                                                {selectedNetwork.weightEnumerator ||
-                                                    weightEnumeratorCache.get(getNetworkSignature(selectedNetwork))}
+                                                {tensorNetwork.weightEnumerator ||
+                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))}
                                             </Text>
                                         </Box>
                                     </VStack>
-                                ) : selectedNetwork.isCalculatingWeightEnumerator ? (
+                                ) : tensorNetwork.isCalculatingWeightEnumerator ? (
                                     <BlochSphereLoader />
                                 ) : null}
-                                {selectedNetwork.constructionCode && (
+                                {tensorNetwork.constructionCode && (
                                     <VStack align="stretch" spacing={2}>
                                         <HStack justify="space-between">
                                             <Heading size="sm">Construction Code</Heading>
@@ -228,7 +238,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             whiteSpace="pre"
                                             overflowX="auto"
                                         >
-                                            <Text>{selectedNetwork.constructionCode}</Text>
+                                            <Text>{tensorNetwork.constructionCode}</Text>
                                             {hasCopiedCode && (
                                                 <Box
                                                     position="absolute"
@@ -252,11 +262,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     </>
                 ) : selectedLego ? (
                     <>
-                        <Heading size="md">Matrix Details</Heading>
+                        <Heading size="md">Lego Instance Details</Heading>
                         <VStack align="stretch" spacing={3}>
                             <Text fontWeight="bold">{selectedLego.name}</Text>
                             <Text fontSize="sm" color="gray.600">
-                                {selectedLego.description}
+                                {selectedLego.description}, instaceId: {selectedLego.instanceId}
                             </Text>
                             <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} lego={selectedLego} />
                         </VStack>

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from galois import GF2
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import sys
 import os
 import numpy as np
@@ -52,8 +52,14 @@ class TensorNetworkParityCheckRequest(BaseModel):
     connections: List[Dict[str, Any]]
 
 
+class TensorNetworkLeg(BaseModel):
+    instanceId: str
+    legIndex: int
+
+
 class ParityCheckResponse(BaseModel):
     matrix: List[List[int]]
+    legs: List[TensorNetworkLeg]
     message: str = "Successfully calculated parity check matrix"
 
 
@@ -106,15 +112,19 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
 
     # Convert the resulting parity check matrix to a list for JSON serialization
     matrix = result.h.tolist()
+    legs = [TensorNetworkLeg(instanceId=leg[0], legIndex=leg[1]) for leg in result.legs]
 
-    return ParityCheckResponse(matrix=matrix)
+    return ParityCheckResponse(matrix=matrix, legs=legs)
 
 
 @app.post("/weightenumerator", response_model=WeightEnumeratorResponse)
 async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     nodes = {}
+    print("network.legos", network.legos)
+    print("network.connections", network.connections)
     for instance_id, lego in network.legos.items():
+        print("instance id", instance_id)
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
         nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
@@ -124,6 +134,7 @@ async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
 
     # Add traces for each connection
     for conn in network.connections:
+
         tn.self_trace(
             conn["from"]["legoId"],
             conn["to"]["legoId"],

@@ -1,13 +1,14 @@
 import { Box, Heading, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
-import { LegoPiece } from '../types.ts'
+import { LegoPiece, TensorNetworkLeg } from '../types.ts'
 
 interface ParityCheckMatrixDisplayProps {
     matrix: number[][]
     title?: string
     lego?: LegoPiece
+    legOrdering?: TensorNetworkLeg[]
 }
 
-export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title, lego }) => {
+export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({ matrix, title, lego, legOrdering }) => {
     if (!matrix || matrix.length === 0) return null;
 
     const getColumnStyle = (index: number) => {
@@ -20,6 +21,11 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         }
         return { color: "gray.600" };
     };
+
+
+    const getLegIndices = () => {
+        return Array(matrix[0].length / 2).fill(0).map((_, i) => i);
+    }
 
     return (
         <Box>
@@ -51,38 +57,54 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                 </Td>
                             </>
                         </Tr>
-                        <Tr>
-                            <>
-                                {/* X indices */}
-                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
-                                    <Td
-                                        key={`x-idx-${i}`}
-                                        p={2}
-                                        textAlign="center"
-                                        borderWidth={0}
-                                        colSpan={1}
-                                        fontSize="sm"
-                                        {...getColumnStyle(i)}
-                                    >
-                                        {i}
+                        {legOrdering && (
+                            <Tr>
+                                <>
+                                    {/* X lego indices */}
+                                    {legOrdering?.map(leg => (
+                                        <Td
+                                            key={`x-legoidx-${leg.instanceId}-${leg.legIndex}`}
+                                            p={2}
+                                            textAlign="center"
+                                            borderWidth={0}
+                                            colSpan={1}
+                                            fontSize="sm"
+                                            color="blue.600"
+                                        >
+                                            {leg.instanceId}-{leg.legIndex}
+                                        </Td>
+                                    ))}
+                                    {/* Z lego indices */}
+                                    {legOrdering?.map(leg => (
+                                        <Td
+                                            key={`z-legoidx-${leg.instanceId}-${leg.legIndex}`}
+                                            p={2}
+                                            textAlign="center"
+                                            borderWidth={0}
+                                            colSpan={1}
+                                            fontSize="sm"
+                                            color="red.600"
+                                        >
+                                            {leg.instanceId}-{leg.legIndex}
+                                        </Td>
+                                    ))}
+                                </>
+                            </Tr>)
+                            ||
+                            <Tr>
+                                {getLegIndices().map(leg => (
+                                    <Td key={`x-idx-${leg}`} p={2} textAlign="center" borderWidth={0} colSpan={1} fontSize="sm" {...getColumnStyle(leg)}>
+                                        {leg}
                                     </Td>
                                 ))}
-                                {/* Z indices */}
-                                {Array(matrix[0].length / 2).fill(0).map((_, i) => (
-                                    <Td
-                                        key={`z-idx-${i}`}
-                                        p={2}
-                                        textAlign="center"
-                                        borderWidth={0}
-                                        colSpan={1}
-                                        fontSize="sm"
-                                        {...getColumnStyle(i + matrix[0].length / 2)}
-                                    >
-                                        {i}
+                                {getLegIndices().map(leg => (
+                                    <Td key={`z-idx-${leg}`} p={2} textAlign="center" borderWidth={0} colSpan={1} fontSize="sm" {...getColumnStyle(leg)}>
+                                        {leg}
                                     </Td>
                                 ))}
-                            </>
-                        </Tr>
+                            </Tr>
+                        }
+
                     </Thead>
                     <Tbody>
                         {matrix.map((row, rowIndex) => (

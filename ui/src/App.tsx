@@ -5,7 +5,7 @@ import axios from 'axios'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, SelectedNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
@@ -29,7 +29,7 @@ function App() {
     })
     const canvasRef = useRef<HTMLDivElement>(null)
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
-    const [selectedNetwork, setSelectedNetwork] = useState<SelectedNetwork | null>(null)
+    const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
     const [operationHistory, setOperationHistory] = useState<Operation[]>([])
     const [redoHistory, setRedoHistory] = useState<Operation[]>([])
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
@@ -63,16 +63,6 @@ function App() {
         return stateSerializerRef.current.decode(encoded)
     }, [])
 
-    // Add this function to generate a network signature
-    const getNetworkSignature = (network: SelectedNetwork) => {
-        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
-        const sortedConnections = [...network.connections].sort((a, b) => {
-            const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
-            const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
-            return aStr.localeCompare(bStr);
-        });
-        return JSON.stringify({ legos: sortedLegos, connections: sortedConnections });
-    };
 
     // Add checkBackendHealth function
     const checkBackendHealth = useCallback(async () => {
@@ -95,7 +85,7 @@ function App() {
         checkBackendHealth()
 
         // Set up periodic health check every 30 seconds
-        const healthCheckInterval = setInterval(checkBackendHealth, 1000)
+        const healthCheckInterval = setInterval(checkBackendHealth, 10000)
 
         // Cleanup interval on component unmount
         return () => clearInterval(healthCheckInterval)
@@ -149,6 +139,11 @@ function App() {
         e.preventDefault()
     }
 
+    const newInstanceId = () => {
+        const maxInstanceId = droppedLegos.length > 0 ? (Math.max(...droppedLegos.map(lego => parseInt(lego.instanceId)))) : 0
+        return String(maxInstanceId + 1)
+    }
+
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         const legoData = e.dataTransfer.getData('application/json')
@@ -157,7 +152,7 @@ function App() {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
-            const instanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            const instanceId = newInstanceId()
             const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
             setDroppedLegos(prev => [...prev, newLego])
             addToHistory({
@@ -174,10 +169,9 @@ function App() {
 
         if (e.shiftKey) {
             // Create a new instance with a new instanceId
-            const newInstanceId = `${lego.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             const newLego = {
                 ...lego,
-                instanceId: newInstanceId,
+                instanceId: newInstanceId(),
                 x: lego.x + 20,
                 y: lego.y + 20
             };
@@ -197,10 +191,10 @@ function App() {
         } else {
             // Check if the clicked lego is part of a manual selection or selected network
             const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
-                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId);
+                tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId);
 
             if (isPartOfSelection) {
-                const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : selectedNetwork?.legos || [];
+                const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : tensorNetwork?.legos || [];
                 const positions: { [instanceId: string]: { x: number; y: number } } = {};
                 selectedLegos.forEach(l => {
                     positions[l.instanceId] = { x: l.x, y: l.y };
@@ -238,17 +232,17 @@ function App() {
         if (!dragState.isDragging) {  // Only handle click if not dragging
             e.stopPropagation();
 
-            if (selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
-                setSelectedNetwork(null);
+            if (tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
+                setTensorNetwork(null);
                 setSelectedLego(lego);
             } else if (selectedLego?.instanceId === lego.instanceId) {
                 const network = findConnectedComponent(lego);
                 console.log(network);
-                setSelectedNetwork(network);
+                setTensorNetwork(network);
                 setSelectedLego(null);
             } else {
                 setSelectedLego(lego);
-                setSelectedNetwork(null);
+                setTensorNetwork(null);
             }
             setManuallySelectedLegos([]);
         }
@@ -259,7 +253,7 @@ function App() {
         // and not during or right after selection box usage
         if (e.target === e.currentTarget && !selectionBox.isSelecting && !dragState.isDragging && !selectionBox.justFinished) {
             setSelectedLego(null);
-            setSelectedNetwork(null);
+            setTensorNetwork(null);
             setManuallySelectedLegos([]);
         }
         // Reset the justFinished flag after handling the click
@@ -323,7 +317,7 @@ function App() {
         // Update selection state based on the selected Legos
         if (selectedLegos.length === 1) {
             setSelectedLego(selectedLegos[0]);
-            setSelectedNetwork(null);
+            setTensorNetwork(null);
             setManuallySelectedLegos(selectedLegos);
         } else if (selectedLegos.length > 1) {
             // Check if all selected Legos form a complete connected component
@@ -337,16 +331,16 @@ function App() {
 
             if (isCompleteComponent) {
                 setSelectedLego(null);
-                setSelectedNetwork(connectedComponent);
+                setTensorNetwork(connectedComponent);
                 setManuallySelectedLegos([]);
             } else {
                 setSelectedLego(null);
-                setSelectedNetwork(null);
+                setTensorNetwork(null);
                 setManuallySelectedLegos(selectedLegos);
             }
         } else {
             setSelectedLego(null);
-            setSelectedNetwork(null);
+            setTensorNetwork(null);
             setManuallySelectedLegos([]);
         }
     };
@@ -548,7 +542,7 @@ function App() {
 
                 // Clear selection states
                 setSelectedLego(null);
-                setSelectedNetwork(null);
+                setTensorNetwork(null);
                 setManuallySelectedLegos([]);
             } else if (deltaX !== 0 || deltaY !== 0) {
                 if (groupDragState) {
@@ -841,7 +835,7 @@ function App() {
 
         window.addEventListener('mouseup', handleWindowMouseUp);
         return () => window.removeEventListener('mouseup', handleWindowMouseUp);
-    }, [dragState, droppedLegos, connections, selectedLego, selectedNetwork, addToHistory, encodeCanvasState, canvasRef]);
+    }, [dragState, droppedLegos, connections, selectedLego, tensorNetwork, addToHistory, encodeCanvasState, canvasRef]);
 
     // Handle undo
     const handleUndo = useCallback(() => {
@@ -991,12 +985,12 @@ function App() {
                     if (network.legos.length === droppedLegos.length) {
                         // All legos are connected - show as network
                         setSelectedLego(null);
-                        setSelectedNetwork(network);
+                        setTensorNetwork(network);
                         setManuallySelectedLegos([]);
                     } else {
                         // Not all connected - show as manual selection
                         setSelectedLego(null);
-                        setSelectedNetwork(null);
+                        setTensorNetwork(null);
                         setManuallySelectedLegos(droppedLegos);
                     }
                 }
@@ -1004,8 +998,8 @@ function App() {
                 // Handle deletion of selected legos
                 let legosToRemove: DroppedLego[] = [];
 
-                if (selectedNetwork) {
-                    legosToRemove = selectedNetwork.legos;
+                if (tensorNetwork) {
+                    legosToRemove = tensorNetwork.legos;
                 } else if (manuallySelectedLegos.length > 0) {
                     legosToRemove = manuallySelectedLegos;
                 } else if (selectedLego) {
@@ -1041,7 +1035,7 @@ function App() {
 
                     // Clear selection states
                     setSelectedLego(null);
-                    setSelectedNetwork(null);
+                    setTensorNetwork(null);
                     setManuallySelectedLegos([]);
 
                     // Update URL state
@@ -1055,7 +1049,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, selectedNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState]);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
@@ -1092,110 +1086,20 @@ function App() {
         setDroppedLegos([]);
         setConnections([]);
         setSelectedLego(null);
-        setSelectedNetwork(null);
+        setTensorNetwork(null);
         setManuallySelectedLegos([]);
 
         // Update URL state
         encodeCanvasState([], []);
     };
 
-    const calculateParityCheckMatrix = async () => {
-        if (!selectedNetwork) return;
-        console.log(selectedNetwork.connections);
-        try {
-            const response = await axios.post('/api/paritycheck', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
-                    acc[lego.instanceId] = lego;
-                    return acc;
-                }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
-            });
-
-            setSelectedNetwork({
-                ...selectedNetwork,
-                parityCheckMatrix: response.data.matrix
-            });
-        } catch (error) {
-            console.error('Error calculating parity check matrix:', error);
-            setError('Failed to calculate parity check matrix');
-        }
-    };
-
-    const calculateWeightEnumerator = async () => {
-        if (!selectedNetwork) return;
-
-        const signature = getNetworkSignature(selectedNetwork);
-        const cachedEnumerator = weightEnumeratorCache.get(signature);
-        if (cachedEnumerator) {
-            setSelectedNetwork({
-                ...selectedNetwork,
-                weightEnumerator: cachedEnumerator,
-                isCalculatingWeightEnumerator: false
-            });
-            return;
-        }
-
-        try {
-            setSelectedNetwork(prev => prev ? {
-                ...prev,
-                isCalculatingWeightEnumerator: true,
-                weightEnumerator: undefined
-            } : null);
-
-            const response = await axios.post('/api/weightenumerator', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
-                    acc[lego.instanceId] = lego;
-                    return acc;
-                }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
-            });
-
-            // Cache the result
-            weightEnumeratorCache.set(signature, response.data.polynomial);
-
-            setSelectedNetwork(prev => prev ? {
-                ...prev,
-                weightEnumerator: response.data.polynomial,
-                isCalculatingWeightEnumerator: false
-            } : null);
-        } catch (error) {
-            console.error('Error calculating weight enumerator:', error);
-            setError('Failed to calculate weight enumerator');
-            setSelectedNetwork(prev => prev ? {
-                ...prev,
-                isCalculatingWeightEnumerator: false
-            } : null);
-        }
-    };
-
-    const generateConstructionCode = async () => {
-        if (!selectedNetwork) return;
-
-        try {
-            const response = await axios.post('/api/constructioncode', {
-                legos: selectedNetwork.legos.reduce((acc, lego) => {
-                    acc[lego.instanceId] = lego;
-                    return acc;
-                }, {} as Record<string, DroppedLego>),
-                connections: selectedNetwork.connections
-            });
-
-            setSelectedNetwork(prev => prev ? {
-                ...prev,
-                constructionCode: response.data.code
-            } : null);
-        } catch (error) {
-            console.error('Error generating Python code:', error);
-            setError('Failed to generate Python code');
-        }
-    };
 
     // Update the useClipboard hook when code changes
     useEffect(() => {
-        if (selectedNetwork?.constructionCode) {
-            onCopyCode(selectedNetwork.constructionCode);
+        if (tensorNetwork?.constructionCode) {
+            onCopyCode(tensorNetwork.constructionCode);
         }
-    }, [selectedNetwork?.constructionCode]);
+    }, [tensorNetwork?.constructionCode]);
 
     // Modify the existing useEffect to clear both caches
     useEffect(() => {
@@ -1541,13 +1445,13 @@ function App() {
                                             h={`${lego.style.size}px`}
                                             borderRadius={lego.style.borderRadius}
                                             bg={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
                                                     ? lego.style.selectedBackgroundColor
                                                     : lego.style.backgroundColor
                                             }
                                             border="2px"
                                             borderColor={
-                                                selectedNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
+                                                tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
                                                     ? lego.style.selectedBorderColor
                                                     : lego.style.borderColor
                                             }
@@ -1578,9 +1482,12 @@ function App() {
                                                     transform: lego.logical_legs.length > 0 ? 'translateY(8px)' : 'none'
                                                 }}
                                             >
-                                                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                                                <Text fontSize="xs" fontWeight="bold" noOfLines={2} textAlign="center">
                                                     {lego.shortName}
+                                                    <br />
+                                                    {lego.instanceId}
                                                 </Text>
+
                                             </Box>
                                         </Box>
                                     </Box>
@@ -1594,11 +1501,11 @@ function App() {
                     {/* Right Panel */}
                     <Panel defaultSize={20} minSize={20}>
                         <DetailsPanel
-                            selectedNetwork={selectedNetwork}
+                            tensorNetwork={tensorNetwork}
                             selectedLego={selectedLego}
                             manuallySelectedLegos={manuallySelectedLegos}
                             droppedLegos={droppedLegos}
-                            setSelectedNetwork={setSelectedNetwork}
+                            setTensorNetwork={setTensorNetwork}
                             setError={setError}
                         />
                     </Panel>
@@ -1607,7 +1514,7 @@ function App() {
                 {/* Error Panel */}
                 <ErrorPanel error={error} onDismiss={() => setError('')} />
             </Box>
-        </VStack>
+        </VStack >
     )
 }
 
