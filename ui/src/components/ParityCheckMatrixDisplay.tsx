@@ -1,6 +1,7 @@
-import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td } from '@chakra-ui/react'
+import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td, Button, HStack, VStack } from '@chakra-ui/react'
 import { LegoPiece, TensorNetworkLeg } from '../types.ts'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { FaUndo, FaRedo, FaSync } from 'react-icons/fa'
 
 interface ParityCheckMatrixDisplayProps {
     matrix: number[][]
@@ -8,6 +9,7 @@ interface ParityCheckMatrixDisplayProps {
     lego?: LegoPiece
     legOrdering?: TensorNetworkLeg[]
     onMatrixChange?: (newMatrix: number[][]) => void
+    onRecalculate?: () => void
 }
 
 export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({
@@ -15,9 +17,22 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     title,
     lego,
     legOrdering,
-    onMatrixChange
+    onMatrixChange,
+    onRecalculate
 }) => {
     const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+    const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
+    const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
+    const hasInitialized = useRef(false);
+
+    // Initialize history only once when component mounts
+    useEffect(() => {
+        if (!hasInitialized.current) {
+            setMatrixHistory([matrix]);
+            setCurrentHistoryIndex(0);
+            hasInitialized.current = true;
+        }
+    }, []); // Empty dependency array means this only runs on mount
 
     if (!matrix || matrix.length === 0) return null;
 
@@ -64,6 +79,11 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
             return row;
         });
 
+        // Update history
+        const newHistory = [...matrixHistory.slice(0, currentHistoryIndex + 1), newMatrix];
+        setMatrixHistory(newHistory);
+        setCurrentHistoryIndex(newHistory.length - 1);
+
         // Update the matrix through the callback
         if (onMatrixChange) {
             onMatrixChange(newMatrix);
@@ -76,10 +96,133 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         setDraggedRowIndex(null);
     };
 
+    const handleUndo = () => {
+        if (currentHistoryIndex > 0) {
+            const newIndex = currentHistoryIndex - 1;
+            setCurrentHistoryIndex(newIndex);
+            if (onMatrixChange) {
+                onMatrixChange(matrixHistory[newIndex]);
+            }
+        }
+    };
+
+    const handleRedo = () => {
+        if (currentHistoryIndex < matrixHistory.length - 1) {
+            const newIndex = currentHistoryIndex + 1;
+            setCurrentHistoryIndex(newIndex);
+            if (onMatrixChange) {
+                onMatrixChange(matrixHistory[newIndex]);
+            }
+        }
+    };
+
+    const getPauliString = (row: number[]): string => {
+        const n = row.length / 2;
+        let result = '';
+        for (let i = 0; i < n; i++) {
+            const x = row[i];
+            const z = row[i + n];
+            if (x === 0 && z === 0) result += '_';
+            else if (x === 1 && z === 0) result += 'X';
+            else if (x === 0 && z === 1) result += 'Z';
+            else if (x === 1 && z === 1) result += 'Y';
+        }
+        return result;
+    };
+
+    const getPauliColor = (pauli: string): string => {
+        switch (pauli) {
+            case 'X': return 'red.500';
+            case 'Z': return 'green.500';
+            case 'Y': return 'purple.500';
+            default: return 'black';
+        }
+    };
+
+    const isCSS = (row: number[]): boolean => {
+        const n = row.length / 2;
+        // Check if the row has only X or only Z components
+        const hasX = row.slice(0, n).some(x => x === 1);
+        const hasZ = row.slice(n).some(z => z === 1);
+        return (hasX && !hasZ) || (!hasX && hasZ);
+    };
+
+    const handleCSSSort = () => {
+        // Create a new matrix with rows sorted by CSS type
+        const newMatrix = [...matrix].sort((a, b) => {
+            const n = a.length / 2;
+            const aHasX = a.slice(0, n).some(x => x === 1);
+            const aHasZ = a.slice(n).some(z => z === 1);
+            const bHasX = b.slice(0, n).some(x => x === 1);
+            const bHasZ = b.slice(n).some(z => z === 1);
+
+            // X-only rows come first
+            if (aHasX && !aHasZ && (!bHasX || bHasZ)) return -1;
+            if (bHasX && !bHasZ && (!aHasX || aHasZ)) return 1;
+
+            // Z-only rows come second
+            if (!aHasX && aHasZ && (bHasX || !bHasZ)) return -1;
+            if (!bHasX && bHasZ && (aHasX || !aHasZ)) return 1;
+
+            return 0;
+        });
+
+        // Update history
+        const newHistory = [...matrixHistory.slice(0, currentHistoryIndex + 1), newMatrix];
+        setMatrixHistory(newHistory);
+        setCurrentHistoryIndex(newHistory.length - 1);
+
+        // Update the matrix through the callback
+        if (onMatrixChange) {
+            onMatrixChange(newMatrix);
+        }
+    };
+
     return (
         <Box>
-            {title && <Heading size="sm" mb={2}>{title}</Heading>}
-            <Text>[[{numLegs}, {numLegs - n_stabilizers}]]</Text>
+            <HStack justify="space-between" mb={2}>
+                <Box>
+                    {title && <Heading size="sm">{title}</Heading>}
+                    <Text>[[{numLegs}, {numLegs - n_stabilizers}]] ({matrix.every(isCSS) ? "CSS" : "non-CSS"})</Text>
+                </Box>
+                <HStack>
+                    <Button
+                        size="sm"
+                        leftIcon={<FaUndo />}
+                        onClick={handleUndo}
+                        isDisabled={currentHistoryIndex <= 0}
+                    >
+                        Undo
+                    </Button>
+                    <Button
+                        size="sm"
+                        leftIcon={<FaRedo />}
+                        onClick={handleRedo}
+                        isDisabled={currentHistoryIndex >= matrixHistory.length - 1}
+                    >
+                        Redo
+                    </Button>
+                    {onRecalculate && (
+                        <Button
+                            size="sm"
+                            leftIcon={<FaSync />}
+                            onClick={onRecalculate}
+                            colorScheme="blue"
+                        >
+                            Recalculate
+                        </Button>
+                    )}
+                    {matrix.every(isCSS) && (
+                        <Button
+                            size="sm"
+                            onClick={handleCSSSort}
+                            colorScheme="orange"
+                        >
+                            CSS-sort
+                        </Button>
+                    )}
+                </HStack>
+            </HStack>
             <Box overflowX="auto">
                 <Table size="sm" variant="simple">
                     <Thead>
@@ -91,7 +234,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                     borderWidth={0}
                                     colSpan={matrix[0].length / 2}
                                     fontWeight="bold"
-                                    color="blue.600"
+                                    color="red.600"
                                 >
                                     X
                                 </Td>
@@ -101,7 +244,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                     borderWidth={0}
                                     colSpan={matrix[0].length / 2}
                                     fontWeight="bold"
-                                    color="red.600"
+                                    color="green.600"
                                 >
                                     Z
                                 </Td>
@@ -119,7 +262,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             borderWidth={0}
                                             colSpan={1}
                                             fontSize="sm"
-                                            color="blue.600"
+                                            color="red.600"
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
@@ -133,7 +276,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             borderWidth={0}
                                             colSpan={1}
                                             fontSize="sm"
-                                            color="red.600"
+                                            color="green.600"
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
@@ -189,6 +332,29 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                         ))}
                     </Tbody>
                 </Table>
+            </Box>
+            <Box mt={4}>
+                <Heading size="sm" mb={2}>Stabilizer View</Heading>
+                <VStack align="stretch" spacing={1}>
+                    {matrix.map((row, index) => (
+                        <HStack key={index} spacing={2}>
+                            <Text fontWeight="bold" width="30px">{index}.</Text>
+                            <HStack spacing={1}>
+                                {getPauliString(row).split('').map((pauli, i) => (
+                                    <Text
+                                        key={i}
+                                        color={getPauliColor(pauli)}
+                                        fontWeight="bold"
+                                        fontFamily="monospace"
+                                        fontSize="14px"
+                                    >
+                                        {pauli}
+                                    </Text>
+                                ))}
+                            </HStack>
+                        </HStack>
+                    ))}
+                </VStack>
             </Box>
         </Box>
     )

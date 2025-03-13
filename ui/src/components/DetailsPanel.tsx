@@ -220,6 +220,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                     });
                                                 }
                                             }}
+                                            onRecalculate={calculateParityCheckMatrix}
                                         />
                                     )}
                                 {(tensorNetwork.weightEnumerator ||
