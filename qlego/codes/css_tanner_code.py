@@ -20,6 +20,7 @@ class CssTannerCodeTN(TensorNetwork):
             z_stabs = np.nonzero(hz[:, q])[0]
             n_z_legs = len(z_stabs)
             # print(q, x_stabs, z_stabs)
+
             h0 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h0")
             h1 = TensorStabilizerCodeEnumerator(Legos.h, idx=f"q{q}.h1")
 

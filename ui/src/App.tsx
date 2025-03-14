@@ -2,6 +2,7 @@ import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton,
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
+import * as d3 from 'd3-force'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
@@ -11,6 +12,19 @@ import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
+import { CssTannerDialog } from './components/CssTannerDialog'
+
+interface ForceNode {
+    id: string;
+    x?: number;
+    y?: number;
+    lego: DroppedLego;
+}
+
+interface ForceLink {
+    source: string;
+    target: string;
+}
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -56,6 +70,7 @@ function App() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedDynamicLego, setSelectedDynamicLego] = useState<LegoPiece | null>(null)
     const [pendingDropPosition, setPendingDropPosition] = useState<{ x: number; y: number } | null>(null)
+    const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -66,6 +81,9 @@ function App() {
     }, [legos])
 
     const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
+        // console.log("Encoding droppedLegos", pieces, "connections", conns);
+        // Print call stack for debugging
+        // console.log('Canvas state encoding call stack:', new Error("just debugging").stack);
         stateSerializerRef.current.encode(pieces, conns)
     }, [])
 
@@ -164,12 +182,13 @@ function App() {
                 setIsDialogOpen(true)
             } else {
                 const instanceId = newInstanceId(droppedLegos)
-                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
+                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id) }
                 setDroppedLegos(prev => [...prev, newLego])
                 addToHistory({
                     type: 'add',
                     data: { legos: [newLego] }
                 })
+                encodeCanvasState([...droppedLegos, newLego], connections)
             }
         }
     }
@@ -200,13 +219,14 @@ function App() {
                 x: pendingDropPosition.x,
                 y: pendingDropPosition.y,
                 instanceId,
-                style: getLegoStyle(dynamicLego)
+                style: getLegoStyle(dynamicLego.id)
             }
             setDroppedLegos(prev => [...prev, newLego])
             addToHistory({
                 type: 'add',
                 data: { legos: [newLego] }
             })
+            encodeCanvasState([...droppedLegos, newLego], connections)
         } catch (error) {
             setError('Failed to create dynamic lego')
         } finally {
@@ -798,7 +818,7 @@ function App() {
     };
 
     const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
-        const legStyle = lego.style.getLegStyle(legIndex);
+        const legStyle = lego.style.getLegStyle(legIndex, lego);
         const startX = legStyle.from === "center" ? lego.x :
             legStyle.from === "bottom" ? lego.x + legStyle.startOffset * Math.cos(legStyle.angle) : lego.x;
         const startY = legStyle.from === "center" ? lego.y :
@@ -1170,7 +1190,13 @@ function App() {
                     setManuallySelectedLegos([]);
 
                     // Update URL state
-                    encodeCanvasState(droppedLegos, connections);
+                    encodeCanvasState(droppedLegos.filter(lego =>
+                        !legosToRemove.some(l => l.instanceId === lego.instanceId)
+                    ), connections.filter(conn =>
+                        !legosToRemove.some(l =>
+                            conn.from.legoId === l.instanceId || conn.to.legoId === l.instanceId
+                        )
+                    ));
                 }
             } else if (e.key === 'Escape') {
                 // Dismiss error message when Escape is pressed
@@ -1226,6 +1252,7 @@ function App() {
 
         // Update URL state
         encodeCanvasState([], []);
+
     };
 
 
@@ -1249,6 +1276,69 @@ function App() {
         weightEnumeratorCache.clear();
     }, [droppedLegos.length]);
 
+    const handleCssTannerSubmit = async (matrix: number[][]) => {
+        try {
+            const response = await axios.post('http://localhost:5000/csstannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const { legos, connections } = response.data;
+
+            // Create simulation
+            const simulation = d3.forceSimulation<ForceNode>()
+                .force('link', d3.forceLink<ForceNode, ForceLink>().id((d) => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(400, 300));
+
+            // Prepare data for force layout
+            const nodes: ForceNode[] = legos.map((lego: DroppedLego) => ({
+                id: lego.instanceId,
+                lego
+            }));
+
+            const links: ForceLink[] = connections.map((conn: Connection) => ({
+                source: conn.from.legoId,
+                target: conn.to.legoId
+            }));
+
+            // Run simulation
+            simulation.nodes(nodes);
+            (simulation.force('link') as d3.ForceLink<ForceNode, ForceLink>).links(links);
+
+            // Run simulation for a few iterations
+            for (let i = 0; i < 300; i++) {
+                simulation.tick();
+            }
+
+            // Update lego positions based on simulation
+            const positionedLegos = legos.map((lego: DroppedLego) => {
+                const node = nodes.find(n => n.id === lego.instanceId);
+                return {
+                    ...lego,
+                    x: node?.x || 0,
+                    y: node?.y || 0,
+                    style: getLegoStyle(lego.id)
+                };
+            });
+
+            // Add to state
+            setDroppedLegos(prev => [...prev, ...positionedLegos]);
+            setConnections(prev => [...prev, ...connections]);
+
+            // Add to history
+            addToHistory({
+                type: 'add',
+                data: {
+                    legos: positionedLegos,
+                    connections: connections
+                }
+            });
+
+            const updatedLegos = [...droppedLegos, ...positionedLegos];
+            encodeCanvasState(updatedLegos, connections);
+
+        } catch (error) {
+            setError('Failed to create CSS Tanner network');
+            console.error('Error:', error);
+        }
+    };
 
     return (
         <VStack spacing={0} align="stretch" h="100vh">
@@ -1266,12 +1356,12 @@ function App() {
                         variant="ghost"
                         size="sm"
                     >
-                        Examples
+                        Tensor Networks
                     </MenuButton>
                     <MenuList>
-                        <MenuItem>Surface code from [[5,1,2]] legos</MenuItem>
-                        <MenuItem>Bacon-Shor code</MenuItem>
-                        <MenuItem>Steane code from [[6,0,2]] legos</MenuItem>
+                        <MenuItem onClick={() => setIsCssTannerDialogOpen(true)}>
+                            CSS Tanner network
+                        </MenuItem>
                     </MenuList>
                 </Menu>
                 <Button
@@ -1352,14 +1442,18 @@ function App() {
                                             if (!fromLego || !toLego) return null;
 
                                             // Create a stable key based on the connection's properties
-                                            const connKey = `${conn.from.legoId}-${conn.from.legIndex}-${conn.to.legoId}-${conn.to.legIndex}`;
+                                            const [firstId, firstLeg, secondId, secondLeg] =
+                                                conn.from.legoId < conn.to.legoId
+                                                    ? [conn.from.legoId, conn.from.legIndex, conn.to.legoId, conn.to.legIndex]
+                                                    : [conn.to.legoId, conn.to.legIndex, conn.from.legoId, conn.from.legIndex];
+                                            const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
                                             const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
                                             const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
                                             // Calculate control points for the curve
-                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex);
-                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex);
+                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
+                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
 
                                             // Get vectors pointing in the direction of the legs
                                             const fromVector = {
@@ -1437,7 +1531,7 @@ function App() {
                                         const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
                                         if (!fromLego) return null;
 
-                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex);
+                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex, fromLego);
                                         const startX = legStyle.from === "center" ? fromLego.x :
                                             legStyle.from === "bottom" ? fromLego.x + legStyle.startOffset * Math.cos(legStyle.angle) : fromLego.x;
                                         const startY = legStyle.from === "center" ? fromLego.y :
@@ -1476,7 +1570,7 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const legStyle = lego.style.getLegStyle(legIndex);
+                                            const legStyle = lego.style.getLegStyle(legIndex, lego);
                                             const labelX = lego.x + (legStyle.length + 10) * Math.cos(legStyle.angle);
                                             const labelY = lego.y + (legStyle.length + 10) * Math.sin(legStyle.angle);
 
@@ -1561,6 +1655,11 @@ function App() {
                 onSubmit={handleDynamicLegoSubmit}
                 legoId={selectedDynamicLego?.id || ''}
                 parameters={selectedDynamicLego?.parameters || {}}
+            />
+            <CssTannerDialog
+                isOpen={isCssTannerDialogOpen}
+                onClose={() => setIsCssTannerDialogOpen(false)}
+                onSubmit={handleCssTannerSubmit}
             />
         </VStack >
     )

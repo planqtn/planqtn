@@ -1,5 +1,5 @@
 import { DroppedLego, LegoPiece, Connection, CanvasState } from '../types'
-import { getLegoStyle } from '../LegoStyles'
+import { GenericStyle, getLegoStyle } from '../LegoStyles'
 import axios from 'axios'
 
 export class CanvasStateSerializer {
@@ -12,6 +12,7 @@ export class CanvasStateSerializer {
                 instanceId: piece.instanceId,
                 x: piece.x,
                 y: piece.y,
+                shortName: piece.shortName,
                 is_dynamic: piece.is_dynamic,
                 parameters: piece.parameters,
                 parity_check_matrix: piece.parity_check_matrix,
@@ -20,7 +21,9 @@ export class CanvasStateSerializer {
             })),
             connections
         }
+
         const encoded = btoa(JSON.stringify(state))
+        console.log("Encoding state:", state, "encoded", encoded);
         window.history.replaceState(null, '', `#state=${encoded}`)
     }
 
@@ -33,7 +36,6 @@ export class CanvasStateSerializer {
             if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
                 return { pieces: [], connections: [] }
             }
-
             // Fetch legos if not already loaded
             let legosList = this.legos
             if (this.legos.length === 0) {
@@ -53,14 +55,35 @@ export class CanvasStateSerializer {
                     parity_check_matrix?: number[][];
                     logical_legs?: number[];
                     gauge_legs?: number[];
+                    name?: string;
+                    shortName?: string;
+                    description?: string;
                 }) => {
-                    const fullLego = legosList.find(l => l.id === piece.id)
-                    if (!fullLego) return null
+                    const predefinedLego = legosList.find(l => l.id === piece.id)
+
+                    // For pieces not in lego list, construct from saved data
+                    if (!predefinedLego) {
+                        return {
+                            id: piece.id,
+                            name: piece.name || piece.id,
+                            shortName: piece.shortName || piece.id,
+                            description: piece.description || '',
+                            instanceId: piece.instanceId,
+                            x: piece.x,
+                            y: piece.y,
+                            is_dynamic: piece.is_dynamic || false,
+                            parameters: piece.parameters || {},
+                            parity_check_matrix: piece.parity_check_matrix || [],
+                            logical_legs: piece.logical_legs || [],
+                            gauge_legs: piece.gauge_legs || [],
+                            style: new GenericStyle(piece.id)
+                        }
+                    }
 
                     // For dynamic legos, use the saved parameters and matrix
                     if (piece.is_dynamic && piece.parameters && piece.parity_check_matrix) {
                         return {
-                            ...fullLego,
+                            ...predefinedLego,
                             instanceId: piece.instanceId,
                             x: piece.x,
                             y: piece.y,
@@ -68,25 +91,20 @@ export class CanvasStateSerializer {
                             parity_check_matrix: piece.parity_check_matrix,
                             logical_legs: piece.logical_legs || [],
                             gauge_legs: piece.gauge_legs || [],
-                            style: getLegoStyle({
-                                ...fullLego,
-                                parity_check_matrix: piece.parity_check_matrix,
-                                logical_legs: piece.logical_legs || [],
-                                gauge_legs: piece.gauge_legs || []
-                            })
+                            style: getLegoStyle(piece.id)
                         }
                     }
 
                     // For regular legos, use the template
                     return {
-                        ...fullLego,
+                        ...predefinedLego,
                         instanceId: piece.instanceId,
                         x: piece.x,
                         y: piece.y,
-                        style: getLegoStyle(fullLego)
+                        style: getLegoStyle(predefinedLego.id)
                     }
                 })
-                .filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
+            // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);
             return {
                 pieces: reconstructedPieces,
                 connections: decoded.connections || []

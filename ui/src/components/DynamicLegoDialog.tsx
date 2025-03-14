@@ -17,7 +17,7 @@ import {
     NumberIncrementStepper,
     NumberDecrementStepper,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface DynamicLegoDialogProps {
     isOpen: boolean;
@@ -35,6 +35,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
     parameters,
 }) => {
     const [values, setValues] = useState<Record<string, any>>(parameters);
+    const firstInputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,7 +43,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
         onClose();
     };
 
-    const renderParameterInput = (key: string, value: any) => {
+    const renderParameterInput = (key: string, value: any, isFirst: boolean) => {
         if (typeof value === 'number') {
             return (
                 <FormControl key={key}>
@@ -52,7 +53,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
                         min={1}
                         onChange={(_, value) => setValues({ ...values, [key]: value })}
                     >
-                        <NumberInputField />
+                        <NumberInputField ref={isFirst ? firstInputRef : undefined} />
                         <NumberInputStepper>
                             <NumberIncrementStepper />
                             <NumberDecrementStepper />
@@ -67,13 +68,14 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
                 <Input
                     value={values[key]}
                     onChange={(e) => setValues({ ...values, [key]: e.target.value })}
+                    ref={isFirst ? firstInputRef : undefined}
                 />
             </FormControl>
         );
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose}>
+        <Modal isOpen={isOpen} onClose={onClose} initialFocusRef={firstInputRef}>
             <ModalOverlay />
             <ModalContent>
                 <form onSubmit={handleSubmit}>
@@ -81,8 +83,8 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
                     <ModalCloseButton />
                     <ModalBody>
                         <VStack spacing={4}>
-                            {Object.entries(parameters).map(([key, value]) =>
-                                renderParameterInput(key, value)
+                            {Object.entries(parameters).map(([key, value], index) =>
+                                renderParameterInput(key, value, index === 0)
                             )}
                         </VStack>
                     </ModalBody>

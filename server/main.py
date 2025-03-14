@@ -1,3 +1,4 @@
+import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from galois import GF2
@@ -14,6 +15,7 @@ from qlego.tensor_stabilizer_enumerator import (
     TensorNetwork,
     TensorStabilizerCodeEnumerator,
 )
+from qlego.codes.css_tanner_code import CssTannerCodeTN
 
 app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
@@ -38,8 +40,7 @@ class LegoPiece(BaseModel):
     id: str
     name: str
     shortName: str
-    type: str
-    description: str
+    description: str = ""
     is_dynamic: bool = False
     parameters: Dict[str, Any] = {}
     parity_check_matrix: List[List[int]]
@@ -78,6 +79,17 @@ class DynamicLegoRequest(BaseModel):
     parameters: Dict[str, Any]
 
 
+class CssTannerRequest(BaseModel):
+    matrix: List[List[int]]
+    start_node_index: int = 0
+
+
+class CssTannerResponse(BaseModel):
+    legos: List[Dict[str, Any]]
+    connections: List[Dict[str, Any]]
+    message: str = "Successfully created CSS Tanner network"
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(message="Server is running", status="healthy")
@@ -91,6 +103,7 @@ async def list_legos():
 @app.post("/paritycheck", response_model=ParityCheckResponse)
 async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
+    print("network", network)
     nodes = {}
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
@@ -206,6 +219,80 @@ async def get_dynamic_lego(request: DynamicLegoRequest):
         lego_def["parity_check_matrix"] = matrix.tolist()
         return lego_def
     except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/csstannernetwork", response_model=CssTannerResponse)
+async def create_css_tanner_network(request: CssTannerRequest):
+    try:
+        matrix = np.array(request.matrix)
+
+        # Sort rows and separate into hx and hz
+        sorted_rows = np.lexsort([matrix[:, i] for i in range(matrix.shape[1])])
+        sorted_matrix = matrix[sorted_rows]
+        print("sorted_matrix\n", sorted_matrix)
+        # Find the split point between X and Z stabilizers
+        n = matrix.shape[1] // 2
+        split_point = 0
+        for i in range(sorted_matrix.shape[0]):
+            if np.any(sorted_matrix[i, n:]):  # If any Z part is non-zero
+                split_point = i
+                break
+
+        print("split_point", split_point)
+
+        hz = sorted_matrix[split_point:, n:]  # Z stabilizer part
+        hx = sorted_matrix[:split_point, :n]  # X  stabilizer part
+
+        print("hx\n", hx)
+        print("hz\n", hz)
+
+        # Create the tensor network
+        tn = CssTannerCodeTN(hx=hx, hz=hz)
+
+        # Convert to JSON-serializable format
+        legos = []
+        connections = []
+
+        instance_id_to_idx = {}
+
+        # Add legos and track their instance IDs
+        for i, (instance_id, piece) in enumerate(tn.nodes.items()):
+            lego = {
+                "instanceId": str(i + request.start_node_index),
+                "id": "generic",
+                "shortName": instance_id,
+                "x": 0,  # Will be positioned by force layout
+                "y": 0,
+                "parity_check_matrix": piece.h.tolist(),
+                "logical_legs": [],
+                "gauge_legs": [],
+            }
+            legos.append(lego)
+            instance_id_to_idx[instance_id] = i + request.start_node_index
+        # Add connections from the tensor network's traces
+        for node1, node2, legs1, legs2 in tn.traces:
+            for leg1, leg2 in zip(legs1, legs2):
+                connections.append(
+                    {
+                        "from": {
+                            "legoId": str(instance_id_to_idx[node1]),
+                            "legIndex": tn.nodes[node1].legs.index(leg1),
+                        },
+                        "to": {
+                            "legoId": str(instance_id_to_idx[node2]),
+                            "legIndex": tn.nodes[node2].legs.index(leg2),
+                        },
+                    }
+                )
+
+        for connection in connections:
+            print(connection)
+
+        return CssTannerResponse(legos=legos, connections=connections)
+
+    except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 

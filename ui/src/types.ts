@@ -4,7 +4,6 @@ export interface LegoPiece {
     id: string
     name: string
     shortName: string
-    type: string
     description: string
     is_dynamic?: boolean
     parameters?: Record<string, any>
@@ -128,4 +127,18 @@ export interface CanvasState {
         gauge_legs?: number[]
     }>
     connections: Array<Connection>
+}
+
+export interface LegoServerPayload {
+    instanceId: string;
+    id: string;
+    type: string;
+    name: string;
+    shortName: string;
+    description?: string;
+    is_dynamic?: boolean;
+    parameters?: Record<string, any>;
+    parity_check_matrix: number[][];
+    logical_legs: number[];
+    gauge_legs: number[];
 }

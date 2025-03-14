@@ -25,7 +25,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({ lego, in
         >
             {/* All Legs (rendered with z-index) */}
             {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                const legStyle = lego.style.getLegStyle(legIndex);
+                const legStyle = lego.style.getLegStyle(legIndex, lego);
                 const isLogical = lego.logical_legs.includes(legIndex);
 
                 const startX = legStyle.from === "center" ? (lego.style.size / 2) :

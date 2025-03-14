@@ -1,16 +1,5 @@
+import { LegoPiece } from "./types";
 
-export interface LegoPiece {
-    id: string;
-    name: string;
-    shortName: string;
-    type: string;
-    description: string;
-    is_dynamic?: boolean;
-    parameters?: Record<string, any>;
-    parity_check_matrix: number[][];
-    logical_legs: number[];
-    gauge_legs: number[];
-}
 
 interface LegStyle {
     angle: number;
@@ -22,38 +11,8 @@ interface LegStyle {
 }
 
 export abstract class LegoStyle {
-    protected readonly lego: LegoPiece;
+    constructor(protected readonly id: string) {
 
-    constructor(lego: LegoPiece) {
-        this.lego = lego;
-    }
-
-    get id(): string {
-        return this.lego.id;
-    }
-
-    get name(): string {
-        return this.lego.name;
-    }
-
-    get shortName(): string {
-        return this.lego.shortName;
-    }
-
-    get description(): string {
-        return this.lego.description;
-    }
-
-    get parity_check_matrix(): number[][] {
-        return this.lego.parity_check_matrix;
-    }
-
-    get logical_legs(): number[] {
-        return this.lego.logical_legs;
-    }
-
-    get gauge_legs(): number[] {
-        return this.lego.gauge_legs;
     }
 
     get displayShortName(): boolean {
@@ -71,15 +30,15 @@ export abstract class LegoStyle {
         return true;
     }
 
-    getLegStyle(legIndex: number): LegStyle {
-        const isLogical = this.logical_legs.includes(legIndex);
-        const isGauge = this.gauge_legs.includes(legIndex);
-        const legCount = this.parity_check_matrix[0].length / 2;
+    getLegStyle(legIndex: number, lego: LegoPiece): LegStyle {
+        const isLogical = lego.logical_legs.includes(legIndex);
+        const isGauge = lego.gauge_legs.includes(legIndex);
+        const legCount = lego.parity_check_matrix[0].length / 2;
 
         if (isLogical) {
             // For logical legs, calculate angle from center upwards
-            const logicalLegsCount = this.logical_legs.length;
-            const logicalIndex = this.logical_legs.indexOf(legIndex);
+            const logicalLegsCount = lego.logical_legs.length;
+            const logicalIndex = lego.logical_legs.indexOf(legIndex);
             let angle;
             if (logicalLegsCount === 1) {
                 angle = -Math.PI / 2; // Straight up
@@ -192,19 +151,19 @@ export class RepetitionCodeStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        return this.lego.id === "z_rep_code" ? "green.200" : "red.200";
+        return this.id === "z_rep_code" ? "green.200" : "red.200";
     }
 
     get borderColor(): string {
-        return this.lego.id === "z_rep_code" ? "green.400" : "red.400";
+        return this.id === "z_rep_code" ? "green.400" : "red.400";
     }
 
     get selectedBackgroundColor(): string {
-        return this.lego.id === "z_rep_code" ? "green.300" : "red.300";
+        return this.id === "z_rep_code" ? "green.300" : "red.300";
     }
 
     get selectedBorderColor(): string {
-        return this.lego.id === "z_rep_code" ? "green.700" : "red.700";
+        return this.id === "z_rep_code" ? "green.700" : "red.700";
     }
 
     get is_special(): boolean {
@@ -226,60 +185,52 @@ export class StopperStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        switch (this.lego.id) {
+        switch (this.id) {
             case "stopper_i":
                 return "white";
             case "stopper_x":
                 return "red.200";
             case "stopper_z":
                 return "green.200";
-            case "stopper_y":
-                return "purple.200";
             default:
                 return "gray.200";
         }
     }
 
     get borderColor(): string {
-        switch (this.lego.id) {
+        switch (this.id) {
             case "stopper_i":
                 return "gray.400";
             case "stopper_x":
                 return "red.400";
             case "stopper_z":
                 return "green.400";
-            case "stopper_y":
-                return "purple.400";
             default:
                 return "gray.400";
         }
     }
 
     get selectedBackgroundColor(): string {
-        switch (this.lego.id) {
+        switch (this.id) {
             case "stopper_i":
                 return "gray.200";
             case "stopper_x":
                 return "red.300";
             case "stopper_z":
                 return "green.300";
-            case "stopper_y":
-                return "purple.300";
             default:
                 return "gray.300";
         }
     }
 
     get selectedBorderColor(): string {
-        switch (this.lego.id) {
+        switch (this.id) {
             case "stopper_i":
                 return "gray.600";
             case "stopper_x":
                 return "red.700";
             case "stopper_z":
                 return "green.700";
-            case "stopper_y":
-                return "purple.700";
             default:
                 return "gray.700";
         }
@@ -294,23 +245,23 @@ export class StopperStyle extends LegoStyle {
     }
 
 }
-export function getLegoStyle(lego: LegoPiece): LegoStyle {
-    if (lego.id === "h") {
-        return new HadamardStyle(lego);
-    } else if (lego.id === "z_rep_code") {
-        return new RepetitionCodeStyle(lego);
-    } else if (lego.id === "x_rep_code") {
-        return new RepetitionCodeStyle(lego);
-    } else if (lego.id === "stopper_i") {
-        return new StopperStyle(lego);
-    } else if (lego.id === "stopper_x") {
-        return new StopperStyle(lego);
-    } else if (lego.id === "stopper_z") {
-        return new StopperStyle(lego);
-    } else if (lego.id === "stopper_y") {
-        return new StopperStyle(lego);
+export function getLegoStyle(id: string): LegoStyle {
+    if (id === "h") {
+        return new HadamardStyle(id);
+    } else if (id === "z_rep_code") {
+        return new RepetitionCodeStyle(id);
+    } else if (id === "x_rep_code") {
+        return new RepetitionCodeStyle(id);
+    } else if (id === "stopper_i") {
+        return new StopperStyle(id);
+    } else if (id === "stopper_x") {
+        return new StopperStyle(id);
+    } else if (id === "stopper_z") {
+        return new StopperStyle(id);
+    } else if (id === "stopper_y") {
+        return new StopperStyle(id);
     } else {
-        return new GenericStyle(lego);
+        return new GenericStyle(id);
     }
 }
 

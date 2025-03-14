@@ -1,6 +1,6 @@
 import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
-import { DroppedLego, TensorNetwork, TensorNetworkLeg } from '../types.ts'
+import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
@@ -43,11 +43,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const calculateParityCheckMatrix = async () => {
         if (!tensorNetwork) return;
         try {
-            const response = await axios.post('/api/paritycheck', {
+
+            const response = await axios.post('http://localhost:5000/paritycheck', {
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
-                    acc[lego.instanceId] = lego;
+                    const { style, x, y, ...legoWithoutStyle } = lego;
+                    acc[lego.instanceId] = {
+                        ...legoWithoutStyle,
+                        name: lego.shortName || "Generic Lego"
+                    } as LegoServerPayload;
                     return acc;
-                }, {} as Record<string, DroppedLego>),
+                }, {} as Record<string, LegoServerPayload>),
                 connections: tensorNetwork.connections
             });
 
