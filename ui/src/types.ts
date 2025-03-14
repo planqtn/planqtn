@@ -121,6 +121,11 @@ export interface CanvasState {
         instanceId: string
         x: number
         y: number
+        is_dynamic?: boolean
+        parameters?: Record<string, any>
+        parity_check_matrix?: number[][]
+        logical_legs?: number[]
+        gauge_legs?: number[]
     }>
     connections: Array<Connection>
 }

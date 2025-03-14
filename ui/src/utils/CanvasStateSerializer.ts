@@ -11,7 +11,12 @@ export class CanvasStateSerializer {
                 id: piece.id,
                 instanceId: piece.instanceId,
                 x: piece.x,
-                y: piece.y
+                y: piece.y,
+                is_dynamic: piece.is_dynamic,
+                parameters: piece.parameters,
+                parity_check_matrix: piece.parity_check_matrix,
+                logical_legs: piece.logical_legs,
+                gauge_legs: piece.gauge_legs
             })),
             connections
         }
@@ -38,9 +43,41 @@ export class CanvasStateSerializer {
 
             // Reconstruct dropped legos with full lego information
             const reconstructedPieces = decoded.pieces
-                .map((piece: { id: string; instanceId: string; x: number; y: number }) => {
+                .map((piece: {
+                    id: string;
+                    instanceId: string;
+                    x: number;
+                    y: number;
+                    is_dynamic?: boolean;
+                    parameters?: Record<string, any>;
+                    parity_check_matrix?: number[][];
+                    logical_legs?: number[];
+                    gauge_legs?: number[];
+                }) => {
                     const fullLego = legosList.find(l => l.id === piece.id)
                     if (!fullLego) return null
+
+                    // For dynamic legos, use the saved parameters and matrix
+                    if (piece.is_dynamic && piece.parameters && piece.parity_check_matrix) {
+                        return {
+                            ...fullLego,
+                            instanceId: piece.instanceId,
+                            x: piece.x,
+                            y: piece.y,
+                            parameters: piece.parameters,
+                            parity_check_matrix: piece.parity_check_matrix,
+                            logical_legs: piece.logical_legs || [],
+                            gauge_legs: piece.gauge_legs || [],
+                            style: getLegoStyle({
+                                ...fullLego,
+                                parity_check_matrix: piece.parity_check_matrix,
+                                logical_legs: piece.logical_legs || [],
+                                gauge_legs: piece.gauge_legs || []
+                            })
+                        }
+                    }
+
+                    // For regular legos, use the template
                     return {
                         ...fullLego,
                         instanceId: piece.instanceId,
@@ -50,7 +87,6 @@ export class CanvasStateSerializer {
                     }
                 })
                 .filter((piece: DroppedLego | null): piece is DroppedLego => piece !== null)
-
             return {
                 pieces: reconstructedPieces,
                 connections: decoded.connections || []

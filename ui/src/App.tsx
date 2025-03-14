@@ -61,6 +61,7 @@ function App() {
     }, [legos])
 
     const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
+        console.log("encoding canvas state", pieces, conns);
         stateSerializerRef.current.encode(pieces, conns)
     }, [])
 
@@ -708,7 +709,17 @@ function App() {
                                 }
                             };
 
-                            setConnections(prev => [...prev, newConnection]);
+
+
+                            setConnections(prev => {
+                                const newConnections = [...prev, newConnection];
+
+                                console.log("newConnections", newConnections);
+                                encodeCanvasState(droppedLegos, newConnections);
+
+                                return newConnections;
+                            });
+
                             addToHistory({
                                 type: 'connect',
                                 data: { connections: [newConnection] }
@@ -732,8 +743,6 @@ function App() {
 
         setGroupDragState(null);
 
-        // Update URL state after the drag operation is complete
-        encodeCanvasState(droppedLegos, connections);
     };
 
     const handleCanvasMouseLeave = () => {
@@ -1115,13 +1124,17 @@ function App() {
             data: { connections: [connection] }
         });
 
-        // Remove the connection
-        setConnections(prev => prev.filter(conn =>
-            !(conn.from.legoId === connection.from.legoId &&
-                conn.from.legIndex === connection.from.legIndex &&
-                conn.to.legoId === connection.to.legoId &&
-                conn.to.legIndex === connection.to.legIndex)
-        ));
+        // Remove the connection and update URL state with the new connections
+        setConnections(prev => {
+            const newConnections = prev.filter(conn =>
+                !(conn.from.legoId === connection.from.legoId &&
+                    conn.from.legIndex === connection.from.legIndex &&
+                    conn.to.legoId === connection.to.legoId &&
+                    conn.to.legIndex === connection.to.legIndex)
+            );
+            encodeCanvasState(droppedLegos, newConnections);
+            return newConnections;
+        });
     };
 
     const handleClearAll = () => {

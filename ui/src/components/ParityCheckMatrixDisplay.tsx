@@ -362,7 +362,9 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                     </Box>
                     {matrix.every(isCSS) && legOrdering && (
                         <Box>
-                            <Heading size="sm" mb={2}>Graphical View</Heading>
+                            <HStack justify="space-between" mb={2}>
+                                <Heading size="sm">Graphical View</Heading>
+                            </HStack>
                             <StabilizerGraphView
                                 legs={legOrdering}
                                 matrix={matrix}

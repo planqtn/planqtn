@@ -1,4 +1,4 @@
-import { Box, VStack } from '@chakra-ui/react';
+import { Box, VStack, Button } from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import { TensorNetworkLeg } from '../types';
 import * as d3 from 'd3-force';
@@ -35,6 +35,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
     const [draggedPoint, setDraggedPoint] = useState<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedPoints, setSelectedPoints] = useState<Set<number>>(new Set());
+    const simulationRef = useRef<any>(null);
 
     const draw = () => {
         const canvas = canvasRef.current;
@@ -113,14 +114,95 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         });
     };
 
-    // Initialize points from cache or create new optimized layout
-    useEffect(() => {
-        // Create a unique key for this matrix
+    const runForceSimulation = () => {
+        // Create nodes for d3-force
+        const nodes = points.map((point, i) => ({
+            id: i,
+            x: point.x,
+            y: point.y,
+            fx: undefined as number | undefined,
+            fy: undefined as number | undefined,
+            isStabilizer: point.isStabilizer,
+            stabilizerIndex: point.stabilizerIndex,
+            type: point.type,
+            legIndex: (point as any).legIndex
+        }));
+
+        // Create links between stabilizers and legs
+        const links: { source: number; target: number; weight: number }[] = [];
+        matrix.forEach((row, stabilizerIndex) => {
+            const stabilizerLegs = getStabilizerLegs(row);
+            const stabilizerWeight = stabilizerLegs.length;
+
+            stabilizerLegs.forEach(legIndex => {
+                links.push({
+                    source: stabilizerIndex,
+                    target: matrix.length + legIndex,
+                    weight: stabilizerWeight
+                });
+            });
+        });
+
+        // Create simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+                .id((d: any) => d.id)
+                .distance(100)
+                .strength((link: any) => {
+                    return 0.7 * (link.weight / matrix[0].length);
+                }))
+            .force("charge", d3.forceManyBody()
+                .strength((d: any) => {
+                    if (d.isStabilizer) return -500;
+                    return -200;
+                }))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide()
+                .radius((d: any) => d.isStabilizer ? 40 : 30))
+            .force("x", d3.forceX(width / 2).strength(0.1))
+            .force("y", d3.forceY(height / 2).strength(0.1))
+            .force("boundary", function (alpha: number) {
+                nodes.forEach(node => {
+                    if (node.isStabilizer) {
+                        node.x = Math.max(40, Math.min(width - 30, node.x));
+                        node.y = Math.max(40, Math.min(height - 30, node.y));
+                    } else {
+                        node.x = Math.max(40, Math.min(width - 20, node.x));
+                        node.y = Math.max(40, Math.min(height - 20, node.y));
+                    }
+                });
+            });
+
+        // Store simulation reference
+        simulationRef.current = simulation;
+
+        // Run simulation
+        simulation.stop();
+        for (let i = 0; i < 300; i++) simulation.tick();
+
+        // Convert nodes back to points
+        const newPoints = nodes.map(node => ({
+            x: node.x,
+            y: node.y,
+            isStabilizer: node.isStabilizer,
+            stabilizerIndex: node.stabilizerIndex,
+            type: node.type
+        }));
+
+        setPoints(newPoints);
+
+        // Cache the new positions
         const matrixKey = matrix.map(row => row.join('')).join('|');
         const cacheKey = `stabilizer_graph_positions_${matrixKey}`;
+        localStorage.setItem(cacheKey, JSON.stringify(newPoints));
+    };
 
-        // Try to get cached positions
+    // Initialize points from cache or create new layout
+    useEffect(() => {
+        const matrixKey = matrix.map(row => row.join('')).join('|');
+        const cacheKey = `stabilizer_graph_positions_${matrixKey}`;
         const cachedPositions = localStorage.getItem(cacheKey);
+
         if (cachedPositions) {
             try {
                 const parsedPoints = JSON.parse(cachedPositions);
@@ -133,13 +215,12 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
             }
         }
 
-        // Create initial positions for stabilizer nodes
+        // Create initial grid layout
         const stabilizerPoints = matrix.map((row, index) => {
             const n = row.length / 2;
             const hasX = row.slice(0, n).some(x => x === 1);
             const type = hasX ? 'X' as const : 'Z' as const;
 
-            // Position stabilizer nodes in a grid at the top
             const cols = Math.ceil(Math.sqrt(matrix.length));
             const stabilizerRow = Math.floor(index / cols);
             const stabilizerCol = index % cols;
@@ -157,17 +238,16 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
             };
         });
 
-        // Create initial grid layout for legs
         const legCols = Math.ceil(Math.sqrt(legs.length));
         const legRows = Math.ceil(legs.length / legCols);
         const legCellWidth = width / (legCols + 1);
-        const legCellHeight = (height - 150) / (legRows + 1); // Leave space for stabilizers
+        const legCellHeight = (height - 150) / (legRows + 1);
 
         const legPoints = legs.map((leg, index) => {
             const legRow = Math.floor(index / legCols);
             const legCol = index % legCols;
             const x = legCellWidth * (legCol + 1);
-            const y = 150 + legCellHeight * (legRow + 1); // Start below stabilizers
+            const y = 150 + legCellHeight * (legRow + 1);
 
             return {
                 x,
@@ -175,90 +255,11 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 isStabilizer: false,
                 stabilizerIndex: undefined,
                 type: undefined as 'X' | 'Z' | undefined,
-                legIndex: index // Add legIndex to track the original leg index
+                legIndex: index
             };
         });
 
-        // Create nodes for d3-force
-        const nodes = [...stabilizerPoints, ...legPoints].map((point, i) => ({
-            id: i,
-            x: point.x,
-            y: point.y,
-            fx: undefined as number | undefined,
-            fy: undefined as number | undefined,
-            isStabilizer: point.isStabilizer,
-            stabilizerIndex: point.stabilizerIndex,
-            type: point.type,
-            legIndex: (point as any).legIndex // Preserve legIndex in nodes
-        }));
-
-        // Create links between stabilizers and legs
-        const links: { source: number; target: number; weight: number }[] = [];
-        matrix.forEach((row, stabilizerIndex) => {
-            const stabilizerLegs = getStabilizerLegs(row);
-            // Calculate stabilizer weight (number of connected legs)
-            const stabilizerWeight = stabilizerLegs.length;
-
-            stabilizerLegs.forEach(legIndex => {
-                links.push({
-                    source: stabilizerIndex, // Source is the stabilizer node
-                    target: matrix.length + legIndex, // Target is the leg node (offset by number of stabilizers)
-                    weight: stabilizerWeight // Use stabilizer weight for link weight
-                });
-            });
-        });
-
-        // Create simulation
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links)
-                .id((d: any) => d.id)
-                .distance(100)
-                .strength((link: any) => {
-                    // Base strength is 0.7, multiply by link weight (number of legs in stabilizer)
-                    return 0.7 * (link.weight / matrix[0].length);
-                }))
-            .force("charge", d3.forceManyBody()
-                .strength((d: any) => {
-                    // Strong repulsion between stabilizers
-                    if (d.isStabilizer) return -500;
-                    // Moderate repulsion between legs
-                    return -200;
-                }))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide()
-                .radius((d: any) => d.isStabilizer ? 40 : 30))
-            .force("x", d3.forceX(width / 2).strength(0.1))
-            .force("y", d3.forceY(height / 2).strength(0.1))
-            .force("boundary", function (alpha: number) {
-                nodes.forEach(node => {
-                    // Keep stabilizer nodes within bounds
-                    if (node.isStabilizer) {
-                        node.x = Math.max(40, Math.min(width - 30, node.x));
-                        node.y = Math.max(40, Math.min(height - 30, node.y));
-                    } else {
-                        // Keep leg nodes within bounds
-                        node.x = Math.max(40, Math.min(width - 20, node.x));
-                        node.y = Math.max(40, Math.min(height - 20, node.y));
-                    }
-                });
-            });
-
-        // Run simulation
-        simulation.stop();
-        for (let i = 0; i < 300; i++) simulation.tick();
-
-        // Convert nodes back to points
-        const newPoints = nodes.map(node => ({
-            x: node.x,
-            y: node.y,
-            isStabilizer: node.isStabilizer,
-            stabilizerIndex: node.stabilizerIndex,
-            type: node.type
-        }));
-
-        setPoints(newPoints);
-        // Cache the new positions
-        localStorage.setItem(cacheKey, JSON.stringify(newPoints));
+        setPoints([...stabilizerPoints, ...legPoints]);
     }, [legs.length, width, height, matrix]);
 
     // Update cache when points change
@@ -407,6 +408,14 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
 
     return (
         <Box>
+            <Button
+                size="sm"
+                colorScheme="blue"
+                mb={2}
+                onClick={runForceSimulation}
+            >
+                Auto-layout
+            </Button>
             <canvas
                 ref={canvasRef}
                 width={width}
