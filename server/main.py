@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from galois import GF2
 from pydantic import BaseModel
@@ -71,6 +71,11 @@ class WeightEnumeratorResponse(BaseModel):
 class ConstructionCodeResponse(BaseModel):
     code: str
     message: str = "Successfully generated construction code"
+
+
+class DynamicLegoRequest(BaseModel):
+    lego_id: str
+    parameters: Dict[str, Any]
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -178,6 +183,30 @@ async def generate_construction_code(network: TensorNetworkParityCheckRequest):
     code = tn.construction_code()
 
     return ConstructionCodeResponse(code=code)
+
+
+@app.post("/dynamiclego", response_model=LegoPiece)
+async def get_dynamic_lego(request: DynamicLegoRequest):
+    # Get the lego definition from Legos class
+    legos = Legos.list_available_legos()
+    lego_def = next((l for l in legos if l["id"] == request.lego_id), None)
+
+    if not lego_def or not lego_def.get("is_dynamic"):
+        raise HTTPException(status_code=400, detail="Invalid or non-dynamic lego ID")
+
+    # Get the method from Legos class
+    method = getattr(Legos, request.lego_id)
+    if not method:
+        raise HTTPException(status_code=400, detail="Lego method not found")
+
+    # Call the method with the provided parameters
+    try:
+        matrix = method(**request.parameters)
+        # Update the lego definition with the new matrix
+        lego_def["parity_check_matrix"] = matrix.tolist()
+        return lego_def
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 if __name__ == "__main__":

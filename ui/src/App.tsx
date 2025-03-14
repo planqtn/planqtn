@@ -10,6 +10,7 @@ import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay } from './components/DroppedLegoDisplay'
+import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 
 function App() {
     const [message, setMessage] = useState<string>('Loading...')
@@ -47,6 +48,9 @@ function App() {
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard("")
     const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [selectedDynamicLego, setSelectedDynamicLego] = useState<LegoPiece | null>(null)
+    const [pendingDropPosition, setPendingDropPosition] = useState<{ x: number; y: number } | null>(null)
 
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -153,13 +157,62 @@ function App() {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
+
+            if (lego.is_dynamic) {
+                setSelectedDynamicLego(lego)
+                setPendingDropPosition({ x, y })
+                setIsDialogOpen(true)
+            } else {
+                const instanceId = newInstanceId()
+                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
+                setDroppedLegos(prev => [...prev, newLego])
+                addToHistory({
+                    type: 'add',
+                    data: { legos: [newLego] }
+                })
+            }
+        }
+    }
+
+    const handleDynamicLegoSubmit = async (parameters: Record<string, any>) => {
+        if (!selectedDynamicLego || !pendingDropPosition) return
+
+        try {
+            const response = await fetch('http://localhost:5000/dynamiclego', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lego_id: selectedDynamicLego.id,
+                    parameters,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to create dynamic lego')
+            }
+
+            const dynamicLego = await response.json()
             const instanceId = newInstanceId()
-            const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
+            const newLego = {
+                ...dynamicLego,
+                x: pendingDropPosition.x,
+                y: pendingDropPosition.y,
+                instanceId,
+                style: getLegoStyle(dynamicLego)
+            }
             setDroppedLegos(prev => [...prev, newLego])
             addToHistory({
                 type: 'add',
                 data: { legos: [newLego] }
             })
+        } catch (error) {
+            setError('Failed to create dynamic lego')
+        } finally {
+            setIsDialogOpen(false)
+            setSelectedDynamicLego(null)
+            setPendingDropPosition(null)
         }
     }
 
@@ -1154,7 +1207,14 @@ function App() {
                 <PanelGroup direction="horizontal">
                     {/* Left Panel */}
                     <Panel defaultSize={20} minSize={15}>
-                        <LegoPanel legos={legos} onDragStart={handleDragStart} />
+                        <LegoPanel
+                            legos={legos}
+                            onDragStart={handleDragStart}
+                            onLegoSelect={(lego) => {
+                                // Handle lego selection if needed
+                                console.log('Selected lego:', lego)
+                            }}
+                        />
                     </Panel>
 
                     <ResizeHandle position="right" />
@@ -1408,6 +1468,17 @@ function App() {
                 {/* Error Panel */}
                 <ErrorPanel error={error} onDismiss={() => setError('')} />
             </Box>
+            <DynamicLegoDialog
+                isOpen={isDialogOpen}
+                onClose={() => {
+                    setIsDialogOpen(false)
+                    setSelectedDynamicLego(null)
+                    setPendingDropPosition(null)
+                }}
+                onSubmit={handleDynamicLegoSubmit}
+                legoId={selectedDynamicLego?.id || ''}
+                parameters={selectedDynamicLego?.parameters || {}}
+            />
         </VStack >
     )
 }
