@@ -66,7 +66,6 @@ function App() {
     }, [legos])
 
     const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
-        console.log("encoding canvas state", pieces, conns);
         stateSerializerRef.current.encode(pieces, conns)
     }, [])
 
@@ -329,7 +328,6 @@ function App() {
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
         // Reset the justFinished flag first
-        console.log("in click", dragState, " just finished", dragState.justFinished);
         if (dragState.justFinished) {
             setDragState(prev => ({ ...prev, justFinished: false }));
             return; // Skip this click, but be ready for the next one
@@ -343,7 +341,6 @@ function App() {
                 setSelectedLego(lego);
             } else if (selectedLego?.instanceId === lego.instanceId) {
                 const network = findConnectedComponent(lego);
-                console.log(network);
                 setTensorNetwork(network);
                 setSelectedLego(null);
             } else {
@@ -765,7 +762,6 @@ function App() {
                             setConnections(prev => {
                                 const newConnections = [...prev, newConnection];
 
-                                console.log("newConnections", newConnections);
                                 encodeCanvasState(droppedLegos, newConnections);
 
                                 return newConnections;
@@ -1297,7 +1293,6 @@ function App() {
                             onDragStart={handleDragStart}
                             onLegoSelect={(lego) => {
                                 // Handle lego selection if needed
-                                console.log('Selected lego:', lego)
                             }}
                         />
                     </Panel>
@@ -1351,10 +1346,13 @@ function App() {
                                 >
                                     {/* Existing connections */}
                                     <g style={{ pointerEvents: 'all' }}>
-                                        {connections.map((conn, index) => {
+                                        {connections.map((conn) => {
                                             const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
                                             const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
                                             if (!fromLego || !toLego) return null;
+
+                                            // Create a stable key based on the connection's properties
+                                            const connKey = `${conn.from.legoId}-${conn.from.legIndex}-${conn.to.legoId}-${conn.to.legIndex}`;
 
                                             const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
                                             const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
@@ -1388,7 +1386,7 @@ function App() {
                                             const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
 
                                             return (
-                                                <g key={`conn-${index}`}>
+                                                <g key={connKey}>
                                                     {/* Invisible wider path for easier clicking */}
                                                     <path
                                                         d={pathString}
