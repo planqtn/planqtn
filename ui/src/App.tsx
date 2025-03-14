@@ -13,6 +13,11 @@ import { DroppedLegoDisplay } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 
 function App() {
+    const newInstanceId = (currentLegos: DroppedLego[]): string => {
+        const maxInstanceId = currentLegos.length > 0 ? (Math.max(...currentLegos.map(lego => parseInt(lego.instanceId)))) : 0
+        return String(maxInstanceId + 1)
+    }
+
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
     const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
@@ -27,7 +32,7 @@ function App() {
         startY: 0,
         originalX: 0,
         originalY: 0,
-        justFinished: false  // Initialize the new flag
+        justFinished: false
     })
     const canvasRef = useRef<HTMLDivElement>(null)
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
@@ -41,7 +46,7 @@ function App() {
         startY: 0,
         currentX: 0,
         currentY: 0,
-        justFinished: false  // Initialize the new flag
+        justFinished: false
     });
     const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
     const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
@@ -145,11 +150,6 @@ function App() {
         e.preventDefault()
     }
 
-    const newInstanceId = () => {
-        const maxInstanceId = droppedLegos.length > 0 ? (Math.max(...droppedLegos.map(lego => parseInt(lego.instanceId)))) : 0
-        return String(maxInstanceId + 1)
-    }
-
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         const legoData = e.dataTransfer.getData('application/json')
@@ -164,7 +164,7 @@ function App() {
                 setPendingDropPosition({ x, y })
                 setIsDialogOpen(true)
             } else {
-                const instanceId = newInstanceId()
+                const instanceId = newInstanceId(droppedLegos)
                 const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego) }
                 setDroppedLegos(prev => [...prev, newLego])
                 addToHistory({
@@ -195,7 +195,7 @@ function App() {
             }
 
             const dynamicLego = await response.json()
-            const instanceId = newInstanceId()
+            const instanceId = newInstanceId(droppedLegos)
             const newLego = {
                 ...dynamicLego,
                 x: pendingDropPosition.x,
@@ -223,19 +223,61 @@ function App() {
         const lego = droppedLegos[index];
 
         if (e.shiftKey) {
-            // Create a new instance with a new instanceId
-            const newLego = {
-                ...lego,
-                instanceId: newInstanceId(),
-                x: lego.x + 20,
-                y: lego.y + 20
-            };
+            // Check if we're cloning multiple legos
+            const legosToClone = manuallySelectedLegos.length > 0 ? manuallySelectedLegos :
+                tensorNetwork?.legos || [lego];
 
-            setDroppedLegos(prev => [...prev, newLego]);
+            // Get a single starting ID for all new legos
+            const startingId = parseInt(newInstanceId(droppedLegos));
 
-            // Set up drag state for the new lego
+            // Create a mapping from old instance IDs to new ones
+            const instanceIdMap = new Map<string, string>();
+            const newLegos = legosToClone.map((l, idx) => {
+                const newId = String(startingId + idx);
+                instanceIdMap.set(l.instanceId, newId);
+                return {
+                    ...l,
+                    instanceId: newId,
+                    x: l.x + 20,
+                    y: l.y + 20
+                };
+            });
+
+            // Clone connections between the selected legos
+            const newConnections = connections
+                .filter(conn =>
+                    legosToClone.some(l => l.instanceId === conn.from.legoId) &&
+                    legosToClone.some(l => l.instanceId === conn.to.legoId)
+                )
+                .map(conn => ({
+                    from: {
+                        legoId: instanceIdMap.get(conn.from.legoId)!,
+                        legIndex: conn.from.legIndex
+                    },
+                    to: {
+                        legoId: instanceIdMap.get(conn.to.legoId)!,
+                        legIndex: conn.to.legIndex
+                    }
+                }));
+
+            // Add new legos and connections
+            setDroppedLegos(prev => [...prev, ...newLegos]);
+            setConnections(prev => [...prev, ...newConnections]);
+
+            // Set up drag state for the group
+            const positions: { [instanceId: string]: { x: number; y: number } } = {};
+            newLegos.forEach(l => {
+                positions[l.instanceId] = { x: l.x, y: l.y };
+            });
+
+            setGroupDragState({
+                legoInstanceIds: newLegos.map(l => l.instanceId),
+                originalPositions: positions
+            });
+
+            // Set up initial drag state for the first lego
             setDragState({
-                isDragging: false,  // Start as false, will become true on movement
+                isDragging: false,
                 draggedLegoIndex: droppedLegos.length,
                 startX: e.clientX,
                 startY: e.clientY,
@@ -243,8 +285,20 @@ function App() {
                 originalY: lego.y + 20,
                 justFinished: false
             });
+
+            // Add to history
+            addToHistory({
+                type: 'add',
+                data: {
+                    legos: newLegos,
+                    connections: newConnections
+                }
+            });
+
+            // Update URL state
+            encodeCanvasState(droppedLegos.concat(newLegos), connections.concat(newConnections));
         } else {
-            // Check if the clicked lego is part of a manual selection or selected network
+            // Original non-shift behavior
             const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
                 tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId);
 
@@ -261,9 +315,8 @@ function App() {
                 });
             }
 
-            // Set up initial drag state, but don't start dragging yet
             setDragState({
-                isDragging: false,  // Start as false, will become true on movement
+                isDragging: false,
                 draggedLegoIndex: index,
                 startX: e.clientX,
                 startY: e.clientY,
@@ -271,10 +324,8 @@ function App() {
                 originalY: lego.y,
                 justFinished: false
             });
-
-            console.log("in handleLegoMouseDown", dragState, " just finished", dragState.justFinished);
         }
-    }
+    };
 
     const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
         // Reset the justFinished flag first
