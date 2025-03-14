@@ -962,9 +962,24 @@ function App() {
 
         switch (lastOperation.type) {
             case 'add':
-                if (lastOperation.data.legos) {
-                    const legoToRemove = lastOperation.data.legos[0];
-                    setDroppedLegos(prev => prev.filter(lego => lego.instanceId !== legoToRemove.instanceId));
+                const addedLegos = lastOperation.data?.legos;
+                const addedConnections = lastOperation.data?.connections;
+                if (addedLegos) {
+                    // Remove all legos that were added in this operation
+                    setDroppedLegos(prev => prev.filter(lego =>
+                        !addedLegos.some(l => l.instanceId === lego.instanceId)
+                    ));
+                    // Remove all connections that were added with these legos
+                    if (addedConnections) {
+                        setConnections(prev => prev.filter(conn =>
+                            !addedConnections.some(c =>
+                                c.from.legoId === conn.from.legoId &&
+                                c.from.legIndex === conn.from.legIndex &&
+                                c.to.legoId === conn.to.legoId &&
+                                c.to.legIndex === conn.to.legIndex
+                            )
+                        ));
+                    }
                 }
                 break;
             case 'remove':
@@ -1021,9 +1036,15 @@ function App() {
 
         switch (nextOperation.type) {
             case 'add':
-                if (nextOperation.data.legos) {
-                    const legoToAdd = nextOperation.data.legos[0];
-                    setDroppedLegos(prev => [...prev, legoToAdd]);
+                const addedLegos = nextOperation.data?.legos;
+                const addedConnections = nextOperation.data?.connections;
+                if (addedLegos) {
+                    // Add all legos from this operation
+                    setDroppedLegos(prev => [...prev, ...addedLegos]);
+                    // Add all connections that were added with these legos
+                    if (addedConnections) {
+                        setConnections(prev => [...prev, ...addedConnections]);
+                    }
                 }
                 break;
             case 'remove':
