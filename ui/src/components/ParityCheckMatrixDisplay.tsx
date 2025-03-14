@@ -1,7 +1,8 @@
-import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td, Button, HStack, VStack } from '@chakra-ui/react'
+import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td, Button, HStack, VStack, Grid } from '@chakra-ui/react'
 import { LegoPiece, TensorNetworkLeg } from '../types.ts'
 import { useState, useEffect, useRef } from 'react'
 import { FaUndo, FaRedo, FaSync } from 'react-icons/fa'
+import { StabilizerGraphView } from './StabilizerGraphView'
 
 interface ParityCheckMatrixDisplayProps {
     matrix: number[][]
@@ -21,6 +22,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     onRecalculate
 }) => {
     const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+    const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
     const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
     const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
     const hasInitialized = useRef(false);
@@ -307,9 +309,9 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, rowIndex)}
                                 onDragEnd={handleDragEnd}
-                                cursor="move"
-                                bg={draggedRowIndex === rowIndex ? "blue.50" : "transparent"}
-                                _hover={{ bg: "gray.50" }}
+                                cursor="pointer"
+                                bg={draggedRowIndex === rowIndex ? "blue.50" : highlightedRowIndex === rowIndex ? "gray.100" : "transparent"}
+                                onClick={() => setHighlightedRowIndex(highlightedRowIndex === rowIndex ? null : rowIndex)}
                             >
                                 {row.map((cell, cellIndex) => {
                                     const isMiddle = cellIndex === row.length / 2 - 1;
@@ -334,27 +336,43 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                 </Table>
             </Box>
             <Box mt={4}>
-                <Heading size="sm" mb={2}>Stabilizer View</Heading>
-                <VStack align="stretch" spacing={1}>
-                    {matrix.map((row, index) => (
-                        <HStack key={index} spacing={2}>
-                            <Text fontWeight="bold" width="30px">{index}.</Text>
-                            <HStack spacing={1}>
-                                {getPauliString(row).split('').map((pauli, i) => (
-                                    <Text
-                                        key={i}
-                                        color={getPauliColor(pauli)}
-                                        fontWeight="bold"
-                                        fontFamily="monospace"
-                                        fontSize="14px"
-                                    >
-                                        {pauli}
-                                    </Text>
-                                ))}
-                            </HStack>
-                        </HStack>
-                    ))}
-                </VStack>
+                <Grid templateColumns={matrix.every(isCSS) ? "repeat(2, 1fr)" : "1fr"} gap={4}>
+                    <Box>
+                        <Heading size="sm" mb={2}>Stabilizer View</Heading>
+                        <VStack align="stretch" spacing={1}>
+                            {matrix.map((row, index) => (
+                                <HStack key={index} spacing={2}>
+                                    <Text fontWeight="bold" width="30px">{index}.</Text>
+                                    <HStack spacing={1}>
+                                        {getPauliString(row).split('').map((pauli, i) => (
+                                            <Text
+                                                key={i}
+                                                color={getPauliColor(pauli)}
+                                                fontWeight="bold"
+                                                fontFamily="monospace"
+                                                fontSize="14px"
+                                            >
+                                                {pauli}
+                                            </Text>
+                                        ))}
+                                    </HStack>
+                                </HStack>
+                            ))}
+                        </VStack>
+                    </Box>
+                    {matrix.every(isCSS) && legOrdering && (
+                        <Box>
+                            <Heading size="sm" mb={2}>Graphical View</Heading>
+                            <StabilizerGraphView
+                                legs={legOrdering}
+                                matrix={matrix}
+                                width={600}
+                                height={500}
+                                highlightedStabilizer={highlightedRowIndex}
+                            />
+                        </Box>
+                    )}
+                </Grid>
             </Box>
         </Box>
     )
