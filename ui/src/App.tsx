@@ -6,7 +6,7 @@ import * as d3 from 'd3-force'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState, PauliOperator, PushedLeg } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
@@ -182,7 +182,7 @@ function App() {
                 setIsDialogOpen(true)
             } else {
                 const instanceId = newInstanceId(droppedLegos)
-                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id) }
+                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id), pushedLegs: [] }
                 setDroppedLegos(prev => [...prev, newLego])
                 addToHistory({
                     type: 'add',
@@ -219,7 +219,8 @@ function App() {
                 x: pendingDropPosition.x,
                 y: pendingDropPosition.y,
                 instanceId,
-                style: getLegoStyle(dynamicLego.id)
+                style: getLegoStyle(dynamicLego.id),
+                pushedLegs: []
             }
             setDroppedLegos(prev => [...prev, newLego])
             addToHistory({
@@ -258,7 +259,8 @@ function App() {
                     ...l,
                     instanceId: newId,
                     x: l.x + 20,
-                    y: l.y + 20
+                    y: l.y + 20,
+                    pushedLegs: []
                 };
             });
 
@@ -1340,6 +1342,76 @@ function App() {
         }
     };
 
+    const handleLegClick = (legoId: string, legIndex: number) => {
+        setDroppedLegos(prev => prev.map(lego => {
+            if (lego.instanceId === legoId) {
+                const existingPushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
+                const currentOperator = existingPushedLeg?.operator || PauliOperator.I;
+
+                // Cycle through operators: I -> X -> Z -> Y -> I
+                let nextOperator: PauliOperator;
+                switch (currentOperator) {
+                    case PauliOperator.I: nextOperator = PauliOperator.X; break;
+                    case PauliOperator.X: nextOperator = PauliOperator.Z; break;
+                    case PauliOperator.Z: nextOperator = PauliOperator.I; break;
+                    default: nextOperator = PauliOperator.I;
+                }
+
+                // Find the first row in parity check matrix that matches currentOperator on legIndex
+                const numQubits = lego.parity_check_matrix[0].length / 2;
+                const baseRepresentative = lego.parity_check_matrix.find(row => {
+                    if (nextOperator === PauliOperator.X) {
+                        return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
+                    } else if (nextOperator === PauliOperator.Z) {
+                        return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
+                    }
+                    return false;
+                }) || new Array(2 * numQubits).fill(0);
+
+                // Find the row index of the base representative
+                const rowIndex = lego.parity_check_matrix.findIndex(row =>
+                    row.every((val, idx) => val === baseRepresentative[idx])
+                );
+
+                // Update or remove the pushed leg
+                let updatedPushedLegs;
+                if (nextOperator === PauliOperator.I) {
+                    // Remove this leg from pushed legs if operator is I
+                    updatedPushedLegs = lego.pushedLegs.filter(pl => pl.legIndex !== legIndex);
+                } else {
+                    // Otherwise update or add the pushed leg
+                    updatedPushedLegs = existingPushedLeg
+                        ? lego.pushedLegs.map(pl =>
+                            pl.legIndex === legIndex
+                                ? { ...pl, operator: nextOperator, baseRepresentatitve: baseRepresentative }
+                                : pl
+                        )
+                        : [...lego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
+                }
+
+                // Update the selected rows based on the pushed legs
+                const selectedRows = updatedPushedLegs.map(pl => {
+                    const row = lego.parity_check_matrix.findIndex(r =>
+                        r.every((val, idx) => val === pl.baseRepresentatitve[idx])
+                    );
+                    return row;
+                });
+
+                // Update the selectedLego state to trigger a re-render of the parity check matrix
+                if (selectedLego?.instanceId === legoId) {
+                    setSelectedLego(prev => prev ? {
+                        ...prev,
+                        pushedLegs: updatedPushedLegs,
+                        selectedMatrixRows: selectedRows
+                    } : null);
+                }
+
+                return { ...lego, pushedLegs: updatedPushedLegs, selectedMatrixRows: selectedRows };
+            }
+            return lego;
+        }));
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -1621,6 +1693,7 @@ function App() {
                                         selectedLego={selectedLego}
                                         manuallySelectedLegos={manuallySelectedLegos}
                                         dragState={dragState}
+                                        onLegClick={handleLegClick}
                                     />
                                 ))}
                             </Box>
@@ -1638,6 +1711,8 @@ function App() {
                             droppedLegos={droppedLegos}
                             setTensorNetwork={setTensorNetwork}
                             setError={setError}
+                            setDroppedLegos={setDroppedLegos}
+                            setSelectedLego={setSelectedLego}
                         />
                     </Panel>
                 </PanelGroup>

@@ -3,14 +3,17 @@ import { LegoPiece, TensorNetworkLeg } from '../types.ts'
 import { useState, useEffect, useRef } from 'react'
 import { FaUndo, FaRedo, FaSync } from 'react-icons/fa'
 import { StabilizerGraphView } from './StabilizerGraphView'
+import { X_COLOR, Z_COLOR, X_COLOR_LIGHT, Z_COLOR_LIGHT, X_COLOR_DARK, Z_COLOR_DARK, Y_COLOR } from '../utils/PauliColors'
 
 interface ParityCheckMatrixDisplayProps {
-    matrix: number[][]
-    title?: string
-    lego?: LegoPiece
-    legOrdering?: TensorNetworkLeg[]
-    onMatrixChange?: (newMatrix: number[][]) => void
-    onRecalculate?: () => void
+    matrix: number[][];
+    title?: string;
+    lego?: LegoPiece;
+    legOrdering?: TensorNetworkLeg[];
+    onMatrixChange?: (newMatrix: number[][]) => void;
+    onRecalculate?: () => void;
+    selectedRows?: number[];
+    onRowSelectionChange?: (selectedRows: number[]) => void;
 }
 
 export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> = ({
@@ -19,7 +22,9 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     lego,
     legOrdering,
     onMatrixChange,
-    onRecalculate
+    onRecalculate,
+    selectedRows = [],
+    onRowSelectionChange
 }) => {
     const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
     const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
@@ -134,9 +139,9 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
 
     const getPauliColor = (pauli: string): string => {
         switch (pauli) {
-            case 'X': return 'red.500';
-            case 'Z': return 'green.500';
-            case 'Y': return 'purple.500';
+            case 'X': return X_COLOR;
+            case 'Z': return Z_COLOR;
+            case 'Y': return Y_COLOR;
             default: return 'black';
         }
     };
@@ -177,6 +182,19 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         // Update the matrix through the callback
         if (onMatrixChange) {
             onMatrixChange(newMatrix);
+        }
+    };
+
+    const handleRowClick = (e: React.MouseEvent, rowIndex: number) => {
+        if (e.ctrlKey || e.metaKey) {
+            // Toggle selection
+            const newSelection = selectedRows.includes(rowIndex)
+                ? selectedRows.filter(i => i !== rowIndex)
+                : [...selectedRows, rowIndex];
+            onRowSelectionChange?.(newSelection);
+        } else {
+            // Single selection
+            onRowSelectionChange?.([rowIndex]);
         }
     };
 
@@ -236,7 +254,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                     borderWidth={0}
                                     colSpan={matrix[0].length / 2}
                                     fontWeight="bold"
-                                    color="red.600"
+                                    color={X_COLOR_DARK}
                                 >
                                     X
                                 </Td>
@@ -246,7 +264,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                     borderWidth={0}
                                     colSpan={matrix[0].length / 2}
                                     fontWeight="bold"
-                                    color="green.600"
+                                    color={Z_COLOR_DARK}
                                 >
                                     Z
                                 </Td>
@@ -264,7 +282,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             borderWidth={0}
                                             colSpan={1}
                                             fontSize="sm"
-                                            color="red.600"
+                                            color={X_COLOR_DARK}
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
@@ -278,7 +296,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             borderWidth={0}
                                             colSpan={1}
                                             fontSize="sm"
-                                            color="green.600"
+                                            color={Z_COLOR_DARK}
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
@@ -310,21 +328,26 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                 onDrop={(e) => handleDrop(e, rowIndex)}
                                 onDragEnd={handleDragEnd}
                                 cursor="pointer"
-                                bg={draggedRowIndex === rowIndex ? "blue.50" : highlightedRowIndex === rowIndex ? "gray.100" : "transparent"}
-                                onClick={() => setHighlightedRowIndex(highlightedRowIndex === rowIndex ? null : rowIndex)}
+                                bg={
+                                    draggedRowIndex === rowIndex ? "blue.50" :
+                                        highlightedRowIndex === rowIndex ? "gray.100" :
+                                            "transparent"
+                                }
+                                onClick={(e) => handleRowClick(e, rowIndex)}
                             >
                                 {row.map((cell, cellIndex) => {
                                     const isMiddle = cellIndex === row.length / 2 - 1;
+                                    const isSelected = selectedRows.includes(rowIndex);
                                     return (
                                         <Td
                                             key={cellIndex}
                                             p={2}
                                             textAlign="center"
-                                            bg={cell === 1 ? "blue.100" : "transparent"}
-                                            borderWidth={1}
-                                            borderColor="gray.200"
-                                            borderRightWidth={isMiddle ? 3 : 1}
-                                            borderRightColor={isMiddle ? "gray.400" : "gray.200"}
+                                            bg={cell === 1 ? (cellIndex < row.length / 2 ? X_COLOR_LIGHT : Z_COLOR_LIGHT) : "transparent"}
+                                            borderWidth={isSelected ? 2 : 1}
+                                            borderColor={isSelected ? "blue.500" : "gray.200"}
+                                            borderRightWidth={isMiddle ? (isSelected ? 3 : 2) : (isSelected ? 2 : 1)}
+                                            borderRightColor={isMiddle ? (isSelected ? "blue.500" : "gray.400") : (isSelected ? "blue.500" : "gray.200")}
                                         >
                                             {cell}
                                         </Td>

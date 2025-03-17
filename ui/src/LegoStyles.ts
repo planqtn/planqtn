@@ -1,4 +1,5 @@
-import { LegoPiece } from "./types";
+import { DroppedLego, LegoPiece, PauliOperator } from "./types";
+import { getPauliColor, I_COLOR, I_COLOR_DARK, I_COLOR_LIGHT, X_COLOR, X_COLOR_DARK, X_COLOR_LIGHT, Y_COLOR, Z_COLOR, Z_COLOR_DARK, Z_COLOR_LIGHT } from "./utils/PauliColors";
 
 
 interface LegStyle {
@@ -8,6 +9,7 @@ interface LegStyle {
     style: string;
     from: "center" | "bottom" | "edge";
     startOffset: number;
+    color: string;
 }
 
 export abstract class LegoStyle {
@@ -30,10 +32,63 @@ export abstract class LegoStyle {
         return true;
     }
 
-    getLegStyle(legIndex: number, lego: LegoPiece): LegStyle {
+    getLegHighlightPauliOperator = (legIndex: number, lego: DroppedLego) => {
+        // First check if there's a pushed leg
+        const pushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
+        if (pushedLeg) {
+            return pushedLeg.operator;
+        }
+
+        if (lego.selectedMatrixRows === undefined) {
+            return PauliOperator.I;
+        }
+
+        const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
+
+        for (const rowIndex of lego.selectedMatrixRows) {
+            lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
+                combinedRow[idx] = (combinedRow[idx] + val) % 2;
+            });
+        }
+
+        const xPart = combinedRow[legIndex];
+        const zPart = combinedRow[legIndex + lego.parity_check_matrix[0].length / 2];
+
+        if (xPart === 1 && zPart === 0) return PauliOperator.X;
+        if (xPart === 0 && zPart === 1) return PauliOperator.Z;
+        if (xPart === 1 && zPart === 1) return PauliOperator.Y;
+
+        return PauliOperator.I;
+
+        // // If no pushed leg, combine base representatives from all pushed legs
+        // if (lego.pushedLegs.length > 0) {
+        //     // Initialize combined base representative
+        //     const combinedBase = new Array(lego.parity_check_matrix[0].length).fill(0);
+
+        //     // Combine all pushed legs' base representatives mod 2
+        //     lego.pushedLegs.forEach(pl => {
+        //         pl.baseRepresentatitve.forEach((val, idx) => {
+        //             combinedBase[idx] = (combinedBase[idx] + val) % 2;
+        //         });
+        //     });
+        //     // Get the operator from the combined base representative
+        //     const xPart = combinedBase[legIndex];
+        //     const zPart = combinedBase[legIndex + lego.parity_check_matrix[0].length / 2];
+
+        //     if (xPart === 1 && zPart === 0) return PauliOperator.X;
+        //     if (xPart === 0 && zPart === 1) return PauliOperator.Z;
+        //     if (xPart === 1 && zPart === 1) return PauliOperator.Y;
+        // }
+        // return PauliOperator.I;
+    };
+
+
+
+    getLegStyle(legIndex: number, lego: DroppedLego): LegStyle {
         const isLogical = lego.logical_legs.includes(legIndex);
         const isGauge = lego.gauge_legs.includes(legIndex);
         const legCount = lego.parity_check_matrix[0].length / 2;
+        const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex, lego);
 
         if (isLogical) {
             // For logical legs, calculate angle from center upwards
@@ -53,7 +108,8 @@ export abstract class LegoStyle {
                 width: "3px", // Thicker line
                 style: "solid",
                 from: "center", // Start from center
-                startOffset: 0 // No offset for logical legs
+                startOffset: 0, // No offset for logical legs
+                color: getPauliColor(highlightPauliOperator)
             };
         } else if (isGauge) {
             // For gauge legs, calculate angle from bottom
@@ -64,7 +120,8 @@ export abstract class LegoStyle {
                 width: "2px",
                 style: "dashed",
                 from: "bottom",
-                startOffset: 10 // Offset from edge for gauge legs
+                startOffset: 10, // Offset from edge for gauge legs
+                color: getPauliColor(highlightPauliOperator)
             };
         } else {
             // Regular legs
@@ -72,10 +129,11 @@ export abstract class LegoStyle {
             return {
                 angle,
                 length: 40,
-                width: "2px",
+                width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
                 style: "solid",
                 from: "edge",
-                startOffset: 0 // No offset for regular legs
+                startOffset: 0, // No offset for regular legs
+                color: getPauliColor(highlightPauliOperator)
             };
         }
     }
@@ -187,52 +245,52 @@ export class StopperStyle extends LegoStyle {
     get backgroundColor(): string {
         switch (this.id) {
             case "stopper_i":
-                return "white";
+                return I_COLOR_LIGHT;
             case "stopper_x":
-                return "red.200";
+                return X_COLOR_LIGHT;
             case "stopper_z":
-                return "green.200";
+                return Z_COLOR_LIGHT;
             default:
-                return "gray.200";
+                return I_COLOR_LIGHT;
         }
     }
 
     get borderColor(): string {
         switch (this.id) {
             case "stopper_i":
-                return "gray.400";
+                return I_COLOR;
             case "stopper_x":
-                return "red.400";
+                return X_COLOR;
             case "stopper_z":
-                return "green.400";
+                return Z_COLOR;
             default:
-                return "gray.400";
+                return I_COLOR;
         }
     }
 
     get selectedBackgroundColor(): string {
         switch (this.id) {
             case "stopper_i":
-                return "gray.200";
+                return I_COLOR_DARK;
             case "stopper_x":
-                return "red.300";
+                return X_COLOR_DARK;
             case "stopper_z":
-                return "green.300";
+                return Z_COLOR_DARK;
             default:
-                return "gray.300";
+                return I_COLOR_DARK;
         }
     }
 
     get selectedBorderColor(): string {
         switch (this.id) {
             case "stopper_i":
-                return "gray.600";
+                return I_COLOR_DARK;
             case "stopper_x":
-                return "red.700";
+                return X_COLOR_DARK;
             case "stopper_z":
-                return "green.700";
+                return Z_COLOR_DARK;
             default:
-                return "gray.700";
+                return I_COLOR_DARK;
         }
     }
 

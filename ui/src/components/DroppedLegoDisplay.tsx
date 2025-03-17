@@ -1,6 +1,7 @@
 import { Box, Text } from "@chakra-ui/react";
 import { DroppedLego, TensorNetwork, LegDragState, DragState } from "../types";
 
+
 interface DroppedLegoDisplayProps {
     lego: DroppedLego;
     index: number;
@@ -12,9 +13,24 @@ interface DroppedLegoDisplayProps {
     selectedLego: DroppedLego | null;
     manuallySelectedLegos: DroppedLego[] | null;
     dragState: DragState | null;
+    onLegClick?: (legoId: string, legIndex: number) => void;
 }
 
-export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({ lego, index, legDragState, handleLegMouseDown, handleLegoMouseDown, handleLegoClick, tensorNetwork, selectedLego, manuallySelectedLegos, dragState }) => {
+export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
+    lego,
+    index,
+    legDragState,
+    handleLegMouseDown,
+    handleLegoMouseDown,
+    handleLegoClick,
+    tensorNetwork,
+    selectedLego,
+    manuallySelectedLegos,
+    dragState,
+    onLegClick
+}) => {
+
+
     return (
         <Box
             key={`${lego.instanceId}`}
@@ -27,6 +43,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({ lego, in
             {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
                 const legStyle = lego.style.getLegStyle(legIndex, lego);
                 const isLogical = lego.logical_legs.includes(legIndex);
+                const legColor = legStyle.color
 
                 const startX = legStyle.from === "center" ? (lego.style.size / 2) :
                     legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.cos(legStyle.angle) : (lego.style.size / 2);
@@ -54,14 +71,24 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({ lego, in
                             left={`${startX}px`}
                             top={`${startY}px`}
                             w={`${legStyle.length}px`}
-                            h={legStyle.width}
-                            bg={isLogical ? "blue.500" : "gray.400"}
+                            h={legColor !== "gray.400" ? "4px" : legStyle.width}
+                            bg={legColor}
                             transformOrigin="0 0"
                             style={{
                                 transform: `rotate(${legStyle.angle}rad)`,
-                                pointerEvents: 'none',
+                                pointerEvents: isLogical ? 'all' : 'none',
                                 borderStyle: legStyle.style
                             }}
+                            cursor={isLogical ? "pointer" : "default"}
+                            title={isLogical ? `Logical leg, ${lego.pushedLegs.find(pl => pl.legIndex === legIndex)?.operator || 'I'}` : undefined}
+                            onClick={(e) => {
+                                if (isLogical && onLegClick) {
+                                    e.stopPropagation();
+                                    onLegClick(lego.instanceId, legIndex);
+                                }
+                            }}
+
+                            transition="all 0.1s"
                         />
                         {/* Draggable Endpoint */}
                         <Box
@@ -73,11 +100,17 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({ lego, in
                             borderRadius="full"
                             bg={isBeingDragged ? "blue.100" : "white"}
                             border="2px"
-                            borderColor={isBeingDragged ? "blue.500" : (isLogical ? "blue.400" : "gray.400")}
+                            borderColor={isBeingDragged ? "blue.500" : legColor}
                             transform="translate(-50%, -50%)"
                             cursor="pointer"
-                            onMouseDown={(e) => handleLegMouseDown(e, lego.instanceId, legIndex)}
-                            _hover={{ borderColor: "blue.400", bg: "blue.50" }}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                handleLegMouseDown(e, lego.instanceId, legIndex);
+                            }}
+                            _hover={{
+                                borderColor: legColor,
+                                bg: "white"
+                            }}
                             transition="all 0.2s"
                             style={{ pointerEvents: 'all' }}
                         />

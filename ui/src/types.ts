@@ -12,11 +12,27 @@ export interface LegoPiece {
     gauge_legs: number[]
 }
 
+export enum PauliOperator {
+    X = 'X',
+    Z = 'Z',
+    Y = 'Y',
+    I = 'I'
+}
+
+export interface PushedLeg {
+    legIndex: number
+    operator: PauliOperator
+    // the symplectic representation of the pushed operator
+    baseRepresentatitve: number[]
+}
+
 export interface DroppedLego extends LegoPiece {
     x: number
     y: number
     instanceId: string
     style: LegoStyle
+    pushedLegs: PushedLeg[]
+    selectedMatrixRows?: number[]
 }
 
 
@@ -132,7 +148,6 @@ export interface CanvasState {
 export interface LegoServerPayload {
     instanceId: string;
     id: string;
-    type: string;
     name: string;
     shortName: string;
     description?: string;

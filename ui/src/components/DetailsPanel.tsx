@@ -5,6 +5,7 @@ import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
 import { useState } from 'react'
+import { PauliOperator } from '../types'
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -13,6 +14,8 @@ interface DetailsPanelProps {
     droppedLegos: DroppedLego[]
     setTensorNetwork: (value: TensorNetwork | null | ((prev: TensorNetwork | null) => TensorNetwork | null)) => void
     setError: (error: string) => void
+    setDroppedLegos: (value: DroppedLego[]) => void
+    setSelectedLego: (value: DroppedLego | null) => void
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -21,13 +24,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     manuallySelectedLegos,
     droppedLegos,
     setTensorNetwork: setTensorNetwork,
-    setError
+    setError,
+    setDroppedLegos,
+    setSelectedLego
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
+    const [selectedMatrixRows, setSelectedMatrixRows] = useState<number[]>([])
 
     // Helper function to generate network signature for caching
     const getNetworkSignature = (network: TensorNetwork) => {
@@ -49,7 +55,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     const { style, x, y, ...legoWithoutStyle } = lego;
                     acc[lego.instanceId] = {
                         ...legoWithoutStyle,
-                        name: lego.shortName || "Generic Lego"
+                        name: lego.shortName || "Generic Lego",
                     } as LegoServerPayload;
                     return acc;
                 }, {} as Record<string, LegoServerPayload>),
@@ -60,8 +66,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 instanceId: leg.instanceId,
                 legIndex: leg.legIndex
             }));
-
-            console.log("legOrdering", legOrdering)
 
             setTensorNetwork({
                 ...tensorNetwork,
@@ -142,6 +146,42 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         } catch (error) {
             console.error('Error generating Python code:', error);
             setError('Failed to generate Python code');
+        }
+    };
+
+    const handleMatrixRowSelection = (selectedRows: number[]) => {
+        setSelectedMatrixRows(selectedRows);
+        if (selectedLego && selectedLego.logical_legs.length > 0) {
+            // Update pushed legs based on selected rows
+            const newPushedLegs = selectedRows.flatMap(rowIndex => {
+                const row = selectedLego.parity_check_matrix[rowIndex];
+                return selectedLego.logical_legs.map(legIndex => {
+                    const xPart = row[legIndex];
+                    const zPart = row[legIndex + selectedLego.parity_check_matrix[0].length / 2];
+                    let operator: PauliOperator | undefined;
+                    if (xPart === 1 && zPart === 0) operator = PauliOperator.X;
+                    else if (xPart === 0 && zPart === 1) operator = PauliOperator.Z;
+                    else if (xPart === 1 && zPart === 1) operator = PauliOperator.Y;
+                    return operator ? {
+                        legIndex,
+                        operator,
+                        baseRepresentatitve: row
+                    } : null;
+                }).filter((pl): pl is { legIndex: number; operator: PauliOperator; baseRepresentatitve: number[] } => pl !== null);
+            });
+
+            // Update the selected lego with new pushed legs
+            const updatedLego = {
+                ...selectedLego,
+                pushedLegs: newPushedLegs,
+                selectedMatrixRows: selectedRows
+            };
+            // Update the lego in the droppedLegos array
+            const updatedDroppedLegos = droppedLegos.map(l =>
+                l.instanceId === selectedLego.instanceId ? updatedLego : l
+            );
+            setSelectedLego(updatedLego);
+            setDroppedLegos(updatedDroppedLegos);
         }
     };
 
@@ -294,7 +334,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             <Text fontSize="sm" color="gray.600">
                                 {selectedLego.description}, instaceId: {selectedLego.instanceId}
                             </Text>
-                            <ParityCheckMatrixDisplay matrix={selectedLego.parity_check_matrix} lego={selectedLego} />
+                            <ParityCheckMatrixDisplay
+                                matrix={selectedLego.parity_check_matrix}
+                                lego={selectedLego}
+                                selectedRows={selectedLego.selectedMatrixRows || []}
+                                onRowSelectionChange={handleMatrixRowSelection}
+                            />
                         </VStack>
                     </>
                 ) : manuallySelectedLegos.length > 0 ? (
