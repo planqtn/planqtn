@@ -185,6 +185,29 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
     };
 
+    const handleLegOrderingChange = (newLegOrdering: TensorNetworkLeg[]) => {
+        if (tensorNetwork) {
+            // Update the tensor network state
+            setTensorNetwork(prev => prev ? {
+                ...prev,
+                legOrdering: newLegOrdering
+            } : null);
+
+            // Update the cache
+            const signature = getNetworkSignature(tensorNetwork);
+            const cachedResponse = parityCheckMatrixCache.get(signature);
+            if (cachedResponse) {
+                parityCheckMatrixCache.set(signature, {
+                    ...cachedResponse,
+                    data: {
+                        ...cachedResponse.data,
+                        legs: newLegOrdering
+                    }
+                });
+            }
+        }
+    };
+
     return (
         <Box
             h="100%"
@@ -265,6 +288,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                     });
                                                 }
                                             }}
+                                            onLegOrderingChange={handleLegOrderingChange}
                                             onRecalculate={calculateParityCheckMatrix}
                                         />
                                     )}

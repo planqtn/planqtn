@@ -11,6 +11,7 @@ interface ParityCheckMatrixDisplayProps {
     lego?: LegoPiece;
     legOrdering?: TensorNetworkLeg[];
     onMatrixChange?: (newMatrix: number[][]) => void;
+    onLegOrderingChange?: (newLegOrdering: TensorNetworkLeg[]) => void;
     onRecalculate?: () => void;
     selectedRows?: number[];
     onRowSelectionChange?: (selectedRows: number[]) => void;
@@ -22,11 +23,13 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     lego,
     legOrdering,
     onMatrixChange,
+    onLegOrderingChange,
     onRecalculate,
     selectedRows = [],
     onRowSelectionChange
 }) => {
     const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+    const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
     const [highlightedRowIndex, setHighlightedRowIndex] = useState<number | null>(null);
     const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
     const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
@@ -66,6 +69,11 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         e.dataTransfer.effectAllowed = 'move';
     };
 
+    const handleColumnDragStart = (e: React.DragEvent, columnIndex: number) => {
+        setDraggedColumnIndex(columnIndex);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
@@ -99,8 +107,101 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         setDraggedRowIndex(null);
     };
 
+    const handleColumnDrop = (e: React.DragEvent, targetColumnIndex: number) => {
+        e.preventDefault();
+        if (draggedColumnIndex === null || draggedColumnIndex === targetColumnIndex) return;
+
+        // Check if we're trying to move between X and Z sections
+        const isDraggedX = draggedColumnIndex < matrix[0].length / 2;
+        const isTargetX = targetColumnIndex < matrix[0].length / 2;
+        if (isDraggedX !== isTargetX) return;
+
+        // Create a new matrix with the columns reordered
+        const newMatrix = matrix.map(row => {
+            const newRow = [...row];
+            const halfLength = matrix[0].length / 2;
+
+            // Get the actual indices for both sections
+            const xDraggedIndex = isDraggedX ? draggedColumnIndex : draggedColumnIndex - halfLength;
+            const xTargetIndex = isDraggedX ? targetColumnIndex : targetColumnIndex - halfLength;
+            const zDraggedIndex = isDraggedX ? draggedColumnIndex + halfLength : draggedColumnIndex;
+            const zTargetIndex = isDraggedX ? targetColumnIndex + halfLength : targetColumnIndex;
+
+            // Perform the swap in the X section
+            const tempX = newRow[xDraggedIndex];
+            if (xDraggedIndex < xTargetIndex) {
+                // Moving right
+                for (let i = xDraggedIndex; i < xTargetIndex; i++) {
+                    newRow[i] = newRow[i + 1];
+                }
+            } else {
+                // Moving left
+                for (let i = xDraggedIndex; i > xTargetIndex; i--) {
+                    newRow[i] = newRow[i - 1];
+                }
+            }
+            newRow[xTargetIndex] = tempX;
+
+            // Perform the swap in the Z section
+            const tempZ = newRow[zDraggedIndex];
+            if (zDraggedIndex < zTargetIndex) {
+                // Moving right
+                for (let i = zDraggedIndex; i < zTargetIndex; i++) {
+                    newRow[i] = newRow[i + 1];
+                }
+            } else {
+                // Moving left
+                for (let i = zDraggedIndex; i > zTargetIndex; i--) {
+                    newRow[i] = newRow[i - 1];
+                }
+            }
+            newRow[zTargetIndex] = tempZ;
+
+            return newRow;
+        });
+
+        // Update leg ordering if it exists
+        let newLegOrdering: TensorNetworkLeg[] | undefined;
+        if (legOrdering) {
+            newLegOrdering = [...legOrdering];
+            const legIndex = isDraggedX ? draggedColumnIndex : draggedColumnIndex - matrix[0].length / 2;
+            const targetLegIndex = isDraggedX ? targetColumnIndex : targetColumnIndex - matrix[0].length / 2;
+            const temp = newLegOrdering[legIndex];
+            if (legIndex < targetLegIndex) {
+                // Moving right
+                for (let i = legIndex; i < targetLegIndex; i++) {
+                    newLegOrdering[i] = newLegOrdering[i + 1];
+                }
+            } else {
+                // Moving left
+                for (let i = legIndex; i > targetLegIndex; i--) {
+                    newLegOrdering[i] = newLegOrdering[i - 1];
+                }
+            }
+            newLegOrdering[targetLegIndex] = temp;
+        }
+
+        // Update history
+        const newHistory = [...matrixHistory.slice(0, currentHistoryIndex + 1), newMatrix];
+        setMatrixHistory(newHistory);
+        setCurrentHistoryIndex(newHistory.length - 1);
+
+        // Update the matrix through the callback first
+        if (onMatrixChange) {
+            onMatrixChange(newMatrix);
+        }
+
+        // Then update leg ordering through the callback
+        if (newLegOrdering && onLegOrderingChange) {
+            onLegOrderingChange(newLegOrdering);
+        }
+
+        setDraggedColumnIndex(null);
+    };
+
     const handleDragEnd = () => {
         setDraggedRowIndex(null);
+        setDraggedColumnIndex(null);
     };
 
     const handleUndo = () => {
@@ -274,7 +375,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                             <Tr>
                                 <>
                                     {/* X lego indices */}
-                                    {legOrdering?.map(leg => (
+                                    {legOrdering?.map((leg, index) => (
                                         <Td
                                             key={`x-legoidx-${leg.instanceId}-${leg.legIndex}`}
                                             p={2}
@@ -283,12 +384,19 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             colSpan={1}
                                             fontSize="sm"
                                             color={X_COLOR_DARK}
+                                            draggable
+                                            onDragStart={(e) => handleColumnDragStart(e, index)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleColumnDrop(e, index)}
+                                            onDragEnd={handleDragEnd}
+                                            cursor="move"
+                                            bg={draggedColumnIndex === index ? "blue.50" : "transparent"}
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
                                     ))}
                                     {/* Z lego indices */}
-                                    {legOrdering?.map(leg => (
+                                    {legOrdering?.map((leg, index) => (
                                         <Td
                                             key={`z-legoidx-${leg.instanceId}-${leg.legIndex}`}
                                             p={2}
@@ -297,6 +405,13 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                             colSpan={1}
                                             fontSize="sm"
                                             color={Z_COLOR_DARK}
+                                            draggable
+                                            onDragStart={(e) => handleColumnDragStart(e, index + matrix[0].length / 2)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleColumnDrop(e, index + matrix[0].length / 2)}
+                                            onDragEnd={handleDragEnd}
+                                            cursor="move"
+                                            bg={draggedColumnIndex === index + matrix[0].length / 2 ? "blue.50" : "transparent"}
                                         >
                                             {leg.instanceId}-{leg.legIndex}
                                         </Td>
@@ -305,13 +420,43 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                             </Tr>)
                             ||
                             <Tr>
-                                {getLegIndices().map(leg => (
-                                    <Td key={`x-idx-${leg}`} p={2} textAlign="center" borderWidth={0} colSpan={1} fontSize="sm" {...getColumnStyle(leg)}>
+                                {getLegIndices().map((leg, index) => (
+                                    <Td
+                                        key={`x-idx-${leg}`}
+                                        p={2}
+                                        textAlign="center"
+                                        borderWidth={0}
+                                        colSpan={1}
+                                        fontSize="sm"
+                                        {...getColumnStyle(leg)}
+                                        draggable
+                                        onDragStart={(e) => handleColumnDragStart(e, index)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleColumnDrop(e, index)}
+                                        onDragEnd={handleDragEnd}
+                                        cursor="move"
+                                        bg={draggedColumnIndex === index ? "blue.50" : "transparent"}
+                                    >
                                         {leg}
                                     </Td>
                                 ))}
-                                {getLegIndices().map(leg => (
-                                    <Td key={`z-idx-${leg}`} p={2} textAlign="center" borderWidth={0} colSpan={1} fontSize="sm" {...getColumnStyle(leg)}>
+                                {getLegIndices().map((leg, index) => (
+                                    <Td
+                                        key={`z-idx-${leg}`}
+                                        p={2}
+                                        textAlign="center"
+                                        borderWidth={0}
+                                        colSpan={1}
+                                        fontSize="sm"
+                                        {...getColumnStyle(leg)}
+                                        draggable
+                                        onDragStart={(e) => handleColumnDragStart(e, index + matrix[0].length / 2)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleColumnDrop(e, index + matrix[0].length / 2)}
+                                        onDragEnd={handleDragEnd}
+                                        cursor="move"
+                                        bg={draggedColumnIndex === index + matrix[0].length / 2 ? "blue.50" : "transparent"}
+                                    >
                                         {leg}
                                     </Td>
                                 ))}
