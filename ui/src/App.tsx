@@ -1523,6 +1523,10 @@ function App() {
                                             const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
                                             const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
 
+                                            // Get the colors of the connected legs
+                                            const fromLegColor = fromLego.style.getLegColor(conn.from.legIndex, fromLego);
+                                            const toLegColor = toLego.style.getLegColor(conn.to.legIndex, toLego);
+                                            const colorsMatch = fromLegColor === toLegColor;
                                             // Calculate control points for the curve
                                             const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
                                             const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
@@ -1551,6 +1555,26 @@ function App() {
                                             // Create the path string for the cubic Bezier curve
                                             const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
 
+                                            // Calculate midpoint for warning sign
+                                            const midPoint = {
+                                                x: (fromPoint.x + toPoint.x) / 2,
+                                                y: (fromPoint.y + toPoint.y) / 2
+                                            };
+
+                                            function fromChakraColorToHex(color: string): string {
+                                                if (color.startsWith('blue')) {
+                                                    return '#0000FF';
+                                                } else if (color.startsWith('red')) {
+                                                    return '#FF0000';
+                                                } else if (color.startsWith('purple')) {
+                                                    return '#800080';
+                                                } else {
+                                                    return 'darkgray';
+                                                }
+                                            }
+                                            const sharedColor = colorsMatch ? fromChakraColorToHex(fromLegColor) : 'yellow';
+                                            const connectorColor = colorsMatch ? sharedColor : 'yellow';
+
                                             return (
                                                 <g key={connKey}>
                                                     {/* Invisible wider path for easier clicking */}
@@ -1567,7 +1591,7 @@ function App() {
                                                             // Find and update the visible path
                                                             const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
                                                             if (visiblePath) {
-                                                                visiblePath.style.stroke = '#4299E1';
+                                                                visiblePath.style.stroke = connectorColor;
                                                                 visiblePath.style.strokeWidth = '3';
                                                                 visiblePath.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
                                                             }
@@ -1576,7 +1600,7 @@ function App() {
                                                             // Reset the visible path
                                                             const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
                                                             if (visiblePath) {
-                                                                visiblePath.style.stroke = '#3182CE';
+                                                                visiblePath.style.stroke = connectorColor;
                                                                 visiblePath.style.strokeWidth = '2';
                                                                 visiblePath.style.filter = 'none';
                                                             }
@@ -1585,14 +1609,29 @@ function App() {
                                                     {/* Visible path */}
                                                     <path
                                                         d={pathString}
-                                                        stroke="#3182CE"
+                                                        stroke={connectorColor}
                                                         strokeWidth="2"
                                                         fill="none"
                                                         style={{
                                                             pointerEvents: 'none',
-                                                            transition: 'all 0.2s ease'
+                                                            transition: 'all 0.2s ease',
+                                                            stroke: connectorColor
                                                         }}
                                                     />
+                                                    {/* Warning sign if operators don't match */}
+                                                    {!colorsMatch && (
+                                                        <text
+                                                            x={midPoint.x}
+                                                            y={midPoint.y}
+                                                            fontSize="16"
+                                                            fill="#FF0000"
+                                                            textAnchor="middle"
+                                                            dominantBaseline="middle"
+                                                            style={{ pointerEvents: 'none' }}
+                                                        >
+                                                            ⚠
+                                                        </text>
+                                                    )}
                                                 </g>
                                             );
                                         })}

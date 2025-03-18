@@ -151,7 +151,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
     const handleMatrixRowSelection = (selectedRows: number[]) => {
         setSelectedMatrixRows(selectedRows);
-        if (selectedLego && selectedLego.logical_legs.length > 0) {
+        if (selectedLego) {
             // Update pushed legs based on selected rows
             const newPushedLegs = selectedRows.flatMap(rowIndex => {
                 const row = selectedLego.parity_check_matrix[rowIndex];

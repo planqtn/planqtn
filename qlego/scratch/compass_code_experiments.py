@@ -289,7 +289,12 @@ def time_compass_code_cotengra_contraction():
 
 
 if __name__ == "__main__":
-    import faulthandler
+    # import faulthandler
 
-    faulthandler.enable()
-    time_compass_code_cotengra_contraction()
+    # faulthandler.enable()
+    # time_compass_code_cotengra_contraction()
+    tn = CompassCodeTN(coloring=np.array([[2, 2], [1, 2]]))
+    wep = tn.stabilizer_enumerator_polynomial(
+        verbose=False, progress_bar=True, cotengra=True
+    )
+    print(wep)

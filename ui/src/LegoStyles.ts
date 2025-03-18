@@ -137,6 +137,11 @@ export abstract class LegoStyle {
             };
         }
     }
+
+    getLegColor(legIndex: number, lego: DroppedLego): string {
+        const legStyle = this.getLegStyle(legIndex, lego);
+        return legStyle.color;
+    }
 }
 
 export class HadamardStyle extends LegoStyle {

@@ -64,7 +64,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 ctx.beginPath();
                 ctx.moveTo(stabilizerPoint.x, stabilizerPoint.y);
                 ctx.lineTo(legPoint.x, legPoint.y);
-                ctx.strokeStyle = stabilizerPoint.type === 'X' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 0, 255, 0.3)';
+                ctx.strokeStyle = stabilizerPoint.type === 'Z' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 0, 255, 0.3)';
                 ctx.lineWidth = 1;
                 ctx.stroke();
             });
@@ -77,7 +77,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 const size = 30;
                 ctx.beginPath();
                 ctx.rect(point.x - size / 2, point.y - size / 2, size, size);
-                ctx.fillStyle = point.type === 'X' ? 'red' : 'blue';
+                ctx.fillStyle = point.type === 'Z' ? 'red' : 'blue';
                 ctx.fill();
                 ctx.strokeStyle = selectedStabilizer === point.stabilizerIndex ? 'orange' :
                     highlightedStabilizer === point.stabilizerIndex ? '#ffd700' : 'white';
