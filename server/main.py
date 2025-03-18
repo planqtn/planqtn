@@ -10,6 +10,7 @@ import numpy as np
 
 # Add the parent directory to the Python path to import qlego
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from qlego.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
 from qlego.legos import Legos
 from qlego.tensor_stabilizer_enumerator import (
     TensorNetwork,
@@ -38,7 +39,8 @@ class HealthResponse(BaseModel):
 
 class LegoPiece(BaseModel):
     id: str
-    name: str
+    instanceId: str = ""
+    name: str = ""
     shortName: str
     description: str = ""
     is_dynamic: bool = False
@@ -48,7 +50,7 @@ class LegoPiece(BaseModel):
     gauge_legs: List[int] = []
 
 
-class TensorNetworkParityCheckRequest(BaseModel):
+class TensorNetworkRequest(BaseModel):
     legos: Dict[str, LegoPiece]
     connections: List[Dict[str, Any]]
 
@@ -79,15 +81,55 @@ class DynamicLegoRequest(BaseModel):
     parameters: Dict[str, Any]
 
 
-class CssTannerRequest(BaseModel):
+class TannerRequest(BaseModel):
     matrix: List[List[int]]
     start_node_index: int = 0
 
 
-class CssTannerResponse(BaseModel):
+class TensorNetworkResponse(BaseModel):
     legos: List[Dict[str, Any]]
     connections: List[Dict[str, Any]]
-    message: str = "Successfully created CSS Tanner network"
+    message: str = "Successfully created Tanner network"
+
+    @classmethod
+    def from_tensor_network(cls, tn: TensorNetwork, start_node_index: int = 0):
+        # Convert to JSON-serializable format
+        legos = []
+        connections = []
+
+        instance_id_to_idx = {}
+
+        # Add legos and track their instance IDs
+        for i, (instance_id, piece) in enumerate(tn.nodes.items()):
+            lego = {
+                "instanceId": str(i + start_node_index),
+                "id": "generic",
+                "shortName": instance_id,
+                "x": 0,  # Will be positioned by force layout
+                "y": 0,
+                "parity_check_matrix": piece.h.tolist(),
+                "logical_legs": [],
+                "gauge_legs": [],
+            }
+            legos.append(lego)
+            instance_id_to_idx[instance_id] = i + start_node_index
+        # Add connections from the tensor network's traces
+        for node1, node2, legs1, legs2 in tn.traces:
+            for leg1, leg2 in zip(legs1, legs2):
+                connections.append(
+                    {
+                        "from": {
+                            "legoId": str(instance_id_to_idx[node1]),
+                            "legIndex": tn.nodes[node1].legs.index(leg1),
+                        },
+                        "to": {
+                            "legoId": str(instance_id_to_idx[node2]),
+                            "legIndex": tn.nodes[node2].legs.index(leg2),
+                        },
+                    }
+                )
+
+        return TensorNetworkResponse(legos=legos, connections=connections)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -101,7 +143,7 @@ async def list_legos():
 
 
 @app.post("/paritycheck", response_model=ParityCheckResponse)
-async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest):
+async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     print("network", network)
     nodes = {}
@@ -136,7 +178,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkParityCheckRequest
 
 
 @app.post("/weightenumerator", response_model=WeightEnumeratorResponse)
-async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
+async def calculate_weight_enumerator(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     nodes = {}
     print("network.legos", network.legos)
@@ -162,7 +204,7 @@ async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
 
     # Conjoin all nodes to get the final tensor network
     polynomial = tn.stabilizer_enumerator_polynomial(
-        verbose=True, progress_bar=True, cotengra=len(nodes) > 4
+        verbose=False, progress_bar=True, cotengra=len(nodes) > 4
     )
 
     # Convert the polynomial to a string representation
@@ -172,7 +214,7 @@ async def calculate_weight_enumerator(network: TensorNetworkParityCheckRequest):
 
 
 @app.post("/constructioncode", response_model=ConstructionCodeResponse)
-async def generate_construction_code(network: TensorNetworkParityCheckRequest):
+async def generate_construction_code(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     nodes = {}
     for instance_id, lego in network.legos.items():
@@ -222,8 +264,19 @@ async def get_dynamic_lego(request: DynamicLegoRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/csstannernetwork", response_model=CssTannerResponse)
-async def create_css_tanner_network(request: CssTannerRequest):
+@app.post("/tannernetwork", response_model=TensorNetworkResponse)
+async def create_tanner_network(request: TannerRequest):
+    try:
+        matrix = GF2(request.matrix)
+        tn = StabilizerTannerCodeTN(matrix)
+        return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/csstannernetwork", response_model=TensorNetworkResponse)
+async def create_css_tanner_network(request: TannerRequest):
     try:
         matrix = np.array(request.matrix)
 
@@ -250,47 +303,7 @@ async def create_css_tanner_network(request: CssTannerRequest):
         # Create the tensor network
         tn = CssTannerCodeTN(hx=hx, hz=hz)
 
-        # Convert to JSON-serializable format
-        legos = []
-        connections = []
-
-        instance_id_to_idx = {}
-
-        # Add legos and track their instance IDs
-        for i, (instance_id, piece) in enumerate(tn.nodes.items()):
-            lego = {
-                "instanceId": str(i + request.start_node_index),
-                "id": "generic",
-                "shortName": instance_id,
-                "x": 0,  # Will be positioned by force layout
-                "y": 0,
-                "parity_check_matrix": piece.h.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
-            }
-            legos.append(lego)
-            instance_id_to_idx[instance_id] = i + request.start_node_index
-        # Add connections from the tensor network's traces
-        for node1, node2, legs1, legs2 in tn.traces:
-            for leg1, leg2 in zip(legs1, legs2):
-                connections.append(
-                    {
-                        "from": {
-                            "legoId": str(instance_id_to_idx[node1]),
-                            "legIndex": tn.nodes[node1].legs.index(leg1),
-                        },
-                        "to": {
-                            "legoId": str(instance_id_to_idx[node2]),
-                            "legIndex": tn.nodes[node2].legs.index(leg2),
-                        },
-                    }
-                )
-
-        for connection in connections:
-            print(connection)
-
-        return CssTannerResponse(legos=legos, connections=connections)
-
+        return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))

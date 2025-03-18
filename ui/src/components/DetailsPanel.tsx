@@ -103,9 +103,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             const response = await axios.post('/api/weightenumerator', {
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
-                    acc[lego.instanceId] = lego;
+                    acc[lego.instanceId] = {
+                        instanceId: lego.instanceId,
+                        id: lego.id,
+                        shortName: lego.shortName,
+                        parity_check_matrix: lego.parity_check_matrix,
+                        logical_legs: lego.logical_legs,
+                        gauge_legs: lego.gauge_legs
+                    };
                     return acc;
-                }, {} as Record<string, DroppedLego>),
+                }, {} as Record<string, any>),
                 connections: tensorNetwork.connections
             });
 

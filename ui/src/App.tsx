@@ -13,6 +13,7 @@ import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { CssTannerDialog } from './components/CssTannerDialog'
+import { TannerDialog } from './components/TannerDialog'
 
 interface ForceNode {
     id: string;
@@ -71,7 +72,7 @@ function App() {
     const [selectedDynamicLego, setSelectedDynamicLego] = useState<LegoPiece | null>(null)
     const [pendingDropPosition, setPendingDropPosition] = useState<{ x: number; y: number } | null>(null)
     const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
-
+    const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
@@ -1316,7 +1317,9 @@ function App() {
                     ...lego,
                     x: node?.x || 0,
                     y: node?.y || 0,
-                    style: getLegoStyle(lego.id)
+                    style: getLegoStyle(lego.id),
+                    pushedLegs: [],
+                    selectedMatrixRows: []
                 };
             });
 
@@ -1338,6 +1341,72 @@ function App() {
 
         } catch (error) {
             setError('Failed to create CSS Tanner network');
+            console.error('Error:', error);
+        }
+    };
+
+    const handleTannerSubmit = async (matrix: number[][]) => {
+        try {
+            const response = await axios.post('http://localhost:5000/tannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const { legos, connections } = response.data;
+
+            // Create simulation
+            const simulation = d3.forceSimulation<ForceNode>()
+                .force('link', d3.forceLink<ForceNode, ForceLink>().id((d) => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(400, 300));
+
+            // Prepare data for force layout
+            const nodes: ForceNode[] = legos.map((lego: DroppedLego) => ({
+                id: lego.instanceId,
+                lego
+            }));
+
+            const links: ForceLink[] = connections.map((conn: Connection) => ({
+                source: conn.from.legoId,
+                target: conn.to.legoId
+            }));
+
+            // Run simulation
+            simulation.nodes(nodes);
+            (simulation.force('link') as d3.ForceLink<ForceNode, ForceLink>).links(links);
+
+            // Run simulation for a few iterations
+            for (let i = 0; i < 300; i++) {
+                simulation.tick();
+            }
+
+            // Update lego positions based on simulation
+            const positionedLegos = legos.map((lego: DroppedLego) => {
+                const node = nodes.find(n => n.id === lego.instanceId);
+                return {
+                    ...lego,
+                    x: node?.x || 0,
+                    y: node?.y || 0,
+                    style: getLegoStyle(lego.id),
+                    pushedLegs: [],
+                    selectedMatrixRows: []
+                };
+            });
+
+            // Add to state
+            setDroppedLegos(prev => [...prev, ...positionedLegos]);
+            setConnections(prev => [...prev, ...connections]);
+
+            // Add to history
+            addToHistory({
+                type: 'add',
+                data: {
+                    legos: positionedLegos,
+                    connections: connections
+                }
+            });
+
+            const updatedLegos = [...droppedLegos, ...positionedLegos];
+            encodeCanvasState(updatedLegos, connections);
+
+        } catch (error) {
+            setError('Failed to create Tanner network');
             console.error('Error:', error);
         }
     };
@@ -1432,7 +1501,10 @@ function App() {
                     </MenuButton>
                     <MenuList>
                         <MenuItem onClick={() => setIsCssTannerDialogOpen(true)}>
-                            CSS Tanner network
+                            CSS Tanner Network
+                        </MenuItem>
+                        <MenuItem onClick={() => setIsTannerDialogOpen(true)}>
+                            Tanner Network
                         </MenuItem>
                     </MenuList>
                 </Menu>
@@ -1775,7 +1847,12 @@ function App() {
                 onClose={() => setIsCssTannerDialogOpen(false)}
                 onSubmit={handleCssTannerSubmit}
             />
-        </VStack >
+            <TannerDialog
+                isOpen={isTannerDialogOpen}
+                onClose={() => setIsTannerDialogOpen(false)}
+                onSubmit={handleTannerSubmit}
+            />
+        </VStack>
     )
 }
 
