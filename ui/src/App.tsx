@@ -1284,39 +1284,44 @@ function App() {
             const response = await axios.post('http://localhost:5000/csstannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
             const { legos, connections } = response.data;
 
-            // Create simulation
-            const simulation = d3.forceSimulation<ForceNode>()
-                .force('link', d3.forceLink<ForceNode, ForceLink>().id((d) => d.id).distance(100))
-                .force('charge', d3.forceManyBody().strength(-300))
-                .force('center', d3.forceCenter(400, 300));
+            // Calculate positions for each type of node
+            const canvasWidth = 800;  // Approximate canvas width
+            const nodeSpacing = 100;  // Space between nodes
+            const rowSpacing = 150;   // Space between rows
 
-            // Prepare data for force layout
-            const nodes: ForceNode[] = legos.map((lego: DroppedLego) => ({
-                id: lego.instanceId,
-                lego
-            }));
+            // Group legos by type
+            const zNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('z'));
+            const qNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('q'));
+            const xNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('x'));
 
-            const links: ForceLink[] = connections.map((conn: Connection) => ({
-                source: conn.from.legoId,
-                target: conn.to.legoId
-            }));
-
-            // Run simulation
-            simulation.nodes(nodes);
-            (simulation.force('link') as d3.ForceLink<ForceNode, ForceLink>).links(links);
-
-            // Run simulation for a few iterations
-            for (let i = 0; i < 300; i++) {
-                simulation.tick();
-            }
-
-            // Update lego positions based on simulation
+            // Calculate positions for each row
             const positionedLegos = legos.map((lego: DroppedLego) => {
-                const node = nodes.find(n => n.id === lego.instanceId);
+                let rowIndex: number;
+                let nodesInRow: DroppedLego[];
+                let y: number;
+
+                if (lego.shortName.startsWith('z')) {
+                    rowIndex = 0;
+                    nodesInRow = zNodes;
+                    y = 100;  // Top row
+                } else if (lego.shortName.startsWith('q')) {
+                    rowIndex = 1;
+                    nodesInRow = qNodes;
+                    y = 250;  // Middle row
+                } else {
+                    rowIndex = 2;
+                    nodesInRow = xNodes;
+                    y = 400;  // Bottom row
+                }
+
+                // Calculate x position based on index in row
+                const indexInRow = nodesInRow.findIndex(l => l.instanceId === lego.instanceId);
+                const x = (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 + indexInRow * nodeSpacing;
+
                 return {
                     ...lego,
-                    x: node?.x || 0,
-                    y: node?.y || 0,
+                    x,
+                    y,
                     style: getLegoStyle(lego.id),
                     pushedLegs: [],
                     selectedMatrixRows: []
@@ -1350,39 +1355,39 @@ function App() {
             const response = await axios.post('http://localhost:5000/tannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
             const { legos, connections } = response.data;
 
-            // Create simulation
-            const simulation = d3.forceSimulation<ForceNode>()
-                .force('link', d3.forceLink<ForceNode, ForceLink>().id((d) => d.id).distance(100))
-                .force('charge', d3.forceManyBody().strength(-300))
-                .force('center', d3.forceCenter(400, 300));
+            // Calculate positions for each type of node
+            const canvasWidth = 800;  // Approximate canvas width
+            const nodeSpacing = 100;  // Space between nodes
+            const rowSpacing = 150;   // Space between rows
 
-            // Prepare data for force layout
-            const nodes: ForceNode[] = legos.map((lego: DroppedLego) => ({
-                id: lego.instanceId,
-                lego
-            }));
+            // Group legos by type
+            const checkNodes = legos.filter((lego: DroppedLego) => !lego.shortName.startsWith('q'));
+            const qNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('q'));
 
-            const links: ForceLink[] = connections.map((conn: Connection) => ({
-                source: conn.from.legoId,
-                target: conn.to.legoId
-            }));
-
-            // Run simulation
-            simulation.nodes(nodes);
-            (simulation.force('link') as d3.ForceLink<ForceNode, ForceLink>).links(links);
-
-            // Run simulation for a few iterations
-            for (let i = 0; i < 300; i++) {
-                simulation.tick();
-            }
-
-            // Update lego positions based on simulation
+            // Calculate positions for each row
             const positionedLegos = legos.map((lego: DroppedLego) => {
-                const node = nodes.find(n => n.id === lego.instanceId);
+                let rowIndex: number;
+                let nodesInRow: DroppedLego[];
+                let y: number;
+
+                if (lego.shortName.startsWith('q')) {
+                    rowIndex = 1;
+                    nodesInRow = qNodes;
+                    y = 300;  // Bottom row
+                } else {
+                    rowIndex = 0;
+                    nodesInRow = checkNodes;
+                    y = 150;  // Top row
+                }
+
+                // Calculate x position based on index in row
+                const indexInRow = nodesInRow.findIndex(l => l.instanceId === lego.instanceId);
+                const x = (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 + indexInRow * nodeSpacing;
+
                 return {
                     ...lego,
-                    x: node?.x || 0,
-                    y: node?.y || 0,
+                    x,
+                    y,
                     style: getLegoStyle(lego.id),
                     pushedLegs: [],
                     selectedMatrixRows: []
@@ -1856,4 +1861,4 @@ function App() {
     )
 }
 
-export default App 
+export default App

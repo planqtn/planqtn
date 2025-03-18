@@ -3,8 +3,11 @@ import networkx as nx
 
 
 def random_graph_state_parity_check(n, p=0.5):
-    # Generate a random graph with n qubits and edge probability p
-    G = nx.erdos_renyi_graph(n, p)
+    # Generate a random connected graph with n qubits
+    # Using connected_watts_strogatz_graph which guarantees connectivity
+    # k is the number of nearest neighbors (default 2)
+    # p is the rewiring probability (default 0.5)
+    G = nx.connected_watts_strogatz_graph(n, k=2, p=p)
 
     # Initialize X and Z parts of the matrix
     A = np.eye(n, dtype=int)  # Identity matrix for X part
