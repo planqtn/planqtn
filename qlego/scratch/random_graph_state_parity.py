@@ -24,6 +24,6 @@ def random_graph_state_parity_check(n, p=0.5):
 
 
 # Example usage
-n = 8  # Number of qubits
+n = 7  # Number of qubits
 H = random_graph_state_parity_check(n, p=0.5)
 print("\n".join([" ".join(map(str, row)) for row in H]))

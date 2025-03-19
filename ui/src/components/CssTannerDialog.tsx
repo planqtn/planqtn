@@ -49,19 +49,18 @@ export function CssTannerDialog({ isOpen, onClose, onSubmit }: CssTannerDialogPr
                 return null;
             }
 
-            // Check if it's a valid CSS symplectic matrix
-            // For each row i, j: <hi|hj> + <zi|zj> = 0 mod 2
-            const n = width / 2;
+            // Check if each row has 1s only in first half OR only in second half
+            const halfWidth = width / 2;
             for (let i = 0; i < rows.length; i++) {
-                for (let j = 0; j < rows.length; j++) {
-                    let sum = 0;
-                    for (let k = 0; k < n; k++) {
-                        sum += rows[i][k] * rows[j][k + n] + rows[i][k + n] * rows[j][k];
-                    }
-                    if (sum % 2 !== 0) {
-                        setError('Not a valid CSS symplectic matrix');
-                        return null;
-                    }
+                const firstHalf = rows[i].slice(0, halfWidth);
+                const secondHalf = rows[i].slice(halfWidth);
+
+                const hasOnesInFirstHalf = firstHalf.some(x => x === 1);
+                const hasOnesInSecondHalf = secondHalf.some(x => x === 1);
+
+                if (hasOnesInFirstHalf && hasOnesInSecondHalf) {
+                    setError(`Row ${i + 1} is not CSS`);
+                    return null;
                 }
             }
 

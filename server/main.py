@@ -101,10 +101,17 @@ class TensorNetworkResponse(BaseModel):
 
         # Add legos and track their instance IDs
         for i, (instance_id, piece) in enumerate(tn.nodes.items()):
+            if instance_id.startswith("x"):
+                lego_type = "x_rep_code"
+            elif instance_id.startswith("z") or instance_id.startswith("check"):
+                lego_type = "z_rep_code"
+            else:
+                lego_type = "generic"
             lego = {
                 "instanceId": str(i + start_node_index),
-                "id": "generic",
+                "id": lego_type,
                 "shortName": instance_id,
+                "description": instance_id,
                 "x": 0,  # Will be positioned by force layout
                 "y": 0,
                 "parity_check_matrix": piece.h.tolist(),
