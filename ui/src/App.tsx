@@ -2,30 +2,18 @@ import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton,
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
-import * as d3 from 'd3-force'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState, PauliOperator, PushedLeg } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState, PauliOperator } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
-import { DroppedLegoDisplay } from './components/DroppedLegoDisplay'
+import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
 
-interface ForceNode {
-    id: string;
-    x?: number;
-    y?: number;
-    lego: DroppedLego;
-}
-
-interface ForceLink {
-    source: string;
-    target: string;
-}
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -730,15 +718,19 @@ function App() {
 
             // Find if we're over another leg
             droppedLegos.find(lego => {
-                // Remove the self-connection check to allow connecting to the same lego
                 const legCount = lego.parity_check_matrix[0].length / 2;
                 for (let i = 0; i < legCount; i++) {
-                    const legEndpoint = getLegEndpoint(lego, i);
+                    const pos = calculateLegPosition(lego, i);
+                    const targetPoint = {
+                        x: lego.x + pos.endX,
+                        y: lego.y + pos.endY
+                    };
 
                     const distance = Math.sqrt(
-                        Math.pow(mouseX - legEndpoint.x, 2) +
-                        Math.pow(mouseY - legEndpoint.y, 2)
+                        Math.pow(mouseX - targetPoint.x, 2) +
+                        Math.pow(mouseY - targetPoint.y, 2)
                     );
+
                     if (distance < 10) {
                         // Check if either leg is already participating in a connection
                         const isSourceLegConnected = connections.some(conn =>
@@ -780,13 +772,9 @@ function App() {
                                 }
                             };
 
-
-
                             setConnections(prev => {
                                 const newConnections = [...prev, newConnection];
-
                                 encodeCanvasState(droppedLegos, newConnections);
-
                                 return newConnections;
                             });
 
@@ -822,13 +810,13 @@ function App() {
 
     const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
         const legStyle = lego.style.getLegStyle(legIndex, lego);
-        const startX = legStyle.from === "center" ? lego.x :
-            legStyle.from === "bottom" ? lego.x + legStyle.startOffset * Math.cos(legStyle.angle) : lego.x;
-        const startY = legStyle.from === "center" ? lego.y :
-            legStyle.from === "bottom" ? lego.y + legStyle.startOffset * Math.sin(legStyle.angle) : lego.y;
+        const startX = legStyle.from === "center" ? (lego.style.size / 2) :
+            legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.cos(legStyle.angle) : (lego.style.size / 2);
+        const startY = legStyle.from === "center" ? (lego.style.size / 2) :
+            legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.sin(legStyle.angle) : (lego.style.size / 2);
         return {
-            x: startX + legStyle.length * Math.cos(legStyle.angle),
-            y: startY + legStyle.length * Math.sin(legStyle.angle)
+            x: lego.x + startX + legStyle.length * Math.cos(legStyle.angle),
+            y: lego.y + startY + legStyle.length * Math.sin(legStyle.angle)
         };
     };
 
@@ -1422,17 +1410,34 @@ function App() {
                 const existingPushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
                 const currentOperator = existingPushedLeg?.operator || PauliOperator.I;
 
-                // Cycle through operators: I -> X -> Z -> Y -> I
+                // Find available operators in parity check matrix for this leg
+                const numQubits = lego.parity_check_matrix[0].length / 2;
+                const hasX = lego.parity_check_matrix.some(row =>
+                    row[legIndex] === 1 && row[legIndex + numQubits] === 0
+                );
+                const hasZ = lego.parity_check_matrix.some(row =>
+                    row[legIndex] === 0 && row[legIndex + numQubits] === 1
+                );
+
+                // Cycle through operators only if they exist in matrix
                 let nextOperator: PauliOperator;
                 switch (currentOperator) {
-                    case PauliOperator.I: nextOperator = PauliOperator.X; break;
-                    case PauliOperator.X: nextOperator = PauliOperator.Z; break;
-                    case PauliOperator.Z: nextOperator = PauliOperator.I; break;
-                    default: nextOperator = PauliOperator.I;
+                    case PauliOperator.I:
+                        nextOperator = hasX ? PauliOperator.X :
+                            hasZ ? PauliOperator.Z :
+                                PauliOperator.I;
+                        break;
+                    case PauliOperator.X:
+                        nextOperator = hasZ ? PauliOperator.Z : PauliOperator.I;
+                        break;
+                    case PauliOperator.Z:
+                        nextOperator = PauliOperator.I;
+                        break;
+                    default:
+                        nextOperator = PauliOperator.I;
                 }
 
                 // Find the first row in parity check matrix that matches currentOperator on legIndex
-                const numQubits = lego.parity_check_matrix[0].length / 2;
                 const baseRepresentative = lego.parity_check_matrix.find(row => {
                     if (nextOperator === PauliOperator.X) {
                         return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
@@ -1442,10 +1447,6 @@ function App() {
                     return false;
                 }) || new Array(2 * numQubits).fill(0);
 
-                // Find the row index of the base representative
-                const rowIndex = lego.parity_check_matrix.findIndex(row =>
-                    row.every((val, idx) => val === baseRepresentative[idx])
-                );
 
                 // Update or remove the pushed leg
                 let updatedPushedLegs;
@@ -1463,13 +1464,14 @@ function App() {
                         : [...lego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
                 }
 
-                // Update the selected rows based on the pushed legs
-                const selectedRows = updatedPushedLegs.map(pl => {
-                    const row = lego.parity_check_matrix.findIndex(r =>
-                        r.every((val, idx) => val === pl.baseRepresentatitve[idx])
-                    );
-                    return row;
-                });
+                // Update the selected rows based on the pushed legs, skipping I operators
+                const selectedRows = updatedPushedLegs
+                    .map(pl => {
+                        const row = lego.parity_check_matrix.findIndex(r =>
+                            r.every((val, idx) => val === pl.baseRepresentatitve[idx])
+                        );
+                        return row;
+                    });
 
                 // Update the selectedLego state to trigger a re-render of the parity check matrix
                 if (selectedLego?.instanceId === legoId) {
@@ -1597,36 +1599,34 @@ function App() {
                                                     : [conn.to.legoId, conn.to.legIndex, conn.from.legoId, conn.from.legIndex];
                                             const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-                                            const fromPoint = getLegEndpoint(fromLego, conn.from.legIndex);
-                                            const toPoint = getLegEndpoint(toLego, conn.to.legIndex);
+                                            // Calculate positions using shared function
+                                            const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
+                                            const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+
+                                            // Final points with lego positions
+                                            const fromPoint = {
+                                                x: fromLego.x + fromPos.endX,
+                                                y: fromLego.y + fromPos.endY
+                                            };
+                                            const toPoint = {
+                                                x: toLego.x + toPos.endX,
+                                                y: toLego.y + toPos.endY
+                                            };
 
                                             // Get the colors of the connected legs
                                             const fromLegColor = fromLego.style.getLegColor(conn.from.legIndex, fromLego);
                                             const toLegColor = toLego.style.getLegColor(conn.to.legIndex, toLego);
                                             const colorsMatch = fromLegColor === toLegColor;
+
                                             // Calculate control points for the curve
-                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
-                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
-
-                                            // Get vectors pointing in the direction of the legs
-                                            const fromVector = {
-                                                x: Math.cos(fromLegStyle.angle),
-                                                y: Math.sin(fromLegStyle.angle)
-                                            };
-                                            const toVector = {
-                                                x: Math.cos(toLegStyle.angle),
-                                                y: Math.sin(toLegStyle.angle)
-                                            };
-
-                                            // Calculate control points by extending the leg directions
-                                            const controlPointDistance = 30; // Distance of control points from endpoints
+                                            const controlPointDistance = 30;
                                             const cp1 = {
-                                                x: fromPoint.x + fromVector.x * controlPointDistance,
-                                                y: fromPoint.y + fromVector.y * controlPointDistance
+                                                x: fromPoint.x + Math.cos(fromPos.angle) * controlPointDistance,
+                                                y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
                                             };
                                             const cp2 = {
-                                                x: toPoint.x + toVector.x * controlPointDistance,
-                                                y: toPoint.y + toVector.y * controlPointDistance
+                                                x: toPoint.x + Math.cos(toPos.angle) * controlPointDistance,
+                                                y: toPoint.y + Math.sin(toPos.angle) * controlPointDistance
                                             };
 
                                             // Create the path string for the cubic Bezier curve
@@ -1719,17 +1719,14 @@ function App() {
                                         const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
                                         if (!fromLego) return null;
 
-                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex, fromLego);
-                                        const startX = legStyle.from === "center" ? fromLego.x :
-                                            legStyle.from === "bottom" ? fromLego.x + legStyle.startOffset * Math.cos(legStyle.angle) : fromLego.x;
-                                        const startY = legStyle.from === "center" ? fromLego.y :
-                                            legStyle.from === "bottom" ? fromLego.y + legStyle.startOffset * Math.sin(legStyle.angle) : fromLego.y;
+                                        // Calculate position using shared function
+                                        const fromPos = calculateLegPosition(fromLego, legDragState.legIndex);
                                         const fromPoint = {
-                                            x: startX + legStyle.length * Math.cos(legStyle.angle),
-                                            y: startY + legStyle.length * Math.sin(legStyle.angle)
+                                            x: fromLego.x + fromPos.endX,
+                                            y: fromLego.y + fromPos.endY
                                         };
 
-                                        // Calculate control point for the temporary curve
+                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex, fromLego);
                                         const controlPointDistance = 30;
                                         const cp1 = {
                                             x: fromPoint.x + Math.cos(legStyle.angle) * controlPointDistance,
@@ -1758,15 +1755,12 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            const legStyle = lego.style.getLegStyle(legIndex, lego);
-                                            const labelX = lego.x + (legStyle.length + 10) * Math.cos(legStyle.angle);
-                                            const labelY = lego.y + (legStyle.length + 10) * Math.sin(legStyle.angle);
-
+                                            const pos = calculateLegPosition(lego, legIndex);
                                             return (
                                                 <text
                                                     key={`${lego.instanceId}-label-${legIndex}`}
-                                                    x={labelX}
-                                                    y={labelY}
+                                                    x={lego.x + pos.labelX}
+                                                    y={lego.y + pos.labelY}
                                                     fontSize="12"
                                                     fill="#666666"
                                                     textAnchor="middle"

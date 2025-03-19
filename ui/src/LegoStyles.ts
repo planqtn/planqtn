@@ -1,6 +1,25 @@
 import { DroppedLego, LegoPiece, PauliOperator } from "./types";
 import { getPauliColor, I_COLOR, I_COLOR_DARK, I_COLOR_LIGHT, X_COLOR, X_COLOR_DARK, X_COLOR_LIGHT, Y_COLOR, Z_COLOR, Z_COLOR_DARK, Z_COLOR_LIGHT } from "./utils/PauliColors";
 
+// Color mapping for SVG elements
+const chakraToHexColors: { [key: string]: string } = {
+    "white": "#FFFFFF",
+    "yellow.200": "#FBD38D",
+    "yellow.400": "#F6AD55",
+    "yellow.500": "#ECC94B",
+    "yellow.600": "#D69E2E",
+    "blue.100": "#BEE3F8",
+    "blue.400": "#4299E1",
+    "blue.500": "#3182CE",
+    "green.200": "#9AE6B4",
+    "green.300": "#68D391",
+    "green.400": "#48BB78",
+    "green.700": "#2F855A",
+    "red.200": "#FEB2B2",
+    "red.300": "#FC8181",
+    "red.400": "#F56565",
+    "red.700": "#C53030"
+};
 
 interface LegStyle {
     angle: number;
@@ -27,6 +46,23 @@ export abstract class LegoStyle {
     abstract get borderColor(): string;
     abstract get selectedBackgroundColor(): string;
     abstract get selectedBorderColor(): string;
+
+    // New methods for SVG colors
+    getBackgroundColorForSvg(): string {
+        return chakraToHexColors[this.backgroundColor] || this.backgroundColor;
+    }
+
+    getBorderColorForSvg(): string {
+        return chakraToHexColors[this.borderColor] || this.borderColor;
+    }
+
+    getSelectedBackgroundColorForSvg(): string {
+        return chakraToHexColors[this.selectedBackgroundColor] || this.selectedBackgroundColor;
+    }
+
+    getSelectedBorderColorForSvg(): string {
+        return chakraToHexColors[this.selectedBorderColor] || this.selectedBorderColor;
+    }
 
     get is_special(): boolean {
         return true;
@@ -84,7 +120,7 @@ export abstract class LegoStyle {
 
 
 
-    getLegStyle(legIndex: number, lego: DroppedLego): LegStyle {
+    getLegStyle(legIndex: number, lego: DroppedLego, forSvg: boolean = false): LegStyle {
         const isLogical = lego.logical_legs.includes(legIndex);
         const isGauge = lego.gauge_legs.includes(legIndex);
         const legCount = lego.parity_check_matrix[0].length / 2;
@@ -109,7 +145,7 @@ export abstract class LegoStyle {
                 style: "solid",
                 from: "center", // Start from center
                 startOffset: 0, // No offset for logical legs
-                color: getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
             };
         } else if (isGauge) {
             // For gauge legs, calculate angle from bottom
@@ -121,7 +157,7 @@ export abstract class LegoStyle {
                 style: "dashed",
                 from: "bottom",
                 startOffset: 10, // Offset from edge for gauge legs
-                color: getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
             };
         } else {
             // Regular legs
@@ -133,13 +169,13 @@ export abstract class LegoStyle {
                 style: "solid",
                 from: "edge",
                 startOffset: 0, // No offset for regular legs
-                color: getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
             };
         }
     }
 
-    getLegColor(legIndex: number, lego: DroppedLego): string {
-        const legStyle = this.getLegStyle(legIndex, lego);
+    getLegColor(legIndex: number, lego: DroppedLego, forSvg: boolean = false): string {
+        const legStyle = this.getLegStyle(legIndex, lego, forSvg);
         return legStyle.color;
     }
 }

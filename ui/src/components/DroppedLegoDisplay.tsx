@@ -1,6 +1,36 @@
-import { Box, Text } from "@chakra-ui/react";
+import { Box, Text, VStack } from "@chakra-ui/react";
 import { DroppedLego, TensorNetwork, LegDragState, DragState } from "../types";
 
+// Add shared function for leg position calculations
+export interface LegPosition {
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    labelX: number;
+    labelY: number;
+    angle: number;
+}
+
+export function calculateLegPosition(lego: DroppedLego, legIndex: number, labelDistance: number = 15): LegPosition {
+    const legStyle = lego.style.getLegStyle(legIndex, lego);
+
+    // Calculate start position relative to center
+    const startX = legStyle.from === "center" ? 0 :
+        legStyle.from === "bottom" ? legStyle.startOffset * Math.cos(legStyle.angle) : 0;
+    const startY = legStyle.from === "center" ? 0 :
+        legStyle.from === "bottom" ? legStyle.startOffset * Math.sin(legStyle.angle) : 0;
+
+    // Calculate end position
+    const endX = startX + legStyle.length * Math.cos(legStyle.angle);
+    const endY = startY + legStyle.length * Math.sin(legStyle.angle);
+
+    // Calculate label position
+    const labelX = endX + labelDistance * Math.cos(legStyle.angle);
+    const labelY = endY + labelDistance * Math.sin(legStyle.angle);
+
+    return { startX, startY, endX, endY, labelX, labelY, angle: legStyle.angle };
+}
 
 interface DroppedLegoDisplayProps {
     lego: DroppedLego;
@@ -29,29 +59,79 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     dragState,
     onLegClick
 }) => {
+    const size = lego.style.size;
+    const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
+    const numLogicalLegs = lego.logical_legs.length; // Number of logical legs
+    const numGaugeLegs = lego.gauge_legs.length; // Number of gauge legs
+    const numRegularLegs = totalLegs - numLogicalLegs - numGaugeLegs; // Regular legs are the remaining legs
 
+    // Initialize selectedMatrixRows if not present
+    if (!lego.selectedMatrixRows) {
+        lego.selectedMatrixRows = [];
+    }
+
+    // Calculate polygon vertices - only for regular legs
+    const vertices = Array.from({ length: numRegularLegs }, (_, i) => {
+        // Start from the top (- Math.PI / 2) and go clockwise
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs;
+        return {
+            x: (size / 2) * Math.cos(angle) + size / 2,
+            y: (size / 2) * Math.sin(angle) + size / 2
+        };
+    });
+
+
+
+    const isSelected = tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
+        selectedLego?.instanceId === lego.instanceId ||
+        manuallySelectedLegos?.some(l => l.instanceId === lego.instanceId);
+
+    // Calculate leg positions once for both rendering and labels
+    const legPositions = Array(totalLegs).fill(0).map((_, legIndex) => {
+        const legStyle = lego.style.getLegStyle(legIndex, lego, true);
+        const startX = legStyle.from === "center" ? 0 :
+            legStyle.from === "bottom" ? legStyle.startOffset * Math.cos(legStyle.angle) : 0;
+        const startY = legStyle.from === "center" ? 0 :
+            legStyle.from === "bottom" ? legStyle.startOffset * Math.sin(legStyle.angle) : 0;
+        const endX = startX + legStyle.length * Math.cos(legStyle.angle);
+        const endY = startY + legStyle.length * Math.sin(legStyle.angle);
+        const labelDistance = 15;
+        const labelX = endX + labelDistance * Math.cos(legStyle.angle);
+        const labelY = endY + labelDistance * Math.sin(legStyle.angle);
+
+        return {
+            startX,
+            startY,
+            endX,
+            endY,
+            labelX,
+            labelY,
+            angle: legStyle.angle,
+            style: legStyle
+        };
+    });
 
     return (
         <Box
-            key={`${lego.instanceId}`}
             position="absolute"
-            left={`${lego.x - (lego.style.size / 2)}px`}
-            top={`${lego.y - (lego.style.size / 2)}px`}
-            style={{ userSelect: 'none' }}
+            left={`${lego.x}px`}
+            top={`${lego.y}px`}
+            cursor={dragState?.isDragging ? 'grabbing' : 'grab'}
+            onMouseDown={(e) => handleLegoMouseDown(e, index)}
+            onClick={(e) => handleLegoClick(e, lego)}
+            style={{
+                userSelect: 'none',
+                zIndex: isSelected ? 1 : 0,
+                opacity: dragState?.isDragging ? 0.5 : 1,
+                transition: dragState?.isDragging ? 'none' : 'all 0.2s ease',
+                filter: isSelected ? 'drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))' : 'none',
+                transform: 'translate(-50%, -50%)'
+            }}
         >
             {/* All Legs (rendered with z-index) */}
-            {Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                const legStyle = lego.style.getLegStyle(legIndex, lego);
+            {legPositions.map((pos, legIndex) => {
                 const isLogical = lego.logical_legs.includes(legIndex);
-                const legColor = legStyle.color
-
-                const startX = legStyle.from === "center" ? (lego.style.size / 2) :
-                    legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.cos(legStyle.angle) : (lego.style.size / 2);
-                const startY = legStyle.from === "center" ? (lego.style.size / 2) :
-                    legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.sin(legStyle.angle) : (lego.style.size / 2);
-                const endX = startX + legStyle.length * Math.cos(legStyle.angle);
-                const endY = startY + legStyle.length * Math.sin(legStyle.angle);
-
+                const legColor = pos.style.color;
                 const isBeingDragged = legDragState?.isDragging &&
                     legDragState.legoId === lego.instanceId &&
                     legDragState.legIndex === legIndex;
@@ -60,24 +140,26 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                     <Box
                         key={`leg-${legIndex}`}
                         position="absolute"
+                        left="50%"
+                        top="50%"
                         style={{
                             pointerEvents: 'none',
-                            zIndex: isLogical ? 1 : 0  // Set z-index based on leg type
+                            zIndex: isLogical ? 1 : 0
                         }}
                     >
                         {/* Line */}
                         <Box
                             position="absolute"
-                            left={`${startX}px`}
-                            top={`${startY}px`}
-                            w={`${legStyle.length}px`}
-                            h={legColor !== "gray.400" ? "4px" : legStyle.width}
+                            left={`${pos.startX}px`}
+                            top={`${pos.startY}px`}
+                            w={`${pos.style.length}px`}
+                            h={legColor !== "#A0AEC0" ? "4px" : pos.style.width}
                             bg={legColor}
                             transformOrigin="0 0"
                             style={{
-                                transform: `rotate(${legStyle.angle}rad)`,
+                                transform: `rotate(${pos.angle}rad)`,
                                 pointerEvents: isLogical ? 'all' : 'none',
-                                borderStyle: legStyle.style
+                                borderStyle: pos.style.style
                             }}
                             cursor={isLogical ? "pointer" : "default"}
                             title={isLogical ? `Logical leg, ${lego.pushedLegs.find(pl => pl.legIndex === legIndex)?.operator || 'I'}` : undefined}
@@ -87,14 +169,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                     onLegClick(lego.instanceId, legIndex);
                                 }
                             }}
-
                             transition="all 0.1s"
                         />
                         {/* Draggable Endpoint */}
                         <Box
                             position="absolute"
-                            left={`${endX}px`}
-                            top={`${endY}px`}
+                            left={`${pos.endX}px`}
+                            top={`${pos.endY}px`}
                             w="10px"
                             h="10px"
                             borderRadius="full"
@@ -118,59 +199,71 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 );
             })}
 
-            <Box
-                w={`${lego.style.size}px`}
-                h={`${lego.style.size}px`}
-                borderRadius={lego.style.borderRadius}
-                bg={
-                    tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos?.some(l => l.instanceId === lego.instanceId)
-                        ? lego.style.selectedBackgroundColor
-                        : lego.style.backgroundColor
-                }
-                border="2px"
-                borderColor={
-                    tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) || selectedLego?.instanceId === lego.instanceId || manuallySelectedLegos?.some(l => l.instanceId === lego.instanceId)
-                        ? lego.style.selectedBorderColor
-                        : lego.style.borderColor
-                }
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                cursor={dragState?.isDragging && dragState.draggedLegoIndex === index ? "grabbing" : "grab"}
-                title={lego.name}
-                boxShadow="md"
-                _hover={{ boxShadow: "lg" }}
-                onMouseDown={(e) => handleLegoMouseDown(e, index)}
-                onClick={(e) => handleLegoClick(e, lego)}
-                style={{
-                    transform: dragState?.isDragging && dragState.draggedLegoIndex === index
-                        ? 'scale(1.05)'
-                        : 'scale(1)',
-                    transition: 'transform 0.1s',
-                    userSelect: 'none',
-                    touchAction: 'none'
-                }}
-                position="relative"
-                zIndex={0}  // Set circle to z-index 0
-            >
+            {/* Lego Body */}
+            {numRegularLegs <= 2 ? (
                 <Box
-                    style={{
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                        transform: lego.logical_legs.length > 0 ? 'translateY(8px)' : 'none'
-                    }}
+                    w={`${size}px`}
+                    h={`${size}px`}
+                    borderRadius={lego.style.borderRadius}
+                    bg={isSelected ? lego.style.selectedBackgroundColor : lego.style.backgroundColor}
+                    border="2px"
+                    borderColor={isSelected ? lego.style.selectedBorderColor : lego.style.borderColor}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    position="relative"
+                    style={{ pointerEvents: 'all' }}
                 >
-                    <Text fontSize="xs" fontWeight="bold" noOfLines={2} textAlign="center">
-                        {lego.style.displayShortName &&
-                            <>
-                                {lego.shortName}
-                                <br />
-                            </>
-                        }
-                        {lego.instanceId}
-                    </Text>
-
+                    {lego.style.displayShortName && (
+                        <VStack spacing={0}>
+                            <Text fontSize="12" fontWeight="bold">{lego.shortName}</Text>
+                            <Text fontSize="12">{lego.instanceId}</Text>
+                        </VStack>
+                    )}
+                    {!lego.style.displayShortName && (
+                        <Text fontSize="12" fontWeight="bold">{lego.instanceId}</Text>
+                    )}
                 </Box>
-            </Box>
-        </Box>)
+            ) : (
+                <svg
+                    width={size}
+                    height={size}
+                    style={{ pointerEvents: 'all' }}
+                >
+                    <g transform={`translate(${size / 2}, ${size / 2})`}>
+                        <path
+                            d={vertices.reduce((path, vertex, i) => {
+                                const command = i === 0 ? 'M' : 'L';
+                                const x = (size / 2) * Math.cos(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);
+                                const y = (size / 2) * Math.sin(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);
+                                return `${path} ${command} ${x} ${y}`;
+                            }, '') + ' Z'}
+                            fill={isSelected ? lego.style.getSelectedBackgroundColorForSvg() : lego.style.getBackgroundColorForSvg()}
+                            stroke={isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}
+                            strokeWidth="2"
+                        />
+                        <text
+                            x="0"
+                            y={lego.logical_legs.length > 0 ? 5 : 0}
+                            fontSize="10"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fill="#000000"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            {lego.style.displayShortName && (
+                                <>
+                                    {lego.shortName}
+                                    <tspan x="0" dy="12">{lego.instanceId}</tspan>
+                                </>
+                            )}
+                            {!lego.style.displayShortName && lego.instanceId}
+                        </text>
+
+                    </g>
+                </svg>
+            )}
+        </Box>
+    );
 }
