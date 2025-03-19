@@ -309,31 +309,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // Connect the new lego to the original connections
             existingConnections.forEach((conn, index) => {
-                if (conn.from.legoId === lego.instanceId) {
-                    if (index == 0) {
-                        newConnections.push({
-                            from: { legoId: lego.instanceId, legIndex: 0 },
-                            to: conn.to
-                        });
-                    } else {
-                        newConnections.push({
-                            from: { legoId: newLego.instanceId, legIndex: 1 },
-                            to: conn.to
-                        });
-                    }
-                } else {
-                    if (index == 0) {
-                        newConnections.push({
-                            from: conn.from,
-                            to: { legoId: lego.instanceId, legIndex: 0 }
-                        });
-                    } else {
-                        newConnections.push({
-                            to: { legoId: newLego.instanceId, legIndex: 1 },
-                            from: conn.from
-                        });
-                    }
-                }
+                const targetLego = index === 0 ? lego : newLego;
+                const legIndex = index === 0 ? 0 : 1;
+
+                newConnections.push({
+                    from: conn.from.legoId === lego.instanceId
+                        ? { legoId: targetLego.instanceId, legIndex }
+                        : conn.from,
+                    to: conn.from.legoId === lego.instanceId
+                        ? conn.to
+                        : { legoId: targetLego.instanceId, legIndex }
+                });
             });
         } else if (numLegs >= 3) {
             // Case 3: Original lego has 3 or more legs -> Create n new legos in a circle
@@ -416,6 +402,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             <VStack align="stretch" spacing={4}>
                                 <Heading size="md">Network Details</Heading>
                                 <VStack align="stretch" spacing={3}>
+                                    <Button
+                                        colorScheme="blue"
+                                        size="sm"
+                                        width="full"
+                                        onClick={() => fuseLegos(tensorNetwork.legos)}
+                                        leftIcon={<Icon as={FaCube} />}
+                                    >
+                                        Fuse Legos
+                                    </Button>
                                     {!tensorNetwork.parityCheckMatrix &&
                                         !parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)) && (
                                             <Button
