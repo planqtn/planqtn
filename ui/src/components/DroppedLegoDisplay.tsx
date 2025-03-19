@@ -80,8 +80,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         };
     });
 
-
-
     const isSelected = tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
         selectedLego?.instanceId === lego.instanceId ||
         manuallySelectedLegos?.some(l => l.instanceId === lego.instanceId);

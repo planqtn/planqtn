@@ -1,6 +1,6 @@
 import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
-import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload } from '../types.ts'
+import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
@@ -12,10 +12,12 @@ interface DetailsPanelProps {
     selectedLego: DroppedLego | null
     manuallySelectedLegos: DroppedLego[]
     droppedLegos: DroppedLego[]
+    connections: Connection[]
     setTensorNetwork: (value: TensorNetwork | null | ((prev: TensorNetwork | null) => TensorNetwork | null)) => void
     setError: (error: string) => void
     setDroppedLegos: (value: DroppedLego[]) => void
     setSelectedLego: (value: DroppedLego | null) => void
+    fuseLegos: (legos: DroppedLego[]) => void
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -23,10 +25,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     selectedLego,
     manuallySelectedLegos,
     droppedLegos,
+    connections,
     setTensorNetwork: setTensorNetwork,
     setError,
     setDroppedLegos,
-    setSelectedLego
+    setSelectedLego,
+    fuseLegos
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -377,9 +381,67 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <>
                         <Heading size="md">Selection</Heading>
                         <Text>Selected Legos: {manuallySelectedLegos.length}</Text>
-                        <Text color="gray.600">
-                            For details, select only one lego or a complete connected component
-                        </Text>
+                        {(() => {
+                            // Helper function to check if two legos are connected
+                            const areConnected = (lego1: DroppedLego, lego2: DroppedLego): boolean => {
+                                return connections.some(conn =>
+                                    (conn.from.legoId === lego1.instanceId && conn.to.legoId === lego2.instanceId) ||
+                                    (conn.from.legoId === lego2.instanceId && conn.to.legoId === lego1.instanceId)
+                                );
+                            };
+
+                            // Check if selected legos form a connected subgraph
+                            const isConnectedSelection = (): boolean => {
+                                const visited = new Set<string>();
+                                const stack = [manuallySelectedLegos[0].instanceId];
+
+                                while (stack.length > 0) {
+                                    const currentId = stack.pop()!;
+                                    if (!visited.has(currentId)) {
+                                        visited.add(currentId);
+
+                                        // Find all connected legos within selection
+                                        manuallySelectedLegos.forEach(otherLego => {
+                                            if (!visited.has(otherLego.instanceId) &&
+                                                areConnected(
+                                                    manuallySelectedLegos.find(l => l.instanceId === currentId)!,
+                                                    otherLego
+                                                )) {
+                                                stack.push(otherLego.instanceId);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                return visited.size === manuallySelectedLegos.length;
+                            };
+
+                            // Check if selection has outgoing connections
+                            const hasOutgoingConnections = (): boolean => {
+                                const selectedIds = new Set(manuallySelectedLegos.map(l => l.instanceId));
+                                return connections.some(conn =>
+                                    (selectedIds.has(conn.from.legoId) && !selectedIds.has(conn.to.legoId)) ||
+                                    (selectedIds.has(conn.to.legoId) && !selectedIds.has(conn.from.legoId))
+                                );
+                            };
+
+                            const canFuse = isConnectedSelection() && hasOutgoingConnections();
+
+                            return canFuse ? (
+                                <Button
+                                    colorScheme="blue"
+                                    size="sm"
+                                    width="full"
+                                    onClick={() => fuseLegos(manuallySelectedLegos)}
+                                >
+                                    Fuse Legos
+                                </Button>
+                            ) : (
+                                <Text color="gray.600">
+                                    For details, select only one lego, or a connected component
+                                </Text>
+                            );
+                        })()}
                     </>
                 ) : (
                     <>

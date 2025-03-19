@@ -100,8 +100,8 @@ export interface GroupDragState {
 
 
 
-export interface Operation {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect';
+export type Operation = {
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse';
     data: {
         legos?: DroppedLego[];
         connections?: Connection[];
@@ -110,15 +110,13 @@ export interface Operation {
         oldY?: number;
         newX?: number;
         newY?: number;
-        groupMoves?: Array<{
-            legoInstanceId: string;
-            oldX: number;
-            oldY: number;
-            newX: number;
-            newY: number;
-        }>;
+        groupMoves?: { legoInstanceId: string; oldX: number; oldY: number; newX: number; newY: number; }[];
+        oldLegos?: DroppedLego[];
+        oldConnections?: Connection[];
+        newLego?: DroppedLego;
+        newConnections?: Connection[];
     };
-}
+};
 
 export interface SelectionBoxState {
     isSelecting: boolean;

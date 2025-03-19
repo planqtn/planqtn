@@ -5,7 +5,7 @@ import axios from 'axios'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, Operation, GroupDragState, SelectionBoxState, PauliOperator } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, GroupDragState, SelectionBoxState, PauliOperator, LegoServerPayload, TensorNetworkLeg, Operation } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
@@ -13,7 +13,6 @@ import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLe
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
-
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -808,17 +807,6 @@ function App() {
         // Don't reset drag state here anymore, let it continue until mouse up
     };
 
-    const getLegEndpoint = (lego: DroppedLego, legIndex: number) => {
-        const legStyle = lego.style.getLegStyle(legIndex, lego);
-        const startX = legStyle.from === "center" ? (lego.style.size / 2) :
-            legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.cos(legStyle.angle) : (lego.style.size / 2);
-        const startY = legStyle.from === "center" ? (lego.style.size / 2) :
-            legStyle.from === "bottom" ? (lego.style.size / 2) + legStyle.startOffset * Math.sin(legStyle.angle) : (lego.style.size / 2);
-        return {
-            x: lego.x + startX + legStyle.length * Math.cos(legStyle.angle),
-            y: lego.y + startY + legStyle.length * Math.sin(legStyle.angle)
-        };
-    };
 
     // Add this new function to find connected components
     const findConnectedComponent = (startLego: DroppedLego) => {
@@ -1030,6 +1018,27 @@ function App() {
                     setConnections(prev => [...prev, ...(lastOperation.data.connections || [])]);
                 }
                 break;
+            case 'fuse':
+                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
+                    // Remove the fused lego
+                    setDroppedLegos(prev => {
+                        const withoutFused = prev.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
+                        return [...withoutFused, ...lastOperation.data.oldLegos!];
+                    });
+                    // Restore old connections
+                    setConnections(prev => {
+                        const withoutNew = prev.filter(conn =>
+                            !lastOperation.data.newConnections?.some(newConn =>
+                                newConn.from.legoId === conn.from.legoId &&
+                                newConn.from.legIndex === conn.from.legIndex &&
+                                newConn.to.legoId === conn.to.legoId &&
+                                newConn.to.legIndex === conn.to.legIndex
+                            )
+                        );
+                        return [...withoutNew, ...lastOperation.data.oldConnections!];
+                    });
+                }
+                break;
         }
 
         setOperationHistory(prev => prev.slice(0, -1));
@@ -1101,6 +1110,31 @@ function App() {
                             conn.to.legoId === connectionToRemove.to.legoId &&
                             conn.to.legIndex === connectionToRemove.to.legIndex)
                     ));
+                }
+                break;
+            case 'fuse':
+                if (nextOperation.data.newLego && nextOperation.data.oldLegos) {
+                    // Remove old legos
+                    setDroppedLegos(prev => {
+                        const withoutOld = prev.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutOld, nextOperation.data.newLego!];
+                    });
+                    // Add new connections
+                    if (nextOperation.data.newConnections) {
+                        setConnections(prev => {
+                            const withoutOld = prev.filter(conn =>
+                                !nextOperation.data.oldConnections?.some(oldConn =>
+                                    oldConn.from.legoId === conn.from.legoId &&
+                                    oldConn.from.legIndex === conn.from.legIndex &&
+                                    oldConn.to.legoId === conn.to.legoId &&
+                                    oldConn.to.legIndex === conn.to.legIndex
+                                )
+                            );
+                            return [...withoutOld, ...nextOperation.data.newConnections!];
+                        });
+                    }
                 }
                 break;
         }
@@ -1488,6 +1522,127 @@ function App() {
         }));
     };
 
+    const fuseLegos = async (legosToFuse: DroppedLego[]) => {
+        try {
+            // Get all connections between the legos being fused
+            const internalConnections = connections.filter(conn =>
+                legosToFuse.some(l => l.instanceId === conn.from.legoId) &&
+                legosToFuse.some(l => l.instanceId === conn.to.legoId)
+            );
+
+            // Get all connections to legos outside the fusion group
+            const externalConnections = connections.filter(conn => {
+                const fromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
+                const toInGroup = legosToFuse.some(l => l.instanceId === conn.to.legoId);
+                return (fromInGroup && !toInGroup) || (!fromInGroup && toInGroup);
+            });
+
+            // Create a map of old leg indices to track external connections
+            const legMap = new Map<string, { legoId: string; legIndex: number }>();
+            externalConnections.forEach(conn => {
+                const isFromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
+                if (isFromInGroup) {
+                    legMap.set(`${conn.from.legoId}-${conn.from.legIndex}`, { legoId: conn.to.legoId, legIndex: conn.to.legIndex });
+                } else {
+                    legMap.set(`${conn.to.legoId}-${conn.to.legIndex}`, { legoId: conn.from.legoId, legIndex: conn.from.legIndex });
+                }
+            });
+
+            // Prepare the request payload
+            const payload = {
+                legos: legosToFuse.reduce((acc, lego) => {
+                    acc[lego.instanceId] = {
+                        ...lego,
+                        name: lego.shortName || "Generic Lego",
+                    } as LegoServerPayload;
+                    return acc;
+                }, {} as Record<string, LegoServerPayload>),
+                connections: internalConnections
+            };
+
+            // Call the paritycheck endpoint
+            const response = await axios.post('http://localhost:5000/paritycheck', payload);
+            const { matrix, legs } = response.data;
+
+            // Create a new lego with the calculated parity check matrix
+            const maxInstanceId = Math.max(...legosToFuse.map(l => parseInt(l.instanceId)));
+            const newLego: DroppedLego = {
+                id: "fused_lego",
+                instanceId: maxInstanceId.toString(),
+                shortName: "Fused",
+                name: "Fused Lego",
+                description: "Fused " + legosToFuse.length + " legos",
+                parity_check_matrix: matrix,
+                logical_legs: [], // TODO: Handle logical legs
+                gauge_legs: [], // TODO: Handle gauge legs
+                x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
+                y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
+                style: getLegoStyle("fused_lego"),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+
+            // Create new connections based on the leg mapping
+            const newConnections = externalConnections.map(conn => {
+                const isFromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
+                if (isFromInGroup) {
+                    // Find the new leg index from the legs array
+                    const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
+                        leg.instanceId === conn.from.legoId && leg.legIndex === conn.from.legIndex
+                    );
+                    return {
+                        from: { legoId: newLego.instanceId, legIndex: newLegIndex },
+                        to: { legoId: conn.to.legoId, legIndex: conn.to.legIndex }
+                    };
+                } else {
+                    const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
+                        leg.instanceId === conn.to.legoId && leg.legIndex === conn.to.legIndex
+                    );
+                    return {
+                        from: { legoId: conn.from.legoId, legIndex: conn.from.legIndex },
+                        to: { legoId: newLego.instanceId, legIndex: newLegIndex }
+                    };
+                }
+            });
+
+            // Update state
+            setDroppedLegos(prev => [
+                ...prev.filter(l => !legosToFuse.some(fl => fl.instanceId === l.instanceId)),
+                newLego
+            ]);
+            setConnections(prev => [
+                ...prev.filter(c =>
+                    !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)
+                ),
+                ...newConnections
+            ]);
+            setManuallySelectedLegos([]);
+            setSelectedLego(null);
+            setTensorNetwork(null);
+
+            // Add to history
+            addToHistory({
+                type: 'fuse',
+                data: {
+                    oldLegos: legosToFuse,
+                    oldConnections: [...internalConnections, ...externalConnections],
+                    newLego,
+                    newConnections
+                }
+            });
+
+            // Update URL state
+            encodeCanvasState(
+                [...droppedLegos.filter(l => !legosToFuse.some(fl => fl.instanceId === l.instanceId)), newLego],
+                [...connections.filter(c => !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)), ...newConnections]
+            );
+
+        } catch (error) {
+            console.error('Error fusing legos:', error);
+            setError('Failed to fuse legos');
+        }
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -1819,10 +1974,12 @@ function App() {
                             selectedLego={selectedLego}
                             manuallySelectedLegos={manuallySelectedLegos}
                             droppedLegos={droppedLegos}
+                            connections={connections}
                             setTensorNetwork={setTensorNetwork}
                             setError={setError}
                             setDroppedLegos={setDroppedLegos}
                             setSelectedLego={setSelectedLego}
+                            fuseLegos={fuseLegos}
                         />
                     </Panel>
                 </PanelGroup>
