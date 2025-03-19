@@ -128,9 +128,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 transform: 'translate(-50%, -50%)'
             }}
         >
-            {/* All Legs (rendered with z-index) */}
+            {/* Regular Legs (rendered with lower z-index) */}
             {legPositions.map((pos, legIndex) => {
                 const isLogical = lego.logical_legs.includes(legIndex);
+                if (isLogical) return null; // Skip logical legs in this pass
+
                 const legColor = pos.style.color;
                 const isBeingDragged = legDragState?.isDragging &&
                     legDragState.legoId === lego.instanceId &&
@@ -144,7 +146,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         top="50%"
                         style={{
                             pointerEvents: 'none',
-                            zIndex: isLogical ? 1 : 0
+                            zIndex: -1 // Place under the polygon
                         }}
                     >
                         {/* Line */}
@@ -158,16 +160,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             transformOrigin="0 0"
                             style={{
                                 transform: `rotate(${pos.angle}rad)`,
-                                pointerEvents: isLogical ? 'all' : 'none',
+                                pointerEvents: 'none',
                                 borderStyle: pos.style.style
-                            }}
-                            cursor={isLogical ? "pointer" : "default"}
-                            title={isLogical ? `Logical leg, ${lego.pushedLegs.find(pl => pl.legIndex === legIndex)?.operator || 'I'}` : undefined}
-                            onClick={(e) => {
-                                if (isLogical && onLegClick) {
-                                    e.stopPropagation();
-                                    onLegClick(lego.instanceId, legIndex);
-                                }
                             }}
                             transition="all 0.1s"
                         />
@@ -228,7 +222,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 <svg
                     width={size}
                     height={size}
-                    style={{ pointerEvents: 'all' }}
+                    style={{ pointerEvents: 'all', position: 'relative', zIndex: 0 }}
                 >
                     <g transform={`translate(${size / 2}, ${size / 2})`}>
                         <path
@@ -260,10 +254,82 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             )}
                             {!lego.style.displayShortName && lego.instanceId}
                         </text>
-
                     </g>
                 </svg>
             )}
+
+            {/* Logical Legs (rendered with higher z-index) */}
+            {legPositions.map((pos, legIndex) => {
+                const isLogical = lego.logical_legs.includes(legIndex);
+                if (!isLogical) return null; // Skip regular legs in this pass
+
+                const legColor = pos.style.color;
+                const isBeingDragged = legDragState?.isDragging &&
+                    legDragState.legoId === lego.instanceId &&
+                    legDragState.legIndex === legIndex;
+
+                return (
+                    <Box
+                        key={`leg-${legIndex}`}
+                        position="absolute"
+                        left="50%"
+                        top="50%"
+                        style={{
+                            pointerEvents: 'none',
+                            zIndex: 1 // Place above the polygon
+                        }}
+                    >
+                        {/* Line */}
+                        <Box
+                            position="absolute"
+                            left={`${pos.startX}px`}
+                            top={`${pos.startY}px`}
+                            w={`${pos.style.length}px`}
+                            h={legColor !== "#A0AEC0" ? "4px" : pos.style.width}
+                            bg={legColor}
+                            transformOrigin="0 0"
+                            style={{
+                                transform: `rotate(${pos.angle}rad)`,
+                                pointerEvents: isLogical ? 'all' : 'none',
+                                borderStyle: pos.style.style
+                            }}
+                            cursor={isLogical ? "pointer" : "default"}
+                            title={isLogical ? `Logical leg, ${lego.pushedLegs.find(pl => pl.legIndex === legIndex)?.operator || 'I'}` : undefined}
+                            onClick={(e) => {
+                                if (isLogical && onLegClick) {
+                                    e.stopPropagation();
+                                    onLegClick(lego.instanceId, legIndex);
+                                }
+                            }}
+                            transition="all 0.1s"
+                        />
+                        {/* Draggable Endpoint */}
+                        <Box
+                            position="absolute"
+                            left={`${pos.endX}px`}
+                            top={`${pos.endY}px`}
+                            w="10px"
+                            h="10px"
+                            borderRadius="full"
+                            bg={isBeingDragged ? "blue.100" : "white"}
+                            border="2px"
+                            borderColor={isBeingDragged ? "blue.500" : legColor}
+                            transform="translate(-50%, -50%)"
+                            cursor="pointer"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                handleLegMouseDown(e, lego.instanceId, legIndex);
+                            }}
+                            _hover={{
+                                borderColor: legColor,
+                                bg: "white"
+                            }}
+                            transition="all 0.2s"
+                            style={{ pointerEvents: 'all' }}
+                        />
+                    </Box>
+                );
+            })}
         </Box>
     );
 }
