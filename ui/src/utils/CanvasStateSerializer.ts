@@ -100,6 +100,7 @@ export class CanvasStateSerializer {
                     // For regular legos, use the template
                     return {
                         ...predefinedLego,
+                        parity_check_matrix: piece.parity_check_matrix || predefinedLego.parity_check_matrix,
                         instanceId: piece.instanceId,
                         x: piece.x,
                         y: piece.y,

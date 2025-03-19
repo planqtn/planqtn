@@ -18,6 +18,7 @@ interface DetailsPanelProps {
     setDroppedLegos: (value: DroppedLego[]) => void
     setSelectedLego: (value: DroppedLego | null) => void
     fuseLegos: (legos: DroppedLego[]) => void
+    setConnections: (value: Connection[]) => void
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -30,7 +31,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     setError,
     setDroppedLegos,
     setSelectedLego,
-    fuseLegos
+    fuseLegos,
+    setConnections
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -38,6 +40,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
     const [selectedMatrixRows, setSelectedMatrixRows] = useState<number[]>([])
+    const [showMatrix, setShowMatrix] = useState(false)
 
     // Helper function to generate network signature for caching
     const getNetworkSignature = (network: TensorNetwork) => {
@@ -219,6 +222,183 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
     };
 
+    const handleUnfuse = (lego: DroppedLego) => {
+        // Get max instance ID
+        const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+        const numLegs = lego.parity_check_matrix[0].length / 2;
+
+        // Find any existing connections to the original lego
+        const existingConnections = connections.filter(
+            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+        );
+
+        let newLegos: DroppedLego[] = [];
+        let newConnections: Connection[] = [];
+        const d3_x_rep = [
+            [1, 1, 0, 0, 0, 0],  // Z stabilizers
+            [0, 1, 1, 0, 0, 0],
+            [0, 0, 0, 1, 1, 1]   // X logical
+        ]
+        const d3_z_rep = [
+            [0, 0, 0, 1, 1, 0],  // X stabilizers
+            [0, 0, 0, 0, 1, 1],
+            [1, 1, 1, 0, 0, 0]   // Z logical
+        ]
+
+        const bell_pair = [
+            [1, 1, 0, 0],
+            [0, 0, 1, 1]
+        ]
+
+
+        const isXCode = lego.id === 'x_rep_code';
+
+        if (numLegs === 1) {
+            // Case 1: Original lego has 1 leg -> Create 1 new lego with 2 legs
+            const newLego: DroppedLego = {
+                ...lego,
+                instanceId: (maxInstanceId + 1).toString(),
+                x: lego.x + 100,
+                y: lego.y,
+                pushedLegs: [],
+                selectedMatrixRows: [],
+                parity_check_matrix: bell_pair
+            };
+            newLegos = [lego, newLego];
+
+            // Connect the new lego to the original connections
+            if (existingConnections.length > 0) {
+                const firstConnection = existingConnections[0];
+                if (firstConnection.from.legoId === lego.instanceId) {
+                    newConnections = [{
+                        from: { legoId: newLego.instanceId, legIndex: 0 },
+                        to: firstConnection.to
+                    }, {
+                        from: { legoId: newLego.instanceId, legIndex: 1 },
+                        to: { legoId: lego.instanceId, legIndex: 1 }
+                    }];
+                } else {
+                    newConnections = [{
+                        from: firstConnection.from,
+                        to: { legoId: newLego.instanceId, legIndex: 0 }
+                    }, {
+                        from: { legoId: lego.instanceId, legIndex: 1 },
+                        to: { legoId: newLego.instanceId, legIndex: 1 }
+                    }];
+                }
+            }
+        } else if (numLegs === 2) {
+            // Case 2: Original lego has 2 legs -> Create 1 new lego with 2 legs
+            const newLego: DroppedLego = {
+                ...lego,
+                instanceId: (maxInstanceId + 1).toString(),
+                x: lego.x + 100,
+                y: lego.y,
+                pushedLegs: [],
+                selectedMatrixRows: [],
+                parity_check_matrix: bell_pair
+            };
+            newLegos = [lego, newLego];
+
+            // -- [0,lego,1]  - [0, new lego 1] --
+
+            newConnections.push({
+                from: { legoId: newLego.instanceId, legIndex: 0 },
+                to: { legoId: lego.instanceId, legIndex: 1 }
+            });
+
+            // Connect the new lego to the original connections
+            existingConnections.forEach((conn, index) => {
+                if (conn.from.legoId === lego.instanceId) {
+                    if (index == 0) {
+                        newConnections.push({
+                            from: { legoId: lego.instanceId, legIndex: 0 },
+                            to: conn.to
+                        });
+                    } else {
+                        newConnections.push({
+                            from: { legoId: newLego.instanceId, legIndex: 1 },
+                            to: conn.to
+                        });
+                    }
+                } else {
+                    if (index == 0) {
+                        newConnections.push({
+                            from: conn.from,
+                            to: { legoId: lego.instanceId, legIndex: 0 }
+                        });
+                    } else {
+                        newConnections.push({
+                            to: { legoId: newLego.instanceId, legIndex: 1 },
+                            from: conn.from
+                        });
+                    }
+                }
+            });
+        } else if (numLegs >= 3) {
+            // Case 3: Original lego has 3 or more legs -> Create n new legos in a circle
+            const radius = 100; // Radius of the circle
+            const centerX = lego.x;
+            const centerY = lego.y;
+
+            // First create all legos
+            for (let i = 0; i < numLegs; i++) {
+                const angle = (2 * Math.PI * i) / numLegs;
+                const newLego: DroppedLego = {
+                    ...lego,
+                    instanceId: (maxInstanceId + 1 + i).toString(),
+                    x: centerX + radius * Math.cos(angle),
+                    y: centerY + radius * Math.sin(angle),
+                    pushedLegs: [],
+                    selectedMatrixRows: [],
+                    parity_check_matrix: isXCode ? d3_x_rep : d3_z_rep
+                };
+                newLegos.push(newLego);
+            }
+
+            // Then create all connections
+            for (let i = 0; i < numLegs; i++) {
+                // Connect to the next lego in the circle using leg 0
+                const nextIndex = (i + 1) % numLegs;
+                newConnections.push(
+                    { from: { legoId: newLegos[i].instanceId, legIndex: 0 }, to: { legoId: newLegos[nextIndex].instanceId, legIndex: 1 } }
+                );
+
+                // Connect the third leg (leg 2) to the original connections
+                if (existingConnections[i]) {
+                    const conn = existingConnections[i];
+                    if (conn.from.legoId === lego.instanceId) {
+                        newConnections.push({
+                            from: { legoId: newLegos[i].instanceId, legIndex: 2 },
+                            to: conn.to
+                        });
+                    } else {
+                        newConnections.push({
+                            from: conn.from,
+                            to: { legoId: newLegos[i].instanceId, legIndex: 2 }
+                        });
+                    }
+                }
+            }
+        }
+
+        // Update state
+        const updatedLegos = [...droppedLegos.filter(l => l.instanceId !== lego.instanceId), ...newLegos];
+        const updatedConnections = [
+            ...connections.filter(conn =>
+                !existingConnections.some(existingConn =>
+                    existingConn.from.legoId === conn.from.legoId &&
+                    existingConn.from.legIndex === conn.from.legIndex &&
+                    existingConn.to.legoId === conn.to.legoId &&
+                    existingConn.to.legIndex === conn.to.legIndex
+                )
+            ),
+            ...newConnections
+        ];
+        setDroppedLegos(updatedLegos);
+        setConnections(updatedConnections);
+    };
+
     return (
         <Box
             h="100%"
@@ -365,10 +545,28 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <>
                         <Heading size="md">Lego Instance Details</Heading>
                         <VStack align="stretch" spacing={3}>
-                            <Text fontWeight="bold">{selectedLego.name}</Text>
+                            <Text fontWeight="bold">{selectedLego.name || selectedLego.shortName}</Text>
                             <Text fontSize="sm" color="gray.600">
                                 {selectedLego.description}, instaceId: {selectedLego.instanceId}
                             </Text>
+                            {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
+                                <Button
+                                    leftIcon={<Icon as={FaCube} />}
+                                    colorScheme="blue"
+                                    size="sm"
+                                    onClick={() => handleUnfuse(selectedLego)}
+                                >
+                                    Unfuse to legs
+                                </Button>
+                            )}
+                            <Button
+                                leftIcon={<Icon as={FaTable} />}
+                                colorScheme="blue"
+                                size="sm"
+                                onClick={() => setShowMatrix(!showMatrix)}
+                            >
+                                {showMatrix ? 'Hide Matrix' : 'Show Matrix'}
+                            </Button>
                             <ParityCheckMatrixDisplay
                                 matrix={selectedLego.parity_check_matrix}
                                 lego={selectedLego}

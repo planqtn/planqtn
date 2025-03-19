@@ -1980,6 +1980,7 @@ function App() {
                             setDroppedLegos={setDroppedLegos}
                             setSelectedLego={setSelectedLego}
                             fuseLegos={fuseLegos}
+                            setConnections={setConnections}
                         />
                     </Panel>
                 </PanelGroup>
