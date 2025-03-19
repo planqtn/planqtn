@@ -19,7 +19,18 @@ interface DetailsPanelProps {
     setSelectedLego: (value: DroppedLego | null) => void
     fuseLegos: (legos: DroppedLego[]) => void
     setConnections: (value: Connection[]) => void
+    addOperation: (operation: Operation) => void
 }
+
+type Operation = {
+    type: 'fuse' | 'unfuse';
+    data: {
+        oldLegos: DroppedLego[];
+        oldConnections: Connection[];
+        newLegos: DroppedLego[];
+        newConnections: Connection[];
+    };
+};
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
     tensorNetwork: tensorNetwork,
@@ -32,7 +43,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     setDroppedLegos,
     setSelectedLego,
     fuseLegos,
-    setConnections
+    setConnections,
+    addOperation
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -234,6 +246,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         let newLegos: DroppedLego[] = [];
         let newConnections: Connection[] = [];
+
+        // Store the old state for history
+        const oldLegos = [lego];
+        const oldConnections = existingConnections;
+
         const d3_x_rep = [
             [1, 1, 0, 0, 0, 0],  // Z stabilizers
             [0, 1, 1, 0, 0, 0],
@@ -383,6 +400,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         ];
         setDroppedLegos(updatedLegos);
         setConnections(updatedConnections);
+
+        // Add to history
+        const operation: Operation = {
+            type: 'unfuse',
+            data: {
+                oldLegos,
+                oldConnections,
+                newLegos,
+                newConnections
+            }
+        };
+        addOperation(operation);
     };
 
     return (

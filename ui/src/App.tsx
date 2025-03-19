@@ -1039,6 +1039,29 @@ function App() {
                     });
                 }
                 break;
+            case 'unfuse':
+                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
+                    // Remove the unfused legos
+                    setDroppedLegos(prev => {
+                        const withoutUnfused = prev.filter(lego =>
+                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutUnfused, ...lastOperation.data.oldLegos!];
+                    });
+                    // Restore old connections
+                    setConnections(prev => {
+                        const withoutNew = prev.filter(conn =>
+                            !lastOperation.data.newConnections?.some(newConn =>
+                                newConn.from.legoId === conn.from.legoId &&
+                                newConn.from.legIndex === conn.from.legIndex &&
+                                newConn.to.legoId === conn.to.legoId &&
+                                newConn.to.legIndex === conn.to.legIndex
+                            )
+                        );
+                        return [...withoutNew, ...lastOperation.data.oldConnections!];
+                    });
+                }
+                break;
         }
 
         setOperationHistory(prev => prev.slice(0, -1));
@@ -1120,6 +1143,31 @@ function App() {
                             !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
                         );
                         return [...withoutOld, nextOperation.data.newLego!];
+                    });
+                    // Add new connections
+                    if (nextOperation.data.newConnections) {
+                        setConnections(prev => {
+                            const withoutOld = prev.filter(conn =>
+                                !nextOperation.data.oldConnections?.some(oldConn =>
+                                    oldConn.from.legoId === conn.from.legoId &&
+                                    oldConn.from.legIndex === conn.from.legIndex &&
+                                    oldConn.to.legoId === conn.to.legoId &&
+                                    oldConn.to.legIndex === conn.to.legIndex
+                                )
+                            );
+                            return [...withoutOld, ...nextOperation.data.newConnections!];
+                        });
+                    }
+                }
+                break;
+            case 'unfuse':
+                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
+                    // Remove the original lego
+                    setDroppedLegos(prev => {
+                        const withoutOriginal = prev.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
                     });
                     // Add new connections
                     if (nextOperation.data.newConnections) {
@@ -1981,6 +2029,7 @@ function App() {
                             setSelectedLego={setSelectedLego}
                             fuseLegos={fuseLegos}
                             setConnections={setConnections}
+                            addOperation={addToHistory}
                         />
                     </Panel>
                 </PanelGroup>
