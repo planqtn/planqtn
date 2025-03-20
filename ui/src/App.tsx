@@ -61,6 +61,7 @@ function App() {
     const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
     const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false)
     const [isMspDialogOpen, setIsMspDialogOpen] = useState(false)
+    const [hideConnectedLegs, setHideConnectedLegs] = useState(false)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
@@ -1778,6 +1779,44 @@ function App() {
                         </MenuItem>
                     </MenuList>
                 </Menu>
+                <Menu>
+                    <MenuButton
+                        as={Button}
+                        variant="ghost"
+                        size="sm"
+                    >
+                        View
+                    </MenuButton>
+                    <MenuList>
+                        <MenuItem
+                            onClick={() => setHideConnectedLegs(!hideConnectedLegs)}
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                        >
+                            <Box
+                                w={4}
+                                h={4}
+                                border="1px"
+                                borderColor="gray.300"
+                                bg={hideConnectedLegs ? "blue.500" : "transparent"}
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                            >
+                                {hideConnectedLegs && (
+                                    <Box
+                                        w={2}
+                                        h={2}
+                                        bg="white"
+                                        transform="rotate(45deg)"
+                                    />
+                                )}
+                            </Box>
+                            Hide connected legs
+                        </MenuItem>
+                    </MenuList>
+                </Menu>
                 <Button
                     variant="ghost"
                     size="sm"
@@ -1866,15 +1905,31 @@ function App() {
                                             const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
                                             const toPos = calculateLegPosition(toLego, conn.to.legIndex);
 
+                                            // Check if legs are connected and should be hidden
+                                            const fromLegConnected = connections.some(c =>
+                                                (c.from.legoId === fromLego.instanceId && c.from.legIndex === conn.from.legIndex) ||
+                                                (c.to.legoId === fromLego.instanceId && c.to.legIndex === conn.from.legIndex)
+                                            );
+                                            const toLegConnected = connections.some(c =>
+                                                (c.from.legoId === toLego.instanceId && c.from.legIndex === conn.to.legIndex) ||
+                                                (c.to.legoId === toLego.instanceId && c.to.legIndex === conn.to.legIndex)
+                                            );
+
+                                            // Check if legs are highlighted
+                                            const fromLegHighlighted = fromLego.pushedLegs.some(pl => pl.legIndex === conn.from.legIndex);
+                                            const toLegHighlighted = toLego.pushedLegs.some(pl => pl.legIndex === conn.to.legIndex);
+
+                                            // Determine if legs should be hidden
+                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && !fromLegHighlighted;
+                                            const hideToLeg = hideConnectedLegs && toLegConnected && !toLegHighlighted;
+
                                             // Final points with lego positions
-                                            const fromPoint = {
-                                                x: fromLego.x + fromPos.endX,
-                                                y: fromLego.y + fromPos.endY
-                                            };
-                                            const toPoint = {
-                                                x: toLego.x + toPos.endX,
-                                                y: toLego.y + toPos.endY
-                                            };
+                                            const fromPoint = hideFromLeg ?
+                                                { x: fromLego.x, y: fromLego.y } :
+                                                { x: fromLego.x + fromPos.endX, y: fromLego.y + fromPos.endY };
+                                            const toPoint = hideToLeg ?
+                                                { x: toLego.x, y: toLego.y } :
+                                                { x: toLego.x + toPos.endX, y: toLego.y + toPos.endY };
 
                                             // Get the colors of the connected legs
                                             const fromLegColor = fromLego.style.getLegColor(conn.from.legIndex, fromLego);
@@ -2018,6 +2073,17 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                            // Check if leg is connected and should be hidden
+                                            const isLegConnected = connections.some(c =>
+                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                            );
+                                            const isLegHighlighted = lego.pushedLegs.some(pl => pl.legIndex === legIndex);
+                                            const shouldHideLeg = hideConnectedLegs && isLegConnected && !isLegHighlighted;
+
+                                            // Skip rendering label if leg should be hidden
+                                            if (shouldHideLeg) return null;
+
                                             const pos = calculateLegPosition(lego, legIndex);
                                             return (
                                                 <text
@@ -2067,6 +2133,8 @@ function App() {
                                         manuallySelectedLegos={manuallySelectedLegos}
                                         dragState={dragState}
                                         onLegClick={handleLegClick}
+                                        hideConnectedLegs={hideConnectedLegs}
+                                        connections={connections}
                                     />
                                 ))}
                             </Box>

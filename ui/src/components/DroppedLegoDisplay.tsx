@@ -1,5 +1,5 @@
 import { Box, Text, VStack } from "@chakra-ui/react";
-import { DroppedLego, TensorNetwork, LegDragState, DragState } from "../types";
+import { DroppedLego, TensorNetwork, LegDragState, DragState, Connection } from "../types";
 
 // Add shared function for leg position calculations
 export interface LegPosition {
@@ -44,6 +44,8 @@ interface DroppedLegoDisplayProps {
     manuallySelectedLegos: DroppedLego[] | null;
     dragState: DragState | null;
     onLegClick?: (legoId: string, legIndex: number) => void;
+    hideConnectedLegs: boolean;
+    connections: Connection[];
 }
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
@@ -57,7 +59,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     selectedLego,
     manuallySelectedLegos,
     dragState,
-    onLegClick
+    onLegClick,
+    hideConnectedLegs,
+    connections
 }) => {
     const size = lego.style.size;
     const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
@@ -109,6 +113,24 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         };
     });
 
+    // Function to check if a leg is connected
+    const isLegConnected = (legIndex: number) => {
+        return connections.some(conn =>
+            (conn.from.legoId === lego.instanceId && conn.from.legIndex === legIndex) ||
+            (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
+        );
+    };
+
+    // Function to check if a leg is highlighted
+    const isLegHighlighted = (legIndex: number) => {
+        return lego.pushedLegs.some(pl => pl.legIndex === legIndex);
+    };
+
+    // Function to determine if a leg should be hidden
+    const shouldHideLeg = (legIndex: number) => {
+        return hideConnectedLegs && isLegConnected(legIndex) && !isLegHighlighted(legIndex);
+    };
+
     return (
         <Box
             position="absolute"
@@ -135,6 +157,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 const isBeingDragged = legDragState?.isDragging &&
                     legDragState.legoId === lego.instanceId &&
                     legDragState.legIndex === legIndex;
+
+                // Skip rendering if leg should be hidden
+                if (shouldHideLeg(legIndex)) return null;
 
                 return (
                     <Box
