@@ -268,7 +268,10 @@ async def get_dynamic_lego(request: DynamicLegoRequest):
     lego_def = next((l for l in legos if l["id"] == request.lego_id), None)
 
     if not lego_def or not lego_def.get("is_dynamic"):
-        raise HTTPException(status_code=400, detail="Invalid or non-dynamic lego ID")
+        print("Retrieved lego definition", lego_def, "for id", request.lego_id)
+        raise HTTPException(
+            status_code=400, detail=f"Invalid or non-dynamic lego ID: {request.lego_id}"
+        )
 
     # Get the method from Legos class
     method = getattr(Legos, request.lego_id)
@@ -282,6 +285,7 @@ async def get_dynamic_lego(request: DynamicLegoRequest):
         lego_def["parity_check_matrix"] = matrix.tolist()
         return lego_def
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 

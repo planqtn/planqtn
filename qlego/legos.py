@@ -111,7 +111,7 @@ class Legos:
         """Returns a list of all available lego pieces with their descriptions."""
         legos = [
             {
-                "id": LegoType.T6,
+                "id": LegoType.T6.value,
                 "name": "Encoding Tensor 6-0-2",
                 "shortName": "T6",
                 "description": "[[6,0,2]] encoding tensor",
@@ -120,7 +120,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.T5,
+                "id": LegoType.T5.value,
                 "name": "Encoding Tensor 5-1-2",
                 "shortName": "T5",
                 "description": "[[5,1,2]] encoding tensor",
@@ -129,7 +129,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.T5X,
+                "id": LegoType.T5X.value,
                 "name": "Encoding Tensor 5-1-2 X",
                 "shortName": "ET51X",
                 "description": "X component of 5-1-2 encoding tensor",
@@ -138,7 +138,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.T5Z,
+                "id": LegoType.T5Z.value,
                 "name": "Encoding Tensor 5-1-2 Z",
                 "shortName": "ET51Z",
                 "description": "Z component of 5-1-2 encoding tensor",
@@ -147,7 +147,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.H,
+                "id": LegoType.H.value,
                 "name": "Hadamard",
                 "shortName": "H",
                 "description": "Hadamard tensor",
@@ -156,7 +156,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.STOPPER_X,
+                "id": LegoType.STOPPER_X.value,
                 "name": "X Stopper",
                 "shortName": "X",
                 "description": "X-type stopper tensor",
@@ -165,7 +165,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.STOPPER_Z,
+                "id": LegoType.STOPPER_Z.value,
                 "name": "Z Stopper",
                 "shortName": "Z",
                 "description": "Z-type stopper tensor",
@@ -174,7 +174,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.STOPPER_Y,
+                "id": LegoType.STOPPER_Y.value,
                 "name": "Y Stopper",
                 "shortName": "Y",
                 "description": "Y-type stopper tensor",
@@ -183,7 +183,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": LegoType.STOPPER_I,
+                "id": LegoType.STOPPER_I.value,
                 "name": "Identity Stopper",
                 "shortName": "I",
                 "description": "Identity stopper tensor",
@@ -197,7 +197,7 @@ class Legos:
         legos.extend(
             [
                 {
-                    "id": LegoType.ZREP,
+                    "id": LegoType.ZREP.value,
                     "name": "Z-Repetition Code",
                     "shortName": "ZREP3",
                     "description": "Bitflip code, ZZ stabilizers",
@@ -208,7 +208,7 @@ class Legos:
                     "gauge_legs": [],
                 },
                 {
-                    "id": LegoType.XREP,
+                    "id": LegoType.XREP.value,
                     "name": "X-Repetition Code",
                     "shortName": "XREP3",
                     "description": "Phase flip code, XX stabilizers",
