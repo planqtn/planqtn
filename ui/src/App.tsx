@@ -1066,6 +1066,34 @@ function App() {
                     });
                 }
                 break;
+
+            case 'unfuseInto2Legos':
+                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
+                    console.log("unfuseInto2Legos", lastOperation.data.oldLegos, lastOperation.data.oldConnections)
+                    // Remove the new legos and restore the original lego
+                    const restoredLegos = [...lastOperation.data.oldLegos];
+                    const restoredConnections = [...lastOperation.data.oldConnections];
+
+                    setDroppedLegos(prev => {
+                        const withoutNew = prev.filter(lego =>
+                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutNew, ...restoredLegos];
+                    });
+
+                    // Restore old connections
+                    setConnections(_prev => restoredConnections);
+
+                    // Update URL state with the restored state
+                    encodeCanvasState(
+                        droppedLegos.filter(lego =>
+                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                        ).concat(restoredLegos),
+                        restoredConnections,
+                        hideConnectedLegs
+                    );
+                }
+                break;
             case 'colorChange':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the color-changed legos and Hadamard legos
@@ -1226,6 +1254,28 @@ function App() {
                             return [...withoutOld, ...nextOperation.data.newConnections!];
                         });
                     }
+                }
+                break;
+            case 'unfuseInto2Legos':
+                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
+                    // Remove the original lego and add the new legos
+                    setDroppedLegos(prev => {
+                        const withoutOriginal = prev.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
+                    });
+                    // Update connections
+                    setConnections(_prev => [...nextOperation.data.newConnections!]);
+
+                    // Update URL state
+                    encodeCanvasState(
+                        droppedLegos.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        ).concat(nextOperation.data.newLegos!),
+                        nextOperation.data.newConnections!,
+                        hideConnectedLegs
+                    );
                 }
                 break;
             case 'colorChange':

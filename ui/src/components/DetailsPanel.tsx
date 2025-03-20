@@ -7,6 +7,7 @@ import axios, { AxiosResponse } from 'axios'
 import { useState, useEffect } from 'react'
 import { PauliOperator } from '../types'
 import { getLegoStyle } from '../LegoStyles'
+import { LegPartitionDialog } from './LegPartitionDialog'
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -27,7 +28,7 @@ interface DetailsPanelProps {
 }
 
 type Operation = {
-    type: 'fuse' | 'unfuse' | 'colorChange' | 'pullOutOppositeLeg';
+    type: 'fuse' | 'unfuse' | 'colorChange' | 'pullOutOppositeLeg' | 'unfuseInto2Legos';
     data: {
         oldLegos: DroppedLego[];
         oldConnections: Connection[];
@@ -61,6 +62,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [selectedMatrixRows, setSelectedMatrixRows] = useState<number[]>([])
     const [showMatrix, setShowMatrix] = useState(false)
     const [calculatedMatrix, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
+    const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
+    const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
 
     // Reset calculatedMatrix when selection changes
     useEffect(() => {
@@ -259,7 +262,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         // Store the old state for history
         const oldLegos = [lego];
-        const oldConnections = [...existingConnections];
 
         try {
             // Get the new repetition code with one more leg
@@ -462,6 +464,184 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         // Update URL state
         encodeCanvasState(finalLegos, updatedConnections, hideConnectedLegs);
+    };
+
+    const handleUnfuseInto2Legos = (lego: DroppedLego) => {
+        setUnfuseLego(lego);
+        setShowLegPartitionDialog(true);
+    };
+
+    const handleLegPartitionConfirm = async (legAssignments: boolean[]) => {
+        if (!unfuseLego) return;
+        const lego = unfuseLego;
+
+        // Get max instance ID
+        const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+
+        // Find any existing connections to the original lego
+        const existingConnections = connections.filter(
+            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+        );
+
+        // Store the old state for history with deep copies
+        const oldLegos = droppedLegos.map(l => ({ ...l })); // Deep copy of legos
+        const oldConnections = connections.map(conn => ({
+            from: { ...conn.from },
+            to: { ...conn.to }
+        })); // Deep copy of connections
+
+
+        try {
+            // Count legs for each new lego
+            const lego1Legs = legAssignments.filter(x => !x).length;
+            const lego2Legs = legAssignments.filter(x => x).length;
+
+            // Create maps for new leg indices
+            const lego1LegMap = new Map<number, number>();
+            const lego2LegMap = new Map<number, number>();
+            let lego1Count = 0;
+            let lego2Count = 0;
+
+            // Build the leg mapping
+            legAssignments.forEach((isLego2, oldIndex) => {
+                if (!isLego2) {
+                    lego1LegMap.set(oldIndex, lego1Count++);
+                } else {
+                    lego2LegMap.set(oldIndex, lego2Count++);
+                }
+            });
+
+            // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
+            const [response1, response2] = await Promise.all([
+                fetch('http://localhost:5000/dynamiclego', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lego_id: lego.id,
+                        parameters: { d: lego1Legs + 1 }
+                    })
+                }),
+                fetch('http://localhost:5000/dynamiclego', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lego_id: lego.id,
+                        parameters: { d: lego2Legs + 1 }
+                    })
+                })
+            ]);
+
+            if (!response1.ok || !response2.ok) {
+                throw new Error('Failed to get dynamic lego');
+            }
+
+            const [lego1Data, lego2Data] = await Promise.all([
+                response1.json(),
+                response2.json()
+            ]);
+
+            // Create the two new legos
+            const lego1: DroppedLego = {
+                ...lego,
+                instanceId: (maxInstanceId + 1).toString(),
+                x: lego.x - 50,  // Position slightly to the left
+                parity_check_matrix: lego1Data.parity_check_matrix
+            };
+
+            const lego2: DroppedLego = {
+                ...lego,
+                instanceId: (maxInstanceId + 2).toString(),
+                x: lego.x + 50,  // Position slightly to the right
+                parity_check_matrix: lego2Data.parity_check_matrix
+            };
+
+            // Create connection between the new legos
+            const connectionBetweenLegos: Connection = {
+                from: {
+                    legoId: lego1.instanceId,
+                    legIndex: lego1Legs  // The last leg is the connecting one
+                },
+                to: {
+                    legoId: lego2.instanceId,
+                    legIndex: lego2Legs  // The last leg is the connecting one
+                }
+            };
+
+            // Remap existing connections based on leg assignments
+            const newConnections = existingConnections.map(conn => {
+                let newConn = { ...conn };
+                if (conn.from.legoId === lego.instanceId) {
+                    const oldLegIndex = conn.from.legIndex;
+                    if (!legAssignments[oldLegIndex]) {
+                        // Goes to lego1
+                        newConn.from.legoId = lego1.instanceId;
+                        newConn.from.legIndex = lego1LegMap.get(oldLegIndex)!;
+                    } else {
+                        // Goes to lego2
+                        newConn.from.legoId = lego2.instanceId;
+                        newConn.from.legIndex = lego2LegMap.get(oldLegIndex)!;
+                    }
+                }
+                if (conn.to.legoId === lego.instanceId) {
+                    const oldLegIndex = conn.to.legIndex;
+                    if (!legAssignments[oldLegIndex]) {
+                        // Goes to lego1
+                        newConn.to.legoId = lego1.instanceId;
+                        newConn.to.legIndex = lego1LegMap.get(oldLegIndex)!;
+                    } else {
+                        // Goes to lego2
+                        newConn.to.legoId = lego2.instanceId;
+                        newConn.to.legIndex = lego2LegMap.get(oldLegIndex)!;
+                    }
+                }
+                return newConn;
+            });
+
+            // Update the state
+            const newLegos = [...droppedLegos.filter(l => l.instanceId !== lego.instanceId), lego1, lego2];
+
+            // Only keep connections that don't involve the original lego at all
+            // We need to filter from the full connections array, not just existingConnections
+            const remainingConnections = connections.filter(c =>
+                c.from.legoId !== lego.instanceId &&
+                c.to.legoId !== lego.instanceId &&
+                !existingConnections.some(ec =>
+                    ec.from.legoId === c.from.legoId &&
+                    ec.from.legIndex === c.from.legIndex &&
+                    ec.to.legoId === c.to.legoId &&
+                    ec.to.legIndex === c.to.legIndex
+                )
+            );
+
+            // Add the remapped connections and the new connection between legos
+            const updatedConnections = [...remainingConnections, ...newConnections, connectionBetweenLegos];
+
+
+
+            setDroppedLegos(newLegos);
+            setConnections(updatedConnections);
+
+            // Add to operation history
+            addOperation({
+                type: 'unfuseInto2Legos',
+                data: {
+                    oldLegos,
+                    oldConnections,
+                    newLegos,
+                    newConnections: updatedConnections
+                }
+            });
+
+            // Update URL state
+            encodeCanvasState(newLegos, updatedConnections, hideConnectedLegs);
+
+        } catch (error) {
+            setError(`Error unfusing lego: ${error}`);
+        }
+
+        setShowLegPartitionDialog(false);
+        setUnfuseLego(null);
+        setSelectedLego(null);
     };
 
     const handleUnfuse = (lego: DroppedLego) => {
@@ -833,6 +1013,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         leftIcon={<Icon as={FaCube} />}
                                         colorScheme="blue"
                                         size="sm"
+                                        onClick={() => handleUnfuseInto2Legos(selectedLego)}
+                                    >
+                                        Unfuse into 2 legos
+                                    </Button>
+
+
+                                    <Button
+                                        leftIcon={<Icon as={FaCube} />}
+                                        colorScheme="blue"
+                                        size="sm"
                                         onClick={() => handleChangeColor(selectedLego)}
                                     >
                                         Change color
@@ -982,6 +1172,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     </>
                 )}
             </VStack>
+            <LegPartitionDialog
+                open={showLegPartitionDialog}
+                numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
+                onClose={() => {
+                    setShowLegPartitionDialog(false);
+                    setUnfuseLego(null);
+                }}
+                onConfirm={handleLegPartitionConfirm}
+            />
         </Box>
     )
 }
