@@ -10,6 +10,8 @@ import numpy as np
 
 # Add the parent directory to the Python path to import qlego
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from qlego.linalg import gauss
 from qlego.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
 from qlego.legos import Legos
 from qlego.tensor_stabilizer_enumerator import (
@@ -66,6 +68,7 @@ class TensorNetworkLeg(BaseModel):
 class ParityCheckResponse(BaseModel):
     matrix: List[List[int]]
     legs: List[TensorNetworkLeg]
+    recognized_type: str | None = None
     message: str = "Successfully calculated parity check matrix"
 
 
@@ -153,6 +156,44 @@ class TensorNetworkResponse(BaseModel):
         return TensorNetworkResponse(legos=legos, connections=connections)
 
 
+def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:
+    """Check if two parity check matrices are Gauss equivalent."""
+    if h1.shape != h2.shape:
+        return False
+    h1_gauss = gauss(h1)
+    h2_gauss = gauss(h2)
+
+    return np.array_equal(h1_gauss, h2_gauss)
+
+
+def recognize_parity_check_matrix(h: GF2) -> str | None:
+    """Recognize if a parity check matrix is equivalent to a known type."""
+    # Get all available legos
+    legos = Legos.list_available_legos()
+
+    # First check static legos
+    for lego in legos:
+        if not lego.get("is_dynamic"):
+            lego_matrix = GF2(lego["parity_check_matrix"])
+            if is_gauss_equivalent(h, lego_matrix):
+                return lego["id"]
+
+    # Then check for repetition codes
+    num_qubits = h.shape[1] // 2
+    if num_qubits > 0:
+        # Z repetition code
+        z_rep = Legos.z_rep_code(num_qubits)
+        if is_gauss_equivalent(h, z_rep):
+            return "z_rep_code"
+
+        # X repetition code
+        x_rep = Legos.x_rep_code(num_qubits)
+        if is_gauss_equivalent(h, x_rep):
+            return "x_rep_code"
+
+    return None
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(message="Server is running", status="healthy")
@@ -186,8 +227,6 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
             [conn["to"]["legIndex"]],
         )
 
-    print(tn.construction_code())
-
     # Conjoin all nodes to get the final parity check matrix
     result = tn.conjoin_nodes(verbose=True)
 
@@ -195,7 +234,12 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     matrix = result.h.tolist()
     legs = [TensorNetworkLeg(instanceId=leg[0], legIndex=leg[1]) for leg in result.legs]
 
-    return ParityCheckResponse(matrix=matrix, legs=legs)
+    # Check if the matrix matches any known type
+    recognized_type = recognize_parity_check_matrix(result.h)
+
+    return ParityCheckResponse(
+        matrix=matrix, legs=legs, recognized_type=recognized_type
+    )
 
 
 @app.post("/weightenumerator", response_model=WeightEnumeratorResponse)

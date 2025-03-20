@@ -4,7 +4,7 @@ import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connec
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PauliOperator } from '../types'
 import { getLegoStyle } from '../LegoStyles'
 
@@ -60,6 +60,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
     const [selectedMatrixRows, setSelectedMatrixRows] = useState<number[]>([])
     const [showMatrix, setShowMatrix] = useState(false)
+    const [calculatedMatrix, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
+
+    // Reset calculatedMatrix when selection changes
+    useEffect(() => {
+        setCalculatedMatrix(null);
+    }, [manuallySelectedLegos]);
 
     // Helper function to generate network signature for caching
     const getNetworkSignature = (network: TensorNetwork) => {
@@ -260,7 +266,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             ...lego,
             id: lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code',
             shortName: lego.id === 'x_rep_code' ? 'Z Rep Code' : 'X Rep Code',
-            style: getLegoStyle(lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code')
+            style: getLegoStyle(lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code'),
+            parity_check_matrix: lego.parity_check_matrix.map(row => {
+                const n = row.length / 2;
+                return [...row.slice(n), ...row.slice(0, n)];
+            })
         }];
 
         // Create new connections array
@@ -786,14 +796,64 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             const canFuse = isConnectedSelection() && hasOutgoingConnections();
 
                             return canFuse ? (
-                                <Button
-                                    colorScheme="blue"
-                                    size="sm"
-                                    width="full"
-                                    onClick={() => fuseLegos(manuallySelectedLegos)}
-                                >
-                                    Fuse Legos
-                                </Button>
+                                <>
+                                    <Button
+                                        colorScheme="blue"
+                                        size="sm"
+                                        width="full"
+                                        onClick={() => fuseLegos(manuallySelectedLegos)}
+                                        mb={2}
+                                    >
+                                        Fuse Legos
+                                    </Button>
+                                    <Button
+                                        colorScheme="green"
+                                        size="sm"
+                                        width="full"
+                                        onClick={async () => {
+                                            try {
+                                                const response = await fetch('http://localhost:5000/paritycheck', {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                    },
+                                                    body: JSON.stringify({
+                                                        legos: manuallySelectedLegos.reduce<Record<string, DroppedLego>>((acc, lego) => {
+                                                            acc[lego.instanceId] = lego;
+                                                            return acc;
+                                                        }, {}),
+                                                        connections: connections.filter(conn =>
+                                                            manuallySelectedLegos.some(l => l.instanceId === conn.from.legoId) &&
+                                                            manuallySelectedLegos.some(l => l.instanceId === conn.to.legoId)
+                                                        )
+                                                    })
+                                                });
+                                                const data = await response.json();
+                                                setCalculatedMatrix(data);
+
+                                            } catch (error) {
+                                                setError(`Error calculating parity check matrix: ${error}`);
+                                            }
+                                        }}
+                                        mb={4}
+                                    >
+                                        Calculate Parity Check Matrix
+                                    </Button>
+                                    {calculatedMatrix && (
+                                        <Box borderWidth={1} borderRadius="lg" p={4}>
+                                            {calculatedMatrix.recognized_type && (
+                                                <Text mb={2} fontWeight="bold">
+                                                    Recognized as: {calculatedMatrix.recognized_type}
+                                                </Text>
+                                            )}
+                                            <ParityCheckMatrixDisplay
+                                                matrix={calculatedMatrix.matrix}
+                                                legOrdering={calculatedMatrix.legs}
+                                                title="Calculated Parity Check Matrix"
+                                            />
+                                        </Box>
+                                    )}
+                                </>
                             ) : (
                                 <Text color="gray.600">
                                     For details, select only one lego, or a connected component

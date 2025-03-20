@@ -748,7 +748,6 @@ function App() {
 
                         // Prevent connecting a leg to itself
                         if (lego.instanceId === legDragState.legoId && i === legDragState.legIndex) {
-                            setError('Cannot connect a leg to itself');
                             return true;
                         }
 
@@ -1731,12 +1730,13 @@ function App() {
 
             // Call the paritycheck endpoint
             const response = await axios.post('http://localhost:5000/paritycheck', payload);
-            const { matrix, legs } = response.data;
+            const { matrix, legs, recognized_type } = response.data;
 
             // Create a new lego with the calculated parity check matrix
             const maxInstanceId = Math.max(...legosToFuse.map(l => parseInt(l.instanceId)));
+            const type_id = recognized_type || "fused_lego";
             const newLego: DroppedLego = {
-                id: "fused_lego",
+                id: type_id,
                 instanceId: maxInstanceId.toString(),
                 shortName: "Fused",
                 name: "Fused Lego",
@@ -1746,7 +1746,7 @@ function App() {
                 gauge_legs: [], // TODO: Handle gauge legs
                 x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
                 y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
-                style: getLegoStyle("fused_lego"),
+                style: getLegoStyle(type_id),
                 pushedLegs: [],
                 selectedMatrixRows: []
             };

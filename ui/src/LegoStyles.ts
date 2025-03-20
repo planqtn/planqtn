@@ -244,6 +244,42 @@ export class GenericStyle extends LegoStyle {
     }
 }
 
+
+export class IdentityStyle extends LegoStyle {
+    get size(): number {
+        return 20;
+    }
+
+    get borderRadius(): string {
+        return "full";
+    }
+
+    get backgroundColor(): string {
+        return "white";
+    }
+
+    get borderColor(): string {
+        return "blue.400";
+    }
+
+    get selectedBackgroundColor(): string {
+        return "blue.100";
+    }
+
+    get selectedBorderColor(): string {
+        return "blue.500";
+    }
+
+    get is_special(): boolean {
+        return false;
+    }
+
+    get displayShortName(): boolean {
+        return false;
+    }
+
+}
+
 export class RepetitionCodeStyle extends LegoStyle {
     get size(): number {
         return 20;
@@ -363,6 +399,8 @@ export function getLegoStyle(id: string): LegoStyle {
         return new StopperStyle(id);
     } else if (id === "stopper_y") {
         return new StopperStyle(id);
+    } else if (id === "identity") {
+        return new IdentityStyle(id);
     } else {
         return new GenericStyle(id);
     }

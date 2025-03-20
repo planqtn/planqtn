@@ -17,6 +17,7 @@ class LegoType(enum.Enum):
     STOPPER_Z = "stopper_z"
     STOPPER_Y = "stopper_y"
     STOPPER_I = "stopper_i"
+    ID = "identity"
 
 
 @attrs.define
@@ -70,6 +71,13 @@ class Legos:
         g[np.arange(d, 2 * d)] = 1
         gens.append(g)
         return GF2(gens)
+
+    identity = GF2(
+        [
+            [1, 1, 0, 0],
+            [0, 0, 1, 1],
+        ]
+    )
 
     enconding_tensor_512 = GF2(
         [
@@ -188,6 +196,15 @@ class Legos:
                 "shortName": "I",
                 "description": "Identity stopper tensor",
                 "parity_check_matrix": cls.stopper_i.tolist(),
+                "logical_legs": [],
+                "gauge_legs": [],
+            },
+            {
+                "id": LegoType.ID.value,
+                "name": "Identity",
+                "shortName": "I",
+                "description": "Identity tensor",
+                "parity_check_matrix": cls.identity.tolist(),
                 "logical_legs": [],
                 "gauge_legs": [],
             },
