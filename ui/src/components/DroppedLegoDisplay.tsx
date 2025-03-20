@@ -46,6 +46,7 @@ interface DroppedLegoDisplayProps {
     onLegClick?: (legoId: string, legIndex: number) => void;
     hideConnectedLegs: boolean;
     connections: Connection[];
+    droppedLegos?: DroppedLego[];
 }
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
@@ -61,7 +62,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     dragState,
     onLegClick,
     hideConnectedLegs,
-    connections
+    connections,
+    droppedLegos = []
 }) => {
     const size = lego.style.size;
     const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
@@ -122,16 +124,50 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     };
 
 
-
     // Function to determine if a leg should be hidden
-    const shouldHideLeg = (legIndex: number, isHighlighted: boolean) => {
+    const shouldHideLeg = (legIndex: number) => {
+        if (!hideConnectedLegs) return false;
         const isConnected = isLegConnected(legIndex);
-        return hideConnectedLegs && isConnected && !isHighlighted;
+        if (!isConnected) return false;
+
+        const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+        const isThisHighlighted = thisLegStyle.is_highlighted;
+
+        // If this leg is not highlighted, hide it only if connected to a non-highlighted leg
+        if (!isThisHighlighted) {
+            // Check if connected to a highlighted leg
+            return !connections.some(conn => {
+                if (conn.from.legoId === lego.instanceId && conn.from.legIndex === legIndex) {
+                    const connectedLego = droppedLegos?.find(l => l.instanceId === conn.to.legoId);
+                    return connectedLego?.style.getLegStyle(conn.to.legIndex, connectedLego)?.is_highlighted || false;
+                }
+                if (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex) {
+                    const connectedLego = droppedLegos?.find(l => l.instanceId === conn.from.legoId);
+                    return connectedLego?.style.getLegStyle(conn.from.legIndex, connectedLego)?.is_highlighted || false;
+                }
+                return false;
+            });
+        }
+
+        // If this leg is highlighted, hide it only if connected to a leg with the same highlight color
+        return connections.some(conn => {
+            if (conn.from.legoId === lego.instanceId && conn.from.legIndex === legIndex) {
+                const connectedLego = droppedLegos?.find(l => l.instanceId === conn.to.legoId);
+                const connectedStyle = connectedLego?.style.getLegStyle(conn.to.legIndex, connectedLego);
+                return connectedStyle?.is_highlighted && connectedStyle.color === thisLegStyle.color;
+            }
+            if (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex) {
+                const connectedLego = droppedLegos?.find(l => l.instanceId === conn.from.legoId);
+                const connectedStyle = connectedLego?.style.getLegStyle(conn.from.legIndex, connectedLego);
+                return connectedStyle?.is_highlighted && connectedStyle.color === thisLegStyle.color;
+            }
+            return false;
+        });
     };
 
     // Function to get leg visibility style
-    const getLegVisibility = (legIndex: number, isHighlighted: boolean) => {
-        if (shouldHideLeg(legIndex, isHighlighted)) {
+    const getLegVisibility = (legIndex: number) => {
+        if (shouldHideLeg(legIndex)) {
             return { visibility: 'hidden' as const, pointerEvents: 'none' as const };
         }
         return { visibility: 'visible' as const, pointerEvents: 'all' as const };
@@ -164,8 +200,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                     legDragState.legoId === lego.instanceId &&
                     legDragState.legIndex === legIndex;
 
-                const legVisibility = getLegVisibility(legIndex, pos.style.is_highlighted);
-                console.log(pos, legIndex, legVisibility);
+                const legVisibility = getLegVisibility(legIndex);
                 return (
                     <Box
                         key={`leg-${legIndex}`}

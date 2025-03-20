@@ -5,7 +5,7 @@ import axios from 'axios'
 export class CanvasStateSerializer {
     constructor(private legos: LegoPiece[]) { }
 
-    public encode(pieces: DroppedLego[], connections: Connection[]): void {
+    public encode(pieces: DroppedLego[], connections: Connection[], hideConnectedLegs: boolean): void {
         const state: CanvasState = {
             pieces: pieces.map(piece => ({
                 id: piece.id,
@@ -19,7 +19,8 @@ export class CanvasStateSerializer {
                 logical_legs: piece.logical_legs,
                 gauge_legs: piece.gauge_legs
             })),
-            connections
+            connections,
+            hideConnectedLegs
         }
 
         const encoded = btoa(JSON.stringify(state))
@@ -29,12 +30,13 @@ export class CanvasStateSerializer {
 
     public async decode(encoded: string): Promise<{
         pieces: DroppedLego[],
-        connections: Connection[]
+        connections: Connection[],
+        hideConnectedLegs: boolean
     }> {
         try {
             const decoded = JSON.parse(atob(encoded))
             if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
-                return { pieces: [], connections: [] }
+                return { pieces: [], connections: [], hideConnectedLegs: false }
             }
             // Fetch legos if not already loaded
             let legosList = this.legos
@@ -111,11 +113,12 @@ export class CanvasStateSerializer {
             // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);
             return {
                 pieces: reconstructedPieces,
-                connections: decoded.connections || []
+                connections: decoded.connections || [],
+                hideConnectedLegs: decoded.hideConnectedLegs || false
             }
         } catch (error) {
             console.error('Error decoding canvas state:', error)
-            return { pieces: [], connections: [] }
+            return { pieces: [], connections: [], hideConnectedLegs: false }
         }
     }
 

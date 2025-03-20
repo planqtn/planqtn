@@ -70,11 +70,11 @@ function App() {
         stateSerializerRef.current.updateLegos(legos)
     }, [legos])
 
-    const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[]) => {
+    const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[], hideConnectedLegs: boolean) => {
         // console.log("Encoding droppedLegos", pieces, "connections", conns);
         // Print call stack for debugging
         // console.log('Canvas state encoding call stack:', new Error("just debugging").stack);
-        stateSerializerRef.current.encode(pieces, conns)
+        stateSerializerRef.current.encode(pieces, conns, hideConnectedLegs)
     }, [])
 
     const decodeCanvasState = useCallback(async (encoded: string) => {
@@ -135,6 +135,7 @@ function App() {
                 const decodedState = await decodeCanvasState(stateParam)
                 setDroppedLegos(decodedState.pieces)
                 setConnections(decodedState.connections)
+                setHideConnectedLegs(decodedState.hideConnectedLegs)
             }
         }
 
@@ -178,7 +179,7 @@ function App() {
                     type: 'add',
                     data: { legos: [newLego] }
                 })
-                encodeCanvasState([...droppedLegos, newLego], connections)
+                encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs)
             }
         }
     }
@@ -219,7 +220,7 @@ function App() {
                 type: 'add',
                 data: { legos: [newLego] }
             });
-            encodeCanvasState([...droppedLegos, newLego], connections);
+            encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Failed to create dynamic lego');
         } finally {
@@ -309,7 +310,7 @@ function App() {
             });
 
             // Update URL state
-            encodeCanvasState(droppedLegos.concat(newLegos), connections.concat(newConnections));
+            encodeCanvasState(droppedLegos.concat(newLegos), connections.concat(newConnections), hideConnectedLegs);
         } else {
             // Original non-shift behavior
             const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
@@ -711,7 +712,7 @@ function App() {
             }
 
             // Update URL state after the drag operation is complete
-            encodeCanvasState(droppedLegos, connections);
+            encodeCanvasState(droppedLegos, connections, hideConnectedLegs);
         }
 
         // Handle leg connection
@@ -777,7 +778,7 @@ function App() {
 
                             setConnections(prev => {
                                 const newConnections = [...prev, newConnection];
-                                encodeCanvasState(droppedLegos, newConnections);
+                                encodeCanvasState(droppedLegos, newConnections, hideConnectedLegs);
                                 return newConnections;
                             });
 
@@ -941,14 +942,14 @@ function App() {
                     canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
 
                     // Update URL state after the drag operation is complete
-                    encodeCanvasState(droppedLegos, connections);
+                    encodeCanvasState(droppedLegos, connections, hideConnectedLegs);
                 }
             }
         };
 
         window.addEventListener('mouseup', handleWindowMouseUp);
         return () => window.removeEventListener('mouseup', handleWindowMouseUp);
-    }, [dragState, droppedLegos, connections, selectedLego, tensorNetwork, addToHistory, encodeCanvasState, canvasRef]);
+    }, [dragState, droppedLegos, connections, selectedLego, tensorNetwork, addToHistory, encodeCanvasState, canvasRef, hideConnectedLegs]);
 
     // Handle undo
     const handleUndo = useCallback(() => {
@@ -1273,7 +1274,7 @@ function App() {
                         !legosToRemove.some(l =>
                             conn.from.legoId === l.instanceId || conn.to.legoId === l.instanceId
                         )
-                    ));
+                    ), hideConnectedLegs);
                 }
             } else if (e.key === 'Escape') {
                 // Dismiss error message when Escape is pressed
@@ -1283,7 +1284,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState, hideConnectedLegs]);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
@@ -1303,7 +1304,7 @@ function App() {
                     conn.to.legoId === connection.to.legoId &&
                     conn.to.legIndex === connection.to.legIndex)
             );
-            encodeCanvasState(droppedLegos, newConnections);
+            encodeCanvasState(droppedLegos, newConnections, hideConnectedLegs);
             return newConnections;
         });
     };
@@ -1328,7 +1329,7 @@ function App() {
         setManuallySelectedLegos([]);
 
         // Update URL state
-        encodeCanvasState([], []);
+        encodeCanvasState([], [], hideConnectedLegs);
 
     };
 
@@ -1361,7 +1362,6 @@ function App() {
             // Calculate positions for each type of node
             const canvasWidth = 800;  // Approximate canvas width
             const nodeSpacing = 100;  // Space between nodes
-            const rowSpacing = 150;   // Space between rows
 
             // Group legos by type
             const zNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('z'));
@@ -1416,7 +1416,7 @@ function App() {
             });
 
             const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections);
+            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1437,7 +1437,6 @@ function App() {
             // Calculate positions for each type of node
             const canvasWidth = 800;  // Approximate canvas width
             const nodeSpacing = 100;  // Space between nodes
-            const rowSpacing = 150;   // Space between rows
 
             // Group legos by type
             const checkNodes = legos.filter((lego: DroppedLego) => !lego.shortName.startsWith('q'));
@@ -1487,7 +1486,7 @@ function App() {
             });
 
             const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections);
+            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1514,7 +1513,6 @@ function App() {
             const minX = Math.min(...xValues);
             const maxX = Math.max(...xValues);
             const minY = Math.min(...yValues);
-            const maxY = Math.max(...yValues);
 
             // Calculate scale to fit width with margins
             const xScale = (canvasWidth - 2 * margin) / (maxX - minX || 1) * 1.2;
@@ -1548,7 +1546,7 @@ function App() {
             });
 
             const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections);
+            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1757,7 +1755,8 @@ function App() {
             // Update URL state
             encodeCanvasState(
                 [...droppedLegos.filter(l => !legosToFuse.some(fl => fl.instanceId === l.instanceId)), newLego],
-                [...connections.filter(c => !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)), ...newConnections]
+                [...connections.filter(c => !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)), ...newConnections],
+                hideConnectedLegs
             );
 
         } catch (error) {
@@ -1811,7 +1810,10 @@ function App() {
                     </MenuButton>
                     <MenuList>
                         <MenuItem
-                            onClick={() => setHideConnectedLegs(!hideConnectedLegs)}
+                            onClick={() => {
+                                setHideConnectedLegs(!hideConnectedLegs);
+                                encodeCanvasState(droppedLegos, connections, !hideConnectedLegs);
+                            }}
                             display="flex"
                             alignItems="center"
                             gap={2}
@@ -1938,12 +1940,20 @@ function App() {
                                             );
 
                                             // Check if legs are highlighted
-                                            const fromLegHighlighted = fromLego.pushedLegs.some(pl => pl.legIndex === conn.from.legIndex);
-                                            const toLegHighlighted = toLego.pushedLegs.some(pl => pl.legIndex === conn.to.legIndex);
+                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
+                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
+                                            const fromLegHighlighted = fromLegStyle.is_highlighted;
+                                            const toLegHighlighted = toLegStyle.is_highlighted;
 
-                                            // Determine if legs should be hidden - only hide if connected AND not highlighted
-                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && !fromLegHighlighted;
-                                            const hideToLeg = hideConnectedLegs && toLegConnected && !toLegHighlighted;
+                                            // Determine if legs should be hidden
+                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && (
+                                                !fromLegHighlighted ? !toLegHighlighted : // If from is not highlighted, hide if to is not highlighted
+                                                    toLegHighlighted && fromLegStyle.color === toLegStyle.color // If from is highlighted, hide if to has same highlight
+                                            );
+                                            const hideToLeg = hideConnectedLegs && toLegConnected && (
+                                                !toLegHighlighted ? !fromLegHighlighted : // If to is not highlighted, hide if from is not highlighted
+                                                    fromLegHighlighted && fromLegStyle.color === toLegStyle.color // If to is highlighted, hide if from has same highlight
+                                            );
 
                                             // Final points with lego positions
                                             const fromPoint = hideFromLeg ?
@@ -2095,16 +2105,63 @@ function App() {
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
                                         Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            // Check if leg is connected and should be hidden
+                                            // Check if leg is connected
                                             const isLegConnected = connections.some(c =>
                                                 (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
                                                 (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
                                             );
-                                            const isLegHighlighted = lego.pushedLegs.some(pl => pl.legIndex === legIndex);
-                                            const shouldHideLeg = hideConnectedLegs && isLegConnected && !isLegHighlighted;
 
-                                            // Skip rendering label if leg should be hidden
-                                            if (shouldHideLeg) return null;
+                                            // If leg is not connected, always show the label
+                                            if (!isLegConnected) {
+                                                const pos = calculateLegPosition(lego, legIndex);
+                                                return (
+                                                    <text
+                                                        key={`${lego.instanceId}-label-${legIndex}`}
+                                                        x={lego.x + pos.labelX}
+                                                        y={lego.y + pos.labelY}
+                                                        fontSize="12"
+                                                        fill="#666666"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        style={{ pointerEvents: 'none' }}
+                                                    >
+                                                        {legIndex}
+                                                    </text>
+                                                );
+                                            }
+
+                                            const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+                                            const isThisHighlighted = thisLegStyle.is_highlighted;
+
+                                            // Find the connected leg's style
+                                            const connection = connections.find(c =>
+                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                            );
+
+                                            if (!connection) return null;
+
+                                            const connectedLegInfo = connection.from.legoId === lego.instanceId
+                                                ? connection.to
+                                                : connection.from;
+
+                                            const connectedLego = droppedLegos.find(l => l.instanceId === connectedLegInfo.legoId);
+                                            if (!connectedLego) return null;
+
+                                            const connectedStyle = connectedLego.style.getLegStyle(connectedLegInfo.legIndex, connectedLego);
+
+                                            // Hide label if:
+                                            // 1. hideConnectedLegs is true AND
+                                            // 2. Either:
+                                            //    - This leg is not highlighted and connected leg is not highlighted
+                                            //    - Both legs are highlighted with the same color
+                                            const shouldHideLabel = hideConnectedLegs && (
+                                                !isThisHighlighted
+                                                    ? !connectedStyle.is_highlighted
+                                                    : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color
+                                            );
+
+                                            if (shouldHideLabel) return null;
 
                                             const pos = calculateLegPosition(lego, legIndex);
                                             return (
@@ -2157,6 +2214,7 @@ function App() {
                                         onLegClick={handleLegClick}
                                         hideConnectedLegs={hideConnectedLegs}
                                         connections={connections}
+                                        droppedLegos={droppedLegos}
                                     />
                                 ))}
                             </Box>

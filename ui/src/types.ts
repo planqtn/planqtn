@@ -142,6 +142,7 @@ export interface CanvasState {
         gauge_legs?: number[]
     }>
     connections: Array<Connection>
+    hideConnectedLegs: boolean
 }
 
 export interface LegoServerPayload {
