@@ -12,7 +12,7 @@ import {
     Textarea,
     useToast,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 interface TannerDialogProps {
@@ -28,7 +28,19 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
     onSubmit,
     title = 'Create Tanner Network'
 }) => {
+    const defaultMspMatrix = `1 1 1 1 0 0 0 0
+0 0 0 0 1 1 0 0
+0 0 0 0 0 0 1 1`;
+
     const [matrixText, setMatrixText] = useState('')
+
+    // Set default value when dialog opens for MSP
+    useEffect(() => {
+        if (isOpen && title === 'Measurement State Prep Network') {
+            setMatrixText(defaultMspMatrix);
+        }
+    }, [isOpen, title]);
+
     const toast = useToast()
 
     const handleSubmit = async () => {
