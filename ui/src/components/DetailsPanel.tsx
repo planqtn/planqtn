@@ -6,6 +6,7 @@ import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
 import { useState } from 'react'
 import { PauliOperator } from '../types'
+import { getLegoStyle } from '../LegoStyles'
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -20,10 +21,13 @@ interface DetailsPanelProps {
     fuseLegos: (legos: DroppedLego[]) => void
     setConnections: (value: Connection[]) => void
     addOperation: (operation: Operation) => void
+    encodeCanvasState: (pieces: DroppedLego[], conns: Connection[], hideConnectedLegs: boolean) => void
+    hideConnectedLegs: boolean
+    makeSpace: (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]) => DroppedLego[]
 }
 
 type Operation = {
-    type: 'fuse' | 'unfuse';
+    type: 'fuse' | 'unfuse' | 'colorChange';
     data: {
         oldLegos: DroppedLego[];
         oldConnections: Connection[];
@@ -44,7 +48,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     setSelectedLego,
     fuseLegos,
     setConnections,
-    addOperation
+    addOperation,
+    encodeCanvasState,
+    hideConnectedLegs,
+    makeSpace
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -232,6 +239,116 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 });
             }
         }
+    };
+
+    const handleChangeColor = (lego: DroppedLego) => {
+        // Get max instance ID
+        const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+        const numLegs = lego.parity_check_matrix[0].length / 2;
+
+        // Find any existing connections to the original lego
+        const existingConnections = connections.filter(
+            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+        );
+
+        // Store the old state for history
+        const oldLegos = [lego];
+        const oldConnections = existingConnections;
+
+        // Create new legos array starting with the modified original lego
+        const newLegos: DroppedLego[] = [{
+            ...lego,
+            id: lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code',
+            shortName: lego.id === 'x_rep_code' ? 'Z Rep Code' : 'X Rep Code',
+            style: getLegoStyle(lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code')
+        }];
+
+        // Create new connections array
+        const newConnections: Connection[] = [];
+
+        // Make space for Hadamard legos
+        const radius = 50; // Same radius as for Hadamard placement
+        const updatedLegos = makeSpace({ x: lego.x, y: lego.y }, radius, [lego], droppedLegos);
+
+        // Add Hadamard legos for each leg
+        for (let i = 0; i < numLegs; i++) {
+            // Calculate the angle for this leg
+            const angle = (2 * Math.PI * i) / numLegs;
+            const hadamardLego: DroppedLego = {
+                id: 'h',
+                name: 'Hadamard',
+                shortName: 'H',
+                description: 'Hadamard',
+                instanceId: (maxInstanceId + 1 + i).toString(),
+                x: lego.x + radius * Math.cos(angle),
+                y: lego.y + radius * Math.sin(angle),
+                parity_check_matrix: [[1, 0, 0, 1], [0, 1, 1, 0]],
+                logical_legs: [],
+                gauge_legs: [],
+                style: getLegoStyle('h'),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+            newLegos.push(hadamardLego);
+
+            // Connect Hadamard to the original lego
+            newConnections.push({
+                from: { legoId: lego.instanceId, legIndex: i },
+                to: { legoId: hadamardLego.instanceId, legIndex: 0 }
+            });
+
+            // Connect Hadamard to the original connection if it exists
+            const existingConnection = existingConnections.find(conn =>
+                (conn.from.legoId === lego.instanceId && conn.from.legIndex === i) ||
+                (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
+            );
+
+            if (existingConnection) {
+                if (existingConnection.from.legoId === lego.instanceId) {
+                    newConnections.push({
+                        from: { legoId: hadamardLego.instanceId, legIndex: 1 },
+                        to: existingConnection.to
+                    });
+                } else {
+                    newConnections.push({
+                        from: existingConnection.from,
+                        to: { legoId: hadamardLego.instanceId, legIndex: 1 }
+                    });
+                }
+            }
+        }
+
+        // Update state with the legos that were pushed out of the way
+        const finalLegos = [...updatedLegos.filter(l => l.instanceId !== lego.instanceId), ...newLegos];
+        const updatedConnections = [
+            ...connections.filter(conn =>
+                !existingConnections.some(existingConn =>
+                    existingConn.from.legoId === conn.from.legoId &&
+                    existingConn.from.legIndex === conn.from.legIndex &&
+                    existingConn.to.legoId === conn.to.legoId &&
+                    existingConn.to.legIndex === conn.to.legIndex
+                )
+            ),
+            ...newConnections
+        ];
+        setDroppedLegos(finalLegos);
+        setConnections(updatedConnections);
+
+        // Add to history
+        const operation: Operation = {
+            type: 'colorChange',
+            data: {
+                oldLegos,
+                oldConnections,
+                newLegos,
+                newConnections
+            }
+        };
+        addOperation(operation);
+        setSelectedLego(null);
+
+        // Update URL state
+        encodeCanvasState(finalLegos, updatedConnections, hideConnectedLegs);
     };
 
     const handleUnfuse = (lego: DroppedLego) => {
@@ -596,6 +713,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                     onClick={() => handleUnfuse(selectedLego)}
                                 >
                                     Unfuse to legs
+                                </Button>
+                            )}
+
+                            {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
+                                <Button
+                                    leftIcon={<Icon as={FaCube} />}
+                                    colorScheme="blue"
+                                    size="sm"
+                                    onClick={() => handleChangeColor(selectedLego)}
+                                >
+                                    Change color
                                 </Button>
                             )}
 

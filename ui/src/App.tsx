@@ -1067,6 +1067,29 @@ function App() {
                     });
                 }
                 break;
+            case 'colorChange':
+                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
+                    // Remove the color-changed legos and Hadamard legos
+                    setDroppedLegos(prev => {
+                        const withoutChanged = prev.filter(lego =>
+                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutChanged, ...lastOperation.data.oldLegos!];
+                    });
+                    // Restore old connections
+                    setConnections(prev => {
+                        const withoutNew = prev.filter(conn =>
+                            !lastOperation.data.newConnections?.some(newConn =>
+                                newConn.from.legoId === conn.from.legoId &&
+                                newConn.from.legIndex === conn.from.legIndex &&
+                                newConn.to.legoId === conn.to.legoId &&
+                                newConn.to.legIndex === conn.to.legIndex
+                            )
+                        );
+                        return [...withoutNew, ...lastOperation.data.oldConnections!];
+                    });
+                }
+                break;
         }
 
         setOperationHistory(prev => prev.slice(0, -1));
@@ -1166,6 +1189,31 @@ function App() {
                 }
                 break;
             case 'unfuse':
+                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
+                    // Remove the original lego
+                    setDroppedLegos(prev => {
+                        const withoutOriginal = prev.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
+                    });
+                    // Add new connections
+                    if (nextOperation.data.newConnections) {
+                        setConnections(prev => {
+                            const withoutOld = prev.filter(conn =>
+                                !nextOperation.data.oldConnections?.some(oldConn =>
+                                    oldConn.from.legoId === conn.from.legoId &&
+                                    oldConn.from.legIndex === conn.from.legIndex &&
+                                    oldConn.to.legoId === conn.to.legoId &&
+                                    oldConn.to.legIndex === conn.to.legIndex
+                                )
+                            );
+                            return [...withoutOld, ...nextOperation.data.newConnections!];
+                        });
+                    }
+                }
+                break;
+            case 'colorChange':
                 if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
                     // Remove the original lego
                     setDroppedLegos(prev => {
@@ -1770,6 +1818,31 @@ function App() {
         }
     };
 
+    // Helper function to push legos out of the way radially
+    const makeSpace = (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]): DroppedLego[] => {
+        const skipIds = new Set(skipLegos.map(l => l.instanceId));
+        return legosToCheck.map(lego => {
+            if (skipIds.has(lego.instanceId)) return lego;
+
+            // Calculate distance from center
+            const dx = lego.x - center.x;
+            const dy = lego.y - center.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // If lego is within radius, push it out
+            if (distance < radius + 80) {  // Increased check radius
+                // Calculate angle
+                const angle = Math.atan2(dy, dx);
+                // Push out to radius + 100 pixels (increased buffer)
+                const newX = center.x + (radius + 80) * Math.cos(angle);
+                const newY = center.y + (radius + 80) * Math.sin(angle);
+                return { ...lego, x: newX, y: newY };
+            }
+
+            return lego;
+        });
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -2238,6 +2311,9 @@ function App() {
                             fuseLegos={fuseLegos}
                             setConnections={setConnections}
                             addOperation={addToHistory}
+                            encodeCanvasState={encodeCanvasState}
+                            hideConnectedLegs={hideConnectedLegs}
+                            makeSpace={(center, radius, skipLegos, legosToCheck) => makeSpace(center, radius, skipLegos, legosToCheck)}
                         />
                     </Panel>
                 </PanelGroup>

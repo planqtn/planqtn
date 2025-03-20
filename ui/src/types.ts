@@ -101,7 +101,7 @@ export interface GroupDragState {
 
 
 export type Operation = {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuse';
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuse' | 'colorChange';
     data: {
         legos?: DroppedLego[];
         connections?: Connection[];
@@ -110,7 +110,13 @@ export type Operation = {
         oldY?: number;
         newX?: number;
         newY?: number;
-        groupMoves?: { legoInstanceId: string; oldX: number; oldY: number; newX: number; newY: number; }[];
+        groupMoves?: {
+            legoInstanceId: string;
+            oldX: number;
+            oldY: number;
+            newX: number;
+            newY: number;
+        }[];
         oldLegos?: DroppedLego[];
         oldConnections?: Connection[];
         newLego?: DroppedLego;
