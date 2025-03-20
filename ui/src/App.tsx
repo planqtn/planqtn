@@ -1089,6 +1089,22 @@ function App() {
                     });
                 }
                 break;
+            case 'pullOutOppositeLeg':
+                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
+                    // Remove the changed legos
+                    setDroppedLegos(prev => {
+                        const withoutChanged = prev.filter(lego =>
+                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                        );
+                        return [...withoutChanged, ...lastOperation.data.oldLegos!];
+                    });
+                    // Restore old connections
+                    setConnections(_prev => {
+
+                        return [...lastOperation.data.oldConnections!];
+                    });
+                }
+                break;
         }
 
         setOperationHistory(prev => prev.slice(0, -1));
@@ -1233,6 +1249,56 @@ function App() {
                                 )
                             );
                             return [...withoutOld, ...nextOperation.data.newConnections!];
+                        });
+                    }
+                }
+                break;
+            case 'pullOutOppositeLeg':
+                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
+                    // Remove only the original lego and add the new legos
+                    setDroppedLegos(prev => {
+                        // First, remove only the original lego from this specific operation
+                        const withoutOld = prev.filter(lego =>
+                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
+                        );
+                        // Then add the new legos from this operation, but only if they don't already exist
+                        const newLegos = nextOperation.data.newLegos!;
+                        // Add all new legos that don't already exist
+                        const updatedLegos = [...withoutOld];
+                        newLegos.forEach(newLego => {
+                            if (!updatedLegos.some(lego => lego.instanceId === newLego.instanceId)) {
+                                updatedLegos.push(newLego);
+                            }
+                        });
+                        return updatedLegos;
+                    });
+                    // Update connections
+                    if (nextOperation.data.newConnections) {
+                        setConnections(prev => {
+                            // First, remove only the old connections from this specific operation
+                            const withoutOld = prev.filter(conn =>
+                                !nextOperation.data.oldConnections?.some(oldConn =>
+                                    oldConn.from.legoId === conn.from.legoId &&
+                                    oldConn.from.legIndex === conn.from.legIndex &&
+                                    oldConn.to.legoId === conn.to.legoId &&
+                                    oldConn.to.legIndex === conn.to.legIndex
+                                )
+                            );
+                            // Then add the new connections from this operation, but only if they don't already exist
+                            const newConns = nextOperation.data.newConnections!;
+                            // Add all new connections that don't already exist
+                            const updatedConns = [...withoutOld];
+                            newConns.forEach(newConn => {
+                                if (!updatedConns.some(conn =>
+                                    conn.from.legoId === newConn.from.legoId &&
+                                    conn.from.legIndex === newConn.from.legIndex &&
+                                    conn.to.legoId === newConn.to.legoId &&
+                                    conn.to.legIndex === newConn.to.legIndex
+                                )) {
+                                    updatedConns.push(newConn);
+                                }
+                            });
+                            return updatedConns;
                         });
                     }
                 }

@@ -101,7 +101,7 @@ export interface GroupDragState {
 
 
 export type Operation = {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuse' | 'colorChange';
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuse' | 'colorChange' | 'pullOutOppositeLeg';
     data: {
         legos?: DroppedLego[];
         connections?: Connection[];

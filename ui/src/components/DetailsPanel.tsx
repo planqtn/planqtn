@@ -27,7 +27,7 @@ interface DetailsPanelProps {
 }
 
 type Operation = {
-    type: 'fuse' | 'unfuse' | 'colorChange';
+    type: 'fuse' | 'unfuse' | 'colorChange' | 'pullOutOppositeLeg';
     data: {
         oldLegos: DroppedLego[];
         oldConnections: Connection[];
@@ -244,6 +244,109 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     }
                 });
             }
+        }
+    };
+
+    const handlePullOutOppositeLeg = async (lego: DroppedLego) => {
+        // Get max instance ID
+        const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+        const numLegs = lego.parity_check_matrix[0].length / 2;
+
+        // Find any existing connections to the original lego
+        const existingConnections = connections.filter(
+            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+        );
+
+        // Store the old state for history
+        const oldLegos = [lego];
+        const oldConnections = [...existingConnections];
+
+        try {
+            // Get the new repetition code with one more leg
+            const response = await fetch('http://localhost:5000/dynamiclego', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lego_id: lego.id,
+                    parameters: {
+                        d: numLegs + 1
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get dynamic lego');
+            }
+
+            const newLegoData = await response.json();
+
+            // Create the new lego with updated matrix but same position
+            const newLego: DroppedLego = {
+                ...lego,
+                parity_check_matrix: newLegoData.parity_check_matrix
+            };
+
+            // Create a stopper based on the lego type
+            const stopperLego: DroppedLego = {
+                id: lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z',
+                name: lego.id === 'z_rep_code' ? 'X Stopper' : 'Z Stopper',
+                shortName: lego.id === 'z_rep_code' ? 'X' : 'Z',
+                description: lego.id === 'z_rep_code' ? 'X Stopper' : 'Z Stopper',
+                instanceId: (maxInstanceId + 1).toString(),
+                x: lego.x + 100, // Position the stopper to the right of the lego
+                y: lego.y,
+                parity_check_matrix: lego.id === 'z_rep_code' ? [[1, 0]] : [[0, 1]],
+                logical_legs: [],
+                gauge_legs: [],
+                style: getLegoStyle(lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z'),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+
+            // Create new connection to the stopper
+            const newConnection: Connection = {
+                from: {
+                    legoId: lego.instanceId,
+                    legIndex: numLegs // The new leg will be at index numLegs
+                },
+                to: {
+                    legoId: stopperLego.instanceId,
+                    legIndex: 0
+                }
+            };
+
+            // Update the state
+            const newLegos = [...droppedLegos.filter(l => l.instanceId !== lego.instanceId), newLego, stopperLego];
+            const newConnections = [...connections.filter(c =>
+                c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
+            ), ...existingConnections, newConnection];
+
+            setDroppedLegos(newLegos);
+            setConnections(newConnections);
+
+            // Add to operation history
+            addOperation({
+                type: 'pullOutOppositeLeg',
+                data: {
+                    oldLegos,
+                    oldConnections: [...connections.filter(c =>
+                        c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
+                    ), ...existingConnections],
+                    newLegos: [newLego, stopperLego],
+                    newConnections: newConnections
+                }
+            });
+
+            // Update the selected lego
+            setSelectedLego(null);
+
+            // Update URL state
+            encodeCanvasState(newLegos, newConnections, hideConnectedLegs);
+
+        } catch (error) {
+            setError(`Error pulling out opposite leg: ${error}`);
         }
     };
 
@@ -716,25 +819,34 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 />
                             </Box>
                             {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
-                                <Button
-                                    leftIcon={<Icon as={FaCube} />}
-                                    colorScheme="blue"
-                                    size="sm"
-                                    onClick={() => handleUnfuse(selectedLego)}
-                                >
-                                    Unfuse to legs
-                                </Button>
-                            )}
+                                <>
+                                    <Button
+                                        leftIcon={<Icon as={FaCube} />}
+                                        colorScheme="blue"
+                                        size="sm"
+                                        onClick={() => handleUnfuse(selectedLego)}
+                                    >
+                                        Unfuse to legs
+                                    </Button>
 
-                            {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
-                                <Button
-                                    leftIcon={<Icon as={FaCube} />}
-                                    colorScheme="blue"
-                                    size="sm"
-                                    onClick={() => handleChangeColor(selectedLego)}
-                                >
-                                    Change color
-                                </Button>
+                                    <Button
+                                        leftIcon={<Icon as={FaCube} />}
+                                        colorScheme="blue"
+                                        size="sm"
+                                        onClick={() => handleChangeColor(selectedLego)}
+                                    >
+                                        Change color
+                                    </Button>
+
+                                    <Button
+                                        leftIcon={<Icon as={FaCube} />}
+                                        colorScheme="blue"
+                                        size="sm"
+                                        onClick={() => handlePullOutOppositeLeg(selectedLego)}
+                                    >
+                                        Pull out a leg of opposite color
+                                    </Button>
+                                </>
                             )}
 
                             <ParityCheckMatrixDisplay
