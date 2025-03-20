@@ -335,6 +335,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                     legDragState.legoId === lego.instanceId &&
                     legDragState.legIndex === legIndex;
 
+                const legVisibility = getLegVisibility(legIndex);
                 return (
                     <Box
                         key={`leg-${legIndex}`}
@@ -342,6 +343,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         left="50%"
                         top="50%"
                         style={{
+                            ...legVisibility,
                             pointerEvents: 'none',
                             zIndex: 1 // Place above the polygon
                         }}

@@ -18,7 +18,7 @@ export const Y_COLOR_LIGHT = "purple.200";
 export const Y_COLOR_DARK = "purple.600";
 
 // SVG hex colors
-const SVG_COLORS = {
+export const SVG_COLORS = {
     I: "#A0AEC0",  // gray.400
     X: "#F56565",  // red.400
     Z: "#4299E1",  // blue.400

@@ -2,6 +2,7 @@ import { Box, VStack, Button } from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import { TensorNetworkLeg } from '../types';
 import * as d3 from 'd3-force';
+import { SVG_COLORS } from '../utils/PauliColors';
 
 interface Point {
     x: number;
@@ -64,9 +65,11 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 ctx.beginPath();
                 ctx.moveTo(stabilizerPoint.x, stabilizerPoint.y);
                 ctx.lineTo(legPoint.x, legPoint.y);
-                ctx.strokeStyle = stabilizerPoint.type === 'Z' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 0, 255, 0.3)';
+                ctx.strokeStyle = stabilizerPoint.type === 'Z' ? SVG_COLORS.Z : SVG_COLORS.X;
+                ctx.globalAlpha = 0.3;
                 ctx.lineWidth = 1;
                 ctx.stroke();
+                ctx.globalAlpha = 1.0;
             });
         });
 
@@ -77,7 +80,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 const size = 30;
                 ctx.beginPath();
                 ctx.rect(point.x - size / 2, point.y - size / 2, size, size);
-                ctx.fillStyle = point.type === 'Z' ? 'red' : 'blue';
+                ctx.fillStyle = point.type === 'Z' ? SVG_COLORS.Z : SVG_COLORS.X;
                 ctx.fill();
                 ctx.strokeStyle = selectedStabilizer === point.stabilizerIndex ? 'orange' :
                     highlightedStabilizer === point.stabilizerIndex ? '#ffd700' : 'white';
