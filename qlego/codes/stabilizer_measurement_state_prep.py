@@ -14,6 +14,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
 
         r = parity_check_matrix.shape[0]
         n = parity_check_matrix.shape[1] // 2
+        traces = []
 
         checks = []
         check_stoppers = []
@@ -24,18 +25,55 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                 idx=f"check{i}",
                 annotation=LegoAnnotation(
                     type=LegoType.ZREP,
-                    description="z",
-                    name=f"z{i}",
+                    description="check{i}",
+                    name=f"check{i}",
                     x=1 + i,
                     y=0,
                 ),
             )
+            x_state_prep = TensorStabilizerCodeEnumerator(
+                h=Legos.stopper_x,
+                idx=f"x_state_prep{i}",
+                annotation=LegoAnnotation(
+                    type=LegoType.STOPPER_X,
+                    description="xsp{i}",
+                    name=f"xsp{i}",
+                    x=1 + i - 0.25,
+                    y=0,
+                ),
+            )
+            check_stoppers.append(x_state_prep)
+            x_meas = TensorStabilizerCodeEnumerator(
+                h=Legos.stopper_x,
+                idx=f"x_meas{i}",
+                annotation=LegoAnnotation(
+                    type=LegoType.STOPPER_X,
+                    description=f"xmeas{i}",
+                    name=f"xmeas{i}",
+                    x=1 + i + 0.25,
+                    y=0,
+                ),
+            )
+            check_stoppers.append(x_meas)
 
-            check = check.trace_with_stopper(PAULI_X, (f"check{i}", 0))
-            check = check.trace_with_stopper(PAULI_X, (f"check{i}", 1))
+            traces.append(
+                (
+                    x_state_prep.idx,
+                    check.idx,
+                    [(x_state_prep.idx, 0)],
+                    [(check.idx, 0)],
+                )
+            )
+            traces.append(
+                (
+                    x_meas.idx,
+                    check.idx,
+                    [(x_meas.idx, 0)],
+                    [(check.idx, 1)],
+                )
+            )
             checks.append(check)
 
-        traces = []
         next_check_legs = [2] * r
         q_tensors = []
         op_tensors = []
@@ -152,8 +190,9 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                 else:
                     raise ValueError("Y stabilizer is not implemented yet...")
 
-        super().__init__(nodes={n.idx: n for n in q_tensors + checks + op_tensors})
+        super().__init__(
+            nodes={n.idx: n for n in q_tensors + checks + op_tensors + check_stoppers}
+        )
 
         for t in traces:
-            print(t)
             self.self_trace(*t)
