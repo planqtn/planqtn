@@ -19,12 +19,14 @@ interface TannerDialogProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (matrix: number[][]) => void;
+    title?: string;
 }
 
 export const TannerDialog: React.FC<TannerDialogProps> = ({
     isOpen,
     onClose,
     onSubmit,
+    title = 'Create Tanner Network'
 }) => {
     const [matrixText, setMatrixText] = useState('')
     const toast = useToast()
@@ -78,7 +80,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
         <Modal isOpen={isOpen} onClose={onClose}>
             <ModalOverlay />
             <ModalContent>
-                <ModalHeader>Create Tanner Network</ModalHeader>
+                <ModalHeader>{title}</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
                     <VStack spacing={4}>

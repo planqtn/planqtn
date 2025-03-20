@@ -60,6 +60,7 @@ function App() {
     const [pendingDropPosition, setPendingDropPosition] = useState<{ x: number; y: number } | null>(null)
     const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
     const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false)
+    const [isMspDialogOpen, setIsMspDialogOpen] = useState(false)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
@@ -1486,6 +1487,62 @@ function App() {
         }
     };
 
+    const handleMspSubmit = async (matrix: number[][]) => {
+        try {
+            const response = await axios.post('http://localhost:5000/mspnetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const { legos, connections } = response.data;
+            // Calculate positions using lego coordinates
+            const canvasWidth = 800;  // Approximate canvas width
+            const margin = 50;  // Margin from edges
+
+            // Find min/max x and y to determine scale
+            const xValues = legos.map((lego: DroppedLego) => lego.x);
+            const yValues = legos.map((lego: DroppedLego) => lego.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+
+            // Calculate scale to fit width with margins
+            const xScale = (canvasWidth - 2 * margin) / (maxX - minX || 1) * 1.2;
+
+            // Position legos using their coordinates scaled to fit
+            const positionedLegos = legos.map((lego: DroppedLego) => {
+                const x = margin + (lego.x - minX) * xScale;
+                const y = margin + (lego.y - minY) * xScale; // Use same scale for y to maintain proportions
+
+                return {
+                    ...lego,
+                    x,
+                    y,
+                    style: getLegoStyle(lego.id),
+                    pushedLegs: [],
+                    selectedMatrixRows: []
+                };
+            });
+
+            // Add to state
+            setDroppedLegos(prev => [...prev, ...positionedLegos]);
+            setConnections(prev => [...prev, ...connections]);
+
+            // Add to history
+            addToHistory({
+                type: 'add',
+                data: {
+                    legos: positionedLegos,
+                    connections: connections
+                }
+            });
+
+            const updatedLegos = [...droppedLegos, ...positionedLegos];
+            encodeCanvasState(updatedLegos, connections);
+
+        } catch (error) {
+            setError('Failed to create measurement state preparation network');
+            console.error('Error:', error);
+        }
+    };
+
     const handleLegClick = (legoId: string, legIndex: number) => {
         setDroppedLegos(prev => prev.map(lego => {
             if (lego.instanceId === legoId) {
@@ -1715,6 +1772,9 @@ function App() {
                         </MenuItem>
                         <MenuItem onClick={() => setIsTannerDialogOpen(true)}>
                             Tanner Network
+                        </MenuItem>
+                        <MenuItem onClick={() => setIsMspDialogOpen(true)}>
+                            Measurement State Prep Network
                         </MenuItem>
                     </MenuList>
                 </Menu>
@@ -2057,6 +2117,12 @@ function App() {
                 isOpen={isTannerDialogOpen}
                 onClose={() => setIsTannerDialogOpen(false)}
                 onSubmit={handleTannerSubmit}
+            />
+            <TannerDialog
+                isOpen={isMspDialogOpen}
+                onClose={() => setIsMspDialogOpen(false)}
+                onSubmit={handleMspSubmit}
+                title="Measurement State Prep Network"
             />
         </VStack>
     )

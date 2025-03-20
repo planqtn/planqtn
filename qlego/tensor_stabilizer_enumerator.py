@@ -2,13 +2,13 @@ from collections import defaultdict
 from copy import deepcopy
 import cotengra as ctg
 
-from typing import Any, Callable, Iterable, List, Dict, Set, Tuple, Union
+from typing import Any, Callable, Iterable, List, Dict, Optional, Set, Tuple, Union
 from galois import GF2
 import numpy as np
 import sympy
 from tqdm import tqdm
 
-from qlego.legos import Legos
+from qlego.legos import LegoAnnotation, Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, sprint
 from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
@@ -687,7 +687,7 @@ class TensorNetwork:
 
         assert set(trace_indices) == set(
             range(len(self.traces))
-        ), "Some traces are missing!"
+        ), f"Some traces are missing from cotengra tree:\n{'\n'.join([str(self.traces[i]) for i in set(range(len(self.traces))) - set(trace_indices)])}"
         return traces
 
     def _cotengra_contraction(
@@ -1302,9 +1302,11 @@ class TensorStabilizerCodeEnumerator:
         legs=None,
         coset_flipped_legs: List[Tuple[Tuple[Any, int], GF2]] = None,
         truncate_length=None,
+        annotation: Optional[LegoAnnotation] = None,
     ):
 
         self.h = h
+        self.annotation = annotation
 
         self.idx = idx
         if len(self.h.shape) == 1:
@@ -1716,9 +1718,10 @@ class TensorStabilizerCodeEnumerator:
         return unnormalized_poly._dict
 
     def trace_with_stopper(self, stopper: GF2, traced_leg: Union[int, Tuple[int, int]]):
-
-        return self.conjoin(
+        res = self.conjoin(
             TensorStabilizerCodeEnumerator(GF2([stopper]), idx="stopper"),
             [traced_leg],
             [0],
         )
+        res.annotation = self.annotation
+        return res

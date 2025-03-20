@@ -1,6 +1,32 @@
+import enum
 from galois import GF2
 import numpy as np
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import attrs
+
+
+class LegoType(enum.Enum):
+    H = "h"
+    ZREP = "z_rep_code"
+    XREP = "x_rep_code"
+    T6 = "t6"
+    T5 = "t5"
+    T5X = "t5x"
+    T5Z = "t5z"
+    STOPPER_X = "stopper_x"
+    STOPPER_Z = "stopper_z"
+    STOPPER_Y = "stopper_y"
+    STOPPER_I = "stopper_i"
+
+
+@attrs.define
+class LegoAnnotation:
+    type: LegoType
+    x: Optional[float] = None
+    y: Optional[float] = None
+    description: Optional[str] = None
+    name: Optional[str] = None
+    shortName: Optional[str] = None
 
 
 class Legos:
@@ -85,7 +111,7 @@ class Legos:
         """Returns a list of all available lego pieces with their descriptions."""
         legos = [
             {
-                "id": "encoding_tensor_602",
+                "id": LegoType.T6,
                 "name": "Encoding Tensor 6-0-2",
                 "shortName": "T6",
                 "description": "[[6,0,2]] encoding tensor",
@@ -94,7 +120,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "encoding_tensor_512",
+                "id": LegoType.T5,
                 "name": "Encoding Tensor 5-1-2",
                 "shortName": "T5",
                 "description": "[[5,1,2]] encoding tensor",
@@ -103,7 +129,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "encoding_tensor_512_x",
+                "id": LegoType.T5X,
                 "name": "Encoding Tensor 5-1-2 X",
                 "shortName": "ET51X",
                 "description": "X component of 5-1-2 encoding tensor",
@@ -112,7 +138,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "encoding_tensor_512_z",
+                "id": LegoType.T5Z,
                 "name": "Encoding Tensor 5-1-2 Z",
                 "shortName": "ET51Z",
                 "description": "Z component of 5-1-2 encoding tensor",
@@ -121,7 +147,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "h",
+                "id": LegoType.H,
                 "name": "Hadamard",
                 "shortName": "H",
                 "description": "Hadamard tensor",
@@ -130,7 +156,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "stopper_x",
+                "id": LegoType.STOPPER_X,
                 "name": "X Stopper",
                 "shortName": "X",
                 "description": "X-type stopper tensor",
@@ -139,7 +165,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "stopper_z",
+                "id": LegoType.STOPPER_Z,
                 "name": "Z Stopper",
                 "shortName": "Z",
                 "description": "Z-type stopper tensor",
@@ -148,7 +174,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "stopper_y",
+                "id": LegoType.STOPPER_Y,
                 "name": "Y Stopper",
                 "shortName": "Y",
                 "description": "Y-type stopper tensor",
@@ -157,7 +183,7 @@ class Legos:
                 "gauge_legs": [],
             },
             {
-                "id": "stopper_i",
+                "id": LegoType.STOPPER_I,
                 "name": "Identity Stopper",
                 "shortName": "I",
                 "description": "Identity stopper tensor",
@@ -171,7 +197,7 @@ class Legos:
         legos.extend(
             [
                 {
-                    "id": "z_rep_code",
+                    "id": LegoType.ZREP,
                     "name": "Z-Repetition Code",
                     "shortName": "ZREP3",
                     "description": "Bitflip code, ZZ stabilizers",
@@ -182,7 +208,7 @@ class Legos:
                     "gauge_legs": [],
                 },
                 {
-                    "id": "x_rep_code",
+                    "id": LegoType.XREP,
                     "name": "X-Repetition Code",
                     "shortName": "XREP3",
                     "description": "Phase flip code, XX stabilizers",

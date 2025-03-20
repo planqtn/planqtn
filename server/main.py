@@ -17,6 +17,9 @@ from qlego.tensor_stabilizer_enumerator import (
     TensorStabilizerCodeEnumerator,
 )
 from qlego.codes.css_tanner_code import CssTannerCodeTN
+from qlego.codes.stabilizer_measurement_state_prep import (
+    StabilizerMeasurementStatePrepTN,
+)
 
 app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
@@ -101,7 +104,9 @@ class TensorNetworkResponse(BaseModel):
 
         # Add legos and track their instance IDs
         for i, (instance_id, piece) in enumerate(tn.nodes.items()):
-            if instance_id.startswith("x"):
+            if piece.annotation is not None:
+                lego_type = piece.annotation.type
+            elif instance_id.startswith("x"):
                 lego_type = "x_rep_code"
             elif instance_id.startswith("z") or instance_id.startswith("check"):
                 lego_type = "z_rep_code"
@@ -112,12 +117,21 @@ class TensorNetworkResponse(BaseModel):
                 "id": lego_type,
                 "shortName": instance_id,
                 "description": instance_id,
-                "x": 0,  # Will be positioned by force layout
-                "y": 0,
+                "x": (
+                    piece.annotation.x
+                    if piece.annotation is not None and piece.annotation.x is not None
+                    else 0
+                ),
+                "y": (
+                    piece.annotation.y
+                    if piece.annotation is not None and piece.annotation.y is not None
+                    else 0
+                ),
                 "parity_check_matrix": piece.h.tolist(),
                 "logical_legs": [],
                 "gauge_legs": [],
             }
+            print("lego", lego["shortName"], "x", lego["x"], "y", lego["y"])
             legos.append(lego)
             instance_id_to_idx[instance_id] = i + start_node_index
         # Add connections from the tensor network's traces
@@ -310,6 +324,17 @@ async def create_css_tanner_network(request: TannerRequest):
         # Create the tensor network
         tn = CssTannerCodeTN(hx=hx, hz=hz)
 
+        return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/mspnetwork", response_model=TensorNetworkResponse)
+def create_msp_network(request: TannerRequest):
+    try:
+        matrix = GF2(request.matrix)
+        tn = StabilizerMeasurementStatePrepTN(matrix)
         return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
     except Exception as e:
         traceback.print_exc()

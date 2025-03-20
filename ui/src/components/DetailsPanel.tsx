@@ -583,14 +583,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                     Unfuse to legs
                                 </Button>
                             )}
-                            <Button
-                                leftIcon={<Icon as={FaTable} />}
-                                colorScheme="blue"
-                                size="sm"
-                                onClick={() => setShowMatrix(!showMatrix)}
-                            >
-                                {showMatrix ? 'Hide Matrix' : 'Show Matrix'}
-                            </Button>
+
                             <ParityCheckMatrixDisplay
                                 matrix={selectedLego.parity_check_matrix}
                                 lego={selectedLego}

@@ -133,19 +133,24 @@ User stories:
 
 
  - The parity check matrix display should become "Stabilizers display" 
-    - option to switch between stabilizers and symplectic view 
-    - in both views one can drag a stabilizer onto another one and thus create a new generate from the product 
+    - option to switch between stabilizers and symplectic view - DONE 
+    - in both views one can drag a stabilizer onto another one and thus create a new generate from the product - DONE 
     - option to do Gauss elimination on given columns 
-    - all of this with undos within a session, then the stabilizers are saved to the given component 
+    - all of this with undos within a session, then the stabilizers are saved to the given component - DONE (for TN )
+    - allow for the above on a lego piece
     - we need a way to name logical and gauge operators (X1, X2, ...)
     - marking a leg as a gauge, logical, or physical degree of freedom 
-    - conjoined matrices should have info about the original lego pieces 
+    - conjoined matrices should have info about the original lego pieces - DONE 
     - auto-sparsification of generators 
 - operator flow 
-    - we fix with an operator highlight X (blue) or Z (red) on a leg or multiple legs 
-        - we see the number of stabilizers that match the fix, and we can iterate through the highlights 
-- option to merge tensornetworks into a full lego piece
-    - double click / unroll zooms in, for more structure 
+    - we fix with an operator highlight X (blue) or Z (red) on a leg or multiple legs DONE
+        - we see the number of stabilizers that match the fix, and we can iterate through the highlights DONE 
+- option to merge tensornetworks into a full lego piece - DONE 
+- unfuse
+  - ZX spiders - DONE 
+  - arbitrary lego to Tanner 
+  - arbitrary lego to measurement circuit 
+
 
 - load a TensorNetwork instance in the UI 
     - we could have placement hints in the Tensornetwork (similar to qubit annotations in Stim)
@@ -163,12 +168,12 @@ User stories:
     - stoppers 
     - searchable IBM database 
 - UI features 
-    - resizable canvas
+    - resizable, scrollable canvas
 - a local database for caching tensornetwork weight enumerators / parity check matrices 
 - a global database and automated Github authenticated contribution workflow
 - handled disconnected networks too - this is good for educational purposes
     
-I want to put together the new compass code construction with Charles's construction and see the weight enumerators 
+I want to put together the new compass code construction with Charles's construction and see the weight enumerators - DONE  
 
 Bugs:
     - the network selection + changing + recalculating workflow is very wonky right now 
