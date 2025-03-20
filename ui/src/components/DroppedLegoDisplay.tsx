@@ -121,14 +121,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         );
     };
 
-    // Function to check if a leg is highlighted
-    const isLegHighlighted = (legIndex: number) => {
-        return lego.pushedLegs.some(pl => pl.legIndex === legIndex);
-    };
+
 
     // Function to determine if a leg should be hidden
-    const shouldHideLeg = (legIndex: number) => {
-        return hideConnectedLegs && isLegConnected(legIndex) && !isLegHighlighted(legIndex);
+    const shouldHideLeg = (legIndex: number, isHighlighted: boolean) => {
+        const isConnected = isLegConnected(legIndex);
+        return hideConnectedLegs && isConnected && !isHighlighted;
+    };
+
+    // Function to get leg visibility style
+    const getLegVisibility = (legIndex: number, isHighlighted: boolean) => {
+        if (shouldHideLeg(legIndex, isHighlighted)) {
+            return { visibility: 'hidden' as const, pointerEvents: 'none' as const };
+        }
+        return { visibility: 'visible' as const, pointerEvents: 'all' as const };
     };
 
     return (
@@ -158,9 +164,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                     legDragState.legoId === lego.instanceId &&
                     legDragState.legIndex === legIndex;
 
-                // Skip rendering if leg should be hidden
-                if (shouldHideLeg(legIndex)) return null;
-
+                const legVisibility = getLegVisibility(legIndex, pos.style.is_highlighted);
+                console.log(pos, legIndex, legVisibility);
                 return (
                     <Box
                         key={`leg-${legIndex}`}
@@ -168,7 +173,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         left="50%"
                         top="50%"
                         style={{
-                            pointerEvents: 'none',
+                            ...legVisibility,
                             zIndex: -1 // Place under the polygon
                         }}
                     >
@@ -183,7 +188,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             transformOrigin="0 0"
                             style={{
                                 transform: `rotate(${pos.angle}rad)`,
-                                pointerEvents: 'none',
                                 borderStyle: pos.style.style
                             }}
                             transition="all 0.1s"
@@ -205,12 +209,17 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onLegClick) {
+                                    onLegClick(lego.instanceId, legIndex);
+                                }
+                            }}
                             _hover={{
                                 borderColor: legColor,
                                 bg: "white"
                             }}
                             transition="all 0.2s"
-                            style={{ pointerEvents: 'all' }}
                         />
                     </Box>
                 );

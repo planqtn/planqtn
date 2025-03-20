@@ -29,6 +29,7 @@ interface LegStyle {
     from: "center" | "bottom" | "edge";
     startOffset: number;
     color: string;
+    is_highlighted: boolean;
 }
 
 export abstract class LegoStyle {
@@ -125,7 +126,7 @@ export abstract class LegoStyle {
         const isGauge = lego.gauge_legs.includes(legIndex);
         const legCount = lego.parity_check_matrix[0].length / 2;
         const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex, lego);
-
+        const isHighlighted = highlightPauliOperator !== PauliOperator.I;
         if (isLogical) {
             // For logical legs, calculate angle from center upwards
             const logicalLegsCount = lego.logical_legs.length;
@@ -145,7 +146,8 @@ export abstract class LegoStyle {
                 style: "solid",
                 from: "center", // Start from center
                 startOffset: 0, // No offset for logical legs
-                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                is_highlighted: isHighlighted
             };
         } else if (isGauge) {
             // For gauge legs, calculate angle from bottom
@@ -157,7 +159,8 @@ export abstract class LegoStyle {
                 style: "dashed",
                 from: "bottom",
                 startOffset: 10, // Offset from edge for gauge legs
-                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                is_highlighted: isHighlighted
             };
         } else {
             // Regular legs
@@ -169,7 +172,8 @@ export abstract class LegoStyle {
                 style: "solid",
                 from: "edge",
                 startOffset: 0, // No offset for regular legs
-                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator)
+                color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                is_highlighted: isHighlighted
             };
         }
     }

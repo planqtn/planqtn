@@ -184,7 +184,7 @@ function App() {
     }
 
     const handleDynamicLegoSubmit = async (parameters: Record<string, any>) => {
-        if (!selectedDynamicLego || !pendingDropPosition) return
+        if (!selectedDynamicLego || !pendingDropPosition) return;
 
         try {
             const response = await fetch('http://localhost:5000/dynamiclego', {
@@ -196,36 +196,38 @@ function App() {
                     lego_id: selectedDynamicLego.id,
                     parameters,
                 }),
-            })
+            });
 
             if (!response.ok) {
-                throw new Error('Failed to create dynamic lego')
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+                throw new Error(errorData.message || errorData.detail || `Error: ${response.status} ${response.statusText}`);
             }
 
-            const dynamicLego = await response.json()
-            const instanceId = newInstanceId(droppedLegos)
+            const dynamicLego = await response.json();
+            const instanceId = newInstanceId(droppedLegos);
             const newLego = {
                 ...dynamicLego,
                 x: pendingDropPosition.x,
                 y: pendingDropPosition.y,
                 instanceId,
                 style: getLegoStyle(dynamicLego.id),
-                pushedLegs: []
-            }
-            setDroppedLegos(prev => [...prev, newLego])
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+            setDroppedLegos(prev => [...prev, newLego]);
             addToHistory({
                 type: 'add',
                 data: { legos: [newLego] }
-            })
-            encodeCanvasState([...droppedLegos, newLego], connections)
+            });
+            encodeCanvasState([...droppedLegos, newLego], connections);
         } catch (error) {
-            setError('Failed to create dynamic lego')
+            setError(error instanceof Error ? error.message : 'Failed to create dynamic lego');
         } finally {
-            setIsDialogOpen(false)
-            setSelectedDynamicLego(null)
-            setPendingDropPosition(null)
+            setIsDialogOpen(false);
+            setSelectedDynamicLego(null);
+            setPendingDropPosition(null);
         }
-    }
+    };
 
     const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
         e.preventDefault();
@@ -1417,7 +1419,12 @@ function App() {
             encodeCanvasState(updatedLegos, connections);
 
         } catch (error) {
-            setError('Failed to create CSS Tanner network');
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.response?.data?.detail || error.message;
+                setError(`Failed to create CSS Tanner network: ${message}`);
+            } else {
+                setError('Failed to create CSS Tanner network');
+            }
             console.error('Error:', error);
         }
     };
@@ -1483,7 +1490,12 @@ function App() {
             encodeCanvasState(updatedLegos, connections);
 
         } catch (error) {
-            setError('Failed to create Tanner network');
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.response?.data?.detail || error.message;
+                setError(`Failed to create Tanner network: ${message}`);
+            } else {
+                setError('Failed to create Tanner network');
+            }
             console.error('Error:', error);
         }
     };
@@ -1539,7 +1551,12 @@ function App() {
             encodeCanvasState(updatedLegos, connections);
 
         } catch (error) {
-            setError('Failed to create measurement state preparation network');
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.response?.data?.detail || error.message;
+                setError(`Failed to create measurement state preparation network: ${message}`);
+            } else {
+                setError('Failed to create measurement state preparation network');
+            }
             console.error('Error:', error);
         }
     };
@@ -1744,8 +1761,13 @@ function App() {
             );
 
         } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.response?.data?.detail || error.message;
+                setError(`Failed to fuse legos: ${message}`);
+            } else {
+                setError('Failed to fuse legos');
+            }
             console.error('Error fusing legos:', error);
-            setError('Failed to fuse legos');
         }
     };
 
@@ -1919,7 +1941,7 @@ function App() {
                                             const fromLegHighlighted = fromLego.pushedLegs.some(pl => pl.legIndex === conn.from.legIndex);
                                             const toLegHighlighted = toLego.pushedLegs.some(pl => pl.legIndex === conn.to.legIndex);
 
-                                            // Determine if legs should be hidden
+                                            // Determine if legs should be hidden - only hide if connected AND not highlighted
                                             const hideFromLeg = hideConnectedLegs && fromLegConnected && !fromLegHighlighted;
                                             const hideToLeg = hideConnectedLegs && toLegConnected && !toLegHighlighted;
 
