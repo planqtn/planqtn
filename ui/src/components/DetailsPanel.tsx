@@ -1,4 +1,4 @@
-import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard } from '@chakra-ui/react'
+import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
 import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
@@ -573,6 +573,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             <Text fontSize="sm" color="gray.600">
                                 {selectedLego.description}, instaceId: {selectedLego.instanceId}
                             </Text>
+                            <Box>
+                                <Text fontSize="sm" mb={1}>Short Name:</Text>
+                                <Input
+                                    size="sm"
+                                    value={selectedLego.shortName}
+                                    onChange={(e) => {
+                                        const newShortName = e.target.value;
+                                        const updatedLego = { ...selectedLego, shortName: newShortName };
+                                        setSelectedLego(updatedLego);
+                                        setDroppedLegos(droppedLegos.map(l =>
+                                            l.instanceId === selectedLego.instanceId ? updatedLego : l
+                                        ));
+                                    }}
+                                />
+                            </Box>
                             {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
                                 <Button
                                     leftIcon={<Icon as={FaCube} />}
