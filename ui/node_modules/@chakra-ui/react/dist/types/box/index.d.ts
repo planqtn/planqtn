@@ -1,6 +1,0 @@
-export { Box } from "./box";
-export type { BoxProps } from "./box";
-export { Square } from "./square";
-export type { SquareProps } from "./square";
-export { Circle } from "./circle";
-export type { CircleProps } from "./circle";
