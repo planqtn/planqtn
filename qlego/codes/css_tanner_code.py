@@ -1,6 +1,6 @@
 import numpy as np
 from qlego.tensor_stabilizer_enumerator import TensorNetwork
-from qlego.legos import Legos
+from qlego.legos import LegoAnnotation, Legos
 from qlego.tensor_stabilizer_enumerator import (
     PAULI_I,
     TensorStabilizerCodeEnumerator,
@@ -49,7 +49,12 @@ class CssTannerCodeTN(TensorNetwork):
         for i, gx in enumerate(hx):
             qs = np.nonzero(gx)[0]
             g_tensor = TensorStabilizerCodeEnumerator(
-                Legos.z_rep_code(len(qs)), f"x{i}"
+                Legos.z_rep_code(len(qs)),
+                f"x{i}",
+                annotation=LegoAnnotation(
+                    type="z_rep_code",
+                    shortName=f"x{i}",
+                ),
             )
             # print(f"=== x tensor {g_tensor.idx} -> {qs} === ")
 
@@ -70,7 +75,12 @@ class CssTannerCodeTN(TensorNetwork):
         for i, gz in enumerate(hz):
             qs = np.nonzero(gz)[0]
             g_tensor = TensorStabilizerCodeEnumerator(
-                Legos.z_rep_code(len(qs)), f"z{i}"
+                Legos.z_rep_code(len(qs)),
+                f"z{i}",
+                annotation=LegoAnnotation(
+                    type="z_rep_code",
+                    shortName=f"z{i}",
+                ),
             )
             gz_tensors.append(g_tensor)
             for g_leg, q in enumerate(qs):

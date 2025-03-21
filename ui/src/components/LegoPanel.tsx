@@ -3,6 +3,7 @@ import { FaCube, FaCode, FaTable } from 'react-icons/fa'
 import { LegoPiece } from '../types.ts'
 import { DynamicLegoDialog } from './DynamicLegoDialog'
 import { useState } from 'react'
+import { config } from '../config'
 
 interface LegoPanelProps {
     legos: LegoPiece[]
@@ -34,7 +35,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
         if (!selectedDynamicLego) return
 
         try {
-            const response = await fetch('http://localhost:5000/dynamiclego', {
+            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { PauliOperator } from '../types'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
+import { config } from '../config'
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -85,7 +86,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         if (!tensorNetwork) return;
         try {
 
-            const response = await axios.post('http://localhost:5000/paritycheck', {
+            const response = await axios.post(`${config.backendUrl}/paritycheck`, {
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
                     const { style, x, y, ...legoWithoutStyle } = lego;
                     acc[lego.instanceId] = {
@@ -265,7 +266,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         try {
             // Get the new repetition code with one more leg
-            const response = await fetch('http://localhost:5000/dynamiclego', {
+            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -513,7 +514,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
             const [response1, response2] = await Promise.all([
-                fetch('http://localhost:5000/dynamiclego', {
+                fetch(`${config.backendUrl}/dynamiclego`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -521,7 +522,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         parameters: { d: lego1Legs + 1 }
                     })
                 }),
-                fetch('http://localhost:5000/dynamiclego', {
+                fetch(`${config.backendUrl}/dynamiclego`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1180,7 +1181,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 width="full"
                                                 onClick={async () => {
                                                     try {
-                                                        const response = await fetch('http://localhost:5000/paritycheck', {
+                                                        const response = await fetch(`${config.backendUrl}/paritycheck`, {
                                                             method: 'POST',
                                                             headers: {
                                                                 'Content-Type': 'application/json',

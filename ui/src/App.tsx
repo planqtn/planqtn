@@ -13,6 +13,7 @@ import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLe
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
+import { config } from './config'
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -188,7 +189,7 @@ function App() {
         if (!selectedDynamicLego || !pendingDropPosition) return;
 
         try {
-            const response = await fetch('http://localhost:5000/dynamiclego', {
+            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1526,7 +1527,7 @@ function App() {
 
     const handleCssTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post('http://localhost:5000/csstannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`${config.backendUrl}/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             const { legos, connections } = response.data;
 
             // Calculate positions for each type of node
@@ -1601,7 +1602,7 @@ function App() {
 
     const handleTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post('http://localhost:5000/tannernetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`${config.backendUrl}/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             const { legos, connections } = response.data;
 
             // Calculate positions for each type of node
@@ -1671,7 +1672,7 @@ function App() {
 
     const handleMspSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post('http://localhost:5000/mspnetwork', { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`${config.backendUrl}/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             const { legos, connections } = response.data;
             // Calculate positions using lego coordinates
             const canvasWidth = 800;  // Approximate canvas width
@@ -1852,7 +1853,7 @@ function App() {
             };
 
             // Call the paritycheck endpoint
-            const response = await axios.post('http://localhost:5000/paritycheck', payload);
+            const response = await axios.post(`${config.backendUrl}/paritycheck`, payload);
             const { matrix, legs, recognized_type } = response.data;
 
             // Create a new lego with the calculated parity check matrix
