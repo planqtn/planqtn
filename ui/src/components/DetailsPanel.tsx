@@ -1034,7 +1034,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         size="sm"
                                         onClick={() => handlePullOutOppositeLeg(selectedLego)}
                                     >
-                                        Pull out a leg of opposite color
+                                        Pull out a leg of same color
                                     </Button>
                                 </>
                             )}
@@ -1095,71 +1095,135 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 );
                             };
 
+                            // Check if selection forms a square pattern of alternating X and Z rep codes
+                            const isSquarePattern = (): boolean => {
+                                if (manuallySelectedLegos.length !== 4) return false;
+
+                                // Find a starting X-rep code
+                                const startLego = manuallySelectedLegos.find(lego => lego.id === 'x_rep_code');
+                                if (!startLego) return false;
+
+                                // Keep track of visited legos and their expected types
+                                const visited = new Set<string>();
+                                const selectedIds = new Set(manuallySelectedLegos.map(l => l.instanceId));
+
+                                // Walk through the connected component
+                                const walkComponent = (currentId: string, expectedType: 'x_rep_code' | 'z_rep_code'): boolean => {
+                                    const currentLego = manuallySelectedLegos.find(l => l.instanceId === currentId);
+                                    if (!currentLego || currentLego.id !== expectedType) return false;
+
+                                    visited.add(currentId);
+
+                                    // Find connected legos that haven't been visited
+                                    const connectedLegos = connections
+                                        .filter(conn =>
+                                            (conn.from.legoId === currentId && selectedIds.has(conn.to.legoId)) ||
+                                            (conn.to.legoId === currentId && selectedIds.has(conn.from.legoId)))
+                                        .map(conn =>
+                                            conn.from.legoId === currentId ? conn.to.legoId : conn.from.legoId)
+                                        .filter(id => !visited.has(id));
+
+                                    // For each unvisited connected lego, verify it follows the alternating pattern
+                                    const nextExpectedType = expectedType === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code';
+                                    return connectedLegos.every(id => walkComponent(id, nextExpectedType));
+                                };
+
+                                // Start the walk from our X-rep code
+                                const walkResult = walkComponent(startLego.instanceId, 'x_rep_code');
+
+                                // Verify we visited all 4 legos and they form a proper alternating pattern
+                                if (!walkResult || visited.size !== 4) return false;
+
+                                // Check if they form a square pattern (each lego is connected to exactly two others)
+                                const connectionCounts = new Map<string, number>();
+                                connections.forEach(conn => {
+                                    if (selectedIds.has(conn.from.legoId) && selectedIds.has(conn.to.legoId)) {
+                                        connectionCounts.set(conn.from.legoId, (connectionCounts.get(conn.from.legoId) || 0) + 1);
+                                        connectionCounts.set(conn.to.legoId, (connectionCounts.get(conn.to.legoId) || 0) + 1);
+                                    }
+                                });
+
+                                return Array.from(connectionCounts.values()).every(count => count === 2);
+                            };
+
                             const canFuse = isConnectedSelection() && hasOutgoingConnections();
+                            const canPopSquare = isSquarePattern();
 
-                            return canFuse ? (
+                            return (
                                 <>
-                                    <Button
-                                        colorScheme="blue"
-                                        size="sm"
-                                        width="full"
-                                        onClick={() => fuseLegos(manuallySelectedLegos)}
-                                        mb={2}
-                                    >
-                                        Fuse Legos
-                                    </Button>
-                                    <Button
-                                        colorScheme="green"
-                                        size="sm"
-                                        width="full"
-                                        onClick={async () => {
-                                            try {
-                                                const response = await fetch('http://localhost:5000/paritycheck', {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                    },
-                                                    body: JSON.stringify({
-                                                        legos: manuallySelectedLegos.reduce<Record<string, DroppedLego>>((acc, lego) => {
-                                                            acc[lego.instanceId] = lego;
-                                                            return acc;
-                                                        }, {}),
-                                                        connections: connections.filter(conn =>
-                                                            manuallySelectedLegos.some(l => l.instanceId === conn.from.legoId) &&
-                                                            manuallySelectedLegos.some(l => l.instanceId === conn.to.legoId)
-                                                        )
-                                                    })
-                                                });
-                                                const data = await response.json();
-                                                setCalculatedMatrix(data);
+                                    {canFuse && (
+                                        <Button
+                                            colorScheme="blue"
+                                            size="sm"
+                                            width="full"
+                                            onClick={() => fuseLegos(manuallySelectedLegos)}
+                                            mb={2}
+                                        >
+                                            Fuse Legos
+                                        </Button>
+                                    )}
+                                    {canPopSquare && (
+                                        <Button
+                                            colorScheme="purple"
+                                            size="sm"
+                                            width="full"
+                                            mb={2}
+                                        >
+                                            Pop square
+                                        </Button>
+                                    )}
+                                    {canFuse && (
+                                        <>
+                                            <Button
+                                                colorScheme="green"
+                                                size="sm"
+                                                width="full"
+                                                onClick={async () => {
+                                                    try {
+                                                        const response = await fetch('http://localhost:5000/paritycheck', {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/json',
+                                                            },
+                                                            body: JSON.stringify({
+                                                                legos: manuallySelectedLegos.reduce<Record<string, DroppedLego>>((acc, lego) => {
+                                                                    acc[lego.instanceId] = lego;
+                                                                    return acc;
+                                                                }, {}),
+                                                                connections: connections.filter(conn =>
+                                                                    manuallySelectedLegos.some(l => l.instanceId === conn.from.legoId) &&
+                                                                    manuallySelectedLegos.some(l => l.instanceId === conn.to.legoId)
+                                                                )
+                                                            })
+                                                        });
+                                                        const data = await response.json();
+                                                        setCalculatedMatrix(data);
 
-                                            } catch (error) {
-                                                setError(`Error calculating parity check matrix: ${error}`);
-                                            }
-                                        }}
-                                        mb={4}
-                                    >
-                                        Calculate Parity Check Matrix
-                                    </Button>
-                                    {calculatedMatrix && (
-                                        <Box borderWidth={1} borderRadius="lg" p={4}>
-                                            {calculatedMatrix.recognized_type && (
-                                                <Text mb={2} fontWeight="bold">
-                                                    Recognized as: {calculatedMatrix.recognized_type}
-                                                </Text>
+                                                    } catch (error) {
+                                                        setError(`Error calculating parity check matrix: ${error}`);
+                                                    }
+                                                }}
+                                                mb={4}
+                                            >
+                                                Calculate Parity Check Matrix
+                                            </Button>
+                                            {calculatedMatrix && (
+                                                <Box borderWidth={1} borderRadius="lg" p={4}>
+                                                    {calculatedMatrix.recognized_type && (
+                                                        <Text mb={2} fontWeight="bold">
+                                                            Recognized as: {calculatedMatrix.recognized_type}
+                                                        </Text>
+                                                    )}
+                                                    <ParityCheckMatrixDisplay
+                                                        matrix={calculatedMatrix.matrix}
+                                                        legOrdering={calculatedMatrix.legs}
+                                                        title="Calculated Parity Check Matrix"
+                                                    />
+                                                </Box>
                                             )}
-                                            <ParityCheckMatrixDisplay
-                                                matrix={calculatedMatrix.matrix}
-                                                legOrdering={calculatedMatrix.legs}
-                                                title="Calculated Parity Check Matrix"
-                                            />
-                                        </Box>
+                                        </>
                                     )}
                                 </>
-                            ) : (
-                                <Text color="gray.600">
-                                    For details, select only one lego, or a connected component
-                                </Text>
                             );
                         })()}
                     </>

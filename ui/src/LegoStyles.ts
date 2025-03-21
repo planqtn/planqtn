@@ -282,7 +282,7 @@ export class IdentityStyle extends LegoStyle {
 
 export class RepetitionCodeStyle extends LegoStyle {
     get size(): number {
-        return 20;
+        return 30;
     }
 
     get borderRadius(): string {
@@ -328,9 +328,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_LIGHT;
             case "stopper_x":
-                return X_COLOR_LIGHT;
-            case "stopper_z":
                 return Z_COLOR_LIGHT;
+            case "stopper_z":
+                return X_COLOR_LIGHT;
             default:
                 return I_COLOR_LIGHT;
         }
@@ -341,9 +341,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR;
             case "stopper_x":
-                return X_COLOR;
-            case "stopper_z":
                 return Z_COLOR;
+            case "stopper_z":
+                return X_COLOR;
             default:
                 return I_COLOR;
         }
@@ -354,9 +354,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_DARK;
             case "stopper_x":
-                return X_COLOR_DARK;
-            case "stopper_z":
                 return Z_COLOR_DARK;
+            case "stopper_z":
+                return X_COLOR_DARK;
             default:
                 return I_COLOR_DARK;
         }
@@ -367,9 +367,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_DARK;
             case "stopper_x":
-                return X_COLOR_DARK;
-            case "stopper_z":
                 return Z_COLOR_DARK;
+            case "stopper_z":
+                return X_COLOR_DARK;
             default:
                 return I_COLOR_DARK;
         }
