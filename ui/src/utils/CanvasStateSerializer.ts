@@ -24,7 +24,7 @@ export class CanvasStateSerializer {
         }
 
         const encoded = btoa(JSON.stringify(state))
-        console.log("Encoding state:", state, "encoded", encoded);
+        // console.log("Encoding state:", state, "encoded", encoded);
         window.history.replaceState(null, '', `#state=${encoded}`)
     }
 

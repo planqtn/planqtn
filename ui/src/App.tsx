@@ -229,104 +229,112 @@ function App() {
             setPendingDropPosition(null);
         }
     };
+    const handleClone = (lego: DroppedLego, clientX: number, clientY: number) => {
+        // Check if we're cloning multiple legos
+        const legosToClone = manuallySelectedLegos.length > 0 ? manuallySelectedLegos :
+            tensorNetwork?.legos || [lego];
 
+        // Get a single starting ID for all new legos
+        const startingId = parseInt(newInstanceId(droppedLegos));
+
+        // Create a mapping from old instance IDs to new ones
+        const instanceIdMap = new Map<string, string>();
+        const newLegos = legosToClone.map((l, idx) => {
+            const newId = String(startingId + idx);
+            instanceIdMap.set(l.instanceId, newId);
+            return {
+                ...l,
+                instanceId: newId,
+                x: l.x + 20,
+                y: l.y + 20,
+                pushedLegs: []
+            };
+        });
+
+        // Clone connections between the selected legos
+        const newConnections = connections
+            .filter(conn =>
+                legosToClone.some(l => l.instanceId === conn.from.legoId) &&
+                legosToClone.some(l => l.instanceId === conn.to.legoId)
+            )
+            .map(conn => ({
+                from: {
+                    legoId: instanceIdMap.get(conn.from.legoId)!,
+                    legIndex: conn.from.legIndex
+                },
+                to: {
+                    legoId: instanceIdMap.get(conn.to.legoId)!,
+                    legIndex: conn.to.legIndex
+                }
+            }));
+
+        // Add new legos and connections
+        setDroppedLegos(prev => [...prev, ...newLegos]);
+        setConnections(prev => [...prev, ...newConnections]);
+
+        // Set up drag state for the group
+        const positions: { [instanceId: string]: { x: number; y: number } } = {};
+        newLegos.forEach(l => {
+            positions[l.instanceId] = { x: l.x, y: l.y };
+        });
+
+        setGroupDragState({
+            legoInstanceIds: newLegos.map(l => l.instanceId),
+            originalPositions: positions
+        });
+
+        // Set up initial drag state for the first lego
+        setDragState({
+            isDragging: false,
+            draggedLegoIndex: droppedLegos.length,
+            startX: clientX,
+            startY: clientY,
+            originalX: lego.x + 20,
+            originalY: lego.y + 20,
+            justFinished: false
+        });
+
+        // Add to history
+        addToHistory({
+            type: 'add',
+            data: {
+                legos: newLegos,
+                connections: newConnections
+            }
+        });
+
+        // Update URL state
+        encodeCanvasState(droppedLegos.concat(newLegos), connections.concat(newConnections), hideConnectedLegs);
+    };
     const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
         e.preventDefault();
         e.stopPropagation();
         const lego = droppedLegos[index];
 
         if (e.shiftKey) {
-            // Check if we're cloning multiple legos
-            const legosToClone = manuallySelectedLegos.length > 0 ? manuallySelectedLegos :
-                tensorNetwork?.legos || [lego];
-
-            // Get a single starting ID for all new legos
-            const startingId = parseInt(newInstanceId(droppedLegos));
-
-            // Create a mapping from old instance IDs to new ones
-            const instanceIdMap = new Map<string, string>();
-            const newLegos = legosToClone.map((l, idx) => {
-                const newId = String(startingId + idx);
-                instanceIdMap.set(l.instanceId, newId);
-                return {
-                    ...l,
-                    instanceId: newId,
-                    x: l.x + 20,
-                    y: l.y + 20,
-                    pushedLegs: []
-                };
-            });
-
-            // Clone connections between the selected legos
-            const newConnections = connections
-                .filter(conn =>
-                    legosToClone.some(l => l.instanceId === conn.from.legoId) &&
-                    legosToClone.some(l => l.instanceId === conn.to.legoId)
-                )
-                .map(conn => ({
-                    from: {
-                        legoId: instanceIdMap.get(conn.from.legoId)!,
-                        legIndex: conn.from.legIndex
-                    },
-                    to: {
-                        legoId: instanceIdMap.get(conn.to.legoId)!,
-                        legIndex: conn.to.legIndex
-                    }
-                }));
-
-            // Add new legos and connections
-            setDroppedLegos(prev => [...prev, ...newLegos]);
-            setConnections(prev => [...prev, ...newConnections]);
-
-            // Set up drag state for the group
-            const positions: { [instanceId: string]: { x: number; y: number } } = {};
-            newLegos.forEach(l => {
-                positions[l.instanceId] = { x: l.x, y: l.y };
-            });
-
-            setGroupDragState({
-                legoInstanceIds: newLegos.map(l => l.instanceId),
-                originalPositions: positions
-            });
-
-            // Set up initial drag state for the first lego
-            setDragState({
-                isDragging: false,
-                draggedLegoIndex: droppedLegos.length,
-                startX: e.clientX,
-                startY: e.clientY,
-                originalX: lego.x + 20,
-                originalY: lego.y + 20,
-                justFinished: false
-            });
-
-            // Add to history
-            addToHistory({
-                type: 'add',
-                data: {
-                    legos: newLegos,
-                    connections: newConnections
-                }
-            });
-
-            // Update URL state
-            encodeCanvasState(droppedLegos.concat(newLegos), connections.concat(newConnections), hideConnectedLegs);
+            handleClone(lego, e.clientX, e.clientY);
         } else {
-            // Original non-shift behavior
+
             const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
                 tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId);
 
             if (isPartOfSelection) {
                 const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : tensorNetwork?.legos || [];
-                const positions: { [instanceId: string]: { x: number; y: number } } = {};
+                const currentPositions: { [instanceId: string]: { x: number; y: number } } = {};
                 selectedLegos.forEach(l => {
-                    positions[l.instanceId] = { x: l.x, y: l.y };
+                    currentPositions[l.instanceId] = { x: l.x, y: l.y };
                 });
 
-                setGroupDragState({
+                setGroupDragState(prev => ({
                     legoInstanceIds: selectedLegos.map(l => l.instanceId),
-                    originalPositions: positions
-                });
+                    originalPositions: currentPositions
+                }));
+                console.log("manually selected legos")
+                console.log(manuallySelectedLegos)
+                console.log("current positions")
+                console.log(currentPositions)
+                console.log("group drag state")
+                console.log(groupDragState)
             }
 
             setDragState({
@@ -528,17 +536,18 @@ function App() {
                         x: originalPos.x + deltaX,
                         y: originalPos.y + deltaY
                     };
-                } else if (manuallySelectedLegos.length > 0 &&
-                    manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
-                    // If dragging a manually selected lego, move all manually selected legos
-                    if (manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)) {
-                        return {
-                            ...lego,
-                            x: lego.x + (e.movementX || 0),
-                            y: lego.y + (e.movementY || 0)
-                        };
-                    }
-                    return lego;
+                    // } 
+                    // else if (manuallySelectedLegos.length > 0 &&
+                    //     manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                    //     // If dragging a manually selected lego, move all manually selected legos
+                    //     if (manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)) {
+                    //         return {
+                    //             ...lego,
+                    //             x: lego.x + (e.movementX || 0),
+                    //             y: lego.y + (e.movementY || 0)
+                    //         };
+                    //     }
+                    //     return lego;
                 } else if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
@@ -551,6 +560,13 @@ function App() {
 
             // Update all legos at once to prevent lag
             setDroppedLegos(updatedLegos);
+            if (groupDragState) {
+                if (manuallySelectedLegos.length > 0) {
+                    setManuallySelectedLegos(updatedLegos);
+                } else if (tensorNetwork) {
+                    tensorNetwork.legos = updatedLegos;
+                }
+            }
 
             // Add visual feedback when touching edges
             const canvas = canvasRef.current;
@@ -677,6 +693,7 @@ function App() {
                         type: 'move',
                         data: { groupMoves }
                     });
+
                 } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
                     // Record a single group move operation for manually selected legos
                     const groupMoves = manuallySelectedLegos.map(lego => ({
