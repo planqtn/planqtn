@@ -537,6 +537,18 @@ function App() {
                         x: originalPos.x + deltaX,
                         y: originalPos.y + deltaY
                     };
+                    // } 
+                    // else if (manuallySelectedLegos.length > 0 &&
+                    //     manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                    //     // If dragging a manually selected lego, move all manually selected legos
+                    //     if (manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)) {
+                    //         return {
+                    //             ...lego,
+                    //             x: lego.x + (e.movementX || 0),
+                    //             y: lego.y + (e.movementY || 0)
+                    //         };
+                    //     }
+                    //     return lego;
                 } else if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
@@ -551,18 +563,16 @@ function App() {
             setDroppedLegos(updatedLegos);
             if (groupDragState) {
                 if (manuallySelectedLegos.length > 0) {
-                    setManuallySelectedLegos(updatedLegos.filter(lego =>
-                        manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)
-                    ));
+                    setManuallySelectedLegos(updatedLegos);
                 } else if (tensorNetwork) {
                     tensorNetwork.legos = updatedLegos;
                 }
             }
 
-            // Remove the visual feedback for edges
+            // Add visual feedback when touching edges
             const canvas = canvasRef.current;
             if (canvas) {
-                canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
+                canvas.style.boxShadow = isOutsideCanvas ? 'inset 0 0 0 4px #FC8181' : 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
             }
         }
 
@@ -2082,7 +2092,6 @@ function App() {
                             {/* Gray Panel */}
                             <Box
                                 ref={canvasRef}
-                                className="canvas-container"
                                 flex={1}
                                 bg="gray.100"
                                 borderRadius="lg"
@@ -2095,281 +2104,222 @@ function App() {
                                 onMouseLeave={handleCanvasMouseLeave}
                                 onClick={handleCanvasClick}
                                 onMouseDown={handleCanvasMouseDown}
-                                style={{ userSelect: 'none', overflow: 'hidden' }}
+                                style={{ userSelect: 'none' }}
                             >
-                                {/* Canvas content container */}
-                                <Box
-                                    position="absolute"
-                                    top={0}
-                                    left={0}
-                                    right={0}
-                                    bottom={0}
-                                    zIndex={1}
+                                {/* Connection Lines */}
+                                <svg
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        pointerEvents: 'none',
+                                        userSelect: 'none'
+                                    }}
                                 >
-                                    {/* Connection Lines */}
-                                    <svg
-                                        style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            height: '100%',
-                                            pointerEvents: 'none',
-                                            userSelect: 'none'
-                                        }}
-                                    >
-                                        {/* Existing connections */}
-                                        <g style={{ pointerEvents: 'all' }}>
-                                            {connections.map((conn) => {
-                                                const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
-                                                const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
-                                                if (!fromLego || !toLego) return null;
+                                    {/* Existing connections */}
+                                    <g style={{ pointerEvents: 'all' }}>
+                                        {connections.map((conn) => {
+                                            const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                                            const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                                            if (!fromLego || !toLego) return null;
 
-                                                // Create a stable key based on the connection's properties
-                                                const [firstId, firstLeg, secondId, secondLeg] =
-                                                    conn.from.legoId < conn.to.legoId
-                                                        ? [conn.from.legoId, conn.from.legIndex, conn.to.legoId, conn.to.legIndex]
-                                                        : [conn.to.legoId, conn.to.legIndex, conn.from.legoId, conn.from.legIndex];
-                                                const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
+                                            // Create a stable key based on the connection's properties
+                                            const [firstId, firstLeg, secondId, secondLeg] =
+                                                conn.from.legoId < conn.to.legoId
+                                                    ? [conn.from.legoId, conn.from.legIndex, conn.to.legoId, conn.to.legIndex]
+                                                    : [conn.to.legoId, conn.to.legIndex, conn.from.legoId, conn.from.legIndex];
+                                            const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-                                                // Calculate positions using shared function
-                                                const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
-                                                const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+                                            // Calculate positions using shared function
+                                            const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
+                                            const toPos = calculateLegPosition(toLego, conn.to.legIndex);
 
-                                                // Check if legs are connected and should be hidden
-                                                const fromLegConnected = connections.some(c =>
-                                                    (c.from.legoId === fromLego.instanceId && c.from.legIndex === conn.from.legIndex) ||
-                                                    (c.to.legoId === fromLego.instanceId && c.to.legIndex === conn.from.legIndex)
-                                                );
-                                                const toLegConnected = connections.some(c =>
-                                                    (c.from.legoId === toLego.instanceId && c.from.legIndex === conn.to.legIndex) ||
-                                                    (c.to.legoId === toLego.instanceId && c.to.legIndex === conn.to.legIndex)
-                                                );
+                                            // Check if legs are connected and should be hidden
+                                            const fromLegConnected = connections.some(c =>
+                                                (c.from.legoId === fromLego.instanceId && c.from.legIndex === conn.from.legIndex) ||
+                                                (c.to.legoId === fromLego.instanceId && c.to.legIndex === conn.from.legIndex)
+                                            );
+                                            const toLegConnected = connections.some(c =>
+                                                (c.from.legoId === toLego.instanceId && c.from.legIndex === conn.to.legIndex) ||
+                                                (c.to.legoId === toLego.instanceId && c.to.legIndex === conn.to.legIndex)
+                                            );
 
-                                                // Check if legs are highlighted
-                                                const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
-                                                const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
-                                                const fromLegHighlighted = fromLegStyle.is_highlighted;
-                                                const toLegHighlighted = toLegStyle.is_highlighted;
+                                            // Check if legs are highlighted
+                                            const fromLegStyle = fromLego.style.getLegStyle(conn.from.legIndex, fromLego);
+                                            const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
+                                            const fromLegHighlighted = fromLegStyle.is_highlighted;
+                                            const toLegHighlighted = toLegStyle.is_highlighted;
 
-                                                // Determine if legs should be hidden
-                                                const hideFromLeg = hideConnectedLegs && fromLegConnected && (
-                                                    !fromLegHighlighted ? !toLegHighlighted : // If from is not highlighted, hide if to is not highlighted
-                                                        toLegHighlighted && fromLegStyle.color === toLegStyle.color // If from is highlighted, hide if to has same highlight
-                                                );
-                                                const hideToLeg = hideConnectedLegs && toLegConnected && (
-                                                    !toLegHighlighted ? !fromLegHighlighted : // If to is not highlighted, hide if from is not highlighted
-                                                        fromLegHighlighted && fromLegStyle.color === toLegStyle.color // If to is highlighted, hide if from has same highlight
-                                                );
+                                            // Determine if legs should be hidden
+                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && (
+                                                !fromLegHighlighted ? !toLegHighlighted : // If from is not highlighted, hide if to is not highlighted
+                                                    toLegHighlighted && fromLegStyle.color === toLegStyle.color // If from is highlighted, hide if to has same highlight
+                                            );
+                                            const hideToLeg = hideConnectedLegs && toLegConnected && (
+                                                !toLegHighlighted ? !fromLegHighlighted : // If to is not highlighted, hide if from is not highlighted
+                                                    fromLegHighlighted && fromLegStyle.color === toLegStyle.color // If to is highlighted, hide if from has same highlight
+                                            );
 
-                                                // Final points with lego positions
-                                                const fromPoint = hideFromLeg ?
-                                                    { x: fromLego.x, y: fromLego.y } :
-                                                    { x: fromLego.x + fromPos.endX, y: fromLego.y + fromPos.endY };
-                                                const toPoint = hideToLeg ?
-                                                    { x: toLego.x, y: toLego.y } :
-                                                    { x: toLego.x + toPos.endX, y: toLego.y + toPos.endY };
+                                            // Final points with lego positions
+                                            const fromPoint = hideFromLeg ?
+                                                { x: fromLego.x, y: fromLego.y } :
+                                                { x: fromLego.x + fromPos.endX, y: fromLego.y + fromPos.endY };
+                                            const toPoint = hideToLeg ?
+                                                { x: toLego.x, y: toLego.y } :
+                                                { x: toLego.x + toPos.endX, y: toLego.y + toPos.endY };
 
-                                                // Get the colors of the connected legs
-                                                const fromLegColor = fromLego.style.getLegColor(conn.from.legIndex, fromLego);
-                                                const toLegColor = toLego.style.getLegColor(conn.to.legIndex, toLego);
-                                                const colorsMatch = fromLegColor === toLegColor;
+                                            // Get the colors of the connected legs
+                                            const fromLegColor = fromLego.style.getLegColor(conn.from.legIndex, fromLego);
+                                            const toLegColor = toLego.style.getLegColor(conn.to.legIndex, toLego);
+                                            const colorsMatch = fromLegColor === toLegColor;
 
-                                                // Calculate control points for the curve
-                                                const controlPointDistance = 30;
-                                                const cp1 = {
-                                                    x: fromPoint.x + Math.cos(fromPos.angle) * controlPointDistance,
-                                                    y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
-                                                };
-                                                const cp2 = {
-                                                    x: toPoint.x + Math.cos(toPos.angle) * controlPointDistance,
-                                                    y: toPoint.y + Math.sin(toPos.angle) * controlPointDistance
-                                                };
-
-                                                // Create the path string for the cubic Bezier curve
-                                                const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
-
-                                                // Calculate midpoint for warning sign
-                                                const midPoint = {
-                                                    x: (fromPoint.x + toPoint.x) / 2,
-                                                    y: (fromPoint.y + toPoint.y) / 2
-                                                };
-
-                                                function fromChakraColorToHex(color: string): string {
-                                                    if (color.startsWith('blue')) {
-                                                        return '#0000FF';
-                                                    } else if (color.startsWith('red')) {
-                                                        return '#FF0000';
-                                                    } else if (color.startsWith('purple')) {
-                                                        return '#800080';
-                                                    } else {
-                                                        return 'darkgray';
-                                                    }
-                                                }
-                                                const sharedColor = colorsMatch ? fromChakraColorToHex(fromLegColor) : 'yellow';
-                                                const connectorColor = colorsMatch ? sharedColor : 'yellow';
-
-                                                return (
-                                                    <g key={connKey}>
-                                                        {/* Invisible wider path for easier clicking */}
-                                                        <path
-                                                            d={pathString}
-                                                            stroke="transparent"
-                                                            strokeWidth="10"
-                                                            fill="none"
-                                                            style={{
-                                                                cursor: 'pointer',
-                                                            }}
-                                                            onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
-                                                            onMouseEnter={(e) => {
-                                                                // Find and update the visible path
-                                                                const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
-                                                                if (visiblePath) {
-                                                                    visiblePath.style.stroke = connectorColor;
-                                                                    visiblePath.style.strokeWidth = '3';
-                                                                    visiblePath.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
-                                                                }
-                                                            }}
-                                                            onMouseLeave={(e) => {
-                                                                // Reset the visible path
-                                                                const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
-                                                                if (visiblePath) {
-                                                                    visiblePath.style.stroke = connectorColor;
-                                                                    visiblePath.style.strokeWidth = '2';
-                                                                    visiblePath.style.filter = 'none';
-                                                                }
-                                                            }}
-                                                        />
-                                                        {/* Visible path */}
-                                                        <path
-                                                            d={pathString}
-                                                            stroke={connectorColor}
-                                                            strokeWidth="2"
-                                                            fill="none"
-                                                            style={{
-                                                                pointerEvents: 'none',
-                                                                transition: 'all 0.2s ease',
-                                                                stroke: connectorColor
-                                                            }}
-                                                        />
-                                                        {/* Warning sign if operators don't match */}
-                                                        {!colorsMatch && (
-                                                            <text
-                                                                x={midPoint.x}
-                                                                y={midPoint.y}
-                                                                fontSize="16"
-                                                                fill="#FF0000"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="middle"
-                                                                style={{ pointerEvents: 'none' }}
-                                                            >
-                                                                ⚠
-                                                            </text>
-                                                        )}
-                                                    </g>
-                                                );
-                                            })}
-                                        </g>
-
-                                        {/* Temporary line while dragging */}
-                                        {legDragState?.isDragging && (() => {
-                                            const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
-                                            if (!fromLego) return null;
-
-                                            // Calculate position using shared function
-                                            const fromPos = calculateLegPosition(fromLego, legDragState.legIndex);
-                                            const fromPoint = {
-                                                x: fromLego.x + fromPos.endX,
-                                                y: fromLego.y + fromPos.endY
-                                            };
-
-                                            const legStyle = fromLego.style.getLegStyle(legDragState.legIndex, fromLego);
+                                            // Calculate control points for the curve
                                             const controlPointDistance = 30;
                                             const cp1 = {
-                                                x: fromPoint.x + Math.cos(legStyle.angle) * controlPointDistance,
-                                                y: fromPoint.y + Math.sin(legStyle.angle) * controlPointDistance
+                                                x: fromPoint.x + Math.cos(fromPos.angle) * controlPointDistance,
+                                                y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
                                             };
                                             const cp2 = {
-                                                x: legDragState.currentX,
-                                                y: legDragState.currentY
+                                                x: toPoint.x + Math.cos(toPos.angle) * controlPointDistance,
+                                                y: toPoint.y + Math.sin(toPos.angle) * controlPointDistance
                                             };
 
-                                            const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
+                                            // Create the path string for the cubic Bezier curve
+                                            const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
+
+                                            // Calculate midpoint for warning sign
+                                            const midPoint = {
+                                                x: (fromPoint.x + toPoint.x) / 2,
+                                                y: (fromPoint.y + toPoint.y) / 2
+                                            };
+
+                                            function fromChakraColorToHex(color: string): string {
+                                                if (color.startsWith('blue')) {
+                                                    return '#0000FF';
+                                                } else if (color.startsWith('red')) {
+                                                    return '#FF0000';
+                                                } else if (color.startsWith('purple')) {
+                                                    return '#800080';
+                                                } else {
+                                                    return 'darkgray';
+                                                }
+                                            }
+                                            const sharedColor = colorsMatch ? fromChakraColorToHex(fromLegColor) : 'yellow';
+                                            const connectorColor = colorsMatch ? sharedColor : 'yellow';
 
                                             return (
-                                                <path
-                                                    d={pathString}
-                                                    stroke="#3182CE"
-                                                    strokeWidth="2"
-                                                    strokeDasharray="4"
-                                                    fill="none"
-                                                    opacity={0.5}
-                                                    style={{ pointerEvents: 'none' }}
-                                                />
-                                            );
-                                        })()}
-
-                                        {/* Leg Labels */}
-                                        {droppedLegos.map((lego) => (
-                                            Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                                // Check if leg is connected
-                                                const isLegConnected = connections.some(c =>
-                                                    (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
-                                                    (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
-                                                );
-
-                                                // If leg is not connected, always show the label
-                                                if (!isLegConnected) {
-                                                    const pos = calculateLegPosition(lego, legIndex);
-                                                    return (
+                                                <g key={connKey}>
+                                                    {/* Invisible wider path for easier clicking */}
+                                                    <path
+                                                        d={pathString}
+                                                        stroke="transparent"
+                                                        strokeWidth="10"
+                                                        fill="none"
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                        }}
+                                                        onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+                                                        onMouseEnter={(e) => {
+                                                            // Find and update the visible path
+                                                            const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+                                                            if (visiblePath) {
+                                                                visiblePath.style.stroke = connectorColor;
+                                                                visiblePath.style.strokeWidth = '3';
+                                                                visiblePath.style.filter = 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))';
+                                                            }
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            // Reset the visible path
+                                                            const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+                                                            if (visiblePath) {
+                                                                visiblePath.style.stroke = connectorColor;
+                                                                visiblePath.style.strokeWidth = '2';
+                                                                visiblePath.style.filter = 'none';
+                                                            }
+                                                        }}
+                                                    />
+                                                    {/* Visible path */}
+                                                    <path
+                                                        d={pathString}
+                                                        stroke={connectorColor}
+                                                        strokeWidth="2"
+                                                        fill="none"
+                                                        style={{
+                                                            pointerEvents: 'none',
+                                                            transition: 'all 0.2s ease',
+                                                            stroke: connectorColor
+                                                        }}
+                                                    />
+                                                    {/* Warning sign if operators don't match */}
+                                                    {!colorsMatch && (
                                                         <text
-                                                            key={`${lego.instanceId}-label-${legIndex}`}
-                                                            x={lego.x + pos.labelX}
-                                                            y={lego.y + pos.labelY}
-                                                            fontSize="12"
-                                                            fill="#666666"
+                                                            x={midPoint.x}
+                                                            y={midPoint.y}
+                                                            fontSize="16"
+                                                            fill="#FF0000"
                                                             textAnchor="middle"
                                                             dominantBaseline="middle"
                                                             style={{ pointerEvents: 'none' }}
                                                         >
-                                                            {legIndex}
+                                                            ⚠
                                                         </text>
-                                                    );
-                                                }
+                                                    )}
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
 
-                                                const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
-                                                const isThisHighlighted = thisLegStyle.is_highlighted;
+                                    {/* Temporary line while dragging */}
+                                    {legDragState?.isDragging && (() => {
+                                        const fromLego = droppedLegos.find(l => l.instanceId === legDragState.legoId);
+                                        if (!fromLego) return null;
 
-                                                // Find the connected leg's style
-                                                const connection = connections.find(c =>
-                                                    (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
-                                                    (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
-                                                );
+                                        // Calculate position using shared function
+                                        const fromPos = calculateLegPosition(fromLego, legDragState.legIndex);
+                                        const fromPoint = {
+                                            x: fromLego.x + fromPos.endX,
+                                            y: fromLego.y + fromPos.endY
+                                        };
 
-                                                if (!connection) return null;
+                                        const legStyle = fromLego.style.getLegStyle(legDragState.legIndex, fromLego);
+                                        const controlPointDistance = 30;
+                                        const cp1 = {
+                                            x: fromPoint.x + Math.cos(legStyle.angle) * controlPointDistance,
+                                            y: fromPoint.y + Math.sin(legStyle.angle) * controlPointDistance
+                                        };
+                                        const cp2 = {
+                                            x: legDragState.currentX,
+                                            y: legDragState.currentY
+                                        };
 
-                                                const connectedLegInfo = connection.from.legoId === lego.instanceId
-                                                    ? connection.to
-                                                    : connection.from;
+                                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
 
-                                                const connectedLego = droppedLegos.find(l => l.instanceId === connectedLegInfo.legoId);
-                                                if (!connectedLego) return null;
+                                        return (
+                                            <path
+                                                d={pathString}
+                                                stroke="#3182CE"
+                                                strokeWidth="2"
+                                                strokeDasharray="4"
+                                                fill="none"
+                                                opacity={0.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        );
+                                    })()}
 
-                                                const connectedStyle = connectedLego.style.getLegStyle(connectedLegInfo.legIndex, connectedLego);
+                                    {/* Leg Labels */}
+                                    {droppedLegos.map((lego) => (
+                                        Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                            // Check if leg is connected
+                                            const isLegConnected = connections.some(c =>
+                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                            );
 
-                                                // Hide label if:
-                                                // 1. hideConnectedLegs is true AND
-                                                // 2. Either:
-                                                //    - This leg is not highlighted and connected leg is not highlighted
-                                                //    - Both legs are highlighted with the same color
-                                                const shouldHideLabel = hideConnectedLegs && (
-                                                    !isThisHighlighted
-                                                        ? !connectedStyle.is_highlighted
-                                                        : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color
-                                                );
-
-                                                if (shouldHideLabel) return null;
-
+                                            // If leg is not connected, always show the label
+                                            if (!isLegConnected) {
                                                 const pos = calculateLegPosition(lego, legIndex);
                                                 return (
                                                     <text
@@ -2385,44 +2335,95 @@ function App() {
                                                         {legIndex}
                                                     </text>
                                                 );
-                                            })
-                                        ))}
-                                    </svg>
+                                            }
 
-                                    {/* Dropped Legos */}
-                                    {droppedLegos.map((lego, index) => (
-                                        <DroppedLegoDisplay
-                                            key={lego.instanceId}
-                                            lego={lego}
-                                            index={index}
-                                            legDragState={legDragState}
-                                            handleLegMouseDown={handleLegMouseDown}
-                                            handleLegoMouseDown={handleLegoMouseDown}
-                                            handleLegoClick={handleLegoClick}
-                                            tensorNetwork={tensorNetwork}
-                                            selectedLego={selectedLego}
-                                            manuallySelectedLegos={manuallySelectedLegos}
-                                            dragState={dragState}
-                                            onLegClick={handleLegClick}
-                                            hideConnectedLegs={hideConnectedLegs}
-                                            connections={connections}
-                                            droppedLegos={droppedLegos}
-                                        />
+                                            const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+                                            const isThisHighlighted = thisLegStyle.is_highlighted;
+
+                                            // Find the connected leg's style
+                                            const connection = connections.find(c =>
+                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                            );
+
+                                            if (!connection) return null;
+
+                                            const connectedLegInfo = connection.from.legoId === lego.instanceId
+                                                ? connection.to
+                                                : connection.from;
+
+                                            const connectedLego = droppedLegos.find(l => l.instanceId === connectedLegInfo.legoId);
+                                            if (!connectedLego) return null;
+
+                                            const connectedStyle = connectedLego.style.getLegStyle(connectedLegInfo.legIndex, connectedLego);
+
+                                            // Hide label if:
+                                            // 1. hideConnectedLegs is true AND
+                                            // 2. Either:
+                                            //    - This leg is not highlighted and connected leg is not highlighted
+                                            //    - Both legs are highlighted with the same color
+                                            const shouldHideLabel = hideConnectedLegs && (
+                                                !isThisHighlighted
+                                                    ? !connectedStyle.is_highlighted
+                                                    : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color
+                                            );
+
+                                            if (shouldHideLabel) return null;
+
+                                            const pos = calculateLegPosition(lego, legIndex);
+                                            return (
+                                                <text
+                                                    key={`${lego.instanceId}-label-${legIndex}`}
+                                                    x={lego.x + pos.labelX}
+                                                    y={lego.y + pos.labelY}
+                                                    fontSize="12"
+                                                    fill="#666666"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    style={{ pointerEvents: 'none' }}
+                                                >
+                                                    {legIndex}
+                                                </text>
+                                            );
+                                        })
                                     ))}
-                                </Box>
+                                </svg>
 
-                                {/* Canvas Frame */}
-                                <Box
-                                    position="absolute"
-                                    top={0}
-                                    left={0}
-                                    right={0}
-                                    bottom={0}
-                                    pointerEvents="none"
-                                    borderRadius="lg"
-                                    zIndex={2}
-                                    boxShadow="inset 0 0 6px rgba(0, 0, 0, 0.1)"
-                                />
+                                {/* Selection Box */}
+                                {selectionBox.isSelecting && (
+                                    <Box
+                                        position="absolute"
+                                        left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
+                                        top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
+                                        width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
+                                        height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
+                                        border="2px"
+                                        borderColor="blue.500"
+                                        bg="blue.50"
+                                        opacity={0.3}
+                                        pointerEvents="none"
+                                    />
+                                )}
+
+                                {droppedLegos.map((lego, index) => (
+                                    <DroppedLegoDisplay
+                                        key={lego.instanceId}
+                                        lego={lego}
+                                        index={index}
+                                        legDragState={legDragState}
+                                        handleLegMouseDown={handleLegMouseDown}
+                                        handleLegoMouseDown={handleLegoMouseDown}
+                                        handleLegoClick={handleLegoClick}
+                                        tensorNetwork={tensorNetwork}
+                                        selectedLego={selectedLego}
+                                        manuallySelectedLegos={manuallySelectedLegos}
+                                        dragState={dragState}
+                                        onLegClick={handleLegClick}
+                                        hideConnectedLegs={hideConnectedLegs}
+                                        connections={connections}
+                                        droppedLegos={droppedLegos}
+                                    />
+                                ))}
                             </Box>
                         </Box>
                     </Panel>
