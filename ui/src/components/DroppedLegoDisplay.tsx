@@ -13,7 +13,7 @@ export interface LegPosition {
 }
 
 export function calculateLegPosition(lego: DroppedLego, legIndex: number, labelDistance: number = 15): LegPosition {
-    const legStyle = lego.style.getLegStyle(legIndex, lego);
+    const legStyle = lego.style.getLegStyle(legIndex, lego, true);
 
     // Calculate start position relative to center
     const startX = legStyle.from === "center" ? 0 :
@@ -123,6 +123,24 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         );
     };
 
+    // Calculate if the lego is completely outside the canvas
+    const isCompletelyOutside = (lego: DroppedLego, canvasWidth: number, canvasHeight: number) => {
+        const legoRadius = 25; // Approximate radius of the lego
+        return (
+            lego.x + legoRadius < 0 ||
+            lego.x - legoRadius > canvasWidth ||
+            lego.y + legoRadius < 0 ||
+            lego.y - legoRadius > canvasHeight
+        );
+    };
+
+    // Get the canvas dimensions from the parent element
+    const canvasElement = document.querySelector('.canvas-container');
+    const canvasWidth = canvasElement?.clientWidth || 0;
+    const canvasHeight = canvasElement?.clientHeight || 0;
+
+    // Check if this lego is completely outside
+    const isOutside = isCompletelyOutside(lego, canvasWidth, canvasHeight);
 
     // Function to determine if a leg should be hidden
     const shouldHideLeg = (legIndex: number) => {
@@ -187,7 +205,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 opacity: dragState?.isDragging ? 0.5 : 1,
                 transition: dragState?.isDragging ? 'none' : 'all 0.2s ease',
                 filter: isSelected ? 'drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))' : 'none',
-                transform: 'translate(-50%, -50%)'
+                transform: 'translate(-50%, -50%)',
+                display: isOutside ? 'none' : 'block',
+                pointerEvents: isOutside ? 'none' : 'auto'
             }}
         >
             {/* Regular Legs (rendered with lower z-index) */}
