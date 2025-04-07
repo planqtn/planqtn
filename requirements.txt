@@ -11,3 +11,4 @@ cotengra
 # cotengra needs at least one library for hyperoptimization - not sure if this is the best but otherwise I get this warning:
 # site-packages/cotengra/hyperoptimizers/hyper.py:54: UserWarning: Couldn't find `optuna`, `baytune (btb)`, `chocolate`, `nevergrad` or `skopt` so will use completely random sampling in place of hyper-optimization.
 optuna 
+attrs

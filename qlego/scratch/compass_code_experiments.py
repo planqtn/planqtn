@@ -293,7 +293,17 @@ if __name__ == "__main__":
 
     # faulthandler.enable()
     # time_compass_code_cotengra_contraction()
-    tn = CompassCodeTN(coloring=np.array([[2, 2], [1, 2]]))
+
+    tn = CompassCodeTN(
+        coloring=np.array(
+            [
+                [2, 2, 2, 2],
+                [2, 2, 1, 2],
+                [2, 2, 2, 2],
+                [2, 2, 2, 2],
+            ]
+        )
+    )
     wep = tn.stabilizer_enumerator_polynomial(
         verbose=False, progress_bar=True, cotengra=True
     )
