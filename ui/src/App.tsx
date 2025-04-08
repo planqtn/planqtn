@@ -447,24 +447,23 @@ function App() {
             setTensorNetwork(null);
             setManuallySelectedLegos(selectedLegos);
         } else if (selectedLegos.length > 1) {
-            // Check if all selected Legos form a complete connected component
-            const firstLego = selectedLegos[0];
-            const connectedComponent = findConnectedComponent(firstLego);
-            const isCompleteComponent =
-                selectedLegos.length === connectedComponent.legos.length &&
-                selectedLegos.every(lego =>
-                    connectedComponent.legos.some(l => l.instanceId === lego.instanceId)
-                );
+            // Create a tensor network from the selected legos
+            const selectedLegoIds = new Set(selectedLegos.map(lego => lego.instanceId));
 
-            if (isCompleteComponent) {
-                setSelectedLego(null);
-                setTensorNetwork(connectedComponent);
-                setManuallySelectedLegos([]);
-            } else {
-                setSelectedLego(null);
-                setTensorNetwork(null);
-                setManuallySelectedLegos(selectedLegos);
-            }
+            // Collect only internal connections between selected legos
+            const internalConnections = connections.filter(conn =>
+                selectedLegoIds.has(conn.from.legoId) &&
+                selectedLegoIds.has(conn.to.legoId)
+            );
+
+            const tensorNetwork = {
+                legos: selectedLegos,
+                connections: internalConnections
+            };
+
+            setSelectedLego(null);
+            setTensorNetwork(tensorNetwork);
+            setManuallySelectedLegos(selectedLegos);
         } else {
             setSelectedLego(null);
             setTensorNetwork(null);
@@ -1390,19 +1389,23 @@ function App() {
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
                 e.preventDefault();
                 if (droppedLegos.length > 0) {
-                    // Check if all legos form a connected component
-                    const network = findConnectedComponent(droppedLegos[0]);
-                    if (network.legos.length === droppedLegos.length) {
-                        // All legos are connected - show as network
-                        setSelectedLego(null);
-                        setTensorNetwork(network);
-                        setManuallySelectedLegos([]);
-                    } else {
-                        // Not all connected - show as manual selection
-                        setSelectedLego(null);
-                        setTensorNetwork(null);
-                        setManuallySelectedLegos(droppedLegos);
-                    }
+                    // Create a tensor network from all legos
+                    const selectedLegoIds = new Set(droppedLegos.map(lego => lego.instanceId));
+
+                    // Collect only internal connections between selected legos
+                    const internalConnections = connections.filter(conn =>
+                        selectedLegoIds.has(conn.from.legoId) &&
+                        selectedLegoIds.has(conn.to.legoId)
+                    );
+
+                    const tensorNetwork = {
+                        legos: droppedLegos,
+                        connections: internalConnections
+                    };
+
+                    setSelectedLego(null);
+                    setTensorNetwork(tensorNetwork);
+                    setManuallySelectedLegos([]);
                 }
             } else if (e.key === 'Delete') {
                 // Handle deletion of selected legos

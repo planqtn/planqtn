@@ -22,36 +22,20 @@ def bring_col_to_front(h, col, target_col):
         h[:, [c, c + 1]] = h[:, [c + 1, c]]
 
 
-def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
-    """Conjoins two parity check matrices via single trace on one leg.
+def tensor_product(h1: GF2, h2: GF2) -> GF2:
+    """Compute the tensor product of two parity check matrices.
 
-    Key simplifying assumptions compared to the full Cao & Lackey protocol:
-        - D=2, i.e. we're working with qubits (elements are 0 and 1)
-        - both codes can correct erasures on the two legs
+    Args:
+        h1: First parity check matrix
+        h2: Second parity check matrix
+
+    Returns:
+        The tensor product of h1 and h2 as a new parity check matrix
     """
-
     r1, n1 = h1.shape
     r2, n2 = h2.shape
     n1 //= 2
     n2 //= 2
-
-    # print("H1x")
-    # print(h1[:, :n1])
-    # print("H2x")
-    # print(h2[:, :n2])
-
-    # print("blockdiag")
-    # print(scipy.linalg.block_diag(h1[:, :n1], h2[:, :n2]))
-
-    # print("H1z")
-    # print(h1[:, n1:])
-    # print("H2z")
-    # print(h2[:, n2:])
-
-    # print("bd")
-    # print(
-    #     scipy.linalg.block_diag(h1[:, n1:], h2[:, n2:]),
-    # )
 
     h = GF2(
         np.hstack(
@@ -69,8 +53,14 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
         2 * (n1 + n2),
     ), f"{h.shape} != {(r1 + r2, 2 * (n1 + n2))}"
 
-    h = self_trace(h, leg1, n1 + leg2)
+    return h
 
+
+def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
+    """Conjoins two parity check matrices via single trace on one leg."""
+    n1 = h1.shape[1] // 2
+    h = tensor_product(h1, h2)
+    h = self_trace(h, leg1, n1 + leg2)
     return h
 
 

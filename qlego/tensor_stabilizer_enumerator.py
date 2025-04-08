@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from qlego.legos import LegoAnnotation, Legos
 from qlego.linalg import gauss
-from qlego.parity_check import conjoin, self_trace, sprint
+from qlego.parity_check import conjoin, self_trace, sprint, tensor_product
 from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.simple_poly import SimplePoly
 from qlego.symplectic import omega, weight
@@ -498,10 +498,9 @@ class TensorNetwork:
             return list(self.nodes.values())[0]
 
         # Map from node_idx to the index of its PTE in ptes list
-        node_to_pte = {}
-        # List of (pte, node_indices) tuples, where pte is TensorStabilizerCodeEnumerator
-        # and node_indices is the set of nodes in that connected component
-        ptes = []
+        nodes = list(self.nodes.values())
+        ptes = [(node, {node.idx}) for node in nodes]
+        node_to_pte = {node.idx: i for i, node in enumerate(nodes)}
 
         prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
         for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
@@ -516,44 +515,8 @@ class TensorNetwork:
             pte1_idx = node_to_pte.get(node_idx1)
             pte2_idx = node_to_pte.get(node_idx2)
 
-            # Case 1: Neither node is in any PTE - create new PTE
-            if pte1_idx is None and pte2_idx is None:
-                if verbose:
-                    print(f"Creating new PTE with nodes {node_idx1} and {node_idx2}")
-                new_pte = self.nodes[node_idx1].conjoin(
-                    self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
-                )
-                ptes.append((new_pte, {node_idx1, node_idx2}))
-                new_pte_idx = len(ptes) - 1
-                node_to_pte[node_idx1] = new_pte_idx
-                node_to_pte[node_idx2] = new_pte_idx
-
-            # Case 2: First node is in a PTE, second is not
-            elif pte1_idx is not None and pte2_idx is None:
-                if verbose:
-                    print(f"Adding {node_idx2} to PTE containing {node_idx1}")
-                pte, nodes = ptes[pte1_idx]
-                new_pte = pte.conjoin(
-                    self.nodes[node_idx2], legs1=join_legs1, legs2=join_legs2
-                )
-                nodes.add(node_idx2)
-                ptes[pte1_idx] = (new_pte, nodes)
-                node_to_pte[node_idx2] = pte1_idx
-
-            # Case 3: Second node is in a PTE, first is not
-            elif pte1_idx is None and pte2_idx is not None:
-                if verbose:
-                    print(f"Adding {node_idx1} to PTE containing {node_idx2}")
-                pte, nodes = ptes[pte2_idx]
-                new_pte = pte.conjoin(
-                    self.nodes[node_idx1], legs1=join_legs2, legs2=join_legs1
-                )
-                nodes.add(node_idx1)
-                ptes[pte2_idx] = (new_pte, nodes)
-                node_to_pte[node_idx1] = pte2_idx
-
-            # Case 4: Both nodes are in the same PTE
-            elif pte1_idx == pte2_idx:
+            # Case 1: Both nodes are in the same PTE
+            if pte1_idx == pte2_idx:
                 if verbose:
                     print(
                         f"Self trace in PTE containing both {node_idx1} and {node_idx2}"
@@ -562,7 +525,7 @@ class TensorNetwork:
                 new_pte = pte.self_trace(join_legs1, join_legs2)
                 ptes[pte1_idx] = (new_pte, nodes)
 
-            # Case 5: Nodes are in different PTEs - merge them
+            # Case 2: Nodes are in different PTEs - merge them
             else:
                 if verbose:
                     print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
@@ -588,11 +551,10 @@ class TensorNetwork:
                 print("H:")
                 sprint(ptes[0][0].h)
 
-        # If we have multiple components at the end, merge them all
+        # If we have multiple components at the end, tensor them together
         if len(ptes) > 1:
-            raise ValueError(
-                "Multiple disconnected components in the tensor network. This is not supported yet."
-            )
+            for other in ptes[1:]:
+                ptes[0] = (ptes[0][0].tensor_with(other[0]), ptes[0][1].union(other[1]))
 
         return ptes[0][0]
 
@@ -1476,6 +1438,12 @@ class TensorStabilizerCodeEnumerator:
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
+        )
+
+    def tensor_with(self, other):
+        new_h = tensor_product(self.h, other.h)
+        return TensorStabilizerCodeEnumerator(
+            new_h, idx=self.idx, legs=self.legs + other.legs
         )
 
     def self_trace(self, legs1, legs2) -> "TensorStabilizerCodeEnumerator":

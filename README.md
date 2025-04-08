@@ -38,3 +38,5 @@ tn = CssTannerCodeTN(hx, hz)
 wep = tn.stabilizer_enumerator_polynomial(progress_bar=True, verbose=False)
 print(weps)
 ```
+
+

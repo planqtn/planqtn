@@ -10,7 +10,7 @@ import os
 from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.legos import Legos
 from qlego.linalg import gauss
-from qlego.parity_check import conjoin, sprint
+from qlego.parity_check import conjoin, sprint, tensor_product
 from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.symplectic import weight
 from qlego.tensor_stabilizer_enumerator import (
@@ -651,7 +651,7 @@ def test_construction_code():
     assert tn_from_code == tn
 
 
-def test_disjoint_nodes():
+def test_temporarily_disjoint_nodes():
 
     nodes = {}
     nodes["encoding_tensor_512-1741469569037-dtap10r8u"] = (
@@ -969,7 +969,7 @@ def test_disjoint_nodes():
         [0],
     )
 
-    node = tn.conjoin_nodes()
+    node = tn.conjoin_nodes(verbose=True)
     assert node.h.shape == (8, 18)
 
     we = node.stabilizer_enumerator_polynomial()
@@ -1044,3 +1044,19 @@ def test_double_trace_602_identity_stopper_to_422():
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True, progress_bar=True
     )._dict == {0: 1, 4: 3}
+
+
+def test_tensor_product_of_legos():
+    tn = TensorNetwork(
+        [
+            TensorStabilizerCodeEnumerator(idx=0, h=Legos.enconding_tensor_512),
+            TensorStabilizerCodeEnumerator(idx=1, h=Legos.enconding_tensor_512),
+        ],
+        truncate_length=None,
+    )
+    conjoined = tn.conjoin_nodes(verbose=True)
+
+    assert np.array_equal(
+        conjoined.h,
+        tensor_product(Legos.enconding_tensor_512, Legos.enconding_tensor_512),
+    )

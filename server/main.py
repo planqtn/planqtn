@@ -207,7 +207,7 @@ async def list_legos():
 @app.post("/paritycheck", response_model=ParityCheckResponse)
 async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
-    print("network", network)
+    print("network", repr(network))
     nodes = {}
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array

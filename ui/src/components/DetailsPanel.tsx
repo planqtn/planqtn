@@ -1173,56 +1173,52 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             Pop square
                                         </Button>
                                     )}
-                                    {canFuse && (
-                                        <>
-                                            <Button
-                                                colorScheme="green"
-                                                size="sm"
-                                                width="full"
-                                                onClick={async () => {
-                                                    try {
-                                                        const response = await fetch(`${config.backendUrl}/paritycheck`, {
-                                                            method: 'POST',
-                                                            headers: {
-                                                                'Content-Type': 'application/json',
-                                                            },
-                                                            body: JSON.stringify({
-                                                                legos: manuallySelectedLegos.reduce<Record<string, DroppedLego>>((acc, lego) => {
-                                                                    acc[lego.instanceId] = lego;
-                                                                    return acc;
-                                                                }, {}),
-                                                                connections: connections.filter(conn =>
-                                                                    manuallySelectedLegos.some(l => l.instanceId === conn.from.legoId) &&
-                                                                    manuallySelectedLegos.some(l => l.instanceId === conn.to.legoId)
-                                                                )
-                                                            })
-                                                        });
-                                                        const data = await response.json();
-                                                        setCalculatedMatrix(data);
+                                    <Button
+                                        colorScheme="green"
+                                        size="sm"
+                                        width="full"
+                                        onClick={async () => {
+                                            try {
+                                                const response = await fetch(`${config.backendUrl}/paritycheck`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                    },
+                                                    body: JSON.stringify({
+                                                        legos: manuallySelectedLegos.reduce<Record<string, DroppedLego>>((acc, lego) => {
+                                                            acc[lego.instanceId] = lego;
+                                                            return acc;
+                                                        }, {}),
+                                                        connections: connections.filter(conn =>
+                                                            manuallySelectedLegos.some(l => l.instanceId === conn.from.legoId) &&
+                                                            manuallySelectedLegos.some(l => l.instanceId === conn.to.legoId)
+                                                        )
+                                                    })
+                                                });
+                                                const data = await response.json();
+                                                setCalculatedMatrix(data);
 
-                                                    } catch (error) {
-                                                        setError(`Error calculating parity check matrix: ${error}`);
-                                                    }
-                                                }}
-                                                mb={4}
-                                            >
-                                                Calculate Parity Check Matrix
-                                            </Button>
-                                            {calculatedMatrix && (
-                                                <Box borderWidth={1} borderRadius="lg" p={4}>
-                                                    {calculatedMatrix.recognized_type && (
-                                                        <Text mb={2} fontWeight="bold">
-                                                            Recognized as: {calculatedMatrix.recognized_type}
-                                                        </Text>
-                                                    )}
-                                                    <ParityCheckMatrixDisplay
-                                                        matrix={calculatedMatrix.matrix}
-                                                        legOrdering={calculatedMatrix.legs}
-                                                        title="Calculated Parity Check Matrix"
-                                                    />
-                                                </Box>
+                                            } catch (error) {
+                                                setError(`Error calculating parity check matrix: ${error}`);
+                                            }
+                                        }}
+                                        mb={4}
+                                    >
+                                        Calculate Parity Check Matrix
+                                    </Button>
+                                    {calculatedMatrix && (
+                                        <Box borderWidth={1} borderRadius="lg" p={4}>
+                                            {calculatedMatrix.recognized_type && (
+                                                <Text mb={2} fontWeight="bold">
+                                                    Recognized as: {calculatedMatrix.recognized_type}
+                                                </Text>
                                             )}
-                                        </>
+                                            <ParityCheckMatrixDisplay
+                                                matrix={calculatedMatrix.matrix}
+                                                legOrdering={calculatedMatrix.legs}
+                                                title="Calculated Parity Check Matrix"
+                                            />
+                                        </Box>
                                     )}
                                 </>
                             );
