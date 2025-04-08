@@ -519,13 +519,6 @@ function App() {
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
 
-            // Check if any part of the lego touches the canvas edges (considering 25px radius)
-            const isOutsideCanvas =
-                newX - 25 < 0 ||
-                newX + 25 > rect.width ||
-                newY - 25 < 0 ||
-                newY + 25 > rect.height;
-
             // Create a new array with updated positions
             const updatedLegos = droppedLegos.map((lego, index) => {
                 if (groupDragState && groupDragState.legoInstanceIds.includes(lego.instanceId)) {
@@ -536,18 +529,6 @@ function App() {
                         x: originalPos.x + deltaX,
                         y: originalPos.y + deltaY
                     };
-                    // } 
-                    // else if (manuallySelectedLegos.length > 0 &&
-                    //     manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
-                    //     // If dragging a manually selected lego, move all manually selected legos
-                    //     if (manuallySelectedLegos.some(l => l.instanceId === lego.instanceId)) {
-                    //         return {
-                    //             ...lego,
-                    //             x: lego.x + (e.movementX || 0),
-                    //             y: lego.y + (e.movementY || 0)
-                    //         };
-                    //     }
-                    //     return lego;
                 } else if (index === dragState.draggedLegoIndex) {
                     return {
                         ...lego,
@@ -566,12 +547,6 @@ function App() {
                 } else if (tensorNetwork) {
                     tensorNetwork.legos = updatedLegos;
                 }
-            }
-
-            // Add visual feedback when touching edges
-            const canvas = canvasRef.current;
-            if (canvas) {
-                canvas.style.boxShadow = isOutsideCanvas ? 'inset 0 0 0 4px #FC8181' : 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
             }
         }
 
@@ -620,65 +595,7 @@ function App() {
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
 
-            const isOutsideCanvas =
-                newX - 25 < 0 ||
-                newX + 25 > rect.width ||
-                newY - 25 < 0 ||
-                newY + 25 > rect.height;
-
-            if (isOutsideCanvas) {
-                // Determine which legos to remove based on selection state
-                let legosToRemove: DroppedLego[] = [];
-                if (groupDragState) {
-                    // Remove all selected legos
-                    legosToRemove = droppedLegos.filter(lego =>
-                        groupDragState.legoInstanceIds.includes(lego.instanceId)
-                    );
-                } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
-                    // If dragged lego is part of manual selection, remove all manually selected legos
-                    legosToRemove = manuallySelectedLegos;
-                } else {
-                    // Remove just the dragged lego
-                    legosToRemove = [droppedLegos[dragState.draggedLegoIndex]];
-                }
-
-                // Get all connections involving the legos to be removed
-                const connectionsToRemove = connections.filter(conn =>
-                    legosToRemove.some(lego =>
-                        conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
-                    )
-                );
-
-                // Store original positions for all legos
-                const legosWithOriginalPos = legosToRemove.map(lego => ({
-                    ...lego,
-                    x: groupDragState?.originalPositions[lego.instanceId]?.x || dragState.originalX,
-                    y: groupDragState?.originalPositions[lego.instanceId]?.y || dragState.originalY
-                }));
-
-                addToHistory({
-                    type: 'remove',
-                    data: {
-                        legos: legosWithOriginalPos,
-                        connections: connectionsToRemove
-                    }
-                });
-
-                // Remove the connections and legos
-                setConnections(prev => prev.filter(conn =>
-                    !legosToRemove.some(lego =>
-                        conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
-                    )
-                ));
-                setDroppedLegos(prev => prev.filter(lego =>
-                    !legosToRemove.some(l => l.instanceId === lego.instanceId)
-                ));
-
-                // Clear selection states
-                setSelectedLego(null);
-                setTensorNetwork(null);
-                setManuallySelectedLegos([]);
-            } else if (deltaX !== 0 || deltaY !== 0) {
+            if (deltaX !== 0 || deltaY !== 0) {
                 if (groupDragState) {
                     // Record a single group move operation
                     const groupMoves = groupDragState.legoInstanceIds.map(instanceId => ({
@@ -720,12 +637,6 @@ function App() {
                         }
                     });
                 }
-            }
-
-            // Reset canvas visual feedback
-            const canvas = canvasRef.current;
-            if (canvas) {
-                canvas.style.boxShadow = 'inset 0 0 6px rgba(0, 0, 0, 0.1)';
             }
 
             // Update URL state after the drag operation is complete
@@ -2107,7 +2018,7 @@ function App() {
                                 onMouseLeave={handleCanvasMouseLeave}
                                 onClick={handleCanvasClick}
                                 onMouseDown={handleCanvasMouseDown}
-                                style={{ userSelect: 'none' }}
+                                style={{ userSelect: 'none', overflow: 'hidden' }}
                             >
                                 {/* Connection Lines */}
                                 <svg
