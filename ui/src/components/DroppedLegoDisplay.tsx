@@ -41,7 +41,6 @@ interface DroppedLegoDisplayProps {
     handleLegoClick: (e: React.MouseEvent, lego: DroppedLego) => void;
     tensorNetwork: TensorNetwork | null;
     selectedLego: DroppedLego | null;
-    manuallySelectedLegos: DroppedLego[] | null;
     dragState: DragState | null;
     onLegClick?: (legoId: string, legIndex: number) => void;
     hideConnectedLegs: boolean;
@@ -58,7 +57,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     handleLegoClick,
     tensorNetwork,
     selectedLego,
-    manuallySelectedLegos,
     dragState,
     onLegClick,
     hideConnectedLegs,
@@ -87,8 +85,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     });
 
     const isSelected = tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId) ||
-        selectedLego?.instanceId === lego.instanceId ||
-        manuallySelectedLegos?.some(l => l.instanceId === lego.instanceId);
+        selectedLego?.instanceId === lego.instanceId;
 
     // Calculate leg positions once for both rendering and labels
     const legPositions = Array(totalLegs).fill(0).map((_, legIndex) => {

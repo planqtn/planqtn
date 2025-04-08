@@ -51,7 +51,6 @@ function App() {
         currentY: 0,
         justFinished: false
     });
-    const [manuallySelectedLegos, setManuallySelectedLegos] = useState<DroppedLego[]>([]);
     const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard("")
@@ -232,8 +231,7 @@ function App() {
     };
     const handleClone = (lego: DroppedLego, clientX: number, clientY: number) => {
         // Check if we're cloning multiple legos
-        const legosToClone = manuallySelectedLegos.length > 0 ? manuallySelectedLegos :
-            tensorNetwork?.legos || [lego];
+        const legosToClone = tensorNetwork?.legos || [lego];
 
         // Get a single starting ID for all new legos
         const startingId = parseInt(newInstanceId(droppedLegos));
@@ -316,11 +314,10 @@ function App() {
             handleClone(lego, e.clientX, e.clientY);
         } else {
 
-            const isPartOfSelection = manuallySelectedLegos.some(l => l.instanceId === lego.instanceId) ||
-                tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId);
+            const isPartOfSelection = tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId);
 
             if (isPartOfSelection) {
-                const selectedLegos = manuallySelectedLegos.length > 0 ? manuallySelectedLegos : tensorNetwork?.legos || [];
+                const selectedLegos = tensorNetwork?.legos || [];
                 const currentPositions: { [instanceId: string]: { x: number; y: number } } = {};
                 selectedLegos.forEach(l => {
                     currentPositions[l.instanceId] = { x: l.x, y: l.y };
@@ -330,8 +327,6 @@ function App() {
                     legoInstanceIds: selectedLegos.map(l => l.instanceId),
                     originalPositions: currentPositions
                 }));
-                console.log("manually selected legos")
-                console.log(manuallySelectedLegos)
                 console.log("current positions")
                 console.log(currentPositions)
                 console.log("group drag state")
@@ -371,7 +366,6 @@ function App() {
                 setSelectedLego(lego);
                 setTensorNetwork(null);
             }
-            setManuallySelectedLegos([]);
         }
     }
 
@@ -381,7 +375,6 @@ function App() {
         if (e.target === e.currentTarget && !selectionBox.isSelecting && !dragState.isDragging && !selectionBox.justFinished) {
             setSelectedLego(null);
             setTensorNetwork(null);
-            setManuallySelectedLegos([]);
         }
         // Reset the justFinished flag after handling the click
         if (selectionBox.justFinished) {
@@ -445,7 +438,6 @@ function App() {
         if (selectedLegos.length === 1) {
             setSelectedLego(selectedLegos[0]);
             setTensorNetwork(null);
-            setManuallySelectedLegos(selectedLegos);
         } else if (selectedLegos.length > 1) {
             // Create a tensor network from the selected legos
             const selectedLegoIds = new Set(selectedLegos.map(lego => lego.instanceId));
@@ -463,11 +455,9 @@ function App() {
 
             setSelectedLego(null);
             setTensorNetwork(tensorNetwork);
-            setManuallySelectedLegos(selectedLegos);
         } else {
             setSelectedLego(null);
             setTensorNetwork(null);
-            setManuallySelectedLegos([]);
         }
     };
 
@@ -542,9 +532,7 @@ function App() {
             // Update all legos at once to prevent lag
             setDroppedLegos(updatedLegos);
             if (groupDragState) {
-                if (manuallySelectedLegos.length > 0) {
-                    setManuallySelectedLegos(updatedLegos);
-                } else if (tensorNetwork) {
+                if (tensorNetwork) {
                     tensorNetwork.legos = updatedLegos;
                 }
             }
@@ -611,9 +599,9 @@ function App() {
                         data: { groupMoves }
                     });
 
-                } else if (manuallySelectedLegos.length > 0 && manuallySelectedLegos.some(l => l.instanceId === droppedLegos[dragState.draggedLegoIndex].instanceId)) {
+                } else if (tensorNetwork) {
                     // Record a single group move operation for manually selected legos
-                    const groupMoves = manuallySelectedLegos.map(lego => ({
+                    const groupMoves = tensorNetwork.legos.map(lego => ({
                         legoInstanceId: lego.instanceId,
                         oldX: lego.x - deltaX,
                         oldY: lego.y - deltaY,
@@ -1316,7 +1304,6 @@ function App() {
 
                     setSelectedLego(null);
                     setTensorNetwork(tensorNetwork);
-                    setManuallySelectedLegos([]);
                 }
             } else if (e.key === 'Delete') {
                 // Handle deletion of selected legos
@@ -1324,8 +1311,6 @@ function App() {
 
                 if (tensorNetwork) {
                     legosToRemove = tensorNetwork.legos;
-                } else if (manuallySelectedLegos.length > 0) {
-                    legosToRemove = manuallySelectedLegos;
                 } else if (selectedLego) {
                     legosToRemove = [selectedLego];
                 }
@@ -1360,7 +1345,6 @@ function App() {
                     // Clear selection states
                     setSelectedLego(null);
                     setTensorNetwork(null);
-                    setManuallySelectedLegos([]);
 
                     // Update URL state
                     encodeCanvasState(droppedLegos.filter(lego =>
@@ -1379,7 +1363,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, manuallySelectedLegos, connections, droppedLegos, addToHistory, encodeCanvasState, hideConnectedLegs]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, addToHistory, encodeCanvasState, hideConnectedLegs]);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
@@ -1421,7 +1405,6 @@ function App() {
         setConnections([]);
         setSelectedLego(null);
         setTensorNetwork(null);
-        setManuallySelectedLegos([]);
 
         // Update URL state
         encodeCanvasState([], [], hideConnectedLegs);
@@ -1833,7 +1816,6 @@ function App() {
                 ),
                 ...newConnections
             ]);
-            setManuallySelectedLegos([]);
             setSelectedLego(null);
             setTensorNetwork(null);
 
@@ -2330,7 +2312,6 @@ function App() {
                                         handleLegoClick={handleLegoClick}
                                         tensorNetwork={tensorNetwork}
                                         selectedLego={selectedLego}
-                                        manuallySelectedLegos={manuallySelectedLegos}
                                         dragState={dragState}
                                         onLegClick={handleLegClick}
                                         hideConnectedLegs={hideConnectedLegs}
@@ -2349,7 +2330,6 @@ function App() {
                         <DetailsPanel
                             tensorNetwork={tensorNetwork}
                             selectedLego={selectedLego}
-                            manuallySelectedLegos={manuallySelectedLegos}
                             droppedLegos={droppedLegos}
                             connections={connections}
                             setTensorNetwork={setTensorNetwork}
