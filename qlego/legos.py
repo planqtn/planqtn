@@ -120,7 +120,7 @@ class Legos:
         legos = [
             {
                 "id": LegoType.T6.value,
-                "name": "Encoding Tensor 6-0-2",
+                "name": "[[6,0,2]] tensor",
                 "shortName": "T6",
                 "description": "[[6,0,2]] encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_602.tolist(),
@@ -129,7 +129,7 @@ class Legos:
             },
             {
                 "id": LegoType.T5.value,
-                "name": "Encoding Tensor 5-1-2",
+                "name": "[[5,1,2]] tensor",
                 "shortName": "T5",
                 "description": "[[5,1,2]] encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_512.tolist(),
@@ -138,7 +138,7 @@ class Legos:
             },
             {
                 "id": LegoType.T5X.value,
-                "name": "Encoding Tensor 5-1-2 X",
+                "name": "[[5,1,2]] X-only tensor",
                 "shortName": "ET51X",
                 "description": "X component of 5-1-2 encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_512_x.tolist(),
@@ -147,7 +147,7 @@ class Legos:
             },
             {
                 "id": LegoType.T5Z.value,
-                "name": "Encoding Tensor 5-1-2 Z",
+                "name": "[[5,1,2]] Z-only tensor",
                 "shortName": "ET51Z",
                 "description": "Z component of 5-1-2 encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_512_z.tolist(),

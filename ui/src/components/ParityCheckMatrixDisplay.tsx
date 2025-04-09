@@ -238,6 +238,10 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         return result;
     };
 
+    const getPauliWeight = (row: number[]): number => {
+        return row.filter(x => x === 1).length;
+    };
+
     const getPauliColor = (pauli: string): string => {
         switch (pauli) {
             case 'X': return X_COLOR;
@@ -523,6 +527,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                                                 {pauli}
                                             </Text>
                                         ))}
+                                        <Text fontSize="14px" >  | {getPauliWeight(row)} </Text>
                                     </HStack>
                                 </HStack>
                             ))}
@@ -531,8 +536,9 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                     {matrix.every(isCSS) && legOrdering && (
                         <Box>
                             <HStack justify="space-between" mb={2}>
-                                <Heading size="sm">Graphical View</Heading>
+                                <Heading size="sm">Tanner Graph</Heading>
                             </HStack>
+                            <Text size="sm">Circles are the legs (qubits), squares are the stabilizers.</Text>
                             <StabilizerGraphView
                                 legs={legOrdering}
                                 matrix={matrix}

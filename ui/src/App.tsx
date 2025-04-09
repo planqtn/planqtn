@@ -369,6 +369,7 @@ function App() {
         }
     }
 
+
     const handleCanvasClick = (e: React.MouseEvent) => {
         // Only clear selection if clicking directly on canvas (not on a Lego)
         // and not during or right after selection box usage
@@ -1637,7 +1638,18 @@ function App() {
         }
     };
 
+
     const handleLegClick = (legoId: string, legIndex: number) => {
+        // Find the lego that was clicked
+        const clickedLego = droppedLegos.find(lego => lego.instanceId === legoId);
+        if (!clickedLego) return;
+
+        // If the clicked lego is not already selected, select it
+        if (selectedLego?.instanceId !== legoId) {
+            setSelectedLego(clickedLego);
+            setTensorNetwork(null);
+        }
+
         setDroppedLegos(prev => prev.map(lego => {
             if (lego.instanceId === legoId) {
                 const existingPushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
@@ -1680,7 +1692,6 @@ function App() {
                     return false;
                 }) || new Array(2 * numQubits).fill(0);
 
-
                 // Update or remove the pushed leg
                 let updatedPushedLegs;
                 if (nextOperator === PauliOperator.I) {
@@ -1697,23 +1708,20 @@ function App() {
                         : [...lego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
                 }
 
-                // Update the selected rows based on the pushed legs, skipping I operators
-                const selectedRows = updatedPushedLegs
-                    .map(pl => {
-                        const row = lego.parity_check_matrix.findIndex(r =>
-                            r.every((val, idx) => val === pl.baseRepresentatitve[idx])
-                        );
-                        return row;
-                    });
+                // Find the row index that corresponds to the baseRepresentative
+                const rowIndex = lego.parity_check_matrix.findIndex(row =>
+                    row.every((val, idx) => val === baseRepresentative[idx])
+                );
+
+                // Update the selected rows based on the pushed legs
+                const selectedRows = [rowIndex].filter(row => row !== -1);
 
                 // Update the selectedLego state to trigger a re-render of the parity check matrix
-                if (selectedLego?.instanceId === legoId) {
-                    setSelectedLego(prev => prev ? {
-                        ...prev,
-                        pushedLegs: updatedPushedLegs,
-                        selectedMatrixRows: selectedRows
-                    } : null);
-                }
+                setSelectedLego(prev => prev ? {
+                    ...prev,
+                    pushedLegs: updatedPushedLegs,
+                    selectedMatrixRows: selectedRows
+                } : null);
 
                 return { ...lego, pushedLegs: updatedPushedLegs, selectedMatrixRows: selectedRows };
             }
@@ -2144,7 +2152,7 @@ function App() {
                                                         fill="none"
                                                         style={{
                                                             pointerEvents: 'none',
-                                                            transition: 'all 0.2s ease',
+                                                            // transition: 'all 0.1s ease',
                                                             stroke: connectorColor
                                                         }}
                                                     />

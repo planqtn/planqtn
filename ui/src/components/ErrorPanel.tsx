@@ -17,7 +17,7 @@ const ErrorPanel: React.FC<ErrorPanelProps> = ({ error, onDismiss }) => {
             borderTop="1px"
             borderColor="red.300"
             transform={error ? "translateY(0)" : "translateY(100%)"}
-            transition="transform 0.3s ease-in-out"
+            transition="transform 0.15s ease-in-out"
             zIndex={1000}
         >
             <HStack spacing={3} p={4} justify="space-between">

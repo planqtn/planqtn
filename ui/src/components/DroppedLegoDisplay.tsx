@@ -241,12 +241,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onLegClick) {
-                                    onLegClick(lego.instanceId, legIndex);
-                                }
-                            }}
                             _hover={{
                                 borderColor: legColor,
                                 bg: "white"
