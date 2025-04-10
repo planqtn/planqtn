@@ -543,6 +543,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             // Create the two new legos
             const lego1: DroppedLego = {
                 ...lego,
+                style: getLegoStyle(lego.id, lego1Legs + 1),
                 instanceId: (maxInstanceId + 1).toString(),
                 x: lego.x - 50,  // Position slightly to the left
                 parity_check_matrix: lego1Data.parity_check_matrix
@@ -550,6 +551,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             const lego2: DroppedLego = {
                 ...lego,
+                style: getLegoStyle(lego.id, lego2Legs + 1),
                 instanceId: (maxInstanceId + 2).toString(),
                 x: lego.x + 50,  // Position slightly to the right
                 parity_check_matrix: lego2Data.parity_check_matrix
