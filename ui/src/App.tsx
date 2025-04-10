@@ -45,6 +45,7 @@ function App() {
         originalY: 0,
         justFinished: false
     })
+    const [zoomLevel, setZoomLevel] = useState(1)
     const canvasRef = useRef<HTMLDivElement>(null)
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
@@ -335,10 +336,6 @@ function App() {
                     legoInstanceIds: selectedLegos.map(l => l.instanceId),
                     originalPositions: currentPositions
                 }));
-                console.log("current positions")
-                console.log(currentPositions)
-                console.log("group drag state")
-                console.log(groupDragState)
             }
 
             setDragState({
@@ -527,15 +524,14 @@ function App() {
             }));
 
 
-
-            setDroppedLegos(prev => prev.map(lego => ({
+            const movedLegos = droppedLegos.map(lego => ({
                 ...lego,
                 x: lego.x + deltaX,
                 y: lego.y + deltaY
-            })));
+            }));
+            setDroppedLegos(movedLegos);
+            encodeCanvasState(movedLegos, connections, hideConnectedLegs);
 
-            console.log("canvasDragState")
-            console.log(canvasDragState)
         }
 
         // Check if we should start dragging
@@ -603,6 +599,23 @@ function App() {
         }
     };
 
+    const handleCanvasMouseWheel = (e: React.WheelEvent) => {
+        if (altKeyPressed) {
+            const newZoomLevel = zoomLevel * Math.pow(1 + Math.sign(e.deltaY) / 10, Math.abs(e.deltaY) / 100)
+            const scale = newZoomLevel / zoomLevel
+            setZoomLevel(newZoomLevel);
+            const centerX = e.currentTarget.getBoundingClientRect().width / 2
+            const centerY = e.currentTarget.getBoundingClientRect().height / 2
+            const rescaledLegos = droppedLegos.map(lego => ({
+                ...lego,
+                x: (lego.x - centerX) * scale + centerX,
+                y: (lego.y - centerY) * scale + centerY
+            }));
+            setDroppedLegos(rescaledLegos);
+            encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
+        }
+    }
+
     const handleCanvasMouseUp = (e: React.MouseEvent) => {
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) {
@@ -637,8 +650,6 @@ function App() {
                 currentY: 0
             }
             setCanvasDragState(newCanvasDragState);
-            console.log("canvasDragState is off")
-            console.log(canvasDragState)
             return;
         }
 
@@ -964,7 +975,6 @@ function App() {
 
             case 'unfuseInto2Legos':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    console.log("unfuseInto2Legos", lastOperation.data.oldLegos, lastOperation.data.oldConnections)
                     // Remove the new legos and restore the original lego
                     const restoredLegos = [...lastOperation.data.oldLegos];
                     const restoredConnections = [...lastOperation.data.oldConnections];
@@ -1998,6 +2008,28 @@ function App() {
                 >
                     Clear highlights
                 </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                        const rect = canvasRef.current?.getBoundingClientRect();
+                        if (!rect) return;
+                        const centerX = rect.width / 2
+                        const centerY = rect.height / 2
+                        const scale = 1 / zoomLevel
+                        const rescaledLegos = droppedLegos.map(lego => ({
+                            ...lego,
+                            x: (lego.x - centerX) * scale + centerX,
+                            y: (lego.y - centerY) * scale + centerY
+                        }));
+                        setDroppedLegos(rescaledLegos);
+                        setZoomLevel(1)
+                        encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
+                    }}
+                    isDisabled={zoomLevel === 1}
+                >
+                    Reset zoom
+                </Button>
             </HStack>
 
             {/* Main Content */}
@@ -2043,6 +2075,7 @@ function App() {
                                 onDragOver={handleDragOver}
                                 onDrop={handleDrop}
                                 onMouseMove={handleCanvasMouseMove}
+                                onWheel={handleCanvasMouseWheel}
                                 onMouseUp={handleCanvasMouseUp}
                                 onMouseLeave={handleCanvasMouseLeave}
                                 onClick={handleCanvasClick}
