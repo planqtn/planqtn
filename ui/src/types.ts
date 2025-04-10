@@ -82,6 +82,14 @@ export interface DragState {
     justFinished: boolean
 }
 
+export interface CanvasDragState {
+    isDragging: boolean
+    startX: number
+    startY: number
+    currentX: number
+    currentY: number
+}
+
 export interface SelectionBoxState {
     isSelecting: boolean
     startX: number

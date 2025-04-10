@@ -182,7 +182,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 userSelect: 'none',
                 zIndex: isSelected ? 1 : 0,
                 opacity: dragState?.isDragging ? 0.5 : 1,
-                transition: dragState?.isDragging ? 'none' : 'all 0.2s ease',
                 filter: isSelected ? 'drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))' : 'none',
                 transform: 'translate(-50%, -50%)'
             }}
@@ -222,7 +221,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 transform: `rotate(${pos.angle}rad)`,
                                 borderStyle: pos.style.style
                             }}
-                            transition="all 0.1s"
                         />
                         {/* Draggable Endpoint */}
                         <Box
@@ -245,7 +243,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 borderColor: legColor,
                                 bg: "white"
                             }}
-                            transition="all 0.2s"
                         />
                     </Box>
                 );
@@ -361,7 +358,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                     onLegClick(lego.instanceId, legIndex);
                                 }
                             }}
-                            transition="all 0.1s"
                         />
                         {/* Draggable Endpoint */}
                         <Box
@@ -384,7 +380,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 borderColor: legColor,
                                 bg: "white"
                             }}
-                            transition="all 0.2s"
                             style={{ pointerEvents: 'all' }}
                         />
                     </Box>

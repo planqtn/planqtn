@@ -5,7 +5,7 @@ import axios from 'axios'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, GroupDragState, SelectionBoxState, PauliOperator, LegoServerPayload, TensorNetworkLeg, Operation } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, GroupDragState, SelectionBoxState, PauliOperator, LegoServerPayload, TensorNetworkLeg, Operation, CanvasDragState } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
@@ -21,6 +21,7 @@ function App() {
         return String(maxInstanceId + 1)
     }
 
+    const [altKeyPressed, setAltKeyPressed] = useState(false);
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
     const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([])
@@ -28,6 +29,13 @@ function App() {
     const [error, setError] = useState<string>('')
     const [selectedLego, setSelectedLego] = useState<DroppedLego | null>(null)
     const [legDragState, setLegDragState] = useState<LegDragState | null>(null)
+    const [canvasDragState, setCanvasDragState] = useState<CanvasDragState>({
+        isDragging: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0
+    })
     const [dragState, setDragState] = useState<DragState>({
         isDragging: false,
         draggedLegoIndex: -1,
@@ -392,14 +400,25 @@ function App() {
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            setSelectionBox({
-                isSelecting: true,
-                startX: x,
-                startY: y,
-                currentX: x,
-                currentY: y,
-                justFinished: false
-            });
+            if (!e.altKey) {
+
+                setSelectionBox({
+                    isSelecting: true,
+                    startX: x,
+                    startY: y,
+                    currentX: x,
+                    currentY: y,
+                    justFinished: false
+                });
+            } else {
+                setCanvasDragState({
+                    isDragging: true,
+                    startX: x,
+                    startY: y,
+                    currentX: x,
+                    currentY: y
+                });
+            }
         }
     };
 
@@ -462,9 +481,11 @@ function App() {
         }
     };
 
+
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
         e.preventDefault();
         const rect = canvasRef.current?.getBoundingClientRect();
+
         if (!rect) return;
 
         // Handle selection box dragging
@@ -486,6 +507,35 @@ function App() {
 
             handleSelectionBoxUpdate(left, right, top, bottom);
             return;
+        }
+
+        if (canvasDragState.isDragging) {
+
+
+
+            const newX = e.clientX - rect.left;
+            const newY = e.clientY - rect.top;
+            const deltaX = newX - canvasDragState.startX;
+            const deltaY = newY - canvasDragState.startY;
+
+            setCanvasDragState(prev => ({
+                ...prev,
+                startX: newX,
+                startY: newY,
+                currentX: newX,
+                currentY: newY
+            }));
+
+
+
+            setDroppedLegos(prev => prev.map(lego => ({
+                ...lego,
+                x: lego.x + deltaX,
+                y: lego.y + deltaY
+            })));
+
+            console.log("canvasDragState")
+            console.log(canvasDragState)
         }
 
         // Check if we should start dragging
@@ -575,6 +625,20 @@ function App() {
                 isSelecting: false,
                 justFinished: true  // Set the flag when selection box operation ends
             }));
+            return;
+        }
+
+        if (canvasDragState.isDragging) {
+            const newCanvasDragState = {
+                isDragging: false,
+                startX: 0,
+                startY: 0,
+                currentX: 0,
+                currentY: 0
+            }
+            setCanvasDragState(newCanvasDragState);
+            console.log("canvasDragState is off")
+            console.log(canvasDragState)
             return;
         }
 
@@ -725,7 +789,15 @@ function App() {
 
     const handleCanvasMouseLeave = () => {
         setLegDragState(null);
-        // Don't reset drag state here anymore, let it continue until mouse up
+        if (canvasDragState.isDragging) {
+            setCanvasDragState({
+                isDragging: false,
+                startX: 0,
+                startY: 0,
+                currentX: 0,
+                currentY: 0
+            });
+        }
     };
 
 
@@ -1265,12 +1337,54 @@ function App() {
             } else if (e.key === 'Escape') {
                 // Dismiss error message when Escape is pressed
                 setError('');
+            } else if (e.key === 'Alt') {
+                e.preventDefault();
+                setAltKeyPressed(true);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, addToHistory, encodeCanvasState, hideConnectedLegs]);
+
+    useEffect(() => {
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === 'Alt') {
+                setAltKeyPressed(false);
+            }
+        };
+        window.addEventListener('keyup', handleKeyUp);
+        return () => window.removeEventListener('keyup', handleKeyUp);
+    }, []);
+
+    useEffect(() => {
+        const handleBlur = () => {
+            setCanvasDragState(prev => ({
+                ...prev,
+                isDragging: false
+            }));
+            setAltKeyPressed(false);
+
+        };
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
+    }, []);
+
+
+    useEffect(() => {
+        const handleFocus = () => {
+            setCanvasDragState(prev => ({
+                ...prev,
+                isDragging: false
+            }));
+            setAltKeyPressed(false);
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
+
+
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
@@ -1933,7 +2047,12 @@ function App() {
                                 onMouseLeave={handleCanvasMouseLeave}
                                 onClick={handleCanvasClick}
                                 onMouseDown={handleCanvasMouseDown}
-                                style={{ userSelect: 'none', overflow: 'hidden' }}
+                                style={{
+                                    userSelect: 'none', overflow: 'hidden',
+                                    cursor: altKeyPressed ?
+                                        (canvasDragState.isDragging ? 'grabbing' : 'grab')
+                                        : 'default'
+                                }}
                             >
                                 {/* Connection Lines */}
                                 <svg
