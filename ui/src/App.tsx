@@ -2023,16 +2023,20 @@ function App() {
                 <PanelGroup direction="horizontal">
                     {/* Left Panel */}
                     {!isLegoPanelCollapsed && (
-                        <Panel defaultSize={15} minSize={15}>
-                            <LegoPanel
-                                legos={legos}
-                                onDragStart={handleDragStart}
-                                onLegoSelect={(lego) => {
-                                    // Handle lego selection if needed
-                                }}
-                            />
-                        </Panel>
+                        <>
+                            <Panel defaultSize={15} minSize={15}>
+                                <LegoPanel
+                                    legos={legos}
+                                    onDragStart={handleDragStart}
+                                    onLegoSelect={(lego) => {
+                                        // Handle lego selection if needed
+                                    }}
+                                />
+                            </Panel>
+                            {/* <ResizeHandle /> */}
+                        </>
                     )}
+
 
                     {/* Main Content */}
                     <Panel defaultSize={60} minSize={30}>
@@ -2389,13 +2393,14 @@ function App() {
                                         hideConnectedLegs={hideConnectedLegs}
                                         connections={connections}
                                         droppedLegos={droppedLegos}
+                                        demoMode={false}
                                     />
                                 ))}
                             </Box>
                         </Box>
                     </Panel>
 
-                    <ResizeHandle position="left" />
+                    <ResizeHandle />
 
                     {/* Right Panel */}
                     <Panel defaultSize={20} minSize={20}>
