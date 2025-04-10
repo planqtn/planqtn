@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
@@ -73,6 +73,7 @@ function App() {
     const [hideConnectedLegs, setHideConnectedLegs] = useState(false)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
+    const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
 
     // Update the serializer when legos change
     useEffect(() => {
@@ -1949,36 +1950,19 @@ function App() {
                         View
                     </MenuButton>
                     <MenuList>
-                        <MenuItem
+                        <MenuItemOption
                             onClick={() => {
                                 setHideConnectedLegs(!hideConnectedLegs);
                                 encodeCanvasState(droppedLegos, connections, !hideConnectedLegs);
                             }}
-                            display="flex"
-                            alignItems="center"
-                            gap={2}
+                            isChecked={hideConnectedLegs}
                         >
-                            <Box
-                                w={4}
-                                h={4}
-                                border="1px"
-                                borderColor="gray.300"
-                                bg={hideConnectedLegs ? "blue.500" : "transparent"}
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                            >
-                                {hideConnectedLegs && (
-                                    <Box
-                                        w={2}
-                                        h={2}
-                                        bg="white"
-                                        transform="rotate(45deg)"
-                                    />
-                                )}
-                            </Box>
+
                             Hide connected legs
-                        </MenuItem>
+                        </MenuItemOption>
+                        <MenuItemOption isChecked={isLegoPanelCollapsed} onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}>
+                            Hide lego list
+                        </MenuItemOption>
 
                     </MenuList>
                 </Menu>
@@ -2038,17 +2022,17 @@ function App() {
             <Box flex={1} position="relative" overflow="hidden">
                 <PanelGroup direction="horizontal">
                     {/* Left Panel */}
-                    <Panel defaultSize={15} minSize={15}>
-                        <LegoPanel
-                            legos={legos}
-                            onDragStart={handleDragStart}
-                            onLegoSelect={(lego) => {
-                                // Handle lego selection if needed
-                            }}
-                        />
-                    </Panel>
-
-                    {/* <ResizeHandle position="right" /> */}
+                    {!isLegoPanelCollapsed && (
+                        <Panel defaultSize={15} minSize={15}>
+                            <LegoPanel
+                                legos={legos}
+                                onDragStart={handleDragStart}
+                                onLegoSelect={(lego) => {
+                                    // Handle lego selection if needed
+                                }}
+                            />
+                        </Panel>
+                    )}
 
                     {/* Main Content */}
                     <Panel defaultSize={60} minSize={30}>
@@ -2056,6 +2040,7 @@ function App() {
                             {/* Status Bar */}
                             <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
                                 <HStack spacing={2}>
+
                                     <Box
                                         w="8px"
                                         h="8px"
