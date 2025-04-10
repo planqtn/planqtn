@@ -80,8 +80,7 @@ A modern, interactive web interface for designing and analyzing quantum error co
 
 4. **Movement**:
    - Drag components to move them
-   - Selected groups move together
-   - Components are removed when dragged outside canvas
+   - Selected groups move together   
 
 5. **Analysis**:
    - Select a connected network to view its properties
@@ -157,13 +156,12 @@ User stories:
     - we could have an automated graph layout algorithms 
 - retrieve, evaluate, and visualize contraction schedules     
 - lego display customization 
-    - 422, 512, 602 tensors 
+    - 422, 512, 602 tensors - DONE for ZX spiders 
 - WEPs 
     - display the polynomial in different formats 
     - bar chart 
     - calculate normalizer enumerator (MacWilliams transform)
 - lego database 
-    - dynamic legos should be resizable when dropped 
     - clicking on a lego type should display it's properties (WEP, stabilizer check)
     - stoppers 
     - searchable IBM database 
@@ -178,8 +176,7 @@ I want to put together the new compass code construction with Charles's construc
 Bugs:
     - the network selection + changing + recalculating workflow is very wonky right now 
     - edge case: scalar (0-rank tensor) need to be worked out better  - e.g. identity tensor contracted with indentity + parity check calculation 
-    - fuse legos indeinty tensor + indenity throws an error
-    - there is a bug with leg coloring selection for non-logical legs 
+    - fuse legos indentity tensor + indentity throws an error    
     - disconnected TNs now fail on WEP calculation
 
 
