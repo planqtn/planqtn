@@ -46,6 +46,7 @@ interface DroppedLegoDisplayProps {
     hideConnectedLegs: boolean;
     connections: Connection[];
     droppedLegos?: DroppedLego[];
+    demoMode: boolean;
 }
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
@@ -61,7 +62,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     onLegClick,
     hideConnectedLegs,
     connections,
-    droppedLegos = []
+    droppedLegos = [],
+    demoMode = false
 }) => {
     const size = lego.style.size;
     const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
@@ -172,7 +174,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
 
     return (
         <Box
-            position="absolute"
+            position={"absolute"}
             left={`${lego.x}px`}
             top={`${lego.y}px`}
             cursor={dragState?.isDragging ? 'grabbing' : 'grab'}
@@ -183,7 +185,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 zIndex: isSelected ? 1 : 0,
                 opacity: dragState?.isDragging ? 0.5 : 1,
                 filter: isSelected ? 'drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))' : 'none',
-                transform: 'translate(-50%, -50%)'
+                transform: demoMode ? 'scale(0.5) translate(-50%, -50%)' : 'translate(-50%, -50%)',
             }}
         >
             {/* Regular Legs (rendered with lower z-index) */}
@@ -263,13 +265,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                     position="relative"
                     style={{ pointerEvents: 'all' }}
                 >
-                    {lego.style.displayShortName && (
+
+                    {!demoMode && lego.style.displayShortName && (
                         <VStack spacing={0}>
                             <Text fontSize="12" fontWeight="bold">{lego.shortName}</Text>
                             <Text fontSize="12">{lego.instanceId}</Text>
                         </VStack>
                     )}
-                    {!lego.style.displayShortName && (
+                    {!demoMode && !lego.style.displayShortName && (
                         <Text fontSize="12" fontWeight="bold">{lego.instanceId}</Text>
                     )}
                 </Box>
@@ -291,24 +294,26 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             stroke={isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}
                             strokeWidth="2"
                         />
-                        <text
-                            x="0"
-                            y={lego.logical_legs.length > 0 ? 5 : 0}
-                            fontSize="10"
-                            fontWeight="bold"
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fill="#000000"
-                            style={{ pointerEvents: 'none' }}
-                        >
-                            {lego.style.displayShortName && (
-                                <>
-                                    {lego.shortName}
-                                    <tspan x="0" dy="12">{lego.instanceId}</tspan>
-                                </>
-                            )}
-                            {!lego.style.displayShortName && lego.instanceId}
-                        </text>
+                        {!demoMode && (
+                            <text
+                                x="0"
+                                y={lego.logical_legs.length > 0 ? 5 : 0}
+                                fontSize="10"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="#000000"
+                                style={{ pointerEvents: 'none' }}
+                            >
+                                {lego.style.displayShortName && (
+                                    <>
+                                        {lego.shortName}
+                                        <tspan x="0" dy="12">{lego.instanceId}</tspan>
+                                    </>
+                                )}
+                                {!lego.style.displayShortName && lego.instanceId}
+                            </text>
+                        )}
                     </g>
                 </svg>
             )}

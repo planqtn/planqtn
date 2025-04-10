@@ -4,6 +4,8 @@ import { LegoPiece } from '../types.ts'
 import { DynamicLegoDialog } from './DynamicLegoDialog'
 import { useState } from 'react'
 import { config } from '../config'
+import { DroppedLegoDisplay } from './DroppedLegoDisplay.tsx'
+import { getLegoStyle } from '../LegoStyles.ts'
 
 interface LegoPanelProps {
     legos: LegoPiece[]
@@ -11,16 +13,6 @@ interface LegoPanelProps {
     onDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void
 }
 
-const getLegoIcon = (type: string) => {
-    switch (type) {
-        case 'tensor':
-            return FaCube
-        case 'code':
-            return FaCode
-        default:
-            return FaTable
-    }
-}
 
 export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDragStart }) => {
     const toast = useToast()
@@ -77,35 +69,59 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
             <VStack align="stretch" spacing={4} p={4}>
                 <Heading size="md">Lego Pieces</Heading>
                 <List spacing={3}>
-                    {legos.map((lego) => (
-                        <ListItem
-                            key={lego.id}
-                            p={3}
-                            borderWidth="1px"
-                            borderRadius="md"
-                            _hover={{ bg: 'gray.50' }}
-                            cursor="move"
-                            draggable
-                            onClick={() => !lego.is_dynamic && onLegoSelect(lego)}
-                            onDragStart={(e) => handleDragStart(e, lego)}
-                        >
-                            <HStack spacing={2}>
-                                <Icon as={getLegoIcon(lego.type)} boxSize={5} />
-                                <VStack align="start" spacing={1}>
-                                    <Text fontWeight="bold">{lego.name}</Text>
-                                    <Text fontSize="sm" color="gray.600">
-                                        {lego.description}
-                                    </Text>
-                                    <HStack>
-                                        <Badge colorScheme="blue">{lego.type}</Badge>
+                    {legos.map((lego) => {
+                        const numLegs = lego.parity_check_matrix[0].length / 2;
+                        return (
+
+                            <ListItem
+                                key={lego.id}
+                                p={2}
+                                borderWidth="1px"
+                                borderRadius="md"
+                                _hover={{ bg: 'gray.50' }}
+                                cursor="move"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, lego)}
+                            >
+                                <HStack p={2}>
+                                    <Box position="relative" w={50} h={50} >
+                                        <DroppedLegoDisplay
+                                            lego={{
+                                                // not sure why the Box based rendered legos (num legs <=2) are not centered, and why the svg one leg==3 ones need to bump either...
+                                                ...lego, x: numLegs <= 3 ? 13 : 5, y: numLegs <= 3 ? 20 : 13, instanceId: lego.id,
+                                                style: getLegoStyle(lego.id, numLegs),
+                                                pushedLegs: [],
+                                                selectedMatrixRows: []
+                                            }}
+                                            connections={[]}
+                                            index={0}
+                                            legDragState={null}
+                                            handleLegMouseDown={() => { }}
+                                            handleLegoMouseDown={() => { }}
+                                            handleLegoClick={() => { }}
+                                            tensorNetwork={null}
+                                            selectedLego={null}
+                                            dragState={null}
+                                            hideConnectedLegs={false}
+                                            droppedLegos={[]}
+                                            demoMode={true}
+                                        />
+
+                                    </Box>
+                                    <VStack align="start" spacing={1}>
                                         {lego.is_dynamic && (
                                             <Badge colorScheme="green">Dynamic</Badge>
                                         )}
-                                    </HStack>
-                                </VStack>
-                            </HStack>
-                        </ListItem>
-                    ))}
+                                        <Text display="block" fontWeight="bold">{lego.name}</Text>
+                                    </VStack>
+
+
+                                </HStack>
+                            </ListItem>
+                        )
+                    }
+
+                    )}
                 </List>
             </VStack>
 

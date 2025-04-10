@@ -1814,7 +1814,7 @@ function App() {
                 gauge_legs: [], // TODO: Handle gauge legs
                 x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
                 y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
-                style: getLegoStyle(type_id),
+                style: getLegoStyle(type_id, matrix[0].length / 2),
                 pushedLegs: [],
                 selectedMatrixRows: []
             };
@@ -2038,7 +2038,7 @@ function App() {
             <Box flex={1} position="relative" overflow="hidden">
                 <PanelGroup direction="horizontal">
                     {/* Left Panel */}
-                    <Panel defaultSize={20} minSize={15}>
+                    <Panel defaultSize={15} minSize={15}>
                         <LegoPanel
                             legos={legos}
                             onDragStart={handleDragStart}
@@ -2048,7 +2048,7 @@ function App() {
                         />
                     </Panel>
 
-                    <ResizeHandle position="right" />
+                    {/* <ResizeHandle position="right" /> */}
 
                     {/* Main Content */}
                     <Panel defaultSize={60} minSize={30}>
