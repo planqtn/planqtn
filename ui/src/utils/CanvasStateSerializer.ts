@@ -1,4 +1,4 @@
-import { DroppedLego, LegoPiece, Connection, CanvasState } from '../types'
+import { DroppedLego, LegoPiece, Connection, CanvasState, PauliOperator } from '../types'
 import { GenericStyle, getLegoStyle } from '../LegoStyles'
 import axios from 'axios'
 
@@ -17,7 +17,9 @@ export class CanvasStateSerializer {
                 parameters: piece.parameters,
                 parity_check_matrix: piece.parity_check_matrix,
                 logical_legs: piece.logical_legs,
-                gauge_legs: piece.gauge_legs
+                gauge_legs: piece.gauge_legs,
+                pushedLegs: piece.pushedLegs,
+                selectedMatrixRows: piece.selectedMatrixRows
             })),
             connections,
             hideConnectedLegs
@@ -60,6 +62,12 @@ export class CanvasStateSerializer {
                     name?: string;
                     shortName?: string;
                     description?: string;
+                    pushedLegs?: Array<{
+                        legIndex: number;
+                        operator: PauliOperator;
+                        baseRepresentatitve: number[];
+                    }>;
+                    selectedMatrixRows?: number[];
                 }) => {
                     const predefinedLego = legosList.find(l => l.id === piece.id)
 
@@ -79,7 +87,8 @@ export class CanvasStateSerializer {
                             logical_legs: piece.logical_legs || [],
                             gauge_legs: piece.gauge_legs || [],
                             style: new GenericStyle(piece.id),
-                            pushedLegs: []
+                            pushedLegs: piece.pushedLegs || [],
+                            selectedMatrixRows: piece.selectedMatrixRows || []
                         }
                     }
 
@@ -95,7 +104,8 @@ export class CanvasStateSerializer {
                             logical_legs: piece.logical_legs || [],
                             gauge_legs: piece.gauge_legs || [],
                             style: getLegoStyle(piece.id),
-                            pushedLegs: []
+                            pushedLegs: piece.pushedLegs || [],
+                            selectedMatrixRows: piece.selectedMatrixRows || []
                         }
                     }
 
@@ -107,7 +117,8 @@ export class CanvasStateSerializer {
                         x: piece.x,
                         y: piece.y,
                         style: getLegoStyle(predefinedLego.id),
-                        pushedLegs: []
+                        pushedLegs: piece.pushedLegs || [],
+                        selectedMatrixRows: piece.selectedMatrixRows || []
                     }
                 })
             // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);

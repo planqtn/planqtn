@@ -223,6 +223,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             );
             setSelectedLego(updatedLego);
             setDroppedLegos(updatedDroppedLegos);
+            encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
         }
     };
 

@@ -146,6 +146,12 @@ export interface CanvasState {
         parity_check_matrix?: number[][]
         logical_legs?: number[]
         gauge_legs?: number[]
+        pushedLegs?: Array<{
+            legIndex: number
+            operator: PauliOperator
+            baseRepresentatitve: number[]
+        }>
+        selectedMatrixRows?: number[]
     }>
     connections: Array<Connection>
     hideConnectedLegs: boolean

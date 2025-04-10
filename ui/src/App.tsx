@@ -1644,89 +1644,86 @@ function App() {
         const clickedLego = droppedLegos.find(lego => lego.instanceId === legoId);
         if (!clickedLego) return;
 
-        // If the clicked lego is not already selected, select it
-        if (selectedLego?.instanceId !== legoId) {
-            setSelectedLego(clickedLego);
-            setTensorNetwork(null);
+        const existingPushedLeg = clickedLego.pushedLegs.find(pl => pl.legIndex === legIndex);
+        const currentOperator = existingPushedLeg?.operator || PauliOperator.I;
+
+        // Find available operators in parity check matrix for this leg
+        const numQubits = clickedLego.parity_check_matrix[0].length / 2;
+        const hasX = clickedLego.parity_check_matrix.some(row =>
+            row[legIndex] === 1 && row[legIndex + numQubits] === 0
+        );
+        const hasZ = clickedLego.parity_check_matrix.some(row =>
+            row[legIndex] === 0 && row[legIndex + numQubits] === 1
+        );
+
+        // Cycle through operators only if they exist in matrix
+        let nextOperator: PauliOperator;
+        switch (currentOperator) {
+            case PauliOperator.I:
+                nextOperator = hasX ? PauliOperator.X :
+                    hasZ ? PauliOperator.Z :
+                        PauliOperator.I;
+                break;
+            case PauliOperator.X:
+                nextOperator = hasZ ? PauliOperator.Z : PauliOperator.I;
+                break;
+            case PauliOperator.Z:
+                nextOperator = PauliOperator.I;
+                break;
+            default:
+                nextOperator = PauliOperator.I;
         }
 
-        setDroppedLegos(prev => prev.map(lego => {
-            if (lego.instanceId === legoId) {
-                const existingPushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
-                const currentOperator = existingPushedLeg?.operator || PauliOperator.I;
-
-                // Find available operators in parity check matrix for this leg
-                const numQubits = lego.parity_check_matrix[0].length / 2;
-                const hasX = lego.parity_check_matrix.some(row =>
-                    row[legIndex] === 1 && row[legIndex + numQubits] === 0
-                );
-                const hasZ = lego.parity_check_matrix.some(row =>
-                    row[legIndex] === 0 && row[legIndex + numQubits] === 1
-                );
-
-                // Cycle through operators only if they exist in matrix
-                let nextOperator: PauliOperator;
-                switch (currentOperator) {
-                    case PauliOperator.I:
-                        nextOperator = hasX ? PauliOperator.X :
-                            hasZ ? PauliOperator.Z :
-                                PauliOperator.I;
-                        break;
-                    case PauliOperator.X:
-                        nextOperator = hasZ ? PauliOperator.Z : PauliOperator.I;
-                        break;
-                    case PauliOperator.Z:
-                        nextOperator = PauliOperator.I;
-                        break;
-                    default:
-                        nextOperator = PauliOperator.I;
-                }
-
-                // Find the first row in parity check matrix that matches currentOperator on legIndex
-                const baseRepresentative = lego.parity_check_matrix.find(row => {
-                    if (nextOperator === PauliOperator.X) {
-                        return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
-                    } else if (nextOperator === PauliOperator.Z) {
-                        return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
-                    }
-                    return false;
-                }) || new Array(2 * numQubits).fill(0);
-
-                // Update or remove the pushed leg
-                let updatedPushedLegs;
-                if (nextOperator === PauliOperator.I) {
-                    // Remove this leg from pushed legs if operator is I
-                    updatedPushedLegs = lego.pushedLegs.filter(pl => pl.legIndex !== legIndex);
-                } else {
-                    // Otherwise update or add the pushed leg
-                    updatedPushedLegs = existingPushedLeg
-                        ? lego.pushedLegs.map(pl =>
-                            pl.legIndex === legIndex
-                                ? { ...pl, operator: nextOperator, baseRepresentatitve: baseRepresentative }
-                                : pl
-                        )
-                        : [...lego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
-                }
-
-                // Find the row index that corresponds to the baseRepresentative
-                const rowIndex = lego.parity_check_matrix.findIndex(row =>
-                    row.every((val, idx) => val === baseRepresentative[idx])
-                );
-
-                // Update the selected rows based on the pushed legs
-                const selectedRows = [rowIndex].filter(row => row !== -1);
-
-                // Update the selectedLego state to trigger a re-render of the parity check matrix
-                setSelectedLego(prev => prev ? {
-                    ...prev,
-                    pushedLegs: updatedPushedLegs,
-                    selectedMatrixRows: selectedRows
-                } : null);
-
-                return { ...lego, pushedLegs: updatedPushedLegs, selectedMatrixRows: selectedRows };
+        // Find the first row in parity check matrix that matches currentOperator on legIndex
+        const baseRepresentative = clickedLego.parity_check_matrix.find(row => {
+            if (nextOperator === PauliOperator.X) {
+                return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
+            } else if (nextOperator === PauliOperator.Z) {
+                return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
             }
-            return lego;
-        }));
+            return false;
+        }) || new Array(2 * numQubits).fill(0);
+
+        // Update or remove the pushed leg
+        let updatedPushedLegs;
+        if (nextOperator === PauliOperator.I) {
+            // Remove this leg from pushed legs if operator is I
+            updatedPushedLegs = clickedLego.pushedLegs.filter(pl => pl.legIndex !== legIndex);
+        } else {
+            // Otherwise update or add the pushed leg
+            updatedPushedLegs = existingPushedLeg
+                ? clickedLego.pushedLegs.map(pl =>
+                    pl.legIndex === legIndex
+                        ? { ...pl, operator: nextOperator, baseRepresentatitve: baseRepresentative }
+                        : pl
+                )
+                : [...clickedLego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
+        }
+
+        // Find the row index that corresponds to the baseRepresentative
+        const rowIndex = clickedLego.parity_check_matrix.findIndex(row =>
+            row.every((val, idx) => val === baseRepresentative[idx])
+        );
+
+        // Update the selected rows based on the pushed legs
+        const selectedRows = [rowIndex].filter(row => row !== -1);
+
+        // Create a new lego instance with updated properties
+        const updatedLego = {
+            ...clickedLego,
+            pushedLegs: updatedPushedLegs,
+            selectedMatrixRows: selectedRows
+        };
+
+        // Update the selectedLego state
+        setSelectedLego(updatedLego);
+
+        // Update droppedLegos by replacing the old lego with the new one
+        const newDroppedLegos = droppedLegos.map(lego =>
+            lego.instanceId === legoId ? updatedLego : lego
+        );
+        setDroppedLegos(newDroppedLegos);
+        encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
     };
 
     const fuseLegos = async (legosToFuse: DroppedLego[]) => {
@@ -1950,6 +1947,7 @@ function App() {
                             </Box>
                             Hide connected legs
                         </MenuItem>
+
                     </MenuList>
                 </Menu>
                 <Button
@@ -1958,6 +1956,27 @@ function App() {
                     onClick={handleClearAll}
                 >
                     Remove all
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                        // Clear highlights from all legos
+                        const clearedLegos = droppedLegos.map(lego => ({
+                            ...lego,
+                            pushedLegs: [],
+                            selectedMatrixRows: []
+                        }));
+                        setDroppedLegos(clearedLegos);
+                        setSelectedLego(null);
+                        encodeCanvasState(clearedLegos, connections, hideConnectedLegs);
+                    }}
+                    isDisabled={!droppedLegos.some(lego =>
+                        lego.pushedLegs.length > 0 ||
+                        (lego.selectedMatrixRows && lego.selectedMatrixRows.length > 0)
+                    )}
+                >
+                    Clear highlights
                 </Button>
             </HStack>
 
