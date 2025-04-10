@@ -8,11 +8,14 @@ const chakraToHexColors: { [key: string]: string } = {
     "yellow.400": "#F6AD55",
     "yellow.500": "#ECC94B",
     "yellow.600": "#D69E2E",
+    "yellow.700": "#B7791F",
     "blue.100": "#BEE3F8",
     "blue.200": "#90CDF4",
     "blue.300": "#63B3ED",
     "blue.400": "#4299E1",
     "blue.500": "#3182CE",
+    "blue.600": "#2B6CB0",
+    "blue.700": "#2C5282",
     "green.200": "#9AE6B4",
     "green.300": "#68D391",
     "green.400": "#48BB78",
@@ -292,19 +295,19 @@ export class RepetitionCodeStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        return this.id === "x_rep_code" ? "blue.200" : "red.200";
+        return this.id === "x_rep_code" ? X_COLOR_LIGHT : Z_COLOR_LIGHT;
     }
 
     get borderColor(): string {
-        return this.id === "x_rep_code" ? "blue.400" : "red.400";
+        return this.id === "x_rep_code" ? X_COLOR : Z_COLOR;
     }
 
     get selectedBackgroundColor(): string {
-        return this.id === "x_rep_code" ? "blue.300" : "red.300";
+        return this.id === "x_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get selectedBorderColor(): string {
-        return this.id === "x_rep_code" ? "blue.700" : "red.700";
+        return this.id === "x_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get is_special(): boolean {

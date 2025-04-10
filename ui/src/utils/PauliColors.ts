@@ -3,19 +3,19 @@ import { PauliOperator } from "../types";
 // Chakra UI color tokens
 export const I_COLOR = "gray.400";
 export const I_COLOR_LIGHT = "gray.200";
-export const I_COLOR_DARK = "gray.600";
+export const I_COLOR_DARK = "gray.700";
 
 export const X_COLOR = "red.400";
 export const X_COLOR_LIGHT = "red.200";
-export const X_COLOR_DARK = "red.600";
+export const X_COLOR_DARK = "red.700";
 
 export const Z_COLOR = "blue.400";
 export const Z_COLOR_LIGHT = "blue.200";
-export const Z_COLOR_DARK = "blue.600";
+export const Z_COLOR_DARK = "blue.700";
 
 export const Y_COLOR = "purple.400";
 export const Y_COLOR_LIGHT = "purple.200";
-export const Y_COLOR_DARK = "purple.600";
+export const Y_COLOR_DARK = "purple.700";
 
 // SVG hex colors
 export const SVG_COLORS = {

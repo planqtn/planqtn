@@ -2025,7 +2025,7 @@ function App() {
                     {/* Left Panel */}
                     {!isLegoPanelCollapsed && (
                         <>
-                            <Panel defaultSize={15} minSize={15}>
+                            <Panel id="lego-panel" defaultSize={15} minSize={15} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
@@ -2034,13 +2034,13 @@ function App() {
                                     }}
                                 />
                             </Panel>
-                            {/* <ResizeHandle /> */}
+                            <ResizeHandle id="lego-panel-resize-handle" />
                         </>
                     )}
 
 
                     {/* Main Content */}
-                    <Panel defaultSize={60} minSize={30}>
+                    <Panel id="main-panel" defaultSize={60} minSize={30} order={2}>
                         <Box h="100%" display="flex" flexDirection="column" p={4}>
                             {/* Status Bar */}
                             <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
@@ -2401,10 +2401,10 @@ function App() {
                         </Box>
                     </Panel>
 
-                    <ResizeHandle />
+                    <ResizeHandle id="details-panel-resize-handle" />
 
                     {/* Right Panel */}
-                    <Panel defaultSize={20} minSize={20}>
+                    <Panel id="details-panel" defaultSize={20} minSize={20} order={3}>
                         <DetailsPanel
                             tensorNetwork={tensorNetwork}
                             selectedLego={selectedLego}
