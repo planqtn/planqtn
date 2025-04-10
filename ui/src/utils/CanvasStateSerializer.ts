@@ -103,7 +103,7 @@ export class CanvasStateSerializer {
                             parity_check_matrix: piece.parity_check_matrix,
                             logical_legs: piece.logical_legs || [],
                             gauge_legs: piece.gauge_legs || [],
-                            style: getLegoStyle(piece.id),
+                            style: getLegoStyle(piece.id, piece.parity_check_matrix[0].length / 2),
                             pushedLegs: piece.pushedLegs || [],
                             selectedMatrixRows: piece.selectedMatrixRows || []
                         }
@@ -116,7 +116,7 @@ export class CanvasStateSerializer {
                         instanceId: piece.instanceId,
                         x: piece.x,
                         y: piece.y,
-                        style: getLegoStyle(predefinedLego.id),
+                        style: getLegoStyle(predefinedLego.id, predefinedLego.parity_check_matrix[0].length / 2),
                         pushedLegs: piece.pushedLegs || [],
                         selectedMatrixRows: piece.selectedMatrixRows || []
                     }

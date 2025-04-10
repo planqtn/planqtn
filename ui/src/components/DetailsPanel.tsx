@@ -302,7 +302,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 parity_check_matrix: lego.id === 'z_rep_code' ? [[1, 0]] : [[0, 1]],
                 logical_legs: [],
                 gauge_legs: [],
-                style: getLegoStyle(lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z'),
+                style: getLegoStyle(lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z', 1),
                 pushedLegs: [],
                 selectedMatrixRows: []
             };
@@ -365,17 +365,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         // Store the old state for history
         const oldLegos = [lego];
         const oldConnections = existingConnections;
-
+        const newParityCheckMatrix = lego.parity_check_matrix.map(row => {
+            const n = row.length / 2;
+            return [...row.slice(n), ...row.slice(0, n)];
+        })
         // Create new legos array starting with the modified original lego
         const newLegos: DroppedLego[] = [{
             ...lego,
             id: lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code',
             shortName: lego.id === 'x_rep_code' ? 'Z Rep Code' : 'X Rep Code',
-            style: getLegoStyle(lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code'),
-            parity_check_matrix: lego.parity_check_matrix.map(row => {
-                const n = row.length / 2;
-                return [...row.slice(n), ...row.slice(0, n)];
-            })
+            style: getLegoStyle(lego.id === 'x_rep_code' ? 'z_rep_code' : 'x_rep_code', numLegs),
+            parity_check_matrix: newParityCheckMatrix
         }];
 
         // Create new connections array
@@ -400,7 +400,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 parity_check_matrix: [[1, 0, 0, 1], [0, 1, 1, 0]],
                 logical_legs: [],
                 gauge_legs: [],
-                style: getLegoStyle('h'),
+                style: getLegoStyle('h', 2),
                 pushedLegs: [],
                 selectedMatrixRows: []
             };

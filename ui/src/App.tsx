@@ -182,7 +182,8 @@ function App() {
                 setIsDialogOpen(true)
             } else {
                 const instanceId = newInstanceId(droppedLegos)
-                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id), pushedLegs: [] }
+                const numLegs = lego.parity_check_matrix[0].length / 2
+                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id, numLegs), pushedLegs: [] }
                 setDroppedLegos(prev => [...prev, newLego])
                 addToHistory({
                     type: 'add',
@@ -215,12 +216,13 @@ function App() {
 
             const dynamicLego = await response.json();
             const instanceId = newInstanceId(droppedLegos);
+            const numLegs = dynamicLego.parity_check_matrix[0].length / 2
             const newLego = {
                 ...dynamicLego,
                 x: pendingDropPosition.x,
                 y: pendingDropPosition.y,
                 instanceId,
-                style: getLegoStyle(dynamicLego.id),
+                style: getLegoStyle(dynamicLego.id, numLegs),
                 pushedLegs: [],
                 selectedMatrixRows: []
             };
@@ -1575,7 +1577,7 @@ function App() {
                     ...lego,
                     x,
                     y,
-                    style: getLegoStyle(lego.id),
+                    style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
                     pushedLegs: [],
                     selectedMatrixRows: []
                 };
@@ -1635,7 +1637,7 @@ function App() {
                     ...lego,
                     x,
                     y,
-                    style: getLegoStyle(lego.id),
+                    style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
                     pushedLegs: [],
                     selectedMatrixRows: []
                 };

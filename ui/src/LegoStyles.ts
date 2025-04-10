@@ -9,6 +9,8 @@ const chakraToHexColors: { [key: string]: string } = {
     "yellow.500": "#ECC94B",
     "yellow.600": "#D69E2E",
     "blue.100": "#BEE3F8",
+    "blue.200": "#90CDF4",
+    "blue.300": "#63B3ED",
     "blue.400": "#4299E1",
     "blue.500": "#3182CE",
     "green.200": "#9AE6B4",
@@ -290,19 +292,19 @@ export class RepetitionCodeStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        return this.id === "z_rep_code" ? "green.200" : "red.200";
+        return this.id === "x_rep_code" ? "blue.200" : "red.200";
     }
 
     get borderColor(): string {
-        return this.id === "z_rep_code" ? "green.400" : "red.400";
+        return this.id === "x_rep_code" ? "blue.400" : "red.400";
     }
 
     get selectedBackgroundColor(): string {
-        return this.id === "z_rep_code" ? "green.300" : "red.300";
+        return this.id === "x_rep_code" ? "blue.300" : "red.300";
     }
 
     get selectedBorderColor(): string {
-        return this.id === "z_rep_code" ? "green.700" : "red.700";
+        return this.id === "x_rep_code" ? "blue.700" : "red.700";
     }
 
     get is_special(): boolean {
@@ -328,9 +330,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_LIGHT;
             case "stopper_x":
-                return Z_COLOR_LIGHT;
-            case "stopper_z":
                 return X_COLOR_LIGHT;
+            case "stopper_z":
+                return Z_COLOR_LIGHT;
             default:
                 return I_COLOR_LIGHT;
         }
@@ -341,9 +343,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR;
             case "stopper_x":
-                return Z_COLOR;
-            case "stopper_z":
                 return X_COLOR;
+            case "stopper_z":
+                return Z_COLOR;
             default:
                 return I_COLOR;
         }
@@ -354,9 +356,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_DARK;
             case "stopper_x":
-                return Z_COLOR_DARK;
-            case "stopper_z":
                 return X_COLOR_DARK;
+            case "stopper_z":
+                return Z_COLOR_DARK;
             default:
                 return I_COLOR_DARK;
         }
@@ -367,9 +369,9 @@ export class StopperStyle extends LegoStyle {
             case "stopper_i":
                 return I_COLOR_DARK;
             case "stopper_x":
-                return Z_COLOR_DARK;
-            case "stopper_z":
                 return X_COLOR_DARK;
+            case "stopper_z":
+                return Z_COLOR_DARK;
             default:
                 return I_COLOR_DARK;
         }
@@ -384,20 +386,20 @@ export class StopperStyle extends LegoStyle {
     }
 
 }
-export function getLegoStyle(id: string): LegoStyle {
+export function getLegoStyle(id: string, numLegs: number): LegoStyle {
     if (id === "h") {
         return new HadamardStyle(id);
-    } else if (id === "z_rep_code") {
-        return new RepetitionCodeStyle(id);
-    } else if (id === "x_rep_code") {
-        return new RepetitionCodeStyle(id);
-    } else if (id === "stopper_i") {
-        return new StopperStyle(id);
-    } else if (id === "stopper_x") {
-        return new StopperStyle(id);
-    } else if (id === "stopper_z") {
-        return new StopperStyle(id);
-    } else if (id === "stopper_y") {
+    } else if (id === "z_rep_code" || id === "x_rep_code") {
+        if (numLegs > 2) {
+            return new RepetitionCodeStyle(id);
+        } else if (numLegs === 2) {
+            return new IdentityStyle(id);
+        } else if (numLegs === 1) {
+            return new StopperStyle(id === "z_rep_code" ? "stopper_x" : "stopper_z");
+        } else {
+            return new GenericStyle(id);
+        }
+    } else if (id.includes("stopper")) {
         return new StopperStyle(id);
     } else if (id === "identity") {
         return new IdentityStyle(id);
