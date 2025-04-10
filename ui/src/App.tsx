@@ -583,7 +583,7 @@ function App() {
             setDroppedLegos(updatedLegos);
             if (groupDragState) {
                 if (tensorNetwork) {
-                    tensorNetwork.legos = updatedLegos;
+                    tensorNetwork.legos = updatedLegos.filter(lego => groupDragState.legoInstanceIds.includes(lego.instanceId));
                 }
             }
         }
@@ -621,6 +621,7 @@ function App() {
 
     const handleCanvasMouseUp = (e: React.MouseEvent) => {
         const rect = canvasRef.current?.getBoundingClientRect();
+
         if (!rect) {
             setLegDragState(null);
             return;
