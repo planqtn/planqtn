@@ -10,6 +10,7 @@ import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
 import { config } from '../config'
 import * as _ from 'lodash'
+import { OperationHistory } from '../utils/OperationHistory'
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
     selectedLego: DroppedLego | null
@@ -21,7 +22,7 @@ interface DetailsPanelProps {
     setSelectedLego: (value: DroppedLego | null) => void
     fuseLegos: (legos: DroppedLego[]) => void
     setConnections: (value: Connection[]) => void
-    addOperation: (operation: Operation) => void
+    operationHistory: OperationHistory
     encodeCanvasState: (pieces: DroppedLego[], conns: Connection[], hideConnectedLegs: boolean) => void
     hideConnectedLegs: boolean
     makeSpace: (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]) => DroppedLego[]
@@ -48,7 +49,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     setSelectedLego,
     fuseLegos,
     setConnections,
-    addOperation,
+    operationHistory,
     encodeCanvasState,
     hideConnectedLegs,
     makeSpace
@@ -250,7 +251,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
     };
 
-    const handlePullOutOppositeLeg = async (lego: DroppedLego) => {
+    const handlePullOutSameColoredLeg = async (lego: DroppedLego) => {
         // Get max instance ID
         const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
         const numLegs = lego.parity_check_matrix[0].length / 2;
@@ -329,7 +330,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             setConnections(newConnections);
 
             // Add to operation history
-            addOperation({
+            operationHistory.addOperation({
                 type: 'pullOutOppositeLeg',
                 data: {
                     oldLegos,
@@ -459,7 +460,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 newConnections
             }
         };
-        addOperation(operation);
+        operationHistory.addOperation(operation);
         setSelectedLego(null);
 
         // Update URL state
@@ -621,7 +622,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             setConnections(updatedConnections);
 
             // Add to operation history
-            addOperation({
+            operationHistory.addOperation({
                 type: 'unfuseInto2Legos',
                 data: {
                     oldLegos,
@@ -821,7 +822,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 newConnections
             }
         };
-        addOperation(operation);
+        operationHistory.addOperation(operation);
     };
 
     return (
@@ -1032,7 +1033,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         leftIcon={<Icon as={FaCube} />}
                                         colorScheme="blue"
                                         size="sm"
-                                        onClick={() => handlePullOutOppositeLeg(selectedLego)}
+                                        onClick={() => handlePullOutSameColoredLeg(selectedLego)}
                                     >
                                         Pull out a leg of same color
                                     </Button>

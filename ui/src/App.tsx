@@ -15,6 +15,7 @@ import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
 import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
+import { FuseLegos } from './transformations/FuseLegos'
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -188,7 +189,7 @@ function App() {
                 const numLegs = lego.parity_check_matrix[0].length / 2
                 const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id, numLegs), pushedLegs: [] }
                 setDroppedLegos(prev => [...prev, newLego])
-                addToHistory({
+                operationHistory.addOperation({
                     type: 'add',
                     data: { legos: [newLego] }
                 })
@@ -230,7 +231,7 @@ function App() {
                 selectedMatrixRows: []
             };
             setDroppedLegos(prev => [...prev, newLego]);
-            addToHistory({
+            operationHistory.addOperation({
                 type: 'add',
                 data: { legos: [newLego] }
             });
@@ -308,7 +309,7 @@ function App() {
         });
 
         // Add to history
-        addToHistory({
+        operationHistory.addOperation({
             type: 'add',
             data: {
                 legos: newLegos,
@@ -676,7 +677,7 @@ function App() {
                         newY: groupDragState.originalPositions[instanceId].y + deltaY
                     }));
 
-                    addToHistory({
+                    operationHistory.addOperation({
                         type: 'move',
                         data: { groupMoves }
                     });
@@ -691,12 +692,12 @@ function App() {
                         newY: lego.y
                     }));
 
-                    addToHistory({
+                    operationHistory.addOperation({
                         type: 'move',
                         data: { groupMoves }
                     });
                 } else {
-                    addToHistory({
+                    operationHistory.addOperation({
                         type: 'move',
                         data: {
                             legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
@@ -779,7 +780,7 @@ function App() {
                                 return newConnections;
                             });
 
-                            addToHistory({
+                            operationHistory.addOperation({
                                 type: 'connect',
                                 data: { connections: [newConnection] }
                             });
@@ -855,11 +856,6 @@ function App() {
         return { legos: component, connections: componentConnections };
     };
 
-    // Update addToHistory to clear redo stack when new operations are added
-    const addToHistory = (operation: Operation) => {
-        operationHistory.addOperation(operation);
-    };
-
 
     // Handle undo
     const handleUndo = () => {
@@ -929,7 +925,7 @@ function App() {
                     );
 
                     // Add to history
-                    addToHistory({
+                    operationHistory.addOperation({
                         type: 'remove',
                         data: {
                             legos: legosToRemove,
@@ -971,7 +967,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, addToHistory, encodeCanvasState, hideConnectedLegs]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, operationHistory.addOperation, encodeCanvasState, hideConnectedLegs]);
 
     useEffect(() => {
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -1017,7 +1013,7 @@ function App() {
         e.stopPropagation();
 
         // Add to history before removing
-        addToHistory({
+        operationHistory.addOperation({
             type: 'disconnect',
             data: { connections: [connection] }
         });
@@ -1039,7 +1035,7 @@ function App() {
         if (droppedLegos.length === 0 && connections.length === 0) return;
 
         // Store current state for history
-        addToHistory({
+        operationHistory.addOperation({
             type: 'remove',
             data: {
                 legos: droppedLegos,
@@ -1132,7 +1128,7 @@ function App() {
             setConnections(prev => [...prev, ...connections]);
 
             // Add to history
-            addToHistory({
+            operationHistory.addOperation({
                 type: 'add',
                 data: {
                     legos: positionedLegos,
@@ -1202,7 +1198,7 @@ function App() {
             setConnections(prev => [...prev, ...connections]);
 
             // Add to history
-            addToHistory({
+            operationHistory.addOperation({
                 type: 'add',
                 data: {
                     legos: positionedLegos,
@@ -1262,7 +1258,7 @@ function App() {
             setConnections(prev => [...prev, ...connections]);
 
             // Add to history
-            addToHistory({
+            operationHistory.addOperation({
                 type: 'add',
                 data: {
                     legos: positionedLegos,
@@ -1373,130 +1369,25 @@ function App() {
     };
 
     const fuseLegos = async (legosToFuse: DroppedLego[]) => {
+        const trafo = new FuseLegos(connections, droppedLegos);
         try {
-            // Get all connections between the legos being fused
-            const internalConnections = connections.filter(conn =>
-                legosToFuse.some(l => l.instanceId === conn.from.legoId) &&
-                legosToFuse.some(l => l.instanceId === conn.to.legoId)
-            );
-
-            // Get all connections to legos outside the fusion group
-            const externalConnections = connections.filter(conn => {
-                const fromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
-                const toInGroup = legosToFuse.some(l => l.instanceId === conn.to.legoId);
-                return (fromInGroup && !toInGroup) || (!fromInGroup && toInGroup);
-            });
-
-            // Create a map of old leg indices to track external connections
-            const legMap = new Map<string, { legoId: string; legIndex: number }>();
-            externalConnections.forEach(conn => {
-                const isFromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
-                if (isFromInGroup) {
-                    legMap.set(`${conn.from.legoId}-${conn.from.legIndex}`, { legoId: conn.to.legoId, legIndex: conn.to.legIndex });
-                } else {
-                    legMap.set(`${conn.to.legoId}-${conn.to.legIndex}`, { legoId: conn.from.legoId, legIndex: conn.from.legIndex });
-                }
-            });
-
-            // Prepare the request payload
-            const payload = {
-                legos: legosToFuse.reduce((acc, lego) => {
-                    acc[lego.instanceId] = {
-                        ...lego,
-                        name: lego.shortName || "Generic Lego",
-                    } as LegoServerPayload;
-                    return acc;
-                }, {} as Record<string, LegoServerPayload>),
-                connections: internalConnections
-            };
-
-            // Call the paritycheck endpoint
-            const response = await axios.post(`${config.backendUrl}/paritycheck`, payload);
-            const { matrix, legs, recognized_type } = response.data;
-
-            // Create a new lego with the calculated parity check matrix
-            const type_id = recognized_type || "fused_lego";
-            const newLego: DroppedLego = {
-                id: type_id,
-                // it's important to use the max instance id + 1 to avoid collisions in the history, with connections especially
-                instanceId: (Math.max(...droppedLegos.map(l => parseInt(l.instanceId))) + 1).toString(),
-                shortName: "Fused",
-                name: "Fused Lego",
-                description: "Fused " + legosToFuse.length + " legos",
-                parity_check_matrix: matrix,
-                logical_legs: [],
-                gauge_legs: [],
-                x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
-                y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
-                style: getLegoStyle(type_id, matrix[0].length / 2),
-                pushedLegs: [],
-                selectedMatrixRows: []
-            };
-
-            // Create new connections based on the leg mapping
-            const newConnections = externalConnections.map(conn => {
-                const isFromInGroup = legosToFuse.some(l => l.instanceId === conn.from.legoId);
-                if (isFromInGroup) {
-                    // Find the new leg index from the legs array
-                    const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
-                        leg.instanceId === conn.from.legoId && leg.legIndex === conn.from.legIndex
-                    );
-                    return {
-                        from: { legoId: newLego.instanceId, legIndex: newLegIndex },
-                        to: { legoId: conn.to.legoId, legIndex: conn.to.legIndex }
-                    };
-                } else {
-                    const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
-                        leg.instanceId === conn.to.legoId && leg.legIndex === conn.to.legIndex
-                    );
-                    return {
-                        from: { legoId: conn.from.legoId, legIndex: conn.from.legIndex },
-                        to: { legoId: newLego.instanceId, legIndex: newLegIndex }
-                    };
-                }
-            });
-
-            // Update state
-            setDroppedLegos(prev => [
-                ...prev.filter(l => !legosToFuse.some(fl => fl.instanceId === l.instanceId)),
-                newLego
-            ]);
-            setConnections(prev => [
-                ...prev.filter(c =>
-                    !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)
-                ),
-                ...newConnections
-            ]);
+            const { connections: newConnections, droppedLegos: newDroppedLegos, operation: operation } = await trafo.apply(legosToFuse);
+            operationHistory.addOperation(operation);
+            setDroppedLegos(newDroppedLegos);
+            setConnections(newConnections);
             setSelectedLego(null);
             setTensorNetwork(null);
-
-            // Add to history
-            addToHistory({
-                type: 'fuse',
-                data: {
-                    oldLegos: legosToFuse,
-                    oldConnections: [...internalConnections, ...externalConnections],
-                    newLego,
-                    newConnections
-                }
-            });
-
-            // Update URL state
             encodeCanvasState(
-                [...droppedLegos.filter(l => !legosToFuse.some(fl => fl.instanceId === l.instanceId)), newLego],
-                [...connections.filter(c => !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)), ...newConnections],
+                newDroppedLegos,
+                newConnections,
                 hideConnectedLegs
             );
 
         } catch (error) {
-            if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.message || error.response?.data?.detail || error.message;
-                setError(`Failed to fuse legos: ${message}`);
-            } else {
-                setError('Failed to fuse legos');
-            }
-            console.error('Error fusing legos:', error);
+            setError(`${error}`);
+            return;
         }
+
     };
 
     // Helper function to push legos out of the way radially
@@ -2028,7 +1919,7 @@ function App() {
                             setSelectedLego={setSelectedLego}
                             fuseLegos={fuseLegos}
                             setConnections={setConnections}
-                            addOperation={addToHistory}
+                            operationHistory={operationHistory}
                             encodeCanvasState={encodeCanvasState}
                             hideConnectedLegs={hideConnectedLegs}
                             makeSpace={(center, radius, skipLegos, legosToCheck) => makeSpace(center, radius, skipLegos, legosToCheck)}

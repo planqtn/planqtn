@@ -1,3 +1,4 @@
+import { FuseLegos } from "../transformations/FuseLegos";
 import { Connection, DroppedLego, Operation } from "../types";
 import * as _ from 'lodash';
 
@@ -9,7 +10,7 @@ export class OperationHistory {
 
     public addOperation(operation: Operation) {
         this.operations.push(operation);
-        console.log("addOperation", "operation", operation, "operations", this.operations);
+        // console.log("addOperation", "operation", operation, "operations", this.operations);
         this.redoHistory = [];
     }
 
@@ -26,7 +27,7 @@ export class OperationHistory {
         let newConnections: Connection[] = _.cloneDeep(connections);
         let newDroppedLegos: DroppedLego[] = _.cloneDeep(droppedLegos);
 
-        console.log("undo", "lastOperation", lastOperation, "newConnections", newConnections, "newDroppedLegos", newDroppedLegos);
+        // console.log("undo", "lastOperation", lastOperation, "newConnections", newConnections, "newDroppedLegos", newDroppedLegos);
 
         switch (lastOperation.type) {
             case 'add':
@@ -91,23 +92,9 @@ export class OperationHistory {
                     newConnections = [...connections, ...(lastOperation.data.connections || [])];
                 }
                 break;
-            case 'fuse':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the fused lego
-                    newDroppedLegos = newDroppedLegos.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
-                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-                    // Restore old connections
-                    newConnections = connections.filter(conn =>
-                        !lastOperation.data.newConnections?.some(newConn =>
-                            newConn.from.legoId === conn.from.legoId &&
-                            newConn.from.legIndex === conn.from.legIndex &&
-                            newConn.to.legoId === conn.to.legoId &&
-                            newConn.to.legIndex === conn.to.legIndex
-                        )
-                    );
-                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
-                }
-                break;
+            case FuseLegos.operationCode:
+                return new FuseLegos(connections, droppedLegos).undo(lastOperation);
+
             case 'unfuse':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the unfused legos
