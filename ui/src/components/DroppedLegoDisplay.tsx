@@ -268,12 +268,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
 
                     {!demoMode && lego.style.displayShortName && (
                         <VStack spacing={0}>
-                            <Text fontSize="12" fontWeight="bold">{lego.shortName}</Text>
-                            <Text fontSize="12">{lego.instanceId}</Text>
+                            <Text fontSize="12" fontWeight="bold" color={isSelected ? "white" : "#000000"}>{lego.shortName}</Text>
+                            <Text fontSize="12" color={isSelected ? "white" : "#000000"}>{lego.instanceId}</Text>
                         </VStack>
                     )}
                     {!demoMode && !lego.style.displayShortName && (
-                        <Text fontSize="12" fontWeight="bold">{lego.instanceId}</Text>
+                        <Text fontSize="12" fontWeight="bold" color={isSelected ? "white" : "#000000"}>{lego.instanceId}</Text>
                     )}
                 </Box>
             ) : (
@@ -302,7 +302,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 fontWeight="bold"
                                 textAnchor="middle"
                                 dominantBaseline="middle"
-                                fill="#000000"
+                                fill={isSelected ? "white" : "#000000"}
                                 style={{ pointerEvents: 'none' }}
                             >
                                 {lego.style.displayShortName && (

@@ -237,11 +237,11 @@ export class GenericStyle extends LegoStyle {
     }
 
     get selectedBackgroundColor(): string {
-        return "blue.100";
+        return "blue.500";
     }
 
     get selectedBorderColor(): string {
-        return "blue.500";
+        return "blue.700";
     }
 
     get is_special(): boolean {
@@ -295,19 +295,19 @@ export class RepetitionCodeStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        return this.id === "x_rep_code" ? X_COLOR_LIGHT : Z_COLOR_LIGHT;
+        return this.id === "z_rep_code" ? X_COLOR_LIGHT : Z_COLOR_LIGHT;
     }
 
     get borderColor(): string {
-        return this.id === "x_rep_code" ? X_COLOR : Z_COLOR;
+        return this.id === "z_rep_code" ? X_COLOR : Z_COLOR;
     }
 
     get selectedBackgroundColor(): string {
-        return this.id === "x_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
+        return this.id === "z_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get selectedBorderColor(): string {
-        return this.id === "x_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
+        return this.id === "z_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get is_special(): boolean {

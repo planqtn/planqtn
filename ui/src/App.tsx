@@ -2025,7 +2025,7 @@ function App() {
                     {/* Left Panel */}
                     {!isLegoPanelCollapsed && (
                         <>
-                            <Panel id="lego-panel" defaultSize={15} minSize={15} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
+                            <Panel id="lego-panel" defaultSize={8} minSize={8} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
