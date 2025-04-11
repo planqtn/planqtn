@@ -812,6 +812,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         ];
         setDroppedLegos(updatedLegos);
         setConnections(updatedConnections);
+        encodeCanvasState(updatedLegos, updatedConnections, hideConnectedLegs);
 
         // Add to history
         const operation: Operation = {

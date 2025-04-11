@@ -868,6 +868,8 @@ function App() {
 
         // Move the operation to redo history before undoing
         setRedoHistory(prev => [...prev, lastOperation]);
+        let newConnections = connections;
+        let newDroppedLegos = droppedLegos;
 
         switch (lastOperation.type) {
             case 'add':
@@ -875,105 +877,97 @@ function App() {
                 const addedConnections = lastOperation.data?.connections;
                 if (addedLegos) {
                     // Remove all legos that were added in this operation
-                    setDroppedLegos(prev => prev.filter(lego =>
+                    newDroppedLegos = droppedLegos.filter(lego =>
                         !addedLegos.some(l => l.instanceId === lego.instanceId)
-                    ));
+                    );
                     // Remove all connections that were added with these legos
                     if (addedConnections) {
-                        setConnections(prev => prev.filter(conn =>
+                        newConnections = connections.filter(conn =>
                             !addedConnections.some(c =>
                                 c.from.legoId === conn.from.legoId &&
                                 c.from.legIndex === conn.from.legIndex &&
                                 c.to.legoId === conn.to.legoId &&
                                 c.to.legIndex === conn.to.legIndex
                             )
-                        ));
+                        );
                     }
                 }
                 break;
             case 'remove':
                 if (lastOperation.data.legos && lastOperation.data.connections) {
-                    setDroppedLegos(prev => [...prev, ...(lastOperation.data.legos || [])]);
-                    setConnections(prev => [...prev, ...(lastOperation.data.connections || [])]);
+                    newDroppedLegos = [...droppedLegos, ...(lastOperation.data.legos || [])];
+                    newConnections = [...connections, ...(lastOperation.data.connections || [])];
                 }
                 break;
             case 'move':
                 if (lastOperation.data.groupMoves) {
                     // Handle group move undo
-                    setDroppedLegos(prev => prev.map(lego => {
+                    newDroppedLegos = droppedLegos.map(lego => {
                         const move = lastOperation.data.groupMoves?.find(m => m.legoInstanceId === lego.instanceId);
                         if (move) {
                             return { ...lego, x: move.oldX, y: move.oldY };
                         }
                         return lego;
-                    }));
+                    });
                 } else if (lastOperation.data.legoInstanceId && lastOperation.data.oldX !== undefined && lastOperation.data.oldY !== undefined) {
                     // Handle single lego move undo
-                    setDroppedLegos(prev => prev.map(lego =>
+                    newDroppedLegos = droppedLegos.map(lego =>
                         lego.instanceId === lastOperation.data.legoInstanceId
                             ? { ...lego, x: lastOperation.data.oldX!, y: lastOperation.data.oldY! }
                             : lego
-                    ));
+                    );
                 }
                 break;
             case 'connect':
                 if (lastOperation.data.connections) {
                     const connectionToRemove = lastOperation.data.connections[0];
-                    setConnections(prev => prev.filter(conn =>
+                    newConnections = connections.filter(conn =>
                         !(conn.from.legoId === connectionToRemove.from.legoId &&
                             conn.from.legIndex === connectionToRemove.from.legIndex &&
                             conn.to.legoId === connectionToRemove.to.legoId &&
                             conn.to.legIndex === connectionToRemove.to.legIndex)
-                    ));
+                    );
                 }
                 break;
             case 'disconnect':
                 if (lastOperation.data.connections) {
-                    setConnections(prev => [...prev, ...(lastOperation.data.connections || [])]);
+                    newConnections = [...connections, ...(lastOperation.data.connections || [])];
                 }
                 break;
             case 'fuse':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the fused lego
-                    setDroppedLegos(prev => {
-                        const withoutFused = prev.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
-                        return [...withoutFused, ...lastOperation.data.oldLegos!];
-                    });
+                    newDroppedLegos = droppedLegos.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
+                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
                     // Restore old connections
-                    setConnections(prev => {
-                        const withoutNew = prev.filter(conn =>
-                            !lastOperation.data.newConnections?.some(newConn =>
-                                newConn.from.legoId === conn.from.legoId &&
-                                newConn.from.legIndex === conn.from.legIndex &&
-                                newConn.to.legoId === conn.to.legoId &&
-                                newConn.to.legIndex === conn.to.legIndex
-                            )
-                        );
-                        return [...withoutNew, ...lastOperation.data.oldConnections!];
-                    });
+                    newConnections = connections.filter(conn =>
+                        !lastOperation.data.newConnections?.some(newConn =>
+                            newConn.from.legoId === conn.from.legoId &&
+                            newConn.from.legIndex === conn.from.legIndex &&
+                            newConn.to.legoId === conn.to.legoId &&
+                            newConn.to.legIndex === conn.to.legIndex
+                        )
+                    );
+                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
                 }
                 break;
             case 'unfuse':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the unfused legos
-                    setDroppedLegos(prev => {
-                        const withoutUnfused = prev.filter(lego =>
-                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutUnfused, ...lastOperation.data.oldLegos!];
-                    });
+                    newDroppedLegos = droppedLegos.filter(lego =>
+                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                    );
+                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
                     // Restore old connections
-                    setConnections(prev => {
-                        const withoutNew = prev.filter(conn =>
-                            !lastOperation.data.newConnections?.some(newConn =>
-                                newConn.from.legoId === conn.from.legoId &&
-                                newConn.from.legIndex === conn.from.legIndex &&
-                                newConn.to.legoId === conn.to.legoId &&
-                                newConn.to.legIndex === conn.to.legIndex
-                            )
-                        );
-                        return [...withoutNew, ...lastOperation.data.oldConnections!];
-                    });
+                    newConnections = connections.filter(conn =>
+                        !lastOperation.data.newConnections?.some(newConn =>
+                            newConn.from.legoId === conn.from.legoId &&
+                            newConn.from.legIndex === conn.from.legIndex &&
+                            newConn.to.legoId === conn.to.legoId &&
+                            newConn.to.legIndex === conn.to.legIndex
+                        )
+                    );
+                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
                 }
                 break;
 
@@ -983,68 +977,53 @@ function App() {
                     const restoredLegos = [...lastOperation.data.oldLegos];
                     const restoredConnections = [...lastOperation.data.oldConnections];
 
-                    setDroppedLegos(prev => {
-                        const withoutNew = prev.filter(lego =>
-                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutNew, ...restoredLegos];
-                    });
+                    newDroppedLegos = droppedLegos.filter(lego =>
+                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                    );
+                    newDroppedLegos = [...newDroppedLegos, ...restoredLegos];
 
                     // Restore old connections
-                    setConnections(_prev => restoredConnections);
+                    newConnections = restoredConnections;
 
-                    // Update URL state with the restored state
-                    encodeCanvasState(
-                        droppedLegos.filter(lego =>
-                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                        ).concat(restoredLegos),
-                        restoredConnections,
-                        hideConnectedLegs
-                    );
+
                 }
                 break;
             case 'colorChange':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the color-changed legos and Hadamard legos
-                    setDroppedLegos(prev => {
-                        const withoutChanged = prev.filter(lego =>
-                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutChanged, ...lastOperation.data.oldLegos!];
-                    });
+                    newDroppedLegos = droppedLegos.filter(lego =>
+                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                    );
+                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
                     // Restore old connections
-                    setConnections(prev => {
-                        const withoutNew = prev.filter(conn =>
-                            !lastOperation.data.newConnections?.some(newConn =>
-                                newConn.from.legoId === conn.from.legoId &&
-                                newConn.from.legIndex === conn.from.legIndex &&
-                                newConn.to.legoId === conn.to.legoId &&
-                                newConn.to.legIndex === conn.to.legIndex
-                            )
-                        );
-                        return [...withoutNew, ...lastOperation.data.oldConnections!];
-                    });
+                    newConnections = connections.filter(conn =>
+                        !lastOperation.data.newConnections?.some(newConn =>
+                            newConn.from.legoId === conn.from.legoId &&
+                            newConn.from.legIndex === conn.from.legIndex &&
+                            newConn.to.legoId === conn.to.legoId &&
+                            newConn.to.legIndex === conn.to.legIndex
+                        )
+                    );
+                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
                 }
                 break;
             case 'pullOutOppositeLeg':
                 if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
                     // Remove the changed legos
-                    setDroppedLegos(prev => {
-                        const withoutChanged = prev.filter(lego =>
-                            !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutChanged, ...lastOperation.data.oldLegos!];
-                    });
+                    newDroppedLegos = droppedLegos.filter(lego =>
+                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
+                    );
+                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
                     // Restore old connections
-                    setConnections(_prev => {
-
-                        return [...lastOperation.data.oldConnections!];
-                    });
+                    newConnections = lastOperation.data.oldConnections!;
                 }
                 break;
         }
 
         setOperationHistory(prev => prev.slice(0, -1));
+        setDroppedLegos(newDroppedLegos);
+        setConnections(newConnections);
+        encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
     }, [operationHistory]);
 
     // Handle redo
