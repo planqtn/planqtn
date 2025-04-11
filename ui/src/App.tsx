@@ -14,6 +14,7 @@ import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
 import { config } from './config'
+import { OperationHistory } from './utils/OperationHistory'
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -49,7 +50,8 @@ function App() {
     const canvasRef = useRef<HTMLDivElement>(null)
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
-    const [operationHistory, setOperationHistory] = useState<Operation[]>([])
+    const [operationHistory, setOperationHistory] = useState<OperationHistory>(new OperationHistory([]))
+
     const [redoHistory, setRedoHistory] = useState<Operation[]>([])
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
     const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
@@ -855,398 +857,29 @@ function App() {
 
     // Update addToHistory to clear redo stack when new operations are added
     const addToHistory = (operation: Operation) => {
-        setOperationHistory(prev => [...prev, operation]);
-        setRedoHistory([]); // Clear redo stack when new operation is performed
+        operationHistory.addOperation(operation);
     };
 
 
     // Handle undo
-    const handleUndo = useCallback(() => {
-        if (operationHistory.length === 0) return;
-
-        const lastOperation = operationHistory[operationHistory.length - 1];
-
-        // Move the operation to redo history before undoing
-        setRedoHistory(prev => [...prev, lastOperation]);
-        let newConnections = connections;
-        let newDroppedLegos = droppedLegos;
-
-        switch (lastOperation.type) {
-            case 'add':
-                const addedLegos = lastOperation.data?.legos;
-                const addedConnections = lastOperation.data?.connections;
-                if (addedLegos) {
-                    // Remove all legos that were added in this operation
-                    newDroppedLegos = droppedLegos.filter(lego =>
-                        !addedLegos.some(l => l.instanceId === lego.instanceId)
-                    );
-                    // Remove all connections that were added with these legos
-                    if (addedConnections) {
-                        newConnections = connections.filter(conn =>
-                            !addedConnections.some(c =>
-                                c.from.legoId === conn.from.legoId &&
-                                c.from.legIndex === conn.from.legIndex &&
-                                c.to.legoId === conn.to.legoId &&
-                                c.to.legIndex === conn.to.legIndex
-                            )
-                        );
-                    }
-                }
-                break;
-            case 'remove':
-                if (lastOperation.data.legos && lastOperation.data.connections) {
-                    newDroppedLegos = [...droppedLegos, ...(lastOperation.data.legos || [])];
-                    newConnections = [...connections, ...(lastOperation.data.connections || [])];
-                }
-                break;
-            case 'move':
-                if (lastOperation.data.groupMoves) {
-                    // Handle group move undo
-                    newDroppedLegos = droppedLegos.map(lego => {
-                        const move = lastOperation.data.groupMoves?.find(m => m.legoInstanceId === lego.instanceId);
-                        if (move) {
-                            return { ...lego, x: move.oldX, y: move.oldY };
-                        }
-                        return lego;
-                    });
-                } else if (lastOperation.data.legoInstanceId && lastOperation.data.oldX !== undefined && lastOperation.data.oldY !== undefined) {
-                    // Handle single lego move undo
-                    newDroppedLegos = droppedLegos.map(lego =>
-                        lego.instanceId === lastOperation.data.legoInstanceId
-                            ? { ...lego, x: lastOperation.data.oldX!, y: lastOperation.data.oldY! }
-                            : lego
-                    );
-                }
-                break;
-            case 'connect':
-                if (lastOperation.data.connections) {
-                    const connectionToRemove = lastOperation.data.connections[0];
-                    newConnections = connections.filter(conn =>
-                        !(conn.from.legoId === connectionToRemove.from.legoId &&
-                            conn.from.legIndex === connectionToRemove.from.legIndex &&
-                            conn.to.legoId === connectionToRemove.to.legoId &&
-                            conn.to.legIndex === connectionToRemove.to.legIndex)
-                    );
-                }
-                break;
-            case 'disconnect':
-                if (lastOperation.data.connections) {
-                    newConnections = [...connections, ...(lastOperation.data.connections || [])];
-                }
-                break;
-            case 'fuse':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the fused lego
-                    newDroppedLegos = droppedLegos.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
-                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-                    // Restore old connections
-                    newConnections = connections.filter(conn =>
-                        !lastOperation.data.newConnections?.some(newConn =>
-                            newConn.from.legoId === conn.from.legoId &&
-                            newConn.from.legIndex === conn.from.legIndex &&
-                            newConn.to.legoId === conn.to.legoId &&
-                            newConn.to.legIndex === conn.to.legIndex
-                        )
-                    );
-                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
-                }
-                break;
-            case 'unfuse':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the unfused legos
-                    newDroppedLegos = droppedLegos.filter(lego =>
-                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                    );
-                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-                    // Restore old connections
-                    newConnections = connections.filter(conn =>
-                        !lastOperation.data.newConnections?.some(newConn =>
-                            newConn.from.legoId === conn.from.legoId &&
-                            newConn.from.legIndex === conn.from.legIndex &&
-                            newConn.to.legoId === conn.to.legoId &&
-                            newConn.to.legIndex === conn.to.legIndex
-                        )
-                    );
-                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
-                }
-                break;
-
-            case 'unfuseInto2Legos':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the new legos and restore the original lego
-                    const restoredLegos = [...lastOperation.data.oldLegos];
-                    const restoredConnections = [...lastOperation.data.oldConnections];
-
-                    newDroppedLegos = droppedLegos.filter(lego =>
-                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                    );
-                    newDroppedLegos = [...newDroppedLegos, ...restoredLegos];
-
-                    // Restore old connections
-                    newConnections = restoredConnections;
-
-
-                }
-                break;
-            case 'colorChange':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the color-changed legos and Hadamard legos
-                    newDroppedLegos = droppedLegos.filter(lego =>
-                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                    );
-                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-                    // Restore old connections
-                    newConnections = connections.filter(conn =>
-                        !lastOperation.data.newConnections?.some(newConn =>
-                            newConn.from.legoId === conn.from.legoId &&
-                            newConn.from.legIndex === conn.from.legIndex &&
-                            newConn.to.legoId === conn.to.legoId &&
-                            newConn.to.legIndex === conn.to.legIndex
-                        )
-                    );
-                    newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
-                }
-                break;
-            case 'pullOutOppositeLeg':
-                if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-                    // Remove the changed legos
-                    newDroppedLegos = droppedLegos.filter(lego =>
-                        !lastOperation.data.newLegos?.some(newLego => newLego.instanceId === lego.instanceId)
-                    );
-                    newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-                    // Restore old connections
-                    newConnections = lastOperation.data.oldConnections!;
-                }
-                break;
-        }
-
-        setOperationHistory(prev => prev.slice(0, -1));
-        setDroppedLegos(newDroppedLegos);
+    const handleUndo = () => {
+        console.log('before undo', connections, droppedLegos);
+        const { connections: newConnections, droppedLegos: newDroppedLegos } = operationHistory.undo(connections, droppedLegos);
+        console.log('undo result', newConnections, newDroppedLegos);
         setConnections(newConnections);
+        setDroppedLegos(newDroppedLegos);
         encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
-    }, [operationHistory]);
+    }
 
     // Handle redo
-    const handleRedo = useCallback(() => {
-        if (redoHistory.length === 0) return;
-
-        const nextOperation = redoHistory[redoHistory.length - 1];
-
-        switch (nextOperation.type) {
-            case 'add':
-                const addedLegos = nextOperation.data?.legos;
-                const addedConnections = nextOperation.data?.connections;
-                if (addedLegos) {
-                    // Add all legos from this operation
-                    setDroppedLegos(prev => [...prev, ...addedLegos]);
-                    // Add all connections that were added with these legos
-                    if (addedConnections) {
-                        setConnections(prev => [...prev, ...addedConnections]);
-                    }
-                }
-                break;
-            case 'remove':
-                if (nextOperation.data.legos) {
-                    // Handle removal of multiple legos for group deletions
-                    const legosToRemove = nextOperation.data.legos;
-                    setDroppedLegos(prev => prev.filter(lego =>
-                        !legosToRemove.some(removeMe => removeMe.instanceId === lego.instanceId)
-                    ));
-                    setConnections(prev => prev.filter(conn =>
-                        !legosToRemove.some(lego =>
-                            conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
-                        )
-                    ));
-                }
-                break;
-            case 'move':
-                if (nextOperation.data.groupMoves) {
-                    // Handle group move redo
-                    setDroppedLegos(prev => prev.map(lego => {
-                        const move = nextOperation.data.groupMoves?.find(m => m.legoInstanceId === lego.instanceId);
-                        if (move) {
-                            return { ...lego, x: move.newX, y: move.newY };
-                        }
-                        return lego;
-                    }));
-                } else if (nextOperation.data.legoInstanceId && nextOperation.data.newX !== undefined && nextOperation.data.newY !== undefined) {
-                    // Handle single lego move redo
-                    setDroppedLegos(prev => prev.map(lego =>
-                        lego.instanceId === nextOperation.data.legoInstanceId
-                            ? { ...lego, x: nextOperation.data.newX!, y: nextOperation.data.newY! }
-                            : lego
-                    ));
-                }
-                break;
-            case 'connect':
-                if (nextOperation.data.connections) {
-                    setConnections(prev => [...prev, ...(nextOperation.data.connections || [])]);
-                }
-                break;
-            case 'disconnect':
-                if (nextOperation.data.connections) {
-                    const connectionToRemove = nextOperation.data.connections[0];
-                    setConnections(prev => prev.filter(conn =>
-                        !(conn.from.legoId === connectionToRemove.from.legoId &&
-                            conn.from.legIndex === connectionToRemove.from.legIndex &&
-                            conn.to.legoId === connectionToRemove.to.legoId &&
-                            conn.to.legIndex === connectionToRemove.to.legIndex)
-                    ));
-                }
-                break;
-            case 'fuse':
-                if (nextOperation.data.newLego && nextOperation.data.oldLegos) {
-                    // Remove old legos
-                    setDroppedLegos(prev => {
-                        const withoutOld = prev.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutOld, nextOperation.data.newLego!];
-                    });
-                    // Add new connections
-                    if (nextOperation.data.newConnections) {
-                        setConnections(prev => {
-                            const withoutOld = prev.filter(conn =>
-                                !nextOperation.data.oldConnections?.some(oldConn =>
-                                    oldConn.from.legoId === conn.from.legoId &&
-                                    oldConn.from.legIndex === conn.from.legIndex &&
-                                    oldConn.to.legoId === conn.to.legoId &&
-                                    oldConn.to.legIndex === conn.to.legIndex
-                                )
-                            );
-                            return [...withoutOld, ...nextOperation.data.newConnections!];
-                        });
-                    }
-                }
-                break;
-            case 'unfuse':
-                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
-                    // Remove the original lego
-                    setDroppedLegos(prev => {
-                        const withoutOriginal = prev.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
-                    });
-                    // Add new connections
-                    if (nextOperation.data.newConnections) {
-                        setConnections(prev => {
-                            const withoutOld = prev.filter(conn =>
-                                !nextOperation.data.oldConnections?.some(oldConn =>
-                                    oldConn.from.legoId === conn.from.legoId &&
-                                    oldConn.from.legIndex === conn.from.legIndex &&
-                                    oldConn.to.legoId === conn.to.legoId &&
-                                    oldConn.to.legIndex === conn.to.legIndex
-                                )
-                            );
-                            return [...withoutOld, ...nextOperation.data.newConnections!];
-                        });
-                    }
-                }
-                break;
-            case 'unfuseInto2Legos':
-                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
-                    // Remove the original lego and add the new legos
-                    setDroppedLegos(prev => {
-                        const withoutOriginal = prev.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
-                    });
-                    // Update connections
-                    setConnections(_prev => [...nextOperation.data.newConnections!]);
-
-                    // Update URL state
-                    encodeCanvasState(
-                        droppedLegos.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        ).concat(nextOperation.data.newLegos!),
-                        nextOperation.data.newConnections!,
-                        hideConnectedLegs
-                    );
-                }
-                break;
-            case 'colorChange':
-                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
-                    // Remove the original lego
-                    setDroppedLegos(prev => {
-                        const withoutOriginal = prev.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        );
-                        return [...withoutOriginal, ...nextOperation.data.newLegos!];
-                    });
-                    // Add new connections
-                    if (nextOperation.data.newConnections) {
-                        setConnections(prev => {
-                            const withoutOld = prev.filter(conn =>
-                                !nextOperation.data.oldConnections?.some(oldConn =>
-                                    oldConn.from.legoId === conn.from.legoId &&
-                                    oldConn.from.legIndex === conn.from.legIndex &&
-                                    oldConn.to.legoId === conn.to.legoId &&
-                                    oldConn.to.legIndex === conn.to.legIndex
-                                )
-                            );
-                            return [...withoutOld, ...nextOperation.data.newConnections!];
-                        });
-                    }
-                }
-                break;
-            case 'pullOutOppositeLeg':
-                if (nextOperation.data.newLegos && nextOperation.data.oldLegos) {
-                    // Remove only the original lego and add the new legos
-                    setDroppedLegos(prev => {
-                        // First, remove only the original lego from this specific operation
-                        const withoutOld = prev.filter(lego =>
-                            !nextOperation.data.oldLegos!.some(oldLego => oldLego.instanceId === lego.instanceId)
-                        );
-                        // Then add the new legos from this operation, but only if they don't already exist
-                        const newLegos = nextOperation.data.newLegos!;
-                        // Add all new legos that don't already exist
-                        const updatedLegos = [...withoutOld];
-                        newLegos.forEach(newLego => {
-                            if (!updatedLegos.some(lego => lego.instanceId === newLego.instanceId)) {
-                                updatedLegos.push(newLego);
-                            }
-                        });
-                        return updatedLegos;
-                    });
-                    // Update connections
-                    if (nextOperation.data.newConnections) {
-                        setConnections(prev => {
-                            // First, remove only the old connections from this specific operation
-                            const withoutOld = prev.filter(conn =>
-                                !nextOperation.data.oldConnections?.some(oldConn =>
-                                    oldConn.from.legoId === conn.from.legoId &&
-                                    oldConn.from.legIndex === conn.from.legIndex &&
-                                    oldConn.to.legoId === conn.to.legoId &&
-                                    oldConn.to.legIndex === conn.to.legIndex
-                                )
-                            );
-                            // Then add the new connections from this operation, but only if they don't already exist
-                            const newConns = nextOperation.data.newConnections!;
-                            // Add all new connections that don't already exist
-                            const updatedConns = [...withoutOld];
-                            newConns.forEach(newConn => {
-                                if (!updatedConns.some(conn =>
-                                    conn.from.legoId === newConn.from.legoId &&
-                                    conn.from.legIndex === newConn.from.legIndex &&
-                                    conn.to.legoId === newConn.to.legoId &&
-                                    conn.to.legIndex === newConn.to.legIndex
-                                )) {
-                                    updatedConns.push(newConn);
-                                }
-                            });
-                            return updatedConns;
-                        });
-                    }
-                }
-                break;
-        }
-
-        // Move the operation back to the history stack
-        setOperationHistory(prev => [...prev, nextOperation]);
-        setRedoHistory(prev => prev.slice(0, -1));
-    }, [redoHistory]);
+    const handleRedo = () => {
+        console.log('before redo', connections, droppedLegos);
+        const { connections: newConnections, droppedLegos: newDroppedLegos } = operationHistory.redo(connections, droppedLegos);
+        console.log('redo result', newConnections, newDroppedLegos);
+        setConnections(newConnections);
+        setDroppedLegos(newDroppedLegos);
+        encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
+    }
 
     // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
@@ -1782,17 +1415,17 @@ function App() {
             const { matrix, legs, recognized_type } = response.data;
 
             // Create a new lego with the calculated parity check matrix
-            const maxInstanceId = Math.max(...legosToFuse.map(l => parseInt(l.instanceId)));
             const type_id = recognized_type || "fused_lego";
             const newLego: DroppedLego = {
                 id: type_id,
-                instanceId: maxInstanceId.toString(),
+                // it's important to use the max instance id + 1 to avoid collisions in the history, with connections especially
+                instanceId: (Math.max(...droppedLegos.map(l => parseInt(l.instanceId))) + 1).toString(),
                 shortName: "Fused",
                 name: "Fused Lego",
                 description: "Fused " + legosToFuse.length + " legos",
                 parity_check_matrix: matrix,
-                logical_legs: [], // TODO: Handle logical legs
-                gauge_legs: [], // TODO: Handle gauge legs
+                logical_legs: [],
+                gauge_legs: [],
                 x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
                 y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
                 style: getLegoStyle(type_id, matrix[0].length / 2),

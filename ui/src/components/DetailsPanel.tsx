@@ -9,7 +9,7 @@ import { PauliOperator } from '../types'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
 import { config } from '../config'
-
+import * as _ from 'lodash'
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
     selectedLego: DroppedLego | null
@@ -484,11 +484,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         );
 
         // Store the old state for history with deep copies
-        const oldLegos = droppedLegos.map(l => ({ ...l })); // Deep copy of legos
-        const oldConnections = connections.map(conn => ({
-            from: { ...conn.from },
-            to: { ...conn.to }
-        })); // Deep copy of connections
+        const oldLegos = _.cloneDeep(droppedLegos);
+        const oldConnections = _.cloneDeep(connections);
 
 
         try {

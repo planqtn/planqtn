@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export PYTHONPATH="."
+
+find . -type f -name '*.ts' | entr -r $@
