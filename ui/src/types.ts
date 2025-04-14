@@ -36,14 +36,27 @@ export interface DroppedLego extends LegoPiece {
 }
 
 
-export interface Connection {
-    from: {
+export class Connection {
+    constructor(public from: {
         legoId: string
         legIndex: number
+    }, public to: {
+        legoId: string
+        legIndex: number
+    }) {
+
     }
-    to: {
-        legoId: string
-        legIndex: number
+
+    public equals(other: Connection): boolean {
+        return (this.from.legoId === other.from.legoId && this.from.legIndex === other.from.legIndex && this.to.legoId === other.to.legoId && this.to.legIndex === other.to.legIndex) ||
+            (this.from.legoId === other.to.legoId && this.from.legIndex === other.to.legIndex && this.to.legoId === other.from.legoId && this.to.legIndex === other.from.legIndex)
+    }
+
+    public containsLego(legoId: string): boolean {
+        return this.from.legoId === legoId || this.to.legoId === legoId
+    }
+    public containsLeg(legoId: string, legIndex: number): boolean {
+        return this.from.legoId === legoId && this.from.legIndex === legIndex || this.to.legoId === legoId && this.to.legIndex === legIndex
     }
 }
 
@@ -109,27 +122,13 @@ export interface GroupDragState {
 
 
 export type Operation = {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuse' | 'unfuseInto2Legos' | 'colorChange' | 'pullOutOppositeLeg';
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuseToLegs' | 'unfuseInto2Legos' | 'colorChange' | 'pullOutOppositeLeg' | 'injectTwoLegged';
     data: {
-        legos?: DroppedLego[];
-        connections?: Connection[];
-        legoInstanceId?: string;
-        oldX?: number;
-        oldY?: number;
-        newX?: number;
-        newY?: number;
-        groupMoves?: {
-            legoInstanceId: string;
-            oldX: number;
-            oldY: number;
-            newX: number;
-            newY: number;
-        }[];
-        oldLegos?: DroppedLego[];
-        oldConnections?: Connection[];
-        newLego?: DroppedLego;
-        newLegos?: DroppedLego[];
-        newConnections?: Connection[];
+        legosToAdd?: DroppedLego[];
+        legosToRemove?: DroppedLego[];
+        legosToUpdate?: { oldLego: DroppedLego, newLego: DroppedLego }[];
+        connectionsToAdd?: Connection[];
+        connectionsToRemove?: Connection[];
     };
 };
 

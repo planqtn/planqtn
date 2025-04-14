@@ -16,6 +16,7 @@ import { TannerDialog } from './components/TannerDialog'
 import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
+import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -77,6 +78,8 @@ function App() {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
+    const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(null);
+    const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
     // Update the serializer when legos change
     useEffect(() => {
@@ -164,39 +167,119 @@ function App() {
 
 
     const handleDragStart = (e: React.DragEvent, lego: LegoPiece) => {
-        e.dataTransfer.setData('application/json', JSON.stringify(lego))
+        e.dataTransfer.setData('application/json', JSON.stringify(lego));
+        setDraggedLego(lego);
+        console.log("starting to drag something", lego);
     }
 
     const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-    }
+        e.preventDefault();
+
+        // Use the draggedLego state instead of trying to get data from dataTransfer
+        if (!draggedLego) return;
+
+        const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+
+        // Only handle two-legged legos
+        if (numLegs !== 2) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Find the closest connection
+        let closestConnection: Connection | null = null;
+        let minDistance = Infinity;
+
+        connections.forEach(conn => {
+            const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+            const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+            if (!fromLego || !toLego) return;
+
+            const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
+            const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+
+            const fromPoint = {
+                x: fromLego.x + fromPos.endX,
+                y: fromLego.y + fromPos.endY
+            };
+            const toPoint = {
+                x: toLego.x + toPos.endX,
+                y: toLego.y + toPos.endY
+            };
+
+            // Calculate distance from point to line segment
+            const distance = pointToLineDistance(x, y, fromPoint.x, fromPoint.y, toPoint.x, toPoint.y);
+            if (distance < minDistance && distance < 20) { // 20 pixels threshold
+                minDistance = distance;
+                closestConnection = conn;
+            }
+        });
+
+        setHoveredConnection(closestConnection);
+    };
 
     const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        const legoData = e.dataTransfer.getData('application/json')
-        if (legoData) {
-            const lego = JSON.parse(legoData)
-            const rect = e.currentTarget.getBoundingClientRect()
-            const x = e.clientX - rect.left
-            const y = e.clientY - rect.top
+        e.preventDefault();
 
-            if (lego.is_dynamic) {
-                setSelectedDynamicLego(lego)
-                setPendingDropPosition({ x, y })
-                setIsDialogOpen(true)
-            } else {
-                const instanceId = newInstanceId(droppedLegos)
-                const numLegs = lego.parity_check_matrix[0].length / 2
-                const newLego = { ...lego, x, y, instanceId, style: getLegoStyle(lego.id, numLegs), pushedLegs: [] }
-                setDroppedLegos(prev => [...prev, newLego])
-                operationHistory.addOperation({
-                    type: 'add',
-                    data: { legos: [newLego] }
-                })
-                encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs)
-            }
+        // Use the draggedLego state instead of trying to get data from dataTransfer
+        if (!draggedLego) return;
+
+        const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+
+        if (draggedLego.is_dynamic) {
+            setSelectedDynamicLego(draggedLego);
+            setPendingDropPosition({ x: e.clientX, y: e.clientY });
+            setIsDialogOpen(true);
+            setDraggedLego(null);
+            return;
         }
-    }
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const newLego = {
+            ...draggedLego,
+            x,
+            y,
+            instanceId: newInstanceId(droppedLegos),
+            style: getLegoStyle(draggedLego.id, numLegs),
+            pushedLegs: []
+        };
+
+        // Handle two-legged lego insertion
+        if (numLegs === 2 && hoveredConnection) {
+
+            const trafo = new InjectTwoLegged(connections, droppedLegos);
+            trafo.apply(newLego, hoveredConnection).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
+                setDroppedLegos(newDroppedLegos);
+                setConnections(newConnections);
+                operationHistory.addOperation(operation);
+                encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
+            }).catch(error => {
+                setError(`${error}`);
+                console.error(error);
+            });
+        } else {
+
+            setDroppedLegos(prev => [...prev, newLego]);
+            operationHistory.addOperation({
+                type: 'add',
+                data: { legosToAdd: [newLego] }
+            });
+            encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
+        }
+
+        setHoveredConnection(null);
+        setDraggedLego(null);
+    };
+
+    // Add a handler for when drag ends
+    const handleDragEnd = () => {
+        setDraggedLego(null);
+        setHoveredConnection(null);
+    };
 
     const handleDynamicLegoSubmit = async (parameters: Record<string, any>) => {
         if (!selectedDynamicLego || !pendingDropPosition) return;
@@ -233,7 +316,7 @@ function App() {
             setDroppedLegos(prev => [...prev, newLego]);
             operationHistory.addOperation({
                 type: 'add',
-                data: { legos: [newLego] }
+                data: { legosToAdd: [newLego] }
             });
             encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
         } catch (error) {
@@ -312,8 +395,8 @@ function App() {
         operationHistory.addOperation({
             type: 'add',
             data: {
-                legos: newLegos,
-                connections: newConnections
+                legosToAdd: newLegos,
+                connectionsToAdd: newConnections
             }
         });
 
@@ -513,9 +596,6 @@ function App() {
         }
 
         if (canvasDragState.isDragging) {
-
-
-
             const newX = e.clientX - rect.left;
             const newY = e.clientY - rect.top;
             const deltaX = newX - canvasDragState.startX;
@@ -529,7 +609,6 @@ function App() {
                 currentY: newY
             }));
 
-
             const movedLegos = droppedLegos.map(lego => ({
                 ...lego,
                 x: lego.x + deltaX,
@@ -537,7 +616,6 @@ function App() {
             }));
             setDroppedLegos(movedLegos);
             encodeCanvasState(movedLegos, connections, hideConnectedLegs);
-
         }
 
         // Check if we should start dragging
@@ -582,12 +660,52 @@ function App() {
                 return lego;
             });
 
-            // Update all legos at once to prevent lag
             setDroppedLegos(updatedLegos);
             if (groupDragState) {
                 if (tensorNetwork) {
                     tensorNetwork.legos = updatedLegos.filter(lego => groupDragState.legoInstanceIds.includes(lego.instanceId));
                 }
+            } else if (selectedLego && droppedLegos[dragState.draggedLegoIndex]?.instanceId === selectedLego.instanceId) {
+                selectedLego.x = newX;
+                selectedLego.y = newY;
+            }
+
+            // Check if we're hovering over a connection (for two-legged legos)
+            const draggedLego = updatedLegos[dragState.draggedLegoIndex];
+            const draggedLegoHasConnections = connections.some(conn => conn.containsLego(draggedLego.instanceId));
+            if (draggedLego && draggedLego.parity_check_matrix[0].length / 2 === 2 && !draggedLegoHasConnections) {
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Find the closest connection
+                let closestConnection: Connection | null = null;
+                let minDistance = Infinity;
+
+                connections.forEach(conn => {
+                    const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                    const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                    if (!fromLego || !toLego) return;
+
+                    const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
+                    const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+
+                    const fromPoint = {
+                        x: fromLego.x + fromPos.endX,
+                        y: fromLego.y + fromPos.endY
+                    };
+                    const toPoint = {
+                        x: toLego.x + toPos.endX,
+                        y: toLego.y + toPos.endY
+                    };
+
+                    const distance = pointToLineDistance(x, y, fromPoint.x, fromPoint.y, toPoint.x, toPoint.y);
+                    if (distance < minDistance && distance < 20) {
+                        minDistance = distance;
+                        closestConnection = conn;
+                    }
+                });
+
+                setHoveredConnection(closestConnection);
             }
         }
 
@@ -596,7 +714,6 @@ function App() {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Update the current position in legDragState
             setLegDragState(prev => ({
                 ...prev!,
                 currentX: mouseX,
@@ -632,7 +749,6 @@ function App() {
 
         // Handle selection box end
         if (selectionBox.isSelecting) {
-            // Calculate final selection box bounds
             const left = Math.min(selectionBox.startX, selectionBox.currentX);
             const right = Math.max(selectionBox.startX, selectionBox.currentX);
             const top = Math.min(selectionBox.startY, selectionBox.currentY);
@@ -643,7 +759,7 @@ function App() {
             setSelectionBox(prev => ({
                 ...prev,
                 isSelecting: false,
-                justFinished: true  // Set the flag when selection box operation ends
+                justFinished: true
             }));
             return;
         }
@@ -666,51 +782,85 @@ function App() {
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
 
-            if (deltaX !== 0 || deltaY !== 0) {
-                if (groupDragState) {
-                    // Record a single group move operation
-                    const groupMoves = groupDragState.legoInstanceIds.map(instanceId => ({
-                        legoInstanceId: instanceId,
-                        oldX: groupDragState.originalPositions[instanceId].x,
-                        oldY: groupDragState.originalPositions[instanceId].y,
-                        newX: groupDragState.originalPositions[instanceId].x + deltaX,
-                        newY: groupDragState.originalPositions[instanceId].y + deltaY
-                    }));
+            // Check if we're dropping on a connection (for two-legged legos)
+            if (hoveredConnection) {
+                const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+                if (draggedLego && draggedLego.parity_check_matrix[0].length / 2 === 2) {
+                    const updatedLego = {
+                        ...draggedLego,
+                        x: newX,
+                        y: newY
+                    };
 
-                    operationHistory.addOperation({
-                        type: 'move',
-                        data: { groupMoves }
+                    const trafo = new InjectTwoLegged(connections, droppedLegos);
+                    trafo.apply(updatedLego, hoveredConnection, { ...draggedLego, x: newX - deltaX, y: newY - deltaY }).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
+                        setDroppedLegos(newDroppedLegos);
+                        setConnections(newConnections);
+                        operationHistory.addOperation(operation);
+                        encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
+                    }).catch(error => {
+                        setError(`${error}`);
+                        console.error(error);
                     });
-
-                } else if (tensorNetwork) {
-                    // Record a single group move operation for manually selected legos
-                    const groupMoves = tensorNetwork.legos.map(lego => ({
-                        legoInstanceId: lego.instanceId,
-                        oldX: lego.x - deltaX,
-                        oldY: lego.y - deltaY,
-                        newX: lego.x,
-                        newY: lego.y
+                }
+            } else if (deltaX !== 0 || deltaY !== 0) {
+                if (groupDragState) {
+                    const groupMoves = groupDragState.legoInstanceIds.map(instanceId => ({
+                        oldLego: {
+                            ...(droppedLegos.find(lego => lego.instanceId === instanceId)! as DroppedLego),
+                            x: groupDragState.originalPositions[instanceId].x,
+                            y: groupDragState.originalPositions[instanceId].y
+                        },
+                        newLego: {
+                            ...(droppedLegos.find(lego => lego.instanceId === instanceId)! as DroppedLego),
+                            x: groupDragState.originalPositions[instanceId].x + deltaX,
+                            y: groupDragState.originalPositions[instanceId].y + deltaY
+                        }
                     }));
 
                     operationHistory.addOperation({
                         type: 'move',
-                        data: { groupMoves }
+                        data: { legosToUpdate: groupMoves }
+                    });
+                } else if (tensorNetwork) {
+                    const groupMoves = tensorNetwork.legos.map(lego => ({
+                        oldLego: {
+                            ...(lego),
+                            x: lego.x - deltaX,
+                            y: lego.y - deltaY,
+                        },
+                        newLego: {
+                            ...(lego),
+                            x: lego.x,
+                            y: lego.y
+                        }
+                    }));
+
+                    operationHistory.addOperation({
+                        type: 'move',
+                        data: { legosToUpdate: groupMoves }
                     });
                 } else {
                     operationHistory.addOperation({
                         type: 'move',
                         data: {
-                            legoInstanceId: droppedLegos[dragState.draggedLegoIndex].instanceId,
-                            oldX: dragState.originalX,
-                            oldY: dragState.originalY,
-                            newX,
-                            newY
+                            legosToUpdate: [{
+                                oldLego: {
+                                    ...(droppedLegos[dragState.draggedLegoIndex] as DroppedLego),
+                                    x: dragState.originalX,
+                                    y: dragState.originalY
+                                },
+                                newLego: {
+                                    ...(droppedLegos[dragState.draggedLegoIndex] as DroppedLego),
+                                    x: newX,
+                                    y: newY
+                                }
+                            }]
                         }
                     });
                 }
             }
 
-            // Update URL state after the drag operation is complete
             encodeCanvasState(droppedLegos, connections, hideConnectedLegs);
         }
 
@@ -719,7 +869,6 @@ function App() {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Find if we're over another leg
             droppedLegos.find(lego => {
                 const legCount = lego.parity_check_matrix[0].length / 2;
                 for (let i = 0; i < legCount; i++) {
@@ -745,7 +894,6 @@ function App() {
                             (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
                         );
 
-                        // Prevent connecting a leg to itself
                         if (lego.instanceId === legDragState.legoId && i === legDragState.legIndex) {
                             return true;
                         }
@@ -763,16 +911,15 @@ function App() {
                         );
 
                         if (!connectionExists) {
-                            const newConnection = {
-                                from: {
+                            const newConnection = new Connection(
+                                {
                                     legoId: legDragState.legoId,
                                     legIndex: legDragState.legIndex
-                                },
-                                to: {
-                                    legoId: lego.instanceId,
-                                    legIndex: i
-                                }
-                            };
+                                }, {
+                                legoId: lego.instanceId,
+                                legIndex: i
+                            }
+                            );
 
                             setConnections(prev => {
                                 const newConnections = [...prev, newConnection];
@@ -782,7 +929,7 @@ function App() {
 
                             operationHistory.addOperation({
                                 type: 'connect',
-                                data: { connections: [newConnection] }
+                                data: { connectionsToAdd: [newConnection] }
                             });
                             return true;
                         }
@@ -793,6 +940,7 @@ function App() {
         }
 
         setLegDragState(null);
+        setHoveredConnection(null);
 
         setDragState(prev => ({
             ...prev,
@@ -802,7 +950,6 @@ function App() {
         }));
 
         setGroupDragState(null);
-
     };
 
     const handleCanvasMouseLeave = () => {
@@ -928,8 +1075,8 @@ function App() {
                     operationHistory.addOperation({
                         type: 'remove',
                         data: {
-                            legos: legosToRemove,
-                            connections: connectionsToRemove
+                            legosToRemove: legosToRemove,
+                            connectionsToRemove: connectionsToRemove
                         }
                     });
 
@@ -1015,7 +1162,7 @@ function App() {
         // Add to history before removing
         operationHistory.addOperation({
             type: 'disconnect',
-            data: { connections: [connection] }
+            data: { connectionsToRemove: [connection] }
         });
 
         // Remove the connection and update URL state with the new connections
@@ -1038,8 +1185,8 @@ function App() {
         operationHistory.addOperation({
             type: 'remove',
             data: {
-                legos: droppedLegos,
-                connections: connections
+                legosToRemove: droppedLegos,
+                connectionsToRemove: connections
             }
         });
 
@@ -1078,7 +1225,10 @@ function App() {
     const handleCssTannerSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`${config.backendUrl}/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            const { legos, connections } = response.data;
+            let { legos, connections: newConnections } = response.data;
+            newConnections = newConnections.map((conn: Connection) => {
+                return new Connection(conn.from, conn.to);
+            });
 
             // Calculate positions for each type of node
             const canvasWidth = 800;  // Approximate canvas width
@@ -1090,7 +1240,7 @@ function App() {
             const xNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('x'));
 
             // Calculate positions for each row
-            const positionedLegos = legos.map((lego: DroppedLego) => {
+            const newLegos = legos.map((lego: DroppedLego) => {
                 let rowIndex: number;
                 let nodesInRow: DroppedLego[];
                 let y: number;
@@ -1117,27 +1267,27 @@ function App() {
                     ...lego,
                     x,
                     y,
-                    style: getLegoStyle(lego.id),
+                    style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
                     pushedLegs: [],
                     selectedMatrixRows: []
                 };
             });
 
             // Add to state
-            setDroppedLegos(prev => [...prev, ...positionedLegos]);
-            setConnections(prev => [...prev, ...connections]);
+            setDroppedLegos(prev => [...prev, ...newLegos]);
+            setConnections(prev => [...prev, ...newConnections]);
 
             // Add to history
             operationHistory.addOperation({
                 type: 'add',
                 data: {
-                    legos: positionedLegos,
-                    connections: connections
+                    legosToAdd: newLegos,
+                    connectionsToAdd: newConnections
                 }
             });
 
-            const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
+            const updatedLegos = [...droppedLegos, ...newLegos];
+            encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1153,7 +1303,10 @@ function App() {
     const handleTannerSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`${config.backendUrl}/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            const { legos, connections } = response.data;
+            let { legos, connections: newConnections } = response.data;
+            newConnections = newConnections.map((conn: Connection) => {
+                return new Connection(conn.from, conn.to);
+            });
 
             // Calculate positions for each type of node
             const canvasWidth = 800;  // Approximate canvas width
@@ -1164,7 +1317,7 @@ function App() {
             const qNodes = legos.filter((lego: DroppedLego) => lego.shortName.startsWith('q'));
 
             // Calculate positions for each row
-            const positionedLegos = legos.map((lego: DroppedLego) => {
+            const newLegos = legos.map((lego: DroppedLego) => {
                 let rowIndex: number;
                 let nodesInRow: DroppedLego[];
                 let y: number;
@@ -1194,20 +1347,20 @@ function App() {
             });
 
             // Add to state
-            setDroppedLegos(prev => [...prev, ...positionedLegos]);
-            setConnections(prev => [...prev, ...connections]);
+            setDroppedLegos(prev => [...prev, ...newLegos]);
+            setConnections(prev => [...prev, ...newConnections]);
 
             // Add to history
             operationHistory.addOperation({
                 type: 'add',
                 data: {
-                    legos: positionedLegos,
-                    connections: connections
+                    legosToAdd: newLegos,
+                    connectionsToAdd: newConnections
                 }
             });
 
-            const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
+            const updatedLegos = [...droppedLegos, ...newLegos];
+            encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1223,7 +1376,10 @@ function App() {
     const handleMspSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`${config.backendUrl}/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            const { legos, connections } = response.data;
+            let { legos, connections: newConnections } = response.data;
+            newConnections = newConnections.map((conn: Connection) => {
+                return new Connection(conn.from, conn.to);
+            });
             // Calculate positions using lego coordinates
             const canvasWidth = 800;  // Approximate canvas width
             const margin = 50;  // Margin from edges
@@ -1239,7 +1395,7 @@ function App() {
             const xScale = (canvasWidth - 2 * margin) / (maxX - minX || 1) * 1.2;
 
             // Position legos using their coordinates scaled to fit
-            const positionedLegos = legos.map((lego: DroppedLego) => {
+            const newLegos = legos.map((lego: DroppedLego) => {
                 const x = margin + (lego.x - minX) * xScale;
                 const y = margin + (lego.y - minY) * xScale; // Use same scale for y to maintain proportions
 
@@ -1254,20 +1410,20 @@ function App() {
             });
 
             // Add to state
-            setDroppedLegos(prev => [...prev, ...positionedLegos]);
-            setConnections(prev => [...prev, ...connections]);
+            setDroppedLegos(prev => [...prev, ...newLegos]);
+            setConnections(prev => [...prev, ...newConnections]);
 
             // Add to history
             operationHistory.addOperation({
                 type: 'add',
                 data: {
-                    legos: positionedLegos,
-                    connections: connections
+                    legosToAdd: newLegos,
+                    connectionsToAdd: newConnections
                 }
             });
 
-            const updatedLegos = [...droppedLegos, ...positionedLegos];
-            encodeCanvasState(updatedLegos, connections, hideConnectedLegs);
+            const updatedLegos = [...droppedLegos, ...newLegos];
+            encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -1413,6 +1569,38 @@ function App() {
 
             return lego;
         });
+    };
+
+    // Helper function to calculate distance from point to line segment
+    const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
+        const A = x - x1;
+        const B = y - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+
+        const dot = A * C + B * D;
+        const len_sq = C * C + D * D;
+        let param = -1;
+        if (len_sq !== 0) {
+            param = dot / len_sq;
+        }
+
+        let xx, yy;
+
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+
+        const dx = x - xx;
+        const dy = y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     };
 
     return (
@@ -1569,6 +1757,7 @@ function App() {
                                 position="relative"
                                 onDragOver={handleDragOver}
                                 onDrop={handleDrop}
+                                onDragEnd={handleDragEnd}
                                 onMouseMove={handleCanvasMouseMove}
                                 onWheel={handleCanvasMouseWheel}
                                 onMouseUp={handleCanvasMouseUp}
@@ -1630,12 +1819,12 @@ function App() {
 
                                             // Determine if legs should be hidden
                                             const hideFromLeg = hideConnectedLegs && fromLegConnected && (
-                                                !fromLegHighlighted ? !toLegHighlighted : // If from is not highlighted, hide if to is not highlighted
-                                                    toLegHighlighted && fromLegStyle.color === toLegStyle.color // If from is highlighted, hide if to has same highlight
+                                                !fromLegHighlighted ? !toLegHighlighted :
+                                                    toLegHighlighted && fromLegStyle.color === toLegStyle.color
                                             );
                                             const hideToLeg = hideConnectedLegs && toLegConnected && (
-                                                !toLegHighlighted ? !fromLegHighlighted : // If to is not highlighted, hide if from is not highlighted
-                                                    fromLegHighlighted && fromLegStyle.color === toLegStyle.color // If to is highlighted, hide if from has same highlight
+                                                !toLegHighlighted ? !fromLegHighlighted :
+                                                    fromLegHighlighted && fromLegStyle.color === toLegStyle.color
                                             );
 
                                             // Final points with lego positions
@@ -1685,6 +1874,13 @@ function App() {
                                             const sharedColor = colorsMatch ? fromChakraColorToHex(fromLegColor) : 'yellow';
                                             const connectorColor = colorsMatch ? sharedColor : 'yellow';
 
+                                            // Check if this connection is being hovered
+                                            const isHovered = hoveredConnection &&
+                                                hoveredConnection.from.legoId === conn.from.legoId &&
+                                                hoveredConnection.from.legIndex === conn.from.legIndex &&
+                                                hoveredConnection.to.legoId === conn.to.legoId &&
+                                                hoveredConnection.to.legIndex === conn.to.legIndex;
+
                                             return (
                                                 <g key={connKey}>
                                                     {/* Invisible wider path for easier clicking */}
@@ -1720,12 +1916,12 @@ function App() {
                                                     <path
                                                         d={pathString}
                                                         stroke={connectorColor}
-                                                        strokeWidth="2"
+                                                        strokeWidth={isHovered ? '4' : '2'}
                                                         fill="none"
                                                         style={{
                                                             pointerEvents: 'none',
-                                                            // transition: 'all 0.1s ease',
-                                                            stroke: connectorColor
+                                                            stroke: connectorColor,
+                                                            filter: isHovered ? 'drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))' : 'none'
                                                         }}
                                                     />
                                                     {/* Warning sign if operators don't match */}

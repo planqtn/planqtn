@@ -124,7 +124,7 @@ export class CanvasStateSerializer {
             // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);
             return {
                 pieces: reconstructedPieces,
-                connections: decoded.connections || [],
+                connections: decoded.connections.map((conn: Connection) => new Connection(conn.from, conn.to)),
                 hideConnectedLegs: decoded.hideConnectedLegs || false
             }
         } catch (error) {

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { getLegoStyle } from "../LegoStyles";
 import * as _ from 'lodash';
 export class FuseLegos {
+
     static operationCode: string = "fuse";
 
     constructor(private connections: Connection[], private droppedLegos: DroppedLego[]) {
@@ -23,6 +24,10 @@ export class FuseLegos {
                 const toInGroup = legosToFuse.some(l => l.instanceId === conn.to.legoId);
                 return (fromInGroup && !toInGroup) || (!fromInGroup && toInGroup);
             });
+
+            const remainingConnections = this.connections.filter(conn =>
+                !internalConnections.some(ic => ic.equals(conn)) &&
+                !externalConnections.some(ec => ec.equals(conn)));
 
             // Create a map of old leg indices to track external connections
             const legMap = new Map<string, { legoId: string; legIndex: number }>();
@@ -78,18 +83,13 @@ export class FuseLegos {
                     const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
                         leg.instanceId === conn.from.legoId && leg.legIndex === conn.from.legIndex
                     );
-                    return {
-                        from: { legoId: newLego.instanceId, legIndex: newLegIndex },
-                        to: { legoId: conn.to.legoId, legIndex: conn.to.legIndex }
-                    };
+                    return new Connection({ legoId: newLego.instanceId, legIndex: newLegIndex },
+                        conn.to);
                 } else {
                     const newLegIndex = legs.findIndex((leg: TensorNetworkLeg) =>
                         leg.instanceId === conn.to.legoId && leg.legIndex === conn.to.legIndex
                     );
-                    return {
-                        from: { legoId: conn.from.legoId, legIndex: conn.from.legIndex },
-                        to: { legoId: newLego.instanceId, legIndex: newLegIndex }
-                    };
+                    return new Connection(conn.from, { legoId: newLego.instanceId, legIndex: newLegIndex });
                 }
             });
 
@@ -100,9 +100,7 @@ export class FuseLegos {
                 newLego
             ];
             const resultingConnections = [
-                ...this.connections.filter(c =>
-                    !legosToFuse.some(l => l.instanceId === c.from.legoId || l.instanceId === c.to.legoId)
-                ),
+                ...remainingConnections,
                 ...newConnections
             ];
 
@@ -112,10 +110,10 @@ export class FuseLegos {
                 connections: resultingConnections, droppedLegos: resultingDroppedLegos, operation: {
                     type: 'fuse',
                     data: {
-                        oldLegos: legosToFuse,
-                        oldConnections: [...internalConnections, ...externalConnections],
-                        newLego,
-                        newConnections
+                        legosToRemove: legosToFuse,
+                        legosToAdd: [newLego],
+                        connectionsToRemove: [...internalConnections, ...externalConnections],
+                        connectionsToAdd: newConnections,
                     }
                 }
             };
@@ -132,29 +130,5 @@ export class FuseLegos {
             }
 
         }
-    }
-
-    public undo(lastOperation: Operation) {
-        let newConnections: Connection[] = _.cloneDeep(this.connections);
-        let newDroppedLegos: DroppedLego[] = _.cloneDeep(this.droppedLegos);
-
-        if (lastOperation.data.oldLegos && lastOperation.data.oldConnections) {
-            // Remove the fused lego
-
-            newDroppedLegos = newDroppedLegos.filter(lego => lego.instanceId !== lastOperation.data.newLego?.instanceId);
-            newDroppedLegos = [...newDroppedLegos, ...lastOperation.data.oldLegos!];
-            // Restore old connections
-            newConnections = this.connections.filter(conn =>
-                !lastOperation.data.newConnections?.some(newConn =>
-                    newConn.from.legoId === conn.from.legoId &&
-                    newConn.from.legIndex === conn.from.legIndex &&
-                    newConn.to.legoId === conn.to.legoId &&
-                    newConn.to.legIndex === conn.to.legIndex
-                )
-            );
-            newConnections = [...newConnections, ...lastOperation.data.oldConnections!];
-        }
-
-        return { connections: newConnections, droppedLegos: newDroppedLegos };
     }
 }

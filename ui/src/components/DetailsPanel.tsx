@@ -1,6 +1,6 @@
 import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
-import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection } from '../types.ts'
+import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection, Operation } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
@@ -27,16 +27,6 @@ interface DetailsPanelProps {
     hideConnectedLegs: boolean
     makeSpace: (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]) => DroppedLego[]
 }
-
-type Operation = {
-    type: 'fuse' | 'unfuse' | 'colorChange' | 'pullOutOppositeLeg' | 'unfuseInto2Legos';
-    data: {
-        oldLegos: DroppedLego[];
-        oldConnections: Connection[];
-        newLegos: DroppedLego[];
-        newConnections: Connection[];
-    };
-};
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
     tensorNetwork: tensorNetwork,
@@ -69,6 +59,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     useEffect(() => {
         setCalculatedMatrix(null);
     }, [tensorNetwork]);
+
+    useEffect(() => {
+        console.log("Connections changed", connections);
+    }, [connections]);
 
     // Helper function to generate network signature for caching
     const getNetworkSignature = (network: TensorNetwork) => {
@@ -261,9 +255,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
         );
 
-        // Store the old state for history
-        const oldLegos = [lego];
-
         try {
             // Get the new repetition code with one more leg
             const response = await fetch(`${config.backendUrl}/dynamiclego`, {
@@ -288,6 +279,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             // Create the new lego with updated matrix but same position
             const newLego: DroppedLego = {
                 ...lego,
+                style: getLegoStyle(lego.id, numLegs + 1),
                 parity_check_matrix: newLegoData.parity_check_matrix
             };
 
@@ -309,16 +301,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             };
 
             // Create new connection to the stopper
-            const newConnection: Connection = {
-                from: {
+            const newConnection: Connection = new Connection(
+                {
                     legoId: lego.instanceId,
                     legIndex: numLegs // The new leg will be at index numLegs
                 },
-                to: {
+                {
                     legoId: stopperLego.instanceId,
                     legIndex: 0
                 }
-            };
+            );
 
             // Update the state
             const newLegos = [...droppedLegos.filter(l => l.instanceId !== lego.instanceId), newLego, stopperLego];
@@ -333,12 +325,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             operationHistory.addOperation({
                 type: 'pullOutOppositeLeg',
                 data: {
-                    oldLegos,
-                    oldConnections: [...connections.filter(c =>
-                        c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
-                    ), ...existingConnections],
-                    newLegos: [newLego, stopperLego],
-                    newConnections: newConnections
+                    legosToRemove: [lego],
+                    connectionsToRemove: [],
+                    legosToAdd: [newLego, stopperLego],
+                    connectionsToAdd: [newConnection]
                 }
             });
 
@@ -408,28 +398,25 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             newLegos.push(hadamardLego);
 
             // Connect Hadamard to the original lego
-            newConnections.push({
-                from: { legoId: lego.instanceId, legIndex: i },
-                to: { legoId: hadamardLego.instanceId, legIndex: 0 }
-            });
+            newConnections.push(new Connection(
+                { legoId: lego.instanceId, legIndex: i },
+                { legoId: hadamardLego.instanceId, legIndex: 0 }
+            ));
 
             // Connect Hadamard to the original connection if it exists
-            const existingConnection = existingConnections.find(conn =>
-                (conn.from.legoId === lego.instanceId && conn.from.legIndex === i) ||
-                (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
-            );
+            const existingConnection = existingConnections.find(conn => conn.containsLeg(lego.instanceId, i));
 
             if (existingConnection) {
                 if (existingConnection.from.legoId === lego.instanceId) {
-                    newConnections.push({
-                        from: { legoId: hadamardLego.instanceId, legIndex: 1 },
-                        to: existingConnection.to
-                    });
+                    newConnections.push(new Connection(
+                        { legoId: hadamardLego.instanceId, legIndex: 1 },
+                        existingConnection.to
+                    ));
                 } else {
-                    newConnections.push({
-                        from: existingConnection.from,
-                        to: { legoId: hadamardLego.instanceId, legIndex: 1 }
-                    });
+                    newConnections.push(new Connection(
+                        existingConnection.from,
+                        { legoId: hadamardLego.instanceId, legIndex: 1 }
+                    ));
                 }
             }
         }
@@ -454,10 +441,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         const operation: Operation = {
             type: 'colorChange',
             data: {
-                oldLegos,
-                oldConnections,
-                newLegos,
-                newConnections
+                legosToRemove: oldLegos,
+                connectionsToRemove: oldConnections,
+                legosToAdd: newLegos,
+                connectionsToAdd: newConnections
             }
         };
         operationHistory.addOperation(operation);
@@ -472,7 +459,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setShowLegPartitionDialog(true);
     };
 
-    const handleLegPartitionConfirm = async (legAssignments: boolean[]) => {
+    const handleUnfuseTo2LegosPartitionConfirm = async (legAssignments: boolean[], oldConnections: Connection[]) => {
         if (!unfuseLego) return;
         const lego = unfuseLego;
 
@@ -480,13 +467,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
 
         // Find any existing connections to the original lego
-        const existingConnections = connections.filter(
-            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
-        );
-
-        // Store the old state for history with deep copies
-        const oldLegos = _.cloneDeep(droppedLegos);
-        const oldConnections = _.cloneDeep(connections);
+        console.log("Old connections", oldConnections);
+        const connectionsInvolvingLego = oldConnections.filter(conn => conn.containsLego(lego.instanceId));
 
 
         try {
@@ -556,20 +538,20 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             };
 
             // Create connection between the new legos
-            const connectionBetweenLegos: Connection = {
-                from: {
+            const connectionBetweenLegos: Connection = new Connection(
+                {
                     legoId: lego1.instanceId,
                     legIndex: lego1Legs  // The last leg is the connecting one
                 },
-                to: {
+                {
                     legoId: lego2.instanceId,
                     legIndex: lego2Legs  // The last leg is the connecting one
                 }
-            };
+            );
 
             // Remap existing connections based on leg assignments
-            const newConnections = existingConnections.map(conn => {
-                let newConn = { ...conn };
+            const newConnections = connectionsInvolvingLego.map(conn => {
+                let newConn = new Connection(_.cloneDeep(conn.from), _.cloneDeep(conn.to));
                 if (conn.from.legoId === lego.instanceId) {
                     const oldLegIndex = conn.from.legIndex;
                     if (!legAssignments[oldLegIndex]) {
@@ -602,21 +584,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // Only keep connections that don't involve the original lego at all
             // We need to filter from the full connections array, not just existingConnections
-            const remainingConnections = connections.filter(c =>
-                c.from.legoId !== lego.instanceId &&
-                c.to.legoId !== lego.instanceId &&
-                !existingConnections.some(ec =>
-                    ec.from.legoId === c.from.legoId &&
-                    ec.from.legIndex === c.from.legIndex &&
-                    ec.to.legoId === c.to.legoId &&
-                    ec.to.legIndex === c.to.legIndex
-                )
-            );
+            const remainingConnections = oldConnections.filter(c => !c.containsLego(lego.instanceId));
 
             // Add the remapped connections and the new connection between legos
             const updatedConnections = [...remainingConnections, ...newConnections, connectionBetweenLegos];
 
+            // console.log("Remaining connections", remainingConnections);
+            // console.log("New connections", newConnections);
+            // console.log("Connection between legos", connectionBetweenLegos);
 
+            // console.log("Connections involving lego", connectionsInvolvingLego);
 
             setDroppedLegos(newLegos);
             setConnections(updatedConnections);
@@ -625,10 +602,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             operationHistory.addOperation({
                 type: 'unfuseInto2Legos',
                 data: {
-                    oldLegos,
-                    oldConnections,
-                    newLegos,
-                    newConnections: updatedConnections
+                    legosToRemove: [lego],
+                    connectionsToRemove: connectionsInvolvingLego,
+                    legosToAdd: [lego1, lego2],
+                    connectionsToAdd: [...newConnections, connectionBetweenLegos]
                 }
             });
 
@@ -644,7 +621,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setSelectedLego(null);
     };
 
-    const handleUnfuse = (lego: DroppedLego) => {
+    const handleUnfuseToLegs = (lego: DroppedLego) => {
         // Get max instance ID
         const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
         const numLegs = lego.parity_check_matrix[0].length / 2;
@@ -697,21 +674,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             if (existingConnections.length > 0) {
                 const firstConnection = existingConnections[0];
                 if (firstConnection.from.legoId === lego.instanceId) {
-                    newConnections = [{
-                        from: { legoId: newLego.instanceId, legIndex: 0 },
-                        to: firstConnection.to
-                    }, {
-                        from: { legoId: newLego.instanceId, legIndex: 1 },
-                        to: { legoId: lego.instanceId, legIndex: 1 }
-                    }];
+                    newConnections = [new Connection(
+                        { legoId: newLego.instanceId, legIndex: 0 },
+                        firstConnection.to
+                    ), new Connection(
+                        { legoId: newLego.instanceId, legIndex: 1 },
+                        { legoId: lego.instanceId, legIndex: 1 }
+                    )];
                 } else {
-                    newConnections = [{
-                        from: firstConnection.from,
-                        to: { legoId: newLego.instanceId, legIndex: 0 }
-                    }, {
-                        from: { legoId: lego.instanceId, legIndex: 1 },
-                        to: { legoId: newLego.instanceId, legIndex: 1 }
-                    }];
+                    newConnections = [new Connection(
+                        firstConnection.from,
+                        { legoId: newLego.instanceId, legIndex: 0 }
+                    ), new Connection(
+                        { legoId: lego.instanceId, legIndex: 1 },
+                        { legoId: newLego.instanceId, legIndex: 1 }
+                    )];
                 }
             }
         } else if (numLegs === 2) {
@@ -729,24 +706,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // -- [0,lego,1]  - [0, new lego 1] --
 
-            newConnections.push({
-                from: { legoId: newLego.instanceId, legIndex: 0 },
-                to: { legoId: lego.instanceId, legIndex: 1 }
-            });
+            newConnections.push(new Connection(
+                { legoId: newLego.instanceId, legIndex: 0 },
+                { legoId: lego.instanceId, legIndex: 1 }
+            ));
 
             // Connect the new lego to the original connections
             existingConnections.forEach((conn, index) => {
                 const targetLego = index === 0 ? lego : newLego;
                 const legIndex = index === 0 ? 0 : 1;
 
-                newConnections.push({
-                    from: conn.from.legoId === lego.instanceId
+                newConnections.push(new Connection(
+                    conn.from.legoId === lego.instanceId
                         ? { legoId: targetLego.instanceId, legIndex }
                         : conn.from,
-                    to: conn.from.legoId === lego.instanceId
+                    conn.from.legoId === lego.instanceId
                         ? conn.to
                         : { legoId: targetLego.instanceId, legIndex }
-                });
+                ));
             });
         } else if (numLegs >= 3) {
             // Case 3: Original lego has 3 or more legs -> Create n new legos in a circle
@@ -774,22 +751,25 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 // Connect to the next lego in the circle using leg 0
                 const nextIndex = (i + 1) % numLegs;
                 newConnections.push(
-                    { from: { legoId: newLegos[i].instanceId, legIndex: 0 }, to: { legoId: newLegos[nextIndex].instanceId, legIndex: 1 } }
+                    new Connection(
+                        { legoId: newLegos[i].instanceId, legIndex: 0 },
+                        { legoId: newLegos[nextIndex].instanceId, legIndex: 1 }
+                    )
                 );
 
                 // Connect the third leg (leg 2) to the original connections
                 if (existingConnections[i]) {
                     const conn = existingConnections[i];
                     if (conn.from.legoId === lego.instanceId) {
-                        newConnections.push({
-                            from: { legoId: newLegos[i].instanceId, legIndex: 2 },
-                            to: conn.to
-                        });
+                        newConnections.push(new Connection(
+                            { legoId: newLegos[i].instanceId, legIndex: 2 },
+                            conn.to
+                        ));
                     } else {
-                        newConnections.push({
-                            from: conn.from,
-                            to: { legoId: newLegos[i].instanceId, legIndex: 2 }
-                        });
+                        newConnections.push(new Connection(
+                            conn.from,
+                            { legoId: newLegos[i].instanceId, legIndex: 2 }
+                        ));
                     }
                 }
             }
@@ -814,12 +794,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         // Add to history
         const operation: Operation = {
-            type: 'unfuse',
+            type: 'unfuseToLegs',
             data: {
-                oldLegos,
-                oldConnections,
-                newLegos,
-                newConnections
+                legosToRemove: oldLegos,
+                connectionsToRemove: oldConnections,
+                legosToAdd: newLegos,
+                connectionsToAdd: newConnections
             }
         };
         operationHistory.addOperation(operation);
@@ -982,7 +962,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         <VStack align="stretch" spacing={3}>
                             <Text fontWeight="bold">{selectedLego.name || selectedLego.shortName}</Text>
                             <Text fontSize="sm" color="gray.600">
-                                {selectedLego.description}, instaceId: {selectedLego.instanceId}
+                                {selectedLego.description}, instaceId: {selectedLego.instanceId}, x: {selectedLego.x}, y: {selectedLego.y}
                             </Text>
                             <Box>
                                 <Text fontSize="sm" mb={1}>Short Name:</Text>
@@ -1005,7 +985,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         leftIcon={<Icon as={FaCube} />}
                                         colorScheme="blue"
                                         size="sm"
-                                        onClick={() => handleUnfuse(selectedLego)}
+                                        onClick={() => handleUnfuseToLegs(selectedLego)}
                                     >
                                         Unfuse to legs
                                     </Button>
@@ -1064,7 +1044,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     setShowLegPartitionDialog(false);
                     setUnfuseLego(null);
                 }}
-                onConfirm={handleLegPartitionConfirm}
+                onConfirm={legAssignments => handleUnfuseTo2LegosPartitionConfirm(legAssignments, _.cloneDeep(connections))}
             />
         </Box>
     )
