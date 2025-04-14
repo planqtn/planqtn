@@ -1053,7 +1053,7 @@ function App() {
                     setSelectedLego(null);
                     setTensorNetwork(tensorNetwork);
                 }
-            } else if (e.key === 'Delete') {
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 // Handle deletion of selected legos
                 let legosToRemove: DroppedLego[] = [];
 
