@@ -12,6 +12,7 @@ import { config } from '../config'
 import * as _ from 'lodash'
 import { OperationHistory } from '../utils/OperationHistory'
 import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
+import { canDoInverseBialgebra, applyInverseBialgebra } from '../transformations/InverseBialgebra'
 
 
 interface DetailsPanelProps {
@@ -816,6 +817,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
     }
 
+    const handleInverseBialgebra = async () => {
+        const result = await applyInverseBialgebra(tensorNetwork!.legos, droppedLegos, connections);
+        setDroppedLegos(result.droppedLegos);
+        setConnections(result.connections);
+        operationHistory.addOperation(result.operation);
+        encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
+    }
+
     return (
         <Box
             h="100%"
@@ -852,7 +861,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             Bialgebra
                                         </Button>
                                     )}
-
+                                    {canDoInverseBialgebra(tensorNetwork.legos, connections) && (
+                                        <Button
+                                            leftIcon={<Icon as={FaCube} />}
+                                            colorScheme="blue"
+                                            size="sm"
+                                            onClick={handleInverseBialgebra}
+                                        >
+                                            Inverse bialgebra
+                                        </Button>
+                                    )}
                                 </VStack>
                                 <Heading size="md">Network Details</Heading>
                                 <VStack align="stretch" spacing={3}>
