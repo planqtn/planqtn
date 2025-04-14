@@ -1,6 +1,9 @@
 import { DroppedLego, LegoPiece, PauliOperator } from "./types";
 import { getPauliColor, I_COLOR, I_COLOR_DARK, I_COLOR_LIGHT, X_COLOR, X_COLOR_DARK, X_COLOR_LIGHT, Y_COLOR, Z_COLOR, Z_COLOR_DARK, Z_COLOR_LIGHT } from "./utils/PauliColors";
 
+export const Z_REP_CODE = "z_rep_code";
+export const X_REP_CODE = "x_rep_code";
+
 // Color mapping for SVG elements
 const chakraToHexColors: { [key: string]: string } = {
     "white": "#FFFFFF",
@@ -295,19 +298,19 @@ export class RepetitionCodeStyle extends LegoStyle {
     }
 
     get backgroundColor(): string {
-        return this.id === "z_rep_code" ? X_COLOR_LIGHT : Z_COLOR_LIGHT;
+        return this.id === Z_REP_CODE ? X_COLOR_LIGHT : Z_COLOR_LIGHT;
     }
 
     get borderColor(): string {
-        return this.id === "z_rep_code" ? X_COLOR : Z_COLOR;
+        return this.id === Z_REP_CODE ? X_COLOR : Z_COLOR;
     }
 
     get selectedBackgroundColor(): string {
-        return this.id === "z_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
+        return this.id === Z_REP_CODE ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get selectedBorderColor(): string {
-        return this.id === "z_rep_code" ? X_COLOR_DARK : Z_COLOR_DARK;
+        return this.id === Z_REP_CODE ? X_COLOR_DARK : Z_COLOR_DARK;
     }
 
     get is_special(): boolean {
@@ -392,13 +395,13 @@ export class StopperStyle extends LegoStyle {
 export function getLegoStyle(id: string, numLegs: number): LegoStyle {
     if (id === "h") {
         return new HadamardStyle(id);
-    } else if (id === "z_rep_code" || id === "x_rep_code") {
+    } else if (id === Z_REP_CODE || id === X_REP_CODE) {
         if (numLegs > 2) {
             return new RepetitionCodeStyle(id);
         } else if (numLegs === 2) {
             return new IdentityStyle(id);
         } else if (numLegs === 1) {
-            return new StopperStyle(id === "z_rep_code" ? "stopper_x" : "stopper_z");
+            return new StopperStyle(id === Z_REP_CODE ? "stopper_z" : "stopper_x");
         } else {
             return new GenericStyle(id);
         }

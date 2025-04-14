@@ -11,6 +11,9 @@ import { LegPartitionDialog } from './LegPartitionDialog'
 import { config } from '../config'
 import * as _ from 'lodash'
 import { OperationHistory } from '../utils/OperationHistory'
+import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
+
+
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
     selectedLego: DroppedLego | null
@@ -805,6 +808,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         operationHistory.addOperation(operation);
     };
 
+    const handleBialgebra = async () => {
+        const result = await applyBialgebra(tensorNetwork!.legos, droppedLegos, connections);
+        setDroppedLegos(result.droppedLegos);
+        setConnections(result.connections);
+        operationHistory.addOperation(result.operation);
+        encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
+    }
+
     return (
         <Box
             h="100%"
@@ -820,7 +831,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         <Text>Selected components: {tensorNetwork.legos.length} Legos</Text>
                         <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                             <VStack align="stretch" spacing={4}>
-                                <Heading size="md">Network Details</Heading>
+                                <Heading size="md">Transformations</Heading>
                                 <VStack align="stretch" spacing={3}>
                                     <Button
                                         colorScheme="blue"
@@ -831,6 +842,22 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                     >
                                         Fuse Legos
                                     </Button>
+                                    {canDoBialgebra(tensorNetwork.legos, connections) && (
+                                        <Button
+                                            leftIcon={<Icon as={FaCube} />}
+                                            colorScheme="blue"
+                                            size="sm"
+                                            onClick={handleBialgebra}
+                                        >
+                                            Bialgebra
+                                        </Button>
+                                    )}
+
+                                </VStack>
+                                <Heading size="md">Network Details</Heading>
+                                <VStack align="stretch" spacing={3}>
+
+
                                     {!tensorNetwork.parityCheckMatrix &&
                                         !parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)) && (
                                             <Button
