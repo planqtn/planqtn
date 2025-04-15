@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
@@ -16,6 +16,39 @@ import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
+import { AddStopper } from './transformations/AddStopper'
+
+// Add this before the App component
+function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedLegos: DroppedLego[], connections: Connection[]): { lego: DroppedLego, legIndex: number } | null {
+    let closestLego: DroppedLego | null = null;
+    let closestLegIndex: number = -1;
+    let minDistance = Infinity;
+
+    droppedLegos.forEach(lego => {
+        const totalLegs = lego.parity_check_matrix[0].length / 2;
+        for (let legIndex = 0; legIndex < totalLegs; legIndex++) {
+            // Skip if leg is already connected
+            const isConnected = connections.some(conn =>
+                (conn.from.legoId === lego.instanceId && conn.from.legIndex === legIndex) ||
+                (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
+            );
+            if (isConnected) continue;
+
+            const pos = calculateLegPosition(lego, legIndex);
+            const legX = lego.x + pos.endX;
+            const legY = lego.y + pos.endY;
+            const distance = Math.sqrt(Math.pow(dropPosition.x - legX, 2) + Math.pow(dropPosition.y - legY, 2));
+
+            if (distance < minDistance && distance < 20) { // 20 pixels threshold
+                minDistance = distance;
+                closestLego = lego;
+                closestLegIndex = legIndex;
+            }
+        }
+    });
+
+    return closestLego && closestLegIndex !== -1 ? { lego: closestLego, legIndex: closestLegIndex } : null;
+}
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -84,6 +117,9 @@ function App() {
     const [showMspDialog, setShowMspDialog] = useState(false);
     const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
     const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
+
+    // Inside the App component, add this line near the other hooks
+    const toast = useToast();
 
     // Update the serializer when legos change
     useEffect(() => {
@@ -252,12 +288,56 @@ function App() {
         setHoveredConnection(closestConnection);
     };
 
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        console.log("Dropping lego", draggedLego);
-
-        // Use the draggedLego state instead of trying to get data from dataTransfer
+    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
         if (!draggedLego) return;
+
+        const dropPosition = {
+            x: e.clientX - e.currentTarget.getBoundingClientRect().left,
+            y: e.clientY - e.currentTarget.getBoundingClientRect().top
+        };
+
+        if (draggedLego.id === 'custom_lego') {
+            setCustomLegoPosition(dropPosition);
+            setShowCustomLegoDialog(true);
+            return;
+        }
+
+        // Find the closest dangling leg if we're dropping a stopper
+        if (draggedLego.id.includes('stopper')) {
+            const closestLeg = findClosestDanglingLeg(dropPosition, droppedLegos, connections);
+            if (!closestLeg) return;
+
+            // Get max instance ID
+            const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+
+            // Create the stopper lego
+            const stopperLego: DroppedLego = {
+                ...draggedLego,
+                instanceId: (maxInstanceId + 1).toString(),
+                x: dropPosition.x,
+                y: dropPosition.y,
+                style: getLegoStyle(draggedLego.id, 1),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+            try {
+                const addStopper = new AddStopper(connections, droppedLegos);
+                const result = await addStopper.apply(closestLeg.lego, closestLeg.legIndex, stopperLego);
+                setConnections(result.connections);
+                setDroppedLegos(result.droppedLegos);
+                operationHistory.addOperation(result.operation);
+            } catch (error) {
+                console.error('Failed to add stopper:', error);
+                toast({
+                    title: 'Error',
+                    description: error instanceof Error ? error.message : 'Failed to add stopper',
+                    status: 'error',
+                    duration: 3000,
+                    isClosable: true,
+                });
+            }
+            return;
+        }
 
         const numLegs = draggedLego.parity_check_matrix[0].length / 2;
 
@@ -709,42 +789,64 @@ function App() {
                 selectedLego.y = newY;
             }
 
-            // Check if we're hovering over a connection (for two-legged legos)
+            // Check if we're hovering over a connection (for two-legged legos) or a dangling leg (for stoppers)
             const draggedLego = updatedLegos[dragState.draggedLegoIndex];
-            const draggedLegoHasConnections = connections.some(conn => conn.containsLego(draggedLego.instanceId));
-            if (draggedLego && draggedLego.parity_check_matrix[0].length / 2 === 2 && !draggedLegoHasConnections) {
+            if (draggedLego) {
+                const draggedLegoHasConnections = connections.some(conn => conn.containsLego(draggedLego.instanceId));
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                // Find the closest connection
-                let closestConnection: Connection | null = null;
-                let minDistance = Infinity;
+                if (draggedLego.parity_check_matrix[0].length / 2 === 2 && !draggedLegoHasConnections) {
+                    // Find the closest connection for two-legged legos
+                    let closestConnection: Connection | null = null;
+                    let minDistance = Infinity;
 
-                connections.forEach(conn => {
-                    const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
-                    const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
-                    if (!fromLego || !toLego) return;
+                    connections.forEach(conn => {
+                        const fromLego = droppedLegos.find(l => l.instanceId === conn.from.legoId);
+                        const toLego = droppedLegos.find(l => l.instanceId === conn.to.legoId);
+                        if (!fromLego || !toLego) return;
 
-                    const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
-                    const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+                        const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
+                        const toPos = calculateLegPosition(toLego, conn.to.legIndex);
 
-                    const fromPoint = {
-                        x: fromLego.x + fromPos.endX,
-                        y: fromLego.y + fromPos.endY
-                    };
-                    const toPoint = {
-                        x: toLego.x + toPos.endX,
-                        y: toLego.y + toPos.endY
-                    };
+                        const fromPoint = {
+                            x: fromLego.x + fromPos.endX,
+                            y: fromLego.y + fromPos.endY
+                        };
+                        const toPoint = {
+                            x: toLego.x + toPos.endX,
+                            y: toLego.y + toPos.endY
+                        };
 
-                    const distance = pointToLineDistance(x, y, fromPoint.x, fromPoint.y, toPoint.x, toPoint.y);
-                    if (distance < minDistance && distance < 20) {
-                        minDistance = distance;
-                        closestConnection = conn;
+                        const distance = pointToLineDistance(x, y, fromPoint.x, fromPoint.y, toPoint.x, toPoint.y);
+                        if (distance < minDistance && distance < 20) {
+                            minDistance = distance;
+                            closestConnection = conn;
+                        }
+                    });
+
+                    setHoveredConnection(closestConnection);
+                } else if (draggedLego.id.includes('stopper') && !draggedLegoHasConnections) {
+                    // Find the closest dangling leg for stoppers
+                    const closestLeg = findClosestDanglingLeg({ x, y }, droppedLegos, connections);
+                    if (closestLeg) {
+                        const pos = calculateLegPosition(closestLeg.lego, closestLeg.legIndex);
+                        const legX = closestLeg.lego.x + pos.endX;
+                        const legY = closestLeg.lego.y + pos.endY;
+                        const distance = Math.sqrt(Math.pow(x - legX, 2) + Math.pow(y - legY, 2));
+
+                        if (distance < 20) { // 20 pixels threshold
+                            setHoveredConnection(new Connection(
+                                { legoId: closestLeg.lego.instanceId, legIndex: closestLeg.legIndex },
+                                { legoId: draggedLego.instanceId, legIndex: 0 }
+                            ));
+                        } else {
+                            setHoveredConnection(null);
+                        }
+                    } else {
+                        setHoveredConnection(null);
                     }
-                });
-
-                setHoveredConnection(closestConnection);
+                }
             }
         }
 
@@ -821,28 +923,60 @@ function App() {
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
 
-            // Check if we're dropping on a connection (for two-legged legos)
+            // Check if we're dropping on a connection (for two-legged legos) or a dangling leg (for stoppers)
             if (hoveredConnection) {
                 const draggedLego = droppedLegos[dragState.draggedLegoIndex];
-                if (draggedLego && draggedLego.parity_check_matrix[0].length / 2 === 2) {
-                    const updatedLego = {
-                        ...draggedLego,
-                        x: newX,
-                        y: newY
-                    };
+                if (draggedLego) {
+                    if (draggedLego.parity_check_matrix[0].length / 2 === 2) {
+                        // Handle two-legged lego insertion
+                        const updatedLego = {
+                            ...draggedLego,
+                            x: newX,
+                            y: newY
+                        };
 
-                    const trafo = new InjectTwoLegged(connections, droppedLegos);
-                    trafo.apply(updatedLego, hoveredConnection, { ...draggedLego, x: newX - deltaX, y: newY - deltaY }).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
-                        setDroppedLegos(newDroppedLegos);
-                        setConnections(newConnections);
-                        operationHistory.addOperation(operation);
-                        encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
-                    }).catch(error => {
-                        setError(`${error}`);
-                        console.error(error);
-                    });
+                        const trafo = new InjectTwoLegged(connections, droppedLegos);
+                        trafo.apply(updatedLego, hoveredConnection, { ...draggedLego, x: newX - deltaX, y: newY - deltaY }).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
+                            setDroppedLegos(newDroppedLegos);
+                            setConnections(newConnections);
+                            operationHistory.addOperation(operation);
+                            encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
+                        }).catch(error => {
+                            setError(`${error}`);
+                            console.error(error);
+                        });
+                    } else if (draggedLego.id.includes('stopper')) {
+                        // Handle stopper lego insertion
+                        const updatedLego = {
+                            ...draggedLego,
+                            x: newX,
+                            y: newY
+                        };
+
+                        const addStopper = new AddStopper(connections, droppedLegos);
+                        addStopper.apply(
+                            droppedLegos.find(l => l.instanceId === hoveredConnection.from.legoId)!,
+                            hoveredConnection.from.legIndex,
+                            updatedLego
+                        ).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
+                            setDroppedLegos(newDroppedLegos);
+                            setConnections(newConnections);
+                            operationHistory.addOperation(operation);
+                            encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
+                        }).catch(error => {
+                            console.error('Failed to add stopper:', error);
+                            toast({
+                                title: 'Error',
+                                description: error instanceof Error ? error.message : 'Failed to add stopper',
+                                status: 'error',
+                                duration: 3000,
+                                isClosable: true,
+                            });
+                        });
+                    }
                 }
             } else if (deltaX !== 0 || deltaY !== 0) {
+                // Handle regular movement
                 if (groupDragState) {
                     const groupMoves = groupDragState.legoInstanceIds.map(instanceId => ({
                         oldLego: {

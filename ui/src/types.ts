@@ -123,7 +123,7 @@ export interface GroupDragState {
 
 
 export type Operation = {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuseToLegs' | 'unfuseInto2Legos' | 'colorChange' | 'pullOutOppositeLeg' | 'injectTwoLegged' | 'bialgebra' | 'inverseBialgebra' | 'hopf';
+    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuseToLegs' | 'unfuseInto2Legos' | 'colorChange' | 'pullOutOppositeLeg' | 'injectTwoLegged' | 'bialgebra' | 'inverseBialgebra' | 'hopf' | 'addStopper';
     data: {
         legosToAdd?: DroppedLego[];
         legosToRemove?: DroppedLego[];
