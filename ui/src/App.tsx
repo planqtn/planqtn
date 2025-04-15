@@ -1025,6 +1025,7 @@ function App() {
     // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 handleUndo();

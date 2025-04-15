@@ -11,6 +11,9 @@ import {
     Text,
     VStack,
     useToast,
+    FormControl,
+    FormLabel,
+    Switch,
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 
@@ -29,37 +32,127 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
     title = 'Create Tanner Network',
     cssOnly = false
 }) => {
-    const defaultMspMatrix = `1 1 1 1 0 0 0 0
-0 0 0 0 1 1 0 0
-0 0 0 0 0 0 1 1`;
+    const defaultMspMatrix = `11110000
+00001100
+00000011`;
 
-    const defaultCssMatrix = `0 0 1 1
-1 1 0 0`;
+    const defaultCssMatrix = `0011
+1100`;
+
+    const defaultStabilizer = `XZIZ,IXZI,IIXZ`;
 
     const [matrixText, setMatrixText] = useState('')
     const [error, setError] = useState('')
+    const [useStabilizer, setUseStabilizer] = useState(false);
 
     // Set default value when dialog opens
     useEffect(() => {
         if (isOpen) {
-            if (title === 'Measurement State Prep Network') {
-                setMatrixText(defaultMspMatrix);
-            } else if (cssOnly) {
-                setMatrixText(defaultCssMatrix);
-            }
             setError('');
+
+            if (!matrixText || matrixText === '') {
+                if (title === 'Measurement State Prep Network') {
+                    setMatrixText(useStabilizer ? defaultStabilizer : defaultMspMatrix);
+                } else if (cssOnly) {
+                    setMatrixText(useStabilizer ? defaultStabilizer : defaultCssMatrix);
+                } else {
+                    setMatrixText(useStabilizer ? defaultStabilizer : '1010\n0101\n1100');
+                }
+            }
         }
     }, [isOpen, title, cssOnly]);
 
     const toast = useToast()
 
-    const validateMatrix = (input: string): number[][] | null => {
-        try {
-            // Parse the input into a 2D array
-            const matrix = input
+    const pauliToSymplectic = (pauliString: string): number[] => {
+        const n = pauliString.length;
+        const symplectic = new Array(2 * n).fill(0);
+
+        for (let i = 0; i < n; i++) {
+            const pauli = pauliString[i];
+            if (pauli === 'X') {
+                symplectic[i] = 1;
+            } else if (pauli === 'Z') {
+                symplectic[i + n] = 1;
+            } else if (pauli === 'Y') {
+                symplectic[i] = 1;
+                symplectic[i + n] = 1;
+            }
+        }
+
+        return symplectic;
+    };
+
+    const symplecticToPauli = (symplectic: number[]): string => {
+        const n = symplectic.length / 2;
+        let pauli = '';
+        for (let i = 0; i < n; i++) {
+            const x = symplectic[i];
+            const z = symplectic[i + n];
+            if (x === 1 && z === 1) {
+                pauli += 'Y';
+            } else if (x === 1) {
+                pauli += 'X';
+            } else if (z === 1) {
+                pauli += 'Z';
+            } else {
+                pauli += 'I';
+            }
+        }
+        return pauli;
+    };
+
+    const parseMatrix = (input: string): number[][] => {
+        if (useStabilizer) {
+            // Split by commas and newlines, remove spaces, capitalize
+            const pauliStrings = input
+                .toUpperCase()
+                .split(/[,\n]/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+
+            // Convert each Pauli string to symplectic representation
+            return pauliStrings.map(pauliToSymplectic);
+        } else {
+            return input
                 .trim()
                 .split('\n')
-                .map(row => row.trim().split(/\s+/).map(Number));
+                .map(row => row
+                    .trim()
+                    .replace(/[,\[\]()]/g, '')
+                    .replace(/\s+/g, '')
+                    .split('')
+                    .map(Number)
+                );
+        }
+    };
+
+    const convertInput = (input: string, toStabilizer: boolean): string => {
+        try {
+            if (toStabilizer) {
+                // Convert matrix to stabilizer, preserving newlines
+                const matrix = parseMatrix(input);
+                const pauliStrings = matrix.map(symplecticToPauli);
+                // If the input had newlines, use them as separators
+                if (input.includes('\n')) {
+                    return pauliStrings.join('\n');
+                }
+                // Otherwise use commas
+                return pauliStrings.join(',');
+            } else {
+                // Convert stabilizer to matrix
+                const matrix = parseMatrix(input);
+                return matrix.map(row => row.join('')).join('\n');
+            }
+        } catch (e) {
+            // If conversion fails, return the original input
+            return input;
+        }
+    };
+
+    const validateMatrix = (input: string): number[][] | null => {
+        try {
+            const matrix = parseMatrix(input);
 
             // Validate the matrix
             if (matrix.length === 0 || matrix[0].length === 0) {
@@ -72,9 +165,11 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 throw new Error('All rows must have the same length');
             }
 
-            // Check if all elements are 0 or 1
-            if (!matrix.every(row => row.every(val => val === 0 || val === 1))) {
-                throw new Error('Matrix elements must be 0 or 1');
+            if (!useStabilizer) {
+                // Check if all elements are 0 or 1
+                if (!matrix.every(row => row.every(val => val === 0 || val === 1))) {
+                    throw new Error('Matrix elements must be 0 or 1');
+                }
             }
 
             // Check if the number of columns is even (2n)
@@ -133,17 +228,58 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 <ModalBody>
                     <VStack spacing={4}>
                         <Text>
-                            {cssOnly
-                                ? "Enter the CSS symplectic matrix (space-separated numbers, one row per line):"
-                                : "Enter the parity check matrix as a space-separated matrix of 0s and 1s. Each row should be on a new line."}
+                            {useStabilizer
+                                ? "Enter the stabilizer generators as Pauli strings (e.g., XXXX,ZZZZ):"
+                                : cssOnly
+                                    ? "Enter the CSS symplectic matrix (one row per line):"
+                                    : "Enter the parity check matrix (one row per line):"}
                         </Text>
+                        <FormControl display="flex" alignItems="center">
+                            <FormLabel htmlFor="use-stabilizer" mb="0">
+                                Use Pauli strings
+                            </FormLabel>
+                            <Switch
+                                id="use-stabilizer"
+                                isChecked={useStabilizer}
+                                onChange={(e) => {
+                                    const newUseStabilizer = e.target.checked;
+
+                                    // Convert existing input to the new format
+                                    const convertedInput = convertInput(matrixText, newUseStabilizer);
+                                    console.log(matrixText);
+                                    console.log(convertedInput);
+                                    setMatrixText(convertedInput);
+                                    setUseStabilizer(newUseStabilizer);
+                                    setError('');
+                                }}
+                            />
+                        </FormControl>
                         <Textarea
                             value={matrixText}
                             onChange={(e) => {
                                 setMatrixText(e.target.value);
                                 setError('');
                             }}
-                            placeholder={cssOnly ? defaultCssMatrix : "1 0 1 0\n0 1 0 1\n1 1 0 0"}
+                            onKeyDown={(e) => {
+                                e.stopPropagation();
+                                if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.currentTarget.select();
+                                }
+                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleSubmit();
+                                }
+                            }}
+                            placeholder={useStabilizer
+                                ? defaultStabilizer
+                                : cssOnly
+                                    ? defaultCssMatrix
+                                    : title === 'Measurement State Prep Network'
+                                        ? defaultMspMatrix
+                                        : "1010\n0101\n1100"}
                             rows={10}
                             fontFamily="monospace"
                         />
@@ -156,10 +292,10 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 </ModalBody>
                 <ModalFooter>
                     <Button variant="ghost" mr={3} onClick={onClose}>
-                        Cancel
+                        Cancel (Esc)
                     </Button>
                     <Button colorScheme="blue" onClick={handleSubmit}>
-                        Create Network
+                        Create Network (Ctrl+Enter)
                     </Button>
                 </ModalFooter>
             </ModalContent>
