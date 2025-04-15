@@ -29,9 +29,9 @@ def test_css_tanner_network_bell_state():
     assert "legos" in data
     assert "connections" in data
 
-    assert len(data["legos"]) == 4, "Expected 4 legos, got %d" % len(data["legos"])
+    assert len(data["legos"]) == 12, "Expected 12 legos, got %d" % len(data["legos"])
 
-    assert len(data["connections"]) == 4, "Expected 4 connections, got %d" % len(
+    assert len(data["connections"]) == 12, "Expected 12 connections, got %d" % len(
         data["connections"]
     )
 
