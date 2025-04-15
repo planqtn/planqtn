@@ -1043,6 +1043,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             l.instanceId === selectedLego.instanceId ? updatedLego : l
                                         ));
                                     }}
+                                    onKeyDown={(e) => {
+                                        e.stopPropagation();
+                                    }}
                                 />
                             </Box>
                             <Box>
