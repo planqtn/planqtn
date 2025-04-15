@@ -11,7 +11,6 @@ import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
-import { CssTannerDialog } from './components/CssTannerDialog'
 import { TannerDialog } from './components/TannerDialog'
 import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
@@ -2135,15 +2134,18 @@ function App() {
                 legoId={selectedDynamicLego?.id || ''}
                 parameters={selectedDynamicLego?.parameters || {}}
             />
-            <CssTannerDialog
+            <TannerDialog
                 isOpen={isCssTannerDialogOpen}
                 onClose={() => setIsCssTannerDialogOpen(false)}
                 onSubmit={handleCssTannerSubmit}
+                title="Create CSS Tanner Network"
+                cssOnly={true}
             />
             <TannerDialog
                 isOpen={isTannerDialogOpen}
                 onClose={() => setIsTannerDialogOpen(false)}
                 onSubmit={handleTannerSubmit}
+                title="Create Tanner Network"
             />
             <TannerDialog
                 isOpen={isMspDialogOpen}
