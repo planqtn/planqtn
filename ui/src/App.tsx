@@ -112,9 +112,6 @@ function App() {
     const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(null);
     const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
-    const [showTannerDialog, setShowTannerDialog] = useState(false);
-    const [showCssTannerDialog, setShowCssTannerDialog] = useState(false);
-    const [showMspDialog, setShowMspDialog] = useState(false);
     const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
     const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
 

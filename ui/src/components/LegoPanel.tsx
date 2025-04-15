@@ -1,5 +1,4 @@
-import { Box, Heading, List, ListItem, HStack, VStack, Icon, Text, Badge, useColorModeValue, useToast } from '@chakra-ui/react'
-import { FaCube, FaCode, FaTable, FaPlus } from 'react-icons/fa'
+import { Box, Heading, List, ListItem, HStack, VStack, Text, Badge, useColorModeValue, useToast } from '@chakra-ui/react'
 import { LegoPiece } from '../types.ts'
 import { DynamicLegoDialog } from './DynamicLegoDialog'
 import { useState } from 'react'

@@ -1,5 +1,4 @@
 import { Connection, DroppedLego, Operation } from "../types";
-import { getLegoStyle } from "../LegoStyles";
 
 export class AddStopper {
     static operationCode = 'addStopper';
