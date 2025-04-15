@@ -43,7 +43,6 @@ async function getDynamicLego(legoId: string, numLegs: number): Promise<DroppedL
     return {
         ...data,
         instanceId: String("not set"),
-        pushedLegs: [],
         style: getLegoStyle(data.id, numLegs),
         x: 0,
         y: 0

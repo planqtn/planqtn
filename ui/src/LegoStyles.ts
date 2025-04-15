@@ -79,10 +79,8 @@ export abstract class LegoStyle {
 
     getLegHighlightPauliOperator = (legIndex: number, lego: DroppedLego) => {
         // First check if there's a pushed leg
-        const pushedLeg = lego.pushedLegs.find(pl => pl.legIndex === legIndex);
-        if (pushedLeg) {
-            return pushedLeg.operator;
-        }
+        const h = lego.parity_check_matrix;
+        const num_legs = h[0].length / 2;
 
         if (lego.selectedMatrixRows === undefined) {
             return PauliOperator.I;
@@ -97,7 +95,7 @@ export abstract class LegoStyle {
         }
 
         const xPart = combinedRow[legIndex];
-        const zPart = combinedRow[legIndex + lego.parity_check_matrix[0].length / 2];
+        const zPart = combinedRow[legIndex + num_legs];
 
         if (xPart === 1 && zPart === 0) return PauliOperator.X;
         if (xPart === 0 && zPart === 1) return PauliOperator.Z;
@@ -105,26 +103,6 @@ export abstract class LegoStyle {
 
         return PauliOperator.I;
 
-        // // If no pushed leg, combine base representatives from all pushed legs
-        // if (lego.pushedLegs.length > 0) {
-        //     // Initialize combined base representative
-        //     const combinedBase = new Array(lego.parity_check_matrix[0].length).fill(0);
-
-        //     // Combine all pushed legs' base representatives mod 2
-        //     lego.pushedLegs.forEach(pl => {
-        //         pl.baseRepresentatitve.forEach((val, idx) => {
-        //             combinedBase[idx] = (combinedBase[idx] + val) % 2;
-        //         });
-        //     });
-        //     // Get the operator from the combined base representative
-        //     const xPart = combinedBase[legIndex];
-        //     const zPart = combinedBase[legIndex + lego.parity_check_matrix[0].length / 2];
-
-        //     if (xPart === 1 && zPart === 0) return PauliOperator.X;
-        //     if (xPart === 0 && zPart === 1) return PauliOperator.Z;
-        //     if (xPart === 1 && zPart === 1) return PauliOperator.Y;
-        // }
-        // return PauliOperator.I;
     };
 
 

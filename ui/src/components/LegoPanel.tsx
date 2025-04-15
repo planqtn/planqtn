@@ -98,7 +98,6 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                         y: 20,
                                         instanceId: customLego.id,
                                         style: getLegoStyle(customLego.id, 2),
-                                        pushedLegs: [],
                                         selectedMatrixRows: []
                                     }}
                                     connections={[]}
@@ -144,7 +143,6 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                                 y: numLegs <= 3 ? 20 : 13,
                                                 instanceId: lego.id,
                                                 style: getLegoStyle(lego.id, numLegs),
-                                                pushedLegs: [],
                                                 selectedMatrixRows: []
                                             }}
                                             connections={[]}

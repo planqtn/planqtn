@@ -5,7 +5,6 @@ import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
 import { useState, useEffect } from 'react'
-import { PauliOperator } from '../types'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
 import { config } from '../config'
@@ -188,28 +187,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const handleMatrixRowSelection = (selectedRows: number[]) => {
         setSelectedMatrixRows(selectedRows);
         if (selectedLego) {
-            // Update pushed legs based on selected rows
-            const newPushedLegs = selectedRows.flatMap(rowIndex => {
-                const row = selectedLego.parity_check_matrix[rowIndex];
-                return selectedLego.logical_legs.map(legIndex => {
-                    const xPart = row[legIndex];
-                    const zPart = row[legIndex + selectedLego.parity_check_matrix[0].length / 2];
-                    let operator: PauliOperator | undefined;
-                    if (xPart === 1 && zPart === 0) operator = PauliOperator.X;
-                    else if (xPart === 0 && zPart === 1) operator = PauliOperator.Z;
-                    else if (xPart === 1 && zPart === 1) operator = PauliOperator.Y;
-                    return operator ? {
-                        legIndex,
-                        operator,
-                        baseRepresentatitve: row
-                    } : null;
-                }).filter((pl): pl is { legIndex: number; operator: PauliOperator; baseRepresentatitve: number[] } => pl !== null);
-            });
 
-            // Update the selected lego with new pushed legs
             const updatedLego = {
                 ...selectedLego,
-                pushedLegs: newPushedLegs,
                 selectedMatrixRows: selectedRows
             };
             // Update the lego in the droppedLegos array
@@ -296,7 +276,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 logical_legs: [],
                 gauge_legs: [],
                 style: getLegoStyle(lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z', 1),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
 
@@ -392,7 +371,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 logical_legs: [],
                 gauge_legs: [],
                 style: getLegoStyle('h', 2),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
             newLegos.push(hadamardLego);
@@ -689,7 +667,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 instanceId: (maxInstanceId + 1).toString(),
                 x: lego.x + 100,
                 y: lego.y,
-                pushedLegs: [],
                 selectedMatrixRows: [],
                 parity_check_matrix: bell_pair
             };
@@ -723,7 +700,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 instanceId: (maxInstanceId + 1).toString(),
                 x: lego.x + 100,
                 y: lego.y,
-                pushedLegs: [],
                 selectedMatrixRows: [],
                 parity_check_matrix: bell_pair
             };
@@ -764,7 +740,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     instanceId: (maxInstanceId + 1 + i).toString(),
                     x: centerX + radius * Math.cos(angle),
                     y: centerY + radius * Math.sin(angle),
-                    pushedLegs: [],
                     selectedMatrixRows: [],
                     parity_check_matrix: isXCode ? d3_x_rep : d3_z_rep
                 };

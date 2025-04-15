@@ -358,7 +358,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                                 borderStyle: pos.style.style
                             }}
                             cursor={isLogical ? "pointer" : "default"}
-                            title={isLogical ? `Logical leg, ${lego.pushedLegs.find(pl => pl.legIndex === legIndex)?.operator || 'I'}` : undefined}
+                            title={isLogical ? `Logical leg` : undefined}
                             onClick={(e) => {
                                 if (isLogical && onLegClick) {
                                     e.stopPropagation();

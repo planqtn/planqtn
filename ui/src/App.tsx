@@ -218,7 +218,6 @@ function App() {
                 x: rect.left + rect.width / 2,
                 y: rect.top + rect.height / 2,
                 style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
             setDraggedLego(draggedLego);
@@ -231,7 +230,6 @@ function App() {
                 x: rect.left + rect.width / 2,
                 y: rect.top + rect.height / 2,
                 style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
             setDraggedLego(draggedLego);
@@ -314,7 +312,6 @@ function App() {
                 x: dropPosition.x,
                 y: dropPosition.y,
                 style: getLegoStyle(draggedLego.id, 1),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
             try {
@@ -356,7 +353,7 @@ function App() {
             y,
             instanceId: newInstanceId(droppedLegos),
             style: getLegoStyle(draggedLego.id, numLegs),
-            pushedLegs: []
+            selectedMatrixRows: []
         };
 
         // Handle two-legged lego insertion
@@ -426,7 +423,6 @@ function App() {
                 y: pendingDropPosition.y,
                 instanceId,
                 style: getLegoStyle(dynamicLego.id, numLegs),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
             setDroppedLegos(prev => [...prev, newLego]);
@@ -460,7 +456,6 @@ function App() {
                 instanceId: newId,
                 x: l.x + 20,
                 y: l.y + 20,
-                pushedLegs: []
             };
         });
 
@@ -1440,7 +1435,6 @@ function App() {
                     x,
                     y,
                     style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-                    pushedLegs: [],
                     selectedMatrixRows: []
                 };
             });
@@ -1510,7 +1504,6 @@ function App() {
                     x,
                     y,
                     style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-                    pushedLegs: [],
                     selectedMatrixRows: []
                 };
             });
@@ -1610,12 +1603,12 @@ function App() {
         // Find the lego that was clicked
         const clickedLego = droppedLegos.find(lego => lego.instanceId === legoId);
         if (!clickedLego) return;
-
-        const existingPushedLeg = clickedLego.pushedLegs.find(pl => pl.legIndex === legIndex);
-        const currentOperator = existingPushedLeg?.operator || PauliOperator.I;
+        const numQubits = clickedLego.parity_check_matrix[0].length / 2;
+        const h = clickedLego.parity_check_matrix;
+        const existingPushedLeg = clickedLego.selectedMatrixRows?.find(row => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1);
+        const currentOperator = existingPushedLeg ? h[existingPushedLeg][legIndex] == 1 ? PauliOperator.X : PauliOperator.Z : PauliOperator.I;
 
         // Find available operators in parity check matrix for this leg
-        const numQubits = clickedLego.parity_check_matrix[0].length / 2;
         const hasX = clickedLego.parity_check_matrix.some(row =>
             row[legIndex] === 1 && row[legIndex + numQubits] === 0
         );
@@ -1651,21 +1644,6 @@ function App() {
             return false;
         }) || new Array(2 * numQubits).fill(0);
 
-        // Update or remove the pushed leg
-        let updatedPushedLegs;
-        if (nextOperator === PauliOperator.I) {
-            // Remove this leg from pushed legs if operator is I
-            updatedPushedLegs = clickedLego.pushedLegs.filter(pl => pl.legIndex !== legIndex);
-        } else {
-            // Otherwise update or add the pushed leg
-            updatedPushedLegs = existingPushedLeg
-                ? clickedLego.pushedLegs.map(pl =>
-                    pl.legIndex === legIndex
-                        ? { ...pl, operator: nextOperator, baseRepresentatitve: baseRepresentative }
-                        : pl
-                )
-                : [...clickedLego.pushedLegs, { legIndex, operator: nextOperator, baseRepresentatitve: baseRepresentative }];
-        }
 
         // Find the row index that corresponds to the baseRepresentative
         const rowIndex = clickedLego.parity_check_matrix.findIndex(row =>
@@ -1678,7 +1656,6 @@ function App() {
         // Create a new lego instance with updated properties
         const updatedLego = {
             ...clickedLego,
-            pushedLegs: updatedPushedLegs,
             selectedMatrixRows: selectedRows
         };
 
@@ -1785,7 +1762,6 @@ function App() {
             logical_legs: logicalLegs,
             gauge_legs: [],
             style: getLegoStyle('custom', matrix[0].length / 2),
-            pushedLegs: [],
             selectedMatrixRows: []
         };
 
@@ -1868,7 +1844,6 @@ function App() {
                         // Clear highlights from all legos
                         const clearedLegos = droppedLegos.map(lego => ({
                             ...lego,
-                            pushedLegs: [],
                             selectedMatrixRows: []
                         }));
                         setDroppedLegos(clearedLegos);
@@ -1876,7 +1851,6 @@ function App() {
                         encodeCanvasState(clearedLegos, connections, hideConnectedLegs);
                     }}
                     isDisabled={!droppedLegos.some(lego =>
-                        lego.pushedLegs.length > 0 ||
                         (lego.selectedMatrixRows && lego.selectedMatrixRows.length > 0)
                     )}
                 >

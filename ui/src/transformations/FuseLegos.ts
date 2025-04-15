@@ -71,7 +71,6 @@ export class FuseLegos {
                 x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
                 y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
                 style: getLegoStyle(type_id, matrix[0].length / 2),
-                pushedLegs: [],
                 selectedMatrixRows: []
             };
 

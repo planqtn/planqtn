@@ -25,7 +25,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const operation: Operation = {
@@ -68,7 +68,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             // Add operation
@@ -126,7 +126,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'h1',
                 style: new HadamardStyle('h1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const zRep1: DroppedLego = {
@@ -145,7 +145,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: '1',
                 style: new GenericStyle('zrep'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const zRep2: DroppedLego = {
@@ -324,7 +324,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const operation: Operation = {
@@ -353,7 +353,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const operation: Operation = {
@@ -412,7 +412,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const operation: Operation = {
@@ -443,7 +443,7 @@ describe('OperationHistory', () => {
                 y: 0,
                 instanceId: 'instance1',
                 style: new GenericStyle('lego1'),
-                pushedLegs: []
+                selectedMatrixRows: []
             };
 
             const operation: Operation = {

@@ -19,20 +19,12 @@ export enum PauliOperator {
     I = 'I'
 }
 
-export interface PushedLeg {
-    legIndex: number
-    operator: PauliOperator
-    // the symplectic representation of the pushed operator
-    baseRepresentatitve: number[]
-}
-
 export interface DroppedLego extends LegoPiece {
     x: number
     y: number
     instanceId: string
     style: LegoStyle
-    pushedLegs: PushedLeg[]
-    selectedMatrixRows?: number[]
+    selectedMatrixRows: number[]
     alwaysShowLegs?: boolean
 }
 
@@ -154,11 +146,6 @@ export interface CanvasState {
         parity_check_matrix?: number[][]
         logical_legs?: number[]
         gauge_legs?: number[]
-        pushedLegs?: Array<{
-            legIndex: number
-            operator: PauliOperator
-            baseRepresentatitve: number[]
-        }>
         selectedMatrixRows?: number[]
     }>
     connections: Array<Connection>
