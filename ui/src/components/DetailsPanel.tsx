@@ -13,6 +13,7 @@ import * as _ from 'lodash'
 import { OperationHistory } from '../utils/OperationHistory'
 import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
 import { canDoInverseBialgebra, applyInverseBialgebra } from '../transformations/InverseBialgebra'
+import { canDoHopfRule, applyHopfRule } from '../transformations/Hopf'
 
 
 interface DetailsPanelProps {
@@ -820,6 +821,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
     }
 
+    const handleHopfRule = async () => {
+        const result = await applyHopfRule(tensorNetwork!.legos, droppedLegos, connections);
+        setDroppedLegos(result.droppedLegos);
+        setConnections(result.connections);
+        operationHistory.addOperation(result.operation);
+        encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
+    }
+
     return (
         <Box
             h="100%"
@@ -864,6 +873,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             onClick={handleInverseBialgebra}
                                         >
                                             Inverse bialgebra
+                                        </Button>
+                                    )}
+                                    {canDoHopfRule(tensorNetwork.legos, connections) && (
+                                        <Button
+                                            leftIcon={<Icon as={FaCube} />}
+                                            colorScheme="blue"
+                                            size="sm"
+                                            onClick={handleHopfRule}
+                                        >
+                                            Hopf rule
                                         </Button>
                                     )}
                                 </VStack>
