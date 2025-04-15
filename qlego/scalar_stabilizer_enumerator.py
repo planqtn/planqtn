@@ -68,8 +68,8 @@ class ScalarStabilizerCodeEnumerator:
     def normalizer_enumerator_polynomial(self, num_workers=1):
         return (
             self.stabilizer_enumerator_polynomial(num_workers=num_workers)
-            .homogenize(self.n)
-            .to_sympy([z, w])
+            ._homogenize(self.n)
+            ._to_sympy([z, w])
             .subs({w: (w + 3 * z) / 2, z: (w - z) / 2})
         )
 
