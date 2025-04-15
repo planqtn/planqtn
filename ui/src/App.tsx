@@ -1108,6 +1108,11 @@ function App() {
             } else if (e.key === 'Alt') {
                 e.preventDefault();
                 setAltKeyPressed(true);
+            } else if (e.key === 'f') {
+                e.preventDefault();
+                if (tensorNetwork) {
+                    fuseLegos(tensorNetwork.legos);
+                }
             }
         };
 

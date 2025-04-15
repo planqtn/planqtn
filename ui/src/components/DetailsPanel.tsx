@@ -844,7 +844,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         onClick={() => fuseLegos(tensorNetwork.legos)}
                                         leftIcon={<Icon as={FaCube} />}
                                     >
-                                        Fuse Legos
+                                        Fuse Legos (f)
                                     </Button>
                                     {canDoBialgebra(tensorNetwork.legos, connections) && (
                                         <Button
