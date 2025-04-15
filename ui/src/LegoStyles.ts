@@ -135,25 +135,44 @@ export abstract class LegoStyle {
         const legCount = lego.parity_check_matrix[0].length / 2;
         const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex, lego);
         const isHighlighted = highlightPauliOperator !== PauliOperator.I;
+
+        // Calculate the number of each type of leg
+        const logicalLegsCount = lego.logical_legs.length;
+        const physicalLegsCount = legCount - logicalLegsCount - lego.gauge_legs.length;
+
         if (isLogical) {
-            // For logical legs, calculate angle from center upwards
-            const logicalLegsCount = lego.logical_legs.length;
-            const logicalIndex = lego.logical_legs.indexOf(legIndex);
-            let angle;
+            // Sort logical legs to ensure consistent ordering regardless of their indices
+            const sortedLogicalLegs = [...lego.logical_legs].sort((a, b) => a - b);
+            const logicalIndex = sortedLogicalLegs.indexOf(legIndex);
+
             if (logicalLegsCount === 1) {
-                angle = -Math.PI / 2; // Straight up
-            } else {
-                const spread = Math.PI / 3; // 60 degree spread
-                const startAngle = -Math.PI / 2 - (spread / 2);
-                angle = startAngle + (spread * logicalIndex / (logicalLegsCount - 1));
+                // Single logical leg points straight up
+                return {
+                    angle: -Math.PI / 2,
+                    length: 60,
+                    width: "3px",
+                    style: "solid",
+                    from: "center",
+                    startOffset: 0,
+                    color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                    is_highlighted: isHighlighted
+                };
             }
+
+            // For multiple logical legs, calculate the required spread based on count
+            // Use a minimum of 30 degrees between legs
+            const minSpreadPerLeg = Math.PI / 6; // 30 degrees
+            const totalSpread = Math.min(Math.PI * 0.8, minSpreadPerLeg * (logicalLegsCount - 1));
+            const startAngle = -Math.PI / 2 - totalSpread / 2;
+            const angle = startAngle + (totalSpread * logicalIndex / (logicalLegsCount - 1));
+
             return {
                 angle,
-                length: 50, // Longer than normal legs
-                width: "3px", // Thicker line
+                length: 60,
+                width: "3px",
                 style: "solid",
-                from: "center", // Start from center
-                startOffset: 0, // No offset for logical legs
+                from: "center",
+                startOffset: 0,
                 color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
                 is_highlighted: isHighlighted
             };
@@ -166,20 +185,68 @@ export abstract class LegoStyle {
                 width: "2px",
                 style: "dashed",
                 from: "bottom",
-                startOffset: 10, // Offset from edge for gauge legs
+                startOffset: 10,
                 color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
                 is_highlighted: isHighlighted
             };
         } else {
-            // Regular legs
-            const angle = (2 * Math.PI * legIndex) / legCount;
+            // For physical legs
+            // Create an array of all physical leg indices (non-logical, non-gauge legs)
+            const physicalLegIndices = Array.from({ length: legCount }, (_, i) => i)
+                .filter(i => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i))
+                .sort((a, b) => a - b);
+
+            // Find the index of the current leg in the physical legs array
+            const physicalIndex = physicalLegIndices.indexOf(legIndex);
+
+            if (physicalLegsCount === 1) {
+                // Single physical leg points straight down
+                return {
+                    angle: Math.PI / 2,
+                    length: 40,
+                    width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
+                    style: "solid",
+                    from: "edge",
+                    startOffset: 0,
+                    color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                    is_highlighted: isHighlighted
+                };
+            }
+
+            if (logicalLegsCount === 0) {
+                // If no logical legs, distribute physical legs evenly around the circle
+                const angle = (2 * Math.PI * physicalIndex) / physicalLegsCount;
+                return {
+                    angle,
+                    length: 40,
+                    width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
+                    style: "solid",
+                    from: "edge",
+                    startOffset: 0,
+                    color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
+                    is_highlighted: isHighlighted
+                };
+            }
+
+            // For multiple physical legs with logical legs present
+            // Calculate the space needed for logical legs with increased spread
+            const logicalSpread = logicalLegsCount <= 1 ? Math.PI / 4 : // Increased from PI/6 to PI/4
+                Math.min(Math.PI, (Math.PI / 4) * (logicalLegsCount - 1)); // Increased from PI/6 to PI/4
+
+            // Use most of the remaining space for physical legs, leaving a small gap
+            const availableAngle = 2 * Math.PI - logicalSpread - Math.PI / 6; // Leave a small gap
+
+            // Start just after the logical legs section
+            const startAngle = -Math.PI / 2 + logicalSpread / 2 + Math.PI / 12;
+            const angle = startAngle + (availableAngle * physicalIndex / (physicalLegsCount - 1));
+
             return {
                 angle,
                 length: 40,
                 width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
                 style: "solid",
                 from: "edge",
-                startOffset: 0, // No offset for regular legs
+                startOffset: 0,
                 color: forSvg ? getPauliColor(highlightPauliOperator, true) : getPauliColor(highlightPauliOperator),
                 is_highlighted: isHighlighted
             };
