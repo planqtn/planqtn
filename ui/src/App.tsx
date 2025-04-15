@@ -1815,11 +1815,11 @@ function App() {
                                             const toLegHighlighted = toLegStyle.is_highlighted;
 
                                             // Determine if legs should be hidden
-                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && (
+                                            const hideFromLeg = hideConnectedLegs && fromLegConnected && !fromLego.alwaysShowLegs && (
                                                 !fromLegHighlighted ? !toLegHighlighted :
                                                     toLegHighlighted && fromLegStyle.color === toLegStyle.color
                                             );
-                                            const hideToLeg = hideConnectedLegs && toLegConnected && (
+                                            const hideToLeg = hideConnectedLegs && toLegConnected && !toLego.alwaysShowLegs && (
                                                 !toLegHighlighted ? !fromLegHighlighted :
                                                     fromLegHighlighted && fromLegStyle.color === toLegStyle.color
                                             );
@@ -2028,10 +2028,11 @@ function App() {
 
                                             // Hide label if:
                                             // 1. hideConnectedLegs is true AND
-                                            // 2. Either:
+                                            // 2. lego doesn't have alwaysShowLegs AND
+                                            // 3. Either:
                                             //    - This leg is not highlighted and connected leg is not highlighted
                                             //    - Both legs are highlighted with the same color
-                                            const shouldHideLabel = hideConnectedLegs && (
+                                            const shouldHideLabel = hideConnectedLegs && !lego.alwaysShowLegs && (
                                                 !isThisHighlighted
                                                     ? !connectedStyle.is_highlighted
                                                     : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color

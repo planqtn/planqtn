@@ -33,6 +33,7 @@ export interface DroppedLego extends LegoPiece {
     style: LegoStyle
     pushedLegs: PushedLeg[]
     selectedMatrixRows?: number[]
+    alwaysShowLegs?: boolean
 }
 
 

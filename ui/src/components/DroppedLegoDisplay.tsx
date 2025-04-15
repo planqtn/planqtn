@@ -126,6 +126,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     // Function to determine if a leg should be hidden
     const shouldHideLeg = (legIndex: number) => {
         if (!hideConnectedLegs) return false;
+        if (lego.alwaysShowLegs) return false;
+
         const isConnected = isLegConnected(legIndex);
         if (!isConnected) return false;
 

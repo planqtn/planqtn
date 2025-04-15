@@ -1,4 +1,4 @@
-import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input } from '@chakra-ui/react'
+import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input, Checkbox } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
 import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection, Operation } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
@@ -1037,6 +1037,27 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         ));
                                     }}
                                 />
+                            </Box>
+                            <Box>
+                                <Checkbox
+                                    isChecked={selectedLego.alwaysShowLegs || false}
+                                    onChange={(e) => {
+                                        const updatedLego = { ...selectedLego, alwaysShowLegs: e.target.checked };
+                                        setSelectedLego(updatedLego);
+                                        setDroppedLegos(droppedLegos.map(l =>
+                                            l.instanceId === selectedLego.instanceId ? updatedLego : l
+                                        ));
+                                        encodeCanvasState(
+                                            droppedLegos.map(l =>
+                                                l.instanceId === selectedLego.instanceId ? updatedLego : l
+                                            ),
+                                            connections,
+                                            hideConnectedLegs
+                                        );
+                                    }}
+                                >
+                                    Always show legs
+                                </Checkbox>
                             </Box>
                             {(selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code') && (
                                 <>
