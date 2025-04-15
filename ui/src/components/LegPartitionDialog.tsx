@@ -15,23 +15,22 @@ interface LegPartitionDialogProps {
     open: boolean;
     numLegs: number;
     onClose: () => void;
-    onConfirm: (legAssignments: boolean[]) => void;
+    onSubmit: (legAssignments: number[]) => void;
 }
 
-export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({ open, numLegs, onClose, onConfirm }) => {
-    const [legAssignments, setLegAssignments] = useState<boolean[]>([]);
+export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({ open, numLegs, onClose, onSubmit }) => {
+    const [legAssignments, setLegAssignments] = useState<number[]>([]);
 
     useEffect(() => {
         if (open && numLegs > 0) {
             const half = Math.floor(numLegs / 2);
-            setLegAssignments(Array(numLegs).fill(false).map((_, i) => i >= half));
+            setLegAssignments(Array(numLegs).fill(0).map((_, i) => i >= half ? 1 : 0));
         }
     }, [open, numLegs]);
 
-
     const handleToggle = (index: number) => {
         const newAssignments = [...legAssignments];
-        newAssignments[index] = !newAssignments[index];
+        newAssignments[index] = newAssignments[index] === 0 ? 1 : 0;
         setLegAssignments(newAssignments);
     };
 
@@ -42,13 +41,13 @@ export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({ open, nu
                 <ModalHeader>Assign Legs to Legos</ModalHeader>
                 <ModalBody>
                     <VStack align="start" spacing={2}>
-                        {legAssignments.map((isLego1, index) => (
+                        {legAssignments.map((isLego2, index) => (
                             <Checkbox
                                 key={index}
-                                isChecked={isLego1}
+                                isChecked={isLego2 === 1}
                                 onChange={() => handleToggle(index)}
                             >
-                                Leg {index} → Lego {isLego1 ? "2" : "1"}
+                                Leg {index} → Lego {isLego2 === 1 ? "2" : "1"}
                             </Checkbox>
                         ))}
                     </VStack>
@@ -57,7 +56,7 @@ export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({ open, nu
                     <Button variant="ghost" mr={3} onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button colorScheme="blue" onClick={() => onConfirm(legAssignments)}>
+                    <Button colorScheme="blue" onClick={() => onSubmit(legAssignments)}>
                         Confirm
                     </Button>
                 </ModalFooter>

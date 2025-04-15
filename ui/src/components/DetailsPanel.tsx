@@ -455,12 +455,35 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     };
 
     const handleUnfuseInto2Legos = (lego: DroppedLego) => {
-        setUnfuseLego(lego);
+        // Store the original state
+        const originalAlwaysShowLegs = lego.alwaysShowLegs;
+
+        // Temporarily force legs to be shown
+        const updatedLego = { ...lego, alwaysShowLegs: true };
+        setDroppedLegos(droppedLegos.map(l =>
+            l.instanceId === lego.instanceId ? updatedLego : l
+        ));
+        setUnfuseLego(updatedLego);
         setShowLegPartitionDialog(true);
+
+        // Add cleanup function to restore original state when dialog closes
+        const cleanup = () => {
+            setDroppedLegos(
+                droppedLegos.map(l =>
+                    l.instanceId === lego.instanceId ? { ...l, alwaysShowLegs: originalAlwaysShowLegs } : l
+                )
+            );
+        };
+
+        // Store cleanup function
+        (window as any).__restoreLegsState = cleanup;
     };
 
-    const handleUnfuseTo2LegosPartitionConfirm = async (legAssignments: boolean[], oldConnections: Connection[]) => {
-        if (!unfuseLego) return;
+    const handleUnfuseTo2LegosPartitionConfirm = async (legPartition: number[], oldConnections: Connection[]) => {
+        if (!unfuseLego) {
+            return;
+        }
+
         const lego = unfuseLego;
 
         // Get max instance ID
@@ -473,8 +496,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         try {
             // Count legs for each new lego
-            const lego1Legs = legAssignments.filter(x => !x).length;
-            const lego2Legs = legAssignments.filter(x => x).length;
+            const lego1Legs = legPartition.filter(x => !x).length;
+            const lego2Legs = legPartition.filter(x => x).length;
 
             // Create maps for new leg indices
             const lego1LegMap = new Map<number, number>();
@@ -483,7 +506,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             let lego2Count = 0;
 
             // Build the leg mapping
-            legAssignments.forEach((isLego2, oldIndex) => {
+            legPartition.forEach((isLego2, oldIndex) => {
                 if (!isLego2) {
                     lego1LegMap.set(oldIndex, lego1Count++);
                 } else {
@@ -526,7 +549,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 style: getLegoStyle(lego.id, lego1Legs + 1),
                 instanceId: (maxInstanceId + 1).toString(),
                 x: lego.x - 50,  // Position slightly to the left
-                parity_check_matrix: lego1Data.parity_check_matrix
+                parity_check_matrix: lego1Data.parity_check_matrix,
+                alwaysShowLegs: false,
             };
 
             const lego2: DroppedLego = {
@@ -534,7 +558,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 style: getLegoStyle(lego.id, lego2Legs + 1),
                 instanceId: (maxInstanceId + 2).toString(),
                 x: lego.x + 50,  // Position slightly to the right
-                parity_check_matrix: lego2Data.parity_check_matrix
+                parity_check_matrix: lego2Data.parity_check_matrix,
+                alwaysShowLegs: false,
             };
 
             // Create connection between the new legos
@@ -554,7 +579,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 let newConn = new Connection(_.cloneDeep(conn.from), _.cloneDeep(conn.to));
                 if (conn.from.legoId === lego.instanceId) {
                     const oldLegIndex = conn.from.legIndex;
-                    if (!legAssignments[oldLegIndex]) {
+                    if (!legPartition[oldLegIndex]) {
                         // Goes to lego1
                         newConn.from.legoId = lego1.instanceId;
                         newConn.from.legIndex = lego1LegMap.get(oldLegIndex)!;
@@ -566,7 +591,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 }
                 if (conn.to.legoId === lego.instanceId) {
                     const oldLegIndex = conn.to.legIndex;
-                    if (!legAssignments[oldLegIndex]) {
+                    if (!legPartition[oldLegIndex]) {
                         // Goes to lego1
                         newConn.to.legoId = lego1.instanceId;
                         newConn.to.legIndex = lego1LegMap.get(oldLegIndex)!;
@@ -828,6 +853,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         operationHistory.addOperation(result.operation);
         encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
     }
+
+    const handleLegPartitionDialogClose = () => {
+        // Call cleanup to restore original state
+        (window as any).__restoreLegsState();
+        delete (window as any).__restoreLegsState;
+        setShowLegPartitionDialog(false);
+    };
 
     return (
         <Box
@@ -1119,12 +1151,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             </VStack>
             <LegPartitionDialog
                 open={showLegPartitionDialog}
-                numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
                 onClose={() => {
                     setShowLegPartitionDialog(false);
-                    setUnfuseLego(null);
+                    handleLegPartitionDialogClose();
                 }}
-                onConfirm={legAssignments => handleUnfuseTo2LegosPartitionConfirm(legAssignments, _.cloneDeep(connections))}
+                onSubmit={(legPartition: number[]) => {
+                    setShowLegPartitionDialog(false);
+                    handleLegPartitionDialogClose();
+                    handleUnfuseTo2LegosPartitionConfirm(legPartition, _.cloneDeep(connections));
+                }}
+                numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
             />
         </Box>
     )
