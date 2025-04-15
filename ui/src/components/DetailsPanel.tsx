@@ -64,10 +64,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setCalculatedMatrix(null);
     }, [tensorNetwork]);
 
-    useEffect(() => {
-        console.log("Connections changed", connections);
-    }, [connections]);
-
     // Helper function to generate network signature for caching
     const getNetworkSignature = (network: TensorNetwork) => {
         const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));

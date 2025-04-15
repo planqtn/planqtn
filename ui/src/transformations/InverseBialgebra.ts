@@ -24,8 +24,9 @@ export function canDoInverseBialgebra(selectedLegos: DroppedLego[], connections:
         }
     }
 
-    // Count external connections for each lego
+    // Count external connections and dangling legs for each lego
     for (const lego of selectedLegos) {
+        // Count external connections
         const externalConnections = connections.filter(conn =>
             conn.containsLego(lego.instanceId) &&
             !selectedLegos.some(otherLego =>
@@ -33,7 +34,17 @@ export function canDoInverseBialgebra(selectedLegos: DroppedLego[], connections:
                 conn.containsLego(otherLego.instanceId)
             )
         );
-        if (externalConnections.length !== 1) return false;
+
+        // Count dangling legs
+        const totalLegs = lego.parity_check_matrix[0].length / 2;
+        const connectedLegs = connections
+            .filter(conn => conn.containsLego(lego.instanceId))
+            .map(conn => conn.from.legoId === lego.instanceId ? conn.from.legIndex : conn.to.legIndex);
+        const danglingLegs = Array.from({ length: totalLegs }, (_, i) => i)
+            .filter(legIndex => !connectedLegs.includes(legIndex));
+
+        // Check if there is exactly one external connection or dangling leg
+        if (externalConnections.length + danglingLegs.length !== 1) return false;
     }
 
     return true;
@@ -92,9 +103,31 @@ export async function applyInverseBialgebra(selectedLegos: DroppedLego[], droppe
         )
     );
 
-    // Calculate required legs for each new lego
-    const zLegoLegs = zExternalConns.length + 1; // external connections + 1 for inter-lego connection
-    const xLegoLegs = xExternalConns.length + 1;
+    // Find dangling legs for each partition
+    const zDanglingLegs = zLegos.flatMap(lego => {
+        const totalLegs = lego.parity_check_matrix[0].length / 2;
+        const connectedLegs = connections
+            .filter(conn => conn.containsLego(lego.instanceId))
+            .map(conn => conn.from.legoId === lego.instanceId ? conn.from.legIndex : conn.to.legIndex);
+        return Array.from({ length: totalLegs }, (_, i) => i)
+            .filter(legIndex => !connectedLegs.includes(legIndex))
+            .map(() => true);  // Convert to boolean array for counting
+    });
+
+    const xDanglingLegs = xLegos.flatMap(lego => {
+        const totalLegs = lego.parity_check_matrix[0].length / 2;
+        const connectedLegs = connections
+            .filter(conn => conn.containsLego(lego.instanceId))
+            .map(conn => conn.from.legoId === lego.instanceId ? conn.from.legIndex : conn.to.legIndex);
+        return Array.from({ length: totalLegs }, (_, i) => i)
+            .filter(legIndex => !connectedLegs.includes(legIndex))
+            .map(() => true);  // Convert to boolean array for counting
+    });
+
+    // Calculate required legs for each new lego:
+    // external connections + dangling legs + 1 for inter-lego connection
+    const zLegoLegs = zExternalConns.length + zDanglingLegs.length + 1;
+    const xLegoLegs = xExternalConns.length + xDanglingLegs.length + 1;
 
     // Get the maximum instance ID from existing legos
     const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
@@ -123,7 +156,7 @@ export async function applyInverseBialgebra(selectedLegos: DroppedLego[], droppe
     const newLegos = [newZLego, newXLego];
     const newConnections: Connection[] = [];
 
-    // Create connection between new legos
+    // Create connection between new legos (using their last legs)
     newConnections.push(new Connection(
         { legoId: newZLego.instanceId, legIndex: zLegoLegs - 1 },
         { legoId: newXLego.instanceId, legIndex: xLegoLegs - 1 }
@@ -148,6 +181,9 @@ export async function applyInverseBialgebra(selectedLegos: DroppedLego[], droppe
             externalEnd
         ));
     });
+
+    // Note: Dangling legs are automatically handled by not creating connections for them
+    // They use indices after the external connections but before the inter-lego connection
 
     // Remove old legos and their connections
     const updatedDroppedLegos = droppedLegos
