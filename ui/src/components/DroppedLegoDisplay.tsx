@@ -284,7 +284,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 >
                     <g transform={`translate(${size / 2}, ${size / 2})`}>
                         <path
-                            d={vertices.reduce((path, vertex, i) => {
+                            d={vertices.reduce((path, _, i) => {
                                 const command = i === 0 ? 'M' : 'L';
                                 const x = (size / 2) * Math.cos(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);
                                 const y = (size / 2) * Math.sin(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);

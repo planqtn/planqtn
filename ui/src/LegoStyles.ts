@@ -1,5 +1,5 @@
-import { DroppedLego, LegoPiece, PauliOperator } from "./types";
-import { getPauliColor, I_COLOR, I_COLOR_DARK, I_COLOR_LIGHT, X_COLOR, X_COLOR_DARK, X_COLOR_LIGHT, Y_COLOR, Z_COLOR, Z_COLOR_DARK, Z_COLOR_LIGHT } from "./utils/PauliColors";
+import { DroppedLego, PauliOperator } from "./types";
+import { getPauliColor, I_COLOR, I_COLOR_DARK, I_COLOR_LIGHT, X_COLOR, X_COLOR_DARK, X_COLOR_LIGHT, Z_COLOR, Z_COLOR_DARK, Z_COLOR_LIGHT } from "./utils/PauliColors";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";

@@ -53,9 +53,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
-    const [selectedMatrixRows, setSelectedMatrixRows] = useState<number[]>([])
-    const [showMatrix, setShowMatrix] = useState(false)
-    const [calculatedMatrix, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
+    const [, setSelectedMatrixRows] = useState<number[]>([])
+    const [, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
 

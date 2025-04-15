@@ -5,7 +5,7 @@ import axios from 'axios'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
-import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, GroupDragState, SelectionBoxState, PauliOperator, LegoServerPayload, TensorNetworkLeg, Operation, CanvasDragState } from './types'
+import { Connection, DroppedLego, LegoPiece, LegDragState, DragState, TensorNetwork, GroupDragState, SelectionBoxState, PauliOperator, CanvasDragState } from './types'
 import DetailsPanel from './components/DetailsPanel'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
@@ -52,9 +52,8 @@ function App() {
     const canvasRef = useRef<HTMLDivElement>(null)
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
-    const [operationHistory, setOperationHistory] = useState<OperationHistory>(new OperationHistory([]))
+    const [operationHistory] = useState<OperationHistory>(new OperationHistory([]))
 
-    const [redoHistory, setRedoHistory] = useState<Operation[]>([])
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
     const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
         isSelecting: false,
@@ -66,7 +65,7 @@ function App() {
     });
     const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
-    const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard("")
+    const { onCopy: onCopyCode } = useClipboard("")
     const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedDynamicLego, setSelectedDynamicLego] = useState<LegoPiece | null>(null)
@@ -354,16 +353,16 @@ function App() {
                 legosToClone.some(l => l.instanceId === conn.from.legoId) &&
                 legosToClone.some(l => l.instanceId === conn.to.legoId)
             )
-            .map(conn => ({
-                from: {
+            .map(conn => (new Connection(
+                {
                     legoId: instanceIdMap.get(conn.from.legoId)!,
                     legIndex: conn.from.legIndex
                 },
-                to: {
+                {
                     legoId: instanceIdMap.get(conn.to.legoId)!,
                     legIndex: conn.to.legIndex
                 }
-            }));
+            )));
 
         // Add new legos and connections
         setDroppedLegos(prev => [...prev, ...newLegos]);
@@ -421,10 +420,10 @@ function App() {
                     currentPositions[l.instanceId] = { x: l.x, y: l.y };
                 });
 
-                setGroupDragState(prev => ({
+                setGroupDragState({
                     legoInstanceIds: selectedLegos.map(l => l.instanceId),
                     originalPositions: currentPositions
-                }));
+                });
             }
 
             setDragState({
@@ -1241,20 +1240,16 @@ function App() {
 
             // Calculate positions for each row
             const newLegos = legos.map((lego: DroppedLego) => {
-                let rowIndex: number;
                 let nodesInRow: DroppedLego[];
                 let y: number;
 
                 if (lego.shortName.startsWith('z')) {
-                    rowIndex = 0;
                     nodesInRow = zNodes;
                     y = 100;  // Top row
                 } else if (lego.shortName.startsWith('q')) {
-                    rowIndex = 1;
                     nodesInRow = qNodes;
                     y = 250;  // Middle row
                 } else {
-                    rowIndex = 2;
                     nodesInRow = xNodes;
                     y = 400;  // Bottom row
                 }
@@ -1318,16 +1313,13 @@ function App() {
 
             // Calculate positions for each row
             const newLegos = legos.map((lego: DroppedLego) => {
-                let rowIndex: number;
                 let nodesInRow: DroppedLego[];
                 let y: number;
 
                 if (lego.shortName.startsWith('q')) {
-                    rowIndex = 1;
                     nodesInRow = qNodes;
                     y = 300;  // Bottom row
                 } else {
-                    rowIndex = 0;
                     nodesInRow = checkNodes;
                     y = 150;  // Top row
                 }
@@ -1720,7 +1712,7 @@ function App() {
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
-                                    onLegoSelect={(lego) => {
+                                    onLegoSelect={(_) => {
                                         // Handle lego selection if needed
                                     }}
                                 />
