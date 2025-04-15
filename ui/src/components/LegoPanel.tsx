@@ -1,5 +1,5 @@
 import { Box, Heading, List, ListItem, HStack, VStack, Icon, Text, Badge, useColorModeValue, useToast } from '@chakra-ui/react'
-import { FaCube, FaCode, FaTable } from 'react-icons/fa'
+import { FaCube, FaCode, FaTable, FaPlus } from 'react-icons/fa'
 import { LegoPiece } from '../types.ts'
 import { DynamicLegoDialog } from './DynamicLegoDialog'
 import { useState } from 'react'
@@ -12,7 +12,6 @@ interface LegoPanelProps {
     onLegoSelect: (lego: LegoPiece) => void
     onDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void
 }
-
 
 export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDragStart }) => {
     const toast = useToast()
@@ -58,6 +57,17 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
 
+    // Create custom lego piece
+    const customLego: LegoPiece = {
+        id: 'custom',
+        name: 'Custom Lego',
+        shortName: 'Custom',
+        description: 'Create a custom lego with specified parity check matrix and logical legs',
+        parity_check_matrix: [[1, 1, 1, 1, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1, 1, 1]],
+        logical_legs: [],
+        gauge_legs: [],
+    }
+
     return (
         <Box
             h="100%"
@@ -69,10 +79,53 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
             <VStack align="stretch" spacing={4} p={4}>
                 <Heading size="md">Lego Pieces</Heading>
                 <List spacing={3}>
+                    {/* Custom Lego Piece */}
+                    <ListItem
+                        key={customLego.id}
+                        p={2}
+                        borderWidth="1px"
+                        borderRadius="md"
+                        _hover={{ bg: 'gray.50' }}
+                        cursor="move"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, customLego)}
+                    >
+                        <HStack p={2}>
+                            <Box position="relative" w={50} h={50}>
+                                <DroppedLegoDisplay
+                                    lego={{
+                                        ...customLego,
+                                        x: 13,
+                                        y: 20,
+                                        instanceId: customLego.id,
+                                        style: getLegoStyle(customLego.id, 2),
+                                        pushedLegs: [],
+                                        selectedMatrixRows: []
+                                    }}
+                                    connections={[]}
+                                    index={0}
+                                    legDragState={null}
+                                    handleLegMouseDown={() => { }}
+                                    handleLegoMouseDown={() => { }}
+                                    handleLegoClick={() => { }}
+                                    tensorNetwork={null}
+                                    selectedLego={null}
+                                    dragState={null}
+                                    hideConnectedLegs={false}
+                                    droppedLegos={[]}
+                                    demoMode={true}
+                                />
+                            </Box>
+                            <VStack align="start" spacing={1}>
+                                <Text display="block" fontWeight="bold">{customLego.name}</Text>
+                            </VStack>
+                        </HStack>
+                    </ListItem>
+
+                    {/* Existing Legos */}
                     {legos.map((lego) => {
                         const numLegs = lego.parity_check_matrix[0].length / 2;
                         return (
-
                             <ListItem
                                 key={lego.id}
                                 p={2}
@@ -84,11 +137,13 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                 onDragStart={(e) => handleDragStart(e, lego)}
                             >
                                 <HStack p={2}>
-                                    <Box position="relative" w={50} h={50} >
+                                    <Box position="relative" w={50} h={50}>
                                         <DroppedLegoDisplay
                                             lego={{
-                                                // not sure why the Box based rendered legos (num legs <=2) are not centered, and why the svg one leg==3 ones need to bump either...
-                                                ...lego, x: numLegs <= 3 ? 13 : 5, y: numLegs <= 3 ? 20 : 13, instanceId: lego.id,
+                                                ...lego,
+                                                x: numLegs <= 3 ? 13 : 5,
+                                                y: numLegs <= 3 ? 20 : 13,
+                                                instanceId: lego.id,
                                                 style: getLegoStyle(lego.id, numLegs),
                                                 pushedLegs: [],
                                                 selectedMatrixRows: []
@@ -106,7 +161,6 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                             droppedLegos={[]}
                                             demoMode={true}
                                         />
-
                                     </Box>
                                     <VStack align="start" spacing={1}>
                                         {lego.is_dynamic && (
@@ -114,14 +168,10 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                         )}
                                         <Text display="block" fontWeight="bold">{lego.name}</Text>
                                     </VStack>
-
-
                                 </HStack>
                             </ListItem>
                         )
-                    }
-
-                    )}
+                    })}
                 </List>
             </VStack>
 

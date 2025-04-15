@@ -14,13 +14,15 @@ import {
     FormControl,
     FormLabel,
     Switch,
+    Checkbox,
+    HStack,
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 
 interface TannerDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (matrix: number[][]) => void;
+    onSubmit: (matrix: number[][], logicalLegs: number[]) => void;
     title?: string;
     cssOnly?: boolean;
 }
@@ -39,16 +41,19 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
     const defaultCssMatrix = `0011
 1100`;
 
-    const defaultStabilizer = `XZIZ,IXZI,IIXZ`;
+    const defaultStabilizer = `XXXX,ZZZZ`;
 
     const [matrixText, setMatrixText] = useState('')
     const [error, setError] = useState('')
-    const [useStabilizer, setUseStabilizer] = useState(false);
+    const [useStabilizer, setUseStabilizer] = useState(true);
+    const [logicalLegs, setLogicalLegs] = useState<number[]>([]);
+    const [numLegs, setNumLegs] = useState(0);
 
     // Set default value when dialog opens
     useEffect(() => {
         if (isOpen) {
             setError('');
+            setLogicalLegs([]);
 
             if (!matrixText || matrixText === '') {
                 if (title === 'Measurement State Prep Network') {
@@ -193,20 +198,13 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 }
             }
 
+            // Update number of legs when matrix is valid
+            setNumLegs(rowLength / 2);
+
             return matrix;
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Invalid matrix format';
-            if (cssOnly) {
-                setError(errorMessage);
-            } else {
-                toast({
-                    title: 'Error',
-                    description: errorMessage,
-                    status: 'error',
-                    duration: 5000,
-                    isClosable: true,
-                });
-            }
+            setError(errorMessage);
             return null;
         }
     };
@@ -214,8 +212,16 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
     const handleSubmit = () => {
         const matrix = validateMatrix(matrixText);
         if (matrix) {
-            onSubmit(matrix);
+            onSubmit(matrix, logicalLegs);
             onClose();
+        } else {
+            toast({
+                title: 'Error',
+                description: error,
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+            });
         }
     };
 
@@ -243,11 +249,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                                 isChecked={useStabilizer}
                                 onChange={(e) => {
                                     const newUseStabilizer = e.target.checked;
-
-                                    // Convert existing input to the new format
                                     const convertedInput = convertInput(matrixText, newUseStabilizer);
-                                    console.log(matrixText);
-                                    console.log(convertedInput);
                                     setMatrixText(convertedInput);
                                     setUseStabilizer(newUseStabilizer);
                                     setError('');
@@ -259,6 +261,8 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                             onChange={(e) => {
                                 setMatrixText(e.target.value);
                                 setError('');
+                                // Validate matrix to update number of legs
+                                validateMatrix(e.target.value);
                             }}
                             onKeyDown={(e) => {
                                 e.stopPropagation();
@@ -283,10 +287,27 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                             rows={10}
                             fontFamily="monospace"
                         />
-                        {cssOnly && error && (
-                            <Text color="red.500" fontSize="sm">
-                                {error}
-                            </Text>
+                        {numLegs > 0 && (
+                            <VStack align="start" width="100%">
+                                <Text>Select logical legs:</Text>
+                                <HStack wrap="wrap" spacing={2}>
+                                    {Array.from({ length: numLegs }, (_, i) => (
+                                        <Checkbox
+                                            key={i}
+                                            isChecked={logicalLegs.includes(i)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setLogicalLegs([...logicalLegs, i]);
+                                                } else {
+                                                    setLogicalLegs(logicalLegs.filter(leg => leg !== i));
+                                                }
+                                            }}
+                                        >
+                                            Leg {i}
+                                        </Checkbox>
+                                    ))}
+                                </HStack>
+                            </VStack>
                         )}
                     </VStack>
                 </ModalBody>

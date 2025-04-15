@@ -79,6 +79,12 @@ function App() {
     const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(null);
     const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
+    const [showTannerDialog, setShowTannerDialog] = useState(false);
+    const [showCssTannerDialog, setShowCssTannerDialog] = useState(false);
+    const [showMspDialog, setShowMspDialog] = useState(false);
+    const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
+    const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
+
     // Update the serializer when legos change
     useEffect(() => {
         stateSerializerRef.current.updateLegos(legos)
@@ -164,11 +170,40 @@ function App() {
     }, [decodeCanvasState])
 
 
-    const handleDragStart = (e: React.DragEvent, lego: LegoPiece) => {
-        e.dataTransfer.setData('application/json', JSON.stringify(lego));
-        setDraggedLego(lego);
-        console.log("starting to drag something", lego);
-    }
+    const handleDragStart = (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => {
+        if (lego.id === 'custom') {
+            // Store the drop position for the custom lego
+            const rect = e.currentTarget.getBoundingClientRect();
+            setCustomLegoPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            });
+            // Set the draggedLego state for custom legos
+            const draggedLego: DroppedLego = {
+                ...lego,
+                instanceId: newInstanceId(droppedLegos),
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+                style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+            setDraggedLego(draggedLego);
+        } else {
+            // Handle regular lego drag
+            const rect = e.currentTarget.getBoundingClientRect();
+            const draggedLego: DroppedLego = {
+                ...lego,
+                instanceId: newInstanceId(droppedLegos),
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+                style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
+                pushedLegs: [],
+                selectedMatrixRows: []
+            };
+            setDraggedLego(draggedLego);
+        }
+    };
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -219,6 +254,7 @@ function App() {
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
+        console.log("Dropping lego", draggedLego);
 
         // Use the draggedLego state instead of trying to get data from dataTransfer
         if (!draggedLego) return;
@@ -248,7 +284,6 @@ function App() {
 
         // Handle two-legged lego insertion
         if (numLegs === 2 && hoveredConnection) {
-
             const trafo = new InjectTwoLegged(connections, droppedLegos);
             trafo.apply(newLego, hoveredConnection).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
                 setDroppedLegos(newDroppedLegos);
@@ -260,13 +295,19 @@ function App() {
                 console.error(error);
             });
         } else {
-
-            setDroppedLegos(prev => [...prev, newLego]);
-            operationHistory.addOperation({
-                type: 'add',
-                data: { legosToAdd: [newLego] }
-            });
-            encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
+            console.log("Dropped lego", newLego);
+            // If it's a custom lego, show the dialog after dropping
+            if (draggedLego.id === 'custom') {
+                setCustomLegoPosition({ x, y });
+                setShowCustomLegoDialog(true);
+            } else {
+                setDroppedLegos(prev => [...prev, newLego]);
+                operationHistory.addOperation({
+                    type: 'add',
+                    data: { legosToAdd: [newLego] }
+                });
+                encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
+            }
         }
 
         setHoveredConnection(null);
@@ -1600,6 +1641,33 @@ function App() {
         return Math.sqrt(dx * dx + dy * dy);
     };
 
+    const handleCustomLegoSubmit = (matrix: number[][], logicalLegs: number[]) => {
+        const newLego: DroppedLego = {
+            id: 'custom',
+            name: 'Custom Lego',
+            shortName: 'Custom',
+            description: 'Custom lego with user-defined parity check matrix',
+            instanceId: newInstanceId(droppedLegos),
+            x: customLegoPosition.x,
+            y: customLegoPosition.y,
+            parity_check_matrix: matrix,
+            logical_legs: logicalLegs,
+            gauge_legs: [],
+            style: getLegoStyle('custom', matrix[0].length / 2),
+            pushedLegs: [],
+            selectedMatrixRows: []
+        };
+
+        setDroppedLegos([...droppedLegos, newLego]);
+        operationHistory.addOperation({
+            type: 'add',
+            data: {
+                legosToAdd: [newLego],
+            }
+        });
+        encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -2154,6 +2222,14 @@ function App() {
                 onSubmit={handleMspSubmit}
                 title="Measurement State Prep Network"
             />
+            {showCustomLegoDialog && (
+                <TannerDialog
+                    isOpen={showCustomLegoDialog}
+                    onClose={() => setShowCustomLegoDialog(false)}
+                    onSubmit={handleCustomLegoSubmit}
+                    title="Create Custom Lego"
+                />
+            )}
         </VStack>
     )
 }
