@@ -52,7 +52,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
-    const [weightEnumeratorCache] = useState<Map<string, string>>(new Map())
+    const [weightEnumeratorCache] = useState<Map<string, { polynomial: string, normalizerPolynomial: string }>>(new Map())
     const [, setSelectedMatrixRows] = useState<number[]>([])
     const [, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
@@ -145,11 +145,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             });
 
             // Cache the result
-            weightEnumeratorCache.set(signature, response.data.polynomial);
+            weightEnumeratorCache.set(signature, {
+                polynomial: response.data.polynomial,
+                normalizerPolynomial: response.data.normalizer_polynomial
+            });
 
             setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 weightEnumerator: response.data.polynomial,
+                normalizerPolynomial: response.data.normalizer_polynomial,
                 isCalculatingWeightEnumerator: false
             } : null);
         } catch (error) {
@@ -967,13 +971,22 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 {(tensorNetwork.weightEnumerator ||
                                     (tensorNetwork && weightEnumeratorCache.get(getNetworkSignature(tensorNetwork)))) ? (
                                     <VStack align="stretch" spacing={2}>
-                                        <Heading size="sm">Weight Enumerator Polynomial</Heading>
+                                        <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
                                         <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                             <Text fontFamily="mono">
                                                 {tensorNetwork.weightEnumerator ||
-                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))}
+                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))!.polynomial}
                                             </Text>
                                         </Box>
+
+                                        <Heading size="sm">Normalizer Weight EnumeratorPolynomial</Heading>
+                                        <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
+                                            <Text fontFamily="mono">
+                                                {tensorNetwork.normalizerPolynomial ||
+                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))!.normalizerPolynomial}
+                                            </Text>
+                                        </Box>
+
                                     </VStack>
                                 ) : tensorNetwork.isCalculatingWeightEnumerator ? (
                                     <BlochSphereLoader />

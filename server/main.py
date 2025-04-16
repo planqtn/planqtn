@@ -79,6 +79,7 @@ class ParityCheckResponse(BaseModel):
 
 class WeightEnumeratorResponse(BaseModel):
     polynomial: str
+    normalizer_polynomial: str
     message: str = "Successfully calculated weight enumerator polynomial"
 
 
@@ -254,13 +255,11 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
     print("network.legos", network.legos)
     print("network.connections", network.connections)
 
-    n_dangling_legs = 0
     for instance_id, lego in network.legos.items():
         print("instance id", instance_id)
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
         nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
-        n_dangling_legs += len(lego.parity_check_matrix[0])
 
     # Create TensorNetwork instance
     tn = TensorNetwork(nodes)
@@ -274,27 +273,30 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
             [conn["from"]["legIndex"]],
             [conn["to"]["legIndex"]],
         )
-        n_dangling_legs -= 2
 
     # Conjoin all nodes to get the final tensor network
     polynomial = tn.stabilizer_enumerator_polynomial(
         verbose=False, progress_bar=True, cotengra=len(nodes) > 4
     )
 
+    h = tn.conjoin_nodes().h
+    r = h.shape[0]
+    n = h.shape[1] // 2
+    k = n - r
+
     z, w = symbols("z w")
-    poly_b = (
-        polynomial._homogenize(n_dangling_legs)
-        ._to_sympy([z, w])
-        .subs({w: (w + 3 * z) / 2, z: (w - z) / 2})
-    )
+    poly_b = polynomial.macwilliams_dual(n=n, k=k, to_normalizer=True)
 
     print("polynomial", polynomial)
     print("poly_b", poly_b)
 
     # Convert the polynomial to a string representation
     polynomial_str = str(polynomial)
+    normalizer_polynomial_str = str(poly_b)
 
-    return WeightEnumeratorResponse(polynomial=polynomial_str)
+    return WeightEnumeratorResponse(
+        polynomial=polynomial_str, normalizer_polynomial=normalizer_polynomial_str
+    )
 
 
 @app.post("/constructioncode", response_model=ConstructionCodeResponse)

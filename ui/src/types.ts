@@ -63,6 +63,7 @@ export interface TensorNetwork {
     connections: Connection[]
     parityCheckMatrix?: number[][]
     weightEnumerator?: string
+    normalizerPolynomial?: string
     isCalculatingWeightEnumerator?: boolean
     constructionCode?: string
     legOrdering?: TensorNetworkLeg[]
