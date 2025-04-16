@@ -4,7 +4,7 @@ import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connec
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
 import { config } from '../config'
@@ -54,25 +54,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
     const [weightEnumeratorCache] = useState<Map<string, { polynomial: string, normalizerPolynomial: string }>>(new Map())
     const [, setSelectedMatrixRows] = useState<number[]>([])
-    const [, setCalculatedMatrix] = useState<{ matrix: number[][], legs: TensorNetworkLeg[], recognized_type: string | null } | null>(null)
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
 
-    // Reset calculatedMatrix when selection changes
-    useEffect(() => {
-        setCalculatedMatrix(null);
-    }, [tensorNetwork]);
 
-    // Helper function to generate network signature for caching
-    const getNetworkSignature = (network: TensorNetwork) => {
-        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId));
-        const sortedConnections = [...network.connections].sort((a, b) => {
-            const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
-            const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
-            return aStr.localeCompare(bStr);
-        });
-        return JSON.stringify({ legos: sortedLegos, connections: sortedConnections });
-    };
 
     const calculateParityCheckMatrix = async () => {
         if (!tensorNetwork) return;
@@ -101,7 +86,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 legOrdering: legOrdering
             });
 
-            parityCheckMatrixCache.set(getNetworkSignature(tensorNetwork), response);
+            parityCheckMatrixCache.set(tensorNetwork.signature!, response);
         } catch (error) {
             console.error('Error calculating parity check matrix:', error);
             setError('Failed to calculate parity check matrix');
@@ -111,12 +96,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const calculateWeightEnumerator = async () => {
         if (!tensorNetwork) return;
 
-        const signature = getNetworkSignature(tensorNetwork);
+        const signature = tensorNetwork.signature!;
         const cachedEnumerator = weightEnumeratorCache.get(signature);
         if (cachedEnumerator) {
             setTensorNetwork({
                 ...tensorNetwork,
-                weightEnumerator: cachedEnumerator,
+                weightEnumerator: cachedEnumerator.polynomial,
+                normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
                 isCalculatingWeightEnumerator: false
             });
             return;
@@ -215,7 +201,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             } : null);
 
             // Update the cache
-            const signature = getNetworkSignature(tensorNetwork);
+            const signature = tensorNetwork.signature!;
             const cachedResponse = parityCheckMatrixCache.get(signature);
             if (cachedResponse) {
                 parityCheckMatrixCache.set(signature, {
@@ -902,7 +888,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
 
                                     {!tensorNetwork.parityCheckMatrix &&
-                                        !parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)) && (
+                                        !parityCheckMatrixCache.get(tensorNetwork.signature!) && (
                                             <Button
                                                 onClick={calculateParityCheckMatrix}
                                                 colorScheme="blue"
@@ -914,7 +900,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             </Button>
                                         )}
                                     {!tensorNetwork.weightEnumerator &&
-                                        !weightEnumeratorCache.get(getNetworkSignature(tensorNetwork)) &&
+                                        !weightEnumeratorCache.get(tensorNetwork.signature!) &&
                                         !tensorNetwork.isCalculatingWeightEnumerator && (
                                             <Button
                                                 onClick={calculateWeightEnumerator}
@@ -937,13 +923,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                     </Button>
                                 </VStack>
                                 {(tensorNetwork.parityCheckMatrix ||
-                                    (tensorNetwork && parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork)))) && (
+                                    (tensorNetwork && parityCheckMatrixCache.get(tensorNetwork.signature!))) && (
                                         <ParityCheckMatrixDisplay
                                             matrix={tensorNetwork.parityCheckMatrix ||
-                                                parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork))!.data.matrix}
+                                                parityCheckMatrixCache.get(tensorNetwork.signature!)!.data.matrix}
                                             title="Parity Check Matrix"
                                             legOrdering={tensorNetwork.legOrdering ||
-                                                parityCheckMatrixCache.get(getNetworkSignature(tensorNetwork))!.data.legs}
+                                                parityCheckMatrixCache.get(tensorNetwork.signature!)!.data.legs}
                                             onMatrixChange={(newMatrix) => {
                                                 // Update the tensor network state
                                                 setTensorNetwork(prev => prev ? {
@@ -952,7 +938,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 } : null);
 
                                                 // Update the cache
-                                                const signature = getNetworkSignature(tensorNetwork);
+                                                const signature = tensorNetwork.signature!;
                                                 const cachedResponse = parityCheckMatrixCache.get(signature);
                                                 if (cachedResponse) {
                                                     parityCheckMatrixCache.set(signature, {
@@ -969,13 +955,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         />
                                     )}
                                 {(tensorNetwork.weightEnumerator ||
-                                    (tensorNetwork && weightEnumeratorCache.get(getNetworkSignature(tensorNetwork)))) ? (
+                                    (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!))) ? (
                                     <VStack align="stretch" spacing={2}>
                                         <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
                                         <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                             <Text fontFamily="mono">
                                                 {tensorNetwork.weightEnumerator ||
-                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))!.polynomial}
+                                                    weightEnumeratorCache.get(tensorNetwork.signature!)!.polynomial}
                                             </Text>
                                         </Box>
 
@@ -983,7 +969,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                             <Text fontFamily="mono">
                                                 {tensorNetwork.normalizerPolynomial ||
-                                                    weightEnumeratorCache.get(getNetworkSignature(tensorNetwork))!.normalizerPolynomial}
+                                                    weightEnumeratorCache.get(tensorNetwork.signature!)!.normalizerPolynomial}
                                             </Text>
                                         </Box>
 

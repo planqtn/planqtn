@@ -67,6 +67,7 @@ export interface TensorNetwork {
     isCalculatingWeightEnumerator?: boolean
     constructionCode?: string
     legOrdering?: TensorNetworkLeg[]
+    signature?: string
 }
 
 export interface LegDragState {

@@ -571,7 +571,8 @@ function App() {
                 setTensorNetwork(null);
                 setSelectedLego(lego);
             } else if (selectedLego?.instanceId === lego.instanceId) {
-                const network = findConnectedComponent(lego);
+                let network = findConnectedComponent(lego) as TensorNetwork;
+                network.signature = createNetworkSignature(network);
                 setTensorNetwork(network);
                 setSelectedLego(null);
             } else {
@@ -672,10 +673,11 @@ function App() {
                 selectedLegoIds.has(conn.to.legoId)
             );
 
-            const tensorNetwork = {
+            let tensorNetwork = {
                 legos: selectedLegos,
                 connections: internalConnections
-            };
+            } as TensorNetwork;
+            tensorNetwork.signature = createNetworkSignature(tensorNetwork);
 
             setSelectedLego(null);
             setTensorNetwork(tensorNetwork);
@@ -1197,6 +1199,18 @@ function App() {
         encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
     }
 
+    // Helper function to generate network signature for caching
+    const createNetworkSignature = (network: TensorNetwork) => {
+        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId)).map(lego => lego.instanceId);
+        const sortedConnections = [...network.connections].sort((a, b) => {
+            const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
+            const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
+            return aStr.localeCompare(bStr);
+        });
+        const sig = JSON.stringify({ legos: sortedLegos, connections: sortedConnections })
+        return sig;
+    };
+
     // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -1219,12 +1233,15 @@ function App() {
                         selectedLegoIds.has(conn.to.legoId)
                     );
 
-                    const tensorNetwork = {
+                    let tensorNetwork = {
                         legos: droppedLegos,
                         connections: internalConnections
-                    };
+                    } as TensorNetwork;
+
+                    tensorNetwork.signature = createNetworkSignature(tensorNetwork);
 
                     setSelectedLego(null);
+
                     setTensorNetwork(tensorNetwork);
                 }
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
