@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, sprint
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
+from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
 
 
 # Handle empty matrices as input
@@ -82,8 +82,8 @@ def test_conjoin_single_trace_713_code_with_422_code():
     )
 
     assert (
-        ScalarStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
-        == ScalarStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
+        TensorStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
+        == TensorStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 
@@ -140,8 +140,8 @@ def test_conjoin_single_trace_713_code_with_713_code():
         ]
     )
     assert (
-        ScalarStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
-        == ScalarStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
+        TensorStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
+        == TensorStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 

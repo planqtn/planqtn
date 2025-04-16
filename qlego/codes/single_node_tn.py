@@ -31,12 +31,11 @@ class SingleNodeTensorNetwork(TensorNetwork):
         self,
         legs=[],
         e=None,
-        eprime=None,
         verbose=False,
         progress_bar=False,
         summed_legs=None,
         cotengra=True,
     ):
         return self.node.stabilizer_enumerator_polynomial(
-            basis_element_legs=legs, e=e, eprime=eprime, open_legs=[]
+            basis_element_legs=legs, e=e, open_legs=[]
         )

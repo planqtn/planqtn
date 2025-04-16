@@ -11,7 +11,6 @@ from tqdm import tqdm
 from qlego.legos import LegoAnnotation, Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, sprint, tensor_product
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.simple_poly import SimplePoly
 from qlego.symplectic import omega, weight
 
@@ -691,7 +690,6 @@ class TensorNetwork:
         self,
         legs: List[Tuple[int, int]] = [],
         e: GF2 = None,
-        eprime: GF2 = None,
         verbose: bool = False,
         progress_bar: bool = False,
         summed_legs: List[Tuple[int, int]] = None,
@@ -715,10 +713,7 @@ class TensorNetwork:
         # default to the identity
         if e is None:
             e = GF2.Zeros(2 * m)
-        if eprime is None:
-            eprime = e.copy()
         assert len(e) == m * 2
-        assert len(eprime) == m * 2
 
         node1_pte = None
         if len(self.traces) == 0 and len(self.nodes) == 1:
@@ -747,17 +742,11 @@ class TensorNetwork:
             traced_legs1 = [l for l, idx in traced_legs_with_op_indices1]
             e1_indices = [idx for l, idx in traced_legs_with_op_indices1]
             e1 = sslice(e, e1_indices)
-            eprime1 = sslice(eprime, e1_indices)
-
-            assert len(e1) == len(eprime1)
 
             traced_legs_with_op_indices2 = node_legs_to_trace[node_idx2]
             traced_legs2 = [l for l, idx in traced_legs_with_op_indices2]
             e2_indices = [idx for l, idx in traced_legs_with_op_indices2]
             e2 = sslice(e, e2_indices)
-            eprime2 = sslice(eprime, e2_indices)
-
-            assert len(e2) == len(eprime2)
 
             t2 = self.nodes[node_idx2]
 
@@ -783,7 +772,7 @@ class TensorNetwork:
 
                 if verbose:
                     print(
-                        f"joining two nodes with open legs: {open_legs1}, {open_legs2}"
+                        f"joining two nodes with no PTEs [{node_idx1}, {node_idx2}] & open legs: {open_legs1}, {open_legs2}"
                     )
 
                 pte = t1.trace_with(
@@ -793,11 +782,11 @@ class TensorNetwork:
                     traced_legs1=traced_legs1,
                     traced_legs2=traced_legs2,
                     e1=e1,
-                    eprime1=eprime1,
                     e2=e2,
-                    eprime2=eprime2,
                     open_legs1=open_legs1,
                     open_legs2=open_legs2,
+                    verbose=verbose,
+                    progress_bar=progress_bar,
                 )
                 self.legs_left_to_join[node_idx1] = open_legs1
                 self.legs_left_to_join[node_idx2] = open_legs2
@@ -808,8 +797,13 @@ class TensorNetwork:
             elif (node1_pte is None and node2_pte is not None) or (
                 node2_pte is None and node1_pte is not None
             ):
+                if verbose:
+                    print(
+                        f"One node is in a PTE, the other is not [{node1_pte}, {node2_pte}] <- [{node_idx1}, {node_idx2}]"
+                    )
                 if node1_pte is None:
-                    # print("swapping...")
+                    if verbose:
+                        print("swapping...")
 
                     # swap node 1 and 2 so node 1 is in the PTE
                     join_legs1, join_legs2 = join_legs2, join_legs1
@@ -848,7 +842,6 @@ class TensorNetwork:
                     join_legs2=join_legs2,
                     traced_legs=traced_legs2,
                     e=e2,
-                    eprime=eprime2,
                     open_legs1=open_legs1,
                     open_legs2=open_legs2,
                     progress_bar=progress_bar,
@@ -864,6 +857,8 @@ class TensorNetwork:
                 self.legs_left_to_join[node_idx2] = open_legs2
             elif node1_pte == node2_pte:
                 # both nodes are in the same PTE!
+                if verbose:
+                    print(f"self trace within PTE {node1_pte}")
                 pte = node1_pte.self_trace(
                     join_legs1=[
                         (node_idx1, leg) if isinstance(leg, int) else leg
@@ -874,6 +869,7 @@ class TensorNetwork:
                         for leg in join_legs2
                     ],
                     progress_bar=progress_bar,
+                    verbose=verbose,
                 )
                 for node in pte.nodes:
                     self.ptes[node] = pte
@@ -925,6 +921,8 @@ class TensorNetwork:
                 print("PTE tensor: ")
             for k in list(node1_pte.tensor.keys()):
                 v = node1_pte.tensor[k]
+                # if not 0 in v:
+                #     continue
                 if verbose:
                     print(k, v, end="")
                 if self.truncate_length is None:
@@ -944,7 +942,7 @@ class TensorNetwork:
                         if verbose:
                             print()
 
-            # print(f"PTEs: {self.ptes}")
+                print(f"PTEs: {self.ptes}")
 
         self._wep = SimplePoly()
         for k, sub_wep in pte.tensor.items():
@@ -953,9 +951,9 @@ class TensorNetwork:
         return self._wep
 
     def stabilizer_enumerator(
-        self, k, legs: List[Tuple[int, List[int]]], e: GF2 = None, eprime: GF2 = None
+        self, k, legs: List[Tuple[int, List[int]]], e: GF2 = None
     ):
-        wep = self.stabilizer_enumerator_polynomial(legs, e, eprime)
+        wep = self.stabilizer_enumerator_polynomial(legs, e)
         return wep._dict
 
     def set_truncate_length(self, truncate_length):
@@ -999,14 +997,11 @@ class PartiallyTracedEnumerator:
     def __hash__(self):
         return hash((frozenset(self.nodes)))
 
-    def stabilizer_enumerator(self, legs: List[Tuple[int, int]], e, eprime):
+    def stabilizer_enumerator(self, legs: List[Tuple[int, int]], e):
         filtered_axes = [self.tracable_legs.index(leg) for leg in legs]
         indices = [slice(None) for _ in range(self.tracable_legs)]
-        for idx, axis in enumerate(filtered_axes[: len(e)]):
+        for idx, axis in enumerate(filtered_axes):
             indices[axis] = int(e[idx])
-
-        for idx, axis in enumerate(filtered_axes[len(e) :]):
-            indices[axis] = int(eprime[idx])
 
         return self.tensor[indices]
 
@@ -1094,7 +1089,9 @@ class PartiallyTracedEnumerator:
             if np.count_nonzero(key) + wep[key].minw()[0] > self.truncate_length:
                 del wep[key]
 
-    def self_trace(self, join_legs1, join_legs2, progress_bar: bool = False):
+    def self_trace(
+        self, join_legs1, join_legs2, progress_bar: bool = False, verbose: bool = False
+    ):
         assert len(join_legs1) == len(join_legs2)
         join_length = len(join_legs1)
 
@@ -1105,17 +1102,21 @@ class PartiallyTracedEnumerator:
             if leg not in join_legs1 and leg not in join_legs2
         ]
 
-        # print(f"traceable legs: {self.tracable_legs} <- {open_legs}")
+        if verbose:
+            print(f"[self_trace] traceable legs: {self.tracable_legs} <- {open_legs}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
 
-        # print(f"join indices1: {join_indices1}")
+        if verbose:
+            print(f"[self_trace] join indices1: {join_indices1}")
         join_indices2 = [self.tracable_legs.index(leg) for leg in join_legs2]
-        # print(f"join indices2: {join_indices2}")
+        if verbose:
+            print(f"[self_trace] join indices2: {join_indices2}")
 
         kept_indices = [
             i for i, leg in enumerate(self.tracable_legs) if leg in open_legs
         ]
-        # print(f"kept indices: {kept_indices}")
+        if verbose:
+            print(f"[self_trace] kept indices: {kept_indices}")
 
         def prog(x):
             return (
@@ -1129,11 +1130,22 @@ class PartiallyTracedEnumerator:
             )
 
         for old_key in prog(self.tensor.keys()):
+            if verbose:
+                print("[self_trace] old_key: ", end="")
+                sprint(GF2([old_key]))
+                print(
+                    f"   on {join_indices1} and {join_indices2}: {sslice(GF2(old_key), join_indices1)} =? {sslice(GF2(old_key), join_indices2)} ",
+                    end="",
+                )
             if not np.array_equal(
                 sslice(GF2(old_key), join_indices1),
                 sslice(GF2(old_key), join_indices2),
             ):
+                if verbose:
+                    print("not equal")
                 continue
+            if verbose:
+                print("equal")
 
             wep1 = self.tensor[old_key]
 
@@ -1166,7 +1178,6 @@ class PartiallyTracedEnumerator:
         join_legs2,
         traced_legs,
         e: GF2,
-        eprime: GF2,
         open_legs1,
         open_legs2,
         progress_bar: bool = False,
@@ -1175,7 +1186,7 @@ class PartiallyTracedEnumerator:
         assert len(join_legs1) == len(join_legs2)
 
         t2 = other.stabilizer_enumerator_polynomial(
-            traced_legs, e, eprime, join_legs2 + open_legs2
+            traced_legs, e, join_legs2 + open_legs2
         )
 
         wep = defaultdict(SimplePoly)
@@ -1311,12 +1322,8 @@ class TensorStabilizerCodeEnumerator:
                 self.legs[l] = (idx, self.legs[l][1])
         self.idx = idx
 
-    def _key(self, e, eprime):
-
-        return (
-            tuple(e.astype(np.uint8).tolist()),
-            tuple(eprime.astype(np.uint8).tolist()),
-        )
+    def _key(self, e):
+        return tuple(e.astype(np.uint8).tolist())
 
     def is_stabilizer(self, op):
         return 0 == np.count_nonzero(op @ omega(self.n) @ self.h.T)
@@ -1349,11 +1356,11 @@ class TensorStabilizerCodeEnumerator:
         traced_legs1,
         traced_legs2,
         e1: GF2,
-        eprime1: GF2,
         e2: GF2,
-        eprime2: GF2,
         open_legs1,
         open_legs2,
+        verbose=False,
+        progress_bar=False,
     ):
         """If legs are not indexed, they will be based on the first index of this component (if it is a conjoining of multiple nodes)."""
 
@@ -1385,19 +1392,44 @@ class TensorStabilizerCodeEnumerator:
         assert len(join_legs1) == len(join_legs2)
         join_length = len(join_legs1)
 
-        t1 = self.stabilizer_enumerator_polynomial(
-            traced_legs1, e1, eprime1, join_legs1 + open_legs1
+        t1: SimplePoly = self.stabilizer_enumerator_polynomial(
+            traced_legs1,
+            e1,
+            join_legs1 + open_legs1,
+            verbose=verbose,
+            progress_bar=progress_bar,
         )
 
-        t2 = other.stabilizer_enumerator_polynomial(
-            traced_legs2, e2, eprime2, join_legs2 + open_legs2
+        t2: SimplePoly = other.stabilizer_enumerator_polynomial(
+            traced_legs2,
+            e2,
+            join_legs2 + open_legs2,
+            verbose=verbose,
+            progress_bar=progress_bar,
         )
 
         wep = defaultdict(lambda: SimplePoly())
-        # print(f"t1: {t1}, open legs: {open_legs1}")
-        # print(f"t2: {t2}, open legs: {open_legs2}")
-        for k1 in t1.keys():
-            for k2 in t2.keys():
+        if verbose:
+            print(f"t1 join + open legs: {join_legs1 + open_legs1}")
+            for k, v in t1.items():
+                print(f"{k}: {v}")
+            print(f"t2 join +open legs: {join_legs2 + open_legs2}")
+            for k, v in t2.items():
+                print(f"{k}: {v}")
+
+        def prog(x):
+            return (
+                x
+                if not progress_bar
+                else tqdm(
+                    x,
+                    leave=False,
+                    desc=f"Tracing two legos: {len(t1)} x {len(t2)} elements, legs: {len(join_legs1 + open_legs1)},{len(join_legs2 + open_legs2)}",
+                )
+            )
+
+        for k1 in prog(t1.keys()):
+            for k2 in prog(t2.keys()):
                 if not _equal_on_support(
                     # key indexes correspond to join_legs then open_legs
                     list(range(join_length)),
@@ -1499,7 +1531,12 @@ class TensorStabilizerCodeEnumerator:
         )
 
     def _brute_force_stabilizer_enumerator_from_parity(
-        self, basis_element_legs: List[int], e=None, eprime=None, open_legs=[]
+        self,
+        basis_element_legs: List[int],
+        e=None,
+        open_legs=[],
+        verbose=False,
+        progress_bar=False,
     ):
         basis_element_legs = _index_legs(self.idx, basis_element_legs)
         # print(f"passed open legs: {open_legs}")
@@ -1520,18 +1557,6 @@ class TensorStabilizerCodeEnumerator:
 
         if open_cols is None:
             open_cols = []
-
-        is_diagonal_element = np.array_equal(e, eprime)
-        if not is_diagonal_element:
-            # check if EE' \prod_J I^(n-m) is a stabilizer
-            # Proposition V.4 in Cao & Lackey 2023
-
-            if not self.is_stabilizer(
-                replace_with_op_on_indices(
-                    traced_cols, e + eprime, GF2.Zeros(self.n * 2)
-                )
-            ):
-                return 0
 
         class SimpleStabilizerCollector:
             def __init__(self, k, n, coset):
@@ -1569,11 +1594,16 @@ class TensorStabilizerCodeEnumerator:
                 return wep
 
             def finalize(self):
-                if not is_diagonal_element:
-                    raise ValueError(
-                        "TODO: non-diagonal elements are not fully supported yet."
+                prog = (
+                    tqdm(
+                        self.matching_stabilizers,
+                        desc="Collecting stabilizers",
+                        disable=not progress_bar,
                     )
-                for s in self.matching_stabilizers:
+                    if progress_bar
+                    else self.matching_stabilizers
+                )
+                for s in prog:
                     stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
                     # print(f"tensor {s + self.coset} => {stab_weight}")
                     key = tuple(sslice(s, open_cols).tolist())
@@ -1602,12 +1632,21 @@ class TensorStabilizerCodeEnumerator:
 
         h_reduced = gauss(self.h)
         h_reduced = h_reduced[~np.all(h_reduced == 0, axis=1)]
+        r = len(h_reduced)
 
-        for i in range(2 ** len(h_reduced)):
-            picked_generators = GF2(
-                list(np.binary_repr(i, width=(self.n - self.k))), dtype=int
+        if verbose:
+            reduction = r < len(self.h)
+            print(
+                f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} {"REDUCED" if reduction else ""} generators"
             )
-            if len(h_reduced) == 0:
+        progress_bar = tqdm(
+            range(2**r),
+            desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} generators",
+            disable=not progress_bar,
+        )
+        for i in progress_bar:
+            picked_generators = GF2(list(np.binary_repr(i, width=r)), dtype=int)
+            if r == 0:
                 if i > 0:
                     continue
                 else:
@@ -1615,27 +1654,9 @@ class TensorStabilizerCodeEnumerator:
             else:
                 stabilizer = picked_generators @ h_reduced
 
-            if is_diagonal_element and not _suboperator_matches_on_support(
-                traced_cols, stabilizer, e
-            ):
-                # we are only interested in stabilizers that have the diagonal element on indices
+            if not _suboperator_matches_on_support(traced_cols, stabilizer, e):
                 continue
-            elif not is_diagonal_element:
-                # we want to count stabilizers that one of the off-diagonal components
-                # a non-zero count would mean that there is a stabilizer for both
-                matching_off_diagonals = (
-                    _suboperator_matches_on_support(traced_cols, stabilizer, e)
-                    and self.is_stabilizer(
-                        replace_with_op_on_indices(traced_cols, eprime, stabilizer)
-                    )
-                ) or (
-                    _suboperator_matches_on_support(traced_cols, stabilizer, eprime)
-                    and self.is_stabilizer(
-                        replace_with_op_on_indices(traced_cols, e, stabilizer)
-                    )
-                )
-                if not matching_off_diagonals:
-                    continue
+
             collector.collect(stabilizer)
         collector.finalize()
         return collector.tensor_wep
@@ -1644,26 +1665,28 @@ class TensorStabilizerCodeEnumerator:
         self,
         basis_element_legs: List[int] = [],
         e: GF2 = None,
-        eprime: GF2 = None,
         open_legs=[],
+        verbose=False,
+        progress_bar=False,
     ) -> SimplePoly:
         """Stabilizer enumerator polynomial.
 
         If open_legs left empty, it gives the scalar stabilizer enumerator polynomial.
-        If basis_element_legs is not empty, the enumerators will be for elements that exactly match E and E' (represented by e, eprime)
+        If basis_element_legs is not empty, the enumerators will be for elements that exactly match E (represented by e)
         on basis_element_legs.
         If open_legs is not empty, then the result is a sparse tensor, with non-zero values on the open_legs.
         """
         m = len(basis_element_legs)
         if e is None:
             e = GF2.Zeros(2 * m)
-        if eprime is None:
-            eprime = e.copy()
         assert len(e) == m * 2, f"{len(e)} != {m*2}"
-        assert len(eprime) == m * 2, f"{len(eprime)} != {m*2}"
 
         wep = self._brute_force_stabilizer_enumerator_from_parity(
-            basis_element_legs, e, eprime, open_legs=open_legs
+            basis_element_legs,
+            e,
+            open_legs=open_legs,
+            verbose=verbose,
+            progress_bar=progress_bar,
         )
         return wep
 
@@ -1671,7 +1694,6 @@ class TensorStabilizerCodeEnumerator:
         self,
         traced_legs: List[int] = [],
         e: GF2 = None,
-        eprime: GF2 = None,
         open_legs=[],
     ):
         if open_legs is not None and len(open_legs) > 0:
@@ -1679,7 +1701,6 @@ class TensorStabilizerCodeEnumerator:
         unnormalized_poly = self.stabilizer_enumerator_polynomial(
             traced_legs,
             e,
-            eprime,
             open_legs=open_legs,
         )
 

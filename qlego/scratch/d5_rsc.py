@@ -4,7 +4,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from qlego.legos import Legos
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.tensor_stabilizer_enumerator import TensorNetwork
 
 
@@ -52,7 +51,7 @@ rsc = GF2(
 # )
 
 # print(
-#     ScalarStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
+#     TensorStabilizerCodeEnumerator(rsc).stabilizer_enumerator_polynomial(num_workers=32)
 # )
 
 d = 7

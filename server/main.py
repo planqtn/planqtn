@@ -1,3 +1,4 @@
+import time
 import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -256,7 +257,6 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
     print("network.connections", network.connections)
 
     for instance_id, lego in network.legos.items():
-        print("instance id", instance_id)
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
         nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
@@ -275,9 +275,12 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
         )
 
     # Conjoin all nodes to get the final tensor network
+    start = time.time()
     polynomial = tn.stabilizer_enumerator_polynomial(
-        verbose=False, progress_bar=True, cotengra=len(nodes) > 4
+        verbose=True, progress_bar=True, cotengra=len(nodes) > 4
     )
+    end = time.time()
+    print("WEP calculation time", end - start)
 
     h = tn.conjoin_nodes().h
     r = h.shape[0]

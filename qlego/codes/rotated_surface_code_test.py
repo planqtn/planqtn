@@ -4,7 +4,6 @@ import pytest
 
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.simple_poly import SimplePoly
 from qlego.tensor_stabilizer_enumerator import (
     PAULI_X,
@@ -103,8 +102,8 @@ def test_d3_rotated_surface_code():
         ]
     )
 
-    scalar = ScalarStabilizerCodeEnumerator(rsc)
-    print(scalar.stabilizer_enumerator)
+    scalar = TensorStabilizerCodeEnumerator(rsc)
+    print(scalar.stabilizer_enumerator())
 
     tn = RotatedSurfaceCodeTN(d=3)
 

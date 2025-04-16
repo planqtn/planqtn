@@ -4,8 +4,8 @@ import pytest
 from qlego.codes.compass_code import CompassCodeTN
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.simple_poly import SimplePoly
+from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
 
 
 def test_compass_code():
@@ -17,23 +17,20 @@ def test_compass_code():
     )
 
     tn_wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
-    expected_wep = (
-        ScalarStabilizerCodeEnumerator(
-            GF2(
-                [
-                    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
-                ]
-            )
-        ).stabilizer_enumerator_polynomial()
-        / 4
-    )
+    expected_wep = TensorStabilizerCodeEnumerator(
+        GF2(
+            [
+                [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+            ]
+        )
+    ).stabilizer_enumerator_polynomial()
 
     assert tn_wep == expected_wep
 

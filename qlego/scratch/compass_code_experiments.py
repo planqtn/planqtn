@@ -9,7 +9,6 @@ from qlego.codes.compass_code import CompassCodeTN
 from qlego.linalg import gauss
 from qlego.parity_check import sprint
 from qlego.legos import Legos
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.tensor_stabilizer_enumerator import (
     PAULI_I,
     PAULI_X,
@@ -73,7 +72,7 @@ def compass_code_from_surface_code_via_gauge_fixing():
     # sprint(s)
     # print(conjoined.legs)
     # if d <= 8:
-    #     print(ScalarStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
+    #     print(TensorStabilizerCodeEnumerator(conjoined.h).stabilizer_enumerator(10))
 
     #  {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}
     # {0: 1, 2: 6, 4: 24, 6: 90, 8: 135}

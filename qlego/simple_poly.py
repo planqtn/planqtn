@@ -96,6 +96,9 @@ class SimplePoly:
     def items(self):
         yield from self._dict.items()
 
+    def __len__(self):
+        return len(self._dict)
+
     def __str__(self):
         return (
             "{"

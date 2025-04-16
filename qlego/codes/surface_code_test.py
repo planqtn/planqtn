@@ -3,7 +3,6 @@ import numpy as np
 import scipy
 from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.legos import Legos
-from qlego.scalar_stabilizer_enumerator import ScalarStabilizerCodeEnumerator
 from qlego.tensor_stabilizer_enumerator import (
     PAULI_X,
     PAULI_Y,
@@ -111,9 +110,7 @@ def test_d2_unrotated_surface_code():
         ]
     )
 
-    expected_we = (
-        ScalarStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial() / 4
-    )
+    expected_we = TensorStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial()
 
     assert we == expected_we, f"Not equal, got:\n{we}, expected\n{expected_we}"
 
@@ -150,8 +147,6 @@ def test_d3_unrotated_surface_code():
 
     h = GF2(scipy.linalg.block_diag(hx, hz))
 
-    expected_we = (
-        ScalarStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial() / 4
-    )
+    expected_we = TensorStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial()
 
     assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"
