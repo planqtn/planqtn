@@ -1,4 +1,4 @@
-# Quantum Lego for weight enumerators 
+# Quantum Lego framework for weight enumerators 
 
 Quick start: 
 
@@ -39,4 +39,22 @@ wep = tn.stabilizer_enumerator_polynomial(progress_bar=True, verbose=False)
 print(weps)
 ```
 
+# Quickstart for the UI 
+
+Install qlego as above. 
+
+In the same virtual environment you are now, run 
+
+```
+pip install -r server/requirements.txt
+cd ui
+npm install 
+cd ..
+```
+
+Then start the server and the UI app:
+
+```
+./start.sh
+```
 
