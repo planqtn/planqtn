@@ -1201,7 +1201,7 @@ function App() {
 
     // Helper function to generate network signature for caching
     const createNetworkSignature = (network: TensorNetwork) => {
-        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId)).map(lego => lego.instanceId);
+        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId)).map(lego => lego.id + "-" + lego.instanceId);
         const sortedConnections = [...network.connections].sort((a, b) => {
             const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
             const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
@@ -1775,8 +1775,10 @@ function App() {
     };
 
     const handleCustomLegoSubmit = (matrix: number[][], logicalLegs: number[]) => {
+        const instanceId = newInstanceId(droppedLegos)
         const newLego: DroppedLego = {
-            id: 'custom',
+            // to avoid caching collisions
+            id: 'custom-' + instanceId + '-' + Math.random().toString(36).substring(2, 15),
             name: 'Custom Lego',
             shortName: 'Custom',
             description: 'Custom lego with user-defined parity check matrix',
