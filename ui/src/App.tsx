@@ -283,24 +283,10 @@ function App() {
         setHoveredConnection(closestConnection);
     };
 
-    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-        if (!draggedLego) return;
-
-        const dropPosition = {
-            x: e.clientX - e.currentTarget.getBoundingClientRect().left,
-            y: e.clientY - e.currentTarget.getBoundingClientRect().top
-        };
-
-        if (draggedLego.id === 'custom_lego') {
-            setCustomLegoPosition(dropPosition);
-            setShowCustomLegoDialog(true);
-            return;
-        }
-
-        // Find the closest dangling leg if we're dropping a stopper
+    const handleDropStopperOnConnection = (dropPosition: { x: number, y: number }, draggedLego: LegoPiece): boolean => {
         if (draggedLego.id.includes('stopper')) {
             const closestLeg = findClosestDanglingLeg(dropPosition, droppedLegos, connections);
-            if (!closestLeg) return;
+            if (!closestLeg) return false;
 
             // Get max instance ID
             const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
@@ -316,10 +302,11 @@ function App() {
             };
             try {
                 const addStopper = new AddStopper(connections, droppedLegos);
-                const result = await addStopper.apply(closestLeg.lego, closestLeg.legIndex, stopperLego);
+                const result = addStopper.apply(closestLeg.lego, closestLeg.legIndex, stopperLego);
                 setConnections(result.connections);
                 setDroppedLegos(result.droppedLegos);
                 operationHistory.addOperation(result.operation);
+                return true;
             } catch (error) {
                 console.error('Failed to add stopper:', error);
                 toast({
@@ -329,9 +316,29 @@ function App() {
                     duration: 3000,
                     isClosable: true,
                 });
+                return false;
             }
+        }
+        return false;
+    }
+
+    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+        if (!draggedLego) return;
+
+        const dropPosition = {
+            x: e.clientX - e.currentTarget.getBoundingClientRect().left,
+            y: e.clientY - e.currentTarget.getBoundingClientRect().top
+        };
+
+        if (draggedLego.id === 'custom_lego') {
+            setCustomLegoPosition(dropPosition);
+            setShowCustomLegoDialog(true);
             return;
         }
+
+        // Find the closest dangling leg if we're dropping a stopper
+        const success = handleDropStopperOnConnection(dropPosition, draggedLego);
+        if (success) return;
 
         const numLegs = draggedLego.parity_check_matrix[0].length / 2;
 
@@ -946,16 +953,17 @@ function App() {
                         };
 
                         const addStopper = new AddStopper(connections, droppedLegos);
-                        addStopper.apply(
-                            droppedLegos.find(l => l.instanceId === hoveredConnection.from.legoId)!,
-                            hoveredConnection.from.legIndex,
-                            updatedLego
-                        ).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
+                        try {
+                            const { connections: newConnections, droppedLegos: newDroppedLegos, operation } = addStopper.apply(
+                                droppedLegos.find(l => l.instanceId === hoveredConnection.from.legoId)!,
+                                hoveredConnection.from.legIndex,
+                                updatedLego
+                            );
                             setDroppedLegos(newDroppedLegos);
                             setConnections(newConnections);
                             operationHistory.addOperation(operation);
                             encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
-                        }).catch(error => {
+                        } catch (error) {
                             console.error('Failed to add stopper:', error);
                             toast({
                                 title: 'Error',
@@ -964,7 +972,7 @@ function App() {
                                 duration: 3000,
                                 isClosable: true,
                             });
-                        });
+                        };
                     }
                 }
             } else if (deltaX !== 0 || deltaY !== 0) {

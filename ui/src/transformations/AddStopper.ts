@@ -5,7 +5,7 @@ export class AddStopper {
 
     constructor(private connections: Connection[], private droppedLegos: DroppedLego[]) { }
 
-    public async apply(targetLego: DroppedLego, targetLegIndex: number, stopperLego: DroppedLego): Promise<{ connections: Connection[], droppedLegos: DroppedLego[], operation: Operation }> {
+    public apply(targetLego: DroppedLego, targetLegIndex: number, stopperLego: DroppedLego): { connections: Connection[], droppedLegos: DroppedLego[], operation: Operation } {
         // Verify the leg is not already connected
         const isLegConnected = this.connections.some(conn =>
             (conn.from.legoId === targetLego.instanceId && conn.from.legIndex === targetLegIndex) ||
