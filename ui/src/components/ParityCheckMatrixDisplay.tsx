@@ -1,4 +1,4 @@
-import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td, Button, HStack, VStack, Grid } from '@chakra-ui/react'
+import { Box, Text, Heading, Table, Thead, Tbody, Tr, Td, Button, HStack, VStack, Grid, useToast } from '@chakra-ui/react'
 import { LegoPiece, TensorNetworkLeg } from '../types.ts'
 import { useState, useEffect, useRef } from 'react'
 import { FaUndo, FaRedo, FaSync } from 'react-icons/fa'
@@ -34,6 +34,7 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
     const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
     const hasInitialized = useRef(false);
+    const toast = useToast();
 
     // Initialize history only once when component mounts
     useEffect(() => {
@@ -305,6 +306,41 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
 
     const isScalar = matrix.length === 1 && matrix[0].length === 1;
 
+    const copyMatrixAsNumpy = () => {
+        const numpyStr = `np.array([\n${matrix.map(row => `    [${row.join(', ')}]`).join(',\n')}\n])`;
+        navigator.clipboard.writeText(numpyStr);
+        toast({
+            title: "Copied to clipboard",
+            description: "Matrix copied in numpy format",
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+        });
+    };
+
+    const copyMatrixAsQdistrnd = () => {
+        const n = matrix[0].length / 2; // Number of qubits
+
+
+        const arrayStr = 'H:=One(F)*[' + matrix.map(row => {
+            const pairs = [];
+            for (let i = 0; i < n; i++) {
+                pairs.push(`${row[i]},${row[i + n]}`);
+            }
+            return `[${pairs.join(', ')}]`;
+        }).join(',\n') + '];;\n';
+
+        const qdistrndStr = 'F:=GF(2);;\n' + arrayStr + 'DistRandStab(H,100,0,2:field:=F);'
+        navigator.clipboard.writeText(qdistrndStr);
+        toast({
+            title: "Copied to clipboard",
+            description: "Matrix copied in qdistrnd format",
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+        });
+    };
+
     if (isScalar) {
         return (
             <Box>
@@ -357,6 +393,20 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                             CSS-sort
                         </Button>
                     )}
+                    <Button
+                        size="sm"
+                        onClick={copyMatrixAsNumpy}
+                        colorScheme="purple"
+                    >
+                        Copy as numpy
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={copyMatrixAsQdistrnd}
+                        colorScheme="purple"
+                    >
+                        Copy as qdistrnd
+                    </Button>
                 </HStack>
             </HStack>
             <Box overflowX="auto">
