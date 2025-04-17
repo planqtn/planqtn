@@ -16,9 +16,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qlego.linalg import gauss
 from qlego.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     TensorNetwork,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 from qlego.codes.css_tanner_code import CssTannerCodeTN
 from qlego.codes.stabilizer_measurement_state_prep import (
@@ -219,7 +219,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
 
     # Create TensorNetwork instance
     tn = TensorNetwork(nodes)
@@ -253,13 +253,11 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
 async def calculate_weight_enumerator(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     nodes = {}
-    print("network.legos", network.legos)
-    print("network.connections", network.connections)
 
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
 
     # Create TensorNetwork instance
     tn = TensorNetwork(nodes)
@@ -277,21 +275,24 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
     # Conjoin all nodes to get the final tensor network
     start = time.time()
     polynomial = tn.stabilizer_enumerator_polynomial(
-        verbose=True, progress_bar=True, cotengra=len(nodes) > 4
+        verbose=False, progress_bar=True, cotengra=len(nodes) > 4
     )
     end = time.time()
     print("WEP calculation time", end - start)
 
-    h = tn.conjoin_nodes().h
-    r = h.shape[0]
-    n = h.shape[1] // 2
-    k = n - r
+    if polynomial.is_scalar():
+        poly_b = polynomial
+    else:
+        h = tn.conjoin_nodes().h
+        r = h.shape[0]
+        n = h.shape[1] // 2
+        k = n - r
 
-    z, w = symbols("z w")
-    poly_b = polynomial.macwilliams_dual(n=n, k=k, to_normalizer=True)
+        z, w = symbols("z w")
+        poly_b = polynomial.macwilliams_dual(n=n, k=k, to_normalizer=True)
 
-    print("polynomial", polynomial)
-    print("poly_b", poly_b)
+        print("polynomial", polynomial)
+        print("poly_b", poly_b)
 
     # Convert the polynomial to a string representation
     polynomial_str = str(polynomial)
@@ -309,7 +310,7 @@ async def generate_construction_code(network: TensorNetworkRequest):
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
         h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = TensorStabilizerCodeEnumerator(h=h, idx=instance_id)
+        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
 
     # Create TensorNetwork instance
     tn = TensorNetwork(nodes)

@@ -3,7 +3,7 @@ from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.codes.single_node_tn import SingleNodeTensorNetwork
 from qlego.legos import Legos
 from qlego.simple_poly import SimplePoly
-from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.tensor_network import StabilizerCodeTensorEnumerator
 
 
 def test_d3_rsc_joint_z_coset():
@@ -33,7 +33,7 @@ def test_d3_rsc_joint_z_coset():
 
 
 def test_d3_rsc_joint_z_coset2():
-    tn = TensorStabilizerCodeEnumerator(
+    tn = StabilizerCodeTensorEnumerator(
         h=GF2(
             [
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0],

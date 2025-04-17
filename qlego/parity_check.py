@@ -6,15 +6,19 @@ from scipy.linalg import block_diag
 from qlego.linalg import gauss
 
 
-def sprint(h):
+def sstr(h):
     r, n = h.shape
     n //= 2
-    for row in h:
-        print(
-            "".join("_1"[int(b)] for b in row[:n])
-            + "|"
-            + "".join("_1"[int(b)] for b in row[n:])
-        )
+    return "\n".join(
+        "".join("_1"[int(b)] for b in row[:n])
+        + "|"
+        + "".join("_1"[int(b)] for b in row[n:])
+        for row in h
+    )
+
+
+def sprint(h, end="\n"):
+    print(sstr(h), end=end)
 
 
 def bring_col_to_front(h, col, target_col):
@@ -32,10 +36,21 @@ def tensor_product(h1: GF2, h2: GF2) -> GF2:
     Returns:
         The tensor product of h1 and h2 as a new parity check matrix
     """
+
     r1, n1 = h1.shape
     r2, n2 = h2.shape
     n1 //= 2
     n2 //= 2
+
+    is_scalar_1 = n1 == 0
+    is_scalar_2 = n2 == 0
+
+    if is_scalar_1:
+        h1 = GF2([[1]])
+    if is_scalar_2:
+        h2 = GF2([[1]])
+    if is_scalar_1 or is_scalar_2:
+        return h1 * h2
 
     h = GF2(
         np.hstack(
@@ -107,8 +122,11 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
         kept_rows.remove(pivot_rows[2])
 
     kept_cols = np.array([col for col in range(2 * n) if col not in legs])
-    kept_rows = np.array(kept_rows)
 
+    if len(kept_cols) == 0:
+        return GF2([[1]])
+
+    kept_rows = np.array(kept_rows)
     mx = mx[kept_rows][:, kept_cols]
 
     # print("after removals:")

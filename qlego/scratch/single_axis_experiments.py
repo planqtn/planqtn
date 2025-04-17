@@ -1,7 +1,7 @@
 from galois import GF2
 
 from legos import Legos
-from tensor_stabilizer_enumerator import TensorNetwork, TensorStabilizerCodeEnumerator
+from qlego.tensor_network import TensorNetwork, StabilizerCodeTensorEnumerator
 
 from sympy.abc import w, z
 
@@ -40,6 +40,6 @@ if __name__ == "__main__":
         ]
     )
 
-    sc = TensorStabilizerCodeEnumerator(fiveq)
-    print(sc.stabilizer_enumerator())
+    sc = StabilizerCodeTensorEnumerator(fiveq)
+    print(sc.scalar_stabilizer_enumerator())
     print((sc.normalizer_enumerator()))

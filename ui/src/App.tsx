@@ -1802,6 +1802,10 @@ function App() {
         encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
     };
 
+    const isScalarLego = (lego: DroppedLego) => {
+        return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
+    }
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -2180,15 +2184,67 @@ function App() {
 
                                     {/* Leg Labels */}
                                     {droppedLegos.map((lego) => (
-                                        Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
-                                            // Check if leg is connected
-                                            const isLegConnected = connections.some(c =>
-                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
-                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
-                                            );
+                                        isScalarLego(lego) ? null :
+                                            Array(lego.parity_check_matrix[0].length / 2).fill(0).map((_, legIndex) => {
+                                                // Check if leg is connected
+                                                const isLegConnected = connections.some(c =>
+                                                    (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                    (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                                );
 
-                                            // If leg is not connected, always show the label
-                                            if (!isLegConnected) {
+                                                // If leg is not connected, always show the label
+                                                if (!isLegConnected) {
+                                                    const pos = calculateLegPosition(lego, legIndex);
+                                                    return (
+                                                        <text
+                                                            key={`${lego.instanceId}-label-${legIndex}`}
+                                                            x={lego.x + pos.labelX}
+                                                            y={lego.y + pos.labelY}
+                                                            fontSize="12"
+                                                            fill="#666666"
+                                                            textAnchor="middle"
+                                                            dominantBaseline="middle"
+                                                            style={{ pointerEvents: 'none' }}
+                                                        >
+                                                            {legIndex}
+                                                        </text>
+                                                    );
+                                                }
+
+                                                const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+                                                const isThisHighlighted = thisLegStyle.is_highlighted;
+
+                                                // Find the connected leg's style
+                                                const connection = connections.find(c =>
+                                                    (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
+                                                    (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+                                                );
+
+                                                if (!connection) return null;
+
+                                                const connectedLegInfo = connection.from.legoId === lego.instanceId
+                                                    ? connection.to
+                                                    : connection.from;
+
+                                                const connectedLego = droppedLegos.find(l => l.instanceId === connectedLegInfo.legoId);
+                                                if (!connectedLego) return null;
+
+                                                const connectedStyle = connectedLego.style.getLegStyle(connectedLegInfo.legIndex, connectedLego);
+
+                                                // Hide label if:
+                                                // 1. hideConnectedLegs is true AND
+                                                // 2. lego doesn't have alwaysShowLegs AND
+                                                // 3. Either:
+                                                //    - This leg is not highlighted and connected leg is not highlighted
+                                                //    - Both legs are highlighted with the same color
+                                                const shouldHideLabel = hideConnectedLegs && !lego.alwaysShowLegs && (
+                                                    !isThisHighlighted
+                                                        ? !connectedStyle.is_highlighted
+                                                        : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color
+                                                );
+
+                                                if (shouldHideLabel) return null;
+
                                                 const pos = calculateLegPosition(lego, legIndex);
                                                 return (
                                                     <text
@@ -2204,58 +2260,7 @@ function App() {
                                                         {legIndex}
                                                     </text>
                                                 );
-                                            }
-
-                                            const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
-                                            const isThisHighlighted = thisLegStyle.is_highlighted;
-
-                                            // Find the connected leg's style
-                                            const connection = connections.find(c =>
-                                                (c.from.legoId === lego.instanceId && c.from.legIndex === legIndex) ||
-                                                (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
-                                            );
-
-                                            if (!connection) return null;
-
-                                            const connectedLegInfo = connection.from.legoId === lego.instanceId
-                                                ? connection.to
-                                                : connection.from;
-
-                                            const connectedLego = droppedLegos.find(l => l.instanceId === connectedLegInfo.legoId);
-                                            if (!connectedLego) return null;
-
-                                            const connectedStyle = connectedLego.style.getLegStyle(connectedLegInfo.legIndex, connectedLego);
-
-                                            // Hide label if:
-                                            // 1. hideConnectedLegs is true AND
-                                            // 2. lego doesn't have alwaysShowLegs AND
-                                            // 3. Either:
-                                            //    - This leg is not highlighted and connected leg is not highlighted
-                                            //    - Both legs are highlighted with the same color
-                                            const shouldHideLabel = hideConnectedLegs && !lego.alwaysShowLegs && (
-                                                !isThisHighlighted
-                                                    ? !connectedStyle.is_highlighted
-                                                    : connectedStyle.is_highlighted && connectedStyle.color === thisLegStyle.color
-                                            );
-
-                                            if (shouldHideLabel) return null;
-
-                                            const pos = calculateLegPosition(lego, legIndex);
-                                            return (
-                                                <text
-                                                    key={`${lego.instanceId}-label-${legIndex}`}
-                                                    x={lego.x + pos.labelX}
-                                                    y={lego.y + pos.labelY}
-                                                    fontSize="12"
-                                                    fill="#666666"
-                                                    textAnchor="middle"
-                                                    dominantBaseline="middle"
-                                                    style={{ pointerEvents: 'none' }}
-                                                >
-                                                    {legIndex}
-                                                </text>
-                                            );
-                                        })
+                                            })
                                     ))}
                                 </svg>
 

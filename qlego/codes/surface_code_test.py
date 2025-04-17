@@ -3,11 +3,11 @@ import numpy as np
 import scipy
 from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_X,
     PAULI_Y,
     PAULI_Z,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -72,7 +72,7 @@ def test_d3_unrotated_surface_code_coset_weight_enumerator():
     # ]
 
     print("----")
-    expected_we = TensorStabilizerCodeEnumerator(
+    expected_we = StabilizerCodeTensorEnumerator(
         h,
         coset_flipped_legs=[
             ((0, q), PAULI_X) for q in x_error_bits if q not in z_error_bits
@@ -83,18 +83,6 @@ def test_d3_unrotated_surface_code_coset_weight_enumerator():
         ],
     ).stabilizer_enumerator_polynomial()
     assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"
-
-
-def test_d2_unrotated_surface_code_with_summed_legs():
-    tn = SurfaceCodeTN(d=2, lego=lambda i: Legos.enconding_tensor_512)
-    we = tn.stabilizer_enumerator_polynomial()
-
-    tn2 = SurfaceCodeTN(d=2, lego=lambda i: Legos.enconding_tensor_512)
-    expected_we = tn2.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()]
-    )
-
-    assert we == expected_we, f"Not equal, got:\n{we}, expected\n{expected_we}"
 
 
 def test_d2_unrotated_surface_code():
@@ -110,7 +98,7 @@ def test_d2_unrotated_surface_code():
         ]
     )
 
-    expected_we = TensorStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial()
+    expected_we = StabilizerCodeTensorEnumerator(h).stabilizer_enumerator_polynomial()
 
     assert we == expected_we, f"Not equal, got:\n{we}, expected\n{expected_we}"
 
@@ -147,6 +135,6 @@ def test_d3_unrotated_surface_code():
 
     h = GF2(scipy.linalg.block_diag(hx, hz))
 
-    expected_we = TensorStabilizerCodeEnumerator(h).stabilizer_enumerator_polynomial()
+    expected_we = StabilizerCodeTensorEnumerator(h).stabilizer_enumerator_polynomial()
 
     assert we == expected_we, f"WEPs not equal\ngot:\n{we},\nexpected\n{expected_we}"

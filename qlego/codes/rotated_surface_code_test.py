@@ -5,11 +5,11 @@ import pytest
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
 from qlego.simple_poly import SimplePoly
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_X,
     PAULI_Y,
     PAULI_Z,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -64,7 +64,7 @@ def test_rsc3_x_and_z_coset_wep():
     x_error_bits = [0, 2]
     z_error_bits = [1, 2]
 
-    scalar = TensorStabilizerCodeEnumerator(
+    scalar = StabilizerCodeTensorEnumerator(
         rsc,
         coset_flipped_legs=[
             ((0, q), PAULI_X) for q in x_error_bits if q not in z_error_bits
@@ -74,7 +74,7 @@ def test_rsc3_x_and_z_coset_wep():
             ((0, q), PAULI_Y) for q in set(x_error_bits).intersection(set(z_error_bits))
         ],
     )
-    print(scalar.stabilizer_enumerator())
+    print(scalar.scalar_stabilizer_enumerator())
 
     tn = RotatedSurfaceCodeTN(
         d=3,
@@ -102,8 +102,8 @@ def test_d3_rotated_surface_code():
         ]
     )
 
-    scalar = TensorStabilizerCodeEnumerator(rsc)
-    print(scalar.stabilizer_enumerator())
+    scalar = StabilizerCodeTensorEnumerator(rsc)
+    print(scalar.scalar_stabilizer_enumerator())
 
     tn = RotatedSurfaceCodeTN(d=3)
 
@@ -115,7 +115,7 @@ def test_d3_creation():
     tn = RotatedSurfaceCodeTN(3)
 
     nodes = [
-        TensorStabilizerCodeEnumerator(Legos.enconding_tensor_512, idx=i)
+        StabilizerCodeTensorEnumerator(Legos.enconding_tensor_512, idx=i)
         for i in range(9)
     ]
 
@@ -202,9 +202,7 @@ def test_d5_rotated_surface_code():
     print(rsc5_enum)
     tn = RotatedSurfaceCodeTN(d=5)
 
-    we = tn.stabilizer_enumerator_polynomial(
-        summed_legs=[(idx, 4) for idx in tn.nodes.keys()], cotengra=False
-    )
+    we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     assert we == rsc5_enum
 
 

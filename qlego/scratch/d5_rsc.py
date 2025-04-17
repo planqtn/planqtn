@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import TensorNetwork
+from qlego.tensor_network import TensorNetwork
 
 
 rsc = GF2(

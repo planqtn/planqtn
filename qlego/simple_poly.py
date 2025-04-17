@@ -52,7 +52,7 @@ class MonomialPowers:
 
 class SimplePoly:
     def __init__(self, d: Union["SimplePoly" | Dict] = None):
-        self._dict = defaultdict(int)
+        self._dict: Dict[int, int] = dict()
         self.num_vars = 1
         if isinstance(d, SimplePoly):
             self._dict.update(d._dict)
@@ -68,16 +68,19 @@ class SimplePoly:
                         f"Unrecognized key type: {type(first_key)} for {first_key} in dictionary passed:\n{d}"
                     )
 
+    def is_scalar(self):
+        return len(self._dict) == 1 and set(self._dict.keys()) == {0}
+
     def add_inplace(self, other):
         assert other.num_vars == self.num_vars
         for k, v in other._dict.items():
-            self._dict[k] += v
+            self._dict[k] = self._dict.get(k, 0) + v
 
     def __add__(self, other):
         assert other.num_vars == self.num_vars
         res = SimplePoly(self._dict)
         for k, v in other._dict.items():
-            res._dict[k] += v
+            res._dict[k] = res._dict.get(k, 0) + v
         return res
 
     def minw(self):
@@ -91,13 +94,20 @@ class SimplePoly:
         return SimplePoly({min_w: min_coeff})
 
     def __getitem__(self, i):
-        return self._dict[i]
+        return self._dict.get(i, 0)
 
     def items(self):
         yield from self._dict.items()
 
     def __len__(self):
         return len(self._dict)
+
+    def normalize(self, verbose=False):
+        if 0 in self._dict and self._dict[0] > 1:
+            if verbose:
+                print(f"normalizing WEP by 1/{self._dict[0]}")
+            return self / self._dict[0]
+        return self
 
     def __str__(self):
         return (
@@ -119,7 +129,9 @@ class SimplePoly:
     def __eq__(self, value):
         if isinstance(value, int | float):
             return self._dict[0] == value
-        return self._dict == value._dict
+        if isinstance(value, SimplePoly):
+            return self._dict == value._dict
+        return False
 
     def __hash__(self):
         return hash(self._dict)
@@ -131,7 +143,7 @@ class SimplePoly:
             res = SimplePoly()
             for d1, coeff1 in self._dict.items():
                 for d2, coeff2 in n._dict.items():
-                    res._dict[d1 + d2] += coeff1 * coeff2
+                    res._dict[d1 + d2] = res._dict.get(d1 + d2, 0) + coeff1 * coeff2
             return res
 
     def _homogenize(self, n: int):
@@ -169,7 +181,6 @@ class SimplePoly:
         """
         d = {}
         for powers, coeff in poly.as_dict().items():
-            print("powers", powers, type(powers), coeff, type(coeff))
             key = powers if len(poly.gens) > 1 else powers[0]
             d[key] = coeff
         return SimplePoly(d)

@@ -1,11 +1,11 @@
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.tensor_network import StabilizerCodeTensorEnumerator
 
 
 def test_x_spider_h_is_z_spider():
-    x_spider = TensorStabilizerCodeEnumerator(Legos.x_rep_code(3), "x")
+    x_spider = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), "x")
 
-    hs = [TensorStabilizerCodeEnumerator(Legos.h, f"h{i}") for i in range(3)]
+    hs = [StabilizerCodeTensorEnumerator(Legos.h, f"h{i}") for i in range(3)]
     print("orig")
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
@@ -25,7 +25,7 @@ def test_x_spider_h_is_z_spider():
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
 
-    z_spider = TensorStabilizerCodeEnumerator(Legos.z_rep_code(3), "z")
+    z_spider = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), "z")
     print(z_spider.h)
     print(z_spider.stabilizer_enumerator_polynomial())
 

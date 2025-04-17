@@ -8,7 +8,7 @@ from symplectic import omega, weight
 
 from sympy.abc import w, z
 
-from tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.tensor_network import StabilizerCodeTensorEnumerator
 
 
 if __name__ == "__main__":
@@ -31,20 +31,20 @@ if __name__ == "__main__":
         ]
     )
 
-    scalar_enum = TensorStabilizerCodeEnumerator(enc_tens_422)
-    print(scalar_enum.stabilizer_enumerator())
+    scalar_enum = StabilizerCodeTensorEnumerator(enc_tens_422)
+    print(scalar_enum.scalar_stabilizer_enumerator())
 
-    vec_enum_on_logical_legs = TensorStabilizerCodeEnumerator(enc_tens_422, [4, 5])
+    vec_enum_on_logical_legs = StabilizerCodeTensorEnumerator(enc_tens_422, [4, 5])
 
     print(
-        vec_enum_on_logical_legs.stabilizer_enumerator(
+        vec_enum_on_logical_legs.scalar_stabilizer_enumerator(
             e=GF2.Zeros(4),
         )
     )
 
-    vec_enum_phys_legs = TensorStabilizerCodeEnumerator(enc_tens_422, [0, 1, 2, 3])
+    vec_enum_phys_legs = StabilizerCodeTensorEnumerator(enc_tens_422, [0, 1, 2, 3])
     print(
-        vec_enum_phys_legs.stabilizer_enumerator(
+        vec_enum_phys_legs.scalar_stabilizer_enumerator(
             e=GF2([1, 1, 1, 1, 0, 0, 0, 0]),
         )
     )

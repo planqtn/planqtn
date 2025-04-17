@@ -1,10 +1,10 @@
 from galois import GF2
-from qlego.tensor_stabilizer_enumerator import TensorNetwork
+from qlego.tensor_network import TensorNetwork
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_X,
     PAULI_Z,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -33,7 +33,7 @@ class SurfaceCodeTN(TensorNetwork):
 
         super().__init__(
             [
-                TensorStabilizerCodeEnumerator(lego((r, c)), idx=(r, c))
+                StabilizerCodeTensorEnumerator(lego((r, c)), idx=(r, c))
                 for r in range(last_row + 1)
                 for c in range(r % 2, last_col + 1, 2)
             ],

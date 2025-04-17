@@ -5,7 +5,7 @@ from qlego.codes.compass_code import CompassCodeTN
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
 from qlego.simple_poly import SimplePoly
-from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
 
 def test_compass_code():
@@ -17,7 +17,7 @@ def test_compass_code():
     )
 
     tn_wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
-    expected_wep = TensorStabilizerCodeEnumerator(
+    expected_wep = StabilizerCodeTensorEnumerator(
         GF2(
             [
                 [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

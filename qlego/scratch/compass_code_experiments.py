@@ -9,12 +9,12 @@ from qlego.codes.compass_code import CompassCodeTN
 from qlego.linalg import gauss
 from qlego.parity_check import sprint
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_I,
     PAULI_X,
     PAULI_Z,
     TensorNetwork,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
     sconcat,
 )
 

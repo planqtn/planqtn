@@ -31,3 +31,74 @@ def omega(n):
             ]
         )
     )
+
+
+def sslice(op, indices):
+    n = len(op) // 2
+
+    if isinstance(indices, list | np.ndarray):
+        if len(indices) == 0:
+            return GF2([])
+        indices = np.array(indices)
+        return GF2(np.concatenate([op[indices], op[indices + n]]))
+    elif isinstance(indices, slice):
+        x = slice(
+            0 if indices.start is None else indices.start,
+            n if indices.stop is None else indices.stop,
+        )
+
+        z = slice(x.start + n, x.stop + n)
+        return GF2(np.concatenate([op[x], op[z]]))
+
+
+def _suboperator_matches_on_support(support, op, subop):
+    if len(support) == 0:
+        return len(subop) == 0
+    m = len(support)
+    n = len(op) // 2
+    support = np.array(support)
+    return (
+        # Xs equal
+        np.array_equal(op[support], subop[:m])
+        and
+        # Zs equal
+        np.array_equal(op[support + n], subop[m:])
+    )
+
+
+def _equal_on_support(support, op1, op2):
+    n1 = len(op1) // 2
+    n2 = len(op2) // 2
+    support = np.array(support)
+    return (
+        # Xs equal
+        np.array_equal(op1[support], op2[support])
+        and
+        # Zs equal
+        np.array_equal(op1[support + n1], op2[support + n2])
+    )
+
+
+def replace_with_op_on_indices(indices, op, target):
+    """replaces target's operations with op
+
+    op should have self.m number of qubits, target should have self.n qubits.
+    """
+    m = len(indices)
+    n = len(op) // 2
+
+    res = target.copy()
+    res[indices] = op[:m]
+    res[np.array(indices) + n] = op[m:]
+    return res
+
+
+def sconcat(*ops):
+    ns = [len(op) // 2 for op in ops]
+    return np.hstack(
+        [  # X part
+            np.concatenate([op[:n] for n, op in zip(ns, ops)]),
+            # Z part
+            np.concatenate([op[n:] for n, op in zip(ns, ops)]),
+        ]
+    )

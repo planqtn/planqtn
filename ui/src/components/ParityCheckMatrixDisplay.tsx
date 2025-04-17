@@ -303,7 +303,18 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         }
     };
 
+    const isScalar = matrix.length === 1 && matrix[0].length === 1;
+
+    if (isScalar) {
+        return (
+            <Box>
+                <Text>Scalar</Text>
+            </Box>
+        )
+    }
+
     return (
+
         <Box>
             <HStack justify="space-between" mb={2}>
                 <Box>

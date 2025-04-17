@@ -1,9 +1,9 @@
 import numpy as np
-from qlego.tensor_stabilizer_enumerator import PAULI_X, TensorNetwork
+from qlego.tensor_network import PAULI_X, TensorNetwork
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_I,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -18,7 +18,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
         checks = []
         for i in range(r):
             weight = np.count_nonzero(h[i])
-            check = TensorStabilizerCodeEnumerator(
+            check = StabilizerCodeTensorEnumerator(
                 h=Legos.z_rep_code(weight + 2), idx=f"check{i}"
             )
             check = check.trace_with_stopper(PAULI_X, (f"check{i}", 0))
@@ -31,7 +31,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
 
         # for each qubit we create merged tensors across all checks
         for q in range(n):
-            q_tensor = TensorStabilizerCodeEnumerator(h=Legos.stopper_i, idx=f"q{q}")
+            q_tensor = StabilizerCodeTensorEnumerator(h=Legos.stopper_i, idx=f"q{q}")
             physical_leg = (f"q{q}", 0)
             for i in range(r):
                 op = tuple(h[i, (q, q + n)])
@@ -41,7 +41,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
 
                 if op == (1, 0):
                     q_tensor = q_tensor.conjoin(
-                        TensorStabilizerCodeEnumerator(
+                        StabilizerCodeTensorEnumerator(
                             h=Legos.x_rep_code(3), idx=f"q{q}.c{i}"
                         ),
                         [physical_leg],
@@ -60,14 +60,14 @@ class StabilizerTannerCodeTN(TensorNetwork):
 
                 elif op == (0, 1):
                     q_tensor = q_tensor.conjoin(
-                        TensorStabilizerCodeEnumerator(
+                        StabilizerCodeTensorEnumerator(
                             h=Legos.z_rep_code(3), idx=f"q{q}.z{i}"
                         ),
                         [physical_leg],
                         [0],
                     )
                     q_tensor = q_tensor.conjoin(
-                        TensorStabilizerCodeEnumerator(h=Legos.h, idx=f"q{q}.c{i}"),
+                        StabilizerCodeTensorEnumerator(h=Legos.h, idx=f"q{q}.c{i}"),
                         [(f"q{q}.z{i}", 1)],
                         [0],
                     )

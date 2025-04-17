@@ -32,7 +32,7 @@ class LegoAnnotation:
 
 class Legos:
 
-    enconding_tensor_602 = GF2(
+    enconding_tensor_603 = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
@@ -123,7 +123,7 @@ class Legos:
                 "name": "[[6,0,2]] tensor",
                 "shortName": "T6",
                 "description": "[[6,0,2]] encoding tensor",
-                "parity_check_matrix": cls.enconding_tensor_602.tolist(),
+                "parity_check_matrix": cls.enconding_tensor_603.tolist(),
                 "logical_legs": [4, 5],
                 "gauge_legs": [],
             },

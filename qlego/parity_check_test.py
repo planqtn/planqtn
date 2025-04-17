@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, sprint
-from qlego.tensor_stabilizer_enumerator import TensorStabilizerCodeEnumerator
+from qlego.tensor_network import StabilizerCodeTensorEnumerator
 
 
 # Handle empty matrices as input
@@ -11,8 +11,7 @@ def test_conjoin_empty_matrices():
     h1 = GF2([[]])
     h2 = GF2([[]])
 
-    with pytest.raises(AssertionError):
-        conjoin(h1, h2)
+    np.testing.assert_array_equal(conjoin(h1, h2), GF2([[]]))
 
 
 def test_conjoin_single_trace_422_codes():
@@ -82,8 +81,8 @@ def test_conjoin_single_trace_713_code_with_422_code():
     )
 
     assert (
-        TensorStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
-        == TensorStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
+        StabilizerCodeTensorEnumerator(expected).stabilizer_enumerator_polynomial()
+        == StabilizerCodeTensorEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 
@@ -140,8 +139,8 @@ def test_conjoin_single_trace_713_code_with_713_code():
         ]
     )
     assert (
-        TensorStabilizerCodeEnumerator(expected).stabilizer_enumerator_polynomial()
-        == TensorStabilizerCodeEnumerator(res).stabilizer_enumerator_polynomial()
+        StabilizerCodeTensorEnumerator(expected).stabilizer_enumerator_polynomial()
+        == StabilizerCodeTensorEnumerator(res).stabilizer_enumerator_polynomial()
     )
 
 

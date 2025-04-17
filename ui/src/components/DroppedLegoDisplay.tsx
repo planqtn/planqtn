@@ -67,6 +67,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
 }) => {
     const size = lego.style.size;
     const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
+    const isScalar = lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
     const numLogicalLegs = lego.logical_legs.length; // Number of logical legs
     const numGaugeLegs = lego.gauge_legs.length; // Number of gauge legs
     const numRegularLegs = totalLegs - numLogicalLegs - numGaugeLegs; // Regular legs are the remaining legs
@@ -90,7 +91,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         selectedLego?.instanceId === lego.instanceId;
 
     // Calculate leg positions once for both rendering and labels
-    const legPositions = Array(totalLegs).fill(0).map((_, legIndex) => {
+    const legPositions = isScalar ? [] : Array(totalLegs).fill(0).map((_, legIndex) => {
         const legStyle = lego.style.getLegStyle(legIndex, lego, true);
         const startX = legStyle.from === "center" ? 0 :
             legStyle.from === "bottom" ? legStyle.startOffset * Math.cos(legStyle.angle) : 0;
@@ -175,6 +176,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     };
 
     return (
+
         <Box
             position={"absolute"}
             left={`${lego.x}px`}

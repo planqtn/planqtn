@@ -1,9 +1,9 @@
 import numpy as np
-from qlego.tensor_stabilizer_enumerator import PAULI_X, TensorNetwork
+from qlego.tensor_network import PAULI_X, TensorNetwork
 from qlego.legos import LegoAnnotation, LegoType, Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_I,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -20,7 +20,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
         check_stoppers = []
         for i in range(r):
             weight = np.count_nonzero(parity_check_matrix[i])
-            check = TensorStabilizerCodeEnumerator(
+            check = StabilizerCodeTensorEnumerator(
                 h=Legos.z_rep_code(weight + 2),
                 idx=f"check{i}",
                 annotation=LegoAnnotation(
@@ -31,7 +31,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     y=0,
                 ),
             )
-            x_state_prep = TensorStabilizerCodeEnumerator(
+            x_state_prep = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_x,
                 idx=f"x_state_prep{i}",
                 annotation=LegoAnnotation(
@@ -43,7 +43,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                 ),
             )
             check_stoppers.append(x_state_prep)
-            x_meas = TensorStabilizerCodeEnumerator(
+            x_meas = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_x,
                 idx=f"x_meas{i}",
                 annotation=LegoAnnotation(
@@ -80,7 +80,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
 
         # for each qubit we create merged tensors across all checks
         for q in range(n):
-            q_logical_id = TensorStabilizerCodeEnumerator(
+            q_logical_id = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_i,
                 idx=f"ql{q}",
                 annotation=LegoAnnotation(
@@ -100,7 +100,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     continue
 
                 if op == (1, 0):
-                    x_check = TensorStabilizerCodeEnumerator(
+                    x_check = StabilizerCodeTensorEnumerator(
                         h=Legos.x_rep_code(3),
                         idx=f"q{q}.x{i}",
                         annotation=LegoAnnotation(
@@ -134,7 +134,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     physical_leg = (x_check.idx, (x_check.idx, 2))
 
                 elif op == (0, 1):
-                    z_check = TensorStabilizerCodeEnumerator(
+                    z_check = StabilizerCodeTensorEnumerator(
                         h=Legos.z_rep_code(3),
                         idx=f"q{q}.z{i}",
                         annotation=LegoAnnotation(
@@ -155,7 +155,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                             [(z_check.idx, 0)],
                         )
                     )
-                    h = TensorStabilizerCodeEnumerator(
+                    h = StabilizerCodeTensorEnumerator(
                         h=Legos.h,
                         idx=f"q{q}.hz{i}",
                         annotation=LegoAnnotation(

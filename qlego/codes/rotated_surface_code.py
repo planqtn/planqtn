@@ -1,10 +1,10 @@
 from galois import GF2
-from qlego.tensor_stabilizer_enumerator import TensorNetwork
+from qlego.tensor_network import TensorNetwork
 from qlego.legos import Legos
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     PAULI_X,
     PAULI_Z,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
@@ -18,7 +18,7 @@ class RotatedSurfaceCodeTN(TensorNetwork):
     ):
 
         nodes = {
-            (r, c): TensorStabilizerCodeEnumerator(
+            (r, c): StabilizerCodeTensorEnumerator(
                 lego((r, c)),
                 idx=(r, c),
                 truncate_length=truncate_length,

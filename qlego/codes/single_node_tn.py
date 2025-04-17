@@ -1,13 +1,13 @@
 from galois import GF2
 import numpy as np
-from qlego.tensor_stabilizer_enumerator import (
+from qlego.tensor_network import (
     TensorNetwork,
-    TensorStabilizerCodeEnumerator,
+    StabilizerCodeTensorEnumerator,
 )
 
 
 class SingleNodeTensorNetwork(TensorNetwork):
-    def __init__(self, node: TensorStabilizerCodeEnumerator, truncate_length=None):
+    def __init__(self, node: StabilizerCodeTensorEnumerator, truncate_length=None):
         self.node_idx = node.idx
         super().__init__([node], truncate_length)
 
@@ -36,6 +36,4 @@ class SingleNodeTensorNetwork(TensorNetwork):
         summed_legs=None,
         cotengra=True,
     ):
-        return self.node.stabilizer_enumerator_polynomial(
-            basis_element_legs=legs, e=e, open_legs=[]
-        )
+        return self.node.stabilizer_enumerator_polynomial(open_legs=[])
