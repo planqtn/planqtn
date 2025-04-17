@@ -173,6 +173,28 @@ class Legos:
                 "gauge_legs": [],
             },
             {
+                "id": LegoType.ZREP.value,
+                "name": "Z-Repetition Code",
+                "shortName": "ZREP3",
+                "description": "Bitflip code, ZZ stabilizers",
+                "is_dynamic": True,
+                "parameters": {"d": 3},
+                "parity_check_matrix": cls.z_rep_code().tolist(),
+                "logical_legs": [],
+                "gauge_legs": [],
+            },
+            {
+                "id": LegoType.XREP.value,
+                "name": "X-Repetition Code",
+                "shortName": "XREP3",
+                "description": "Phase flip code, XX stabilizers",
+                "is_dynamic": True,
+                "parameters": {"d": 3},
+                "parity_check_matrix": cls.x_rep_code().tolist(),
+                "logical_legs": [],
+                "gauge_legs": [],
+            },
+            {
                 "id": LegoType.ID.value,
                 "name": "Identity",
                 "shortName": "I",
@@ -181,34 +203,77 @@ class Legos:
                 "logical_legs": [],
                 "gauge_legs": [],
             },
+            {
+                "id": "steane",
+                "name": "Steane Code",
+                "shortName": "STN",
+                "description": "Steane code encoding tensor",
+                # fmt: off
+                "parity_check_matrix": np.array([
+                    [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+                ]).tolist(),
+                # fmt: on
+                "logical_legs": [7],
+                "gauge_legs": [],
+            },
+            {
+                "id": "832",
+                "name": "[[8,3,2]] encoding tensor",
+                "shortName": "[[8,3,2]]",
+                "description": "[[8,3,2]] encoding tensor with all 3 logical legs",
+                # fmt: off
+                "parity_check_matrix": np.array([
+                    [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+                ]).tolist(),
+                # fmt: on
+                "logical_legs": [8, 9, 10],
+                "gauge_legs": [],
+            },
+            {
+                "id": "15qrm",
+                "name": "[[15,1,3]] QRM encoding tensor",
+                "shortName": "QRM15",
+                "description": "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
+                # fmt: off
+                "parity_check_matrix": np.array([
+                    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1]
+                ]).tolist(),
+                # fmt: on
+                "logical_legs": [15],
+                "gauge_legs": [],
+            },
         ]
-
-        # Add dynamic lego pieces (methods)
-        legos.extend(
-            [
-                {
-                    "id": LegoType.ZREP.value,
-                    "name": "Z-Repetition Code",
-                    "shortName": "ZREP3",
-                    "description": "Bitflip code, ZZ stabilizers",
-                    "is_dynamic": True,
-                    "parameters": {"d": 3},
-                    "parity_check_matrix": cls.z_rep_code().tolist(),
-                    "logical_legs": [],
-                    "gauge_legs": [],
-                },
-                {
-                    "id": LegoType.XREP.value,
-                    "name": "X-Repetition Code",
-                    "shortName": "XREP3",
-                    "description": "Phase flip code, XX stabilizers",
-                    "is_dynamic": True,
-                    "parameters": {"d": 3},
-                    "parity_check_matrix": cls.x_rep_code().tolist(),
-                    "logical_legs": [],
-                    "gauge_legs": [],
-                },
-            ]
-        )
 
         return legos
