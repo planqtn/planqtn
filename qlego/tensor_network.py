@@ -644,7 +644,9 @@ class TensorNetwork:
             return self._wep
 
         if len(self.traces) == 0 and len(self.nodes) == 1:
-            return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial()
+            return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial(
+                verbose=verbose, progress_bar=progress_bar
+            )
 
         parity_check_enums = {}
 
@@ -665,7 +667,9 @@ class TensorNetwork:
             #     assert (
             #         calc == parity_check_enums[hkey]
             #     ), f"for key {hkey}\n calc\n{calc}\n vs retrieved\n{parity_check_enums[hkey]}"
-            tensor = node.stabilizer_enumerator_polynomial(open_legs=traced_legs)
+            tensor = node.stabilizer_enumerator_polynomial(
+                open_legs=traced_legs, verbose=verbose, progress_bar=progress_bar
+            )
             if len(traced_legs) == 0:
                 tensor = {(): tensor}
             self.ptes[node_idx] = _PartiallyTracedEnumerator(
@@ -799,10 +803,13 @@ class TensorNetwork:
             print("PTEs: ", self.ptes)
         if len(set(self.ptes.values())) > 1:
             if verbose:
-                print(f"merging disjoint PTEs: {self.ptes}")
+                print(
+                    f"tensoring { len(set(self.ptes.values()))} disjoint PTEs: {self.ptes}"
+                )
+
             pte = list(self.ptes.values())[0]
-            for pte2 in list(self.ptes.values())[1:]:
-                pte = pte.tensor_product(pte2)
+            for pte2 in list(set(self.ptes.values()))[1:]:
+                pte = pte.tensor_product(pte2, verbose=verbose)
 
         if len(pte.tensor) > 1:
             if verbose:
@@ -819,11 +826,15 @@ class TensorNetwork:
             #     self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
         else:
             self._wep = pte.tensor[()]
+            if verbose:
+                print(f"final scalar wep: {self._wep}")
             self._wep = self._wep.normalize(verbose=verbose)
         return self._wep
 
-    def stabilizer_enumerator(self):
-        wep = self.stabilizer_enumerator_polynomial()
+    def stabilizer_enumerator(self, verbose=False, progress_bar=False):
+        wep = self.stabilizer_enumerator_polynomial(
+            verbose=verbose, progress_bar=progress_bar
+        )
         return wep._dict
 
     def set_truncate_length(self, truncate_length):
@@ -884,7 +895,14 @@ class _PartiallyTracedEnumerator:
 
         return self.tensor[indices]
 
-    def tensor_product(self, other):
+    def tensor_product(self, other, verbose=False):
+        if verbose:
+            print(f"tensoring {self}")
+            for k, v in self.tensor.items():
+                print(f"{k}: {v}")
+            print(f"with {other}")
+            for k, v in other.tensor.items():
+                print(f"{k}: {v}")
         new_tensor = {}
         for k1 in self.tensor.keys():
             for k2 in other.tensor.keys():

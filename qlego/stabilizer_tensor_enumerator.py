@@ -26,6 +26,54 @@ def _index_legs(idx, legs):
 TensorEnumerator = Dict[Tuple[GF2, ...], SimplePoly]
 
 
+class SimpleStabilizerCollector:
+    def __init__(self, k, n, coset, open_cols, verbose=False, progress_bar=False):
+        self.k = k
+        self.n = n
+        self.coset = coset
+        self.tensor_wep = SimplePoly()
+        self.skip_indices = open_cols
+        self.verbose = verbose
+        self.progress_bar = progress_bar
+
+    def collect(self, stabilizer):
+        stab_weight = weight(stabilizer + self.coset, skip_indices=self.skip_indices)
+        # print(f"simple {stabilizer + self.coset} => {stab_weight}")
+        self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
+
+    def finalize(self):
+        self.tensor_wep = self.tensor_wep.normalize(verbose=self.verbose)
+
+
+class TensorElementCollector:
+    def __init__(self, k, n, coset, open_cols, verbose=False, progress_bar=False):
+        self.k = k
+        self.n = n
+        self.coset = coset
+        self.simple = len(open_cols) == 0
+        self.skip_indices = open_cols
+        self.verbose = verbose
+        self.progress_bar = progress_bar
+        self.matching_stabilizers = []
+        self.tensor_wep: TensorEnumerator = defaultdict(lambda: SimplePoly())
+
+    def collect(self, stabilizer):
+        self.matching_stabilizers.append(stabilizer)
+
+    def finalize(self):
+        prog = tqdm(
+            self.matching_stabilizers,
+            desc="Collecting stabilizers",
+            disable=not self.progress_bar,
+        )
+
+        for s in prog:
+            stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
+            # print(f"tensor {s + self.coset} => {stab_weight}")
+            key = tuple(sslice(s, self.skip_indices).tolist())
+            self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
+
+
 class StabilizerCodeTensorEnumerator:
     """Tensor enumerator for a stabilizer code.
 
@@ -179,7 +227,7 @@ class StabilizerCodeTensorEnumerator:
         verbose=False,
         progress_bar=False,
     ) -> Union[TensorEnumerator, SimplePoly]:
-        # print(f"passed open legs: {open_legs}")
+
         open_legs = _index_legs(self.idx, open_legs)
         invalid_legs = self.validate_legs(open_legs)
         if len(invalid_legs) > 0:
@@ -191,54 +239,6 @@ class StabilizerCodeTensorEnumerator:
 
         if open_cols is None:
             open_cols = []
-
-        class SimpleStabilizerCollector:
-            def __init__(self, k, n, coset):
-                self.k = k
-                self.n = n
-                self.coset = coset
-                self.tensor_wep = SimplePoly()
-                self.skip_indices = open_cols
-
-            def collect(self, stabilizer):
-                stab_weight = weight(
-                    stabilizer + self.coset, skip_indices=self.skip_indices
-                )
-                # print(f"simple {stabilizer + self.coset} => {stab_weight}")
-                self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
-
-            def finalize(self):
-                self.tensor_wep = self.tensor_wep.normalize(verbose=verbose)
-
-        class TensorElementCollector:
-            def __init__(self, k, n, coset):
-                self.k = k
-                self.n = n
-                self.coset = coset
-                self.simple = len(open_cols) == 0
-                self.skip_indices = open_cols
-
-                self.matching_stabilizers = []
-                self.tensor_wep: TensorEnumerator = defaultdict(lambda: SimplePoly())
-
-            def collect(self, stabilizer):
-                self.matching_stabilizers.append(stabilizer)
-
-            def finalize(self):
-                prog = (
-                    tqdm(
-                        self.matching_stabilizers,
-                        desc="Collecting stabilizers",
-                        disable=not progress_bar,
-                    )
-                    if progress_bar
-                    else self.matching_stabilizers
-                )
-                for s in prog:
-                    stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
-                    # print(f"tensor {s + self.coset} => {stab_weight}")
-                    key = tuple(sslice(s, open_cols).tolist())
-                    self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
         coset = GF2.Zeros(2 * self.n)
         if self.coset_flipped_legs is not None:
@@ -253,9 +253,13 @@ class StabilizerCodeTensorEnumerator:
                 #     f"brute force - node {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
         collector = (
-            SimpleStabilizerCollector(self.k, self.n, coset)
+            SimpleStabilizerCollector(
+                self.k, self.n, coset, open_cols, verbose, progress_bar
+            )
             if open_cols == []
-            else TensorElementCollector(self.k, self.n, coset)
+            else TensorElementCollector(
+                self.k, self.n, coset, open_cols, verbose, progress_bar
+            )
         )
 
         h_reduced = gauss(self.h)
@@ -265,7 +269,7 @@ class StabilizerCodeTensorEnumerator:
         if verbose:
             reduction = r < len(self.h)
             print(
-                f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} {"REDUCED" if reduction else ""} generators"
+                f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} {"REDUCED" if reduction else ""} generators, verbose={verbose}, progress_bar={progress_bar} "
             )
         progress_bar = tqdm(
             range(2**r),

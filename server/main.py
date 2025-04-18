@@ -280,6 +280,7 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
     )
     end = time.time()
     print("WEP calculation time", end - start)
+    print("polynomial", polynomial)
 
     if polynomial.is_scalar():
         poly_b = polynomial
@@ -292,7 +293,6 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
         z, w = symbols("z w")
         poly_b = polynomial.macwilliams_dual(n=n, k=k, to_normalizer=True)
 
-        print("polynomial", polynomial)
         print("poly_b", poly_b)
 
     # Convert the polynomial to a string representation

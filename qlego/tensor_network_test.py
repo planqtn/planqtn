@@ -946,3 +946,46 @@ def test_two_512_tensor_merge_step_by_step():
         assert (
             tn_wep_str == conjoined_wep_str
         ), f"step {i} failed. tnwep:\n{tn_wep_str}\nconj_wep:\n{conjoined_wep_str}"
+
+
+def test_disconnected_networks():
+
+    nodes = {}
+    nodes["25"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
+        idx="25",
+    )
+    nodes["27"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="27",
+    )
+    nodes["31"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="31",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=None)
+
+    # Add traces
+    tn.self_trace("25", "31", [0], [2])
+
+    wep = tn.stabilizer_enumerator_polynomial(
+        verbose=True,
+        progress_bar=False,
+    )
+    assert wep._dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}

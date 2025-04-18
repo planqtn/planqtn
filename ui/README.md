@@ -137,23 +137,23 @@ User stories:
     - option to do Gauss elimination on given columns 
     - all of this with undos within a session, then the stabilizers are saved to the given component - DONE (for TN )
     - allow for the above on a lego piece
-    - we need a way to name logical and gauge operators (X1, X2, ...)
-    - marking a leg as a gauge, logical, or physical degree of freedom 
+    - we need a way to name logical and gauge operators (X1, X2, ...) - WON'T DO 
+    - marking a leg as a gauge, logical, or physical degree of freedom - do we need gauge?! 
     - conjoined matrices should have info about the original lego pieces - DONE 
-    - auto-sparsification of generators 
+    - auto-sparsification of generators ???
 - operator flow 
     - we fix with an operator highlight X (blue) or Z (red) on a leg or multiple legs DONE
         - we see the number of stabilizers that match the fix, and we can iterate through the highlights DONE 
 - option to merge tensornetworks into a full lego piece - DONE 
 - unfuse
   - ZX spiders - DONE 
-  - arbitrary lego to Tanner 
-  - arbitrary lego to measurement circuit 
+  - arbitrary lego to Tanner - DONE via copy-paste of parity check matrix 
+  - arbitrary lego to measurement circuit  - DONE via copy-paste of parity check matrix 
 
 
 - load a TensorNetwork instance in the UI 
-    - we could have placement hints in the Tensornetwork (similar to qubit annotations in Stim)
-    - we could have an automated graph layout algorithms 
+    - we could have placement hints in the Tensornetwork (similar to qubit annotations in Stim) - DONE (annotations)
+    - we could have an automated graph layout algorithms ?? instead graphical language story below 
 - retrieve, evaluate, and visualize contraction schedules     
 - lego display customization 
     - 422, 512, 602 tensors - DONE for ZX spiders 
@@ -163,21 +163,80 @@ User stories:
     - calculate normalizer enumerator (MacWilliams transform)
 - lego database 
     - clicking on a lego type should display it's properties (WEP, stabilizer check)
-    - stoppers 
+    - stoppers - DONE 
     - searchable IBM database 
 - UI features 
-    - resizable, scrollable canvas
-- a local database for caching tensornetwork weight enumerators / parity check matrices 
-- a global database and automated Github authenticated contribution workflow
-- handled disconnected networks too - this is good for educational purposes
-    
+    - resizable, scrollable canvas DONE 
+- handled disconnected networks too - this is good for educational purposes - DONE 
+
 I want to put together the new compass code construction with Charles's construction and see the weight enumerators - DONE  
 
-Bugs:
-    - the network selection + changing + recalculating workflow is very wonky right now 
-    - edge case: scalar (0-rank tensor) need to be worked out better  - e.g. identity tensor contracted with indentity + parity check calculation 
-    - fuse legos indentity tensor + indentity throws an error    
-    - disconnected TNs now fail on WEP calculation
+
+# Big stories
+
+## A QEC database for the community 
+- a local database for caching tensornetwork weight enumerators / parity check matrices 
+- a global database and automated Github authenticated contribution workflow
+
+
+## User authentication 
+
+Mostly required to limit unwanted DB requests 
+
+-  unauthenticated (local-only) mode - only lego drops + manual flow tracking 
+
+## Job management 
+- 
+
+- support different platforms 
+   - run a job on a single server node (MPI?)
+   - run slurm jobs 
+   - run k8s jobs 
+
+## Graphical contraction schedule analysis 
+
+- see the actual contraction visually on tensornetworks, with a "trace slider" for analysis 
+   - show the sparsity, size, order of intermediate tensor(s) 
+
+## Transformation automations 
+
+- derivation rules applied in bulk (similar to how zxlive does it)
+- 
+
+## qLego Qonstruct: A graphical language 
+
+A visual language to create parameterized tensornetworks. 
+
+- concatenate - specify a Set of legos and the new layer - could be multiple 
+- tiling - given a lattice, place a lego to each coordinate - the user can define a function that maps a coordinate to a lego
+   - support different Euclidean (6.6.6, 4.4.4.4, 4.8.12, 4.8.8, aperiodic ones, etc.) and hyperbolic lattices 
+- connect 
+- product codes 
+   - algebraic codes 
+
+## Hybrid enumerator support 
+
+- mix A and B type enumerators in nodes 
+
+## v0.1 WEP lib optimization goals 
+
+
+## v0.1 UI optimization goals 
+
+A 17x17 rotated surface code should be managable by the UI, this translates to 
+- 289 dangling legs for parity check matrix 
+- 
+    
+## Cosets 
+
+Setup cosets and calculate enumerators for them 
+- UI: ability to mark a lego with a coset 
+
+## Research ideas 
+- logical representative finding - can we get an advantage there over brute force? 
+- if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? 
+- how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there are possibility of reusing intermediate results? 
+- 
 
 
 ## License
