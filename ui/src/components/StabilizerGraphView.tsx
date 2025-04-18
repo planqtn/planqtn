@@ -1,4 +1,4 @@
-import { Box, VStack, Button } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import { TensorNetworkLeg } from '../types';
 import * as d3 from 'd3-force';
@@ -164,7 +164,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
                 .radius((d: any) => d.isStabilizer ? 40 : 30))
             .force("x", d3.forceX(width / 2).strength(0.1))
             .force("y", d3.forceY(height / 2).strength(0.1))
-            .force("boundary", function (alpha: number) {
+            .force("boundary", function () {
                 nodes.forEach(node => {
                     if (node.isStabilizer) {
                         node.x = Math.max(40, Math.min(width - 30, node.x));
@@ -246,7 +246,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         const legCellWidth = width / (legCols + 1);
         const legCellHeight = (height - 150) / (legRows + 1);
 
-        const legPoints = legs.map((leg, index) => {
+        const legPoints = legs.map((_, index) => {
             const legRow = Math.floor(index / legCols);
             const legCol = index % legCols;
             const x = legCellWidth * (legCol + 1);
@@ -274,25 +274,25 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         }
     }, [points, matrix]);
 
-    const getStabilizerColor = (row: number[]): string => {
-        const n = row.length / 2;
-        const hasX = row.slice(0, n).some(x => x === 1);
-        const hasZ = row.slice(n).some(z => z === 1);
+    // const getStabilizerColor = (row: number[]): string => {
+    //     const n = row.length / 2;
+    //     const hasX = row.slice(0, n).some(x => x === 1);
+    //     const hasZ = row.slice(n).some(z => z === 1);
 
-        if (hasX) return 'rgba(255, 0, 0, 0.3)'; // Semi-transparent red for X
-        if (hasZ) return 'rgba(0, 0, 255, 0.3)'; // Semi-transparent blue for Z
-        return 'rgba(128, 128, 128, 0.3)'; // Semi-transparent gray for others
-    };
+    //     if (hasX) return 'rgba(255, 0, 0, 0.3)'; // Semi-transparent red for X
+    //     if (hasZ) return 'rgba(0, 0, 255, 0.3)'; // Semi-transparent blue for Z
+    //     return 'rgba(128, 128, 128, 0.3)'; // Semi-transparent gray for others
+    // };
 
-    const getStabilizerStrokeColor = (row: number[]): string => {
-        const n = row.length / 2;
-        const hasX = row.slice(0, n).some(x => x === 1);
-        const hasZ = row.slice(n).some(z => z === 1);
+    // const getStabilizerStrokeColor = (row: number[]): string => {
+    //     const n = row.length / 2;
+    //     const hasX = row.slice(0, n).some(x => x === 1);
+    //     const hasZ = row.slice(n).some(z => z === 1);
 
-        if (hasX) return 'red';
-        if (hasZ) return 'blue';
-        return 'gray';
-    };
+    //     if (hasX) return 'red';
+    //     if (hasZ) return 'blue';
+    //     return 'gray';
+    // };
 
     const getStabilizerLegs = (row: number[]): number[] => {
         const n = row.length / 2;
