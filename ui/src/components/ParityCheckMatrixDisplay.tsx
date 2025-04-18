@@ -240,7 +240,12 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
     };
 
     const getPauliWeight = (row: number[]): number => {
-        return row.filter(x => x === 1).length;
+        const n = row.length / 2;
+        let weight = 0;
+        for (let i = 0; i < n; i++) {
+            weight += row[i] == 1 || row[i + n] == 1 ? 1 : 0;
+        }
+        return weight;
     };
 
     const getPauliColor = (pauli: string): string => {
