@@ -372,6 +372,14 @@ def test_construction_code():
         if not (line.startswith("from") or line.startswith("import"))
     ]
 
+    import_lines = [
+        line
+        for line in code_lines
+        if line.startswith("from") or line.startswith("import")
+    ]
+
+    exec("\n".join(import_lines))
+
     # Create a namespace with required imports
     namespace = {
         "GF2": GF2,
@@ -930,10 +938,10 @@ def test_two_512_tensor_merge_step_by_step():
                 sorted([f"{sstr(GF2([k]))}: {v}" for k, v in tn_wep.items()])
             )
         )
-        with open(f"step_{i}_wep.txt", "w") as f:
-            f.write(f"{tn_wep_str}")
-        with open(f"step_{i}_conj_wep.txt", "w") as f:
-            f.write(f"{conjoined_wep_str}")
+        # with open(f"step_{i}_wep.txt", "w") as f:
+        #     f.write(f"{tn_wep_str}")
+        # with open(f"step_{i}_conj_wep.txt", "w") as f:
+        #     f.write(f"{conjoined_wep_str}")
 
         assert (
             tn_wep_str == conjoined_wep_str

@@ -132,10 +132,10 @@ class TensorNetwork:
 
         # Import statements would go at top of file
         code.append(
-            "from qlego.tensor_stabilizer_enumerator import StabilizerCodeTensorEnumerator"
+            "from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
         )
         code.append("from qlego.tensor_network import TensorNetwork")
-        code.append("from qlego.utils import GF2")
+        code.append("from galois import GF2")
         code.append("")
 
         # Create nodes dict
