@@ -183,10 +183,12 @@ I want to put together the new compass code construction with Charles's construc
 
 Mostly required to limit unwanted DB requests 
 
--  unauthenticated (local-only) mode - only lego drops + manual flow tracking 
+- [maybe]  unauthenticated (local-only) mode - only lego drops + manual flow tracking 
+- 
 
 ## Job management 
-- 
+- statistics database for insights 
+   - sparsity metrics 
 
 - support different platforms 
    - run a job on a single server node (MPI?)
@@ -203,6 +205,9 @@ Mostly required to limit unwanted DB requests
 - derivation rules applied in bulk (similar to how zxlive does it)
 - 
 
+## AI assistance 
+- how can we have a gen-AI based assistant here? 
+
 ## qLego Qonstruct: A graphical language 
 
 A visual language to create parameterized tensornetworks. 
@@ -211,8 +216,10 @@ A visual language to create parameterized tensornetworks.
 - tiling - given a lattice, place a lego to each coordinate - the user can define a function that maps a coordinate to a lego
    - support different Euclidean (6.6.6, 4.4.4.4, 4.8.12, 4.8.8, aperiodic ones, etc.) and hyperbolic lattices 
 - connect 
+- sparsify 
 - product codes 
-   - algebraic codes 
+   - provide the classical codes as parity check matrices 
+- graph states (easy)
 
 ## Hybrid enumerator support 
 
@@ -226,7 +233,10 @@ A visual language to create parameterized tensornetworks.
 A 17x17 rotated surface code should be managable by the UI, this translates to 
 - 289 dangling legs for parity check matrix 
 - 
-    
+
+## Qudit support
+
+
 ## Cosets 
 
 Setup cosets and calculate enumerators for them 
@@ -234,8 +244,8 @@ Setup cosets and calculate enumerators for them
 
 ## Research ideas 
 - logical representative finding - can we get an advantage there over brute force? 
-- if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? 
-- how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there are possibility of reusing intermediate results? 
+- generalized qubit-wise tensor - if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? are there other tilings that result in interesting codes? 
+- how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there a possibility of reusing intermediate results? 
 - 
 
 
