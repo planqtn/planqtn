@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
         plugins: [react()],
         server: {
             host: '0.0.0.0', // Allow connections from any IP
+            strictPort: true,
+            port: 5173,
             proxy: {
                 '/api': {
                     target: env.VITE_BACKEND_URL || 'http://localhost:5000',

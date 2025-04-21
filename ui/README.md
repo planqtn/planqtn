@@ -246,7 +246,7 @@ Setup cosets and calculate enumerators for them
 - logical representative finding - can we get an advantage there over brute force? 
 - generalized qubit-wise tensor - if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? are there other tilings that result in interesting codes? 
 - how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there a possibility of reusing intermediate results? 
-- 
+- graph state based code generation - is it straightforward to read off the distance of different legs? I think it is based on some graph properties - but I haven't seen yet using encoding tensors used this way...
 
 
 ## License
