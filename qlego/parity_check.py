@@ -127,6 +127,8 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
         return GF2([[1]])
 
     kept_rows = np.array(kept_rows)
+    if kept_rows.size == 0:
+        return GF2([[1]])
     mx = mx[kept_rows][:, kept_cols]
 
     # print("after removals:")

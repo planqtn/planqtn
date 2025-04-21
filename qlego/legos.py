@@ -120,9 +120,9 @@ class Legos:
         legos = [
             {
                 "id": LegoType.T6.value,
-                "name": "[[6,0,2]] tensor",
+                "name": "[[6,0,3]] tensor",
                 "shortName": "T6",
-                "description": "[[6,0,2]] encoding tensor",
+                "description": "[[6,0,3]] encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_603.tolist(),
                 "logical_legs": [4, 5],
                 "gauge_legs": [],
