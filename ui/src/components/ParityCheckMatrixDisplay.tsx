@@ -354,6 +354,86 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
         )
     }
 
+    // Check if matrix is too large for table display
+    if (numLegs > 50) {
+        return (
+            <Box>
+                <HStack justify="space-between" mb={2}>
+                    <Box>
+                        {title && <Heading size="sm">{title}</Heading>}
+                        <Text>[[{numLegs}, {numLegs - n_stabilizers}]] ({matrix.every(isCSS) ? "CSS" : "non-CSS"})</Text>
+                    </Box>
+                    <HStack>
+                        {matrix.every(isCSS) && numLegs <= 150 && (
+                            <Button
+                                size="sm"
+                                onClick={handleCSSSort}
+                                colorScheme="orange"
+                            >
+                                CSS-sort
+                            </Button>
+                        )}
+                        <Button
+                            size="sm"
+                            onClick={copyMatrixAsNumpy}
+                            colorScheme="purple"
+                        >
+                            Copy as numpy
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={copyMatrixAsQdistrnd}
+                            colorScheme="purple"
+                        >
+                            Copy as qdistrnd
+                        </Button>
+                    </HStack>
+                </HStack>
+                <Text color="red.500" fontWeight="bold" mb={4}>
+                    Matrix is too big ({numLegs} legs &gt; 50) for interactive matrix display
+                </Text>
+                {numLegs <= 150 && (
+                    <Box>
+                        <Heading size="sm" mb={2}>Stabilizer View</Heading>
+                        <VStack align="stretch" spacing={1}>
+                            {matrix.map((row, index) => (
+                                <HStack
+                                    key={index}
+                                    spacing={2}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    cursor="pointer"
+                                    bg={draggedRowIndex === index ? "blue.50" : "transparent"}
+                                    p={1}
+                                    borderRadius="md"
+                                >
+                                    <Text fontWeight="bold" width="30px">{index}.</Text>
+                                    <HStack spacing={1}>
+                                        {getPauliString(row).split('').map((pauli, i) => (
+                                            <Text
+                                                key={i}
+                                                color={getPauliColor(pauli)}
+                                                fontWeight="bold"
+                                                fontFamily="monospace"
+                                                fontSize="14px"
+                                            >
+                                                {pauli}
+                                            </Text>
+                                        ))}
+                                        <Text fontSize="14px" >  | {getPauliWeight(row)} </Text>
+                                    </HStack>
+                                </HStack>
+                            ))}
+                        </VStack>
+                    </Box>
+                )}
+            </Box>
+        );
+    }
+
     return (
 
         <Box>
@@ -579,7 +659,19 @@ export const ParityCheckMatrixDisplay: React.FC<ParityCheckMatrixDisplayProps> =
                         <Heading size="sm" mb={2}>Stabilizer View</Heading>
                         <VStack align="stretch" spacing={1}>
                             {matrix.map((row, index) => (
-                                <HStack key={index} spacing={2}>
+                                <HStack
+                                    key={index}
+                                    spacing={2}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    cursor="pointer"
+                                    bg={draggedRowIndex === index ? "blue.50" : "transparent"}
+                                    p={1}
+                                    borderRadius="md"
+                                >
                                     <Text fontWeight="bold" width="30px">{index}.</Text>
                                     <HStack spacing={1}>
                                         {getPauliString(row).split('').map((pauli, i) => (
