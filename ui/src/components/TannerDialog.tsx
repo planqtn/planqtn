@@ -198,6 +198,43 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 }
             }
 
+            // Check that all rows commute with each other
+            const halfWidth = rowLength / 2;
+            for (let i = 0; i < matrix.length; i++) {
+                for (let j = i + 1; j < matrix.length; j++) {
+                    const row1 = matrix[i];
+                    const row2 = matrix[j];
+
+                    // Calculate symplectic inner product
+                    let symplecticProduct = 0;
+                    for (let k = 0; k < halfWidth; k++) {
+                        // X1.Z2 + Z1.X2 mod 2
+                        symplecticProduct += (row1[k] * row2[k + halfWidth] + row1[k + halfWidth] * row2[k]) % 2;
+                    }
+                    symplecticProduct %= 2;
+
+                    if (symplecticProduct !== 0) {
+                        // Convert rows to Pauli strings for error message
+                        const getPauliString = (row: number[]): string => {
+                            let result = '';
+                            for (let k = 0; k < halfWidth; k++) {
+                                const x = row[k];
+                                const z = row[k + halfWidth];
+                                if (x === 0 && z === 0) result += '_';
+                                else if (x === 1 && z === 0) result += 'X';
+                                else if (x === 0 && z === 1) result += 'Z';
+                                else if (x === 1 && z === 1) result += 'Y';
+                            }
+                            return result;
+                        };
+
+                        const pauli1 = getPauliString(row1);
+                        const pauli2 = getPauliString(row2);
+                        throw new Error(`Rows ${i + 1} (${pauli1}) and ${j + 1} (${pauli2}) do not commute`);
+                    }
+                }
+            }
+
             // Update number of legs when matrix is valid
             setNumLegs(rowLength / 2);
 
