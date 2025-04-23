@@ -1291,7 +1291,7 @@ function App() {
                         duration: 2000,
                         isClosable: true,
                     });
-                }).catch(err => {
+                }).catch(_ => {
                     toast({
                         title: "Copy failed",
                         description: "Failed to copy network data",

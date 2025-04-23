@@ -1,4 +1,4 @@
-import { Box, Text, VStack } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { DroppedLego, TensorNetwork, LegDragState, DragState, Connection } from "../types";
 
 // Add shared function for leg position calculations
