@@ -17,7 +17,7 @@ import {
     NumberIncrementStepper,
     NumberDecrementStepper,
 } from '@chakra-ui/react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface DynamicLegoDialogProps {
     isOpen: boolean;
@@ -36,6 +36,22 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
 }) => {
     const [values, setValues] = useState<Record<string, any>>(parameters);
     const firstInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isOpen && (e.key === 'Backspace' || e.key === 'Delete')) {
+                e.stopPropagation();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyDown, true);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown, true);
+        };
+    }, [isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

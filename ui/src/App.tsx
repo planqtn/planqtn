@@ -406,7 +406,7 @@ function App() {
 
         if (draggedLego.is_dynamic) {
             setSelectedDynamicLego(draggedLego);
-            setPendingDropPosition({ x: e.clientX, y: e.clientY });
+            setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
             setIsDialogOpen(true);
             setDraggedLego(null);
             return;
