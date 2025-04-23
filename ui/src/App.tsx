@@ -17,11 +17,42 @@ import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
-import { ChevronDownIcon } from '@chakra-ui/icons'
 
-// Add these constants near the top of the file, with the other constants
-const LEGO_WIDTH = 100;
-const LEGO_HEIGHT = 60;
+// Add these helper functions near the top of the file
+const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq !== 0) {
+        param = dot / len_sq;
+    }
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    const dx = x - xx;
+    const dy = y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+const isScalarLego = (lego: DroppedLego) => {
+    return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
+}
 
 // Add this before the App component
 function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedLegos: DroppedLego[], connections: Connection[]): { lego: DroppedLego, legIndex: number } | null {
@@ -90,6 +121,7 @@ function App() {
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
     const [operationHistory] = useState<OperationHistory>(new OperationHistory([]))
+    const [mousePosition, setMousePosition] = useState<{ x: number, y: number } | null>(null);
 
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
     const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
@@ -207,6 +239,31 @@ function App() {
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [decodeCanvasState])
 
+    // Add mouse position tracking
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            const canvasPanel = document.querySelector('#main-panel');
+            if (!canvasPanel) return;
+
+            const canvasRect = canvasPanel.getBoundingClientRect();
+            const isOverCanvas = e.clientX >= canvasRect.left &&
+                e.clientX <= canvasRect.right &&
+                e.clientY >= canvasRect.top &&
+                e.clientY <= canvasRect.bottom;
+
+            if (isOverCanvas) {
+                setMousePosition({
+                    x: e.clientX - canvasRect.left,
+                    y: e.clientY - canvasRect.top
+                });
+            } else {
+                setMousePosition(null);
+            }
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     const handleDragStart = (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => {
         if (lego.id === 'custom') {
@@ -1218,9 +1275,126 @@ function App() {
 
     // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && (tensorNetwork || selectedLego)) {
+                e.preventDefault();
+                const networkToCopy = tensorNetwork || {
+                    legos: [selectedLego]
+                };
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                const jsonStr = JSON.stringify(networkToCopy);
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    toast({
+                        title: "Copied to clipboard",
+                        description: "Network data has been copied",
+                        status: "success",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                }).catch(err => {
+                    toast({
+                        title: "Copy failed",
+                        description: "Failed to copy network data",
+                        status: "error",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                });
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                try {
+                    const clipText = await navigator.clipboard.readText();
+                    const pastedData = JSON.parse(clipText);
+
+                    if (pastedData.legos && Array.isArray(pastedData.legos) && pastedData.legos.length > 0) {
+                        // Get canvas element and its dimensions
+                        const canvasPanel = document.querySelector('#main-panel');
+                        if (!canvasPanel) return;
+
+                        const canvasRect = canvasPanel.getBoundingClientRect();
+
+                        // Determine drop position
+                        let dropX: number, dropY: number;
+
+                        if (mousePosition) {
+                            // Use current mouse position
+                            dropX = mousePosition.x;
+                            dropY = mousePosition.y;
+                        } else {
+                            // Use random position around canvas center
+                            const centerX = canvasRect.width / 2;
+                            const centerY = canvasRect.height / 2;
+                            const randomOffset = 50; // pixels
+
+                            dropX = centerX + (Math.random() * 2 - 1) * randomOffset;
+                            dropY = centerY + (Math.random() * 2 - 1) * randomOffset;
+                        }
+
+                        // Create a mapping from old instance IDs to new ones
+                        const startingId = parseInt(newInstanceId(droppedLegos));
+                        const instanceIdMap = new Map<string, string>();
+
+                        // Create new legos with new instance IDs
+                        const newLegos = pastedData.legos.map((l: DroppedLego, idx: number) => {
+                            const newId = String(startingId + idx);
+                            instanceIdMap.set(l.instanceId, newId);
+                            return {
+                                ...l,
+                                instanceId: newId,
+                                x: l.x + dropX - pastedData.legos[0].x, // Maintain relative positions
+                                y: l.y + dropY - pastedData.legos[0].y,
+                                style: getLegoStyle(l.id, l.parity_check_matrix[0].length / 2)
+                            };
+                        });
+
+                        // Create new connections with updated instance IDs
+                        const newConnections = (pastedData.connections || []).map((conn: Connection) => {
+                            return new Connection(
+                                {
+                                    legoId: instanceIdMap.get(conn.from.legoId)!,
+                                    legIndex: conn.from.legIndex
+                                },
+                                {
+                                    legoId: instanceIdMap.get(conn.to.legoId)!,
+                                    legIndex: conn.to.legIndex
+                                }
+                            );
+                        });
+
+                        // Update state
+                        setDroppedLegos(prev => [...prev, ...newLegos]);
+                        setConnections(prev => [...prev, ...newConnections]);
+
+                        // Add to history
+                        operationHistory.addOperation({
+                            type: 'add',
+                            data: {
+                                legosToAdd: newLegos,
+                                connectionsToAdd: newConnections
+                            }
+                        });
+
+                        // Update URL state
+                        encodeCanvasState([...droppedLegos, ...newLegos], [...connections, ...newConnections], hideConnectedLegs);
+
+                        toast({
+                            title: "Paste successful",
+                            description: `Pasted ${newLegos.length} lego${newLegos.length > 1 ? 's' : ''}`,
+                            status: "success",
+                            duration: 2000,
+                            isClosable: true,
+                        });
+                    }
+                } catch (err) {
+                    toast({
+                        title: "Paste failed",
+                        description: "Invalid network data in clipboard",
+                        status: "error",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 handleUndo();
             } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
@@ -1315,7 +1489,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, operationHistory.addOperation, encodeCanvasState, hideConnectedLegs]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, operationHistory.addOperation, encodeCanvasState, hideConnectedLegs, mousePosition]);
 
     useEffect(() => {
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -1747,38 +1921,6 @@ function App() {
         });
     };
 
-    // Helper function to calculate distance from point to line segment
-    const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
-        const A = x - x1;
-        const B = y - y1;
-        const C = x2 - x1;
-        const D = y2 - y1;
-
-        const dot = A * C + B * D;
-        const len_sq = C * C + D * D;
-        let param = -1;
-        if (len_sq !== 0) {
-            param = dot / len_sq;
-        }
-
-        let xx, yy;
-
-        if (param < 0) {
-            xx = x1;
-            yy = y1;
-        } else if (param > 1) {
-            xx = x2;
-            yy = y2;
-        } else {
-            xx = x1 + param * C;
-            yy = y1 + param * D;
-        }
-
-        const dx = x - xx;
-        const dy = y - yy;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-
     const handleCustomLegoSubmit = (matrix: number[][], logicalLegs: number[]) => {
         const instanceId = newInstanceId(droppedLegos)
         const newLego: DroppedLego = {
@@ -1806,10 +1948,6 @@ function App() {
         });
         encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
     };
-
-    const isScalarLego = (lego: DroppedLego) => {
-        return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
-    }
 
     const handleExportSvg = () => {
         // Clear any selections to have a clean view
