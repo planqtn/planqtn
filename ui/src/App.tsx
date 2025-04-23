@@ -1971,8 +1971,8 @@ function App() {
 
         // First, let's calculate the total bounding box
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
         // Process all SVG elements in the canvas
+        const connections_svg = canvasPanel.querySelector('#connections-svg');
         const svgElements = canvasPanel.querySelectorAll('svg');
         svgElements.forEach(svg => {
             // Skip SVGs that are marked as hidden
@@ -1987,10 +1987,12 @@ function App() {
             const relativeY = rect.top - canvasRect.top;
 
             // Update bounding box
-            minX = Math.min(minX, relativeX);
-            minY = Math.min(minY, relativeY);
-            maxX = Math.max(maxX, relativeX + rect.width);
-            maxY = Math.max(maxY, relativeY + rect.height);
+            if (svg != connections_svg) {
+                minX = Math.min(minX, relativeX);
+                minY = Math.min(minY, relativeY);
+                maxX = Math.max(maxX, relativeX + rect.width);
+                maxY = Math.max(maxY, relativeY + rect.height);
+            }
 
             // Clone the SVG content
             const clonedContent = svg.cloneNode(true) as SVGElement;
@@ -2017,60 +2019,9 @@ function App() {
             combinedSvg.appendChild(group);
         });
 
-        // Process Box elements (which are typically legos)
-        const legoElements = canvasPanel.querySelectorAll('.lego-box');
-        legoElements.forEach(lego => {
-            const rect = lego.getBoundingClientRect();
-            const canvasRect = canvasPanel.getBoundingClientRect();
-            const relativeX = rect.left - canvasRect.left;
-            const relativeY = rect.top - canvasRect.top;
-
-            // Update bounding box
-            minX = Math.min(minX, relativeX);
-            minY = Math.min(minY, relativeY);
-            maxX = Math.max(maxX, relativeX + rect.width);
-            maxY = Math.max(maxY, relativeY + rect.height);
-
-            // Create SVG group for this lego
-            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            group.setAttribute('transform', `translate(${relativeX}, ${relativeY})`);
-
-            // If the lego is already an SVG, clone its content
-            if (lego instanceof SVGElement) {
-                const clonedContent = lego.cloneNode(true) as SVGElement;
-                while (clonedContent.firstChild) {
-                    group.appendChild(clonedContent.firstChild);
-                }
-            } else {
-                // Create rectangle for the box
-                const svgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                svgRect.setAttribute('width', rect.width.toString());
-                svgRect.setAttribute('height', rect.height.toString());
-                svgRect.setAttribute('fill', window.getComputedStyle(lego).backgroundColor || 'white');
-                svgRect.setAttribute('stroke', 'black');
-                svgRect.setAttribute('stroke-width', '1');
-                group.appendChild(svgRect);
-
-                // Add text if present
-                const textContent = lego.textContent;
-                if (textContent) {
-                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    text.textContent = textContent;
-                    text.setAttribute('x', (rect.width / 2).toString());
-                    text.setAttribute('y', (rect.height / 2).toString());
-                    text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('dominant-baseline', 'middle');
-                    text.setAttribute('font-family', 'Arial');
-                    text.setAttribute('font-size', '12px');
-                    group.appendChild(text);
-                }
-            }
-
-            combinedSvg.appendChild(group);
-        });
 
         // Add padding to bounding box
-        const padding = 20;
+        const padding = 50;
         const width = maxX - minX + 2 * padding;
         const height = maxY - minY + 2 * padding;
 
@@ -2286,6 +2237,7 @@ function App() {
                             >
                                 {/* Connection Lines */}
                                 <svg
+                                    id="connections-svg"
                                     style={{
                                         position: 'absolute',
                                         top: 0,
