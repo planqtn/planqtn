@@ -22,6 +22,7 @@ trap cleanup EXIT
 
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
 (cd server && python main.py) > "$SERVER_LOG" 2>&1 &
 
 # Wait a bit for the backend to start
