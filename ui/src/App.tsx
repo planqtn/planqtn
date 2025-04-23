@@ -17,6 +17,11 @@ import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
+import { ChevronDownIcon } from '@chakra-ui/icons'
+
+// Add these constants near the top of the file, with the other constants
+const LEGO_WIDTH = 100;
+const LEGO_HEIGHT = 60;
 
 // Add this before the App component
 function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedLegos: DroppedLego[], connections: Connection[]): { lego: DroppedLego, legIndex: number } | null {
@@ -1806,6 +1811,161 @@ function App() {
         return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
     }
 
+    const handleExportSvg = () => {
+        // Clear any selections to have a clean view
+        setSelectedLego(null);
+
+        // Get the canvas panel element
+        const canvasPanel = document.querySelector('#main-panel');
+        if (!canvasPanel) {
+            toast({
+                title: "Export failed",
+                description: "Could not find the canvas panel",
+                status: "error",
+                duration: 3000,
+                isClosable: true,
+            });
+            return;
+        }
+
+        // Create a new SVG element that will contain everything
+        const combinedSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+        // First, let's calculate the total bounding box
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        // Process all SVG elements in the canvas
+        const svgElements = canvasPanel.querySelectorAll('svg');
+        svgElements.forEach(svg => {
+            // Skip SVGs that are marked as hidden
+            if (svg.style.visibility === 'hidden' || svg.getAttribute('visibility') === 'hidden') {
+                return;
+            }
+
+            // Get the SVG's position relative to the canvas
+            const rect = svg.getBoundingClientRect();
+            const canvasRect = canvasPanel.getBoundingClientRect();
+            const relativeX = rect.left - canvasRect.left;
+            const relativeY = rect.top - canvasRect.top;
+
+            // Update bounding box
+            minX = Math.min(minX, relativeX);
+            minY = Math.min(minY, relativeY);
+            maxX = Math.max(maxX, relativeX + rect.width);
+            maxY = Math.max(maxY, relativeY + rect.height);
+
+            // Clone the SVG content
+            const clonedContent = svg.cloneNode(true) as SVGElement;
+
+            // Remove any duplicate text elements (keep only SVG text elements)
+            const textElements = clonedContent.querySelectorAll('text');
+            textElements.forEach(text => {
+                const parent = text.parentElement;
+                if (parent && parent.querySelector('div')) {
+                    // If the parent also contains a div element, this is likely a duplicate text
+                    text.remove();
+                }
+            });
+
+            // Create a group to maintain position
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            group.setAttribute('transform', `translate(${relativeX}, ${relativeY})`);
+
+            // Move all children to the group
+            while (clonedContent.firstChild) {
+                group.appendChild(clonedContent.firstChild);
+            }
+
+            combinedSvg.appendChild(group);
+        });
+
+        // Process Box elements (which are typically legos)
+        const legoElements = canvasPanel.querySelectorAll('.lego-box');
+        legoElements.forEach(lego => {
+            const rect = lego.getBoundingClientRect();
+            const canvasRect = canvasPanel.getBoundingClientRect();
+            const relativeX = rect.left - canvasRect.left;
+            const relativeY = rect.top - canvasRect.top;
+
+            // Update bounding box
+            minX = Math.min(minX, relativeX);
+            minY = Math.min(minY, relativeY);
+            maxX = Math.max(maxX, relativeX + rect.width);
+            maxY = Math.max(maxY, relativeY + rect.height);
+
+            // Create SVG group for this lego
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            group.setAttribute('transform', `translate(${relativeX}, ${relativeY})`);
+
+            // If the lego is already an SVG, clone its content
+            if (lego instanceof SVGElement) {
+                const clonedContent = lego.cloneNode(true) as SVGElement;
+                while (clonedContent.firstChild) {
+                    group.appendChild(clonedContent.firstChild);
+                }
+            } else {
+                // Create rectangle for the box
+                const svgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                svgRect.setAttribute('width', rect.width.toString());
+                svgRect.setAttribute('height', rect.height.toString());
+                svgRect.setAttribute('fill', window.getComputedStyle(lego).backgroundColor || 'white');
+                svgRect.setAttribute('stroke', 'black');
+                svgRect.setAttribute('stroke-width', '1');
+                group.appendChild(svgRect);
+
+                // Add text if present
+                const textContent = lego.textContent;
+                if (textContent) {
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.textContent = textContent;
+                    text.setAttribute('x', (rect.width / 2).toString());
+                    text.setAttribute('y', (rect.height / 2).toString());
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('font-family', 'Arial');
+                    text.setAttribute('font-size', '12px');
+                    group.appendChild(text);
+                }
+            }
+
+            combinedSvg.appendChild(group);
+        });
+
+        // Add padding to bounding box
+        const padding = 20;
+        const width = maxX - minX + 2 * padding;
+        const height = maxY - minY + 2 * padding;
+
+        // Set the viewBox and size of the combined SVG
+        combinedSvg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${width} ${height}`);
+        combinedSvg.setAttribute('width', width.toString());
+        combinedSvg.setAttribute('height', height.toString());
+        combinedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+        // Add XML declaration and create final SVG content
+        const svgContent = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' +
+            combinedSvg.outerHTML;
+
+        // Create and trigger download
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'quantum_lego_network.svg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+            title: "Export successful",
+            description: "SVG file has been downloaded",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -1817,6 +1977,19 @@ function App() {
                 bg={bgColor}
             >
                 <Menu>
+                    <MenuButton as={Button}
+                        variant="ghost"
+                        size="sm">
+                        Export
+                    </MenuButton>
+                    <MenuList>
+                        <MenuItem onClick={handleExportSvg}>
+                            Export canvas as SVG...
+                        </MenuItem>
+                    </MenuList>
+                </Menu>
+                <Menu>
+
                     <MenuButton
                         as={Button}
                         variant="ghost"
@@ -1858,6 +2031,27 @@ function App() {
                         <MenuItemOption isChecked={isLegoPanelCollapsed} onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}>
                             Hide lego list
                         </MenuItemOption>
+                        <MenuItem
+
+                            onClick={() => {
+                                const rect = canvasRef.current?.getBoundingClientRect();
+                                if (!rect) return;
+                                const centerX = rect.width / 2
+                                const centerY = rect.height / 2
+                                const scale = 1 / zoomLevel
+                                const rescaledLegos = droppedLegos.map(lego => ({
+                                    ...lego,
+                                    x: (lego.x - centerX) * scale + centerX,
+                                    y: (lego.y - centerY) * scale + centerY
+                                }));
+                                setDroppedLegos(rescaledLegos);
+                                setZoomLevel(1)
+                                encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
+                            }}
+                            isDisabled={zoomLevel === 1}
+                        >
+                            Reset zoom
+                        </MenuItem>
 
                     </MenuList>
                 </Menu>
@@ -1887,28 +2081,8 @@ function App() {
                 >
                     Clear highlights
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                        const rect = canvasRef.current?.getBoundingClientRect();
-                        if (!rect) return;
-                        const centerX = rect.width / 2
-                        const centerY = rect.height / 2
-                        const scale = 1 / zoomLevel
-                        const rescaledLegos = droppedLegos.map(lego => ({
-                            ...lego,
-                            x: (lego.x - centerX) * scale + centerX,
-                            y: (lego.y - centerY) * scale + centerY
-                        }));
-                        setDroppedLegos(rescaledLegos);
-                        setZoomLevel(1)
-                        encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
-                    }}
-                    isDisabled={zoomLevel === 1}
-                >
-                    Reset zoom
-                </Button>
+
+
             </HStack>
 
             {/* Main Content */}

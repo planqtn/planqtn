@@ -204,87 +204,124 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
 
                 const legVisibility = getLegVisibility(legIndex);
                 return (
-                    <Box
+                    <svg
                         key={`leg-${legIndex}`}
-                        position="absolute"
-                        left="50%"
-                        top="50%"
                         style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            width: '100%',
+                            height: '100%',
+                            overflow: 'visible',
                             ...legVisibility,
-                            zIndex: -1 // Place under the polygon
+                            zIndex: -1
                         }}
                     >
                         {/* Line */}
-                        <Box
-                            position="absolute"
-                            left={`${pos.startX}px`}
-                            top={`${pos.startY}px`}
-                            w={`${pos.style.length}px`}
-                            h={legColor !== "#A0AEC0" ? "4px" : pos.style.width}
-                            bg={legColor}
-                            transformOrigin="0 0"
-                            style={{
-                                transform: `rotate(${pos.angle}rad)`,
-                                borderStyle: pos.style.style
-                            }}
+                        <line
+                            x1={pos.startX}
+                            y1={pos.startY}
+                            x2={pos.endX}
+                            y2={pos.endY}
+                            stroke={legColor}
+                            strokeWidth={legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}
+                            strokeDasharray={pos.style.style === 'dashed' ? '5,5' : undefined}
                         />
                         {/* Draggable Endpoint */}
-                        <Box
-                            position="absolute"
-                            left={`${pos.endX}px`}
-                            top={`${pos.endY}px`}
-                            w="10px"
-                            h="10px"
-                            borderRadius="full"
-                            bg={isBeingDragged ? "blue.100" : "white"}
-                            border="2px"
-                            borderColor={isBeingDragged ? "blue.500" : legColor}
-                            transform="translate(-50%, -50%)"
-                            cursor="pointer"
+                        <circle
+                            cx={pos.endX}
+                            cy={pos.endY}
+                            r="5"
+                            fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
+                            stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
+                            strokeWidth="2"
+                            style={{
+                                cursor: 'pointer',
+                                transition: 'stroke 0.2s, fill 0.2s'
+                            }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
-                            _hover={{
-                                borderColor: legColor,
-                                bg: "white"
+                            onMouseOver={(e) => {
+                                const circle = e.target as SVGCircleElement;
+                                circle.style.stroke = legColor;
+                                circle.style.fill = "white";
+                            }}
+                            onMouseOut={(e) => {
+                                const circle = e.target as SVGCircleElement;
+                                circle.style.stroke = isBeingDragged ? "rgb(66, 153, 225)" : legColor;
+                                circle.style.fill = isBeingDragged ? "rgb(235, 248, 255)" : "white";
                             }}
                         />
-                    </Box>
+                    </svg>
                 );
             })}
 
             {/* Lego Body */}
             {numRegularLegs <= 2 ? (
-                <Box
-                    w={`${size}px`}
-                    h={`${size}px`}
-                    borderRadius={lego.style.borderRadius}
-                    bg={isSelected ? lego.style.selectedBackgroundColor : lego.style.backgroundColor}
-                    border="2px"
-                    borderColor={isSelected ? lego.style.selectedBorderColor : lego.style.borderColor}
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    position="relative"
-                    style={{ pointerEvents: 'all' }}
+                <svg
+                    width={size}
+                    height={size}
+                    style={{ pointerEvents: 'all', position: 'relative' }}
+                    className="lego-box"
                 >
-
+                    <rect
+                        x="0"
+                        y="0"
+                        width={size}
+                        height={size}
+                        rx={typeof lego.style.borderRadius === "string" && lego.style.borderRadius === "full" ? size / 2 : typeof lego.style.borderRadius === "number" ? lego.style.borderRadius : 0}
+                        ry={typeof lego.style.borderRadius === "string" && lego.style.borderRadius === "full" ? size / 2 : typeof lego.style.borderRadius === "number" ? lego.style.borderRadius : 0}
+                        fill={isSelected ? lego.style.getSelectedBackgroundColorForSvg() : lego.style.getBackgroundColorForSvg()}
+                        stroke={isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}
+                        strokeWidth="2"
+                    />
                     {!demoMode && lego.style.displayShortName && (
-                        <VStack spacing={0}>
-                            <Text fontSize="12" fontWeight="bold" color={isSelected ? "white" : "#000000"}>{lego.shortName}</Text>
-                            <Text fontSize="12" color={isSelected ? "white" : "#000000"}>{lego.instanceId}</Text>
-                        </VStack>
+                        <g>
+                            <text
+                                x={size / 2}
+                                y={size / 2 - 6}
+                                fontSize="12"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill={isSelected ? "white" : "#000000"}
+                            >
+                                {lego.shortName}
+                            </text>
+                            <text
+                                x={size / 2}
+                                y={size / 2 + 6}
+                                fontSize="12"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill={isSelected ? "white" : "#000000"}
+                            >
+                                {lego.instanceId}
+                            </text>
+                        </g>
                     )}
                     {!demoMode && !lego.style.displayShortName && (
-                        <Text fontSize="12" fontWeight="bold" color={isSelected ? "white" : "#000000"}>{lego.instanceId}</Text>
+                        <text
+                            x={size / 2}
+                            y={size / 2}
+                            fontSize="12"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fill={isSelected ? "white" : "#000000"}
+                        >
+                            {lego.instanceId}
+                        </text>
                     )}
-                </Box>
+                </svg>
             ) : (
                 <svg
                     width={size}
                     height={size}
                     style={{ pointerEvents: 'all', position: 'relative', zIndex: 0 }}
+                    className="lego-box"
                 >
                     <g transform={`translate(${size / 2}, ${size / 2})`}>
                         <path
@@ -334,33 +371,32 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
 
                 const legVisibility = getLegVisibility(legIndex);
                 return (
-                    <Box
+                    <svg
                         key={`leg-${legIndex}`}
-                        position="absolute"
-                        left="50%"
-                        top="50%"
                         style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            width: '100%',
+                            height: '100%',
+                            overflow: 'visible',
                             ...legVisibility,
-                            pointerEvents: 'none',
-                            zIndex: 1 // Place above the polygon
+                            zIndex: 1
                         }}
                     >
                         {/* Line */}
-                        <Box
-                            position="absolute"
-                            left={`${pos.startX}px`}
-                            top={`${pos.startY}px`}
-                            w={`${pos.style.length}px`}
-                            h={legColor !== "#A0AEC0" ? "4px" : pos.style.width}
-                            bg={legColor}
-                            transformOrigin="0 0"
+                        <line
+                            x1={pos.startX}
+                            y1={pos.startY}
+                            x2={pos.endX}
+                            y2={pos.endY}
+                            stroke={legColor}
+                            strokeWidth={legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}
+                            strokeDasharray={pos.style.style === 'dashed' ? '5,5' : undefined}
                             style={{
-                                transform: `rotate(${pos.angle}rad)`,
-                                pointerEvents: isLogical ? 'all' : 'none',
-                                borderStyle: pos.style.style
+                                cursor: isLogical ? "pointer" : "default",
+                                pointerEvents: isLogical ? 'all' : 'none'
                             }}
-                            cursor={isLogical ? "pointer" : "default"}
-                            title={isLogical ? `Logical leg` : undefined}
                             onClick={(e) => {
                                 if (isLogical && onLegClick) {
                                     e.stopPropagation();
@@ -369,29 +405,34 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             }}
                         />
                         {/* Draggable Endpoint */}
-                        <Box
-                            position="absolute"
-                            left={`${pos.endX}px`}
-                            top={`${pos.endY}px`}
-                            w="10px"
-                            h="10px"
-                            borderRadius="full"
-                            bg={isBeingDragged ? "blue.100" : "white"}
-                            border="2px"
-                            borderColor={isBeingDragged ? "blue.500" : legColor}
-                            transform="translate(-50%, -50%)"
-                            cursor="pointer"
+                        <circle
+                            cx={pos.endX}
+                            cy={pos.endY}
+                            r="5"
+                            fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
+                            stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
+                            strokeWidth="2"
+                            style={{
+                                cursor: 'pointer',
+                                pointerEvents: 'all',
+                                transition: 'stroke 0.2s, fill 0.2s'
+                            }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
-                            _hover={{
-                                borderColor: legColor,
-                                bg: "white"
+                            onMouseOver={(e) => {
+                                const circle = e.target as SVGCircleElement;
+                                circle.style.stroke = legColor;
+                                circle.style.fill = "white";
                             }}
-                            style={{ pointerEvents: 'all' }}
+                            onMouseOut={(e) => {
+                                const circle = e.target as SVGCircleElement;
+                                circle.style.stroke = isBeingDragged ? "rgb(66, 153, 225)" : legColor;
+                                circle.style.fill = isBeingDragged ? "rgb(235, 248, 255)" : "white";
+                            }}
                         />
-                    </Box>
+                    </svg>
                 );
             })}
         </Box>

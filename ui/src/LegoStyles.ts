@@ -26,7 +26,14 @@ const chakraToHexColors: { [key: string]: string } = {
     "red.200": "#FEB2B2",
     "red.300": "#FC8181",
     "red.400": "#F56565",
-    "red.700": "#C53030"
+    "red.700": "#C53030",
+    "gray.100": "#F3F4F6",
+    "gray.200": "#E5E7EB",
+    "gray.300": "#D1D5DB",
+    "gray.400": "#9CA3AF",
+    "gray.500": "#6B7280",
+    "gray.600": "#4B5563",
+    "gray.700": "#374151"
 };
 
 interface LegStyle {
