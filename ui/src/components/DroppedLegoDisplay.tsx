@@ -208,50 +208,59 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         key={`leg-${legIndex}`}
                         style={{
                             position: 'absolute',
-                            left: '50%',
-                            top: '50%',
-                            width: '100%',
-                            height: '100%',
+                            left: '0',
+                            top: '0',
+                            width: `${size}px`,
+                            height: `${size}px`,
                             overflow: 'visible',
                             ...legVisibility,
-                            zIndex: -1
+                            zIndex: -1,
+                            pointerEvents: 'none'
                         }}
                     >
                         {/* Line */}
                         <line
-                            x1={pos.startX}
-                            y1={pos.startY}
-                            x2={pos.endX}
-                            y2={pos.endY}
+                            x1={pos.startX + size / 2}
+                            y1={pos.startY + size / 2}
+                            x2={pos.endX + size / 2}
+                            y2={pos.endY + size / 2}
                             stroke={legColor}
                             strokeWidth={legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}
                             strokeDasharray={pos.style.style === 'dashed' ? '5,5' : undefined}
+                            style={{ pointerEvents: 'none' }}
                         />
                         {/* Draggable Endpoint */}
                         <circle
-                            cx={pos.endX}
-                            cy={pos.endY}
+                            cx={pos.endX + size / 2}
+                            cy={pos.endY + size / 2}
                             r="5"
                             fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
                             stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
                             strokeWidth="2"
                             style={{
                                 cursor: 'pointer',
-                                transition: 'stroke 0.2s, fill 0.2s'
+                                pointerEvents: 'all',
+                                transition: 'stroke 0.2s, fill 0.2s',
+                                stroke: isBeingDragged ? "rgb(66, 153, 225)" : legColor,
+                                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white"
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
                             onMouseOver={(e) => {
-                                const circle = e.target as SVGCircleElement;
-                                circle.style.stroke = legColor;
-                                circle.style.fill = "white";
+                                if (!isBeingDragged) {
+                                    const circle = e.target as SVGCircleElement;
+                                    circle.style.stroke = legColor;
+                                    circle.style.fill = "rgb(235, 248, 255)";
+                                }
                             }}
                             onMouseOut={(e) => {
-                                const circle = e.target as SVGCircleElement;
-                                circle.style.stroke = isBeingDragged ? "rgb(66, 153, 225)" : legColor;
-                                circle.style.fill = isBeingDragged ? "rgb(235, 248, 255)" : "white";
+                                if (!isBeingDragged) {
+                                    const circle = e.target as SVGCircleElement;
+                                    circle.style.stroke = legColor;
+                                    circle.style.fill = "white";
+                                }
                             }}
                         />
                     </svg>
@@ -375,21 +384,22 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         key={`leg-${legIndex}`}
                         style={{
                             position: 'absolute',
-                            left: '50%',
-                            top: '50%',
-                            width: '100%',
-                            height: '100%',
+                            left: '0',
+                            top: '0',
+                            width: `${size}px`,
+                            height: `${size}px`,
                             overflow: 'visible',
                             ...legVisibility,
-                            zIndex: 1
+                            zIndex: 1,
+                            pointerEvents: 'none'
                         }}
                     >
                         {/* Line */}
                         <line
-                            x1={pos.startX}
-                            y1={pos.startY}
-                            x2={pos.endX}
-                            y2={pos.endY}
+                            x1={pos.startX + size / 2}
+                            y1={pos.startY + size / 2}
+                            x2={pos.endX + size / 2}
+                            y2={pos.endY + size / 2}
                             stroke={legColor}
                             strokeWidth={legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}
                             strokeDasharray={pos.style.style === 'dashed' ? '5,5' : undefined}
@@ -406,8 +416,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                         />
                         {/* Draggable Endpoint */}
                         <circle
-                            cx={pos.endX}
-                            cy={pos.endY}
+                            cx={pos.endX + size / 2}
+                            cy={pos.endY + size / 2}
                             r="5"
                             fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
                             stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
@@ -415,21 +425,27 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                             style={{
                                 cursor: 'pointer',
                                 pointerEvents: 'all',
-                                transition: 'stroke 0.2s, fill 0.2s'
+                                transition: 'stroke 0.2s, fill 0.2s',
+                                stroke: isBeingDragged ? "rgb(66, 153, 225)" : legColor,
+                                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white"
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
                                 handleLegMouseDown(e, lego.instanceId, legIndex);
                             }}
                             onMouseOver={(e) => {
-                                const circle = e.target as SVGCircleElement;
-                                circle.style.stroke = legColor;
-                                circle.style.fill = "white";
+                                if (!isBeingDragged) {
+                                    const circle = e.target as SVGCircleElement;
+                                    circle.style.stroke = legColor;
+                                    circle.style.fill = "rgb(235, 248, 255)";
+                                }
                             }}
                             onMouseOut={(e) => {
-                                const circle = e.target as SVGCircleElement;
-                                circle.style.stroke = isBeingDragged ? "rgb(66, 153, 225)" : legColor;
-                                circle.style.fill = isBeingDragged ? "rgb(235, 248, 255)" : "white";
+                                if (!isBeingDragged) {
+                                    const circle = e.target as SVGCircleElement;
+                                    circle.style.stroke = legColor;
+                                    circle.style.fill = "white";
+                                }
                             }}
                         />
                     </svg>
