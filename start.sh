@@ -35,7 +35,7 @@ done
 
 # Check if virtualenv is activated
 if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "${YELLOW}No virtual environment is currently activated.${NC}"
+    echo -e "${YELLOW}No virtual environment is currently activated ('VIRTUAL_ENV' is empty) - if you have a preferred virtualenv, please activate it before running the script.${NC}"
     
     # Check if .virtualenvs directory exists and has environments
     VENV_DIR="$HOME/.virtualenvs"
@@ -45,26 +45,33 @@ if [ -z "$VIRTUAL_ENV" ]; then
         exit 1
     fi
     
-    # List available virtual environments
-    echo -e "${GREEN}Available virtual environments:${NC}"
-    ls -1 "$VENV_DIR"
-    echo
-    
-    # Ask user to select environment
-    read -p "Enter the name of the virtual environment to activate: " venv_name
-    
-    if [ ! -d "$VENV_DIR/$venv_name" ]; then
-        echo -e "${RED}Virtual environment '$venv_name' not found.${NC}"
-        exit 1
+    # Check if tnqec environment exists
+    if [ -d "$VENV_DIR/tnqec" ]; then
+        echo -e "${GREEN}Found tnqec virtual environment, activating it...${NC}"
+        source "$VENV_DIR/tnqec/bin/activate"
+    else
+        # List available virtual environments
+        echo -e "${GREEN}Available virtual environments:${NC}"
+        ls -1 "$VENV_DIR"
+        echo
+        
+        # Ask user to select environment
+        read -p "Enter the name of the virtual environment to activate: " venv_name
+        
+        if [ ! -d "$VENV_DIR/$venv_name" ]; then
+            echo -e "${RED}Virtual environment '$venv_name' not found.${NC}"
+            exit 1
+        fi
+        
+        # Activate the selected virtual environment
+        source "$VENV_DIR/$venv_name/bin/activate"
     fi
     
-    # Activate the selected virtual environment
-    source "$VENV_DIR/$venv_name/bin/activate"
     if [ -z "$VIRTUAL_ENV" ]; then
         echo -e "${RED}Failed to activate virtual environment.${NC}"
         exit 1
     fi
-    echo -e "${GREEN}Activated virtual environment: $venv_name${NC}"
+    echo -e "${GREEN}Activated virtual environment: $(basename $VIRTUAL_ENV)${NC}"
 fi
 
 # Create temporary log files
