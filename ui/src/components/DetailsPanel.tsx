@@ -7,7 +7,6 @@ import axios, { AxiosResponse } from 'axios'
 import { useState } from 'react'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
-import { config } from '../config'
 import * as _ from 'lodash'
 import { OperationHistory } from '../utils/OperationHistory'
 import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
@@ -63,7 +62,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         if (!tensorNetwork) return;
         try {
 
-            const response = await axios.post(`${config.backendUrl}/paritycheck`, {
+            const response = await axios.post(`/api/paritycheck`, {
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
                     const { style, x, y, ...legoWithoutStyle } = lego;
                     acc[lego.instanceId] = {
@@ -227,7 +226,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         try {
             // Get the new repetition code with one more leg
-            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
+            const response = await fetch(`/api/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -484,7 +483,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
             const [response1, response2] = await Promise.all([
-                fetch(`${config.backendUrl}/dynamiclego`, {
+                fetch(`/api/dynamiclego`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -492,7 +491,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         parameters: { d: lego1Legs + 1 }
                     })
                 }),
-                fetch(`${config.backendUrl}/dynamiclego`, {
+                fetch(`/api/dynamiclego`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

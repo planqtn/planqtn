@@ -12,7 +12,6 @@ import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { TannerDialog } from './components/TannerDialog'
-import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
@@ -467,7 +466,7 @@ function App() {
         if (!selectedDynamicLego || !pendingDropPosition) return;
 
         try {
-            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
+            const response = await fetch(`/api/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1599,7 +1598,7 @@ function App() {
 
     const handleCssTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
@@ -1672,7 +1671,7 @@ function App() {
 
     const handleTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
@@ -1741,7 +1740,7 @@ function App() {
 
     const handleMspSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);

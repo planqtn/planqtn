@@ -9,6 +9,7 @@ import sys
 import os
 import numpy as np
 from sympy import symbols
+import argparse
 
 # Add the parent directory to the Python path to import qlego
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,19 +30,19 @@ app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
 )
 
+
 # Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4173",
-        "http://localhost:5173",
-        "http://192.168.86.24:5173",
-        "http://172.18.132.212:5173",
-    ],  # Frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
+def configure_cors(ui_port: int = 5173):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            f"http://localhost:{ui_port}",
+            f"http://localhost:{ui_port + 1000}",  # Vite dev server sometimes uses port + 1000
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],  # Allows all methods
+        allow_headers=["*"],  # Allows all headers
+    )
 
 
 class HealthResponse(BaseModel):
@@ -416,6 +417,23 @@ def create_msp_network(request: TannerRequest):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the TNQEC server")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5005,
+        help="Port to run the server on (default: 5005)",
+    )
+    parser.add_argument(
+        "--ui-port",
+        type=int,
+        default=5173,
+        help="Port the UI is running on (default: 5173)",
+    )
+    args = parser.parse_args()
+
+    configure_cors(args.ui_port)
+
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=args.port)

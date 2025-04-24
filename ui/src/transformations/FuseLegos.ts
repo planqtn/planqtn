@@ -1,5 +1,4 @@
 import { Connection, DroppedLego, LegoServerPayload, Operation, TensorNetworkLeg } from "../types";
-import { config } from '../config'
 import axios from 'axios';
 import { getLegoStyle } from "../LegoStyles";
 import * as _ from 'lodash';
@@ -53,7 +52,7 @@ export class FuseLegos {
             };
 
             // Call the paritycheck endpoint
-            const response = await axios.post(`${config.backendUrl}/paritycheck`, payload);
+            const response = await axios.post(`/api/paritycheck`, payload);
             const { matrix, legs, recognized_type } = response.data;
 
             // Create a new lego with the calculated parity check matrix

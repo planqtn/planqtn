@@ -6,6 +6,33 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Default ports
+BACKEND_PORT=5005
+FRONTEND_PORT=5173
+DEV_MODE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --backend-port)
+            BACKEND_PORT="$2"
+            shift 2
+            ;;
+        --frontend-port)
+            FRONTEND_PORT="$2"
+            shift 2
+            ;;
+        --dev)
+            DEV_MODE=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
 # Check if virtualenv is activated
 if [ -z "$VIRTUAL_ENV" ]; then
     echo -e "${YELLOW}No virtual environment is currently activated.${NC}"
@@ -63,20 +90,27 @@ trap cleanup EXIT
 
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
-(cd server && python main.py) > "$SERVER_LOG" 2>&1 &
+(cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT") > "$SERVER_LOG" 2>&1 &
 
 # Wait a bit for the backend to start
 sleep 2
 
 # Start the frontend and redirect output to log file
-echo "Building frontend..."
-(cd ui && npm run build)
-echo "Starting frontend..."
-(cd ui && npm run dev) > "$UI_LOG" 2>&1 &
+set -e
+if [ "$DEV_MODE" = false ]; then
+    echo "Building frontend..."
+    (cd ui && npm run build)
+    echo "Starting frontend in preview mode..."
+    export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
+    (cd ui && npm run preview -- --port "$FRONTEND_PORT") > "$UI_LOG" 2>&1 &
+else
+    echo "Starting frontend in development mode..."
+    export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
+    (cd ui && npm run dev -- --port "$FRONTEND_PORT") > "$UI_LOG" 2>&1 &
+fi
 
 # Use split terminal to show both logs
 clear
-echo "=== Server Log (left) === | === UI Log (right) ==="
 echo "Press Ctrl+C to stop all servers"
 (
     # Show logs side by side using paste
