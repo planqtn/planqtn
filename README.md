@@ -27,6 +27,29 @@ Open a Linux terminal. On Windows, use WSL2. On Mac a regular terminal will be o
 ./start.sh 
 ```
 
+At this point, after starting the python server and building the UI, you should see the logs from both servers: 
+
+```
+Press Ctrl+C to stop all servers
+[Server] INFO:     Started server process [2878247]
+[Server] INFO:     Waiting for application startup.
+[Server] INFO:     Application startup complete.
+[Server] INFO:     Uvicorn running on http://0.0.0.0:5005 (Press CTRL+C to quit)
+[UI] 
+[UI] > tnqec-ui@0.1.0 preview
+[UI] > vite preview --port 5173
+[UI] 
+[UI]   ➜  Local:   http://localhost:5173/
+[UI]   ➜  Network: http://10.255.255.254:5173/
+[UI]   ➜  Network: http://172.18.132.212:5173/
+```
+
+Then, open http://localhost:5173 in your browser, you should see a similar screen as below:
+
+
+![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
+
+
 ## Port clashing
 
 The default ports for the backend server is 5005 and 5173 for the UI. If you have any clashes, you can change both of the two ports with `--backend-port` and `--frontend-port`, for example
