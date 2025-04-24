@@ -15,15 +15,13 @@ if __name__ == "__main__":
     # print(full_tn.stabilizer_enumerator_polynomial(progress_bar=True))
 
     d = 15
-    err = {25, 30, 45}
+    err = {25, 30, 45, 1, 2, 3, 4}
 
     flip = False
     if flip:
         logical_z = {d * i for i in range(d)}
         coset = err.symmetric_difference(logical_z)
-        trunc_length = d - len(err)
     else:
-        trunc_length = len(err)
         coset = err
     full_tn = RotatedSurfaceCodeTN(
         d=d,

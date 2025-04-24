@@ -2,7 +2,6 @@ import { Box, Heading, List, ListItem, HStack, VStack, Text, Badge, useColorMode
 import { LegoPiece } from '../types.ts'
 import { DynamicLegoDialog } from './DynamicLegoDialog'
 import { useState } from 'react'
-import { config } from '../config'
 import { DroppedLegoDisplay } from './DroppedLegoDisplay.tsx'
 import { getLegoStyle } from '../LegoStyles.ts'
 
@@ -25,7 +24,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
         if (!selectedDynamicLego) return
 
         try {
-            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
+            const response = await fetch(`/api/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

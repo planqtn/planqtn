@@ -795,7 +795,7 @@ class TensorNetwork:
                     else:
                         if verbose:
                             print()
-
+            if verbose:
                 print(f"PTEs: {self.ptes}")
 
         if verbose:

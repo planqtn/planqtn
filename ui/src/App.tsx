@@ -12,11 +12,46 @@ import { CanvasStateSerializer } from './utils/CanvasStateSerializer'
 import { DroppedLegoDisplay, calculateLegPosition } from './components/DroppedLegoDisplay'
 import { DynamicLegoDialog } from './components/DynamicLegoDialog'
 import { TannerDialog } from './components/TannerDialog'
-import { config } from './config'
 import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
+
+// Add these helper functions near the top of the file
+const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq !== 0) {
+        param = dot / len_sq;
+    }
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    const dx = x - xx;
+    const dy = y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+const isScalarLego = (lego: DroppedLego) => {
+    return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
+}
 
 // Add this before the App component
 function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedLegos: DroppedLego[], connections: Connection[]): { lego: DroppedLego, legIndex: number } | null {
@@ -141,6 +176,7 @@ function App() {
     const stateSerializerRef = useRef<CanvasStateSerializer>(new CanvasStateSerializer([]))
     const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(null)
     const [operationHistory] = useState<OperationHistory>(new OperationHistory([]))
+    const [mousePosition, setMousePosition] = useState<{ x: number, y: number } | null>(null);
 
     const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(null)
     const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
@@ -259,6 +295,31 @@ function App() {
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [decodeCanvasState])
 
+    // Add mouse position tracking
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            const canvasPanel = document.querySelector('#main-panel');
+            if (!canvasPanel) return;
+
+            const canvasRect = canvasPanel.getBoundingClientRect();
+            const isOverCanvas = e.clientX >= canvasRect.left &&
+                e.clientX <= canvasRect.right &&
+                e.clientY >= canvasRect.top &&
+                e.clientY <= canvasRect.bottom;
+
+            if (isOverCanvas) {
+                setMousePosition({
+                    x: e.clientX - canvasRect.left,
+                    y: e.clientY - canvasRect.top
+                });
+            } else {
+                setMousePosition(null);
+            }
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     const handleDragStart = (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => {
         if (lego.id === 'custom') {
@@ -401,7 +462,7 @@ function App() {
 
         if (draggedLego.is_dynamic) {
             setSelectedDynamicLego(draggedLego);
-            setPendingDropPosition({ x: e.clientX, y: e.clientY });
+            setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
             setIsDialogOpen(true);
             setDraggedLego(null);
             return;
@@ -462,7 +523,7 @@ function App() {
         if (!selectedDynamicLego || !pendingDropPosition) return;
 
         try {
-            const response = await fetch(`${config.backendUrl}/dynamiclego`, {
+            const response = await fetch(`/api/dynamiclego`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1270,9 +1331,126 @@ function App() {
 
     // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && (tensorNetwork || selectedLego)) {
+                e.preventDefault();
+                const networkToCopy = tensorNetwork || {
+                    legos: [selectedLego]
+                };
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                const jsonStr = JSON.stringify(networkToCopy);
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    toast({
+                        title: "Copied to clipboard",
+                        description: "Network data has been copied",
+                        status: "success",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                }).catch(_ => {
+                    toast({
+                        title: "Copy failed",
+                        description: "Failed to copy network data",
+                        status: "error",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                });
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                try {
+                    const clipText = await navigator.clipboard.readText();
+                    const pastedData = JSON.parse(clipText);
+
+                    if (pastedData.legos && Array.isArray(pastedData.legos) && pastedData.legos.length > 0) {
+                        // Get canvas element and its dimensions
+                        const canvasPanel = document.querySelector('#main-panel');
+                        if (!canvasPanel) return;
+
+                        const canvasRect = canvasPanel.getBoundingClientRect();
+
+                        // Determine drop position
+                        let dropX: number, dropY: number;
+
+                        if (mousePosition) {
+                            // Use current mouse position
+                            dropX = mousePosition.x;
+                            dropY = mousePosition.y;
+                        } else {
+                            // Use random position around canvas center
+                            const centerX = canvasRect.width / 2;
+                            const centerY = canvasRect.height / 2;
+                            const randomOffset = 50; // pixels
+
+                            dropX = centerX + (Math.random() * 2 - 1) * randomOffset;
+                            dropY = centerY + (Math.random() * 2 - 1) * randomOffset;
+                        }
+
+                        // Create a mapping from old instance IDs to new ones
+                        const startingId = parseInt(newInstanceId(droppedLegos));
+                        const instanceIdMap = new Map<string, string>();
+
+                        // Create new legos with new instance IDs
+                        const newLegos = pastedData.legos.map((l: DroppedLego, idx: number) => {
+                            const newId = String(startingId + idx);
+                            instanceIdMap.set(l.instanceId, newId);
+                            return {
+                                ...l,
+                                instanceId: newId,
+                                x: l.x + dropX - pastedData.legos[0].x, // Maintain relative positions
+                                y: l.y + dropY - pastedData.legos[0].y,
+                                style: getLegoStyle(l.id, l.parity_check_matrix[0].length / 2)
+                            };
+                        });
+
+                        // Create new connections with updated instance IDs
+                        const newConnections = (pastedData.connections || []).map((conn: Connection) => {
+                            return new Connection(
+                                {
+                                    legoId: instanceIdMap.get(conn.from.legoId)!,
+                                    legIndex: conn.from.legIndex
+                                },
+                                {
+                                    legoId: instanceIdMap.get(conn.to.legoId)!,
+                                    legIndex: conn.to.legIndex
+                                }
+                            );
+                        });
+
+                        // Update state
+                        setDroppedLegos(prev => [...prev, ...newLegos]);
+                        setConnections(prev => [...prev, ...newConnections]);
+
+                        // Add to history
+                        operationHistory.addOperation({
+                            type: 'add',
+                            data: {
+                                legosToAdd: newLegos,
+                                connectionsToAdd: newConnections
+                            }
+                        });
+
+                        // Update URL state
+                        encodeCanvasState([...droppedLegos, ...newLegos], [...connections, ...newConnections], hideConnectedLegs);
+
+                        toast({
+                            title: "Paste successful",
+                            description: `Pasted ${newLegos.length} lego${newLegos.length > 1 ? 's' : ''}`,
+                            status: "success",
+                            duration: 2000,
+                            isClosable: true,
+                        });
+                    }
+                } catch (err) {
+                    toast({
+                        title: "Paste failed",
+                        description: "Invalid network data in clipboard",
+                        status: "error",
+                        duration: 2000,
+                        isClosable: true,
+                    });
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 handleUndo();
             } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
@@ -1367,7 +1545,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, operationHistory.addOperation, encodeCanvasState, hideConnectedLegs]);
+    }, [handleUndo, handleRedo, tensorNetwork, selectedLego, connections, droppedLegos, operationHistory.addOperation, encodeCanvasState, hideConnectedLegs, mousePosition]);
 
     useEffect(() => {
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -1477,7 +1655,7 @@ function App() {
 
     const handleCssTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
@@ -1550,7 +1728,7 @@ function App() {
 
     const handleTannerSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
@@ -1619,7 +1797,7 @@ function App() {
 
     const handleMspSubmit = async (matrix: number[][]) => {
         try {
-            const response = await axios.post(`${config.backendUrl}/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
+            const response = await axios.post(`/api/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
             let { legos, connections: newConnections } = response.data;
             newConnections = newConnections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
@@ -1799,38 +1977,6 @@ function App() {
         });
     };
 
-    // Helper function to calculate distance from point to line segment
-    const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
-        const A = x - x1;
-        const B = y - y1;
-        const C = x2 - x1;
-        const D = y2 - y1;
-
-        const dot = A * C + B * D;
-        const len_sq = C * C + D * D;
-        let param = -1;
-        if (len_sq !== 0) {
-            param = dot / len_sq;
-        }
-
-        let xx, yy;
-
-        if (param < 0) {
-            xx = x1;
-            yy = y1;
-        } else if (param > 1) {
-            xx = x2;
-            yy = y2;
-        } else {
-            xx = x1 + param * C;
-            yy = y1 + param * D;
-        }
-
-        const dx = x - xx;
-        const dy = y - yy;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-
     const handleCustomLegoSubmit = (matrix: number[][], logicalLegs: number[]) => {
         const instanceId = newInstanceId(droppedLegos)
         const newLego: DroppedLego = {
@@ -1859,9 +2005,111 @@ function App() {
         encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
     };
 
-    const isScalarLego = (lego: DroppedLego) => {
-        return lego.parity_check_matrix.length === 1 && lego.parity_check_matrix[0].length === 1;
-    }
+    const handleExportSvg = () => {
+        // Clear any selections to have a clean view
+        setSelectedLego(null);
+
+        // Get the canvas panel element
+        const canvasPanel = document.querySelector('#main-panel');
+        if (!canvasPanel) {
+            toast({
+                title: "Export failed",
+                description: "Could not find the canvas panel",
+                status: "error",
+                duration: 3000,
+                isClosable: true,
+            });
+            return;
+        }
+
+        // Create a new SVG element that will contain everything
+        const combinedSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+        // First, let's calculate the total bounding box
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        // Process all SVG elements in the canvas
+        const connections_svg = canvasPanel.querySelector('#connections-svg');
+        const svgElements = canvasPanel.querySelectorAll('svg');
+        svgElements.forEach(svg => {
+            // Skip SVGs that are marked as hidden
+            if (svg.style.visibility === 'hidden' || svg.getAttribute('visibility') === 'hidden') {
+                return;
+            }
+
+            // Get the SVG's position relative to the canvas
+            const rect = svg.getBoundingClientRect();
+            const canvasRect = canvasPanel.getBoundingClientRect();
+            const relativeX = rect.left - canvasRect.left;
+            const relativeY = rect.top - canvasRect.top;
+
+            // Update bounding box
+            if (svg != connections_svg) {
+                minX = Math.min(minX, relativeX);
+                minY = Math.min(minY, relativeY);
+                maxX = Math.max(maxX, relativeX + rect.width);
+                maxY = Math.max(maxY, relativeY + rect.height);
+            }
+
+            // Clone the SVG content
+            const clonedContent = svg.cloneNode(true) as SVGElement;
+
+            // Remove any duplicate text elements (keep only SVG text elements)
+            const textElements = clonedContent.querySelectorAll('text');
+            textElements.forEach(text => {
+                const parent = text.parentElement;
+                if (parent && parent.querySelector('div')) {
+                    // If the parent also contains a div element, this is likely a duplicate text
+                    text.remove();
+                }
+            });
+
+            // Create a group to maintain position
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            group.setAttribute('transform', `translate(${relativeX}, ${relativeY})`);
+
+            // Move all children to the group
+            while (clonedContent.firstChild) {
+                group.appendChild(clonedContent.firstChild);
+            }
+
+            combinedSvg.appendChild(group);
+        });
+
+
+        // Add padding to bounding box
+        const padding = 50;
+        const width = maxX - minX + 2 * padding;
+        const height = maxY - minY + 2 * padding;
+
+        // Set the viewBox and size of the combined SVG
+        combinedSvg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${width} ${height}`);
+        combinedSvg.setAttribute('width', width.toString());
+        combinedSvg.setAttribute('height', height.toString());
+        combinedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+        // Add XML declaration and create final SVG content
+        const svgContent = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' +
+            combinedSvg.outerHTML;
+
+        // Create and trigger download
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'quantum_lego_network.svg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+            title: "Export successful",
+            description: "SVG file has been downloaded",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
 
     const handlePentaflakeSubmit = async (level: number) => {
         try {
@@ -1917,6 +2165,19 @@ function App() {
                 bg={bgColor}
             >
                 <Menu>
+                    <MenuButton as={Button}
+                        variant="ghost"
+                        size="sm">
+                        Export
+                    </MenuButton>
+                    <MenuList>
+                        <MenuItem onClick={handleExportSvg}>
+                            Export canvas as SVG...
+                        </MenuItem>
+                    </MenuList>
+                </Menu>
+                <Menu>
+
                     <MenuButton
                         as={Button}
                         variant="ghost"
@@ -1961,6 +2222,27 @@ function App() {
                         <MenuItemOption isChecked={isLegoPanelCollapsed} onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}>
                             Hide lego list
                         </MenuItemOption>
+                        <MenuItem
+
+                            onClick={() => {
+                                const rect = canvasRef.current?.getBoundingClientRect();
+                                if (!rect) return;
+                                const centerX = rect.width / 2
+                                const centerY = rect.height / 2
+                                const scale = 1 / zoomLevel
+                                const rescaledLegos = droppedLegos.map(lego => ({
+                                    ...lego,
+                                    x: (lego.x - centerX) * scale + centerX,
+                                    y: (lego.y - centerY) * scale + centerY
+                                }));
+                                setDroppedLegos(rescaledLegos);
+                                setZoomLevel(1)
+                                encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
+                            }}
+                            isDisabled={zoomLevel === 1}
+                        >
+                            Reset zoom
+                        </MenuItem>
 
                     </MenuList>
                 </Menu>
@@ -1990,28 +2272,8 @@ function App() {
                 >
                     Clear highlights
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                        const rect = canvasRef.current?.getBoundingClientRect();
-                        if (!rect) return;
-                        const centerX = rect.width / 2
-                        const centerY = rect.height / 2
-                        const scale = 1 / zoomLevel
-                        const rescaledLegos = droppedLegos.map(lego => ({
-                            ...lego,
-                            x: (lego.x - centerX) * scale + centerX,
-                            y: (lego.y - centerY) * scale + centerY
-                        }));
-                        setDroppedLegos(rescaledLegos);
-                        setZoomLevel(1)
-                        encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
-                    }}
-                    isDisabled={zoomLevel === 1}
-                >
-                    Reset zoom
-                </Button>
+
+
             </HStack>
 
             {/* Main Content */}
@@ -2077,6 +2339,7 @@ function App() {
                             >
                                 {/* Connection Lines */}
                                 <svg
+                                    id="connections-svg"
                                     style={{
                                         position: 'absolute',
                                         top: 0,
