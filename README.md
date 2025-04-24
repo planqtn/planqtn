@@ -22,7 +22,7 @@ Open a Linux terminal. On Windows, use WSL2. On Mac a regular terminal will be o
 ```
 ./setup.sh
 ```
-4. Run the start script. For faster, prod-like performance use: 
+4. Run the start script. 
 ```
 ./start.sh 
 ```
@@ -41,7 +41,7 @@ The default ports for the backend server is 5005 and 5173 for the UI. If you hav
 There is no continuous integration yet (follow issue #33 for that), until that is done, I can't really take contributions. However, if you want to try things out, or prepare for the day when contributions are welcome, here are some instructions: 
 
 
-For development, please `pip install -r requirements.dev.txt` and use `./start_dev.sh`. For convenience you can use `hack/rerun ./start_dev.sh` which allows for hot-reload of the UI changes and watches python files as well (using [entr](https://github.com/eradman/entr), so you'll need to install that). 
+For development, please `pip install -r requirements.dev.txt` and use `./start.sh --dev`. For convenience you can use `hack/rerun ./start.sh --dev` which allows for hot-reload of the UI changes and watches python files as well (using [entr](https://github.com/eradman/entr), so you'll need to install that). 
 
 
 
