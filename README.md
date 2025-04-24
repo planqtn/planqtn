@@ -49,6 +49,8 @@ Then, open http://localhost:5173 in your browser, you should see a similar scree
 
 ![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
 
+⚠️ WARNING ⚠️ if you kick off a weight enumerator calculation for a larger/complex tensor network, and you kill the start script with Ctrl+C (Cmd+C), the server might keep running in the background. In this case, open a new terminal and use the `./force_stop.sh` script. 
+
 
 ## Port clashing
 
