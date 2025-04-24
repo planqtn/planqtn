@@ -33,6 +33,39 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check for running instances
+check_running_instances() {
+    local backend_running=false
+    local frontend_running=false
+
+    # Check for Python backend
+    if pgrep -f "python.*main.py.*--port $BACKEND_PORT" > /dev/null; then
+        echo -e "${RED}Backend server is already running on port $BACKEND_PORT${NC}"
+        backend_running=true
+    fi
+
+    # Check for frontend
+    if [ "$DEV_MODE" = false ]; then
+        if pgrep -f "npm.*run preview.*--port $FRONTEND_PORT" > /dev/null; then
+            echo -e "${RED}Frontend preview server is already running on port $FRONTEND_PORT${NC}"
+            frontend_running=true
+        fi
+    else
+        if pgrep -f "npm.*run dev.*--port $FRONTEND_PORT" > /dev/null; then
+            echo -e "${RED}Frontend dev server is already running on port $FRONTEND_PORT${NC}"
+            frontend_running=true
+        fi
+    fi
+
+    if [ "$backend_running" = true ] || [ "$frontend_running" = true ]; then
+        echo -e "${YELLOW}To stop all running instances, run: ./force_stop.sh${NC}"
+        exit 1
+    fi
+}
+
+# Check for running instances before proceeding
+check_running_instances
+
 # Check if virtualenv is activated
 if [ -z "$VIRTUAL_ENV" ]; then
     echo -e "${YELLOW}No virtual environment is currently activated ('VIRTUAL_ENV' is empty) - if you have a preferred virtualenv, please activate it before running the script.${NC}"
@@ -84,7 +117,6 @@ cleanup() {
     echo "Stopping servers..."
     kill $(jobs -p)
     rm -f "$SERVER_LOG" "$UI_LOG"
-    pkill -e -9 -f "main.py|npm|vite"
     exit
 }
 
@@ -98,22 +130,40 @@ trap cleanup EXIT
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
 (cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT") > "$SERVER_LOG" 2>&1 &
+BACKEND_PID=$!
 
-# Wait a bit for the backend to start
+# Wait a bit for the backend to start and check if it's still running
 sleep 2
+if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    echo -e "${RED}Failed to start Python backend${NC}"
+    cat "$SERVER_LOG"
+    exit 1
+fi
 
 # Start the frontend and redirect output to log file
-set -e
 if [ "$DEV_MODE" = false ]; then
     echo "Building frontend..."
-    (cd ui && npm run build)
+    if ! (cd ui && npm run build); then
+        echo -e "${RED}Failed to build frontend${NC}"
+        exit 1
+    fi
     echo "Starting frontend in preview mode..."
     export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
     (cd ui && npm run preview -- --port "$FRONTEND_PORT") > "$UI_LOG" 2>&1 &
+    FRONTEND_PID=$!
 else
     echo "Starting frontend in development mode..."
     export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
     (cd ui && npm run dev -- --port "$FRONTEND_PORT") > "$UI_LOG" 2>&1 &
+    FRONTEND_PID=$!
+fi
+
+# Wait a bit for the frontend to start and check if it's still running
+sleep 2
+if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+    echo -e "${RED}Failed to start frontend${NC}"
+    cat "$UI_LOG"
+    exit 1
 fi
 
 # Use split terminal to show both logs
