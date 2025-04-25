@@ -1336,7 +1336,7 @@ function App() {
 
     // Helper function to generate network signature for caching
     const createNetworkSignature = (network: TensorNetwork) => {
-        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId)).map(lego => lego.id + "-" + lego.instanceId);
+        const sortedLegos = [...network.legos].sort((a, b) => a.instanceId.localeCompare(b.instanceId)).map(lego => lego.id + "-" + lego.instanceId + "-" + lego.parity_check_matrix[0].length / 2);
         const sortedConnections = [...network.connections].sort((a, b) => {
             const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
             const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
