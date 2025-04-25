@@ -12,6 +12,8 @@ import { OperationHistory } from '../utils/OperationHistory'
 import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
 import { canDoInverseBialgebra, applyInverseBialgebra } from '../transformations/InverseBialgebra'
 import { canDoHopfRule, applyHopfRule } from '../transformations/Hopf'
+import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformations/ConnectGraphNodesWithCenterLego.ts'
+import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 
 
 interface DetailsPanelProps {
@@ -818,6 +820,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
     }
 
+    const handleConnectGraphNodes = async () => {
+        const result = await applyConnectGraphNodes(tensorNetwork!.legos, droppedLegos, connections);
+        setDroppedLegos(result.droppedLegos);
+        setConnections(result.connections);
+        operationHistory.addOperation(result.operation);
+        encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
+
+        let newTensorNetwork = findConnectedComponent(result.operation.data.legosToAdd![0], droppedLegos, connections) as TensorNetwork;
+        setTensorNetwork(newTensorNetwork);
+    };
+
     const handleLegPartitionDialogClose = () => {
         // Call cleanup to restore original state
         (window as any).__restoreLegsState();
@@ -879,6 +892,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             onClick={handleHopfRule}
                                         >
                                             Hopf rule
+                                        </Button>
+                                    )}
+                                    {canDoConnectGraphNodes(tensorNetwork.legos) && (
+                                        <Button
+                                            leftIcon={<Icon as={FaCube} />}
+                                            colorScheme="blue"
+                                            size="sm"
+                                            onClick={handleConnectGraphNodes}
+                                        >
+                                            Connect Graph Nodes with center lego
                                         </Button>
                                     )}
                                 </VStack>

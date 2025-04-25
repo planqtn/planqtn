@@ -16,6 +16,7 @@ import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
+import { findConnectedComponent } from './utils/TensorNetwork'
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
@@ -662,6 +663,17 @@ function App() {
                         newNetwork.signature = createNetworkSignature(newNetwork);
                         setTensorNetwork(newNetwork);
                     }
+                } else if (selectedLego) {
+                    const newNetwork = {
+                        legos: [lego, selectedLego],
+                        connections: connections.filter(conn =>
+                            conn.containsLego(lego.instanceId) && conn.containsLego(selectedLego.instanceId)
+                        )
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                    setSelectedLego(null);
+
                 } else {
                     // If no tensor network exists, create one with just this lego
                     const newNetwork = {
@@ -678,7 +690,7 @@ function App() {
                     setTensorNetwork(null);
                     setSelectedLego(lego);
                 } else if (selectedLego?.instanceId === lego.instanceId) {
-                    let network = findConnectedComponent(lego) as TensorNetwork;
+                    let network = findConnectedComponent(lego, droppedLegos, connections) as TensorNetwork;
                     network.signature = createNetworkSignature(network);
                     setTensorNetwork(network);
                     setSelectedLego(null);
@@ -1299,44 +1311,6 @@ function App() {
                 currentY: 0
             });
         }
-    };
-
-
-    // Add this new function to find connected components
-    const findConnectedComponent = (startLego: DroppedLego) => {
-        const visited = new Set<string>();
-        const component: DroppedLego[] = [];
-        const componentConnections: Connection[] = [];
-        const queue: string[] = [startLego.instanceId];
-        visited.add(startLego.instanceId);
-
-        // First pass: collect all connected legos using BFS
-        while (queue.length > 0) {
-            const currentLegoId = queue.shift()!;
-            const currentLego = droppedLegos.find(l => l.instanceId === currentLegoId);
-            if (!currentLego) continue;
-            component.push(currentLego);
-
-            // Find all directly connected legos and add them to queue if not visited
-            connections.forEach(conn => {
-                if (conn.from.legoId === currentLegoId && !visited.has(conn.to.legoId)) {
-                    visited.add(conn.to.legoId);
-                    queue.push(conn.to.legoId);
-                } else if (conn.to.legoId === currentLegoId && !visited.has(conn.from.legoId)) {
-                    visited.add(conn.from.legoId);
-                    queue.push(conn.from.legoId);
-                }
-            });
-        }
-
-        // Second pass: collect all connections between the legos in the component
-        connections.forEach(conn => {
-            if (visited.has(conn.from.legoId) && visited.has(conn.to.legoId)) {
-                componentConnections.push(conn);
-            }
-        });
-
-        return { legos: component, connections: componentConnections };
     };
 
 
