@@ -132,7 +132,8 @@ export type OperationType =
     | 'inverseBialgebra'
     | 'hopf'
     | 'addStopper'
-    | 'connectGraphNodesWithCenterLego';
+    | 'connectGraphNodesWithCenterLego'
+    | 'completeGraphViaHadamards';
 
 export type Operation = {
     type: OperationType;

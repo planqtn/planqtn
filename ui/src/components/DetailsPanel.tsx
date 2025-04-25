@@ -14,6 +14,7 @@ import { canDoInverseBialgebra, applyInverseBialgebra } from '../transformations
 import { canDoHopfRule, applyHopfRule } from '../transformations/Hopf'
 import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformations/ConnectGraphNodesWithCenterLego.ts'
 import { findConnectedComponent } from '../utils/TensorNetwork.ts'
+import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 
 
 interface DetailsPanelProps {
@@ -831,6 +832,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setTensorNetwork(newTensorNetwork);
     };
 
+    const handleCompleteGraphViaHadamards = async () => {
+        const result = await applyCompleteGraphViaHadamards(tensorNetwork!.legos, droppedLegos, connections);
+        setDroppedLegos(result.droppedLegos);
+        setConnections(result.connections);
+        operationHistory.addOperation(result.operation);
+        encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
+    };
+
     const handleLegPartitionDialogClose = () => {
         // Call cleanup to restore original state
         (window as any).__restoreLegsState();
@@ -902,6 +911,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             onClick={handleConnectGraphNodes}
                                         >
                                             Connect Graph Nodes with center lego
+                                        </Button>
+                                    )}
+                                    {canDoCompleteGraphViaHadamards(tensorNetwork.legos) && (
+                                        <Button
+                                            leftIcon={<Icon as={FaCube} />}
+                                            colorScheme="blue"
+                                            size="sm"
+                                            onClick={handleCompleteGraphViaHadamards}
+                                        >
+                                            Complete Graph Via Hadamards
                                         </Button>
                                     )}
                                 </VStack>
