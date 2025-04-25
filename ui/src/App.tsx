@@ -2113,7 +2113,7 @@ function App() {
 
     const handlePentaflakeSubmit = async (level: number) => {
         try {
-            const response = await fetch('http://localhost:5000/pentaflakenetwork', {
+            const response = await fetch('/api/pentaflakenetwork', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

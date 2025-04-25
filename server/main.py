@@ -84,7 +84,7 @@ async def list_legos():
 @app.post("/paritycheck", response_model=ParityCheckResponse)
 async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
-    print("network", repr(network))
+    # print("network", repr(network))
     nodes = {}
     for instance_id, lego in network.legos.items():
         # Convert the parity check matrix to numpy array
@@ -105,7 +105,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
         )
 
     # Conjoin all nodes to get the final parity check matrix
-    result = tn.conjoin_nodes(verbose=True)
+    result = tn.conjoin_nodes(progress_bar=True, verbose=False)
 
     # Convert the resulting parity check matrix to a list for JSON serialization
     matrix = result.h.tolist()

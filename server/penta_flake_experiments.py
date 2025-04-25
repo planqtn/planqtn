@@ -407,7 +407,7 @@ def get_pentaflake_network(
         tiles.extend(children)
 
     print(len(tiles), "tiles, calculating adjacency list")
-    vertices, edges = get_adjacency_list(children)
+    vertices, edges = get_adjacency_list(tiles)
 
     print(len(edges), "edges,", len(vertices), "vertices")
 

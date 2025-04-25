@@ -129,6 +129,7 @@ trap cleanup EXIT
 
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
 (cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT") > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
