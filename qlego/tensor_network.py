@@ -576,7 +576,12 @@ class TensorNetwork:
 
         assert set(trace_indices) == set(
             range(len(self.traces))
-        ), f"Some traces are missing from cotengra tree:\n{'\n'.join([str(self.traces[i]) for i in set(range(len(self.traces))) - set(trace_indices)])}"
+        ), "Some traces are missing from cotengra tree\n" + "\n".join(
+            [
+                str(self.traces[i])
+                for i in set(range(len(self.traces))) - set(trace_indices)
+            ]
+        )
         return traces
 
     def _cotengra_contraction(
