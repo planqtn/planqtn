@@ -86,61 +86,6 @@ function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedL
     return closestLego && closestLegIndex !== -1 ? { lego: closestLego, legIndex: closestLegIndex } : null;
 }
 
-interface PentaflakeDialogProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSubmit: (level: number) => void;
-}
-
-const PentaflakeDialog: React.FC<PentaflakeDialogProps> = ({
-    isOpen,
-    onClose,
-    onSubmit
-}) => {
-    const [level, setLevel] = useState(1);
-
-    const handleSubmit = () => {
-        onSubmit(level);
-        onClose();
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <ModalOverlay />
-            <ModalContent>
-                <ModalHeader>Create Pentaflake Network</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                    <VStack spacing={4}>
-                        <FormControl>
-                            <FormLabel>Level</FormLabel>
-                            <NumberInput
-                                value={level}
-                                onChange={(_, value) => setLevel(value)}
-                                min={0}
-                                max={5}
-                            >
-                                <NumberInputField />
-                                <NumberInputStepper>
-                                    <NumberIncrementStepper />
-                                    <NumberDecrementStepper />
-                                </NumberInputStepper>
-                            </NumberInput>
-                        </FormControl>
-                    </VStack>
-                </ModalBody>
-                <ModalFooter>
-                    <Button variant="ghost" mr={3} onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button colorScheme="blue" onClick={handleSubmit}>
-                        Create Network
-                    </Button>
-                </ModalFooter>
-            </ModalContent>
-        </Modal>
-    );
-};
 
 function App() {
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
@@ -207,7 +152,6 @@ function App() {
 
     const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
     const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
-    const [isPentaflakeDialogOpen, setIsPentaflakeDialogOpen] = useState(false);
 
     // Inside the App component, add this line near the other hooks
     const toast = useToast();
@@ -2288,49 +2232,6 @@ function App() {
         });
     };
 
-    const handlePentaflakeSubmit = async (level: number) => {
-        try {
-            const response = await fetch('/api/pentaflakenetwork', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    level,
-                    start_node_index: parseInt(newInstanceId(droppedLegos))
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create pentaflake network');
-            }
-
-            const data = await response.json();
-
-            // Create new legos from the network
-            const newLegos: DroppedLego[] = data.legos.map((lego: any) => ({
-                ...lego,
-                x: lego.x,
-                y: lego.y,
-                style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-                selectedMatrixRows: [],
-                logical_legs: lego.logical_legs || [],
-                gauge_legs: lego.gauge_legs || []
-            }));
-
-            // Add new legos to the canvas
-            setDroppedLegos([...droppedLegos, ...newLegos]);
-
-            // Add connections
-            const newConnections: Connection[] = data.connections.map((conn: any) => (new Connection(conn.from, conn.to)));
-
-            setConnections([...connections, ...newConnections]);
-            console.log("newConnections", newConnections);
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Failed to create pentaflake network');
-        }
-    };
-
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -2372,9 +2273,7 @@ function App() {
                         <MenuItem onClick={() => setIsMspDialogOpen(true)}>
                             Measurement State Prep Network
                         </MenuItem>
-                        <MenuItem onClick={() => setIsPentaflakeDialogOpen(true)}>
-                            Pentaflake Network
-                        </MenuItem>
+
                     </MenuList>
                 </Menu>
                 <Menu>
@@ -2911,11 +2810,6 @@ function App() {
                     title="Create Custom Lego"
                 />
             )}
-            <PentaflakeDialog
-                isOpen={isPentaflakeDialogOpen}
-                onClose={() => setIsPentaflakeDialogOpen(false)}
-                onSubmit={handlePentaflakeSubmit}
-            />
         </VStack>
     )
 }

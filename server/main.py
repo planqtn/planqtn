@@ -12,7 +12,6 @@ from sympy import symbols
 import argparse
 
 from server.api_types import *
-from server.penta_flake_experiments import get_pentaflake_network
 
 app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
@@ -234,16 +233,6 @@ async def create_tanner_network(request: TannerRequest):
         matrix = GF2(request.matrix)
         tn = StabilizerTannerCodeTN(matrix)
         return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.post("/pentaflakenetwork", response_model=TensorNetworkResponse)
-async def create_pentaflake_network(request: PentaflakeRequest):
-    try:
-
-        return get_pentaflake_network(request.level, request.start_node_index)
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
