@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast, Link } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
@@ -2255,7 +2255,60 @@ function App() {
                     </MenuList>
                 </Menu>
                 <Menu>
+                    <MenuButton
+                        as={Button}
+                        variant="ghost"
+                        size="sm"
+                    >
+                        Tasks
+                    </MenuButton>
+                    <MenuList>
+                        <MenuItem onClick={async () => {
+                            try {
+                                // Send request to start task with user_id and parameters
+                                const response = await axios.post('/api/start_task', {
+                                    user_id: 1, // You might want to get this from your auth system
+                                    params: {
+                                        number_of_legos: droppedLegos.length
+                                    }
+                                });
 
+                                const taskId = response.data.task_id;
+
+                                // Show success toast with status URL
+                                toast({
+                                    title: "Success starting the task!",
+                                    description: (
+                                        <Box>
+                                            Check status at{' '}
+                                            <Link
+                                                href={`/api/task_status/${taskId}`}
+                                                color="gray.100"
+                                                isExternal
+                                            >
+                                                /api/task_status/{taskId}
+                                            </Link>
+                                        </Box>
+                                    ),
+                                    status: "success",
+                                    duration: 5000,
+                                    isClosable: true,
+                                });
+                            } catch (error) {
+                                toast({
+                                    title: "Error starting task",
+                                    description: error instanceof Error ? error.message : "Failed to start task",
+                                    status: "error",
+                                    duration: 5000,
+                                    isClosable: true,
+                                });
+                            }
+                        }}>
+                            Kickoff test task
+                        </MenuItem>
+                    </MenuList>
+                </Menu>
+                <Menu>
                     <MenuButton
                         as={Button}
                         variant="ghost"

@@ -1,4 +1,4 @@
-pkill -e -9 -f "main.py|npm|vite|start.sh"
+pkill -e -9 -f "main.py|npm|vite|celery"
 status=$?
 
 if [ $status -eq 0 ]; then
