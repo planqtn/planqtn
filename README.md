@@ -1,24 +1,24 @@
 # Quantum Lego (temporary name)
 
 
-We are before the v0.1 public release, which is scheduled around mid July 2025. Checkout the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
+We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
 
 
 The project has two main components currently in the same repo: 
 
-1. qlego python library for weight enumerators, under the [qlego](./qlego) folder
+1. qlego Python library for weight enumerators, under the [qlego](./qlego) folder
 2. the qlego nodejs UI in the [ui](./ui) folder + python API server [server](./server) folder
 
-You are seeing an early preview, there are a lot of breaking changes expected in the library and the app as well, including major design changes. Exciting times! 
+You are seeing an early preview; there are many breaking changes expected in the library and the app, including significant design changes. Exciting times! 
 
 
 # Installation instructions for the UI 
 
-Open a Linux terminal. On Windows, use WSL2. On Mac a regular terminal will be okay. I haven't tested the tools on an actual Linux Desktop instance yet, but I see no reason why it wouldn't work. 
+Open a Linux terminal. On Windows, use WSL2. On a Mac, a regular terminal will be okay. I haven't tested the tools on an actual Linux Desktop instance yet, but I see no reason why it wouldn't work. 
 
 1. The tool requires the latest version of [NodeJS](https://nodejs.org/en) and Python 3.10+. Make sure they are available. 
 2. Clone the repo (please use git, so that you can be up to date with the rapidly evolving changes)
-3. Run the interactive setup script, this will create a Python virtualenv and install python and nodejs dependencies 
+3. Run the interactive setup script, which will create a Python virtualenv and install Python and Node.js dependencies 
 ```
 ./setup.sh
 ```
@@ -27,7 +27,7 @@ Open a Linux terminal. On Windows, use WSL2. On Mac a regular terminal will be o
 ./start.sh 
 ```
 
-At this point, after starting the python server and building the UI, you should see the logs from both servers: 
+At this point, after starting the Python server and building the UI, you should see the logs from both servers: 
 
 ```
 Press Ctrl+C to stop all servers
@@ -44,15 +44,17 @@ Press Ctrl+C to stop all servers
 [UI]   ➜  Network: http://172.18.132.212:5173/
 ```
 
-Then, open http://localhost:5173 in your browser, you should see a similar screen as below:
+Then, open http://localhost:5173 in your browser, and you should see a screen similar as below:
 
 
 ![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
 
+⚠️ WARNING ⚠️ If you kick off a weight enumerator calculation for a larger/complex tensor network, and you kill the start script with Ctrl + C (Cmd + C), the server might keep running in the background. In this case, open a new terminal and use the `./force_stop.sh` script. 
+
 
 ## Port clashing
 
-The default ports for the backend server is 5005 and 5173 for the UI. If you have any clashes, you can change both of the two ports with `--backend-port` and `--frontend-port`, for example
+The default ports for the backend server are 5005 and 5173 for the UI. If you have any clashes, you can change both ports with `--backend-port` and `--frontend-port`. For example:
 
 ```
 ./start.sh --backend-port 8080 --frontend-port 8081
@@ -68,7 +70,7 @@ For development, please `pip install -r requirements.dev.txt` and use `./start.s
 
 
 
-# Install instructions for qlego library only
+# Install instructions for the qlego library only
 
 Quick start: 
 

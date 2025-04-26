@@ -266,11 +266,6 @@ class StabilizerCodeTensorEnumerator:
         h_reduced = h_reduced[~np.all(h_reduced == 0, axis=1)]
         r = len(h_reduced)
 
-        if verbose:
-            reduction = r < len(self.h)
-            print(
-                f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} {"REDUCED" if reduction else ""} generators, verbose={verbose}, progress_bar={progress_bar} "
-            )
         progress_bar = tqdm(
             range(2**r),
             desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} generators",

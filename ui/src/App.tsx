@@ -16,6 +16,7 @@ import { OperationHistory } from './utils/OperationHistory'
 import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
+import { findConnectedComponent } from './utils/TensorNetwork'
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
@@ -424,6 +425,7 @@ function App() {
                 setConnections(result.connections);
                 setDroppedLegos(result.droppedLegos);
                 operationHistory.addOperation(result.operation);
+                encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
                 return true;
             } catch (error) {
                 console.error('Failed to add stopper:', error);
@@ -685,17 +687,75 @@ function App() {
         if (!dragState.isDragging) {  // Only handle click if not dragging
             e.stopPropagation();
 
-            if (tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
-                setTensorNetwork(null);
-                setSelectedLego(lego);
-            } else if (selectedLego?.instanceId === lego.instanceId) {
-                let network = findConnectedComponent(lego) as TensorNetwork;
-                network.signature = createNetworkSignature(network);
-                setTensorNetwork(network);
+            if (e.ctrlKey || e.metaKey) {
+                // Handle Ctrl+click for toggling selection
+                if (tensorNetwork) {
+                    const isSelected = tensorNetwork.legos.some(l => l.instanceId === lego.instanceId);
+                    if (isSelected) {
+                        // Remove lego from tensor network
+                        const newLegos = tensorNetwork.legos.filter(l => l.instanceId !== lego.instanceId);
+                        const newConnections = tensorNetwork.connections.filter(conn =>
+                            conn.from.legoId !== lego.instanceId && conn.to.legoId !== lego.instanceId
+                        );
+                        if (newLegos.length === 0) {
+                            setTensorNetwork(null);
+                        } else {
+                            const newNetwork = {
+                                legos: newLegos,
+                                connections: newConnections
+                            } as TensorNetwork;
+                            newNetwork.signature = createNetworkSignature(newNetwork);
+                            setTensorNetwork(newNetwork);
+                        }
+                    } else {
+                        // Add lego to tensor network
+                        const newLegos = [...tensorNetwork.legos, lego];
+                        const newConnections = connections.filter(conn =>
+                            newLegos.some(l => l.instanceId === conn.from.legoId) &&
+                            newLegos.some(l => l.instanceId === conn.to.legoId)
+                        );
+                        const newNetwork = {
+                            legos: newLegos,
+                            connections: newConnections
+                        } as TensorNetwork;
+                        newNetwork.signature = createNetworkSignature(newNetwork);
+                        setTensorNetwork(newNetwork);
+                    }
+                } else if (selectedLego) {
+                    const newNetwork = {
+                        legos: [lego, selectedLego],
+                        connections: connections.filter(conn =>
+                            conn.containsLego(lego.instanceId) && conn.containsLego(selectedLego.instanceId)
+                        )
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                    setSelectedLego(null);
+
+                } else {
+                    // If no tensor network exists, create one with just this lego
+                    const newNetwork = {
+                        legos: [lego],
+                        connections: []
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                }
                 setSelectedLego(null);
             } else {
-                setSelectedLego(lego);
-                setTensorNetwork(null);
+                // Regular click behavior
+                if (tensorNetwork?.legos.some(l => l.instanceId === lego.instanceId)) {
+                    setTensorNetwork(null);
+                    setSelectedLego(lego);
+                } else if (selectedLego?.instanceId === lego.instanceId) {
+                    let network = findConnectedComponent(lego, droppedLegos, connections) as TensorNetwork;
+                    network.signature = createNetworkSignature(network);
+                    setTensorNetwork(network);
+                    setSelectedLego(null);
+                } else {
+                    setSelectedLego(lego);
+                    setTensorNetwork(null);
+                }
             }
         }
     }
@@ -766,7 +826,7 @@ function App() {
     };
 
     // Helper function to handle selection box logic
-    const handleSelectionBoxUpdate = (left: number, right: number, top: number, bottom: number) => {
+    const handleSelectionBoxUpdate = (left: number, right: number, top: number, bottom: number, e: React.MouseEvent) => {
         // Find Legos within the selection box
         const selectedLegos = droppedLegos.filter(lego => {
             return (
@@ -779,29 +839,82 @@ function App() {
 
         // Update selection state based on the selected Legos
         if (selectedLegos.length === 1) {
-            setSelectedLego(selectedLegos[0]);
-            setTensorNetwork(null);
+            if (e.ctrlKey || e.metaKey) {
+                // If Ctrl is pressed, add to existing selection
+                if (tensorNetwork) {
+                    const newLegos = [...tensorNetwork.legos, ...selectedLegos];
+                    const newConnections = connections.filter(conn =>
+                        newLegos.some(l => l.instanceId === conn.from.legoId) &&
+                        newLegos.some(l => l.instanceId === conn.to.legoId)
+                    );
+                    const newNetwork = {
+                        legos: newLegos,
+                        connections: newConnections
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                } else {
+                    const newNetwork = {
+                        legos: selectedLegos,
+                        connections: []
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                }
+                setSelectedLego(null);
+            } else {
+                setSelectedLego(selectedLegos[0]);
+                setTensorNetwork(null);
+            }
         } else if (selectedLegos.length > 1) {
-            // Create a tensor network from the selected legos
-            const selectedLegoIds = new Set(selectedLegos.map(lego => lego.instanceId));
-
-            // Collect only internal connections between selected legos
-            const internalConnections = connections.filter(conn =>
-                selectedLegoIds.has(conn.from.legoId) &&
-                selectedLegoIds.has(conn.to.legoId)
-            );
-
-            let tensorNetwork = {
-                legos: selectedLegos,
-                connections: internalConnections
-            } as TensorNetwork;
-            tensorNetwork.signature = createNetworkSignature(tensorNetwork);
-
-            setSelectedLego(null);
-            setTensorNetwork(tensorNetwork);
+            if (e.ctrlKey || e.metaKey) {
+                // If Ctrl is pressed, add to existing selection
+                if (tensorNetwork) {
+                    const newLegos = [...tensorNetwork.legos, ...selectedLegos];
+                    const newConnections = connections.filter(conn =>
+                        newLegos.some(l => l.instanceId === conn.from.legoId) &&
+                        newLegos.some(l => l.instanceId === conn.to.legoId)
+                    );
+                    const newNetwork = {
+                        legos: newLegos,
+                        connections: newConnections
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                } else {
+                    const selectedLegoIds = new Set(selectedLegos.map(lego => lego.instanceId));
+                    const internalConnections = connections.filter(conn =>
+                        selectedLegoIds.has(conn.from.legoId) &&
+                        selectedLegoIds.has(conn.to.legoId)
+                    );
+                    const newNetwork = {
+                        legos: selectedLegos,
+                        connections: internalConnections
+                    } as TensorNetwork;
+                    newNetwork.signature = createNetworkSignature(newNetwork);
+                    setTensorNetwork(newNetwork);
+                }
+                setSelectedLego(null);
+            } else {
+                // Create a tensor network from the selected legos
+                const selectedLegoIds = new Set(selectedLegos.map(lego => lego.instanceId));
+                const internalConnections = connections.filter(conn =>
+                    selectedLegoIds.has(conn.from.legoId) &&
+                    selectedLegoIds.has(conn.to.legoId)
+                );
+                const newNetwork = {
+                    legos: selectedLegos,
+                    connections: internalConnections
+                } as TensorNetwork;
+                newNetwork.signature = createNetworkSignature(newNetwork);
+                setSelectedLego(null);
+                setTensorNetwork(newNetwork);
+            }
         } else {
-            setSelectedLego(null);
-            setTensorNetwork(null);
+            if (!(e.ctrlKey || e.metaKey)) {
+                setSelectedLego(null);
+                setTensorNetwork(null);
+            }
         }
     };
 
@@ -829,7 +942,7 @@ function App() {
             const top = Math.min(selectionBox.startY, y);
             const bottom = Math.max(selectionBox.startY, y);
 
-            handleSelectionBoxUpdate(left, right, top, bottom);
+            handleSelectionBoxUpdate(left, right, top, bottom, e);
             return;
         }
 
@@ -1014,7 +1127,7 @@ function App() {
             const top = Math.min(selectionBox.startY, selectionBox.currentY);
             const bottom = Math.max(selectionBox.startY, selectionBox.currentY);
 
-            handleSelectionBoxUpdate(left, right, top, bottom);
+            handleSelectionBoxUpdate(left, right, top, bottom, e);
 
             setSelectionBox(prev => ({
                 ...prev,
@@ -1256,44 +1369,6 @@ function App() {
                 currentY: 0
             });
         }
-    };
-
-
-    // Add this new function to find connected components
-    const findConnectedComponent = (startLego: DroppedLego) => {
-        const visited = new Set<string>();
-        const component: DroppedLego[] = [];
-        const componentConnections: Connection[] = [];
-        const queue: string[] = [startLego.instanceId];
-        visited.add(startLego.instanceId);
-
-        // First pass: collect all connected legos using BFS
-        while (queue.length > 0) {
-            const currentLegoId = queue.shift()!;
-            const currentLego = droppedLegos.find(l => l.instanceId === currentLegoId);
-            if (!currentLego) continue;
-            component.push(currentLego);
-
-            // Find all directly connected legos and add them to queue if not visited
-            connections.forEach(conn => {
-                if (conn.from.legoId === currentLegoId && !visited.has(conn.to.legoId)) {
-                    visited.add(conn.to.legoId);
-                    queue.push(conn.to.legoId);
-                } else if (conn.to.legoId === currentLegoId && !visited.has(conn.from.legoId)) {
-                    visited.add(conn.from.legoId);
-                    queue.push(conn.from.legoId);
-                }
-            });
-        }
-
-        // Second pass: collect all connections between the legos in the component
-        connections.forEach(conn => {
-            if (visited.has(conn.from.legoId) && visited.has(conn.to.legoId)) {
-                componentConnections.push(conn);
-            }
-        });
-
-        return { legos: component, connections: componentConnections };
     };
 
 
@@ -1539,6 +1614,11 @@ function App() {
                 e.preventDefault();
                 if (tensorNetwork) {
                     fuseLegos(tensorNetwork.legos);
+                }
+            } else if (e.key === 'p') {
+                e.preventDefault();
+                if (selectedLego && (selectedLego.id === 'x_rep_code' || selectedLego.id === 'z_rep_code')) {
+                    handlePullOutSameColoredLeg(selectedLego);
                 }
             }
         };
@@ -2003,6 +2083,103 @@ function App() {
             }
         });
         encodeCanvasState([...droppedLegos, newLego], connections, hideConnectedLegs);
+    };
+
+    const handlePullOutSameColoredLeg = async (lego: DroppedLego) => {
+        // Get max instance ID
+        const maxInstanceId = Math.max(...droppedLegos.map(l => parseInt(l.instanceId)));
+        const numLegs = lego.parity_check_matrix[0].length / 2;
+
+        // Find any existing connections to the original lego
+        const existingConnections = connections.filter(
+            conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId
+        );
+
+        try {
+            // Get the new repetition code with one more leg
+            const response = await fetch(`/api/dynamiclego`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lego_id: lego.id,
+                    parameters: {
+                        d: numLegs + 1
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get dynamic lego');
+            }
+
+            const newLegoData = await response.json();
+
+            // Create the new lego with updated matrix but same position
+            const newLego: DroppedLego = {
+                ...lego,
+                style: getLegoStyle(lego.id, numLegs + 1),
+                parity_check_matrix: newLegoData.parity_check_matrix
+            };
+
+            // Create a stopper based on the lego type
+            const stopperLego: DroppedLego = {
+                id: lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z',
+                name: lego.id === 'z_rep_code' ? 'X Stopper' : 'Z Stopper',
+                shortName: lego.id === 'z_rep_code' ? 'X' : 'Z',
+                description: lego.id === 'z_rep_code' ? 'X Stopper' : 'Z Stopper',
+                instanceId: (maxInstanceId + 1).toString(),
+                x: lego.x + 100, // Position the stopper to the right of the lego
+                y: lego.y,
+                parity_check_matrix: lego.id === 'z_rep_code' ? [[1, 0]] : [[0, 1]],
+                logical_legs: [],
+                gauge_legs: [],
+                style: getLegoStyle(lego.id === 'z_rep_code' ? 'stopper_x' : 'stopper_z', 1),
+                selectedMatrixRows: []
+            };
+
+            // Create new connection to the stopper
+            const newConnection: Connection = new Connection(
+                {
+                    legoId: lego.instanceId,
+                    legIndex: numLegs // The new leg will be at index numLegs
+                },
+                {
+                    legoId: stopperLego.instanceId,
+                    legIndex: 0
+                }
+            );
+
+            // Update the state
+            const newLegos = [...droppedLegos.filter(l => l.instanceId !== lego.instanceId), newLego, stopperLego];
+            const newConnections = [...connections.filter(c =>
+                c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
+            ), ...existingConnections, newConnection];
+
+            setDroppedLegos(newLegos);
+            setConnections(newConnections);
+
+            // Add to operation history
+            operationHistory.addOperation({
+                type: 'pullOutOppositeLeg',
+                data: {
+                    legosToRemove: [lego],
+                    connectionsToRemove: [],
+                    legosToAdd: [newLego, stopperLego],
+                    connectionsToAdd: [newConnection]
+                }
+            });
+
+            // Update the selected lego
+            setSelectedLego(null);
+
+            // Update URL state
+            encodeCanvasState(newLegos, newConnections, hideConnectedLegs);
+
+        } catch (error) {
+            setError(`Error pulling out opposite leg: ${error}`);
+        }
     };
 
     const handleExportSvg = () => {
@@ -2674,6 +2851,7 @@ function App() {
                     {/* Right Panel */}
                     <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
                         <DetailsPanel
+                            handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
                             tensorNetwork={tensorNetwork}
                             selectedLego={selectedLego}
                             droppedLegos={droppedLegos}

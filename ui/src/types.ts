@@ -116,8 +116,27 @@ export interface GroupDragState {
 
 
 
+export type OperationType =
+    | 'add'
+    | 'remove'
+    | 'move'
+    | 'connect'
+    | 'disconnect'
+    | 'fuse'
+    | 'unfuseToLegs'
+    | 'unfuseInto2Legos'
+    | 'colorChange'
+    | 'pullOutOppositeLeg'
+    | 'injectTwoLegged'
+    | 'bialgebra'
+    | 'inverseBialgebra'
+    | 'hopf'
+    | 'addStopper'
+    | 'connectGraphNodesWithCenterLego'
+    | 'completeGraphViaHadamards';
+
 export type Operation = {
-    type: 'add' | 'remove' | 'move' | 'connect' | 'disconnect' | 'fuse' | 'unfuseToLegs' | 'unfuseInto2Legos' | 'colorChange' | 'pullOutOppositeLeg' | 'injectTwoLegged' | 'bialgebra' | 'inverseBialgebra' | 'hopf' | 'addStopper';
+    type: OperationType;
     data: {
         legosToAdd?: DroppedLego[];
         legosToRemove?: DroppedLego[];

@@ -89,6 +89,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                         onDragStart={(e) => handleDragStart(e, customLego)}
                     >
                         <HStack p={2}>
+
                             <Box position="relative" w={50} h={50}>
                                 <DroppedLegoDisplay
                                     lego={{
@@ -114,6 +115,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
                                 />
                             </Box>
                             <VStack align="start" spacing={1}>
+                                <Badge colorScheme="green">Dynamic</Badge>
                                 <Text display="block" fontWeight="bold">{customLego.name}</Text>
                             </VStack>
                         </HStack>
