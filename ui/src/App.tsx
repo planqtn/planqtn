@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, FormControl, FormLabel, NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
