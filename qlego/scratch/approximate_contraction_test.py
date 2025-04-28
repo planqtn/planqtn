@@ -1,6 +1,7 @@
 import time
 from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from qlego.legos import Legos
+from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 
 
 if __name__ == "__main__":
@@ -12,7 +13,7 @@ if __name__ == "__main__":
     #     coset_error=((), (0, 5, 10, 15, 20)),
     # )
 
-    # print(full_tn.stabilizer_enumerator_polynomial(progress_bar=True))
+    # print(full_tn.stabilizer_enumerator_polynomial(progress_reporter=TqdmProgressReporter()))
 
     d = 15
     err = {25, 30, 45, 1, 2, 3, 4}
@@ -37,7 +38,11 @@ if __name__ == "__main__":
     start = time.time()
     print(
         full_tn.stabilizer_enumerator_polynomial(
-            cotengra=d > 5, progress_bar=d > 10, verbose=False
+            cotengra=d > 5,
+            progress_reporter=(
+                TqdmProgressReporter() if d > 10 else DummyProgressReporter()
+            ),
+            verbose=False,
         )
     )
     end = time.time()
@@ -47,6 +52,13 @@ if __name__ == "__main__":
     full_tn.set_truncate_length(None)
 
     start = time.time()
-    print(full_tn.stabilizer_enumerator_polynomial(cotengra=d > 5, progress_bar=d > 10))
+    print(
+        full_tn.stabilizer_enumerator_polynomial(
+            cotengra=d > 5,
+            progress_reporter=(
+                TqdmProgressReporter() if d > 10 else DummyProgressReporter()
+            ),
+        )
+    )
     end = time.time()
     print(f"{end-start:0.2f}s")

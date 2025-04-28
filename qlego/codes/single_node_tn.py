@@ -1,5 +1,7 @@
+from typing import List, Tuple
 from galois import GF2
 import numpy as np
+from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
 from qlego.tensor_network import (
     TensorNetwork,
     StabilizerCodeTensorEnumerator,
@@ -29,11 +31,13 @@ class SingleNodeTensorNetwork(TensorNetwork):
 
     def stabilizer_enumerator_polynomial(
         self,
-        legs=[],
-        e=None,
-        verbose=False,
-        progress_bar=False,
-        summed_legs=None,
-        cotengra=True,
+        open_legs: List[Tuple[int, int]] = [],
+        verbose: bool = False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+        cotengra: bool = True,
     ):
-        return self.node.stabilizer_enumerator_polynomial(open_legs=[])
+        return self.node.stabilizer_enumerator_polynomial(
+            open_legs=open_legs,
+            verbose=verbose,
+            progress_reporter=progress_reporter,
+        )

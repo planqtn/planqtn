@@ -5,12 +5,12 @@ import argparse
 
 
 # Configure CORS
-def configure_cors(ui_port: int = 5173):
+def configure_cors(ui_port: int = 5173, ui_host: str = "localhost"):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            f"http://localhost:{ui_port}",
-            f"http://localhost:{ui_port + 1000}",  # Vite dev server sometimes uses port + 1000
+            f"http://{ui_host}:{ui_port}",
+            f"https://{ui_host}:{ui_port}",
         ],
         allow_credentials=True,
         allow_methods=["*"],  # Allows all methods
@@ -32,10 +32,16 @@ if __name__ == "__main__":
         default=5173,
         help="Port the UI is running on (default: 5173)",
     )
+    parser.add_argument(
+        "--ui-host",
+        type=str,
+        default="localhost",
+        help="Host the UI is running on (default: localhost)",
+    )
     args = parser.parse_args()
 
-    configure_cors(args.ui_port)
+    configure_cors(args.ui_port, args.ui_host)
 
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    uvicorn.run(app, host="localhost", port=args.port)

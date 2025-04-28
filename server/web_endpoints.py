@@ -12,6 +12,7 @@ import numpy as np
 from sympy import symbols
 import argparse
 
+from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
 from server.tasks import long_running_task
 
@@ -92,7 +93,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
         )
 
     # Conjoin all nodes to get the final parity check matrix
-    result = tn.conjoin_nodes(progress_bar=True, verbose=False)
+    result = tn.conjoin_nodes(progress_reporter=True, verbose=False)
 
     # Convert the resulting parity check matrix to a list for JSON serialization
     matrix = result.h.tolist()
@@ -132,7 +133,10 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
     # Conjoin all nodes to get the final tensor network
     start = time.time()
     polynomial = tn.stabilizer_enumerator_polynomial(
-        verbose=False, progress_bar=True, cotengra=len(nodes) > 4
+        verbose=False,
+        progress_reporter=(
+            TqdmProgressReporter() if len(nodes) > 4 else DummyProgressReporter()
+        ),
     )
     end = time.time()
     print("WEP calculation time", end - start)

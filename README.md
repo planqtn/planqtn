@@ -86,6 +86,7 @@ from galois import GF2
 
 from qlego.codes.compass_code import CompassCodeTN
 from qlego.codes.css_tanner_code import CssTannerCodeTN
+from qlego.progress_reporter import TqdmProgressReporter
 
 hz = GF2(
     [
@@ -107,6 +108,6 @@ hx = GF2(
 
 tn = CssTannerCodeTN(hx, hz)
 
-wep = tn.stabilizer_enumerator_polynomial(progress_bar=True, verbose=False)
+wep = tn.stabilizer_enumerator_polynomial(progress_reporter=TqdmProgressReporter(), verbose=False)
 print(wep)
 ```
