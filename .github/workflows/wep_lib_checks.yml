@@ -1,0 +1,21 @@
+name: WEP Lib Checks
+run-name: ${{ github.actor }} is checking the WEP Lib 🚀
+on: [push]
+jobs:
+  WEP-Lib-Checks:
+    strategy:
+      matrix:
+        python-version: [3.12]
+    runs-on: python${{ matrix.python-version }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements.dev.txt
+      - name: Run tests
+        run: |
+          pytest qlego
