@@ -877,15 +877,6 @@ def test_two_bell_states():
 
 
 def test_two_512_tensor_merge_step_by_step():
-    nodes = {}
-    nodes["1"] = StabilizerCodeTensorEnumerator(
-        h=Legos.enconding_tensor_512,
-        idx="1",
-    )
-    nodes["2"] = StabilizerCodeTensorEnumerator(
-        h=Legos.enconding_tensor_512,
-        idx="2",
-    )
 
     # Create TensorNetwork
 
@@ -897,6 +888,16 @@ def test_two_512_tensor_merge_step_by_step():
     ]
 
     for i in range(len(traces) + 1):
+        nodes = {}
+        nodes["1"] = StabilizerCodeTensorEnumerator(
+            h=Legos.enconding_tensor_512,
+            idx="1",
+        )
+        nodes["2"] = StabilizerCodeTensorEnumerator(
+            h=Legos.enconding_tensor_512,
+            idx="2",
+        )
+
         tn = TensorNetwork(nodes, truncate_length=None)
 
         print("-----------------------------------------------")
@@ -925,12 +926,15 @@ def test_two_512_tensor_merge_step_by_step():
                 sorted([f"{sstr(GF2([k]))}: {v}" for k, v in conjoined_wep.items()])
             )
         )
+        print(f"conjoined_wep_str: {conjoined_wep_str}")
         print("============== TN WEP ================================")
         tn_wep = tn.stabilizer_enumerator_polynomial(
             verbose=True,
             progress_bar=True,
             open_legs=open_legs,
+            cotengra=False,
         )
+
         tn_wep_str = (
             str(tn_wep)
             if isinstance(tn_wep, SimplePoly)

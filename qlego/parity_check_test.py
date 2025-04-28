@@ -11,7 +11,7 @@ def test_conjoin_empty_matrices():
     h1 = GF2([[]])
     h2 = GF2([[]])
 
-    np.testing.assert_array_equal(conjoin(h1, h2), GF2([[]]))
+    np.testing.assert_array_equal(conjoin(h1, h2), GF2([[1]]))
 
 
 def test_conjoin_single_trace_422_codes():

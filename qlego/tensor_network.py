@@ -812,8 +812,9 @@ class TensorNetwork:
                     f"tensoring { len(set(self.ptes.values()))} disjoint PTEs: {self.ptes}"
                 )
 
-            pte = list(self.ptes.values())[0]
-            for pte2 in list(set(self.ptes.values()))[1:]:
+            pte_list = list(set(self.ptes.values()))
+            pte = pte_list[0]
+            for pte2 in pte_list[1:]:
                 pte = pte.tensor_product(pte2, verbose=verbose)
 
         if len(pte.tensor) > 1:
@@ -884,6 +885,7 @@ class _PartiallyTracedEnumerator:
         return hash((frozenset(self.nodes)))
 
     def ordered_key_tensor(self, open_legs: List[Tuple[int, int]]):
+        print(f"open_legs: {open_legs}, tracable_legs: {self.tracable_legs}")
         reindex = lambda key: tuple(
             sslice(
                 GF2(key), [self.tracable_legs.index(leg) for leg in open_legs]
