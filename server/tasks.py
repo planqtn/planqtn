@@ -74,13 +74,20 @@ class CeleryProgressReporter(ProgressReporter):
     def __init__(self, task: Task, sub_reporter: ProgressReporter = None):
         self.task = task
         self.history = []
+        self.start_time = time.time()
         super().__init__(sub_reporter)
 
     def handle_result(self, result: Dict[str, Any]):
         self.history.append(result)
         self.task.update_state(
             state="PROGRESS",
-            meta={"iteration_status": self.iterator_stack, "history": self.history},
+            meta={
+                "start_time": self.start_time,
+                "last_update_time": time.time(),
+                "runtime_at_last_update": time.time() - self.start_time,
+                "iteration_status": self.iterator_stack,
+                "history": self.history,
+            },
         )
 
 
@@ -144,6 +151,7 @@ def weight_enumerator_task(self, network_dict: dict):
             "polynomial": polynomial_str,
             "normalizer_polynomial": normalizer_polynomial_str,
             "history": progress_reporter.history,
+            "time": end - start,
         }
     except Exception as e:
         print("error", e)

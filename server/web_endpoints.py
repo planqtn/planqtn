@@ -11,10 +11,13 @@ import os
 import numpy as np
 from sympy import symbols
 import argparse
+from celery.result import AsyncResult
+from datetime import datetime
+
 
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
-from server.tasks import long_running_task, weight_enumerator_task
+from server.tasks import long_running_task, weight_enumerator_task, celery_app
 
 app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
@@ -289,3 +292,89 @@ async def task_status(task_id: str):
         traceback.print_exc()
 
         return TaskStatusResponse(task_id=task_id, status="error", error=str(e))
+
+
+@app.get("/list_tasks", response_model=List[Dict[str, Any]])
+async def list_tasks():
+    try:
+        # Get all tasks from Celery
+        inspector = celery_app.control.inspect()
+        active_tasks = inspector.active() or {}
+        reserved_tasks = inspector.reserved() or {}
+        scheduled_tasks = inspector.scheduled() or {}
+
+        # Combine all tasks
+        all_tasks = []
+
+        # Process active tasks
+        for worker, tasks in active_tasks.items():
+            for task in tasks:
+                task_result = AsyncResult(task["id"], app=celery_app)
+                all_tasks.append(
+                    {
+                        "id": task["id"],
+                        "name": task["name"],
+                        "state": task_result.state,
+                        "start_time": (
+                            datetime.fromtimestamp(task["time_start"]).isoformat()
+                            if "time_start" in task
+                            else None
+                        ),
+                        "worker": worker,
+                        "args": task.get("args", []),
+                        "kwargs": task.get("kwargs", {}),
+                        "info": task_result.info if task_result.info else {},
+                        "status": "active",
+                    }
+                )
+
+        # Process reserved tasks
+        for worker, tasks in reserved_tasks.items():
+            for task in tasks:
+                task_result = AsyncResult(task["id"], app=celery_app)
+                all_tasks.append(
+                    {
+                        "id": task["id"],
+                        "name": task["name"],
+                        "state": task_result.state,
+                        "start_time": None,  # Not started yet
+                        "worker": worker,
+                        "args": task.get("args", []),
+                        "kwargs": task.get("kwargs", {}),
+                        "info": task_result.info if task_result.info else {},
+                        "status": "reserved",
+                    }
+                )
+
+        # Process scheduled tasks
+        for worker, tasks in scheduled_tasks.items():
+            for task in tasks:
+                task_result = AsyncResult(task["request"]["id"], app=celery_app)
+                all_tasks.append(
+                    {
+                        "id": task["request"]["id"],
+                        "name": task["request"]["name"],
+                        "state": task_result.state,
+                        "start_time": (
+                            datetime.fromtimestamp(task["eta"]).isoformat()
+                            if "eta" in task
+                            else None
+                        ),
+                        "worker": worker,
+                        "args": task["request"].get("args", []),
+                        "kwargs": task["request"].get("kwargs", {}),
+                        "info": task_result.info if task_result.info else {},
+                        "status": "scheduled",
+                    }
+                )
+
+        # Sort tasks by start time (None values last)
+        all_tasks.sort(
+            key=lambda x: (x["start_time"] is None, x["start_time"]), reverse=True
+        )
+
+        return all_tasks
+    except Exception as e:
+        print("error", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
