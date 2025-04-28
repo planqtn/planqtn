@@ -14,7 +14,7 @@ import argparse
 
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
-from server.tasks import long_running_task
+from server.tasks import long_running_task, weight_enumerator_task
 
 app = FastAPI(
     title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
@@ -93,7 +93,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
         )
 
     # Conjoin all nodes to get the final parity check matrix
-    result = tn.conjoin_nodes(progress_reporter=True, verbose=False)
+    result = tn.conjoin_nodes(progress_reporter=TqdmProgressReporter(), verbose=False)
 
     # Convert the resulting parity check matrix to a list for JSON serialization
     matrix = result.h.tolist()
@@ -104,63 +104,6 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
 
     return ParityCheckResponse(
         matrix=matrix, legs=legs, recognized_type=recognized_type
-    )
-
-
-@app.post("/weightenumerator", response_model=WeightEnumeratorResponse)
-async def calculate_weight_enumerator(network: TensorNetworkRequest):
-    # Create TensorStabilizerCodeEnumerator instances for each lego
-    nodes = {}
-
-    for instance_id, lego in network.legos.items():
-        # Convert the parity check matrix to numpy array
-        h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
-
-    # Create TensorNetwork instance
-    tn = TensorNetwork(nodes)
-
-    # Add traces for each connection
-    for conn in network.connections:
-
-        tn.self_trace(
-            conn["from"]["legoId"],
-            conn["to"]["legoId"],
-            [conn["from"]["legIndex"]],
-            [conn["to"]["legIndex"]],
-        )
-
-    # Conjoin all nodes to get the final tensor network
-    start = time.time()
-    polynomial = tn.stabilizer_enumerator_polynomial(
-        verbose=False,
-        progress_reporter=(
-            TqdmProgressReporter() if len(nodes) > 4 else DummyProgressReporter()
-        ),
-    )
-    end = time.time()
-    print("WEP calculation time", end - start)
-    print("polynomial", polynomial)
-
-    if polynomial.is_scalar():
-        poly_b = polynomial
-    else:
-        h = tn.conjoin_nodes().h
-        r = h.shape[0]
-        n = h.shape[1] // 2
-        k = n - r
-
-        z, w = symbols("z w")
-        poly_b = polynomial.macwilliams_dual(n=n, k=k, to_normalizer=True)
-
-        print("poly_b", poly_b)
-
-    # Convert the polynomial to a string representation
-    polynomial_str = str(polynomial)
-    normalizer_polynomial_str = str(poly_b)
-
-    return WeightEnumeratorResponse(
-        polynomial=polynomial_str, normalizer_polynomial=normalizer_polynomial_str
     )
 
 
@@ -302,10 +245,27 @@ async def start_task(request: TaskRequest):
         return TaskStatusResponse(task_id="", status="error", error=str(e))
 
 
+@app.post("/weightenumerator", response_model=TaskStatusResponse)
+async def calculate_weight_enumerator(network: TensorNetworkRequest):
+    try:
+        # Convert Pydantic model to dictionary
+        network_dict = network.model_dump()
+        # Start the task
+        print("kicking off task...")
+        task = weight_enumerator_task.apply_async(args=[network_dict])
+        print("task", task.id)
+
+        return TaskStatusResponse(task_id=task.id, status="started", result=None)
+    except Exception as e:
+        print("error", e)
+        traceback.print_exc()
+        return TaskStatusResponse(task_id="", status="error", error=str(e))
+
+
 @app.get("/task_status/{task_id}", response_model=TaskStatusResponse)
 async def task_status(task_id: str):
     try:
-        task = long_running_task.AsyncResult(task_id)
+        task = weight_enumerator_task.AsyncResult(task_id)
         if task.state == "PENDING":
             return TaskStatusResponse(task_id=task_id, status="pending", result=None)
         elif task.state == "PROGRESS":

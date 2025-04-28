@@ -2818,6 +2818,7 @@ function App() {
                             encodeCanvasState={encodeCanvasState}
                             hideConnectedLegs={hideConnectedLegs}
                             makeSpace={(center, radius, skipLegos, legosToCheck) => makeSpace(center, radius, skipLegos, legosToCheck)}
+                            toast={toast}
                         />
                     </Panel>
                 </PanelGroup>

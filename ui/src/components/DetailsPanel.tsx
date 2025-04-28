@@ -1,4 +1,4 @@
-import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input, Checkbox } from '@chakra-ui/react'
+import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input, Checkbox, Link, UseToastOptions } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
 import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection, Operation } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
@@ -33,6 +33,7 @@ interface DetailsPanelProps {
     hideConnectedLegs: boolean
     makeSpace: (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]) => DroppedLego[]
     handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>
+    toast: (props: UseToastOptions) => void
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -50,7 +51,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     encodeCanvasState,
     hideConnectedLegs,
     makeSpace,
-    handlePullOutSameColoredLeg
+    handlePullOutSameColoredLeg,
+    toast
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -134,18 +136,43 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 connections: tensorNetwork.connections
             });
 
-            // Cache the result
-            weightEnumeratorCache.set(signature, {
-                polynomial: response.data.polynomial,
-                normalizerPolynomial: response.data.normalizer_polynomial
-            });
+            if (response.data.status === "error") {
+                throw new Error(response.data.message);
+            }
 
-            setTensorNetwork((prev: TensorNetwork | null) => prev ? {
-                ...prev,
-                weightEnumerator: response.data.polynomial,
-                normalizerPolynomial: response.data.normalizer_polynomial,
-                isCalculatingWeightEnumerator: false
-            } : null);
+            const taskId = response.data.task_id;
+
+            // Show success toast with status URL
+            toast({
+                title: "Success starting the task!",
+                description: (
+                    <Box>
+                        Check status at{' '}
+                        <Link
+                            href={`/api/task_status/${taskId}`}
+                            color="gray.100"
+                            isExternal
+                        >
+                            /api/task_status/{taskId}
+                        </Link>
+                    </Box>
+                ),
+                status: "success",
+                duration: 5000,
+                isClosable: true,
+            });
+            // // Cache the result
+            // weightEnumeratorCache.set(signature, {
+            //     polynomial: response.data.polynomial,
+            //     normalizerPolynomial: response.data.normalizer_polynomial
+            // });
+
+            // setTensorNetwork((prev: TensorNetwork | null) => prev ? {
+            //     ...prev,
+            //     weightEnumerator: response.data.polynomial,
+            //     normalizerPolynomial: response.data.normalizer_polynomial,
+            //     isCalculatingWeightEnumerator: false
+            // } : null);
         } catch (error) {
             console.error('Error calculating weight enumerator:', error);
             setError('Failed to calculate weight enumerator');

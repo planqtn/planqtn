@@ -607,7 +607,7 @@ class TensorNetwork:
 
         contengra_params = {
             "minimize": "size",
-            "parallel": True,
+            "parallel": False,
         }
         contengra_params.update(cotengra_opts)
         opt = ctg.HyperOptimizer(

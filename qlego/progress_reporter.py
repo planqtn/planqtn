@@ -1,20 +1,22 @@
 import abc
 import sys
 import time
+import json
 from typing import Any, Dict, Generator, Iterable
 
+import attr
 from tqdm import tqdm
 
 
+@attr.s
 class IterationState:
-    def __init__(self, desc: str, total_size: int):
-        self.desc = desc
-        self.total_size = total_size
-        self.current_item = 1
-        self.start_time = time.time()
-        self.end_time = None
-        self.duration = None
-        self.avg_time_per_item = None
+    desc: str = attr.ib()
+    total_size: int = attr.ib()
+    current_item: int = attr.ib(default=1)
+    start_time: float = attr.ib(default=time.time())
+    end_time: float | None = attr.ib(default=None)
+    duration: float | None = attr.ib(default=None)
+    avg_time_per_item: float | None = attr.ib(default=None)
 
     def update(self, current_item: int = None):
         if current_item is None:
@@ -37,6 +39,30 @@ class IterationState:
     def __repr__(self):
         return f"Iteration(desc={self.desc}, current_item={self.current_item}, total_size={self.total_size}, duration={self.duration}, avg_time_per_item={self.avg_time_per_item}), start_time={self.start_time}, end_time={self.end_time}"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the IterationState to a dictionary for JSON serialization."""
+        return {
+            "desc": self.desc,
+            "total_size": self.total_size,
+            "current_item": self.current_item,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration": self.duration,
+            "avg_time_per_item": self.avg_time_per_item,
+        }
+
+
+class IterationStateEncoder(json.JSONEncoder):
+    """Custom JSON encoder for IterationState objects."""
+
+    def default(self, obj):
+        if isinstance(obj, IterationState):
+            return obj.to_dict()
+        return super().default(obj)
+
+    def __call__(self, obj):
+        return self.encode(obj)
+
 
 class ProgressReporter(abc.ABC):
 
@@ -48,14 +74,18 @@ class ProgressReporter(abc.ABC):
     def handle_result(self, result: Dict[str, Any]):
         pass
 
-    @abc.abstractmethod
-    def _current_state(self) -> Dict[str, Any]:
-        pass
-
     def log_result(self, result: Dict[str, Any]):
-        self.handle_result(result)
+        # Convert IterationState to dict in the result
+        serializable_result = {}
+        for key, value in result.items():
+            if isinstance(value, IterationState):
+                serializable_result[key] = value.to_dict()
+            else:
+                serializable_result[key] = value
+
+        self.handle_result(serializable_result)
         if self.sub_reporter is not None:
-            self.sub_reporter.log_result(result)
+            self.sub_reporter.log_result(serializable_result)
 
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
@@ -89,9 +119,6 @@ class TqdmProgressReporter(ProgressReporter):
             file=self.file,
         ):
             yield item
-
-    def _current_state(self) -> Dict[str, Any]:
-        raise NotImplementedError("TqdmProgressReporter does not support state")
 
     def handle_result(self, result: Dict[str, Any]):
         pass
