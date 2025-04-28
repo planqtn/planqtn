@@ -3,8 +3,10 @@ run-name: ${{ github.actor }} is checking the API Server 🚀
 on: [push]
 jobs:
   API-Server-Checks:
-    matrix:
-      python-version: [3.12]
+    strategy:
+      matrix:
+        python-version: [3.12]
+   
     runs-on: python${{ matrix.python-version }}
     steps:
       - name: Check out repository code
@@ -17,4 +19,4 @@ jobs:
           pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt
       - name: Run tests
         run: |
-          pytest qlego
+          pytest server
