@@ -1,0 +1,20 @@
+name: API Server Checks
+run-name: ${{ github.actor }} is checking the API Server 🚀
+on: [push]
+jobs:
+  API-Server-Checks:
+    matrix:
+      python-version: [3.12]
+    runs-on: python${{ matrix.python-version }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Install dependencies
+        run: |
+          pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt
+      - name: Run tests
+        run: |
+          pytest qlego
