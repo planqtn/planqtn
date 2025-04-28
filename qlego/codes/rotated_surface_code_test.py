@@ -44,7 +44,7 @@ def test_d3_rsc_with_merged_ptes():
         cotengra=False,
     )
     print(tn_single_pte.traces)
-    assert (wep == wep2, f"Not eq: {wep} vs {wep2}")
+    assert wep == wep2, f"Not eq: {wep} vs {wep2}"
 
 
 def test_rsc3_x_and_z_coset_wep():
