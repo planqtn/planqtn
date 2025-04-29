@@ -2370,7 +2370,7 @@ const LegoStudioView: React.FC = () => {
                     {/* Left Panel */}
                     {!isLegoPanelCollapsed && (
                         <>
-                            <Panel id="lego-panel" defaultSize={10} minSize={2} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
+                            <Panel id="lego-panel" defaultSize={15} minSize={2} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
@@ -2385,7 +2385,7 @@ const LegoStudioView: React.FC = () => {
 
 
                     {/* Main Content */}
-                    <Panel id="main-panel" defaultSize={60} minSize={5} order={2}>
+                    <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
                         <Box h="100%" display="flex" flexDirection="column" p={4}>
                             {/* Status Bar */}
                             <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>

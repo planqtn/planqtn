@@ -30,9 +30,6 @@ class WebSocketManager:
         assert message["type"] == "message"
 
         task_id = str(message["channel"])[len("b'task_updates_") : -1]
-        print(f"THE TASKID: {task_id}")
-        print(f"THE MESSAGE: {message}")
-        print("self.active_connections: ", self.active_connections)
 
         # Decode the message data if it's bytes
         message_data = message["data"]
@@ -74,13 +71,14 @@ class WebSocketManager:
             while True:
                 message = await pubsub.get_message(ignore_subscribe_messages=True)
                 if message is not None:
-                    print(f"Received message for task {task_id}: {message}")
+                    # print(f"Received message for task {task_id}: {message}")
                     await self.broadcast_task_update(message)
         except Exception as e:
             print(f"Error reading messages for task {task_id}: {e}")
         finally:
-            await pubsub.unsubscribe()
-            await pubsub.close()
+            if pubsub.connection and not pubsub.connection.closed:
+                await pubsub.unsubscribe()
+                await pubsub.close()
 
     async def disconnect(self, websocket: WebSocket, channel_id: str):
         if channel_id in self.active_connections:
@@ -95,15 +93,15 @@ class WebSocketManager:
                     del self.task_update_subscriptions[channel_id]
 
     async def broadcast(self, message: dict, channel_id: str):
+        # print(f"Broadcasting to channel {channel_id}: {message}")
         if channel_id in self.active_connections:
-            print(f"Broadcasting to {channel_id} with message {message}")
             for connection in self.active_connections[channel_id]:
                 try:
+                    # print(f"Sending to connection: {message}")
                     await connection.send_json(message)
                 except WebSocketDisconnect:
+                    # print(f"Connection disconnected while broadcasting to {channel_id}")
                     self.disconnect(connection, channel_id)
-        else:
-            print(f"No active connections for {channel_id}")
 
     def set_celery_app(self, celery_app: Celery):
         self.celery_app = celery_app
@@ -138,6 +136,7 @@ class WebSocketManager:
                                 "task-succeeded": sync_handler("succeeded"),
                                 "task-failed": sync_handler("failed"),
                                 "task-received": sync_handler("received"),
+                                "task-revoked": sync_handler("revoked"),
                                 "task-started": sync_handler("started"),
                             },
                         )
@@ -166,18 +165,11 @@ class WebSocketManager:
         asyncio.create_task(monitor_events())
 
     async def handle_task_sent(self, event):
-        print(f"Handling task_sent event: {event}")
+        # print(f"Handling task_sent event: {event}")
         task_data = {
             "type": "task_added",
             "task": {
                 "id": event["uuid"],
-                "name": event["name"],
-                "state": "PENDING",
-                "start_time": None,
-                "worker": None,
-                "args": event.get("args", []),
-                "kwargs": event.get("kwargs", {}),
-                "info": {},
                 "status": "scheduled",
             },
         }
@@ -190,31 +182,51 @@ class WebSocketManager:
             "type": "task_updated",
             "task": {
                 "id": event["uuid"],
-                "state": "PROGRESS",
-                "worker": event["hostname"],
-                "status": "active",
+                "state": "received",
             },
         }
         print(f"Broadcasting task update: {task_data}")
         await self.broadcast(task_data, "tasks")
 
     async def handle_task_started(self, event):
-        print(f"Handling task_started event: {event}")
+        # print(f"Handling task_started event: {event}")
         task_data = {
             "type": "task_updated",
             "task": {
                 "id": event["uuid"],
-                "state": "PROGRESS",
-                "start_time": event["timestamp"],
-                "worker": event["hostname"],
-                "status": "active",
+                "state": "started",
             },
         }
         print(f"Broadcasting task update: {task_data}")
         await self.broadcast(task_data, "tasks")
 
     async def handle_task_succeeded(self, event):
-        task_data = {"type": "task_removed", "taskId": event["uuid"]}
+        # Parse the result string into a dictionary
+        result = event["result"]
+        # print(f"Raw result: {result}")
+        if isinstance(result, str):
+            try:
+                # First try parsing as JSON
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                # If that fails, try parsing as a Python dictionary string
+                # Remove any single quotes and convert to double quotes for JSON
+                result_str = result.replace("'", '"')
+                result = json.loads(result_str)
+        # print(f"Parsed result: {result}")
+
+        task_data = {
+            "type": "task_updated",
+            "task": {
+                "id": event["uuid"],
+                "status": "success",
+                "result": {
+                    "polynomial": result["polynomial"],
+                    "normalizer_polynomial": result["normalizer_polynomial"],
+                },
+            },
+        }
+        print(f"Broadcasting task data: {task_data}")
         await self.broadcast(task_data, "tasks")
 
     async def handle_task_failed(self, event):
@@ -222,10 +234,22 @@ class WebSocketManager:
             "type": "task_updated",
             "task": {
                 "id": event["uuid"],
-                "state": "FAILURE",
+                "status": "failed",
                 "info": {"error": str(event.get("exception", "Unknown error"))},
             },
         }
+        print(f"Broadcasting task data: {task_data}")
+        await self.broadcast(task_data, "tasks")
+
+    async def handle_task_revoked(self, event):
+        task_data = {
+            "type": "task_updated",
+            "task": {
+                "id": event["uuid"],
+                "status": "revoked",
+            },
+        }
+        print(f"Broadcasting task data: {task_data}")
         await self.broadcast(task_data, "tasks")
 
 

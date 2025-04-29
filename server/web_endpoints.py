@@ -63,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # Keep the connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket, "tasks")
+        await websocket_manager.disconnect(websocket, "tasks")
 
 
 @app.websocket("/ws/task/{task_id}")
@@ -74,7 +74,7 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
             # Keep the connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket, "task_" + task_id)
+        await websocket_manager.disconnect(websocket, "task_" + task_id)
 
 
 def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:

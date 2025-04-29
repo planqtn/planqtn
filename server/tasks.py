@@ -1,3 +1,4 @@
+import json
 import time
 import traceback
 from typing import Any, Dict
@@ -141,6 +142,7 @@ def weight_enumerator_task(self, network_dict: dict):
             polynomial = tn.stabilizer_enumerator_polynomial(
                 verbose=False,
                 progress_reporter=progress_reporter,
+                cotengra=len(nodes) > 5,
             )
             end = time.time()
 
@@ -167,7 +169,7 @@ def weight_enumerator_task(self, network_dict: dict):
             return {
                 "polynomial": polynomial_str,
                 "normalizer_polynomial": normalizer_polynomial_str,
-                "history": progress_reporter.history,
+                # "history": progress_reporter.history,
                 "time": end - start,
             }
     except Exception as e:

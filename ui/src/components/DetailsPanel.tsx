@@ -4,7 +4,7 @@ import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connec
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
 import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
 import * as _ from 'lodash'
@@ -15,12 +15,26 @@ import { canDoHopfRule, applyHopfRule } from '../transformations/Hopf'
 import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformations/ConnectGraphNodesWithCenterLego.ts'
 import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
+import ProgressBars from './ProgressBars'
 
 interface TaskUpdateMessage {
-    message: string;
+    id: string;
+    type: string;
+    message: {
+        updates: {
+            status: string;
+            iteration_status: Array<{
+                desc: string;
+                total_size: number;
+                current_item: number;
+                start_time: number;
+                end_time: number | null;
+                duration: number;
+                avg_time_per_item: number;
+            }>;
+        };
+    };
 }
-
-
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -67,8 +81,166 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [, setSelectedMatrixRows] = useState<number[]>([])
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
+    const [taskWebSocket, setTaskWebSocket] = useState<WebSocket | null>(null)
+    const [iterationStatus, setIterationStatus] = useState<Array<{
+        desc: string;
+        total_size: number;
+        current_item: number;
+        start_time: number;
+        end_time: number | null;
+        duration: number;
+        avg_time_per_item: number;
+    }>>([])
 
+    // Clean up WebSocket on unmount
+    useEffect(() => {
+        return () => {
+            if (taskWebSocket) {
+                taskWebSocket.close();
+            }
+        };
+    }, []);
 
+    const ensureProgressBarWebSocket = (taskId: string) => {
+        // Close any existing WebSocket connection
+        if (taskWebSocket) {
+            taskWebSocket.close();
+        }
+
+        // Create new WebSocket connection for specific task
+        const ws = new WebSocket(`ws://localhost:5005/ws/task/${taskId}`);
+
+        ws.onopen = () => {
+            console.log("Task update WebSocket opened for task:", taskId);
+            setTaskWebSocket(ws);
+        };
+
+        ws.onmessage = (event) => {
+            const message: TaskUpdateMessage = JSON.parse(event.data);
+            if (message.type === 'task_updated' && message.message.updates.iteration_status) {
+                setIterationStatus(message.message.updates.iteration_status);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("Task update WebSocket closed for task:", taskId);
+            setTaskWebSocket(null);
+        };
+
+        ws.onerror = (event) => {
+            console.error("Task update WebSocket error for task:", taskId, event);
+        };
+
+        setTaskWebSocket(ws);
+    }
+
+    // Add WebSocket listener for general task updates
+    useEffect(() => {
+        // if (!tensorNetwork) return;
+
+        const ws = new WebSocket('ws://localhost:5005/ws/tasks');
+
+        ws.onopen = () => {
+            console.log("General task updates WebSocket opened");
+        };
+
+        ws.onmessage = (event) => {
+            console.log("Received task update message:", event.data);
+            const message = JSON.parse(event.data);
+            console.log("Parsed message:", message);
+            if (message.type === 'task_updated') {
+                const task = message.task;
+                console.log("Task update:", task);
+                if (task.status === 'success' && task.result) {
+                    console.log("Task succeeded with result:", task.result);
+                    // Check all cached tensor networks for this task ID
+                    for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                        console.log("Checking cache entry:", signature, cacheEntry);
+                        if (cacheEntry.taskId === task.id) {
+                            console.log("Found matching cache entry");
+                            // Update the cache
+                            weightEnumeratorCache.set(signature, {
+                                taskId: task.id,
+                                polynomial: task.result.polynomial,
+                                normalizerPolynomial: task.result.normalizer_polynomial
+                            });
+
+                            // If this is the current tensor network, update its state
+                            if (tensorNetwork && tensorNetwork.signature === signature) {
+                                console.log("Updating current tensor network");
+                                setTensorNetwork(prev => prev ? {
+                                    ...prev,
+                                    weightEnumerator: task.result.polynomial,
+                                    normalizerPolynomial: task.result.normalizer_polynomial,
+                                    isCalculatingWeightEnumerator: false,
+                                } : null);
+                            }
+                            break; // Found the matching task, no need to continue
+                        }
+                    }
+                } else if (task.status === 'failed') {
+                    console.log("Task failed:", task);
+                    // Check all cached tensor networks for this task ID
+                    for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                        if (cacheEntry.taskId === task.id) {
+                            // If this is the current tensor network, show the error
+                            if (tensorNetwork && tensorNetwork.signature === signature) {
+                                setError(`Task failed: ${task.info?.error || 'Unknown error'}`);
+                                setTensorNetwork(prev => prev ? {
+                                    ...prev,
+                                    isCalculatingWeightEnumerator: false
+                                } : null);
+                            }
+                            break; // Found the matching task, no need to continue
+                        }
+                    }
+                } else if (task.status === 'revoked') {
+                    console.log("Task revoked:", task);
+                    // Check all cached tensor networks for this task ID
+                    for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                        if (cacheEntry.taskId === task.id) {
+                            console.log("Found matching cache entry");
+                            // If this is the current tensor network, show the error
+                            if (tensorNetwork && tensorNetwork.signature === signature) {
+                                setError(`Task ${task.id} was cancelled.`);
+                                setTensorNetwork(prev => prev ? {
+                                    ...prev,
+                                    isCalculatingWeightEnumerator: false
+                                } : null);
+                            }
+                            weightEnumeratorCache.delete(signature);
+                            break; // Found the matching task, no need to continue
+                        }
+                    }
+                }
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("General task updates WebSocket closed");
+        };
+
+        ws.onerror = (event) => {
+            console.error("General task updates WebSocket error:", event);
+        };
+
+        return () => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+        };
+    }, []); // Only reconnect when tensorNetwork signature changes
+
+    // Reconnect to task-specific WebSocket when selecting a tensor network with in-progress calculation
+    useEffect(() => {
+        if (tensorNetwork?.signature) {
+            const cachedEnumerator = weightEnumeratorCache.get(tensorNetwork.signature);
+            if (cachedEnumerator?.polynomial === "" && cachedEnumerator?.taskId) {
+                console.log("Reconnecting to task WebSocket for in-progress calculation:", cachedEnumerator.taskId);
+                ensureProgressBarWebSocket(cachedEnumerator.taskId);
+            }
+        }
+    }, [tensorNetwork?.signature]);
 
     const calculateParityCheckMatrix = async () => {
         if (!tensorNetwork) return;
@@ -117,6 +289,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
                 isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
             });
+            ensureProgressBarWebSocket(cachedEnumerator.taskId);
             return;
         }
 
@@ -149,10 +322,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             const taskId = response.data.task_id;
 
+            console.log("Setting task ID", taskId);
+
             setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 taskId: taskId
             } : null);
+            ensureProgressBarWebSocket(taskId);
+
 
 
             // Show success toast with status URL
@@ -175,34 +352,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 isClosable: true,
             });
 
-            const taskUpdateWebSocket = new WebSocket(`ws://localhost:5005/ws/task/${taskId}`);
-            taskUpdateWebSocket.onmessage = (event) => {
-                // const message: TaskUpdateMessage = JSON.parse(event.data) as TaskUpdateMessage;
-                console.log("Task update:", event.data);
-            };
-            taskUpdateWebSocket.onopen = () => {
-                console.log("Task update WebSocket opened");
-            };
-            taskUpdateWebSocket.onclose = () => {
-                console.log("Task update WebSocket closed");
-            };
-            taskUpdateWebSocket.onerror = (event) => {
-                console.error("Task update WebSocket error:", event);
-            };
-
-            // // Cache the result
+            // Cache the result
             weightEnumeratorCache.set(signature, {
                 taskId: taskId,
                 polynomial: "",
                 normalizerPolynomial: ""
             });
 
-            // setTensorNetwork((prev: TensorNetwork | null) => prev ? {
-            //     ...prev,
-            //     weightEnumerator: response.data.polynomial,
-            //     normalizerPolynomial: response.data.normalizer_polynomial,
-            //     isCalculatingWeightEnumerator: false
-            // } : null);
         } catch (error) {
             console.error('Error calculating weight enumerator:', error);
             setError('Failed to calculate weight enumerator');
@@ -958,20 +1114,25 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         />
                                     )}
                                 {
-                                    (tensorNetwork.isCalculatingWeightEnumerator && tensorNetwork.taskId ||
-                                        (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId))
+                                    (tensorNetwork.isCalculatingWeightEnumerator ||
+                                        (tensorNetwork.signature && weightEnumeratorCache.get(tensorNetwork.signature)?.polynomial === ""))
                                         ? (
                                             <Box>
-                                                <Text>Calculating weight enumerator...</Text>
-                                                <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
-                                                <Text>Status URL: <Link href={`/tasks/${tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}`}>/tasks/{tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Link></Text>
-
-                                            </Box>) :
-
-                                        (tensorNetwork.weightEnumerator ||
-                                            (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!))) ? (
+                                                <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
+                                                    <VStack align="stretch" spacing={4}>
+                                                        <Heading size="sm">Calculating Weight Enumerator</Heading>
+                                                        <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
+                                                        <ProgressBars iterationStatus={iterationStatus} />
+                                                    </VStack>
+                                                </Box>
+                                            </Box>
+                                        ) : (tensorNetwork.weightEnumerator ||
+                                            (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!)?.polynomial)) ? (
                                             <VStack align="stretch" spacing={2}>
                                                 <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
+                                                <Box>
+                                                    <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
+                                                </Box>
                                                 <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                                     <Text fontFamily="mono">
                                                         {tensorNetwork.weightEnumerator ||
@@ -1151,6 +1312,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 }}
                 numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
             />
+
         </Box>
     )
 }
