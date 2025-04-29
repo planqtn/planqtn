@@ -646,7 +646,7 @@ const LegoStudioView: React.FC = () => {
                         if (newLegos.length === 0) {
                             setTensorNetwork(null);
                         } else {
-                            const newNetwork = {
+                            let newNetwork = {
                                 legos: newLegos,
                                 connections: newConnections
                             } as TensorNetwork;
@@ -660,7 +660,7 @@ const LegoStudioView: React.FC = () => {
                             newLegos.some(l => l.instanceId === conn.from.legoId) &&
                             newLegos.some(l => l.instanceId === conn.to.legoId)
                         );
-                        const newNetwork = {
+                        let newNetwork = {
                             legos: newLegos,
                             connections: newConnections
                         } as TensorNetwork;
@@ -668,7 +668,7 @@ const LegoStudioView: React.FC = () => {
                         setTensorNetwork(newNetwork);
                     }
                 } else if (selectedLego) {
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: [lego, selectedLego],
                         connections: connections.filter(conn =>
                             conn.containsLego(lego.instanceId) && conn.containsLego(selectedLego.instanceId)
@@ -680,7 +680,7 @@ const LegoStudioView: React.FC = () => {
 
                 } else {
                     // If no tensor network exists, create one with just this lego
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: [lego],
                         connections: []
                     } as TensorNetwork;
@@ -793,14 +793,14 @@ const LegoStudioView: React.FC = () => {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
                     newNetwork.signature = createNetworkSignature(newNetwork);
                     setTensorNetwork(newNetwork);
                 } else {
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: selectedLegos,
                         connections: []
                     } as TensorNetwork;
@@ -821,7 +821,7 @@ const LegoStudioView: React.FC = () => {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
@@ -833,7 +833,7 @@ const LegoStudioView: React.FC = () => {
                         selectedLegoIds.has(conn.from.legoId) &&
                         selectedLegoIds.has(conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: selectedLegos,
                         connections: internalConnections
                     } as TensorNetwork;
@@ -848,7 +848,7 @@ const LegoStudioView: React.FC = () => {
                     selectedLegoIds.has(conn.from.legoId) &&
                     selectedLegoIds.has(conn.to.legoId)
                 );
-                const newNetwork = {
+                let newNetwork = {
                     legos: selectedLegos,
                     connections: internalConnections
                 } as TensorNetwork;
