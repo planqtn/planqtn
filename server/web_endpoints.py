@@ -1,7 +1,7 @@
 import time
 import traceback
 from celery import Celery
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from galois import GF2
 from pydantic import BaseModel
@@ -13,15 +13,68 @@ from sympy import symbols
 import argparse
 from celery.result import AsyncResult
 from datetime import datetime
-
+import asyncio
+from contextlib import asynccontextmanager
+import requests
 
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
-from server.tasks import long_running_task, weight_enumerator_task, celery_app
+from server.task_store import TaskStore
+from server.tasks import weight_enumerator_task, celery_app
+from server.websocket import websocket_manager
+
+
+task_store: TaskStore = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global task_store
+    task_store = TaskStore()
+    asyncio.create_task(websocket_manager.start_celery_event_monitor())
+    yield
+
 
 app = FastAPI(
-    title="TNQEC API", description="API for the TNQEC application", version="0.1.0"
+    title="TNQEC API",
+    description="API for the TNQEC application",
+    version="0.1.0",
+    lifespan=lifespan,
 )
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Set up the Celery app in the WebSocket manager
+websocket_manager.set_celery_app(celery_app)
+
+
+@app.websocket("/ws/tasks")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket_manager.connect(websocket, "tasks")
+    try:
+        while True:
+            # Keep the connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket, "tasks")
+
+
+@app.websocket("/ws/task/{task_id}")
+async def websocket_endpoint(websocket: WebSocket, task_id: str):
+    await websocket_manager.connect(websocket, "task_" + task_id)
+    try:
+        while True:
+            # Keep the connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket, "task_" + task_id)
 
 
 def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:
@@ -233,21 +286,6 @@ class TaskStatusResponse(BaseModel):
     error: str | None = None
 
 
-@app.post("/start_task", response_model=TaskStatusResponse)
-async def start_task(request: TaskRequest):
-    try:
-        # Start the task
-        print("kicking off task: ", request.user_id, request.params)
-        task = long_running_task.apply_async(args=[request.user_id, request.params])
-        print("task", task.id)
-
-        return TaskStatusResponse(task_id=task.id, status="started", result=None)
-    except Exception as e:
-        print("error", e)
-        traceback.print_exc()
-        return TaskStatusResponse(task_id="", status="error", error=str(e))
-
-
 @app.post("/weightenumerator", response_model=TaskStatusResponse)
 async def calculate_weight_enumerator(network: TensorNetworkRequest):
     try:
@@ -255,7 +293,9 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
         network_dict = network.model_dump()
         # Start the task
         print("kicking off task...")
-        task = weight_enumerator_task.apply_async(args=[network_dict])
+        task = weight_enumerator_task.apply_async(
+            args=[network_dict],
+        )
         print("task", task.id)
 
         return TaskStatusResponse(task_id=task.id, status="started", result=None)
@@ -265,113 +305,41 @@ async def calculate_weight_enumerator(network: TensorNetworkRequest):
         return TaskStatusResponse(task_id="", status="error", error=str(e))
 
 
-@app.get("/task_status/{task_id}", response_model=TaskStatusResponse)
-async def task_status(task_id: str):
-    try:
-        task = weight_enumerator_task.AsyncResult(task_id)
-        if task.state == "PENDING":
-            return TaskStatusResponse(task_id=task_id, status="pending", result=None)
-        elif task.state == "PROGRESS":
-            return TaskStatusResponse(
-                task_id=task_id, status="progress", result=task.info
-            )
-        elif task.state == "SUCCESS":
-            return TaskStatusResponse(
-                task_id=task_id, status="completed", result=task.result
-            )
-        elif task.state == "FAILURE":
-            return TaskStatusResponse(
-                task_id=task_id, status="failed", error=str(task.result)
-            )
-        else:
-            return TaskStatusResponse(
-                task_id=task_id, status=task.state, result=task.info
-            )
-    except Exception as e:
-        print("error", e)
-        traceback.print_exc()
-
-        return TaskStatusResponse(task_id=task_id, status="error", error=str(e))
-
-
-@app.get("/list_tasks", response_model=List[Dict[str, Any]])
+@app.get(
+    "/list_tasks",
+    response_model=List[Dict[str, Any]],
+)
 async def list_tasks():
     try:
-        # Get all tasks from Celery
-        inspector = celery_app.control.inspect()
-        active_tasks = inspector.active() or {}
-        reserved_tasks = inspector.reserved() or {}
-        scheduled_tasks = inspector.scheduled() or {}
 
-        # Combine all tasks
+        task_dict = task_store.get_all_tasks()
         all_tasks = []
+        for task_id, task_info in task_dict.items():
+            # Handle different task states
+            state = task_info.get("status", "PENDING")
+            status = (
+                "active" if state in ["STARTED", "SUCCESS", "FAILURE"] else "reserved"
+            )
 
-        # Process active tasks
-        for worker, tasks in active_tasks.items():
-            for task in tasks:
-                task_result = AsyncResult(task["id"], app=celery_app)
-                all_tasks.append(
-                    {
-                        "id": task["id"],
-                        "name": task["name"],
-                        "state": task_result.state,
-                        "start_time": (
-                            datetime.fromtimestamp(task["time_start"]).isoformat()
-                            if "time_start" in task
-                            else None
-                        ),
-                        "worker": worker,
-                        "args": task.get("args", []),
-                        "kwargs": task.get("kwargs", {}),
-                        "info": task_result.info if task_result.info else {},
-                        "status": "active",
-                    }
-                )
+            # Get worker info safely
+            worker = task_info.get("worker")
+            if isinstance(worker, dict):
+                worker_hostname = worker.get("hostname")
+            else:
+                worker_hostname = worker  # In case it's just a string
 
-        # Process reserved tasks
-        for worker, tasks in reserved_tasks.items():
-            for task in tasks:
-                task_result = AsyncResult(task["id"], app=celery_app)
-                all_tasks.append(
-                    {
-                        "id": task["id"],
-                        "name": task["name"],
-                        "state": task_result.state,
-                        "start_time": None,  # Not started yet
-                        "worker": worker,
-                        "args": task.get("args", []),
-                        "kwargs": task.get("kwargs", {}),
-                        "info": task_result.info if task_result.info else {},
-                        "status": "reserved",
-                    }
-                )
-
-        # Process scheduled tasks
-        for worker, tasks in scheduled_tasks.items():
-            for task in tasks:
-                task_result = AsyncResult(task["request"]["id"], app=celery_app)
-                all_tasks.append(
-                    {
-                        "id": task["request"]["id"],
-                        "name": task["request"]["name"],
-                        "state": task_result.state,
-                        "start_time": (
-                            datetime.fromtimestamp(task["eta"]).isoformat()
-                            if "eta" in task
-                            else None
-                        ),
-                        "worker": worker,
-                        "args": task["request"].get("args", []),
-                        "kwargs": task["request"].get("kwargs", {}),
-                        "info": task_result.info if task_result.info else {},
-                        "status": "scheduled",
-                    }
-                )
-
-        # Sort tasks by start time (None values last)
-        all_tasks.sort(
-            key=lambda x: (x["start_time"] is None, x["start_time"]), reverse=True
-        )
+            task = {
+                "id": task_id,
+                "name": task_info.get("name", ""),
+                "state": state,
+                "start_time": task_info.get("started"),
+                "worker": worker_hostname,
+                "args": task_info.get("args", []),
+                "kwargs": task_info.get("kwargs", {}),
+                "info": task_info.get("info", {}),
+                "status": status,
+            }
+            all_tasks.append(task)
 
         return all_tasks
     except Exception as e:

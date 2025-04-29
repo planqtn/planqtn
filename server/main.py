@@ -1,3 +1,5 @@
+from server.task_store import TaskStore
+from server.tasks import REDIS_URL
 from server.web_endpoints import app
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,5 +45,7 @@ if __name__ == "__main__":
     configure_cors(args.ui_port, args.ui_host)
 
     import uvicorn
+
+    TaskStore(REDIS_URL).clear_all()
 
     uvicorn.run(app, host="localhost", port=args.port)

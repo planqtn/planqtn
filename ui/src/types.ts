@@ -65,6 +65,7 @@ export interface TensorNetwork {
     weightEnumerator?: string
     normalizerPolynomial?: string
     isCalculatingWeightEnumerator?: boolean
+    taskId?: string
     constructionCode?: string
     legOrdering?: TensorNetworkLeg[]
     signature?: string

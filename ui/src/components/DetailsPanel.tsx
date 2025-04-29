@@ -16,6 +16,11 @@ import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformatio
 import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 
+interface TaskUpdateMessage {
+    message: string;
+}
+
+
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -58,7 +63,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
-    const [weightEnumeratorCache] = useState<Map<string, { polynomial: string, normalizerPolynomial: string }>>(new Map())
+    const [weightEnumeratorCache] = useState<Map<string, { taskId: string, polynomial: string, normalizerPolynomial: string }>>(new Map())
     const [, setSelectedMatrixRows] = useState<number[]>([])
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
@@ -107,9 +112,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         if (cachedEnumerator) {
             setTensorNetwork({
                 ...tensorNetwork,
+                taskId: cachedEnumerator.taskId,
                 weightEnumerator: cachedEnumerator.polynomial,
                 normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-                isCalculatingWeightEnumerator: false
+                isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
             });
             return;
         }
@@ -118,7 +124,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             setTensorNetwork((prev: TensorNetwork | null) => prev ? {
                 ...prev,
                 isCalculatingWeightEnumerator: true,
-                weightEnumerator: undefined
+                weightEnumerator: undefined,
+                taskId: undefined
             } : null);
 
             const response = await axios.post('/api/weightenumerator', {
@@ -142,6 +149,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             const taskId = response.data.task_id;
 
+            setTensorNetwork((prev: TensorNetwork | null) => prev ? {
+                ...prev,
+                taskId: taskId
+            } : null);
+
+
             // Show success toast with status URL
             toast({
                 title: "Success starting the task!",
@@ -149,11 +162,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <Box>
                         Check status at{' '}
                         <Link
-                            href={`/api/task_status/${taskId}`}
+                            href={`/tasks/${taskId}`}
                             color="gray.100"
                             isExternal
                         >
-                            /api/task_status/{taskId}
+                            /tasks/{taskId}
                         </Link>
                     </Box>
                 ),
@@ -161,11 +174,28 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 duration: 5000,
                 isClosable: true,
             });
+
+            const taskUpdateWebSocket = new WebSocket(`ws://localhost:5005/ws/task/${taskId}`);
+            taskUpdateWebSocket.onmessage = (event) => {
+                // const message: TaskUpdateMessage = JSON.parse(event.data) as TaskUpdateMessage;
+                console.log("Task update:", event.data);
+            };
+            taskUpdateWebSocket.onopen = () => {
+                console.log("Task update WebSocket opened");
+            };
+            taskUpdateWebSocket.onclose = () => {
+                console.log("Task update WebSocket closed");
+            };
+            taskUpdateWebSocket.onerror = (event) => {
+                console.error("Task update WebSocket error:", event);
+            };
+
             // // Cache the result
-            // weightEnumeratorCache.set(signature, {
-            //     polynomial: response.data.polynomial,
-            //     normalizerPolynomial: response.data.normalizer_polynomial
-            // });
+            weightEnumeratorCache.set(signature, {
+                taskId: taskId,
+                polynomial: "",
+                normalizerPolynomial: ""
+            });
 
             // setTensorNetwork((prev: TensorNetwork | null) => prev ? {
             //     ...prev,
@@ -927,29 +957,38 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                             onRecalculate={calculateParityCheckMatrix}
                                         />
                                     )}
-                                {(tensorNetwork.weightEnumerator ||
-                                    (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!))) ? (
-                                    <VStack align="stretch" spacing={2}>
-                                        <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
-                                        <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                                            <Text fontFamily="mono">
-                                                {tensorNetwork.weightEnumerator ||
-                                                    weightEnumeratorCache.get(tensorNetwork.signature!)!.polynomial}
-                                            </Text>
-                                        </Box>
+                                {
+                                    (tensorNetwork.isCalculatingWeightEnumerator && tensorNetwork.taskId ||
+                                        (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId))
+                                        ? (
+                                            <Box>
+                                                <Text>Calculating weight enumerator...</Text>
+                                                <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
+                                                <Text>Status URL: <Link href={`/tasks/${tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}`}>/tasks/{tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Link></Text>
 
-                                        <Heading size="sm">Normalizer Weight EnumeratorPolynomial</Heading>
-                                        <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                                            <Text fontFamily="mono">
-                                                {tensorNetwork.normalizerPolynomial ||
-                                                    weightEnumeratorCache.get(tensorNetwork.signature!)!.normalizerPolynomial}
-                                            </Text>
-                                        </Box>
+                                            </Box>) :
 
-                                    </VStack>
-                                ) : tensorNetwork.isCalculatingWeightEnumerator ? (
-                                    <BlochSphereLoader />
-                                ) : null}
+                                        (tensorNetwork.weightEnumerator ||
+                                            (tensorNetwork && weightEnumeratorCache.get(tensorNetwork.signature!))) ? (
+                                            <VStack align="stretch" spacing={2}>
+                                                <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
+                                                <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
+                                                    <Text fontFamily="mono">
+                                                        {tensorNetwork.weightEnumerator ||
+                                                            weightEnumeratorCache.get(tensorNetwork.signature!)!.polynomial}
+                                                    </Text>
+                                                </Box>
+
+                                                <Heading size="sm">Normalizer Weight EnumeratorPolynomial</Heading>
+                                                <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
+                                                    <Text fontFamily="mono">
+                                                        {tensorNetwork.normalizerPolynomial ||
+                                                            weightEnumeratorCache.get(tensorNetwork.signature!)!.normalizerPolynomial}
+                                                    </Text>
+                                                </Box>
+
+                                            </VStack>
+                                        ) : null}
                                 {tensorNetwork.constructionCode && (
                                     <VStack align="stretch" spacing={2}>
                                         <HStack justify="space-between">

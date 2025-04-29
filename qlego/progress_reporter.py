@@ -97,11 +97,14 @@ class ProgressReporter(abc.ABC):
         for item in iterable:
             yield item
             iteration_state.update()
+            self.log_result(
+                {"iteration": iteration_state, "level": len(self.iterator_stack)}
+            )
         iteration_state.end()
-        self.iterator_stack.pop()
         self.log_result(
             {"iteration": iteration_state, "level": len(self.iterator_stack)}
         )
+        self.iterator_stack.pop()
 
 
 class TqdmProgressReporter(ProgressReporter):

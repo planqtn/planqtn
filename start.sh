@@ -151,6 +151,8 @@ mkdir -p logs
 SERVER_LOG="logs/server.log"
 UI_LOG="logs/ui.log"
 CELERY_LOG="logs/celery.log"
+FLOWER_LOG="logs/flower.log"
+
 # Function to stop background processes on script exit
 cleanup() {
     echo "Stopping servers..."
@@ -170,8 +172,14 @@ trap cleanup EXIT
 > "$UI_LOG"
 
 echo Starting Celery worker...
-celery -A server.tasks worker --loglevel=INFO > "$CELERY_LOG" 2>&1 &
+celery -A server.tasks worker -E --loglevel=INFO > "$CELERY_LOG" 2>&1 &
 CELERY_PID=$!   
+
+export FLOWER_UNAUTHENTICATED_API=true
+
+echo Starting Flower worker...
+celery -A server.tasks flower > "$FLOWER_LOG" 2>&1 &
+FLOWER_PID=$!
 
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
@@ -179,10 +187,36 @@ export PYTHONPATH="$PYTHONPATH:$(pwd)"
 (cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT") > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
+# Function to check if backend API is responding
+check_backend_api() {
+    local max_retries=5
+    local retry_count=0
+    local retry_delay=2
+
+    while [ $retry_count -lt $max_retries ]; do
+        if curl -s "http://localhost:$BACKEND_PORT/api" > /dev/null; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        if [ $retry_count -lt $max_retries ]; then
+            echo -e "${YELLOW}Backend API not responding, retrying in $retry_delay second(s)...${NC}"
+            sleep $retry_delay
+        fi
+    done
+    return 1
+}
+
 # Wait a bit for the backend to start and check if it's still running
 sleep 2
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
     echo -e "${RED}Failed to start Python backend${NC}"
+    cat "$SERVER_LOG"
+    exit 1
+fi
+
+# Check if backend API is responding
+if ! check_backend_api; then
+    echo -e "${RED}Backend API is not responding on port $BACKEND_PORT${NC}"
     cat "$SERVER_LOG"
     exit 1
 fi
@@ -227,5 +261,6 @@ echo "Press Ctrl+C to stop all servers"
     tail -f "$SERVER_LOG" | sed 's/^/[Server] /' & 
     tail -f "$UI_LOG" | sed 's/^/[UI] /' &
     tail -f "$CELERY_LOG" | sed 's/^/[Celery] /' &
+    tail -f "$FLOWER_LOG" | sed 's/^/[Flower] /' &
     wait
 ) 
