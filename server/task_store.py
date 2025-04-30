@@ -1,48 +1,60 @@
 import json
 import time
-from typing import Callable, Dict, Any, Optional
+import traceback
+from typing import Dict, Any, Optional
+from celery import Task
 import redis
+import requests
 from datetime import datetime
 
 from qlego.progress_reporter import IterationStateEncoder
 
 
 class TaskStore:
-    def __init__(self, redis_url: str = "redis://localhost:6379/0"):
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379/0",
+        flower_url: str = "http://localhost:5555",
+    ):
+        self.redis_url = redis_url
         self.redis = redis.from_url(redis_url)
         self.redis_async = redis.asyncio.from_url(redis_url)
-        self.task_list_key = "weight_enumerator_tasks"
-        self.max_tasks = 1000  # Keep last 1000 tasks
+        self.flower_url = flower_url
 
-    def clear_all(self):
-        """Clear all task data when server starts"""
-        self.redis.delete(self.task_list_key)
+    def add_task(self, task: Task):
+        """Add a task to Redis"""
+        self.redis.hset(
+            name=f"task_details",
+            key=task.request.id,
+            value=json.dumps({"task": task.request.task, "args": task.request.args}),
+        )
 
-    def add_task(self, task_id: str, task_data: Dict[str, Any]):
-        """Add a new task to the list"""
-        task_data["created_at"] = datetime.now().isoformat()
-        self.redis.hset(self.task_list_key, task_id, json.dumps(task_data))
-        # Trim old tasks if needed
-        if self.redis.hlen(self.task_list_key) > self.max_tasks:
-            # Get all tasks and sort by creation time
-            tasks = self.redis.hgetall(self.task_list_key)
-            sorted_tasks = sorted(
-                [(k, json.loads(v)) for k, v in tasks.items()],
-                key=lambda x: x[1]["created_at"],
-            )
-            # Remove oldest tasks
-            for k, _ in sorted_tasks[: len(sorted_tasks) - self.max_tasks]:
-                self.redis.hdel(self.task_list_key, k)
-
-    def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Get task data by ID"""
-        data = self.redis.hget(self.task_list_key, task_id)
-        return json.loads(data) if data else None
+    def get_task_details(self, task_id: str) -> str:
+        """Get task data by ID from Redis"""
+        try:
+            task_details = self.redis.hget(name=f"task_details", key=task_id)
+            if task_details:
+                return task_details.decode("utf-8")
+            return None
+        except requests.RequestException:
+            return None
 
     def get_all_tasks(self) -> Dict[str, Dict[str, Any]]:
-        """Get all tasks"""
-        tasks = self.redis.hgetall(self.task_list_key)
-        return {k.decode(): json.loads(v) for k, v in tasks.items()}
+        """Get all tasks from Flower API"""
+        try:
+            response = requests.get(f"{self.flower_url}/api/tasks")
+            if response.status_code == 200:
+                tasks = json.loads(response.text)
+                print("tasks", type(tasks), tasks)
+                for _, task in tasks.items():
+                    task_details = self.get_task_details(task["uuid"])
+                    task["args"] = json.loads(task_details)["args"]
+                return tasks
+            return {}
+        except requests.RequestException as e:
+            print("Error fetching tasks from Flower API:", e)
+            traceback.print_exc()
+            return {}
 
     def update_task(self, task_id: str, updates: Dict[str, Any]):
         """Update task status and other fields"""
@@ -51,3 +63,7 @@ class TaskStore:
             json.dumps({"updates": updates}, cls=IterationStateEncoder),
         )
         # print(f"Updated task {task_id} and notified {n_subscribers} subscribers")
+
+    def clear_all_task_details(self):
+        """Clear all tasks from Redis"""
+        self.redis.hdel(name=f"task_details")

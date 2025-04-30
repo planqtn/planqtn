@@ -314,35 +314,13 @@ async def list_tasks():
     try:
 
         task_dict = task_store.get_all_tasks()
+        print("task_dict", task_dict)
         all_tasks = []
         for task_id, task_info in task_dict.items():
-            # Handle different task states
-            state = task_info.get("status", "PENDING")
-            status = (
-                "active" if state in ["STARTED", "SUCCESS", "FAILURE"] else "reserved"
-            )
+            all_tasks.append(task_info)
 
-            # Get worker info safely
-            worker = task_info.get("worker")
-            if isinstance(worker, dict):
-                worker_hostname = worker.get("hostname")
-            else:
-                worker_hostname = worker  # In case it's just a string
+        return sorted(all_tasks, key=lambda x: x["received"], reverse=True)
 
-            task = {
-                "id": task_id,
-                "name": task_info.get("name", ""),
-                "state": state,
-                "start_time": task_info.get("started"),
-                "worker": worker_hostname,
-                "args": task_info.get("args", []),
-                "kwargs": task_info.get("kwargs", {}),
-                "info": task_info.get("info", {}),
-                "status": status,
-            }
-            all_tasks.append(task)
-
-        return all_tasks
     except Exception as e:
         print("error", e)
         traceback.print_exc()

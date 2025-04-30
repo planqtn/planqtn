@@ -46,6 +46,5 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    TaskStore(REDIS_URL).clear_all()
-
+    TaskStore(REDIS_URL).clear_all_task_details()
     uvicorn.run(app, host="localhost", port=args.port)

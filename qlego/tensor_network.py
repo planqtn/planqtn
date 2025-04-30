@@ -630,6 +630,10 @@ class TensorNetwork:
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
     ) -> SimplePoly:
+
+        assert (
+            progress_reporter is not None
+        ), "Progress reporter must be provided, it is None"
         free_legs, leg_indices, index_to_legs = self._collect_legs()
 
         open_legs_per_node = defaultdict(list)

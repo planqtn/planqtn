@@ -121,10 +121,25 @@ class WebSocketManager:
                         def sync_handler(event_type):
                             def wrapper(event):
                                 # Get the handler method
-                                handler = getattr(self, f"handle_task_{event_type}")
-                                # Run the async handler in the main event loop
+                                print(
+                                    f"Handling task_{event_type} {type(event)} event: {event}"
+                                )
+
+                                task_args = self.task_store.get_task_details(
+                                    event["uuid"]
+                                )
+
+                                if task_args:
+                                    print("Task args:", task_args)
+                                    event["args"] = json.dumps(
+                                        json.loads(task_args)["args"]
+                                    )
+                                else:
+                                    print("No args yet.")
                                 main_loop.call_soon_threadsafe(
-                                    lambda: asyncio.create_task(handler(event))
+                                    lambda: asyncio.create_task(
+                                        self.broadcast(event, "tasks")
+                                    )
                                 )
 
                             return wrapper
@@ -163,94 +178,6 @@ class WebSocketManager:
 
         # Start the event monitor as a background task
         asyncio.create_task(monitor_events())
-
-    async def handle_task_sent(self, event):
-        # print(f"Handling task_sent event: {event}")
-        task_data = {
-            "type": "task_added",
-            "task": {
-                "id": event["uuid"],
-                "status": "scheduled",
-            },
-        }
-        print(f"Broadcasting task data: {task_data}")
-        await self.broadcast(task_data, "tasks")
-
-    async def handle_task_received(self, event):
-        print(f"Handling task_received event: {event}")
-        task_data = {
-            "type": "task_updated",
-            "task": {
-                "id": event["uuid"],
-                "state": "received",
-            },
-        }
-        print(f"Broadcasting task update: {task_data}")
-        await self.broadcast(task_data, "tasks")
-
-    async def handle_task_started(self, event):
-        # print(f"Handling task_started event: {event}")
-        task_data = {
-            "type": "task_updated",
-            "task": {
-                "id": event["uuid"],
-                "state": "started",
-            },
-        }
-        print(f"Broadcasting task update: {task_data}")
-        await self.broadcast(task_data, "tasks")
-
-    async def handle_task_succeeded(self, event):
-        # Parse the result string into a dictionary
-        result = event["result"]
-        # print(f"Raw result: {result}")
-        if isinstance(result, str):
-            try:
-                # First try parsing as JSON
-                result = json.loads(result)
-            except json.JSONDecodeError:
-                # If that fails, try parsing as a Python dictionary string
-                # Remove any single quotes and convert to double quotes for JSON
-                result_str = result.replace("'", '"')
-                result = json.loads(result_str)
-        # print(f"Parsed result: {result}")
-
-        task_data = {
-            "type": "task_updated",
-            "task": {
-                "id": event["uuid"],
-                "status": "success",
-                "result": {
-                    "polynomial": result["polynomial"],
-                    "normalizer_polynomial": result["normalizer_polynomial"],
-                },
-            },
-        }
-        print(f"Broadcasting task data: {task_data}")
-        await self.broadcast(task_data, "tasks")
-
-    async def handle_task_failed(self, event):
-        task_data = {
-            "type": "task_updated",
-            "task": {
-                "id": event["uuid"],
-                "status": "failed",
-                "info": {"error": str(event.get("exception", "Unknown error"))},
-            },
-        }
-        print(f"Broadcasting task data: {task_data}")
-        await self.broadcast(task_data, "tasks")
-
-    async def handle_task_revoked(self, event):
-        task_data = {
-            "type": "task_updated",
-            "task": {
-                "id": event["uuid"],
-                "status": "revoked",
-            },
-        }
-        print(f"Broadcasting task data: {task_data}")
-        await self.broadcast(task_data, "tasks")
 
 
 # Create a global instance

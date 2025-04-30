@@ -170,104 +170,103 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 ws.onmessage = (event) => {
                     if (isUnmounting) return;
                     console.log("Received task update message:", event.data);
-                    const message = JSON.parse(event.data);
-                    console.log("Parsed message:", message);
-                    if (message.type === 'task_updated') {
-                        const task = message.task;
-                        console.log("Task update:", task);
-                        if (task.status === 'success' && task.result) {
-                            console.log("Task succeeded with result:", task.result);
-                            // Check all cached tensor networks for this task ID
-                            for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                                console.log("Checking cache entry signature:", signature);
-                                if (cacheEntry.taskId === task.id) {
-                                    console.log("Found matching cache entry");
-                                    // Update the cache
-                                    const updatedCacheEntry = {
-                                        taskId: task.id,
-                                        polynomial: task.result.polynomial,
-                                        normalizerPolynomial: task.result.normalizer_polynomial
-                                    };
-                                    weightEnumeratorCache.set(signature, updatedCacheEntry);
+                    const task = JSON.parse(event.data);
+                    console.log("Parsed message:", task);
 
-                                    // If this is the current tensor network, update its state
-                                    const currentTensorNetwork = currentTensorNetworkRef.current;
-                                    console.log("Current tensor network state:", {
-                                        tensorNetwork: currentTensorNetwork,
-                                        signature: currentTensorNetwork?.signature,
-                                        cacheSignature: signature
+                    if (task.type === 'task-succeeded' && task.result) {
+                        task.result = JSON.parse(task.result.replaceAll("'", ''));
+                        console.log("Task succeeded with result:", task.result, typeof task.result);
+                        // Check all cached tensor networks for this task ID
+                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                            console.log("Checking cache entry signature:", signature);
+                            if (cacheEntry.taskId === task.uuid) {
+                                console.log("Found matching cache entry");
+                                // Update the cache
+                                const updatedCacheEntry = {
+                                    taskId: task.uuid,
+                                    polynomial: task.result.polynomial,
+                                    normalizerPolynomial: task.result.normalizer_polynomial
+                                };
+                                weightEnumeratorCache.set(signature, updatedCacheEntry);
+
+                                // If this is the current tensor network, update its state
+                                const currentTensorNetwork = currentTensorNetworkRef.current;
+                                console.log("Current tensor network state:", {
+                                    tensorNetwork: currentTensorNetwork,
+                                    signature: currentTensorNetwork?.signature,
+                                    cacheSignature: signature
+                                });
+
+                                if (currentTensorNetwork?.signature === signature) {
+                                    console.log("Updating current tensor network with result");
+                                    setTensorNetwork(prev => prev ? {
+                                        ...prev,
+                                        weightEnumerator: task.result.polynomial,
+                                        normalizerPolynomial: task.result.normalizer_polynomial,
+                                        isCalculatingWeightEnumerator: false,
+                                        taskId: task.uuid
+                                    } : null);
+
+                                    // Clear the iteration status
+                                    setIterationStatus([]);
+
+                                    // Close the task-specific WebSocket since we're done
+                                    if (taskWebSocket) {
+                                        taskWebSocket.close();
+                                    }
+                                } else {
+                                    console.log("Tensor network signatures don't match:", {
+                                        current: currentTensorNetwork?.signature,
+                                        cache: signature
                                     });
-
-                                    if (currentTensorNetwork?.signature === signature) {
-                                        console.log("Updating current tensor network with result");
-                                        setTensorNetwork(prev => prev ? {
-                                            ...prev,
-                                            weightEnumerator: task.result.polynomial,
-                                            normalizerPolynomial: task.result.normalizer_polynomial,
-                                            isCalculatingWeightEnumerator: false,
-                                            taskId: task.id
-                                        } : null);
-
-                                        // Clear the iteration status
-                                        setIterationStatus([]);
-
-                                        // Close the task-specific WebSocket since we're done
-                                        if (taskWebSocket) {
-                                            taskWebSocket.close();
-                                        }
-                                    } else {
-                                        console.log("Tensor network signatures don't match:", {
-                                            current: currentTensorNetwork?.signature,
-                                            cache: signature
-                                        });
-                                        // Even if we don't have the tensor network selected right now,
-                                        // we should still close any existing WebSocket for this task
-                                        if (taskWebSocket && taskWebSocket.url.includes(task.id)) {
-                                            taskWebSocket.close();
-                                        }
+                                    // Even if we don't have the tensor network selected right now,
+                                    // we should still close any existing WebSocket for this task
+                                    if (taskWebSocket && taskWebSocket.url.includes(task.uuid)) {
+                                        taskWebSocket.close();
                                     }
-                                    break; // Found the matching task, no need to continue
                                 }
+                                break; // Found the matching task, no need to continue
                             }
-                        } else if (task.status === 'failed') {
-                            console.log("Task failed:", task);
-                            // Check all cached tensor networks for this task ID
-                            for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                                if (cacheEntry.taskId === task.id) {
-                                    // If this is the current tensor network, show the error
-                                    const currentTensorNetwork = currentTensorNetworkRef.current;
-                                    if (currentTensorNetwork?.signature === signature) {
-                                        setError(`Task failed: ${task.info?.error || 'Unknown error'}`);
-                                        setTensorNetwork(prev => prev ? {
-                                            ...prev,
-                                            isCalculatingWeightEnumerator: false
-                                        } : null);
-                                    }
-                                    break; // Found the matching task, no need to continue
+                        }
+                    } else if (task.type === 'task-failed') {
+                        console.log("Task failed:", task);
+                        // Check all cached tensor networks for this task.uuid
+                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                            if (cacheEntry.taskId === task.uuid) {
+                                // If this is the current tensor network, show the error
+                                const currentTensorNetwork = currentTensorNetworkRef.current;
+                                if (currentTensorNetwork?.signature === signature) {
+                                    setError(`Task failed: ${task.info?.error || 'Unknown error'}`);
+                                    setTensorNetwork(prev => prev ? {
+                                        ...prev,
+                                        isCalculatingWeightEnumerator: false
+                                    } : null);
                                 }
+                                break; // Found the matching task, no need to continue
                             }
-                        } else if (task.status === 'revoked') {
-                            console.log("Task revoked:", task);
-                            // Check all cached tensor networks for this task ID
-                            for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                                if (cacheEntry.taskId === task.id) {
-                                    console.log("Found matching cache entry");
-                                    setError(`Task ${task.id} was cancelled.`);
+                        }
+                    } else if (task.type === 'task-revoked') {
+                        console.log("Task revoked:", task);
+                        // Check all cached tensor networks for this task.uuid
+                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                            if (cacheEntry.taskId === task.uuid) {
+                                console.log("Found matching cache entry");
+                                setError(`Task ${task.uuid} was cancelled.`);
 
-                                    // If this is the current tensor network, show the error
-                                    const currentTensorNetwork = currentTensorNetworkRef.current;
-                                    if (currentTensorNetwork?.signature === signature) {
-                                        setTensorNetwork(prev => prev ? {
-                                            ...prev,
-                                            isCalculatingWeightEnumerator: false
-                                        } : null);
-                                    }
-                                    weightEnumeratorCache.delete(signature);
-                                    break; // Found the matching task, no need to continue
+                                // If this is the current tensor network, show the error
+                                const currentTensorNetwork = currentTensorNetworkRef.current;
+                                if (currentTensorNetwork?.signature === signature) {
+                                    setTensorNetwork(prev => prev ? {
+                                        ...prev,
+                                        isCalculatingWeightEnumerator: false
+                                    } : null);
                                 }
+                                weightEnumeratorCache.delete(signature);
+                                break; // Found the matching task, no need to continue
                             }
                         }
                     }
+
                 };
 
                 ws.onclose = () => {

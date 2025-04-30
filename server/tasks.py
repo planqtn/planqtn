@@ -71,9 +71,7 @@ class CeleryProgressReporter(ProgressReporter):
         super().__init__(sub_reporter)
 
     def __enter__(self):
-        self.task_store.add_task(
-            self.task.request.id, {"status": "PROGRESS", "result": None}
-        )
+        self.task_store.add_task(self.task)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -166,12 +164,14 @@ def weight_enumerator_task(self, network_dict: dict):
             polynomial_str = str(polynomial)
             normalizer_polynomial_str = str(poly_b)
 
-            return {
-                "polynomial": polynomial_str,
-                "normalizer_polynomial": normalizer_polynomial_str,
-                # "history": progress_reporter.history,
-                "time": end - start,
-            }
+            return json.dumps(
+                {
+                    "polynomial": polynomial_str,
+                    "normalizer_polynomial": normalizer_polynomial_str,
+                    # "history": progress_reporter.history,
+                    "time": end - start,
+                }
+            )
     except Exception as e:
         print("error", e)
         traceback.print_exc()
