@@ -66,4 +66,4 @@ class TaskStore:
 
     def clear_all_task_details(self):
         """Clear all tasks from Redis"""
-        self.redis.hdel(name=f"task_details")
+        self.redis.delete("task_details")

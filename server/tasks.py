@@ -64,7 +64,6 @@ class CeleryProgressReporter(ProgressReporter):
         sub_reporter: ProgressReporter = None,
     ):
         self.task = task
-        self.history = []
         self.start_time = time.time()
         self.task_store = task_store
 
@@ -80,25 +79,12 @@ class CeleryProgressReporter(ProgressReporter):
                 self.task.request.id, {"status": "FAILED", "result": str(exc_value)}
             )
         else:
-            self.task_store.update_task(
-                self.task.request.id, {"status": "SUCCESS", "result": self.history}
-            )
+            self.task_store.update_task(self.task.request.id, {"status": "SUCCESS"})
 
     def handle_result(self, result: Dict[str, Any]):
-        self.history.append(result)
         self.task_store.update_task(
             self.task.request.id,
             {"status": "PROGRESS", "iteration_status": self.iterator_stack},
-        )
-        self.task.update_state(
-            state="PROGRESS",
-            meta={
-                "start_time": self.start_time,
-                "last_update_time": time.time(),
-                "runtime_at_last_update": time.time() - self.start_time,
-                # "iteration_status": self.iterator_stack,
-                # "history": self.history,
-            },
         )
 
 

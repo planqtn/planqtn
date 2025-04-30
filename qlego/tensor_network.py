@@ -1,5 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
+import time
 from typing_extensions import deprecated
 import cotengra as ctg
 
@@ -634,7 +635,11 @@ class TensorNetwork:
         assert (
             progress_reporter is not None
         ), "Progress reporter must be provided, it is None"
-        free_legs, leg_indices, index_to_legs = self._collect_legs()
+        with progress_reporter.enter_phase("collecting legs"):
+            print("sleeping 30 s for collecing legs...")
+            time.sleep(30)
+            print("done sleeping")
+            free_legs, leg_indices, index_to_legs = self._collect_legs()
 
         open_legs_per_node = defaultdict(list)
         for node_idx, node in self.nodes.items():
@@ -649,9 +654,10 @@ class TensorNetwork:
             print("open_legs_per_node", open_legs_per_node)
         traces = self.traces
         if cotengra:
-            traces, _ = self._cotengra_contraction(
-                free_legs, leg_indices, index_to_legs, verbose, progress_reporter
-            )
+            with progress_reporter.enter_phase("cotengra contraction"):
+                traces, _ = self._cotengra_contraction(
+                    free_legs, leg_indices, index_to_legs, verbose, progress_reporter
+                )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
         if self._wep is not None:
             return self._wep

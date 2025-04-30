@@ -76,7 +76,7 @@ class WebSocketManager:
         except Exception as e:
             print(f"Error reading messages for task {task_id}: {e}")
         finally:
-            if pubsub.connection and not pubsub.connection.closed:
+            if pubsub.connection and not pubsub.connection._close:
                 await pubsub.unsubscribe()
                 await pubsub.close()
 

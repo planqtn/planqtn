@@ -32,6 +32,14 @@ const formatTime = (timestamp: number): string => {
     return new Date(timestamp * 1000).toLocaleTimeString();
 };
 
+const formatAverageTime = (avgTime: number): string => {
+    if (avgTime < 1) {
+        return `${(1 / avgTime).toFixed(2)} it/s`;
+    } else {
+        return `${avgTime.toFixed(2)} s/it`;
+    }
+};
+
 const calculateETA = (status: IterationStatus): string => {
     const remainingItems = status.total_size - status.current_item;
     const estimatedTime = remainingItems * status.avg_time_per_item;
@@ -58,7 +66,7 @@ const ProgressBars: React.FC<ProgressBarsProps> = ({ iterationStatus }) => {
                         <HStack justify="space-between" fontSize="xs" color="gray.500">
                             <Text>Started: {formatTime(status.start_time)}</Text>
                             <Text>Duration: {formatDuration(status.duration)}</Text>
-                            <Text>ETA: {calculateETA(status)}</Text>
+                            <Text>ETA: {calculateETA(status)} ({formatAverageTime(status.avg_time_per_item)})</Text>
                         </HStack>
                     </VStack>
                 </Box>

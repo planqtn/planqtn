@@ -164,7 +164,7 @@ const TasksView: React.FC = () => {
                     newTask.exception = event.result || null;
                     break;
                 case 'task-revoked':
-                    newTask.state = 'REVOKED';
+                    newTask.state = 'CANCELLED';
                     newTask.revoked = event.timestamp;
                     break;
             }
@@ -285,6 +285,7 @@ const TasksView: React.FC = () => {
                     console.log('Initial tasks:', response.data);
                     for (const task of response.data) {
                         task.title = parseTaskTitleFromArgs(task.args);
+                        task.state = task.state === 'REVOKED' ? 'CANCELLED' : task.state;
                     }
                     setTasks(response.data);
                     // Only connect WebSocket after successful initial load
@@ -332,7 +333,7 @@ const TasksView: React.FC = () => {
                 return 'yellow';
             case 'STARTED':
                 return 'blue';
-            case 'REVOKED':
+            case 'CANCELLED':
                 return 'orange';
             default:
                 return 'gray';
