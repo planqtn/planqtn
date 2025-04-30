@@ -3,6 +3,7 @@ import traceback
 from celery import Celery
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from galois import GF2
 from pydantic import BaseModel
 from typing import List, Dict, Any, Tuple
@@ -345,4 +346,23 @@ async def list_tasks():
     except Exception as e:
         print("error", e)
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CancelTaskRequest(BaseModel):
+    task_id: str
+
+
+@app.post("/cancel_task")
+async def cancel_task(request: CancelTaskRequest):
+    try:
+        # Revoke the task
+        celery_app.control.revoke(request.task_id, terminate=True)
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Task {request.task_id} has been cancelled",
+            }
+        )
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

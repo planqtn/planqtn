@@ -1,8 +1,8 @@
 import { Box, VStack, Heading, Text, Button, Icon, HStack, IconButton, useColorModeValue, useClipboard, Input, Checkbox, Link, UseToastOptions } from '@chakra-ui/react'
 import { FaTable, FaCube, FaCode, FaCopy } from 'react-icons/fa'
+import { CloseIcon } from '@chakra-ui/icons';
 import { DroppedLego, TensorNetwork, TensorNetworkLeg, LegoServerPayload, Connection, Operation } from '../types.ts'
 import { ParityCheckMatrixDisplay } from './ParityCheckMatrixDisplay.tsx'
-import { BlochSphereLoader } from './BlochSphereLoader.tsx'
 import axios, { AxiosResponse } from 'axios'
 import { useState, useEffect, useRef } from 'react'
 import { getLegoStyle } from '../LegoStyles'
@@ -457,6 +457,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
     const calculateWeightEnumerator = async () => {
         if (!tensorNetwork) return;
+
+        // Clear any existing progress bars
+        setIterationStatus([]);
 
         const signature = tensorNetwork.signature!;
         const cachedEnumerator = weightEnumeratorCache.get(signature);
@@ -1144,6 +1147,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setShowLegPartitionDialog(false);
     };
 
+    const handleCancelTask = async (taskId: string) => {
+        try {
+            await axios.post(`/api/cancel_task`, { task_id: taskId });
+            console.log("Task cancellation requested:", taskId);
+        } catch (error) {
+            console.error("Error cancelling task:", error);
+            setError(`Failed to cancel task: ${error}`);
+        }
+    };
+
     return (
         <Box
             h="100%"
@@ -1300,8 +1313,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                                                     <VStack align="stretch" spacing={4}>
                                                         <Heading size="sm">Calculating Weight Enumerator</Heading>
-                                                        <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
-                                                        <ProgressBars iterationStatus={iterationStatus} />
+                                                        <HStack>
+                                                            <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
+                                                            <IconButton
+                                                                aria-label="Cancel task"
+                                                                icon={<CloseIcon />}
+                                                                size="xs"
+                                                                colorScheme="red"
+                                                                onClick={() => {
+                                                                    const taskId = tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId;
+                                                                    if (taskId) {
+                                                                        handleCancelTask(taskId);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </HStack>
+                                                        <ProgressBars
+                                                            iterationStatus={iterationStatus}
+                                                        />
                                                     </VStack>
                                                 </Box>
                                             </Box>
