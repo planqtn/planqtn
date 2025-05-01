@@ -3,9 +3,10 @@ from fastapi import WebSocket, WebSocketDisconnect
 from celery.events import EventReceiver
 from celery import Celery
 import json
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Optional
 import asyncio
 from contextlib import asynccontextmanager
+from asyncio import Lock
 
 import redis
 
@@ -15,7 +16,8 @@ from server.task_store import TaskStore
 class WebSocketManager:
     def __init__(self):
         self.active_connections: Dict[str, Set[WebSocket]] = {}
-        self.task_update_subscriptions: Dict[str, redis.pubsub.PubSub] = {}
+        self.task_update_subscriptions = {}
+        self._lock = Lock()  # Add lock for thread safety
         self.celery_app: Celery = None
         self.task_store = TaskStore()
 
@@ -46,10 +48,13 @@ class WebSocketManager:
         )
 
     async def connect(self, websocket: WebSocket, channel_id: str):
-        await websocket.accept()
+        await websocket.accept()  # Accept the connection first
 
-        if channel_id not in self.active_connections:
-            self.active_connections[channel_id] = set()
+        async with self._lock:
+            if channel_id not in self.active_connections:
+                self.active_connections[channel_id] = set()
+            self.active_connections[channel_id].add(websocket)
+
             if channel_id.startswith("task_"):
                 task_id = channel_id[5:]
                 print(f"WSManager subscribing to task {task_id}")
@@ -64,8 +69,6 @@ class WebSocketManager:
                 # Start the message reader task
                 asyncio.create_task(self._read_messages(pubsub, task_id))
 
-        self.active_connections[channel_id].add(websocket)
-
     async def _read_messages(self, pubsub: redis.client.PubSub, task_id: str):
         try:
             while True:
@@ -73,35 +76,69 @@ class WebSocketManager:
                 if message is not None:
                     # print(f"Received message for task {task_id}: {message}")
                     await self.broadcast_task_update(message)
+        except RuntimeError as e:
+            if "pubsub connection not set" in str(e):
+                print(f"Redis PubSub connection not set for task {task_id}")
+                return
         except Exception as e:
-            print(f"Error reading messages for task {task_id}: {e}")
+            if e.args[0] == "Connection closed by server.":
+                print(f"Redis PubSub connection closed by server for task {task_id}")
+            else:
+                print(f"Error reading messages for task {task_id}: {e}")
+                traceback.print_exc()
         finally:
             if pubsub.connection and not pubsub.connection._close:
                 await pubsub.unsubscribe()
                 await pubsub.close()
 
     async def disconnect(self, websocket: WebSocket, channel_id: str):
-        if channel_id in self.active_connections:
+        async with self._lock:
+            if channel_id not in self.active_connections:
+                return
+
+            if websocket not in self.active_connections[channel_id]:
+                return  # Already disconnected
+
+            # Remove the websocket from active connections
             self.active_connections[channel_id].remove(websocket)
+
+            # If this was the last connection in the channel
             if not self.active_connections[channel_id]:
                 del self.active_connections[channel_id]
+
                 # Clean up the PubSub connection if it exists
                 if channel_id in self.task_update_subscriptions:
-                    pubsub = self.task_update_subscriptions[channel_id]
-                    await pubsub.unsubscribe()
-                    await pubsub.close()
-                    del self.task_update_subscriptions[channel_id]
+                    try:
+                        pubsub = self.task_update_subscriptions[channel_id]
+                        await pubsub.unsubscribe()
+                        await pubsub.close()
+                    except Exception as e:
+                        print(f"Error closing PubSub connection: {e}")
+                    finally:
+                        del self.task_update_subscriptions[channel_id]
 
     async def broadcast(self, message: dict, channel_id: str):
-        # print(f"Broadcasting to channel {channel_id}: {message}")
-        if channel_id in self.active_connections:
-            for connection in self.active_connections[channel_id]:
-                try:
-                    # print(f"Sending to connection: {message}")
-                    await connection.send_json(message)
-                except WebSocketDisconnect:
-                    # print(f"Connection disconnected while broadcasting to {channel_id}")
-                    self.disconnect(connection, channel_id)
+        async with self._lock:
+            if channel_id not in self.active_connections:
+                return
+
+            # Make a copy of the connections to avoid modification during iteration
+            connections = list(self.active_connections[channel_id])
+
+        # Broadcast outside the lock to minimize lock contention
+        disconnected = []
+        for connection in connections:
+            try:
+                await connection.send_json(message)
+            except WebSocketDisconnect:
+                disconnected.append(connection)
+            except Exception as e:
+                print(f"Error broadcasting to connection: {e}")
+                disconnected.append(connection)
+
+        # Handle any disconnections that occurred during broadcast
+        for connection in disconnected:
+            await self.disconnect(connection, channel_id)
 
     def set_celery_app(self, celery_app: Celery):
         self.celery_app = celery_app
@@ -175,6 +212,10 @@ class WebSocketManager:
 
         # Start the event monitor as a background task
         asyncio.create_task(monitor_events())
+
+    async def get_connections(self, channel_id: str) -> Set[WebSocket]:
+        async with self._lock:
+            return set(self.active_connections.get(channel_id, set()))
 
 
 # Create a global instance

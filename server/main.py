@@ -12,6 +12,8 @@ def configure_cors(ui_port: int = 5173, ui_host: str = "localhost"):
         CORSMiddleware,
         allow_origins=[
             f"http://{ui_host}:{ui_port}",
+            f"ws://{ui_host}:{ui_port}",
+            f"wss://{ui_host}:{ui_port}",
             f"https://{ui_host}:{ui_port}",
         ],
         allow_credentials=True,
@@ -45,6 +47,10 @@ if __name__ == "__main__":
     configure_cors(args.ui_port, args.ui_host)
 
     import uvicorn
+
+    print(
+        f"Running server with frontend host {args.ui_host} and port {args.ui_port}, backend port {args.port}"
+    )
 
     TaskStore(REDIS_URL).clear_all_task_details()
     uvicorn.run(app, host="0.0.0.0", port=args.port)

@@ -7,9 +7,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Default ports
-BACKEND_PORT=5005
-FRONTEND_PORT=5173
-DEV_MODE=false
+BACKEND_PORT=${BACKEND_PORT:-5005}
+FRONTEND_PORT=${FRONTEND_PORT:-5173}
+FRONTEND_HOST=${FRONTEND_HOST:-localhost}
+DEV_MODE=${DEV_MODE:-false}
+NO_BUILD=${NO_BUILD:-false}
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -21,6 +23,14 @@ while [[ $# -gt 0 ]]; do
         --frontend-port)
             FRONTEND_PORT="$2"
             shift 2
+            ;;
+        --ui-host)
+            FRONTEND_HOST="$2"
+            shift 2
+            ;;
+        --no-build)
+            NO_BUILD=true
+            shift
             ;;
         --dev)
             DEV_MODE=true
@@ -184,7 +194,7 @@ FLOWER_PID=$!
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-(cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT") > "$SERVER_LOG" 2>&1 &
+(cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
 # Function to check if backend API is responding
@@ -229,14 +239,15 @@ fi
 
 # Start the frontend and redirect output to log file
 if [ "$DEV_MODE" = false ]; then
-    echo "Building frontend..."
-    if ! (cd ui && npm run build); then
-        echo -e "${RED}Failed to build frontend${NC}"
-        exit 1
+    if [ "$NO_BUILD" = false ]; then
+        echo "Building frontend..." 
+        if ! (cd ui && npm run build); then
+            echo -e "${RED}Failed to build frontend${NC}"
+            exit 1
+        fi
     fi
-    echo "Starting frontend in preview mode..."
-    export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
-    (cd ui && npm run preview -- --port "$FRONTEND_PORT") > "$UI_LOG" 2>&1 &
+    echo "Starting frontend in production mode..."    
+    (cd ui && npm run serve -- --port "$FRONTEND_PORT" ) > "$UI_LOG" 2>&1 &
     FRONTEND_PID=$!
 else
     echo "Starting frontend in development mode..."

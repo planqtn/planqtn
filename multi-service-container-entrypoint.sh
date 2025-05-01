@@ -53,7 +53,8 @@ FLOWER_LOG="logs/flower.log"
 echo "Starting Redis server..."
 redis-server --daemonize yes
 
-redis-cli ping
+redis-cli ping || exit 1
+
 
 echo Starting Celery worker...
 celery -A server.tasks worker -E --loglevel=INFO > "$CELERY_LOG" 2>&1 &
@@ -82,7 +83,6 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
 fi
 
 echo "It seems the backend started..."
-ps ax 
 cat $SERVER_LOG
 
 if ! kill -0 $CELERY_PID 2>/dev/null; then
@@ -92,26 +92,12 @@ if ! kill -0 $CELERY_PID 2>/dev/null; then
 fi
 
 
-# Start the frontend and redirect output to log file
-if [ "$DEV_MODE" = false ]; then
-    echo "Building frontend..."
-    if ! (cd ui && npm run build); then
-        echo -e "${RED}Failed to build frontend${NC}"
-        exit 1
-    fi
-    echo "Starting frontend in preview mode with host $FRONTEND_HOST and port $FRONTEND_PORT"
-    export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
-    (cd ui && npm run preview -- --port "$FRONTEND_PORT" ) > "$UI_LOG" 2>&1 &
-    FRONTEND_PID=$!
+echo "Starting frontend with host $FRONTEND_HOST and port $FRONTEND_PORT connecting to API server on localhost:$BACKEND_PORT"
 
-    echo frontend pid: $FRONTEND_PID
-else
-    echo "Starting frontend in development mode with host $FRONTEND_HOST and port $FRONTEND_PORT"
-    export VITE_BACKEND_URL="http://localhost:$BACKEND_PORT"
-    (cd ui && npm run dev -- --port "$FRONTEND_PORT" ) > "$UI_LOG" 2>&1 &
-    FRONTEND_PID=$!
-    echo frontend pid: $FRONTEND_PID
-fi
+(cd ui && npm run serve -- --port "$FRONTEND_PORT" ) > "$UI_LOG" 2>&1 &
+FRONTEND_PID=$!
+
+echo frontend pid: $FRONTEND_PID
 
 # Wait a bit for the frontend to start and check if it's still running
 sleep 2
@@ -121,7 +107,6 @@ if ! kill -0 $FRONTEND_PID 2>/dev/null; then
     exit 1
 fi
 
-ps ax 
 cat $SERVER_LOG
 echo "Press Ctrl+C to stop all servers"
 

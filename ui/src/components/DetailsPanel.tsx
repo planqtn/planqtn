@@ -93,19 +93,42 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }>>([])
     const currentTensorNetworkRef = useRef<TensorNetwork | null>(null)
 
+    const closeTaskWebSocket = () => {
+        if (taskWebSocket) {
+            try {
+                console.log("Closing task WebSocket")
+                taskWebSocket.close();
+            } catch (error) {
+                console.error("Error closing task WebSocket:", error);
+            }
+        }
+    }
+
     // Keep the ref updated with the latest tensorNetwork
     useEffect(() => {
         currentTensorNetworkRef.current = tensorNetwork
+        if (!tensorNetwork) {
+            setIterationStatus([])
+            closeTaskWebSocket()
+        }
     }, [tensorNetwork])
 
     // Clean up WebSocket on unmount
     useEffect(() => {
         return () => {
-            if (taskWebSocket) {
-                taskWebSocket.close();
-            }
+            closeTaskWebSocket()
         };
     }, []);
+
+
+    // Clean up WebSocket on unmount
+    useEffect(() => {
+        if (selectedLego) {
+            closeTaskWebSocket()
+        }
+    }, [selectedLego]);
+
+
 
     const ensureProgressBarWebSocket = (taskId: string) => {
         // Close any existing WebSocket connection
@@ -135,6 +158,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         ws.onerror = (event) => {
             console.error("Task update WebSocket error for task:", taskId, event);
+            try {
+                ws.close();
+            } catch (error) {
+                console.error("Error closing task WebSocket after error:", error);
+            }
+            setTaskWebSocket(null);
         };
 
         setTaskWebSocket(ws);
@@ -520,11 +549,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <Box>
                         Check status at{' '}
                         <Link
-                            href={`/tasks/${taskId}`}
+                            href={`/tasks`}
                             color="gray.100"
                             isExternal
                         >
-                            /tasks/{taskId}
+                            /tasks
                         </Link>
                     </Box>
                 ),
