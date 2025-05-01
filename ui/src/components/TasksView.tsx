@@ -17,6 +17,7 @@ import axios from 'axios';
 import { Panel, PanelGroup } from 'react-resizable-panels';
 import { ResizeHandle } from './ResizeHandle';
 import ProgressBars from './ProgressBars';
+import { useLocation } from 'react-router-dom';
 
 interface CeleryEvent {
     hostname: string;
@@ -77,6 +78,19 @@ interface TaskUpdateMessage {
 }
 
 const TasksView: React.FC = () => {
+    const location = useLocation();
+
+    // Add title effect
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const title = params.get('title');
+        if (title) {
+            document.title = `${decodeURIComponent(title)} - tasks`;
+        } else {
+            document.title = 'PlanqTN Task list';
+        }
+    }, [location]);
+
     // State hooks
     const [tasks, setTasks] = useState<Task[]>([]);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
