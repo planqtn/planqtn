@@ -57,11 +57,6 @@ interface Task {
     revoked: number | null;
 }
 
-interface WebSocketMessage {
-    type: 'task_added' | 'task_updated' | 'task_removed';
-    task?: Task;
-    taskId?: string;
-}
 
 interface TaskUpdateMessage {
     type: string;
@@ -185,10 +180,8 @@ const TasksView: React.FC = () => {
             return;
         }
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//localhost:5005/ws/tasks`;
 
-        ws.current = new WebSocket(wsUrl);
+        ws.current = new WebSocket(`/wsapi/ws/tasks`);
 
         ws.current.onopen = () => {
             setIsConnected(true);
@@ -232,7 +225,7 @@ const TasksView: React.FC = () => {
             }
 
             // Create new WebSocket connection for specific task
-            const ws = new WebSocket(`ws://localhost:5005/ws/task/${selectedTask.uuid}`);
+            const ws = new WebSocket(`/wsapi/ws/task/${selectedTask.uuid}`);
 
             ws.onopen = () => {
                 console.log("Task update WebSocket opened for task:", selectedTask.uuid);

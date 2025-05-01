@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
                     target: env.VITE_BACKEND_URL || 'http://localhost:5005',
                     changeOrigin: true,
                     rewrite: (path) => path.replace(/^\/api/, '')
+                },
+                '/wsapi': {
+                    target: env.VITE_BACKEND_WS_URL || 'ws://localhost:5005',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/wsapi/, '')
                 }
             }
         }

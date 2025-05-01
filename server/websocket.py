@@ -130,12 +130,9 @@ class WebSocketManager:
                                 )
 
                                 if task_args:
-                                    print("Task args:", task_args)
                                     event["args"] = json.dumps(
                                         json.loads(task_args)["args"]
                                     )
-                                else:
-                                    print("No args yet.")
                                 main_loop.call_soon_threadsafe(
                                     lambda: asyncio.create_task(
                                         self.broadcast(event, "tasks")

@@ -114,7 +114,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
 
         // Create new WebSocket connection for specific task
-        const ws = new WebSocket(`ws://localhost:5005/ws/task/${taskId}`);
+        const ws = new WebSocket(`/wsapi/ws/task/${taskId}`);
 
         ws.onopen = () => {
             console.log("Task update WebSocket opened for task:", taskId);
@@ -159,7 +159,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             }
 
             try {
-                ws = new WebSocket('ws://localhost:5005/ws/tasks');
+                ws = new WebSocket('/wsapi/ws/tasks');
 
                 ws.onopen = () => {
                     if (!isUnmounting) {
@@ -344,7 +344,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     taskWebSocket.close();
                 }
 
-                taskWs = new WebSocket(`ws://localhost:5005/ws/task/${taskId}`);
+                taskWs = new WebSocket(`/wsapi/ws/task/${taskId}`);
 
                 taskWs.onopen = () => {
                     if (!isUnmounting) {

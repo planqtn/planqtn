@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Default ports and host
-BACKEND_PORT=5005
+BACKEND_PORT=${BACKEND_PORT:-5005}
 FRONTEND_PORT=${FRONTEND_PORT:-5173}
 FRONTEND_HOST=${FRONTEND_HOST:-localhost}
 DEV_MODE=false
@@ -43,22 +43,28 @@ mkdir -p logs
 SERVER_LOG="logs/server.log"
 UI_LOG="logs/ui.log"
 CELERY_LOG="logs/celery.log"
+FLOWER_LOG="logs/flower.log"
 
 # Clear existing logs
 > "$SERVER_LOG"
 > "$UI_LOG"
 > "$CELERY_LOG"
-
+> "$FLOWER_LOG"
 echo "Starting Redis server..."
 redis-server --daemonize yes
 
 redis-cli ping
 
 echo Starting Celery worker...
-celery -A server.tasks worker --loglevel=INFO > "$CELERY_LOG" 2>&1 &
+celery -A server.tasks worker -E --loglevel=INFO > "$CELERY_LOG" 2>&1 &
 CELERY_PID=$!   
 
-echo celery pid: $CELERY_PID
+
+export FLOWER_UNAUTHENTICATED_API=true
+
+echo Starting Flower worker...
+celery -A server.tasks flower > "$FLOWER_LOG" 2>&1 &
+FLOWER_PID=$!
 
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend with frontend host $FRONTEND_HOST and port $FRONTEND_PORT"
@@ -123,5 +129,7 @@ echo "Press Ctrl+C to stop all servers"
 (tail -f "$SERVER_LOG" | sed 's/^/[Server] /' & 
 tail -f "$UI_LOG" | sed 's/^/[UI] /' &
 tail -f "$CELERY_LOG" | sed 's/^/[Celery] /' &    
+tail -f "$FLOWER_LOG" | sed 's/^/[Flower] /' &
+
 wait -n)
 
