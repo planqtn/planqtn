@@ -21,6 +21,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt -r requirements.dev.txt
-      - name: Run tests
+      - name: Run tests      
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest qlego

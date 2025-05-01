@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from qlego.legos import Legos
+from qlego.progress_reporter import TqdmProgressReporter
 from qlego.tensor_network import TensorNetwork
 
 
@@ -91,7 +92,9 @@ for axrow, cotengra in zip(axs, [True, False]):
 
     start = time.time()
 
-    we = tn.stabilizer_enumerator_polynomial(progress_bar=True, cotengra=cotengra)
+    we = tn.stabilizer_enumerator_polynomial(
+        progress_reporter=TqdmProgressReporter(), cotengra=cotengra
+    )
 
     end = time.time()
     print(f"Total time cotengra={cotengra}: {end-start:0.3f}s")

@@ -11,6 +11,7 @@ from qlego.codes.surface_code import SurfaceCodeTN
 from qlego.legos import Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, sprint, sstr, tensor_product
+from qlego.progress_reporter import TqdmProgressReporter
 from qlego.symplectic import weight
 from qlego.tensor_network import (
     PAULI_I,
@@ -767,7 +768,7 @@ def test_double_trace_602_identity_stopper_to_422():
     assert np.array_equal(conjoined.h, Legos.stab_code_parity_422)
 
     assert tn.stabilizer_enumerator_polynomial(
-        verbose=True, progress_bar=True
+        verbose=True, progress_reporter=TqdmProgressReporter()
     )._dict == {0: 1, 4: 3}
 
 
@@ -813,7 +814,7 @@ def test_twisted_toric_code():
     tn.self_trace("1", "34", [2], [11])
 
     poly = tn.stabilizer_enumerator_polynomial(
-        verbose=True, progress_bar=True, cotengra=False
+        verbose=True, progress_reporter=TqdmProgressReporter(), cotengra=False
     )
 
     assert poly[0] == 1
@@ -839,11 +840,11 @@ def test_quadruple_trace_422_into_422():
     tn.self_trace("18", "19", [2], [2])
     tn.self_trace("18", "19", [3], [3])
 
-    # tn.conjoin_nodes(verbose=True, progress_bar=True)
+    # tn.conjoin_nodes(verbose=True, progress_reporter=TqdmProgressReporter())
 
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
-        progress_bar=True,
+        progress_reporter=TqdmProgressReporter(),
     )._dict == {0: 1, 2: 3}
 
 
@@ -872,7 +873,7 @@ def test_two_bell_states():
     )
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
-        progress_bar=True,
+        progress_reporter=TqdmProgressReporter(),
     )._dict == {0: 1, 2: 6, 4: 9}
 
 
@@ -916,7 +917,7 @@ def test_two_512_tensor_merge_step_by_step():
         print("============== CONJOINED WEP ================================")
         conjoined_wep = tn.conjoin_nodes().stabilizer_enumerator_polynomial(
             verbose=True,
-            progress_bar=True,
+            progress_reporter=TqdmProgressReporter(),
             open_legs=open_legs,
         )
         conjoined_wep_str = (
@@ -930,7 +931,7 @@ def test_two_512_tensor_merge_step_by_step():
         print("============== TN WEP ================================")
         tn_wep = tn.stabilizer_enumerator_polynomial(
             verbose=True,
-            progress_bar=True,
+            progress_reporter=TqdmProgressReporter(),
             open_legs=open_legs,
             cotengra=False,
         )
@@ -990,6 +991,6 @@ def test_disconnected_networks():
 
     wep = tn.stabilizer_enumerator_polynomial(
         verbose=True,
-        progress_bar=False,
+        progress_reporter=TqdmProgressReporter(),
     )
     assert wep._dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}

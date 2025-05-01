@@ -1,7 +1,9 @@
-# Quantum Lego (temporary name)
+<p align="center">
+<img src="https://github.com/user-attachments/assets/37d8d8e8-e5a4-4f6e-bbf3-3bbe1eb872d5" width="300"></img>
+</p>
 
 
-We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
+Welcome to the PlanqTN! We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
 
 
 The project has two main components currently in the same repo: 
@@ -12,13 +14,31 @@ The project has two main components currently in the same repo:
 You are seeing an early preview; there are many breaking changes expected in the library and the app, including significant design changes. Exciting times! 
 
 
-# Installation instructions for the UI 
+# Running the UI locally 
+
+Only Docker is supported for regular users. If you want to deal with installing all the bells and whistles or just don't like containers, see the Development section for setup instructions. 
+
+1. Install Docker (Desktop) or podman 
+2. Run ./docker_build_and_run.sh 
+
+Then, open http://localhost:5173 in your browser, and you should see a screen similar as below:
+
+
+![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
+
+
+
+# Development instructions
+
+
+## Installation instructions for the UI development 
 
 Open a Linux terminal. On Windows, use WSL2. On a Mac, a regular terminal will be okay. I haven't tested the tools on an actual Linux Desktop instance yet, but I see no reason why it wouldn't work. 
 
 1. The tool requires the latest version of [NodeJS](https://nodejs.org/en) and Python 3.10+. Make sure they are available. 
-2. Clone the repo (please use git, so that you can be up to date with the rapidly evolving changes)
-3. Run the interactive setup script, which will create a Python virtualenv and install Python and Node.js dependencies 
+2. Please ensure redis-server is installed and running on the standard port (check with `redis-client ping` - should respond with `PONG`)
+3. Clone the repo (please use git, so that you can be up to date with the rapidly evolving changes)
+4. Run the interactive setup script, which will create a Python virtualenv and install Python and Node.js dependencies 
 ```
 ./setup.sh
 ```
@@ -44,15 +64,12 @@ Press Ctrl+C to stop all servers
 [UI]   ➜  Network: http://172.18.132.212:5173/
 ```
 
-Then, open http://localhost:5173 in your browser, and you should see a screen similar as below:
 
 
-![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
-
-⚠️ WARNING ⚠️ If you kick off a weight enumerator calculation for a larger/complex tensor network, and you kill the start script with Ctrl + C (Cmd + C), the server might keep running in the background. In this case, open a new terminal and use the `./force_stop.sh` script. 
+The `./force_stop.sh` script helps to cleanup processes if things are still running after shutdown. 
 
 
-## Port clashing
+### Port clashing
 
 The default ports for the backend server are 5005 and 5173 for the UI. If you have any clashes, you can change both ports with `--backend-port` and `--frontend-port`. For example:
 
@@ -60,13 +77,9 @@ The default ports for the backend server are 5005 and 5173 for the UI. If you ha
 ./start.sh --backend-port 8080 --frontend-port 8081
 ```
 
-## Development instructions
-
-
-There is no continuous integration yet (follow issue #33 for that), until that is done, I can't really take contributions. However, if you want to try things out, or prepare for the day when contributions are welcome, here are some instructions: 
-
 
 For development, please `pip install -r requirements.dev.txt` and use `./start.sh --dev`. For convenience you can use `hack/rerun ./start.sh --dev` which allows for hot-reload of the UI changes and watches python files as well (using [entr](https://github.com/eradman/entr), so you'll need to install that). 
+
 
 
 
@@ -86,6 +99,7 @@ from galois import GF2
 
 from qlego.codes.compass_code import CompassCodeTN
 from qlego.codes.css_tanner_code import CssTannerCodeTN
+from qlego.progress_reporter import TqdmProgressReporter
 
 hz = GF2(
     [
@@ -107,6 +121,6 @@ hx = GF2(
 
 tn = CssTannerCodeTN(hx, hz)
 
-wep = tn.stabilizer_enumerator_polynomial(progress_bar=True, verbose=False)
+wep = tn.stabilizer_enumerator_polynomial(progress_reporter=TqdmProgressReporter(), verbose=False)
 print(wep)
 ```

@@ -20,7 +20,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt
+          pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt -r server/requirements.dev.txt
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest server

@@ -1,4 +1,8 @@
-fastapi==0.109.2
-uvicorn==0.27.1
-pydantic==2.6.1
-python-dotenv==1.0.1 
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+flower
+celery
+requests
+redis

@@ -9,6 +9,7 @@ from qlego.codes.compass_code import CompassCodeTN
 from qlego.linalg import gauss
 from qlego.parity_check import sprint
 from qlego.legos import Legos
+from qlego.progress_reporter import TqdmProgressReporter
 from qlego.tensor_network import (
     PAULI_I,
     PAULI_X,
@@ -59,7 +60,7 @@ def compass_code_from_surface_code_via_gauge_fixing():
 
     print(
         "WEP from compass TN:",
-        tn.stabilizer_enumerator_polynomial(progress_bar=True),
+        tn.stabilizer_enumerator_polynomial(progress_reporter=TqdmProgressReporter()),
     )
 
     # conjoined = tn.conjoin_nodes()
@@ -237,12 +238,12 @@ def compass_code_from_tanner():
         tn.stabilizer_enumerator_polynomial(
             # legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
             verbose=False,
-            progress_bar=True,
+            progress_reporter=TqdmProgressReporter(),
             summed_legs=[(f"q{i}", 0) for i in range(hx.shape[1])],
         ),
     )
 
-    # conjoined = tn.conjoin_nodes(verbose=False, progress_bar=False)
+    # conjoined = tn.conjoin_nodes(verbose=False)
     # print("---")
     # sprint(conjoined.h)
 
@@ -279,7 +280,7 @@ def time_compass_code_cotengra_contraction():
     start = time.time()
     print(
         tn.stabilizer_enumerator_polynomial(
-            verbose=False, progress_bar=True, cotengra=True
+            verbose=False, progress_reporter=TqdmProgressReporter(), cotengra=True
         )
     )
 
@@ -304,6 +305,6 @@ if __name__ == "__main__":
         )
     )
     wep = tn.stabilizer_enumerator_polynomial(
-        verbose=False, progress_bar=True, cotengra=True
+        verbose=False, progress_reporter=TqdmProgressReporter(), cotengra=True
     )
     print(wep)

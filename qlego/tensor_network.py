@@ -1,5 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
+import time
 from typing_extensions import deprecated
 import cotengra as ctg
 
@@ -12,6 +13,7 @@ from tqdm import tqdm
 from qlego.legos import LegoAnnotation, Legos
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, sprint, sstr, tensor_product
+from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
 from qlego.simple_poly import SimplePoly
 from qlego.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
@@ -416,7 +418,9 @@ class TensorNetwork:
         return tree, max_pte_legs
 
     def conjoin_nodes(
-        self, verbose: bool = False, progress_bar: bool = False
+        self,
+        verbose: bool = False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
     ) -> "StabilizerCodeTensorEnumerator":
         # If there's only one node and no traces, return it directly
         if len(self.nodes) == 1 and len(self.traces) == 0:
@@ -429,8 +433,9 @@ class TensorNetwork:
         ]
         node_to_pte = {node.idx: i for i, node in enumerate(nodes)}
 
-        prog = lambda x: x if not progress_bar else tqdm(x, leave=False)
-        for node_idx1, node_idx2, join_legs1, join_legs2 in prog(self.traces):
+        for node_idx1, node_idx2, join_legs1, join_legs2 in progress_reporter.iterate(
+            self.traces, "Conjoining nodes", len(self.traces)
+        ):
             if verbose:
                 print(
                     f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
@@ -590,7 +595,7 @@ class TensorNetwork:
         leg_indices,
         index_to_legs,
         verbose=False,
-        progress_bar=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
         **cotengra_opts,
     ):
 
@@ -603,12 +608,12 @@ class TensorNetwork:
 
         contengra_params = {
             "minimize": "size",
-            "parallel": True,
+            "parallel": False,
         }
         contengra_params.update(cotengra_opts)
         opt = ctg.HyperOptimizer(
             **contengra_params,
-            progbar=progress_bar,
+            progbar=not isinstance(progress_reporter, DummyProgressReporter),
         )
 
         self._cot_tree = opt.search(inputs, output, size_dict)
@@ -623,10 +628,16 @@ class TensorNetwork:
         self,
         open_legs: List[Tuple[int, int]] = [],
         verbose: bool = False,
-        progress_bar: bool = False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
     ) -> SimplePoly:
-        free_legs, leg_indices, index_to_legs = self._collect_legs()
+
+        assert (
+            progress_reporter is not None
+        ), "Progress reporter must be provided, it is None"
+
+        with progress_reporter.enter_phase("collecting legs"):
+            free_legs, leg_indices, index_to_legs = self._collect_legs()
 
         open_legs_per_node = defaultdict(list)
         for node_idx, node in self.nodes.items():
@@ -641,16 +652,17 @@ class TensorNetwork:
             print("open_legs_per_node", open_legs_per_node)
         traces = self.traces
         if cotengra:
-            traces, _ = self._cotengra_contraction(
-                free_legs, leg_indices, index_to_legs, verbose, progress_bar
-            )
+            with progress_reporter.enter_phase("cotengra contraction"):
+                traces, _ = self._cotengra_contraction(
+                    free_legs, leg_indices, index_to_legs, verbose, progress_reporter
+                )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
         if self._wep is not None:
             return self._wep
 
         if len(self.traces) == 0 and len(self.nodes) == 1:
             return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial(
-                verbose=verbose, progress_bar=progress_bar
+                verbose=verbose, progress_reporter=progress_reporter
             )
 
         parity_check_enums = {}
@@ -673,7 +685,9 @@ class TensorNetwork:
             #         calc == parity_check_enums[hkey]
             #     ), f"for key {hkey}\n calc\n{calc}\n vs retrieved\n{parity_check_enums[hkey]}"
             tensor = node.stabilizer_enumerator_polynomial(
-                open_legs=traced_legs, verbose=verbose, progress_bar=progress_bar
+                open_legs=traced_legs,
+                verbose=verbose,
+                progress_reporter=progress_reporter,
             )
             if len(traced_legs) == 0:
                 tensor = {(): tensor}
@@ -684,12 +698,9 @@ class TensorNetwork:
                 truncate_length=self.truncate_length,
             )
 
-        prog = lambda x: (
-            x
-            if not progress_bar
-            else tqdm(x, leave=False, desc=f"{len(traces)} traces")
-        )
-        for node_idx1, node_idx2, join_legs1, join_legs2 in prog(traces):
+        for node_idx1, node_idx2, join_legs1, join_legs2 in progress_reporter.iterate(
+            traces, f"Tracing {len(traces)} legs", len(traces)
+        ):
             if verbose:
                 print(
                     f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
@@ -715,7 +726,7 @@ class TensorNetwork:
                         (node_idx2, leg) if isinstance(leg, int) else leg
                         for leg in join_legs2
                     ],
-                    progress_bar=progress_bar,
+                    progress_reporter=progress_reporter,
                     verbose=verbose,
                 )
                 for node in pte.nodes:
@@ -754,7 +765,7 @@ class TensorNetwork:
                         for leg in join_legs2
                     ],
                     verbose=verbose,
-                    progress_bar=progress_bar,
+                    progress_reporter=progress_reporter,
                 )
 
                 for node in pte.nodes:
@@ -837,9 +848,13 @@ class TensorNetwork:
             self._wep = self._wep.normalize(verbose=verbose)
         return self._wep
 
-    def stabilizer_enumerator(self, verbose=False, progress_bar=False):
+    def stabilizer_enumerator(
+        self,
+        verbose=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+    ):
         wep = self.stabilizer_enumerator_polynomial(
-            verbose=verbose, progress_bar=progress_bar
+            verbose=verbose, progress_reporter=progress_reporter
         )
         return wep._dict
 
@@ -927,7 +942,7 @@ class _PartiallyTracedEnumerator:
         pte2,
         join_legs1,
         join_legs2,
-        progress_bar: bool = False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
         verbose: bool = False,
     ):
         assert len(join_legs1) == len(join_legs2)
@@ -952,18 +967,11 @@ class _PartiallyTracedEnumerator:
         ]
         # print(f"kept indices: {kept_indices}")
 
-        def prog(x):
-            return (
-                x
-                if not progress_bar
-                else tqdm(
-                    x,
-                    leave=False,
-                    desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
-                )
-            )
-
-        for k1 in prog(self.tensor.keys()):
+        for k1 in progress_reporter.iterate(
+            iterable=self.tensor.keys(),
+            desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
+            total_size=len(list(self.tensor.keys())),
+        ):
             k1_gf2 = GF2(k1)
             for k2 in pte2.tensor.keys():
                 k2_gf2 = GF2(k2)
@@ -1009,7 +1017,11 @@ class _PartiallyTracedEnumerator:
         )
 
     def self_trace(
-        self, join_legs1, join_legs2, progress_bar: bool = False, verbose: bool = False
+        self,
+        join_legs1,
+        join_legs2,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+        verbose: bool = False,
     ):
         assert len(join_legs1) == len(join_legs2)
         join_length = len(join_legs1)
@@ -1037,18 +1049,11 @@ class _PartiallyTracedEnumerator:
         if verbose:
             print(f"[self_trace] kept indices: {kept_indices}")
 
-        def prog(x):
-            return (
-                x
-                if not progress_bar
-                else tqdm(
-                    x,
-                    leave=False,
-                    desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
-                )
-            )
-
-        for old_key in prog(self.tensor.keys()):
+        for old_key in progress_reporter.iterate(
+            iterable=self.tensor.keys(),
+            desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
+            total_size=len(list(self.tensor.keys())),
+        ):
             if not np.array_equal(
                 sslice(GF2(old_key), join_indices1),
                 sslice(GF2(old_key), join_indices2),

@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast, Editable, EditableInput, EditablePreview, Spacer } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
@@ -17,7 +17,8 @@ import { FuseLegos } from './transformations/FuseLegos'
 import { InjectTwoLegged } from './transformations/InjectTwoLegged'
 import { AddStopper } from './transformations/AddStopper'
 import { findConnectedComponent } from './utils/TensorNetwork'
-
+import { randomPlankterName } from './utils/RandomPlankterNames'
+import { useLocation, useNavigate } from 'react-router-dom'
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
@@ -86,8 +87,39 @@ function findClosestDanglingLeg(dropPosition: { x: number, y: number }, droppedL
     return closestLego && closestLegIndex !== -1 ? { lego: closestLego, legIndex: closestLegIndex } : null;
 }
 
+const LegoStudioView: React.FC = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [currentTitle, setCurrentTitle] = useState<string>("");
 
-function App() {
+    // Add title effect at the top
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        let title = params.get('title');
+
+        if (!title) {
+            // Generate a new random title if none exists
+            title = `PlanqTN - ${randomPlankterName()}`;
+            // Update URL with the new title
+            const newParams = new URLSearchParams(params);
+            newParams.set('title', title);
+            navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, { replace: true });
+        }
+
+        document.title = title;
+        setCurrentTitle(title);
+    }, [location, navigate]);
+
+    const handleTitleChange = (newTitle: string) => {
+        if (newTitle.trim()) {
+            const params = new URLSearchParams(location.search);
+            params.set('title', newTitle);
+            navigate(`${location.pathname}?${params.toString()}${location.hash}`, { replace: true });
+            document.title = newTitle;
+            setCurrentTitle(newTitle);
+        }
+    };
+
     const newInstanceId = (currentLegos: DroppedLego[]): string => {
         const maxInstanceId = currentLegos.length > 0 ? (Math.max(...currentLegos.map(lego => parseInt(lego.instanceId)))) : 0
         return String(maxInstanceId + 1)
@@ -644,7 +676,7 @@ function App() {
                         if (newLegos.length === 0) {
                             setTensorNetwork(null);
                         } else {
-                            const newNetwork = {
+                            let newNetwork = {
                                 legos: newLegos,
                                 connections: newConnections
                             } as TensorNetwork;
@@ -658,7 +690,7 @@ function App() {
                             newLegos.some(l => l.instanceId === conn.from.legoId) &&
                             newLegos.some(l => l.instanceId === conn.to.legoId)
                         );
-                        const newNetwork = {
+                        let newNetwork = {
                             legos: newLegos,
                             connections: newConnections
                         } as TensorNetwork;
@@ -666,7 +698,7 @@ function App() {
                         setTensorNetwork(newNetwork);
                     }
                 } else if (selectedLego) {
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: [lego, selectedLego],
                         connections: connections.filter(conn =>
                             conn.containsLego(lego.instanceId) && conn.containsLego(selectedLego.instanceId)
@@ -678,7 +710,7 @@ function App() {
 
                 } else {
                     // If no tensor network exists, create one with just this lego
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: [lego],
                         connections: []
                     } as TensorNetwork;
@@ -791,14 +823,14 @@ function App() {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
                     newNetwork.signature = createNetworkSignature(newNetwork);
                     setTensorNetwork(newNetwork);
                 } else {
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: selectedLegos,
                         connections: []
                     } as TensorNetwork;
@@ -819,7 +851,7 @@ function App() {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
@@ -831,7 +863,7 @@ function App() {
                         selectedLegoIds.has(conn.from.legoId) &&
                         selectedLegoIds.has(conn.to.legoId)
                     );
-                    const newNetwork = {
+                    let newNetwork = {
                         legos: selectedLegos,
                         connections: internalConnections
                     } as TensorNetwork;
@@ -846,7 +878,7 @@ function App() {
                     selectedLegoIds.has(conn.from.legoId) &&
                     selectedLegoIds.has(conn.to.legoId)
                 );
-                const newNetwork = {
+                let newNetwork = {
                     legos: selectedLegos,
                     connections: internalConnections
                 } as TensorNetwork;
@@ -2255,7 +2287,25 @@ function App() {
                     </MenuList>
                 </Menu>
                 <Menu>
+                    <MenuButton
+                        as={Button}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            const params = new URLSearchParams(location.search);
+                            const title = params.get('title');
+                            if (title) {
+                                window.open(`/tasks?title=${encodeURIComponent(title)}`, '_blank');
+                            } else {
+                                window.open('/tasks', '_blank');
+                            }
+                        }}
+                    >
+                        Tasks
+                    </MenuButton>
 
+                </Menu>
+                <Menu>
                     <MenuButton
                         as={Button}
                         variant="ghost"
@@ -2349,7 +2399,25 @@ function App() {
                     Clear highlights
                 </Button>
 
-
+                <Spacer />
+                <HStack>
+                    <Text>Canvas name: </Text>
+                    <Editable
+                        value={currentTitle}
+                        onChange={handleTitleChange}
+                        placeholder="Enter title..."
+                        fontSize="sm"
+                    >
+                        <EditablePreview
+                            px={2}
+                            _hover={{
+                                bg: useColorModeValue('gray.100', 'gray.700'),
+                                cursor: 'pointer'
+                            }}
+                        />
+                        <EditableInput px={2} />
+                    </Editable>
+                </HStack>
             </HStack>
 
             {/* Main Content */}
@@ -2358,7 +2426,7 @@ function App() {
                     {/* Left Panel */}
                     {!isLegoPanelCollapsed && (
                         <>
-                            <Panel id="lego-panel" defaultSize={10} minSize={2} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
+                            <Panel id="lego-panel" defaultSize={15} minSize={2} order={1} collapsible={true} onCollapse={() => setIsLegoPanelCollapsed(true)} onExpand={() => setIsLegoPanelCollapsed(false)}>
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
@@ -2373,7 +2441,7 @@ function App() {
 
 
                     {/* Main Content */}
-                    <Panel id="main-panel" defaultSize={60} minSize={5} order={2}>
+                    <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
                         <Box h="100%" display="flex" flexDirection="column" p={4}>
                             {/* Status Bar */}
                             <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
@@ -2765,6 +2833,7 @@ function App() {
                             encodeCanvasState={encodeCanvasState}
                             hideConnectedLegs={hideConnectedLegs}
                             makeSpace={(center, radius, skipLegos, legosToCheck) => makeSpace(center, radius, skipLegos, legosToCheck)}
+                            toast={toast}
                         />
                     </Panel>
                 </PanelGroup>
@@ -2814,4 +2883,4 @@ function App() {
     )
 }
 
-export default App 
+export default LegoStudioView;

@@ -9,6 +9,7 @@ from tqdm import tqdm
 from qlego.legos import LegoAnnotation
 from qlego.linalg import gauss
 from qlego.parity_check import conjoin, self_trace, tensor_product
+from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
 from qlego.simple_poly import SimplePoly
 from qlego.symplectic import omega, sslice, weight
 
@@ -27,14 +28,20 @@ TensorEnumerator = Dict[Tuple[GF2, ...], SimplePoly]
 
 
 class SimpleStabilizerCollector:
-    def __init__(self, k, n, coset, open_cols, verbose=False, progress_bar=False):
+    def __init__(
+        self,
+        k,
+        n,
+        coset,
+        open_cols,
+        verbose=False,
+    ):
         self.k = k
         self.n = n
         self.coset = coset
         self.tensor_wep = SimplePoly()
         self.skip_indices = open_cols
         self.verbose = verbose
-        self.progress_bar = progress_bar
 
     def collect(self, stabilizer):
         stab_weight = weight(stabilizer + self.coset, skip_indices=self.skip_indices)
@@ -46,14 +53,22 @@ class SimpleStabilizerCollector:
 
 
 class TensorElementCollector:
-    def __init__(self, k, n, coset, open_cols, verbose=False, progress_bar=False):
+    def __init__(
+        self,
+        k,
+        n,
+        coset,
+        open_cols,
+        verbose=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+    ):
         self.k = k
         self.n = n
         self.coset = coset
         self.simple = len(open_cols) == 0
         self.skip_indices = open_cols
         self.verbose = verbose
-        self.progress_bar = progress_bar
+        self.progress_reporter = progress_reporter
         self.matching_stabilizers = []
         self.tensor_wep: TensorEnumerator = defaultdict(lambda: SimplePoly())
 
@@ -61,13 +76,12 @@ class TensorElementCollector:
         self.matching_stabilizers.append(stabilizer)
 
     def finalize(self):
-        prog = tqdm(
-            self.matching_stabilizers,
-            desc="Collecting stabilizers",
-            disable=not self.progress_bar,
-        )
 
-        for s in prog:
+        for s in self.progress_reporter.iterate(
+            iterable=self.matching_stabilizers,
+            desc="Collecting stabilizers",
+            total_size=len(self.matching_stabilizers),
+        ):
             stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
             # print(f"tensor {s + self.coset} => {stab_weight}")
             key = tuple(sslice(s, self.skip_indices).tolist())
@@ -225,7 +239,7 @@ class StabilizerCodeTensorEnumerator:
         self,
         open_legs=[],
         verbose=False,
-        progress_bar=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
     ) -> Union[TensorEnumerator, SimplePoly]:
 
         open_legs = _index_legs(self.idx, open_legs)
@@ -253,12 +267,10 @@ class StabilizerCodeTensorEnumerator:
                 #     f"brute force - node {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
         collector = (
-            SimpleStabilizerCollector(
-                self.k, self.n, coset, open_cols, verbose, progress_bar
-            )
+            SimpleStabilizerCollector(self.k, self.n, coset, open_cols, verbose)
             if open_cols == []
             else TensorElementCollector(
-                self.k, self.n, coset, open_cols, verbose, progress_bar
+                self.k, self.n, coset, open_cols, verbose, progress_reporter
             )
         )
 
@@ -266,12 +278,11 @@ class StabilizerCodeTensorEnumerator:
         h_reduced = h_reduced[~np.all(h_reduced == 0, axis=1)]
         r = len(h_reduced)
 
-        progress_bar = tqdm(
-            range(2**r),
+        for i in progress_reporter.iterate(
+            iterable=range(2**r),
             desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} generators",
-            disable=not progress_bar,
-        )
-        for i in progress_bar:
+            total_size=2**r,
+        ):
             picked_generators = GF2(list(np.binary_repr(i, width=r)), dtype=int)
             if r == 0:
                 if i > 0:
@@ -289,7 +300,7 @@ class StabilizerCodeTensorEnumerator:
         self,
         open_legs=[],
         verbose=False,
-        progress_bar=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
     ) -> Union[TensorEnumerator, SimplePoly]:
         """Stabilizer enumerator polynomial.
 
@@ -299,7 +310,7 @@ class StabilizerCodeTensorEnumerator:
         wep = self._brute_force_stabilizer_enumerator_from_parity(
             open_legs=open_legs,
             verbose=verbose,
-            progress_bar=progress_bar,
+            progress_reporter=progress_reporter,
         )
         return wep
 
