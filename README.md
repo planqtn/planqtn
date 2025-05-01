@@ -1,7 +1,9 @@
-# PlanqTN 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/37d8d8e8-e5a4-4f6e-bbf3-3bbe1eb872d5" width="300"></img>
+</p>
 
 
-We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
+Welcome to the PlanqTN! We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).  
 
 
 The project has two main components currently in the same repo: 
