@@ -13,7 +13,7 @@ from tqdm import tqdm
 class IterationState:
     desc: str = attr.ib()
     total_size: int = attr.ib()
-    current_item: int = attr.ib(default=1)
+    current_item: int = attr.ib(default=0)
     start_time: float = attr.ib(default=time.time())
     end_time: float | None = attr.ib(default=None)
     duration: float | None = attr.ib(default=None)
@@ -27,10 +27,10 @@ class IterationState:
         self._update_avg_time_per_item()
 
     def _update_avg_time_per_item(self):
-        if self.current_item == 1:
+        if self.current_item == 0:
             self.avg_time_per_item = None
         else:
-            self.avg_time_per_item = self.duration / (self.current_item - 1)
+            self.avg_time_per_item = self.duration / self.current_item
 
     def end(self):
         self.end_time = time.time()
@@ -91,25 +91,40 @@ class ProgressReporter(abc.ABC):
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
     ) -> Generator[Any, None, None]:
-        iteration_state = IterationState(
+        """Starts a new iteration.
+
+        Returns an iterator (generator) over the iterable and reports progress on every item.
+        """
+
+        bottom_iterator_state = IterationState(
             desc, start_time=time.time(), total_size=total_size
         )
-        self.iterator_stack.append(iteration_state)
+        self.iterator_stack.append(bottom_iterator_state)
+
         if self.sub_reporter is not None:
             iterable = self.sub_reporter.iterate(iterable, desc, total_size)
+
         for item in iterable:
-            iteration_state.update()
-            for iterator in self.iterator_stack[:-1]:
-                iterator.update(iterator.current_item)
-            self.log_result(
-                {"iteration": iteration_state, "level": len(self.iterator_stack)}
-            )
-            # print(f"{type(self)}: iteration_state {iteration_state} iterated! {item}")
+
             yield item
 
-        iteration_state.end()
+            bottom_iterator_state.update()
+            self.log_result(
+                {"iteration": bottom_iterator_state, "level": len(self.iterator_stack)}
+            )
+
+            # higher level iterators need to be updated, this is just
+            # a hack to ensure that the timestamps and avg time per item
+            # is updated for all iterators
+            for higher_iterator in self.iterator_stack[:-1]:
+                higher_iterator.update(higher_iterator.current_item)
+            # print(
+            #     f"{type(self)}: iteration_state {bottom_iterator_state} iterated! {item}"
+            # )
+
+        bottom_iterator_state.end()
         self.log_result(
-            {"iteration": iteration_state, "level": len(self.iterator_stack)}
+            {"iteration": bottom_iterator_state, "level": len(self.iterator_stack)}
         )
         self.iterator_stack.pop()
 
@@ -126,22 +141,31 @@ class ProgressReporter(abc.ABC):
 
 
 class TqdmProgressReporter(ProgressReporter):
-    def __init__(self, file=sys.stdout, sub_reporter: "ProgressReporter" = None):
+    def __init__(
+        self, file=sys.stdout, mininterval=None, sub_reporter: "ProgressReporter" = None
+    ):
         super().__init__(sub_reporter)
         self.file = file
+        self.mininterval = mininterval
 
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
     ) -> Generator[Any, None, None]:
-        for item in tqdm(
+        t = tqdm(
             desc=desc,
             total=total_size,
             iterable=super().iterate(iterable, desc, total_size),
             file=self.file,
-            leave=False,
-            mininterval=2 if total_size > 1e5 else 0.1,
-        ):
+            # leave=False,
+            mininterval=(
+                self.mininterval
+                if self.mininterval is not None
+                else 2 if total_size > 1e5 else 0.1
+            ),
+        )
+        for item in t:
             yield item
+        t.close()
 
     def handle_result(self, result: Dict[str, Any]):
         pass
