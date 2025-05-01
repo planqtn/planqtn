@@ -635,10 +635,8 @@ class TensorNetwork:
         assert (
             progress_reporter is not None
         ), "Progress reporter must be provided, it is None"
+
         with progress_reporter.enter_phase("collecting legs"):
-            print("sleeping 30 s for collecing legs...")
-            time.sleep(30)
-            print("done sleeping")
             free_legs, leg_indices, index_to_legs = self._collect_legs()
 
         open_legs_per_node = defaultdict(list)

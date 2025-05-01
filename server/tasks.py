@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 import traceback
 from typing import Any, Dict
@@ -96,7 +97,7 @@ def weight_enumerator_task(self, network_dict: dict):
         with CeleryProgressReporter(
             self,
             task_store=TaskStore(REDIS_URL),
-            sub_reporter=TqdmProgressReporter(),
+            sub_reporter=TqdmProgressReporter(file=sys.stdout),
         ) as progress_reporter:
             # Create TensorStabilizerCodeEnumerator instances for each lego
             nodes = {}

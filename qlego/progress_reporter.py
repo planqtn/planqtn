@@ -98,14 +98,15 @@ class ProgressReporter(abc.ABC):
         if self.sub_reporter is not None:
             iterable = self.sub_reporter.iterate(iterable, desc, total_size)
         for item in iterable:
-            yield item
             iteration_state.update()
             for iterator in self.iterator_stack[:-1]:
                 iterator.update(iterator.current_item)
             self.log_result(
                 {"iteration": iteration_state, "level": len(self.iterator_stack)}
             )
-            print(f"{type(self)}: iteration_state {iteration_state} iterated! {item}")
+            # print(f"{type(self)}: iteration_state {iteration_state} iterated! {item}")
+            yield item
+
         iteration_state.end()
         self.log_result(
             {"iteration": iteration_state, "level": len(self.iterator_stack)}
@@ -115,12 +116,8 @@ class ProgressReporter(abc.ABC):
     def enter_phase(self, desc: str):
         @contextlib.contextmanager
         def phase_iterator():
-            for i, item in enumerate(
-                self.iterate(["Start", "End"], desc, total_size=2)
-            ):
-                print(f"phase_iterator {desc} {item} {i}")
-                if i == 1:
-                    yield item
+            for i, item in enumerate(self.iterate(["item"], desc, total_size=1)):
+                yield item
 
         return phase_iterator()
 
@@ -141,6 +138,8 @@ class TqdmProgressReporter(ProgressReporter):
             total=total_size,
             iterable=super().iterate(iterable, desc, total_size),
             file=self.file,
+            leave=False,
+            mininterval=2 if total_size > 1e5 else 0.1,
         ):
             yield item
 
