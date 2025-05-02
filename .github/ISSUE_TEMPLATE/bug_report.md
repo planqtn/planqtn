@@ -4,7 +4,8 @@ about: Create a report to help us improve
 title: ''
 labels: 'bug :lady_beetle:'
 assignees: ''
-
+projects: balopat/5
+milestones: tnqec/milestone/1
 ---
 
 **Describe the bug**
