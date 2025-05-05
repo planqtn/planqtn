@@ -92,39 +92,6 @@ const LegoStudioView: React.FC = () => {
     const navigate = useNavigate();
     const [currentTitle, setCurrentTitle] = useState<string>("");
 
-    // Add title effect at the top
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        let title = params.get('title');
-
-        if (!title) {
-            // Generate a new random title if none exists
-            title = `PlanqTN - ${randomPlankterName()}`;
-            // Update URL with the new title
-            const newParams = new URLSearchParams(params);
-            newParams.set('title', title);
-            navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, { replace: true });
-        }
-
-        document.title = title;
-        setCurrentTitle(title);
-    }, [location, navigate]);
-
-    const handleTitleChange = (newTitle: string) => {
-        if (newTitle.trim()) {
-            const params = new URLSearchParams(location.search);
-            params.set('title', newTitle);
-            navigate(`${location.pathname}?${params.toString()}${location.hash}`, { replace: true });
-            document.title = newTitle;
-            setCurrentTitle(newTitle);
-        }
-    };
-
-    const newInstanceId = (currentLegos: DroppedLego[]): string => {
-        const maxInstanceId = currentLegos.length > 0 ? (Math.max(...currentLegos.map(lego => parseInt(lego.instanceId)))) : 0
-        return String(maxInstanceId + 1)
-    }
-
     const [altKeyPressed, setAltKeyPressed] = useState(false);
     const [message, setMessage] = useState<string>('Loading...')
     const [legos, setLegos] = useState<LegoPiece[]>([])
@@ -187,6 +154,41 @@ const LegoStudioView: React.FC = () => {
 
     // Inside the App component, add this line near the other hooks
     const toast = useToast();
+
+
+    // Add title effect at the top
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        let title = params.get('title');
+
+        if (!title) {
+            // Generate a new random title if none exists
+            title = `PlanqTN - ${randomPlankterName()}`;
+            // Update URL with the new title
+            const newParams = new URLSearchParams(params);
+            newParams.set('title', title);
+            navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, { replace: true });
+        }
+
+        document.title = title;
+        setCurrentTitle(title);
+    }, [location, navigate]);
+
+    const handleTitleChange = (newTitle: string) => {
+        if (newTitle.trim()) {
+            const params = new URLSearchParams(location.search);
+            params.set('title', newTitle);
+            navigate(`${location.pathname}?${params.toString()}${location.hash}`, { replace: true });
+            document.title = newTitle;
+            setCurrentTitle(newTitle);
+        }
+    };
+
+    const newInstanceId = (currentLegos: DroppedLego[]): string => {
+        const maxInstanceId = currentLegos.length > 0 ? (Math.max(...currentLegos.map(lego => parseInt(lego.instanceId)))) : 0
+        return String(maxInstanceId + 1)
+    }
+
 
     // Update the serializer when legos change
     useEffect(() => {
@@ -2264,6 +2266,10 @@ const LegoStudioView: React.FC = () => {
         });
     };
 
+    function handleTitleKeyDown(event: KeyboardEvent): void {
+        event.stopPropagation();
+    }
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {/* Menu Strip */}
@@ -2405,6 +2411,7 @@ const LegoStudioView: React.FC = () => {
                     <Editable
                         value={currentTitle}
                         onChange={handleTitleChange}
+                        onKeyDown={handleTitleKeyDown}
                         placeholder="Enter title..."
                         fontSize="sm"
                     >
