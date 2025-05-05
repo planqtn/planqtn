@@ -2266,7 +2266,7 @@ const LegoStudioView: React.FC = () => {
         });
     };
 
-    function handleTitleKeyDown(event: KeyboardEvent): void {
+    function handleTitleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
         event.stopPropagation();
     }
 
