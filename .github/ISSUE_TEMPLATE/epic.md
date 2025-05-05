@@ -1,8 +1,8 @@
 ---
-name: Feature request
+name: Top level feature (epic)
 about: Suggest an idea for this project
 title: ''
-labels: type/feature
+labels: type/feature, type/epic
 assignees: ''
 
 ---
