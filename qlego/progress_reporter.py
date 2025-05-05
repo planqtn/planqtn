@@ -67,9 +67,14 @@ class IterationStateEncoder(json.JSONEncoder):
 
 class ProgressReporter(abc.ABC):
 
-    def __init__(self, sub_reporter: "ProgressReporter" = None):
+    def __init__(
+        self,
+        sub_reporter: "ProgressReporter" = None,
+        iteration_report_frequency: float = 0.0,
+    ):
         self.sub_reporter = sub_reporter
         self.iterator_stack = []
+        self.iteration_report_frequency = iteration_report_frequency
 
     @abc.abstractmethod
     def handle_result(self, result: Dict[str, Any]):
@@ -103,16 +108,19 @@ class ProgressReporter(abc.ABC):
 
         if self.sub_reporter is not None:
             iterable = self.sub_reporter.iterate(iterable, desc, total_size)
-
+        time_last_report = time.time()
         for item in iterable:
-
             yield item
-
             bottom_iterator_state.update()
-            self.log_result(
-                {"iteration": bottom_iterator_state, "level": len(self.iterator_stack)}
-            )
+            if time.time() - time_last_report > self.iteration_report_frequency:
+                time_last_report = time.time()
 
+                self.log_result(
+                    {
+                        "iteration": bottom_iterator_state,
+                        "level": len(self.iterator_stack),
+                    }
+                )
             # higher level iterators need to be updated, this is just
             # a hack to ensure that the timestamps and avg time per item
             # is updated for all iterators

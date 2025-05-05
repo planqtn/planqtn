@@ -63,12 +63,13 @@ class CeleryProgressReporter(ProgressReporter):
         task: Task,
         task_store: TaskStore,
         sub_reporter: ProgressReporter = None,
+        iteration_report_frequency: float = 1.0,
     ):
         self.task = task
         self.start_time = time.time()
         self.task_store = task_store
 
-        super().__init__(sub_reporter)
+        super().__init__(sub_reporter, iteration_report_frequency)
 
     def __enter__(self):
         self.task_store.add_task(self.task)
