@@ -1,4 +1,4 @@
-pkill -e -9 -f "main.py|npm|vite|celery|serve.js"
+pkill -e -9 -f "main.py|npm|vite|celery|serve.js|flower"
 status=$?
 
 if [ $status -eq 0 ]; then
