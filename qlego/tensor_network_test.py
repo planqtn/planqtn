@@ -29,31 +29,6 @@ from sympy.abc import w, z
 from sympy import Poly
 
 
-def test_422_physical_legs_off_diagonals():
-    pytest.skip("Skipping off diagonal tests")
-    enc_tens_422 = GF2(
-        [
-            # fmt: off
-    #        l1,2            l1,2 
-    [1,1,1,1, 0,0,  0,0,0,0,  0,0],
-    [0,0,0,0, 0,0,  1,1,1,1,  0,0], 
-    # X1
-    [1,1,0,0, 1,0,  0,0,0,0,  0,0],
-    # X2
-    [1,0,0,1, 0,1,  0,0,0,0,  0,0],       
-    # Z2
-    [0,0,0,0, 0,0,  1,1,0,0,  0,1],
-    # Z1
-    [0,0,0,0, 0,0,  1,0,0,1,  1,0],
-            # fmt: on
-        ]
-    )
-    vec_enum_phys_legs = StabilizerCodeTensorEnumerator(enc_tens_422)
-    assert {0: 2} == vec_enum_phys_legs.scalar_stabilizer_enumerator(
-        traced_legs=[0, 1, 2, 3], e=GF2([1, 1, 1, 1, 0, 0, 0, 0]), eprime=GF2.Zeros(8)
-    )
-
-
 def test_trace_two_422_codes_into_steane_via_tensornetwork():
     enc_tens_422 = GF2(
         [
@@ -994,3 +969,220 @@ def test_disconnected_networks():
         progress_reporter=TqdmProgressReporter(),
     )
     assert wep._dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}
+
+
+def test_disconnected_networks_truncate_length():
+
+    nodes = {}
+    nodes["25"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
+        idx="25",
+    )
+    nodes["27"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="27",
+    )
+    nodes["31"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="31",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=1)
+
+    # Add traces
+    tn.self_trace("25", "31", [0], [2])
+
+    wep = tn.stabilizer_enumerator_polynomial(
+        verbose=True,
+        progress_reporter=TqdmProgressReporter(),
+    )
+    assert wep._dict == {
+        0: 1,
+    }
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=2)
+
+    # Add traces
+    tn.self_trace("25", "31", [0], [2])
+
+    wep = tn.stabilizer_enumerator_polynomial(
+        verbose=True,
+        progress_reporter=TqdmProgressReporter(),
+    )
+    assert wep._dict == {0: 1, 2: 12}
+
+
+@pytest.mark.parametrize(
+    "truncate_length, expected_wep",
+    [
+        (None, {6: 42, 4: 21, 0: 1}),
+        (1, {0: 1}),
+        (2, {0: 1}),
+        (4, {0: 1, 4: 21}),
+        (6, {0: 1, 4: 21, 6: 42}),
+        (9, {0: 1, 4: 21, 6: 42}),
+    ],
+)
+def test_trace_two_422_codes_into_steane_via_tensornetwork(
+    truncate_length, expected_wep
+):
+    enc_tens_422 = GF2(
+        [
+            # fmt: off
+    #        l1,2            l1,2 
+    [1,1,1,1, 0,0,  0,0,0,0,  0,0],
+    [0,0,0,0, 0,0,  1,1,1,1,  0,0], 
+    # X1
+    [1,1,0,0, 1,0,  0,0,0,0,  0,0],
+    # X2
+    [1,0,0,1, 0,1,  0,0,0,0,  0,0],       
+    # Z2
+    [0,0,0,0, 0,0,  1,1,0,0,  0,1],
+    # Z1
+    [0,0,0,0, 0,0,  1,0,0,1,  1,0],
+            # fmt: on
+        ]
+    )
+
+    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=0).trace_with_stopper(
+        PAULI_I, 0
+    )
+    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=1)
+
+    tn = TensorNetwork(nodes=[t1, t2], truncate_length=truncate_length)
+    tn.self_trace(0, 1, [4], [4])
+    tn.self_trace(0, 1, [5], [5])
+
+    assert (
+        expected_wep
+        == tn.stabilizer_enumerator_polynomial(
+            verbose=True,
+        )._dict
+    )
+
+
+def test_truncate_length_example():
+
+    nodes = {}
+    nodes["46"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="46",
+    )
+    nodes["47"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="47",
+    )
+    nodes["53"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="53",
+    )
+    nodes["59"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [1, 0, 0, 0, 0, 1, 1, 1],
+                [0, 0, 1, 1, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 0, 0, 0],
+            ]
+        ),
+        idx="59",
+    )
+    nodes["60"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        idx="60",
+    )
+    nodes["61"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        idx="61",
+    )
+    nodes["62"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        idx="62",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=4)
+
+    # Add traces
+    tn.self_trace("46", "59", [1], [2])
+    tn.self_trace("47", "59", [1], [3])
+    tn.self_trace("47", "60", [0], [2])
+    tn.self_trace("53", "60", [1], [0])
+    tn.self_trace("46", "61", [0], [2])
+    tn.self_trace("53", "61", [0], [0])
+    tn.self_trace("47", "53", [3], [3])
+    tn.self_trace("62", "46", [2], [3])
+    tn.self_trace("60", "62", [1], [0])
+    tn.self_trace("62", "59", [1], [0])
+
+    assert tn.stabilizer_enumerator_polynomial(
+        verbose=True,
+    )._dict == {0: 1, 2: 1, 4: 2}
+
+
+@pytest.mark.parametrize(
+    "truncate_length, expected_wep",
+    [
+        (None, {0: 1, 3: 8, 4: 21, 5: 24, 6: 10}),
+        (1, {0: 1}),
+        (2, {0: 1}),
+        (3, {0: 1, 3: 8}),
+        (4, {0: 1, 3: 8, 4: 21}),
+        (6, {0: 1, 3: 8, 4: 21, 5: 24, 6: 10}),
+        (9, {0: 1, 3: 8, 4: 21, 5: 24, 6: 10}),
+    ],
+)
+def test_single_node_truncate_length(truncate_length, expected_wep):
+
+    nodes = {
+        "1": StabilizerCodeTensorEnumerator(
+            h=Legos.enconding_tensor_603,
+            idx="1",
+        ),
+    }
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=truncate_length)
+
+    assert (
+        tn.stabilizer_enumerator_polynomial(
+            verbose=True,
+        )._dict
+        == expected_wep
+    )

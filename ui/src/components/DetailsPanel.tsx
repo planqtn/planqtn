@@ -7,6 +7,7 @@ import axios, { AxiosResponse } from 'axios'
 import { useState, useEffect, useRef } from 'react'
 import { getLegoStyle } from '../LegoStyles'
 import { LegPartitionDialog } from './LegPartitionDialog'
+import TruncationLevelDialog from './TruncationLevelDialog'
 import * as _ from 'lodash'
 import { OperationHistory } from '../utils/OperationHistory'
 import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
@@ -77,7 +78,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(tensorNetwork?.constructionCode || "")
     const [parityCheckMatrixCache] = useState<Map<string, AxiosResponse<{ matrix: number[][], legs: TensorNetworkLeg[] }>>>(new Map())
-    const [weightEnumeratorCache] = useState<Map<string, { taskId: string, polynomial: string, normalizerPolynomial: string }>>(new Map())
+    const [weightEnumeratorCache] = useState<Map<string, { taskId: string, polynomial: string, normalizerPolynomial: string, truncateLength: number | null }>>(new Map())
     const [, setSelectedMatrixRows] = useState<number[]>([])
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
@@ -92,6 +93,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         avg_time_per_item: number;
     }>>([])
     const currentTensorNetworkRef = useRef<TensorNetwork | null>(null)
+    const [showTruncationDialog, setShowTruncationDialog] = useState(false)
 
     const closeTaskWebSocket = () => {
         if (taskWebSocket) {
@@ -214,7 +216,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 const updatedCacheEntry = {
                                     taskId: task.uuid,
                                     polynomial: task.result.polynomial,
-                                    normalizerPolynomial: task.result.normalizer_polynomial
+                                    normalizerPolynomial: task.result.normalizer_polynomial,
+                                    truncateLength: task.result.truncate_length
                                 };
                                 weightEnumeratorCache.set(signature, updatedCacheEntry);
 
@@ -233,7 +236,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         weightEnumerator: task.result.polynomial,
                                         normalizerPolynomial: task.result.normalizer_polynomial,
                                         isCalculatingWeightEnumerator: false,
-                                        taskId: task.uuid
+                                        taskId: task.uuid,
+                                        truncateLength: task.result.truncate_length
                                     } : null);
 
                                     // Clear the iteration status
@@ -483,7 +487,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
     };
 
-    const calculateWeightEnumerator = async () => {
+    const calculateWeightEnumerator = async (truncateLength: number | null) => {
         if (!tensorNetwork) return;
 
         // Clear any existing progress bars
@@ -523,7 +527,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     };
                     return acc;
                 }, {} as Record<string, any>),
-                connections: tensorNetwork.connections
+                connections: tensorNetwork.connections,
+                truncate_length: truncateLength
             });
 
             if (response.data.status === "error") {
@@ -539,8 +544,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 taskId: taskId
             } : null);
             ensureProgressBarWebSocket(taskId);
-
-
 
             // Show success toast with status URL
             toast({
@@ -566,7 +569,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             weightEnumeratorCache.set(signature, {
                 taskId: taskId,
                 polynomial: "",
-                normalizerPolynomial: ""
+                normalizerPolynomial: "",
+                truncateLength: null
             });
 
         } catch (error) {
@@ -1282,7 +1286,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                         !weightEnumeratorCache.get(tensorNetwork.signature!) &&
                                         !tensorNetwork.isCalculatingWeightEnumerator && (
                                             <Button
-                                                onClick={calculateWeightEnumerator}
+                                                onClick={() => setShowTruncationDialog(true)}
                                                 colorScheme="teal"
                                                 size="sm"
                                                 width="full"
@@ -1368,6 +1372,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 <Heading size="sm">Stabilizer Weight Enumerator Polynomial</Heading>
                                                 <Box>
                                                     <Text>Task ID: {tensorNetwork.taskId || weightEnumeratorCache.get(tensorNetwork.signature!)?.taskId}</Text>
+                                                    {(() => {
+                                                        const truncLength = tensorNetwork.truncateLength ?? weightEnumeratorCache.get(tensorNetwork.signature!)?.truncateLength;
+                                                        return (truncLength !== null && truncLength !== undefined && !isNaN(Number(truncLength))) ? <Text>Truncation length: {truncLength}</Text> : null;
+                                                    })()}
                                                 </Box>
                                                 <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                                     <Text fontFamily="mono">
@@ -1376,7 +1384,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                     </Text>
                                                 </Box>
 
-                                                <Heading size="sm">Normalizer Weight EnumeratorPolynomial</Heading>
+                                                <Heading size="sm">Normalizer Weight Enumerator Polynomial</Heading>
                                                 <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
                                                     <Text fontFamily="mono">
                                                         {tensorNetwork.normalizerPolynomial ||
@@ -1548,7 +1556,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 }}
                 numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
             />
-
+            <TruncationLevelDialog
+                open={showTruncationDialog}
+                onClose={() => setShowTruncationDialog(false)}
+                onSubmit={(truncateLength) => {
+                    setShowTruncationDialog(false);
+                    calculateWeightEnumerator(truncateLength);
+                }}
+            />
         </Box>
     )
 }

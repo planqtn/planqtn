@@ -122,5 +122,5 @@ def test_compass_truncated_coset_wep():
         coset_error=((), (4,)),
         truncate_length=1,
     )
-    wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
+    wep = tn.stabilizer_enumerator_polynomial(verbose=True, cotengra=False)
     assert wep == SimplePoly({1: 1}), f"Not equal, got:\n{wep}"

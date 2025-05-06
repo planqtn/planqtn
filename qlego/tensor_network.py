@@ -83,8 +83,6 @@ class TensorNetwork:
                 != other.nodes[idx].coset_flipped_legs
             ):
                 return False
-            if self.nodes[idx].truncate_length != other.nodes[idx].truncate_length:
-                return False
 
         # Compare traces - convert only the hashable parts to tuples
         def trace_to_comparable(trace):
@@ -151,8 +149,6 @@ class TensorNetwork:
                 code.append(f"    legs={repr(node.legs)},")
             if node.coset_flipped_legs:
                 code.append(f"    coset_flipped_legs={repr(node.coset_flipped_legs)},")
-            if node.truncate_length is not None:
-                code.append(f"    truncate_length={node.truncate_length},")
             code.append(")")
 
         code.append("")
@@ -631,6 +627,8 @@ class TensorNetwork:
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
     ) -> SimplePoly:
+        if self._wep is not None:
+            return self._wep
 
         assert (
             progress_reporter is not None
@@ -651,18 +649,18 @@ class TensorNetwork:
         if verbose:
             print("open_legs_per_node", open_legs_per_node)
         traces = self.traces
-        if cotengra:
+        if cotengra and len(self.nodes) > 0 and len(self.traces) > 0:
             with progress_reporter.enter_phase("cotengra contraction"):
                 traces, _ = self._cotengra_contraction(
                     free_legs, leg_indices, index_to_legs, verbose, progress_reporter
                 )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
-        if self._wep is not None:
-            return self._wep
 
         if len(self.traces) == 0 and len(self.nodes) == 1:
             return list(self.nodes.items())[0][1].stabilizer_enumerator_polynomial(
-                verbose=verbose, progress_reporter=progress_reporter
+                verbose=verbose,
+                progress_reporter=progress_reporter,
+                truncate_length=self.truncate_length,
             )
 
         parity_check_enums = {}
@@ -688,6 +686,7 @@ class TensorNetwork:
                 open_legs=traced_legs,
                 verbose=verbose,
                 progress_reporter=progress_reporter,
+                truncate_length=self.truncate_length,
             )
             if len(traced_legs) == 0:
                 tensor = {(): tensor}
@@ -796,21 +795,15 @@ class TensorNetwork:
                     sprint(GF2([k]), end=" ")
                     print(v, end="")
                 if self.truncate_length is None:
-                    if verbose:
-                        print()
                     continue
                 if v.minw()[0] > self.truncate_length:
                     del pte.tensor[k]
                     if verbose:
                         print(" -- removed")
                 else:
-                    if v.leading_order_poly() != v:
-                        if verbose:
-                            print(" -- truncated")
-                        pte.tensor[k] = v.leading_order_poly()
-                    else:
-                        if verbose:
-                            print()
+                    pte.tensor[k].truncate_inplace(self.truncate_length)
+                    if verbose:
+                        print(" -- truncated")
             if verbose:
                 print(f"PTEs: {self.ptes}")
 
@@ -860,8 +853,6 @@ class TensorNetwork:
 
     def set_truncate_length(self, truncate_length):
         self.truncate_length = truncate_length
-        for node in self.nodes.values():
-            node.truncate_length = truncate_length
         self._reset_wep(keep_cot=True)
 
 
@@ -928,7 +919,9 @@ class _PartiallyTracedEnumerator:
         new_tensor = {}
         for k1 in self.tensor.keys():
             for k2 in other.tensor.keys():
-                new_tensor[tuple(sconcat(k1, k2))] = self.tensor[k1] * other.tensor[k2]
+                k = tuple(sconcat(k1, k2))
+                new_tensor[k] = self.tensor[k1] * other.tensor[k2]
+                self.truncate_if_needed(k, new_tensor)
 
         return _PartiallyTracedEnumerator(
             self.nodes.union(other.nodes),
@@ -1001,6 +994,7 @@ class _PartiallyTracedEnumerator:
                 # print(f"wep1: {wep1}")
                 # print(f"wep2: {wep2}")
                 wep[key].add_inplace(wep1 * wep2)
+                self.truncate_if_needed(key, wep)
 
         tracable_legs = [
             (idx, leg) if isinstance(leg, int) else leg for idx, leg in open_legs1
@@ -1075,6 +1069,8 @@ class _PartiallyTracedEnumerator:
             # print(f"wep: {wep1}")
 
             wep[key].add_inplace(wep1)
+
+            self.truncate_if_needed(key, wep)
         tracable_legs = [(idx, leg) for idx, leg in open_legs]
 
         return _PartiallyTracedEnumerator(
@@ -1086,5 +1082,7 @@ class _PartiallyTracedEnumerator:
 
     def truncate_if_needed(self, key, wep):
         if self.truncate_length is not None:
-            if np.count_nonzero(key) + wep[key].minw()[0] > self.truncate_length:
+            if wep[key].minw()[0] > self.truncate_length:
                 del wep[key]
+            else:
+                wep[key].truncate_inplace(self.truncate_length)

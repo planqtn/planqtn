@@ -182,6 +182,3 @@ class TqdmProgressReporter(ProgressReporter):
 class DummyProgressReporter(ProgressReporter):
     def handle_result(self, result: Dict[str, Any]):
         pass
-
-    def _current_state(self) -> Dict[str, Any]:
-        return {}

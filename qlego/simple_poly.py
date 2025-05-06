@@ -173,6 +173,9 @@ class SimplePoly:
             res += Poly(v * vars[0] ** k[0] * vars[1] ** k[1])
         return res
 
+    def truncate_inplace(self, n: int):
+        self._dict = {k: v for k, v in self._dict.items() if k <= n}
+
     @staticmethod
     def from_sympy(poly: sympy.Poly):
         """

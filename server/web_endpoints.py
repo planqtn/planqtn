@@ -288,14 +288,14 @@ class TaskStatusResponse(BaseModel):
 
 
 @app.post("/weightenumerator", response_model=TaskStatusResponse)
-async def calculate_weight_enumerator(network: TensorNetworkRequest):
+async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
     try:
         # Convert Pydantic model to dictionary
-        network_dict = network.model_dump()
+        request_dict = request.model_dump()
         # Start the task
         print("kicking off task...")
         task = weight_enumerator_task.apply_async(
-            args=[network_dict],
+            args=[request_dict],
         )
         print("task", task.id)
 

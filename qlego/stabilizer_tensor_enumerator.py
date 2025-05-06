@@ -35,6 +35,7 @@ class SimpleStabilizerCollector:
         coset,
         open_cols,
         verbose=False,
+        truncate_length=None,
     ):
         self.k = k
         self.n = n
@@ -42,9 +43,12 @@ class SimpleStabilizerCollector:
         self.tensor_wep = SimplePoly()
         self.skip_indices = open_cols
         self.verbose = verbose
+        self.truncate_length = truncate_length
 
     def collect(self, stabilizer):
         stab_weight = weight(stabilizer + self.coset, skip_indices=self.skip_indices)
+        if self.truncate_length is not None and stab_weight > self.truncate_length:
+            return
         # print(f"simple {stabilizer + self.coset} => {stab_weight}")
         self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
 
@@ -61,6 +65,7 @@ class TensorElementCollector:
         open_cols,
         verbose=False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
+        truncate_length=None,
     ):
         self.k = k
         self.n = n
@@ -71,8 +76,15 @@ class TensorElementCollector:
         self.progress_reporter = progress_reporter
         self.matching_stabilizers = []
         self.tensor_wep: TensorEnumerator = defaultdict(lambda: SimplePoly())
+        self.truncate_length = truncate_length
 
     def collect(self, stabilizer):
+        if (
+            self.truncate_length is not None
+            and weight(stabilizer + self.coset, skip_indices=self.skip_indices)
+            > self.truncate_length
+        ):
+            return
         self.matching_stabilizers.append(stabilizer)
 
     def finalize(self):
@@ -106,7 +118,6 @@ class StabilizerCodeTensorEnumerator:
         idx=0,
         legs=None,
         coset_flipped_legs: List[Tuple[Tuple[Any, int], GF2]] = None,
-        truncate_length=None,
         annotation: Optional[LegoAnnotation] = None,
     ):
 
@@ -140,7 +151,6 @@ class StabilizerCodeTensorEnumerator:
                     pauli, GF2
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
             # print(f"Coset flipped legs validated. Setting to {self.coset_flipped_legs}")
-        self.truncate_length = truncate_length
 
     def __str__(self):
         return f"TensorEnum({self.idx})"
@@ -177,7 +187,7 @@ class StabilizerCodeTensorEnumerator:
     def with_coset_flipped_legs(self, coset_flipped_legs):
 
         return StabilizerCodeTensorEnumerator(
-            self.h, self.idx, self.legs, coset_flipped_legs, self.truncate_length
+            self.h, self.idx, self.legs, coset_flipped_legs
         )
 
     def tensor_with(self, other):
@@ -231,15 +241,14 @@ class StabilizerCodeTensorEnumerator:
         new_legs = [leg for leg in self.legs if leg not in legs1]
         new_legs += [leg for leg in other.legs if leg not in legs2]
 
-        return StabilizerCodeTensorEnumerator(
-            new_h, idx=self.idx, legs=new_legs, truncate_length=self.truncate_length
-        )
+        return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=new_legs)
 
     def _brute_force_stabilizer_enumerator_from_parity(
         self,
         open_legs=[],
         verbose=False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
+        truncate_length=None,
     ) -> Union[TensorEnumerator, SimplePoly]:
 
         open_legs = _index_legs(self.idx, open_legs)
@@ -267,10 +276,23 @@ class StabilizerCodeTensorEnumerator:
                 #     f"brute force - node {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
         collector = (
-            SimpleStabilizerCollector(self.k, self.n, coset, open_cols, verbose)
+            SimpleStabilizerCollector(
+                self.k,
+                self.n,
+                coset,
+                open_cols,
+                verbose,
+                truncate_length=truncate_length,
+            )
             if open_cols == []
             else TensorElementCollector(
-                self.k, self.n, coset, open_cols, verbose, progress_reporter
+                self.k,
+                self.n,
+                coset,
+                open_cols,
+                verbose,
+                progress_reporter,
+                truncate_length=truncate_length,
             )
         )
 
@@ -301,6 +323,7 @@ class StabilizerCodeTensorEnumerator:
         open_legs=[],
         verbose=False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
+        truncate_length=None,
     ) -> Union[TensorEnumerator, SimplePoly]:
         """Stabilizer enumerator polynomial.
 
@@ -311,6 +334,7 @@ class StabilizerCodeTensorEnumerator:
             open_legs=open_legs,
             verbose=verbose,
             progress_reporter=progress_reporter,
+            truncate_length=truncate_length,
         )
         return wep
 

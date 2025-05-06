@@ -2,6 +2,7 @@ from galois import GF2
 import scipy.linalg
 import numpy as np
 import pytest
+from qlego.legos import Legos
 from qlego.linalg import gauss
 from qlego.simple_poly import SimplePoly
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
@@ -325,3 +326,101 @@ def tensor_with_scalar():
     )
 
     assert wep == {0: 1}
+
+
+@pytest.mark.parametrize(
+    "truncate_length, expected_wep",
+    [
+        (None, {0: 1, 4: 42, 6: 168, 8: 45}),
+        (1, {0: 1}),
+        (2, {0: 1}),
+        (3, {0: 1}),
+        (4, {0: 1, 4: 42}),
+        (7, {0: 1, 4: 42, 6: 168}),
+        (8, {0: 1, 4: 42, 6: 168, 8: 45}),
+        (9, {0: 1, 4: 42, 6: 168, 8: 45}),
+    ],
+)
+def test_truncated_scalar_enumerator(truncate_length, expected_wep):
+    h = Legos.steane_code_813_encoding_tensor
+    te = StabilizerCodeTensorEnumerator(h)
+    assert (
+        te.stabilizer_enumerator_polynomial(truncate_length=truncate_length)._dict
+        == expected_wep
+    )
+
+
+@pytest.mark.parametrize(
+    "truncate_length, expected_wep",
+    [
+        (
+            None,
+            {
+                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+            },
+        ),
+        (
+            1,
+            {
+                (0, 0): SimplePoly({0: 1}),
+            },
+        ),
+        (
+            3,
+            {
+                (0, 0): SimplePoly({0: 1}),
+                (1, 0): SimplePoly({3: 7}),
+                (1, 1): SimplePoly({3: 7}),
+                (0, 1): SimplePoly({3: 7}),
+            },
+        ),
+        (
+            4,
+            {
+                (0, 0): SimplePoly({0: 1, 4: 21}),
+                (1, 0): SimplePoly({3: 7}),
+                (1, 1): SimplePoly({3: 7}),
+                (0, 1): SimplePoly({3: 7}),
+            },
+        ),
+        (
+            5,
+            {
+                (0, 0): SimplePoly({0: 1, 4: 21}),
+                (1, 0): SimplePoly({3: 7, 5: 42}),
+                (1, 1): SimplePoly({3: 7, 5: 42}),
+                (0, 1): SimplePoly({3: 7, 5: 42}),
+            },
+        ),
+        (
+            7,
+            {
+                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+            },
+        ),
+        (
+            9,
+            {
+                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+            },
+        ),
+    ],
+)
+def test_truncated_tensor_enumerator(truncate_length, expected_wep):
+    h = Legos.steane_code_813_encoding_tensor
+    te = StabilizerCodeTensorEnumerator(h)
+    assert (
+        te.stabilizer_enumerator_polynomial(
+            open_legs=[7], truncate_length=truncate_length
+        )
+        == expected_wep
+    )

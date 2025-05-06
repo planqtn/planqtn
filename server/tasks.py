@@ -20,7 +20,11 @@ from qlego.progress_reporter import (
 )
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from qlego.tensor_network import TensorNetwork
-from server.api_types import TensorNetworkRequest, WeightEnumeratorResponse
+from server.api_types import (
+    TensorNetworkRequest,
+    WeightEnumeratorRequest,
+    WeightEnumeratorResponse,
+)
 from server.task_store import TaskStore
 
 # Get Redis URL from environment variable or use default
@@ -91,10 +95,10 @@ class CeleryProgressReporter(ProgressReporter):
 
 
 @celery_app.task(bind=True)
-def weight_enumerator_task(self, network_dict: dict):
+def weight_enumerator_task(self, request_dict: dict):
     try:
         # Convert dictionary back to TensorNetworkRequest
-        network = TensorNetworkRequest(**network_dict)
+        request = WeightEnumeratorRequest(**request_dict)
         with CeleryProgressReporter(
             self,
             task_store=TaskStore(REDIS_URL),
@@ -103,7 +107,7 @@ def weight_enumerator_task(self, network_dict: dict):
             # Create TensorStabilizerCodeEnumerator instances for each lego
             nodes = {}
 
-            for instance_id, lego in network.legos.items():
+            for instance_id, lego in request.legos.items():
                 # Convert the parity check matrix to numpy array
                 h = GF2(lego.parity_check_matrix)
                 nodes[instance_id] = StabilizerCodeTensorEnumerator(
@@ -111,10 +115,10 @@ def weight_enumerator_task(self, network_dict: dict):
                 )
 
             # Create TensorNetwork instance
-            tn = TensorNetwork(nodes)
+            tn = TensorNetwork(nodes, truncate_length=request.truncate_length)
 
             # Add traces for each connection
-            for conn in network.connections:
+            for conn in request.connections:
                 tn.self_trace(
                     conn["from"]["legoId"],
                     conn["to"]["legoId"],
@@ -137,6 +141,8 @@ def weight_enumerator_task(self, network_dict: dict):
 
             if polynomial.is_scalar():
                 poly_b = polynomial
+            elif request.truncate_length is not None:
+                poly_b = "not defined for truncated enumerator"
             else:
                 h = tn.conjoin_nodes().h
                 r = h.shape[0]
@@ -158,9 +164,10 @@ def weight_enumerator_task(self, network_dict: dict):
                     "normalizer_polynomial": normalizer_polynomial_str,
                     # "history": progress_reporter.history,
                     "time": end - start,
+                    "truncate_length": str(request.truncate_length),
                 }
             )
     except Exception as e:
         print("error", e)
         traceback.print_exc()
-        return {"status": "failed", "message": str(e)}
+        raise e

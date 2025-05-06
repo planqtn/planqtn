@@ -64,6 +64,7 @@ export interface TensorNetwork {
     parityCheckMatrix?: number[][]
     weightEnumerator?: string
     normalizerPolynomial?: string
+    truncateLength?: number
     isCalculatingWeightEnumerator?: boolean
     taskId?: string
     constructionCode?: string
