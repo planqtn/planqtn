@@ -91,6 +91,8 @@ const LegoStudioView: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [currentTitle, setCurrentTitle] = useState<string>("");
+    const [fatalError, setFatalError] = useState<Error | null>(null);
+
 
     const [altKeyPressed, setAltKeyPressed] = useState(false);
     const [message, setMessage] = useState<string>('Loading...')
@@ -203,7 +205,13 @@ const LegoStudioView: React.FC = () => {
     }, [])
 
     const decodeCanvasState = useCallback(async (encoded: string) => {
-        return stateSerializerRef.current.decode(encoded)
+        try {
+            return await stateSerializerRef.current.decode(encoded);
+        } catch (error) {
+            console.error('Failed to decode canvas state:', error);
+            // Create a new error with a user-friendly message
+            throw error;
+        }
     }, [])
 
 
@@ -257,10 +265,17 @@ const LegoStudioView: React.FC = () => {
             const hashParams = new URLSearchParams(window.location.hash.slice(1))
             const stateParam = hashParams.get('state')
             if (stateParam) {
-                const decodedState = await decodeCanvasState(stateParam)
-                setDroppedLegos(decodedState.pieces)
-                setConnections(decodedState.connections)
-                setHideConnectedLegs(decodedState.hideConnectedLegs)
+                try {
+                    const decodedState = await decodeCanvasState(stateParam)
+                    setDroppedLegos(decodedState.pieces)
+                    setConnections(decodedState.connections)
+                    setHideConnectedLegs(decodedState.hideConnectedLegs)
+                } catch (error) {
+                    // Clear the invalid state from the URL
+                    // window.history.replaceState(null, '', window.location.pathname + window.location.search)
+                    // Ensure error is an Error object
+                    setFatalError(error instanceof Error ? error : new Error(String(error)))
+                }
             }
         }
 
@@ -2272,6 +2287,7 @@ const LegoStudioView: React.FC = () => {
 
     return (
         <VStack spacing={0} align="stretch" h="100vh">
+            {fatalError && (() => { throw fatalError; })()}
             {/* Menu Strip */}
             <HStack
                 spacing={2}

@@ -55,7 +55,7 @@ export class CanvasStateSerializer {
                     y: number;
                     is_dynamic?: boolean;
                     parameters?: Record<string, any>;
-                    parity_check_matrix?: number[][];
+                    parity_check_matrix: number[][];
                     logical_legs?: number[];
                     gauge_legs?: number[];
                     name?: string;
@@ -64,6 +64,9 @@ export class CanvasStateSerializer {
                     selectedMatrixRows?: number[];
                 }) => {
                     const predefinedLego = legosList.find(l => l.id === piece.id)
+                    if (!piece.parity_check_matrix || piece.parity_check_matrix.length === 0) {
+                        throw new Error(`Piece ${piece.instanceId} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`)
+                    }
 
                     // For pieces not in lego list, construct from saved data
                     if (!predefinedLego) {
@@ -120,7 +123,7 @@ export class CanvasStateSerializer {
             }
         } catch (error) {
             console.error('Error decoding canvas state:', error)
-            return { pieces: [], connections: [], hideConnectedLegs: false }
+            throw error;  // Re-throw the error instead of returning empty state
         }
     }
 
