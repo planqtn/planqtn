@@ -53,7 +53,7 @@ check_running_instances() {
 
     # Function to check backend
     check_backend() {
-        if pgrep -f "python.*main.py.*--port $BACKEND_PORT" > /dev/null; then
+        if pgrep -f "python.*planqtn_server.py.*--port $BACKEND_PORT" > /dev/null; then
             echo -e "${RED}Backend server is already running on port $BACKEND_PORT${NC}"
             backend_running=true
             return 0
@@ -169,7 +169,7 @@ cleanup() {
     kill $(jobs -p)
     rm -f "$SERVER_LOG" "$UI_LOG" "$CELERY_LOG"
     if [ "$DEV_MODE" = true ]; then
-        pkill -e -9 -f "main.py|npm|vite|celery"
+        pkill -e -9 -f "planqtn_server.py|npm|vite|celery"
     fi
     exit
 }
@@ -194,7 +194,7 @@ FLOWER_PID=$!
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-(cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
+(cd server && python planqtn_server.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
 # Function to check if backend API is responding

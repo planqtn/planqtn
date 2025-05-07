@@ -1,8 +1,7 @@
 import time
 import traceback
 from celery import Celery
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from galois import GF2
 from pydantic import BaseModel
@@ -22,60 +21,10 @@ from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
 from server.task_store import TaskStore
 from server.tasks import weight_enumerator_task, celery_app
-from server.websocket import websocket_manager
 
+router = APIRouter()
 
 task_store: TaskStore = None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global task_store
-    task_store = TaskStore()
-    asyncio.create_task(websocket_manager.start_celery_event_monitor())
-    yield
-
-
-app = FastAPI(
-    title="TNQEC API",
-    description="API for the TNQEC application",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Set up the Celery app in the WebSocket manager
-websocket_manager.set_celery_app(celery_app)
-
-
-@app.websocket("/ws/tasks")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket_manager.connect(websocket, "tasks")
-    try:
-        while True:
-            # Keep the connection alive
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await websocket_manager.disconnect(websocket, "tasks")
-
-
-@app.websocket("/ws/task/{task_id}")
-async def websocket_endpoint(websocket: WebSocket, task_id: str):
-    await websocket_manager.connect(websocket, "task_" + task_id)
-    try:
-        while True:
-            # Keep the connection alive
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await websocket_manager.disconnect(websocket, "task_" + task_id)
 
 
 def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:
@@ -116,17 +65,17 @@ def recognize_parity_check_matrix(h: GF2) -> str | None:
     return None
 
 
-@app.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(message="Server is running", status="healthy")
 
 
-@app.get("/legos", response_model=List[LegoPiece])
+@router.get("/legos", response_model=List[LegoPiece])
 async def list_legos():
     return Legos.list_available_legos()
 
 
-@app.post("/paritycheck", response_model=ParityCheckResponse)
+@router.post("/paritycheck", response_model=ParityCheckResponse)
 async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     # print("network", repr(network))
@@ -164,7 +113,7 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     )
 
 
-@app.post("/constructioncode", response_model=ConstructionCodeResponse)
+@router.post("/constructioncode", response_model=ConstructionCodeResponse)
 async def generate_construction_code(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
     nodes = {}
@@ -191,7 +140,7 @@ async def generate_construction_code(network: TensorNetworkRequest):
     return ConstructionCodeResponse(code=code)
 
 
-@app.post("/dynamiclego", response_model=LegoPiece)
+@router.post("/dynamiclego", response_model=LegoPiece)
 async def get_dynamic_lego(request: DynamicLegoRequest):
     # Get the lego definition from Legos class
     legos = Legos.list_available_legos()
@@ -219,7 +168,7 @@ async def get_dynamic_lego(request: DynamicLegoRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/tannernetwork", response_model=TensorNetworkResponse)
+@router.post("/tannernetwork", response_model=TensorNetworkResponse)
 async def create_tanner_network(request: TannerRequest):
     try:
         matrix = GF2(request.matrix)
@@ -230,7 +179,7 @@ async def create_tanner_network(request: TannerRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/csstannernetwork", response_model=TensorNetworkResponse)
+@router.post("/csstannernetwork", response_model=TensorNetworkResponse)
 async def create_css_tanner_network(request: TannerRequest):
     try:
         matrix = np.array(request.matrix)
@@ -264,7 +213,7 @@ async def create_css_tanner_network(request: TannerRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/mspnetwork", response_model=TensorNetworkResponse)
+@router.post("/mspnetwork", response_model=TensorNetworkResponse)
 def create_msp_network(request: TannerRequest):
     try:
         matrix = GF2(request.matrix)
@@ -287,7 +236,7 @@ class TaskStatusResponse(BaseModel):
     error: str | None = None
 
 
-@app.post("/weightenumerator", response_model=TaskStatusResponse)
+@router.post("/weightenumerator", response_model=TaskStatusResponse)
 async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
     try:
         # Convert Pydantic model to dictionary
@@ -306,7 +255,7 @@ async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
         return TaskStatusResponse(task_id="", status="error", error=str(e))
 
 
-@app.get(
+@router.get(
     "/list_tasks",
     response_model=List[Dict[str, Any]],
 )
@@ -331,7 +280,7 @@ class CancelTaskRequest(BaseModel):
     task_id: str
 
 
-@app.post("/cancel_task")
+@router.post("/cancel_task")
 async def cancel_task(request: CancelTaskRequest):
     try:
         # Revoke the task
