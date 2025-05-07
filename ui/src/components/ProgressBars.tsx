@@ -1,4 +1,4 @@
-import { Box, Progress, Text, VStack, HStack } from '@chakra-ui/react';
+import { Box, Progress, Text, VStack, HStack, Spinner } from '@chakra-ui/react';
 
 interface IterationStatus {
     desc: string;
@@ -12,6 +12,7 @@ interface IterationStatus {
 
 interface ProgressBarsProps {
     iterationStatus: IterationStatus[];
+    waiting: boolean;
 }
 
 const formatDuration = (seconds: number): string => {
@@ -46,7 +47,17 @@ const calculateETA = (status: IterationStatus): string => {
     return formatDuration(estimatedTime);
 };
 
-const ProgressBars: React.FC<ProgressBarsProps> = ({ iterationStatus }) => {
+const ProgressBars: React.FC<ProgressBarsProps> = ({ iterationStatus, waiting }) => {
+
+    if (waiting && (!iterationStatus || iterationStatus.length === 0)) {
+        return (
+            <HStack>
+                <Spinner size="sm" />
+                <Text>Waiting for update...</Text>
+            </HStack>
+        );
+    }
+
     return (
         <VStack align="stretch" spacing={4} width="100%">
             {iterationStatus.map((status, index) => (

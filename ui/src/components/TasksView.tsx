@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     VStack,
@@ -18,6 +18,7 @@ import { Panel, PanelGroup } from 'react-resizable-panels';
 import { ResizeHandle } from './ResizeHandle';
 import ProgressBars from './ProgressBars';
 import { useLocation } from 'react-router-dom';
+import { io, Socket } from 'socket.io-client';
 
 interface CeleryEvent {
     hostname: string;
@@ -105,11 +106,12 @@ const TasksView: React.FC = () => {
         duration: number;
         avg_time_per_item: number;
     }>>([]);
+    const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
 
     // Refs
-    const ws = useRef<WebSocket | null>(null);
+    const socketAllTasksRef = useRef<Socket | null>(null);
+    const socketSingleTaskRef = useRef<Socket | null>(null);
     const selectedTaskRef = useRef<Task | null>(null);
-    const taskWebSocket = useRef<WebSocket | null>(null);
 
     // Update the ref whenever selectedTask changes
     useEffect(() => {
@@ -187,147 +189,78 @@ const TasksView: React.FC = () => {
         });
     };
 
-    // WebSocket connection and message handling
-    const connectWebSocket = useCallback(() => {
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-            console.log('WebSocket already connected');
-            return;
-        }
-
-
-        ws.current = new WebSocket(`/wsapi/ws/tasks`);
-
-        ws.current.onopen = () => {
-            setIsConnected(true);
-            console.log('WebSocket connected');
-        };
-
-        ws.current.onclose = () => {
-            setIsConnected(false);
-            console.log('WebSocket disconnected');
-            setTimeout(connectWebSocket, 5000);
-        };
-
-        ws.current.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            toast({
-                title: 'WebSocket Error',
-                description: 'Connection to task updates lost',
-                status: 'error',
-                duration: 5000,
-                isClosable: true,
-            });
-        };
-
-        ws.current.onmessage = (event) => {
-            try {
-                const eventData: CeleryEvent = JSON.parse(event.data);
-                console.log('Received Celery event:', eventData);
-                processCeleryEvent(eventData);
-            } catch (error) {
-                console.error('Error processing WebSocket message:', error);
+    // Socket.IO connection for all tasks
+    useEffect(() => {
+        setLoading(true);
+        let mounted = true;
+        // Initial fetch
+        axios.get('/api/list_tasks', {
+            params: { limit: 50, offset: 0 }
+        }).then(response => {
+            if (mounted) {
+                for (const task of response.data) {
+                    task.title = parseTaskTitleFromArgs(task.args);
+                    task.state = task.state === 'REVOKED' ? 'CANCELLED' : task.state;
+                }
+                setTasks(response.data);
+                setLoading(false);
             }
+        }).catch(error => {
+            if (mounted) {
+                setLoading(false);
+                toast({
+                    title: 'Error fetching tasks error: ' + error.message,
+                    description: 'Failed to load task list',
+                    status: 'error',
+                    duration: 5000,
+                    isClosable: true,
+                });
+            }
+        });
+
+        // Connect to /ws/tasks namespace
+        const socket = io("/ws/tasks", { transports: ["websocket"] });
+        socketAllTasksRef.current = socket;
+        socket.on("connect", () => setIsConnected(true));
+        socket.on("disconnect", () => setIsConnected(false));
+        socket.emit("join_room", { room_id: "tasks" });
+        socket.on("celery_event", (event: CeleryEvent) => {
+            processCeleryEvent(event);
+        });
+        return () => {
+            mounted = false;
+            socket.disconnect();
         };
     }, [toast]);
 
-    // Add WebSocket connection for selected task
+    // Socket.IO connection for selected task
     useEffect(() => {
-        if (selectedTask) {
-            // Close any existing WebSocket connection
-            if (taskWebSocket.current) {
-                taskWebSocket.current.close();
-            }
-
-            // Create new WebSocket connection for specific task
-            const ws = new WebSocket(`/wsapi/ws/task/${selectedTask.uuid}`);
-
-            ws.onopen = () => {
-                console.log("Task update WebSocket opened for task:", selectedTask.uuid);
-                taskWebSocket.current = ws;
-            };
-
-            ws.onmessage = (event) => {
-                const message: TaskUpdateMessage = JSON.parse(event.data);
-                if (message.type === 'task_updated' && message.message.updates.iteration_status) {
-                    setIterationStatus(message.message.updates.iteration_status);
-                }
-            };
-
-            ws.onclose = () => {
-                console.log("Task update WebSocket closed for task:", selectedTask.uuid);
-                taskWebSocket.current = null;
-            };
-
-            ws.onerror = (event) => {
-                console.error("Task update WebSocket error for task:", selectedTask.uuid, event);
-            };
-
-            // Cleanup function
-            return () => {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.close();
-                }
-            };
-        } else {
-            // Clear iteration status when no task is selected
+        if (!selectedTask) {
             setIterationStatus([]);
+            setWaitingForTaskUpdate(false);
+            if (socketSingleTaskRef.current) {
+                socketSingleTaskRef.current.disconnect();
+                socketSingleTaskRef.current = null;
+            }
+            return;
         }
-    }, [selectedTask]);
-
-    // Initial data fetch and WebSocket connection
-    useEffect(() => {
-        let mounted = true;
-
-        const initialize = async () => {
-            try {
-                setLoading(true);
-                // Load first page of tasks
-                const response = await axios.get('/api/list_tasks', {
-                    params: {
-                        limit: 50,
-                        offset: 0
-                    }
-                });
-                if (mounted) {
-                    console.log('Initial tasks:', response.data);
-                    for (const task of response.data) {
-                        task.title = parseTaskTitleFromArgs(task.args);
-                        task.state = task.state === 'REVOKED' ? 'CANCELLED' : task.state;
-                    }
-                    setTasks(response.data);
-                    // Only connect WebSocket after successful initial load
-                    connectWebSocket();
-                }
-            } catch (error) {
-                console.error('Error fetching tasks:', error);
-                if (mounted) {
-                    toast({
-                        title: 'Error fetching tasks',
-                        description: 'Failed to load task list',
-                        status: 'error',
-                        duration: 5000,
-                        isClosable: true,
-                    });
-                }
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                }
+        setWaitingForTaskUpdate(true);
+        if (socketSingleTaskRef.current) {
+            socketSingleTaskRef.current.disconnect();
+        }
+        const socket = io("/ws/task", { transports: ["websocket"] });
+        socketSingleTaskRef.current = socket;
+        socket.emit("join_room", { room_id: `task_${selectedTask.uuid}` });
+        socket.on("task_updated", (data: TaskUpdateMessage) => {
+            setWaitingForTaskUpdate(false);
+            if (data.type === "task_updated" && data.message.updates.iteration_status) {
+                setIterationStatus(data.message.updates.iteration_status);
             }
-        };
-
-        initialize();
-
-        // Cleanup function
+        });
         return () => {
-            mounted = false;
-            if (ws.current) {
-                console.log('Closing WebSocket connection');
-                ws.current.close();
-                ws.current = null;
-            }
+            socket.disconnect();
         };
-    }, [connectWebSocket, toast]);
+    }, [selectedTask]);
 
     // Helper functions
     const getStateColor = (state: string) => {
@@ -522,10 +455,10 @@ const TasksView: React.FC = () => {
                                     <Text>Runtime: {formatRuntime(selectedTask.runtime)}</Text>
                                 </VStack>
                             </Box>
-                            {selectedTask.state === 'STARTED' && iterationStatus.length > 0 && (
+                            {(selectedTask.state === 'STARTED' || selectedTask.state === 'PENDING') && (
                                 <Box>
                                     <Text fontWeight="bold">Progress:</Text>
-                                    <ProgressBars iterationStatus={iterationStatus} />
+                                    <ProgressBars iterationStatus={iterationStatus} waiting={waitingForTaskUpdate} />
                                 </Box>
                             )}
                             {selectedTask.result && (
