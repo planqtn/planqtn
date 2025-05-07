@@ -224,6 +224,10 @@ class SocketIOManager:
                                             event["result"] = json.dumps(
                                                 json.loads(task_details)["result"]
                                             )
+                                        # for security reasons, we don't want to expose the trace / the reals error message unless we know more
+                                        if event["type"] == "task-failed":
+                                            event["exception"] = "Server error"
+                                            del event["traceback"]
 
                                         # Emit to the tasks room in the /ws/tasks namespace
                                         await self.sio.emit(

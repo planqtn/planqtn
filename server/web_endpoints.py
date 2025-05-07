@@ -20,7 +20,7 @@ import requests
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
 from server.task_store import TaskStore
-from server.tasks import weight_enumerator_task, celery_app
+from server.tasks import REDIS_URL, weight_enumerator_task, celery_app
 
 router = APIRouter()
 
@@ -261,7 +261,7 @@ async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
 )
 async def list_tasks():
     try:
-
+        task_store = TaskStore(REDIS_URL)
         task_dict = task_store.get_all_tasks()
         print("task_dict", task_dict)
         all_tasks = []

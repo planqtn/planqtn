@@ -148,12 +148,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             } else if (event.type === "task-failed") {
                 for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
                     if (cacheEntry.taskId === event.uuid) {
+                        setError(`Task failed: ${event.exception || 'Unknown error'}`);
+
                         const currentTensorNetwork = currentTensorNetworkRef.current;
+                        weightEnumeratorCache.delete(signature);
                         if (currentTensorNetwork?.signature === signature) {
-                            setError(`Task failed: ${event.info?.error || 'Unknown error'}`);
                             setTensorNetwork(prev => prev ? {
                                 ...prev,
-                                isCalculatingWeightEnumerator: false
+                                isCalculatingWeightEnumerator: false,
+                                weightEnumerator: "",
+                                normalizerPolynomial: "",
+                                taskId: undefined
                             } : null);
                         }
                         break;

@@ -59,6 +59,10 @@ class TaskStore:
                 for _, task in tasks.items():
                     task_details = self.get_task_details(task["uuid"])
                     task["args"] = json.loads(task_details)["args"]
+                    if "traceback" in task:
+                        del task["traceback"]
+                    if "exception" in task:
+                        task["exception"] = "Server error"
                 return tasks
             return {}
         except requests.RequestException as e:
