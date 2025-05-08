@@ -11,6 +11,8 @@ import {
     Code,
     useToast,
     IconButton,
+    useDisclosure,
+    Flex,
 } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
 import axios from 'axios';
@@ -19,6 +21,10 @@ import { ResizeHandle } from './ResizeHandle';
 import ProgressBars from './ProgressBars';
 import { useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import { auth } from '../firebaseConfig';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { UserMenu } from './UserMenu';
+import AuthDialog from './AuthDialog';
 
 interface CeleryEvent {
     hostname: string;
@@ -80,19 +86,8 @@ interface TaskUpdateMessage {
 
 const TasksView: React.FC = () => {
     const location = useLocation();
-
-    // Add title effect
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const title = params.get('title');
-        if (title) {
-            document.title = `${decodeURIComponent(title)} - tasks`;
-        } else {
-            document.title = 'PlanqTN Task list';
-        }
-    }, [location]);
-
-    // State hooks
+    const { onOpen, onClose } = useDisclosure();
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [loading, setLoading] = useState(true);
@@ -113,15 +108,41 @@ const TasksView: React.FC = () => {
     const socketSingleTaskRef = useRef<Socket | null>(null);
     const selectedTaskRef = useRef<Task | null>(null);
 
-    // Update the ref whenever selectedTask changes
-    useEffect(() => {
-        selectedTaskRef.current = selectedTask;
-    }, [selectedTask]);
 
     // Theme hooks
     const bgColor = useColorModeValue('white', 'gray.800');
     const hoverBgColor = useColorModeValue('gray.50', 'gray.600');
     const selectedBgColor = useColorModeValue('gray.100', 'gray.700');
+
+    // Update the ref whenever selectedTask changes
+    useEffect(() => {
+        selectedTaskRef.current = selectedTask;
+    }, [selectedTask]);
+
+
+    // Add authentication effect
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+            if (!user) {
+                onOpen(); // Open auth modal if user is not authenticated
+            }
+        });
+
+        return () => unsubscribe();
+    }, [onOpen]);
+
+    // Add title effect
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const title = params.get('title');
+        if (title) {
+            document.title = `${decodeURIComponent(title)} - tasks`;
+        } else {
+            document.title = 'PlanqTN Task list';
+        }
+    }, [location]);
+
 
     // Other hooks
     const toast = useToast();
@@ -191,6 +212,15 @@ const TasksView: React.FC = () => {
 
     // Socket.IO connection for all tasks
     useEffect(() => {
+
+
+
+        if (!currentUser) {
+            setLoading(false);
+            socketAllTasksRef.current?.disconnect();
+
+            return;
+        }
         setLoading(true);
         let mounted = true;
         // Initial fetch
@@ -231,10 +261,13 @@ const TasksView: React.FC = () => {
             mounted = false;
             socket.disconnect();
         };
-    }, [toast]);
+    }, [currentUser]);
 
     // Socket.IO connection for selected task
     useEffect(() => {
+        if (!currentUser) {
+            return;
+        }
         if (!selectedTask) {
             setIterationStatus([]);
             setWaitingForTaskUpdate(false);
@@ -260,7 +293,7 @@ const TasksView: React.FC = () => {
         return () => {
             socket.disconnect();
         };
-    }, [selectedTask]);
+    }, [selectedTask, currentUser]);
 
     // Helper functions
     const getStateColor = (state: string) => {
@@ -337,161 +370,181 @@ const TasksView: React.FC = () => {
         );
     }
 
+    if (!currentUser) {
+        return <AuthDialog isOpen={true} onClose={onClose} />;
+    }
+
+    // Header height
+    const HEADER_HEIGHT = 56;
+
     return (
-        <PanelGroup direction="horizontal">
-            {/* Task List Panel */}
-            <Panel id="task-list-panel" defaultSize={40} minSize={20} order={1}>
-                <Box
-                    height="100%"
-                    overflowY="auto"
-                    bg={bgColor}
-                    borderRadius="md"
-                    boxShadow="md"
-                    p={4}
-                >
-                    <HStack mb={4} justify="space-between">
-                        <Text fontWeight="bold">Tasks</Text>
-                        <Badge colorScheme={isConnected ? "green" : "red"}>
-                            {isConnected ? "Connected" : "Disconnected"}
-                        </Badge>
-                    </HStack>
-                    <VStack align="stretch" spacing={2}>
-                        {tasks.map((task) => (
-                            <Box
-                                key={task.uuid}
-                                p={3}
-                                borderRadius="md"
-                                bg={selectedTask?.uuid === task.uuid ? selectedBgColor : 'transparent'}
-                                cursor="pointer"
-                                onClick={() => setSelectedTask(task)}
-                                _hover={{ bg: hoverBgColor }}
-                            >
-                                <HStack justify="space-between">
-                                    <Text fontWeight="bold">{task.title}</Text>
-                                    <HStack>
-                                        <Badge colorScheme={getStateColor(task.state)}>{task.state}</Badge>
-                                        {(task.state === 'STARTED' || task.state === 'PENDING') && (
-                                            <IconButton
-                                                aria-label="Cancel task"
-                                                icon={<CloseIcon />}
-                                                size="xs"
-                                                colorScheme="red"
-                                                variant="ghost"
-                                                title="Cancel task"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCancelTask(task.uuid);
-                                                }}
-                                            />
-                                        )}
-                                    </HStack>
-                                </HStack>
-                                <Text fontSize="sm" color="gray.500">
-                                    Started: {formatDate(task.started)}
-                                </Text>
-                                <HStack justify="space-between">
-                                    <Text fontSize="sm">Runtime: {formatRuntime(task.runtime)}</Text>
-                                    <Badge>{task.worker}</Badge>
-                                </HStack>
-                            </Box>
-                        ))}
-                    </VStack>
-                </Box>
-            </Panel>
-
-            <ResizeHandle id="task-details-resize-handle" />
-
-            {/* Task Details Panel */}
-            <Panel id="task-details-panel" defaultSize={60} minSize={30} order={2}>
-                <Box
-                    height="100%"
-                    overflowY="auto"
-                    bg={bgColor}
-                    borderRadius="md"
-                    boxShadow="md"
-                    p={4}
-                >
-                    {selectedTask ? (
-                        <VStack align="stretch" spacing={4}>
-                            <Text fontSize="xl" fontWeight="bold">
-                                Task Details
-                            </Text>
-                            <Divider />
-                            <Box>
-                                <Text fontWeight="bold">ID:</Text>
-                                <Code p={2} display="block" whiteSpace="pre-wrap">
-                                    {selectedTask.uuid}
-                                </Code>
-                            </Box>
-                            <Box>
-                                <Text fontWeight="bold">State:</Text>
-                                <HStack>
-                                    <Badge colorScheme={getStateColor(selectedTask.state)}>
-                                        {selectedTask.state}
+        <>
+            {/* Header Bar */}
+            <Box as="header" w="100%" h={`${HEADER_HEIGHT}px`} px={6} py={2} bg={bgColor} borderBottom="1px" borderColor={useColorModeValue('gray.200', 'gray.700')} position="relative" zIndex={2}>
+                <Flex align="center" justify="flex-end" h="100%">
+                    <UserMenu user={currentUser} />
+                </Flex>
+            </Box>
+            {/* Main Content */}
+            <Box pt={`${HEADER_HEIGHT}px`}>
+                <PanelGroup direction="horizontal">
+                    {/* Task List Panel */}
+                    <Panel id="task-list-panel" defaultSize={40} minSize={20} order={1}>
+                        <Box
+                            height="100%"
+                            overflowY="auto"
+                            bg={bgColor}
+                            borderRadius="md"
+                            boxShadow="md"
+                            p={4}
+                        >
+                            <HStack mb={4} justify="space-between">
+                                <Text fontWeight="bold">Tasks</Text>
+                                <HStack spacing={4}>
+                                    <Badge colorScheme={isConnected ? "green" : "red"}>
+                                        {isConnected ? "Connected" : "Disconnected"}
                                     </Badge>
-                                    {(selectedTask.state === 'STARTED' || selectedTask.state === 'PENDING') && (
-                                        <IconButton
-                                            aria-label="Cancel task"
-                                            icon={<CloseIcon />}
-                                            size="xs"
-                                            colorScheme="red"
-                                            variant="ghost"
-                                            title="Cancel task"
-                                            onClick={() => handleCancelTask(selectedTask.uuid)}
-                                        />
-                                    )}
                                 </HStack>
-                            </Box>
-                            <Box>
-                                <Text fontWeight="bold">Worker:</Text>
-                                <Text>{selectedTask.worker}</Text>
-                            </Box>
-                            <Box>
-                                <Text fontWeight="bold">Timing:</Text>
-                                <VStack align="start" spacing={1}>
-                                    <Text>Received: {formatDate(selectedTask.received)}</Text>
-                                    <Text>Started: {formatDate(selectedTask.started)}</Text>
-                                    <Text>Completed: {formatDate(selectedTask.succeeded)}</Text>
-                                    <Text>Runtime: {formatRuntime(selectedTask.runtime)}</Text>
+                            </HStack>
+                            <VStack align="stretch" spacing={2}>
+                                {tasks.map((task) => (
+                                    <Box
+                                        key={task.uuid}
+                                        p={3}
+                                        borderRadius="md"
+                                        bg={selectedTask?.uuid === task.uuid ? selectedBgColor : 'transparent'}
+                                        cursor="pointer"
+                                        onClick={() => setSelectedTask(task)}
+                                        _hover={{ bg: hoverBgColor }}
+                                    >
+                                        <HStack justify="space-between">
+                                            <Text fontWeight="bold">{task.title}</Text>
+                                            <HStack>
+                                                <Badge colorScheme={getStateColor(task.state)}>{task.state}</Badge>
+                                                {(task.state === 'STARTED' || task.state === 'PENDING') && (
+                                                    <IconButton
+                                                        aria-label="Cancel task"
+                                                        icon={<CloseIcon />}
+                                                        size="xs"
+                                                        colorScheme="red"
+                                                        variant="ghost"
+                                                        title="Cancel task"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCancelTask(task.uuid);
+                                                        }}
+                                                    />
+                                                )}
+                                            </HStack>
+                                        </HStack>
+                                        <Text fontSize="sm" color="gray.500">
+                                            Started: {formatDate(task.started)}
+                                        </Text>
+                                        <HStack justify="space-between">
+                                            <Text fontSize="sm">Runtime: {formatRuntime(task.runtime)}</Text>
+                                            <Badge>{task.worker}</Badge>
+                                        </HStack>
+                                    </Box>
+                                ))}
+                            </VStack>
+                        </Box>
+                    </Panel>
+
+                    <ResizeHandle id="task-details-resize-handle" />
+
+                    {/* Task Details Panel */}
+                    <Panel id="task-details-panel" defaultSize={60} minSize={30} order={2}>
+                        <Box
+                            height="100%"
+                            overflowY="auto"
+                            bg={bgColor}
+                            borderRadius="md"
+                            boxShadow="md"
+                            p={4}
+                        >
+                            {selectedTask ? (
+                                <VStack align="stretch" spacing={4}>
+                                    <Text fontSize="xl" fontWeight="bold">
+                                        Task Details
+                                    </Text>
+                                    <Divider />
+                                    <Box>
+                                        <Text fontWeight="bold">ID:</Text>
+                                        <Code p={2} display="block" whiteSpace="pre-wrap">
+                                            {selectedTask.uuid}
+                                        </Code>
+                                    </Box>
+                                    <Box>
+                                        <Text fontWeight="bold">State:</Text>
+                                        <HStack>
+                                            <Badge colorScheme={getStateColor(selectedTask.state)}>
+                                                {selectedTask.state}
+                                            </Badge>
+                                            {(selectedTask.state === 'STARTED' || selectedTask.state === 'PENDING') && (
+                                                <IconButton
+                                                    aria-label="Cancel task"
+                                                    icon={<CloseIcon />}
+                                                    size="xs"
+                                                    colorScheme="red"
+                                                    variant="ghost"
+                                                    title="Cancel task"
+                                                    onClick={() => handleCancelTask(selectedTask.uuid)}
+                                                />
+                                            )}
+                                        </HStack>
+                                    </Box>
+                                    <Box>
+                                        <Text fontWeight="bold">Worker:</Text>
+                                        <Text>{selectedTask.worker}</Text>
+                                    </Box>
+                                    <Box>
+                                        <Text fontWeight="bold">Timing:</Text>
+                                        <VStack align="start" spacing={1}>
+                                            <Text>Received: {formatDate(selectedTask.received)}</Text>
+                                            <Text>Started: {formatDate(selectedTask.started)}</Text>
+                                            <Text>Completed: {formatDate(selectedTask.succeeded)}</Text>
+                                            <Text>Runtime: {formatRuntime(selectedTask.runtime)}</Text>
+                                        </VStack>
+                                    </Box>
+                                    {(selectedTask.state === 'STARTED' || selectedTask.state === 'PENDING') && (
+                                        <Box>
+                                            <Text fontWeight="bold">Progress:</Text>
+                                            <ProgressBars iterationStatus={iterationStatus} waiting={waitingForTaskUpdate} />
+                                        </Box>
+                                    )}
+                                    {selectedTask.result && (
+                                        <Box>
+                                            <Text fontWeight="bold">Result:</Text>
+                                            <Code p={2} display="block" whiteSpace="pre-wrap">
+                                                {selectedTask.result}
+                                            </Code>
+                                        </Box>
+                                    )}
+                                    {selectedTask.exception && (
+                                        <Box>
+                                            <Text fontWeight="bold">Error:</Text>
+                                            <Code p={2} display="block" whiteSpace="pre-wrap" colorScheme="red">
+                                                {selectedTask.exception}
+                                            </Code>
+                                        </Box>
+                                    )}
+                                    {selectedTask.traceback && (
+                                        <Box>
+                                            <Text fontWeight="bold">Traceback:</Text>
+                                            <Code p={2} display="block" whiteSpace="pre-wrap" colorScheme="red">
+                                                {selectedTask.traceback}
+                                            </Code>
+                                        </Box>
+                                    )}
                                 </VStack>
-                            </Box>
-                            {(selectedTask.state === 'STARTED' || selectedTask.state === 'PENDING') && (
-                                <Box>
-                                    <Text fontWeight="bold">Progress:</Text>
-                                    <ProgressBars iterationStatus={iterationStatus} waiting={waitingForTaskUpdate} />
-                                </Box>
+                            ) : (
+                                <Text>Select a task to view details</Text>
                             )}
-                            {selectedTask.result && (
-                                <Box>
-                                    <Text fontWeight="bold">Result:</Text>
-                                    <Code p={2} display="block" whiteSpace="pre-wrap">
-                                        {selectedTask.result}
-                                    </Code>
-                                </Box>
-                            )}
-                            {selectedTask.exception && (
-                                <Box>
-                                    <Text fontWeight="bold">Error:</Text>
-                                    <Code p={2} display="block" whiteSpace="pre-wrap" colorScheme="red">
-                                        {selectedTask.exception}
-                                    </Code>
-                                </Box>
-                            )}
-                            {selectedTask.traceback && (
-                                <Box>
-                                    <Text fontWeight="bold">Traceback:</Text>
-                                    <Code p={2} display="block" whiteSpace="pre-wrap" colorScheme="red">
-                                        {selectedTask.traceback}
-                                    </Code>
-                                </Box>
-                            )}
-                        </VStack>
-                    ) : (
-                        <Text>Select a task to view details</Text>
-                    )}
-                </Box>
-            </Panel>
-        </PanelGroup>
+                        </Box>
+                    </Panel>
+                </PanelGroup>
+            </Box>
+        </>
     );
 };
 

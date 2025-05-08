@@ -18,6 +18,7 @@ import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 import ProgressBars from './ProgressBars'
 import { io, Socket } from "socket.io-client";
+import { User } from 'firebase/auth';
 
 
 interface DetailsPanelProps {
@@ -37,6 +38,7 @@ interface DetailsPanelProps {
     makeSpace: (center: { x: number; y: number }, radius: number, skipLegos: DroppedLego[], legosToCheck: DroppedLego[]) => DroppedLego[]
     handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>
     toast: (props: UseToastOptions) => void
+    user?: User | null
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -55,7 +57,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     hideConnectedLegs,
     makeSpace,
     handlePullOutSameColoredLeg,
-    toast
+    toast,
+    user
 }) => {
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
@@ -1043,10 +1046,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                 size="sm"
                                                 width="full"
                                                 leftIcon={<Icon as={FaCube} />}
+                                                disabled={!user}
                                             >
                                                 Calculate Weight Enumerator
                                             </Button>
                                         )}
+                                    {!user && (
+                                        <Text color="red.500" fontSize="sm" mt={-2} mb={2}>
+                                            Requires signing in
+                                        </Text>
+                                    )}
                                     <Button
                                         onClick={generateConstructionCode}
                                         colorScheme="purple"

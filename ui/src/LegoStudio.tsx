@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast, Editable, EditableInput, EditablePreview, Spacer } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton, MenuList, MenuItem, useClipboard, MenuItemOption, useToast, Editable, EditableInput, EditablePreview, Flex, Icon } from '@chakra-ui/react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
@@ -19,6 +19,11 @@ import { AddStopper } from './transformations/AddStopper'
 import { findConnectedComponent } from './utils/TensorNetwork'
 import { randomPlankterName } from './utils/RandomPlankterNames'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { auth } from './firebaseConfig'
+import { UserMenu } from './components/UserMenu'
+import AuthDialog from './components/AuthDialog'
+import { FiEdit } from 'react-icons/fi'
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
@@ -144,7 +149,7 @@ const LegoStudioView: React.FC = () => {
     const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
     const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false)
     const [isMspDialogOpen, setIsMspDialogOpen] = useState(false)
-    const [hideConnectedLegs, setHideConnectedLegs] = useState(false)
+    const [hideConnectedLegs, setHideConnectedLegs] = useState(true)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
@@ -153,6 +158,8 @@ const LegoStudioView: React.FC = () => {
 
     const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
     const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
     // Inside the App component, add this line near the other hooks
     const toast = useToast();
@@ -1657,7 +1664,12 @@ const LegoStudioView: React.FC = () => {
         return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
-
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {
         e.preventDefault();
@@ -2287,162 +2299,121 @@ const LegoStudioView: React.FC = () => {
 
     return (
         <VStack spacing={0} align="stretch" h="100vh">
+            {/* Header Bar: Menu strip (left) + User menu (right) */}
+            <Box as="header" w="100%" h="56px" px={6} py={2} bg={bgColor} borderBottom="1px" borderColor={borderColor} position="relative" zIndex={2}>
+                <Flex align="center" justify="space-between" h="100%">
+                    {/* Menu Strip (left) */}
+                    <HStack flex={1} spacing={2}>
+                        <Menu>
+                            <MenuButton as={Button} variant="ghost" size="sm">Export</MenuButton>
+                            <MenuList>
+                                <MenuItem onClick={handleExportSvg}>Export canvas as SVG...</MenuItem>
+                            </MenuList>
+                        </Menu>
+                        <Menu>
+                            <MenuButton as={Button} variant="ghost" size="sm" onClick={() => {
+                                const params = new URLSearchParams(location.search);
+                                const title = params.get('title');
+                                if (title) {
+                                    window.open(`/tasks?title=${encodeURIComponent(title)}`, '_blank');
+                                } else {
+                                    window.open('/tasks', '_blank');
+                                }
+                            }}>Tasks</MenuButton>
+                        </Menu>
+                        <Menu>
+                            <MenuButton as={Button} variant="ghost" size="sm">Tensor Networks</MenuButton>
+                            <MenuList>
+                                <MenuItem onClick={() => setIsCssTannerDialogOpen(true)}>CSS Tanner Network</MenuItem>
+                                <MenuItem onClick={() => setIsTannerDialogOpen(true)}>Tanner Network</MenuItem>
+                                <MenuItem onClick={() => setIsMspDialogOpen(true)}>Measurement State Prep Network</MenuItem>
+                            </MenuList>
+                        </Menu>
+                        <Menu>
+                            <MenuButton as={Button} variant="ghost" size="sm">View</MenuButton>
+                            <MenuList>
+                                <MenuItemOption onClick={() => {
+                                    setHideConnectedLegs(!hideConnectedLegs);
+                                    encodeCanvasState(droppedLegos, connections, !hideConnectedLegs);
+                                }} isChecked={hideConnectedLegs}>Hide connected legs</MenuItemOption>
+                                <MenuItemOption isChecked={isLegoPanelCollapsed} onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}>
+                                    Hide lego list
+                                </MenuItemOption>
+                                <MenuItem onClick={() => {
+                                    const rect = canvasRef.current?.getBoundingClientRect();
+                                    if (!rect) return;
+                                    const centerX = rect.width / 2;
+                                    const centerY = rect.height / 2;
+                                    const scale = 1 / zoomLevel;
+                                    const rescaledLegos = droppedLegos.map(lego => ({
+                                        ...lego,
+                                        x: (lego.x - centerX) * scale + centerX,
+                                        y: (lego.y - centerY) * scale + centerY
+                                    }));
+                                    setDroppedLegos(rescaledLegos);
+                                    setZoomLevel(1);
+                                    encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
+                                }} isDisabled={zoomLevel === 1}>Reset zoom</MenuItem>
+                            </MenuList>
+                        </Menu>
+                        <Button variant="ghost" size="sm" onClick={handleClearAll}>Remove all</Button>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                            const clearedLegos = droppedLegos.map(lego => ({ ...lego, selectedMatrixRows: [] }));
+                            setDroppedLegos(clearedLegos);
+                            setSelectedLego(null);
+                            encodeCanvasState(clearedLegos, connections, hideConnectedLegs);
+                        }} isDisabled={!droppedLegos.some(lego => (lego.selectedMatrixRows && lego.selectedMatrixRows.length > 0))}>Clear highlights</Button>
+
+                    </HStack>
+                    {/* Title */}
+                    <Box flexShrink={1}>
+                        <VStack align="center" justify="center" spacing={0}>
+
+                            <Editable value={currentTitle} onChange={handleTitleChange} onKeyDown={handleTitleKeyDown} >
+                                <HStack
+                                    as="span"
+                                    spacing={1}
+                                    className="editable-title-group"
+                                    _groupHover={{}}
+                                    position="relative"
+                                    role="group"
+                                >
+                                    <EditablePreview
+                                        px={2}
+                                        _hover={{
+                                            bg: useColorModeValue('gray.100', 'gray.700'),
+                                            cursor: 'pointer'
+                                        }}
+                                        as="p"
+                                        fontSize="large"
+                                    />
+                                    <Icon
+                                        as={FiEdit}
+                                        boxSize={4}
+                                        color="gray.400"
+                                        ml={1}
+                                        display="none"
+                                        _groupHover={{ display: 'inline-block' }}
+                                        position="absolute"
+                                        right={0}
+                                        top="50%"
+                                        transform="translateX(100%) translateY(-50%)"
+                                        pointerEvents="none"
+                                    />
+                                </HStack>
+                                <EditableInput px={2} fontSize="large" />
+                            </Editable>
+                        </VStack>
+                    </Box>
+
+                    {/* User Menu (right) */}
+
+                    <Box flex={1} display="flex" justifyContent="flex-end" minW={0}>
+                        <UserMenu user={currentUser} onSignIn={() => setAuthDialogOpen(true)} />
+                    </Box>
+                </Flex>
+            </Box>
             {fatalError && (() => { throw fatalError; })()}
-            {/* Menu Strip */}
-            <HStack
-                spacing={2}
-                p={2}
-                borderBottom="1px"
-                borderColor={borderColor}
-                bg={bgColor}
-            >
-                <Menu>
-                    <MenuButton as={Button}
-                        variant="ghost"
-                        size="sm">
-                        Export
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItem onClick={handleExportSvg}>
-                            Export canvas as SVG...
-                        </MenuItem>
-                    </MenuList>
-                </Menu>
-                <Menu>
-                    <MenuButton
-                        as={Button}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            const params = new URLSearchParams(location.search);
-                            const title = params.get('title');
-                            if (title) {
-                                window.open(`/tasks?title=${encodeURIComponent(title)}`, '_blank');
-                            } else {
-                                window.open('/tasks', '_blank');
-                            }
-                        }}
-                    >
-                        Tasks
-                    </MenuButton>
-
-                </Menu>
-                <Menu>
-                    <MenuButton
-                        as={Button}
-                        variant="ghost"
-                        size="sm"
-                    >
-                        Tensor Networks
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItem onClick={() => setIsCssTannerDialogOpen(true)}>
-                            CSS Tanner Network
-                        </MenuItem>
-                        <MenuItem onClick={() => setIsTannerDialogOpen(true)}>
-                            Tanner Network
-                        </MenuItem>
-                        <MenuItem onClick={() => setIsMspDialogOpen(true)}>
-                            Measurement State Prep Network
-                        </MenuItem>
-
-                    </MenuList>
-                </Menu>
-                <Menu>
-                    <MenuButton
-                        as={Button}
-                        variant="ghost"
-                        size="sm"
-                    >
-                        View
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItemOption
-                            onClick={() => {
-                                setHideConnectedLegs(!hideConnectedLegs);
-                                encodeCanvasState(droppedLegos, connections, !hideConnectedLegs);
-                            }}
-                            isChecked={hideConnectedLegs}
-                        >
-
-                            Hide connected legs
-                        </MenuItemOption>
-                        <MenuItemOption isChecked={isLegoPanelCollapsed} onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}>
-                            Hide lego list
-                        </MenuItemOption>
-                        <MenuItem
-
-                            onClick={() => {
-                                const rect = canvasRef.current?.getBoundingClientRect();
-                                if (!rect) return;
-                                const centerX = rect.width / 2
-                                const centerY = rect.height / 2
-                                const scale = 1 / zoomLevel
-                                const rescaledLegos = droppedLegos.map(lego => ({
-                                    ...lego,
-                                    x: (lego.x - centerX) * scale + centerX,
-                                    y: (lego.y - centerY) * scale + centerY
-                                }));
-                                setDroppedLegos(rescaledLegos);
-                                setZoomLevel(1)
-                                encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
-                            }}
-                            isDisabled={zoomLevel === 1}
-                        >
-                            Reset zoom
-                        </MenuItem>
-
-                    </MenuList>
-                </Menu>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearAll}
-                >
-                    Remove all
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                        // Clear highlights from all legos
-                        const clearedLegos = droppedLegos.map(lego => ({
-                            ...lego,
-                            selectedMatrixRows: []
-                        }));
-                        setDroppedLegos(clearedLegos);
-                        setSelectedLego(null);
-                        encodeCanvasState(clearedLegos, connections, hideConnectedLegs);
-                    }}
-                    isDisabled={!droppedLegos.some(lego =>
-                        (lego.selectedMatrixRows && lego.selectedMatrixRows.length > 0)
-                    )}
-                >
-                    Clear highlights
-                </Button>
-
-                <Spacer />
-                <HStack>
-                    <Text>Canvas name: </Text>
-                    <Editable
-                        value={currentTitle}
-                        onChange={handleTitleChange}
-                        onKeyDown={handleTitleKeyDown}
-                        placeholder="Enter title..."
-                        fontSize="sm"
-                    >
-                        <EditablePreview
-                            px={2}
-                            _hover={{
-                                bg: useColorModeValue('gray.100', 'gray.700'),
-                                cursor: 'pointer'
-                            }}
-                        />
-                        <EditableInput px={2} />
-                    </Editable>
-                </HStack>
-            </HStack>
-
             {/* Main Content */}
             <Box flex={1} position="relative" overflow="hidden">
                 <PanelGroup direction="horizontal">
@@ -2466,19 +2437,7 @@ const LegoStudioView: React.FC = () => {
                     {/* Main Content */}
                     <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
                         <Box h="100%" display="flex" flexDirection="column" p={4}>
-                            {/* Status Bar */}
-                            <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
-                                <HStack spacing={2}>
 
-                                    <Box
-                                        w="8px"
-                                        h="8px"
-                                        borderRadius="full"
-                                        bg={isBackendHealthy ? "green.400" : "red.400"}
-                                    />
-                                    <Text fontSize="sm">Backend Status: {message}</Text>
-                                </HStack>
-                            </Box>
 
                             {/* Gray Panel */}
                             <Box
@@ -2504,6 +2463,7 @@ const LegoStudioView: React.FC = () => {
                                         : 'default'
                                 }}
                             >
+
                                 {/* Connection Lines */}
                                 <svg
                                     id="connections-svg"
@@ -2857,6 +2817,7 @@ const LegoStudioView: React.FC = () => {
                             hideConnectedLegs={hideConnectedLegs}
                             makeSpace={(center, radius, skipLegos, legosToCheck) => makeSpace(center, radius, skipLegos, legosToCheck)}
                             toast={toast}
+                            user={currentUser}
                         />
                     </Panel>
                 </PanelGroup>
@@ -2902,6 +2863,21 @@ const LegoStudioView: React.FC = () => {
                     title="Create Custom Lego"
                 />
             )}
+            <AuthDialog isOpen={authDialogOpen} onClose={() => setAuthDialogOpen(false)} />
+            {/* Status Bar */}
+
+            <Box width="100%" position="absolute" bottom={0} left={0} right={0} p={2} bg="gray.100">
+                <HStack spacing={2}>
+
+                    <Box
+                        w="8px"
+                        h="8px"
+                        borderRadius="full"
+                        bg={isBackendHealthy ? "green.400" : "red.400"}
+                    />
+                    <Text fontSize="sm">Backend: {message}</Text>
+                </HStack>
+            </Box>
         </VStack>
     )
 }

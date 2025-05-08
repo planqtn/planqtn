@@ -8,6 +8,7 @@ import LegoStudioView from "./LegoStudio";
 import TasksView from './components/TasksView';
 import ErrorBoundary from './components/ErrorBoundary';
 
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <ErrorBoundary>
