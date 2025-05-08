@@ -6,7 +6,8 @@ jobs:
    
     runs-on: ubuntu-latest
     steps:
-      - uses: gacts/install-podman@v1
+      - run: |
+          sudo apt-get -y install podman
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: List files in the repository
