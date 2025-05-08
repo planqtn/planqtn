@@ -85,7 +85,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         let tn = currentTensorNetworkRef.current;
         if (tn?.signature === tensorNetwork?.signature) {
-            console.log("No change in tensorNetwork");
             return;
         }
         currentTensorNetworkRef.current = tensorNetwork
