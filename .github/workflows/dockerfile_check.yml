@@ -1,0 +1,16 @@
+name: Docker build check
+run-name: ${{ github.actor }} is checking the Docker build 
+on: [push]
+jobs:
+  Docker-build-check:
+   
+    runs-on: mgoltzsche/podman
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Build docker image      
+        run: |
+          podman build -t qlego-docker-image .
