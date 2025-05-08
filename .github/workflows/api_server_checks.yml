@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt -r server/requirements.dev.txt
+      - name: install redis 
+        run: |
+          sudo apt-get install redis-server
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
