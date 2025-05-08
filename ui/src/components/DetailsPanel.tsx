@@ -17,25 +17,8 @@ import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformatio
 import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 import ProgressBars from './ProgressBars'
+import { io, Socket } from "socket.io-client";
 
-interface TaskUpdateMessage {
-    id: string;
-    type: string;
-    message: {
-        updates: {
-            status: string;
-            iteration_status: Array<{
-                desc: string;
-                total_size: number;
-                current_item: number;
-                start_time: number;
-                end_time: number | null;
-                duration: number;
-                avg_time_per_item: number;
-            }>;
-        };
-    };
-}
 
 interface DetailsPanelProps {
     tensorNetwork: TensorNetwork | null
@@ -82,7 +65,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const [, setSelectedMatrixRows] = useState<number[]>([])
     const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false)
     const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null)
-    const [taskWebSocket, setTaskWebSocket] = useState<WebSocket | null>(null)
     const [iterationStatus, setIterationStatus] = useState<Array<{
         desc: string;
         total_size: number;
@@ -92,366 +74,135 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         duration: number;
         avg_time_per_item: number;
     }>>([])
+    const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false)
     const currentTensorNetworkRef = useRef<TensorNetwork | null>(null)
     const [showTruncationDialog, setShowTruncationDialog] = useState(false)
-
-    const closeTaskWebSocket = () => {
-        if (taskWebSocket) {
-            try {
-                console.log("Closing task WebSocket")
-                taskWebSocket.close();
-            } catch (error) {
-                console.error("Error closing task WebSocket:", error);
-            }
-        }
-    }
+    const socketAllTasksRef = useRef<Socket | null>(null);
+    const socketSingleTaskRef = useRef<Socket | null>(null);
 
     // Keep the ref updated with the latest tensorNetwork
     useEffect(() => {
+
+        let tn = currentTensorNetworkRef.current;
+        if (tn?.signature === tensorNetwork?.signature) {
+            return;
+        }
         currentTensorNetworkRef.current = tensorNetwork
+        const cachedEnumerator = weightEnumeratorCache.get(tensorNetwork?.signature!)
         if (!tensorNetwork) {
             setIterationStatus([])
-            closeTaskWebSocket()
+        } else if (tensorNetwork?.taskId && tensorNetwork?.weightEnumerator === "") {
+            joinTaskRoom(tensorNetwork.taskId);
+
+        } else if (cachedEnumerator?.taskId && cachedEnumerator.polynomial === "") {
+            joinTaskRoom(cachedEnumerator.taskId);
         }
     }, [tensorNetwork])
 
-    // Clean up WebSocket on unmount
+    // General task updates via Socket.IO
     useEffect(() => {
+        const socket = io("/ws/tasks", { transports: ["websocket"] });
+        socketAllTasksRef.current = socket;
+        socket.emit("join_room", { room_id: "tasks" });
+        socket.on("celery_event", (event) => {
+            // Handle celery events (task-sent, task-received, task-started, task-succeeded, etc.)
+            if (event.type === "task-succeeded" && event.result) {
+                let result = event.result;
+                if (typeof result === "string") {
+                    try {
+                        result = JSON.parse(result.replace(/'/g, '"'));
+                    } catch (e) {
+                        // fallback: leave as string
+                    }
+                }
+                for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                    if (cacheEntry.taskId === event.uuid) {
+                        const updatedCacheEntry = {
+                            taskId: event.uuid,
+                            polynomial: result.polynomial,
+                            normalizerPolynomial: result.normalizer_polynomial,
+                            truncateLength: result.truncate_length
+                        };
+                        weightEnumeratorCache.set(signature, updatedCacheEntry);
+                        const currentTensorNetwork = currentTensorNetworkRef.current;
+                        if (currentTensorNetwork?.signature === signature) {
+                            setTensorNetwork(prev => prev ? {
+                                ...prev,
+                                weightEnumerator: result.polynomial,
+                                normalizerPolynomial: result.normalizer_polynomial,
+                                isCalculatingWeightEnumerator: false,
+                                taskId: event.uuid,
+                                truncateLength: result.truncate_length
+                            } : null);
+                            setIterationStatus([]);
+                            // Disconnect task-specific socket if open
+                            if (socketSingleTaskRef.current) {
+                                socketSingleTaskRef.current.disconnect();
+                                socketSingleTaskRef.current = null;
+                            }
+                        }
+                        break;
+                    }
+                }
+            } else if (event.type === "task-failed") {
+                for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                    if (cacheEntry.taskId === event.uuid) {
+                        setError(`Task failed: ${event.exception || 'Unknown error'}`);
+
+                        const currentTensorNetwork = currentTensorNetworkRef.current;
+                        weightEnumeratorCache.delete(signature);
+                        if (currentTensorNetwork?.signature === signature) {
+                            setTensorNetwork(prev => prev ? {
+                                ...prev,
+                                isCalculatingWeightEnumerator: false,
+                                weightEnumerator: "",
+                                normalizerPolynomial: "",
+                                taskId: undefined
+                            } : null);
+                        }
+                        break;
+                    }
+                }
+            } else if (event.type === "task-revoked") {
+                for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
+                    if (cacheEntry.taskId === event.uuid) {
+                        setError(`Task ${event.uuid} was cancelled.`);
+                        const currentTensorNetwork = currentTensorNetworkRef.current;
+                        if (currentTensorNetwork?.signature === signature) {
+                            setTensorNetwork(prev => prev ? {
+                                ...prev,
+                                isCalculatingWeightEnumerator: false
+                            } : null);
+                        }
+                        weightEnumeratorCache.delete(signature);
+                        break;
+                    }
+                }
+            }
+            // You can add more event types as needed
+        });
         return () => {
-            closeTaskWebSocket()
+            socket.disconnect();
         };
     }, []);
 
+    // Task-specific updates via Socket.IO
+    const joinTaskRoom = (taskId: string) => {
+        console.log("Joining task room", taskId);
+        setWaitingForTaskUpdate(true);
 
-    // Clean up WebSocket on unmount
-    useEffect(() => {
-        if (selectedLego) {
-            closeTaskWebSocket()
-        }
-    }, [selectedLego]);
+        if (socketSingleTaskRef.current) socketSingleTaskRef.current.disconnect();
+        const socket = io("/ws/task", { transports: ["websocket"] });
+        socketSingleTaskRef.current = socket;
+        socket.emit("join_room", { room_id: `task_${taskId}` });
 
-
-
-    const ensureProgressBarWebSocket = (taskId: string) => {
-        // Close any existing WebSocket connection
-        if (taskWebSocket) {
-            taskWebSocket.close();
-        }
-
-        // Create new WebSocket connection for specific task
-        const ws = new WebSocket(`/wsapi/ws/task/${taskId}`);
-
-        ws.onopen = () => {
-            console.log("Task update WebSocket opened for task:", taskId);
-            setTaskWebSocket(ws);
-        };
-
-        ws.onmessage = (event) => {
-            const message: TaskUpdateMessage = JSON.parse(event.data);
-            if (message.type === 'task_updated' && message.message.updates.iteration_status) {
-                setIterationStatus(message.message.updates.iteration_status);
+        socket.on("task_updated", (data) => {
+            setWaitingForTaskUpdate(false);
+            if (data.type === "task_updated" && data.message.updates.iteration_status) {
+                setIterationStatus(data.message.updates.iteration_status);
             }
-        };
-
-        ws.onclose = () => {
-            console.log("Task update WebSocket closed for task:", taskId);
-            setTaskWebSocket(null);
-        };
-
-        ws.onerror = (event) => {
-            console.error("Task update WebSocket error for task:", taskId, event);
-            try {
-                ws.close();
-            } catch (error) {
-                console.error("Error closing task WebSocket after error:", error);
-            }
-            setTaskWebSocket(null);
-        };
-
-        setTaskWebSocket(ws);
-    }
-
-    // Add WebSocket listener for general task updates
-    useEffect(() => {
-        let ws: WebSocket | null = null;
-        let isUnmounting = false;
-        let reconnectTimeout: NodeJS.Timeout | null = null;
-
-        const connectWebSocket = () => {
-            // Clear any pending reconnect
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-
-            // Don't create new connections if we're unmounting or already have one
-            if (isUnmounting || (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING)) {
-                return;
-            }
-
-            try {
-                ws = new WebSocket('/wsapi/ws/tasks');
-
-                ws.onopen = () => {
-                    if (!isUnmounting) {
-                        console.log("General task updates WebSocket opened");
-                    }
-                };
-
-                ws.onmessage = (event) => {
-                    if (isUnmounting) return;
-                    console.log("Received task update message:", event.data);
-                    const task = JSON.parse(event.data);
-                    console.log("Parsed message:", task);
-
-                    if (task.type === 'task-succeeded' && task.result) {
-                        task.result = JSON.parse(task.result.replaceAll("'", ''));
-                        console.log("Task succeeded with result:", task.result, typeof task.result);
-                        // Check all cached tensor networks for this task ID
-                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                            console.log("Checking cache entry signature:", signature);
-                            if (cacheEntry.taskId === task.uuid) {
-                                console.log("Found matching cache entry");
-                                // Update the cache
-                                const updatedCacheEntry = {
-                                    taskId: task.uuid,
-                                    polynomial: task.result.polynomial,
-                                    normalizerPolynomial: task.result.normalizer_polynomial,
-                                    truncateLength: task.result.truncate_length
-                                };
-                                weightEnumeratorCache.set(signature, updatedCacheEntry);
-
-                                // If this is the current tensor network, update its state
-                                const currentTensorNetwork = currentTensorNetworkRef.current;
-                                console.log("Current tensor network state:", {
-                                    tensorNetwork: currentTensorNetwork,
-                                    signature: currentTensorNetwork?.signature,
-                                    cacheSignature: signature
-                                });
-
-                                if (currentTensorNetwork?.signature === signature) {
-                                    console.log("Updating current tensor network with result");
-                                    setTensorNetwork(prev => prev ? {
-                                        ...prev,
-                                        weightEnumerator: task.result.polynomial,
-                                        normalizerPolynomial: task.result.normalizer_polynomial,
-                                        isCalculatingWeightEnumerator: false,
-                                        taskId: task.uuid,
-                                        truncateLength: task.result.truncate_length
-                                    } : null);
-
-                                    // Clear the iteration status
-                                    setIterationStatus([]);
-
-                                    // Close the task-specific WebSocket since we're done
-                                    if (taskWebSocket) {
-                                        taskWebSocket.close();
-                                    }
-                                } else {
-                                    console.log("Tensor network signatures don't match:", {
-                                        current: currentTensorNetwork?.signature,
-                                        cache: signature
-                                    });
-                                    // Even if we don't have the tensor network selected right now,
-                                    // we should still close any existing WebSocket for this task
-                                    if (taskWebSocket && taskWebSocket.url.includes(task.uuid)) {
-                                        taskWebSocket.close();
-                                    }
-                                }
-                                break; // Found the matching task, no need to continue
-                            }
-                        }
-                    } else if (task.type === 'task-failed') {
-                        console.log("Task failed:", task);
-                        // Check all cached tensor networks for this task.uuid
-                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                            if (cacheEntry.taskId === task.uuid) {
-                                // If this is the current tensor network, show the error
-                                const currentTensorNetwork = currentTensorNetworkRef.current;
-                                if (currentTensorNetwork?.signature === signature) {
-                                    setError(`Task failed: ${task.info?.error || 'Unknown error'}`);
-                                    setTensorNetwork(prev => prev ? {
-                                        ...prev,
-                                        isCalculatingWeightEnumerator: false
-                                    } : null);
-                                }
-                                break; // Found the matching task, no need to continue
-                            }
-                        }
-                    } else if (task.type === 'task-revoked') {
-                        console.log("Task revoked:", task);
-                        // Check all cached tensor networks for this task.uuid
-                        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-                            if (cacheEntry.taskId === task.uuid) {
-                                console.log("Found matching cache entry");
-                                setError(`Task ${task.uuid} was cancelled.`);
-
-                                // If this is the current tensor network, show the error
-                                const currentTensorNetwork = currentTensorNetworkRef.current;
-                                if (currentTensorNetwork?.signature === signature) {
-                                    setTensorNetwork(prev => prev ? {
-                                        ...prev,
-                                        isCalculatingWeightEnumerator: false
-                                    } : null);
-                                }
-                                weightEnumeratorCache.delete(signature);
-                                break; // Found the matching task, no need to continue
-                            }
-                        }
-                    }
-
-                };
-
-                ws.onclose = () => {
-                    if (!isUnmounting) {
-                        console.log("General task updates WebSocket closed");
-                        ws = null;
-                        // Only attempt reconnection if we're not unmounting
-                        reconnectTimeout = setTimeout(connectWebSocket, 1000);
-                    }
-                };
-
-                ws.onerror = (event) => {
-                    if (!isUnmounting) {
-                        console.error("General task updates WebSocket error:", event);
-                    }
-                };
-            } catch (error) {
-                console.error("Error creating WebSocket:", error);
-                if (!isUnmounting) {
-                    reconnectTimeout = setTimeout(connectWebSocket, 1000);
-                }
-            }
-        };
-
-        // Small delay before initial connection to handle React's development mode double-invocation
-        const initialConnectTimeout = setTimeout(connectWebSocket, 50);
-
-        // Cleanup function
-        return () => {
-            isUnmounting = true;
-
-            // Clear any pending timeouts
-            if (initialConnectTimeout) clearTimeout(initialConnectTimeout);
-            if (reconnectTimeout) clearTimeout(reconnectTimeout);
-
-            if (ws) {
-                // Remove all listeners to prevent any callbacks during cleanup
-                ws.onclose = null;
-                ws.onerror = null;
-                ws.onmessage = null;
-                ws.onopen = null;
-
-                // Only try to close if it's not already closed
-                if (ws.readyState !== WebSocket.CLOSED) {
-                    try {
-                        ws.close();
-                    } catch (error) {
-                        console.error("Error closing WebSocket:", error);
-                    }
-                }
-                ws = null;
-            }
-        };
-    }, []); // Empty dependency array since we want this to run once
-
-    // Reconnect to task-specific WebSocket when selecting a tensor network with in-progress calculation
-    useEffect(() => {
-        let taskWs: WebSocket | null = null;
-        let isUnmounting = false;
-        let reconnectTimeout: NodeJS.Timeout | null = null;
-        let initialConnectTimeout: NodeJS.Timeout | null = null;
-
-        const connectTaskWebSocket = (taskId: string) => {
-            // Clear any pending reconnect
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-
-            if (isUnmounting) return;
-
-            try {
-                // Close any existing WebSocket connection
-                if (taskWebSocket) {
-                    taskWebSocket.close();
-                }
-
-                taskWs = new WebSocket(`/wsapi/ws/task/${taskId}`);
-
-                taskWs.onopen = () => {
-                    if (!isUnmounting) {
-                        console.log("Task update WebSocket opened for task:", taskId);
-                        setTaskWebSocket(taskWs);
-                    }
-                };
-
-                taskWs.onmessage = (event) => {
-                    if (!isUnmounting) {
-                        const message: TaskUpdateMessage = JSON.parse(event.data);
-                        if (message.type === 'task_updated' && message.message.updates.iteration_status) {
-                            setIterationStatus(message.message.updates.iteration_status);
-                        }
-                    }
-                };
-
-                taskWs.onclose = () => {
-                    if (!isUnmounting) {
-                        console.log("Task update WebSocket closed for task:", taskId);
-                        setTaskWebSocket(null);
-                        // Attempt to reconnect
-                        reconnectTimeout = setTimeout(() => connectTaskWebSocket(taskId), 1000);
-                    }
-                };
-
-                taskWs.onerror = (event) => {
-                    if (!isUnmounting) {
-                        console.error("Task update WebSocket error for task:", taskId, event);
-                    }
-                };
-            } catch (error) {
-                console.error("Error creating task WebSocket:", error);
-                if (!isUnmounting) {
-                    reconnectTimeout = setTimeout(() => connectTaskWebSocket(taskId), 1000);
-                }
-            }
-        };
-
-        if (tensorNetwork?.signature) {
-            const cachedEnumerator = weightEnumeratorCache.get(tensorNetwork.signature);
-            if (cachedEnumerator?.polynomial === "" && cachedEnumerator?.taskId) {
-                console.log("Connecting to task WebSocket for in-progress calculation:", cachedEnumerator.taskId);
-                // Small delay before initial connection
-                initialConnectTimeout = setTimeout(() => connectTaskWebSocket(cachedEnumerator.taskId), 50);
-            }
-        }
-
-        return () => {
-            isUnmounting = true;
-
-            // Clear any pending timeouts
-            if (initialConnectTimeout) clearTimeout(initialConnectTimeout);
-            if (reconnectTimeout) clearTimeout(reconnectTimeout);
-
-            if (taskWs) {
-                // Remove all listeners to prevent any callbacks during cleanup
-                taskWs.onclose = null;
-                taskWs.onerror = null;
-                taskWs.onmessage = null;
-                taskWs.onopen = null;
-
-                // Only try to close if it's not already closed
-                if (taskWs.readyState !== WebSocket.CLOSED) {
-                    try {
-                        taskWs.close();
-                    } catch (error) {
-                        console.error("Error closing task WebSocket:", error);
-                    }
-                }
-                taskWs = null;
-            }
-        };
-    }, [tensorNetwork?.signature]);
+        });
+    };
 
     const calculateParityCheckMatrix = async () => {
         if (!tensorNetwork) return;
@@ -503,7 +254,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
                 isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
             });
-            ensureProgressBarWebSocket(cachedEnumerator.taskId);
+
+            joinTaskRoom(cachedEnumerator.taskId);
             return;
         }
 
@@ -543,7 +295,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 ...prev,
                 taskId: taskId
             } : null);
-            ensureProgressBarWebSocket(taskId);
+            joinTaskRoom(taskId);
 
             // Show success toast with status URL
             toast({
@@ -1362,6 +1114,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                                         </HStack>
                                                         <ProgressBars
                                                             iterationStatus={iterationStatus}
+                                                            waiting={waitingForTaskUpdate}
                                                         />
                                                     </VStack>
                                                 </Box>

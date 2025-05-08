@@ -29,6 +29,16 @@ class TaskStore:
             value=json.dumps({"task": task.request.task, "args": task.request.args}),
         )
 
+    def store_task_result(self, task_id: str, result: Any):
+        """Store the result of a task"""
+        current_task_details = json.loads(self.get_task_details(task_id))
+        current_task_details["result"] = result
+        self.redis.hset(
+            name=f"task_details",
+            key=task_id,
+            value=json.dumps(current_task_details),
+        )
+
     def get_task_details(self, task_id: str) -> str:
         """Get task data by ID from Redis"""
         try:
@@ -49,6 +59,10 @@ class TaskStore:
                 for _, task in tasks.items():
                     task_details = self.get_task_details(task["uuid"])
                     task["args"] = json.loads(task_details)["args"]
+                    if "traceback" in task:
+                        del task["traceback"]
+                    if "exception" in task:
+                        task["exception"] = "Server error"
                 return tasks
             return {}
         except requests.RequestException as e:
@@ -62,7 +76,6 @@ class TaskStore:
             f"task_updates_{task_id}",
             json.dumps({"updates": updates}, cls=IterationStateEncoder),
         )
-        # print(f"Updated task {task_id} and notified {n_subscribers} subscribers")
 
     def clear_all_task_details(self):
         """Clear all tasks from Redis"""

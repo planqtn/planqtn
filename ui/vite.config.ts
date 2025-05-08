@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
         preview: {
             allowedHosts: true,
         },
+        logLevel: 'info',
+
         server: {
             host: '0.0.0.0', // Allow connections from any IP
             strictPort: true,
@@ -23,7 +25,14 @@ export default defineConfig(({ mode }) => {
                 '/wsapi': {
                     target: env.VITE_BACKEND_WS_URL || 'ws://localhost:5005',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/wsapi/, '')
+                    rewrite: (path) => path.replace(/^\/wsapi/, ''),
+                    ws: true
+                },
+                // important to let the socket.io handshake go through
+                '/socket.io': {
+                    target: env.VITE_BACKEND_WS_URL || 'ws://localhost:5005',
+                    changeOrigin: true,
+                    ws: true
                 }
             }
         }

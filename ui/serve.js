@@ -35,13 +35,10 @@ app.use('/api', createProxyMiddleware({
 }));
 
 // WebSocket proxy
-app.use('/wsapi', createProxyMiddleware({
+app.use('/socket.io', createProxyMiddleware({
     target: wsBackendUrl,
     changeOrigin: false,
-    ws: true,
-    pathRewrite: {
-        '^/wsapi': ''
-    },
+    ws: true,    
     onError: (err, req, res) => {
         console.error('WebSocket Proxy Error:', err);
         // For WebSocket errors, we can't send a response, just log the error

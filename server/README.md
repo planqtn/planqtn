@@ -24,7 +24,7 @@ uvicorn main:app --reload --port 5000
 
 Or simply run:
 ```bash
-python main.py
+python planqtn_server.py
 ```
 
 The server will start on `http://localhost:5000`

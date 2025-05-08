@@ -13,6 +13,17 @@ FRONTEND_HOST=${FRONTEND_HOST:-localhost}
 DEV_MODE=${DEV_MODE:-false}
 NO_BUILD=${NO_BUILD:-false}
 
+print_help() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  --backend-port <port>    Set the backend server port."
+    echo "  --frontend-port <port>   Set the frontend (UI) server port."
+    echo "  --ui-host <host>         Set the frontend (UI) host."
+    echo "  --no-build               Skip the build step."
+    echo "  --dev                    Run in development mode."
+    echo "  -h, --help               Show this help message and exit."
+}
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -36,8 +47,13 @@ while [[ $# -gt 0 ]]; do
             DEV_MODE=true
             shift
             ;;
+        -h|--help)
+            print_help
+            exit 0
+            ;;
         *)
             echo "Unknown option: $1"
+            print_help
             exit 1
             ;;
     esac
@@ -53,7 +69,7 @@ check_running_instances() {
 
     # Function to check backend
     check_backend() {
-        if pgrep -f "python.*main.py.*--port $BACKEND_PORT" > /dev/null; then
+        if pgrep -f "python.*planqtn_server.py.*--port $BACKEND_PORT" > /dev/null; then
             echo -e "${RED}Backend server is already running on port $BACKEND_PORT${NC}"
             backend_running=true
             return 0
@@ -169,7 +185,7 @@ cleanup() {
     kill $(jobs -p)
     rm -f "$SERVER_LOG" "$UI_LOG" "$CELERY_LOG"
     if [ "$DEV_MODE" = true ]; then
-        pkill -e -9 -f "main.py|npm|vite|celery"
+        pkill -e -9 -f "planqtn_server.py|npm|vite|celery|flower"
     fi
     exit
 }
@@ -180,6 +196,8 @@ trap cleanup EXIT
 # Clear existing logs
 > "$SERVER_LOG"
 > "$UI_LOG"
+> "$CELERY_LOG"
+> "$FLOWER_LOG"
 
 echo Starting Celery worker...
 celery -A server.tasks worker -E --loglevel=INFO > "$CELERY_LOG" 2>&1 &
@@ -194,7 +212,8 @@ FLOWER_PID=$!
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend..."
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-(cd server && python main.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
+[[ "$DEV_MODE" = true ]] && export DEBUG_ARGS="--debug"
+(cd server && python planqtn_server.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST" $DEBUG_ARGS) > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
 # Function to check if backend API is responding
@@ -246,8 +265,9 @@ if [ "$DEV_MODE" = false ]; then
             exit 1
         fi
     fi
-    echo "Starting frontend in production mode..."    
-    (cd ui && npm run serve -- --port "$FRONTEND_PORT" ) > "$UI_LOG" 2>&1 &
+    echo "Starting frontend in production mode...on port $FRONTEND_PORT"    
+    export FRONTEND_PORT=$FRONTEND_PORT
+    (cd ui && node serve.js) > "$UI_LOG" 2>&1 &
     FRONTEND_PID=$!
 else
     echo "Starting frontend in development mode..."
@@ -264,11 +284,10 @@ if ! kill -0 $FRONTEND_PID 2>/dev/null; then
     exit 1
 fi
 
-# Use split terminal to show both logs
-clear
+# clear
 echo "Press Ctrl+C to stop all servers"
 (
-    # Show logs side by side using paste
+    
     tail -f "$SERVER_LOG" | sed 's/^/[Server] /' & 
     tail -f "$UI_LOG" | sed 's/^/[UI] /' &
     tail -f "$CELERY_LOG" | sed 's/^/[Celery] /' &

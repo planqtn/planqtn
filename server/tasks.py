@@ -85,7 +85,12 @@ class CeleryProgressReporter(ProgressReporter):
                 self.task.request.id, {"status": "FAILED", "result": str(exc_value)}
             )
         else:
-            self.task_store.update_task(self.task.request.id, {"status": "SUCCESS"})
+            self.task_store.update_task(
+                self.task.request.id,
+                {
+                    "status": "SUCCESS",
+                },
+            )
 
     def handle_result(self, result: Dict[str, Any]):
         self.task_store.update_task(
@@ -99,9 +104,10 @@ def weight_enumerator_task(self, request_dict: dict):
     try:
         # Convert dictionary back to TensorNetworkRequest
         request = WeightEnumeratorRequest(**request_dict)
+        task_store = TaskStore(REDIS_URL)
         with CeleryProgressReporter(
             self,
-            task_store=TaskStore(REDIS_URL),
+            task_store=task_store,
             sub_reporter=TqdmProgressReporter(file=sys.stdout),
         ) as progress_reporter:
             # Create TensorStabilizerCodeEnumerator instances for each lego
@@ -157,17 +163,16 @@ def weight_enumerator_task(self, request_dict: dict):
             # Convert the polynomial to a string representation
             polynomial_str = str(polynomial)
             normalizer_polynomial_str = str(poly_b)
+            res = {
+                "polynomial": polynomial_str,
+                "normalizer_polynomial": normalizer_polynomial_str,
+                # "history": progress_reporter.history,
+                "time": end - start,
+                "truncate_length": str(request.truncate_length),
+            }
+            task_store.store_task_result(self.request.id, res)
+            return "SUCCESS"
 
-            return json.dumps(
-                {
-                    "polynomial": polynomial_str,
-                    "normalizer_polynomial": normalizer_polynomial_str,
-                    # "history": progress_reporter.history,
-                    "time": end - start,
-                    "truncate_length": str(request.truncate_length),
-                }
-            )
     except Exception as e:
-        print("error", e)
-        traceback.print_exc()
+        logger.error(f"Error in weight_enumerator_task: {e}", exc_info=True)
         raise e
