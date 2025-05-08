@@ -1,5 +1,8 @@
 import logging
+import pathlib
 import sys
+import firebase_admin
+from dotenv import load_dotenv
 from server.task_store import TaskStore
 from server.tasks import REDIS_URL
 from server.web_endpoints import router
@@ -10,6 +13,7 @@ from server.socketio_manager import socketio_manager
 from contextlib import asynccontextmanager
 import argparse
 import asyncio
+from server.config import get_settings
 
 
 @asynccontextmanager
@@ -22,16 +26,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="TNQEC API",
-    description="API for the TNQEC application",
+    title="PlanqTN API",
+    description="API for the PlanqTN application",
     version="0.1.0",
     lifespan=lifespan,
 )
 
+settings = get_settings()
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,6 +77,16 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    basedir = pathlib.Path(__file__).parents[0]
+    load_dotenv(basedir / ".env")
+
+    firebase_admin.initialize_app()
+    pid = firebase_admin.get_app().project_id
+    if pid is None:
+        raise ValueError(
+            "Firebase project ID is not set, check the .env file for the correct configuration."
+        )
 
     if args.debug:
         root = logging.getLogger()

@@ -1,11 +1,11 @@
 import time
 import traceback
 from celery import Celery
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from galois import GF2
 from pydantic import BaseModel
-from typing import List, Dict, Any, Tuple
+from typing import Annotated, List, Dict, Any, Tuple
 import sys
 import os
 import numpy as np
@@ -19,6 +19,7 @@ import requests
 
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
+from server.config import get_firebase_user_from_token
 from server.task_store import TaskStore
 from server.tasks import REDIS_URL, weight_enumerator_task, celery_app
 
@@ -293,3 +294,9 @@ async def cancel_task(request: CancelTaskRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/userid")
+async def get_userid(user: Annotated[dict, Depends(get_firebase_user_from_token)]):
+    """gets the firebase connected user"""
+    return {"id": user["uid"], "email": user["email"]}

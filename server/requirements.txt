@@ -1,6 +1,8 @@
-fastapi
+fastapi[standard]
 uvicorn[standard]
-pydantic
+pydantic[standard]
+pydantic-settings
+firebase-admin
 python-dotenv
 flower
 celery
