@@ -57,12 +57,18 @@ class TaskStore:
                 tasks = json.loads(response.text)
                 print("tasks", type(tasks), tasks)
                 for _, task in tasks.items():
-                    task_details = self.get_task_details(task["uuid"])
-                    task["args"] = json.loads(task_details)["args"]
+                    task_details = json.loads(self.get_task_details(task["uuid"]))
+                    task["args"] = task_details["args"]
                     if "traceback" in task:
                         del task["traceback"]
-                    if "exception" in task:
+                    if (
+                        "exception" in task
+                        and task["exception"] is not None
+                        and task["exception"] != ""
+                    ):
                         task["exception"] = "Server error"
+                    if "result" in task and task["result"] == "SUCCESS":
+                        task["result"] = task_details["result"]
                 return tasks
             return {}
         except requests.RequestException as e:
