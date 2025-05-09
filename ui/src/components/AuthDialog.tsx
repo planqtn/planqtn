@@ -98,7 +98,25 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     const handleGoogleSignIn = async () => {
         try {
             const provider = new GoogleAuthProvider();
+
+            // Save the complete URL state
+            const currentUrl = window.location.href;
+            localStorage.setItem('pendingUrl', currentUrl);
+
+            // Change URL to minimal while preserving the origin
+            const minimalUrl = window.location.origin + '/auth';
+            window.history.replaceState({}, '', minimalUrl);
+
+            // Now call signInWithPopup
             await signInWithPopup(auth, provider);
+
+            // After sign-in, restore the complete URL
+            const pendingUrl = localStorage.getItem('pendingUrl');
+            if (pendingUrl) {
+                window.history.replaceState({}, '', pendingUrl);
+                localStorage.removeItem('pendingUrl');
+            }
+
             toast({
                 title: "Signed in with Google",
                 description: "You have been signed in successfully",
