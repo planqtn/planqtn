@@ -2,6 +2,7 @@ import { Box, Text, VStack, HStack, useColorModeValue, Button, Menu, MenuButton,
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import axios from 'axios'
+import _ from 'lodash'
 import { getLegoStyle } from './LegoStyles'
 import ErrorPanel from './components/ErrorPanel'
 import LegoPanel from './components/LegoPanel'
@@ -19,6 +20,7 @@ import { AddStopper } from './transformations/AddStopper'
 import { findConnectedComponent } from './utils/TensorNetwork'
 import { randomPlankterName } from './utils/RandomPlankterNames'
 import { useLocation, useNavigate } from 'react-router-dom'
+
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
@@ -2285,6 +2287,133 @@ const LegoStudioView: React.FC = () => {
         event.stopPropagation();
     }
 
+    function autoFlow(): void {
+        if (!tensorNetwork) {
+            return;
+        }
+        let tnLegos = _.cloneDeep(tensorNetwork.legos);
+        for (const lego of tnLegos) {
+
+            // Skip legos with existing highlights 
+            if (lego.selectedMatrixRows.length > 0) {
+                continue;
+            }
+
+            const neighborConns = connections.filter(conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId);
+            console.log("neighborConns", neighborConns);
+            if (neighborConns.length === 0) {
+                continue;
+            }
+
+            const n_lego_legs = lego.parity_check_matrix[0].length / 2
+
+            const updateLego = (lego: DroppedLego, selectedMatrixRows: number[]) => {
+                const updatedLego = { ...lego, selectedMatrixRows: selectedMatrixRows };
+                tnLegos = tnLegos.map(l =>
+                    l.instanceId === lego.instanceId ? updatedLego : l
+                );
+                console.log("Updating lego", updatedLego, "to selectedMatrixRows", selectedMatrixRows);
+                setDroppedLegos(prev => prev.map(l => l.instanceId === lego.instanceId ? updatedLego : l));
+                setTensorNetwork(prev => {
+                    if (!prev) {
+                        return null;
+                    }
+                    const newLegos = prev.legos.map(l => l.instanceId === lego.instanceId ? updatedLego : l);
+                    return { ...prev, legos: newLegos };
+                });
+            }
+
+
+            for (const neighborConn of neighborConns) {
+                // Find the lego that matches the connection but is not our current lego
+                const neighborLego = tnLegos.find(l => (l.instanceId === neighborConn.from.legoId || l.instanceId === neighborConn.to.legoId)
+                                                                        && l.instanceId != lego.instanceId); 
+                if (!neighborLego) {
+                    continue;
+                }
+                // Skip if the neighbor lego has no selected rows
+                if (neighborLego.selectedMatrixRows.length === 0) {
+                    continue;
+                }
+                const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
+                    const num_legs = lego.parity_check_matrix[0].length / 2
+                    const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
+
+                    for (const rowIndex of lego.selectedMatrixRows) {
+                        lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
+                            combinedRow[idx] = (combinedRow[idx] + val) % 2;
+                        });
+                    }
+                    const xPart = combinedRow[legIndex];
+                    const zPart = combinedRow[legIndex + num_legs];
+                    return [xPart, zPart]
+                }
+                const neighbor_leg_index = neighborConn.from.legoId == neighborLego.instanceId ? neighborConn.from.legIndex : neighborConn.to.legIndex;
+                const lego_leg_index = neighborConn.from.legoId == lego.instanceId ? neighborConn.from.legIndex : neighborConn.to.legIndex;
+                const neighborLegHighlightOp = getHighlightOp(neighborLego, neighbor_leg_index);
+                const legoLegHighlightOp = getHighlightOp(lego, lego_leg_index);
+
+                if (neighborLegHighlightOp === legoLegHighlightOp) {
+                    continue;
+                }
+
+                console.log("neighborLegHighlightOp", neighborLegHighlightOp, "legoLegHighlightOp", legoLegHighlightOp);
+
+                const x_type_row_indices: number[] = lego.parity_check_matrix
+                    .map((row: number[], index: number) => ({ row, index }))
+                    .filter(({ row }) =>
+                        row[lego_leg_index] === 1)
+                    .map(({ index }) => index);
+
+                const z_type_row_indices: number[] = lego.parity_check_matrix
+                    .map((row: number[], index: number) => ({ row, index }))
+                    .filter(({ row }) =>
+                        row[lego_leg_index + n_lego_legs] === 1)
+                    .map(({ index }) => index);
+
+                // Skip if there is more than one option to choose from 
+                if (x_type_row_indices.length > 1 && z_type_row_indices.length > 1) {
+                    continue;
+                }
+
+                if (neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 0) {
+                    console.log("neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 0", "n_x_type_row_indices", x_type_row_indices);
+                    if (x_type_row_indices.length != 1) {
+                        continue;
+                    }
+                    updateLego(lego, [x_type_row_indices[0]]);
+                    continue;
+                }
+
+                if (neighborLegHighlightOp[0] === 0 && neighborLegHighlightOp[1] === 1) {
+                    console.log("neighborLegHighlightOp[0] === 0 && neighborLegHighlightOp[1] === 1", "n_z_type_row_indices", z_type_row_indices);
+                    if (z_type_row_indices.length != 1) {
+                        continue;
+                    }
+                    updateLego(lego, [z_type_row_indices[0]]);
+                    continue;
+                }
+
+                if (neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 1) {
+                    console.log("neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 1", "n_x_type_row_indices", x_type_row_indices, "n_z_type_row_indices", z_type_row_indices);
+                    if (x_type_row_indices.length != 1 || z_type_row_indices.length != 1) {
+                        continue;
+                    }
+                    updateLego(lego, z_type_row_indices[0] != x_type_row_indices[0] ? [x_type_row_indices[0], z_type_row_indices[0]] : [x_type_row_indices[0]]);
+                    continue;
+                }
+
+                if (neighborLegHighlightOp[0] === 0 && neighborLegHighlightOp[1] === 0) {
+                    console.log("neighborLegHighlightOp[0] === 0 && neighborLegHighlightOp[1] === 0");
+                    updateLego(lego, []);
+                    continue;
+                }
+
+            }
+
+        }
+    }
+
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {fatalError && (() => { throw fatalError; })()}
@@ -2344,6 +2473,21 @@ const LegoStudioView: React.FC = () => {
                         </MenuItem>
                         <MenuItem onClick={() => setIsMspDialogOpen(true)}>
                             Measurement State Prep Network
+                        </MenuItem>
+
+                    </MenuList>
+                </Menu>
+                <Menu>
+                    <MenuButton
+                        as={Button}
+                        variant="ghost"
+                        size="sm"
+                    >
+                        Automations
+                    </MenuButton>
+                    <MenuList>
+                        <MenuItem onClick={() => autoFlow()}>
+                            Auto-flow for simple legos
                         </MenuItem>
 
                     </MenuList>
