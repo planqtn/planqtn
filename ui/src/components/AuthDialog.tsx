@@ -57,7 +57,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
         });
 
         return () => unsubscribe();
-    }, [onClose]);
+    }, [currentUser]);
 
     const handleEmailPasswordAuth = async (e: React.FormEvent) => {
         e.preventDefault();
