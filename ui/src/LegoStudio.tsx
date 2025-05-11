@@ -206,6 +206,7 @@ const LegoStudioView: React.FC = () => {
 
     const encodeCanvasState = useCallback((pieces: DroppedLego[], conns: Connection[], hideConnectedLegs: boolean) => {
         // console.log("Encoding droppedLegos", pieces, "connections", conns);
+        // console.log(new Error().stack);
         // Print call stack for debugging
         // console.log('Canvas state encoding call stack:', new Error("just debugging").stack);
         stateSerializerRef.current.encode(pieces, conns, hideConnectedLegs)
@@ -1154,6 +1155,8 @@ const LegoStudioView: React.FC = () => {
             const deltaY = e.clientY - dragState.startY;
             const newX = dragState.originalX + deltaX;
             const newY = dragState.originalY + deltaY;
+            let updatedLegos = droppedLegos;
+            let updatedConnections = connections;
 
             // Check if we're dropping on a connection (for two-legged legos) or a dangling leg (for stoppers)
             if (hoveredConnection) {
@@ -1169,10 +1172,11 @@ const LegoStudioView: React.FC = () => {
 
                         const trafo = new InjectTwoLegged(connections, droppedLegos);
                         trafo.apply(updatedLego, hoveredConnection, { ...draggedLego, x: newX - deltaX, y: newY - deltaY }).then(({ connections: newConnections, droppedLegos: newDroppedLegos, operation }) => {
-                            setDroppedLegos(newDroppedLegos);
-                            setConnections(newConnections);
+                            updatedLegos = newDroppedLegos;
+                            updatedConnections = newConnections;
+                            setDroppedLegos(updatedLegos);
+                            setConnections(updatedConnections);
                             operationHistory.addOperation(operation);
-                            encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
                         }).catch(error => {
                             setError(`${error}`);
                             console.error(error);
@@ -1192,10 +1196,11 @@ const LegoStudioView: React.FC = () => {
                                 hoveredConnection.from.legIndex,
                                 updatedLego
                             );
-                            setDroppedLegos(newDroppedLegos);
-                            setConnections(newConnections);
+                            updatedLegos = newDroppedLegos;
+                            updatedConnections = newConnections;
+                            setDroppedLegos(updatedLegos);
+                            setConnections(updatedConnections);
                             operationHistory.addOperation(operation);
-                            encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
                         } catch (error) {
                             console.error('Failed to add stopper:', error);
                             toast({
@@ -1267,7 +1272,7 @@ const LegoStudioView: React.FC = () => {
                 }
             }
 
-            encodeCanvasState(droppedLegos, connections, hideConnectedLegs);
+            encodeCanvasState(updatedLegos, updatedConnections, hideConnectedLegs);
         }
 
         // Handle leg connection
