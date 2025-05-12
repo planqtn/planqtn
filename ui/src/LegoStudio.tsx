@@ -2360,7 +2360,7 @@ const LegoStudioView: React.FC = () => {
                     </MenuButton>
                     <MenuList>
                         <MenuItem onClick={() => simpleAutoFlow(tensorNetwork, connections, setDroppedLegos, setTensorNetwork)}>
-                            Auto-flow for simple legos
+                            Auto-highlight for simple legos
                         </MenuItem>
 
                     </MenuList>
