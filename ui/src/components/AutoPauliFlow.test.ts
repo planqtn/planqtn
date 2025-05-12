@@ -139,6 +139,55 @@ describe('simple auto flow', () => {
         expect(updatedLego2.selectedMatrixRows).toEqual([0]);
     });
 
+    it('highlights multiple rows in a lego', () => {
+        const connections: Connection[] = [
+            makeConn('lego1', 0, 'lego3', 0),
+            makeConn('lego2', 0, 'lego3', 2),
+            makeConn('lego3', 1, 'lego4', 1),
+            makeConn('lego4', 0, 'lego5', 4)
+        ];
+
+        const tensorNetwork: TensorNetwork = {
+            legos: [makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: []}),
+                makeLego({id: 'lego2', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: []}),
+                makeLego({id: 'lego3', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [2, 3]}),
+                makeLego({id: 'lego4', name: 'hadamard', parityMatrix: [
+                        [1, 0, 0, 1],
+                        [0, 1, 1, 0]
+                    ], selectedRows: []}),
+                makeLego({id: 'lego5', name: 'tensor 512', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                ], selectedRows: []})
+            ],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        expect(mockSetDroppedLegos).toHaveBeenCalledTimes(4);
+        expect(mockSetTensorNetwork).toHaveBeenCalledTimes(4);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedHadamard = updatedLegos.find((lego: any) => lego.instanceId === 'lego4');
+        expect(updatedHadamard.selectedMatrixRows).toEqual(expect.arrayContaining([0, 1]));
+        expect(updatedHadamard.selectedMatrixRows).toHaveLength(2);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego5');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([2,3]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(2);
+    });
+
     
     it('highlight all tensors in chain', () => {
         const connections: Connection[] = [
