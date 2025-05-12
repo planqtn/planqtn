@@ -1,7 +1,6 @@
 import { cloneDeep } from 'lodash';
 import { DroppedLego, Connection, TensorNetwork } from '../types';
 
-
 /**
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.
  * @param tensorNetwork 
@@ -35,33 +34,12 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                 continue;
             }
 
-            // Helper function for updating the lego in the tensor network
-            const updateLego = (lego: DroppedLego, selectedMatrixRows: number[]) => {
-                const updatedLego = { ...lego, selectedMatrixRows: selectedMatrixRows };
-                tnLegos = tnLegos.map(l =>
-                    l.instanceId === lego.instanceId ? updatedLego : l
-                );
-                console.log("Updating lego", updatedLego, "to selectedMatrixRows", selectedMatrixRows);
-                
-                setDroppedLegos(prev => prev.map(l => l.instanceId === lego.instanceId ? updatedLego : l));
-                setTensorNetwork(prev => {
-                    if (!prev) {
-                        return null;
-                    }
-                    const newLegos = prev.legos.map(l => l.instanceId === lego.instanceId ? updatedLego : l);
-                    return { ...prev, legos: newLegos };
-                });
-            }
-
             for (const neighborConn of neighborConns) {
                 const neighborLego = tnLegos.find(l => 
                     (l.instanceId === neighborConn.from.legoId || l.instanceId === neighborConn.to.legoId)
                                                                         && l.instanceId != lego.instanceId); 
-                if (!neighborLego) {
-                    continue;
-                }
-                // Skip if the neighbor lego has no selected rows
-                if (neighborLego.selectedMatrixRows.length === 0) {
+
+                if (!neighborLego || neighborLego.selectedMatrixRows.length === 0) {
                     continue;
                 }
 
@@ -76,16 +54,15 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                         : neighborConn.to.legIndex;
 
                 const neighborLegHighlightOp = getHighlightOp(neighborLego, neighborLegIndex);
+                const {xRowIndices, zRowIndices} = findRowIndices(lego, legoLegIndex);
+                console.log("neighborLegHighlightOp: ", neighborLegHighlightOp, ", xRowIndices: ", xRowIndices, ", zRowIndices: ", zRowIndices);
 
                 // Skip if there is more than one option to choose from 
-                const {xRowIndices, zRowIndices} = findRowIndices(lego, legoLegIndex);
                 if (xRowIndices.length > 1 && zRowIndices.length > 1) {
                     continue;
                 }
 
                 let newRows: number[] | null = null;
-                console.log("neighborLegHighlightOp: ", neighborLegHighlightOp, ", xRowIndices: ", xRowIndices, ", zRowIndices: ", zRowIndices);
-                
                 if (neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 0 && xRowIndices.length === 1) {
                     newRows = [xRowIndices[0]];
                 }
@@ -98,8 +75,14 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                 }
 
                 if(newRows !== null) {
+                    tnLegos = updateLego(
+                        tnLegos,
+                        lego.instanceId,
+                        newRows,
+                        setDroppedLegos,
+                        setTensorNetwork
+                      );
                     changed = true;
-                    updateLego(lego, newRows);
                 }
             }
         }
@@ -107,7 +90,38 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
 }
 
 /**
- * Helper method to find the current highlight operation of the given lego and leg index.
+ * Helper method to update the given lego in the tensor network 
+ * @param tnLegos 
+ * @param targetId 
+ * @param newRows 
+ * @param setDroppedLegos 
+ * @param setTensorNetwork 
+ * @returns new list of legos after the update
+ */
+const updateLego = (
+    tnLegos: DroppedLego[],
+    targetId: string,
+    newRows: number[],
+    setDroppedLegos: (fn: (prev: DroppedLego[]) => DroppedLego[]) => void,
+    setTensorNetwork: (fn: (prev: TensorNetwork | null) => TensorNetwork | null) => void
+  ): DroppedLego[] => {
+    const updatedLegos = tnLegos.map(l =>
+      l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
+    );
+  
+    // call both setters exactly once for this update
+    setDroppedLegos(prev => prev.map(l =>
+      l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
+    ));
+    setTensorNetwork(prev =>
+      prev ? { ...prev, legos: updatedLegos } : null
+    );
+  
+    return updatedLegos;
+  }
+
+/**
+ * Helper method to find the current highlight operation of the given lego at leg index.
  * @param lego 
  * @param legIndex 
  * @returns X and Z parts of the highlight operation

@@ -2287,8 +2287,6 @@ const LegoStudioView: React.FC = () => {
         event.stopPropagation();
     }
 
-    
-
     return (
         <VStack spacing={0} align="stretch" h="100vh">
             {fatalError && (() => { throw fatalError; })()}
