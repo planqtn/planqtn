@@ -144,7 +144,7 @@ const LegoStudioView: React.FC = () => {
     const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false)
     const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false)
     const [isMspDialogOpen, setIsMspDialogOpen] = useState(false)
-    const [hideConnectedLegs, setHideConnectedLegs] = useState(false)
+    const [hideConnectedLegs, setHideConnectedLegs] = useState(true)
     const bgColor = useColorModeValue('white', 'gray.800')
     const borderColor = useColorModeValue('gray.200', 'gray.600')
     const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
@@ -515,7 +515,7 @@ const LegoStudioView: React.FC = () => {
         setHoveredConnection(null);
     };
 
-    const handleDynamicLegoSubmit = async (parameters: Record<string, any>) => {
+    const handleDynamicLegoSubmit = async (parameters: Record<string, unknown>) => {
         if (!selectedDynamicLego || !pendingDropPosition) return;
 
         try {
@@ -694,7 +694,7 @@ const LegoStudioView: React.FC = () => {
                         if (newLegos.length === 0) {
                             setTensorNetwork(null);
                         } else {
-                            let newNetwork = {
+                            const newNetwork = {
                                 legos: newLegos,
                                 connections: newConnections
                             } as TensorNetwork;
@@ -708,7 +708,7 @@ const LegoStudioView: React.FC = () => {
                             newLegos.some(l => l.instanceId === conn.from.legoId) &&
                             newLegos.some(l => l.instanceId === conn.to.legoId)
                         );
-                        let newNetwork = {
+                        const newNetwork = {
                             legos: newLegos,
                             connections: newConnections
                         } as TensorNetwork;
@@ -716,7 +716,7 @@ const LegoStudioView: React.FC = () => {
                         setTensorNetwork(newNetwork);
                     }
                 } else if (selectedLego) {
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: [lego, selectedLego],
                         connections: connections.filter(conn =>
                             conn.containsLego(lego.instanceId) && conn.containsLego(selectedLego.instanceId)
@@ -728,7 +728,7 @@ const LegoStudioView: React.FC = () => {
 
                 } else {
                     // If no tensor network exists, create one with just this lego
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: [lego],
                         connections: []
                     } as TensorNetwork;
@@ -742,7 +742,7 @@ const LegoStudioView: React.FC = () => {
                     setTensorNetwork(null);
                     setSelectedLego(lego);
                 } else if (selectedLego?.instanceId === lego.instanceId) {
-                    let network = findConnectedComponent(lego, droppedLegos, connections) as TensorNetwork;
+                    const network = findConnectedComponent(lego, droppedLegos, connections) as TensorNetwork;
                     network.signature = createNetworkSignature(network);
                     setTensorNetwork(network);
                     setSelectedLego(null);
@@ -841,14 +841,14 @@ const LegoStudioView: React.FC = () => {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
                     newNetwork.signature = createNetworkSignature(newNetwork);
                     setTensorNetwork(newNetwork);
                 } else {
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: selectedLegos,
                         connections: []
                     } as TensorNetwork;
@@ -869,7 +869,7 @@ const LegoStudioView: React.FC = () => {
                         newLegos.some(l => l.instanceId === conn.from.legoId) &&
                         newLegos.some(l => l.instanceId === conn.to.legoId)
                     );
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: newLegos,
                         connections: newConnections
                     } as TensorNetwork;
@@ -881,7 +881,7 @@ const LegoStudioView: React.FC = () => {
                         selectedLegoIds.has(conn.from.legoId) &&
                         selectedLegoIds.has(conn.to.legoId)
                     );
-                    let newNetwork = {
+                    const newNetwork = {
                         legos: selectedLegos,
                         connections: internalConnections
                     } as TensorNetwork;
@@ -896,7 +896,7 @@ const LegoStudioView: React.FC = () => {
                     selectedLegoIds.has(conn.from.legoId) &&
                     selectedLegoIds.has(conn.to.legoId)
                 );
-                let newNetwork = {
+                const newNetwork = {
                     legos: selectedLegos,
                     connections: internalConnections
                 } as TensorNetwork;
@@ -1420,10 +1420,10 @@ const LegoStudioView: React.FC = () => {
                         duration: 2000,
                         isClosable: true,
                     });
-                }).catch(_ => {
+                }).catch(error => {
                     toast({
                         title: "Copy failed",
-                        description: "Failed to copy network data",
+                        description: "Failed to copy network data (" + error + ")",
                         status: "error",
                         duration: 2000,
                         isClosable: true,
@@ -1517,7 +1517,7 @@ const LegoStudioView: React.FC = () => {
                 } catch (err) {
                     toast({
                         title: "Paste failed",
-                        description: "Invalid network data in clipboard",
+                        description: "Invalid network data in clipboard (" + err + ")",
                         status: "error",
                         duration: 2000,
                         isClosable: true,
@@ -1541,7 +1541,7 @@ const LegoStudioView: React.FC = () => {
                         selectedLegoIds.has(conn.to.legoId)
                     );
 
-                    let tensorNetwork = {
+                    const tensorNetwork = {
                         legos: droppedLegos,
                         connections: internalConnections
                     } as TensorNetwork;
@@ -1734,8 +1734,8 @@ const LegoStudioView: React.FC = () => {
     const handleCssTannerSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`/api/csstannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            let { legos, connections: newConnections } = response.data;
-            newConnections = newConnections.map((conn: Connection) => {
+            const { legos, connections } = response.data;
+            const newConnections = connections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
             });
 
@@ -1807,8 +1807,8 @@ const LegoStudioView: React.FC = () => {
     const handleTannerSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`/api/tannernetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            let { legos, connections: newConnections } = response.data;
-            newConnections = newConnections.map((conn: Connection) => {
+            const { legos, connections } = response.data;
+            const newConnections = connections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
             });
 
@@ -1876,8 +1876,8 @@ const LegoStudioView: React.FC = () => {
     const handleMspSubmit = async (matrix: number[][]) => {
         try {
             const response = await axios.post(`/api/mspnetwork`, { matrix, start_node_index: newInstanceId(droppedLegos) });
-            let { legos, connections: newConnections } = response.data;
-            newConnections = newConnections.map((conn: Connection) => {
+            const { legos, connections } = response.data;
+            const newMspConnections = connections.map((conn: Connection) => {
                 return new Connection(conn.from, conn.to);
             });
             // Calculate positions using lego coordinates
@@ -1911,19 +1911,19 @@ const LegoStudioView: React.FC = () => {
 
             // Add to state
             setDroppedLegos(prev => [...prev, ...newLegos]);
-            setConnections(prev => [...prev, ...newConnections]);
+            setConnections(prev => [...prev, ...newMspConnections]);
 
             // Add to history
             operationHistory.addOperation({
                 type: 'add',
                 data: {
                     legosToAdd: newLegos,
-                    connectionsToAdd: newConnections
+                    connectionsToAdd: newMspConnections
                 }
             });
 
             const updatedLegos = [...droppedLegos, ...newLegos];
-            encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
+            encodeCanvasState(updatedLegos, newMspConnections, hideConnectedLegs);
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -2458,7 +2458,7 @@ const LegoStudioView: React.FC = () => {
                                 <LegoPanel
                                     legos={legos}
                                     onDragStart={handleDragStart}
-                                    onLegoSelect={(_) => {
+                                    onLegoSelect={() => {
                                         // Handle lego selection if needed
                                     }}
                                 />

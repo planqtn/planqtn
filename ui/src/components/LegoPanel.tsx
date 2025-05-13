@@ -20,7 +20,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
         onDragStart(e, lego)
     }
 
-    const handleDynamicLegoSubmit = async (parameters: Record<string, any>) => {
+    const handleDynamicLegoSubmit = async (parameters: Record<string, unknown>) => {
         if (!selectedDynamicLego) return
 
         try {
@@ -44,7 +44,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({ legos, onLegoSelect, onDra
         } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Failed to create dynamic lego',
+                description: 'Failed to create dynamic lego (' + error + ')',
                 status: 'error',
                 duration: 3000,
                 isClosable: true,

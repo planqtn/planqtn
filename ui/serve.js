@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global process */
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';

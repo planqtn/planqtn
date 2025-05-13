@@ -12,6 +12,24 @@ interface Point {
     type?: 'X' | 'Z';
 }
 
+interface SimulationNode extends d3.SimulationNodeDatum {
+    id: number;
+    x: number;
+    y: number;
+    fx?: number;
+    fy?: number;
+    isStabilizer: boolean;
+    stabilizerIndex?: number;
+    type?: 'X' | 'Z';
+    legIndex?: number;
+}
+
+interface SimulationLink extends d3.SimulationLinkDatum<SimulationNode> {
+    source: number;
+    target: number;
+    weight: number;
+}
+
 interface StabilizerGraphViewProps {
     legs: TensorNetworkLeg[];
     matrix: number[][];
@@ -36,7 +54,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
     const [draggedPoint, setDraggedPoint] = useState<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedPoints, setSelectedPoints] = useState<Set<number>>(new Set());
-    const simulationRef = useRef<any>(null);
+    const simulationRef = useRef<unknown>(null);
 
     const draw = () => {
         const canvas = canvasRef.current;
@@ -119,20 +137,20 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
 
     const runForceSimulation = () => {
         // Create nodes for d3-force
-        const nodes = points.map((point, i) => ({
+        const nodes: SimulationNode[] = points.map((point, i) => ({
             id: i,
             x: point.x,
             y: point.y,
-            fx: undefined as number | undefined,
-            fy: undefined as number | undefined,
-            isStabilizer: point.isStabilizer,
+            fx: undefined,
+            fy: undefined,
+            isStabilizer: point.isStabilizer ?? false,
             stabilizerIndex: point.stabilizerIndex,
             type: point.type,
-            legIndex: (point as any).legIndex
+            legIndex: (point as unknown as { legIndex: number }).legIndex
         }));
 
         // Create links between stabilizers and legs
-        const links: { source: number; target: number; weight: number }[] = [];
+        const links: SimulationLink[] = [];
         matrix.forEach((row, stabilizerIndex) => {
             const stabilizerLegs = getStabilizerLegs(row);
             const stabilizerWeight = stabilizerLegs.length;
@@ -147,21 +165,21 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         });
 
         // Create simulation
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links)
-                .id((d: any) => d.id)
+        const simulation = d3.forceSimulation<SimulationNode>(nodes)
+            .force("link", d3.forceLink<SimulationNode, SimulationLink>(links)
+                .id((d) => d.id)
                 .distance(100)
-                .strength((link: any) => {
+                .strength((link) => {
                     return 0.7 * (link.weight / matrix[0].length);
                 }))
-            .force("charge", d3.forceManyBody()
-                .strength((d: any) => {
+            .force("charge", d3.forceManyBody<SimulationNode>()
+                .strength((d) => {
                     if (d.isStabilizer) return -500;
                     return -200;
                 }))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide()
-                .radius((d: any) => d.isStabilizer ? 40 : 30))
+            .force("collision", d3.forceCollide<SimulationNode>()
+                .radius((d) => d.isStabilizer ? 40 : 30))
             .force("x", d3.forceX(width / 2).strength(0.1))
             .force("y", d3.forceY(height / 2).strength(0.1))
             .force("boundary", function () {

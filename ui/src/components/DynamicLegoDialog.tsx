@@ -18,13 +18,14 @@ import {
     NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { useState, useRef, useEffect } from 'react';
+import React from 'react'
 
 interface DynamicLegoDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (parameters: Record<string, any>) => void;
+    onSubmit: (parameters: Record<string, unknown>) => void;
     legoId: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
 }
 
 export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
@@ -34,7 +35,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
     legoId,
     parameters,
 }) => {
-    const [values, setValues] = useState<Record<string, any>>(parameters);
+    const [values, setValues] = useState<Record<string, unknown>>(parameters);
     const firstInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -59,13 +60,13 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
         onClose();
     };
 
-    const renderParameterInput = (key: string, value: any, isFirst: boolean) => {
+    const renderParameterInput = (key: string, value: unknown, isFirst: boolean) => {
         if (typeof value === 'number') {
             return (
                 <FormControl key={key}>
                     <FormLabel>{key}</FormLabel>
                     <NumberInput
-                        value={values[key]}
+                        value={values[key] as number}
                         min={1}
                         onChange={(_, value) => setValues({ ...values, [key]: value })}
                     >
@@ -82,7 +83,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
             <FormControl key={key}>
                 <FormLabel>{key}</FormLabel>
                 <Input
-                    value={values[key]}
+                    value={values[key] as string}
                     onChange={(e) => setValues({ ...values, [key]: e.target.value })}
                     ref={isFirst ? firstInputRef : undefined}
                 />

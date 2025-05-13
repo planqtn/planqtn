@@ -54,7 +54,7 @@ export class CanvasStateSerializer {
                     x: number;
                     y: number;
                     is_dynamic?: boolean;
-                    parameters?: Record<string, any>;
+                    parameters?: Record<string, unknown>;
                     parity_check_matrix: number[][];
                     logical_legs?: number[];
                     gauge_legs?: number[];

@@ -83,12 +83,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     // Keep the ref updated with the latest tensorNetwork
     useEffect(() => {
 
-        let tn = currentTensorNetworkRef.current;
+        const tn = currentTensorNetworkRef.current;
         if (tn?.signature === tensorNetwork?.signature) {
             return;
         }
         currentTensorNetworkRef.current = tensorNetwork
-        const cachedEnumerator = weightEnumeratorCache.get(tensorNetwork?.signature!)
+        const cachedEnumerator = weightEnumeratorCache.get(tensorNetwork?.signature || '')
         if (!tensorNetwork) {
             setIterationStatus([])
         } else if (tensorNetwork?.taskId && tensorNetwork?.weightEnumerator === "") {
@@ -111,7 +111,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 if (typeof result === "string") {
                     try {
                         result = JSON.parse(result.replace(/'/g, '"'));
-                    } catch (e) {
+                    } catch  {
                         // fallback: leave as string
                     }
                 }
@@ -210,10 +210,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             const response = await axios.post(`/api/paritycheck`, {
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
-                    const { style, x, y, ...legoWithoutStyle } = lego;
                     acc[lego.instanceId] = {
-                        ...legoWithoutStyle,
+                        instanceId: lego.instanceId,
+                        shortName: lego.shortName || "Generic Lego",
                         name: lego.shortName || "Generic Lego",
+                        id: lego.id,
+                        parity_check_matrix: lego.parity_check_matrix,
+                        logical_legs: lego.logical_legs,
+                        gauge_legs: lego.gauge_legs
                     } as LegoServerPayload;
                     return acc;
                 }, {} as Record<string, LegoServerPayload>),
@@ -271,14 +275,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 legos: tensorNetwork.legos.reduce((acc, lego) => {
                     acc[lego.instanceId] = {
                         instanceId: lego.instanceId,
+                        shortName: lego.shortName || "Generic Lego",
+                        name: lego.shortName || "Generic Lego",
                         id: lego.id,
-                        shortName: lego.shortName,
                         parity_check_matrix: lego.parity_check_matrix,
                         logical_legs: lego.logical_legs,
                         gauge_legs: lego.gauge_legs
-                    };
+                    } as LegoServerPayload;
                     return acc;
-                }, {} as Record<string, any>),
+                }, {} as Record<string, LegoServerPayload>),
                 connections: tensorNetwork.connections,
                 truncate_length: truncateLength
             });
@@ -530,7 +535,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         };
 
         // Store cleanup function
-        (window as any).__restoreLegsState = cleanup;
+        (window as Window & { __restoreLegsState?: () => void }).__restoreLegsState = cleanup;
     };
 
     const handleUnfuseTo2LegosPartitionConfirm = async (legPartition: number[], oldConnections: Connection[]) => {
@@ -630,7 +635,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
             // Remap existing connections based on leg assignments
             const newConnections = connectionsInvolvingLego.map(conn => {
-                let newConn = new Connection(_.cloneDeep(conn.from), _.cloneDeep(conn.to));
+                const newConn = new Connection(_.cloneDeep(conn.from), _.cloneDeep(conn.to));
                 if (conn.from.legoId === lego.instanceId) {
                     const oldLegIndex = conn.from.legIndex;
                     if (!legPartition[oldLegIndex]) {
@@ -912,7 +917,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         operationHistory.addOperation(result.operation);
         encodeCanvasState(result.droppedLegos, result.connections, hideConnectedLegs);
 
-        let newTensorNetwork = findConnectedComponent(result.operation.data.legosToAdd![0], droppedLegos, connections) as TensorNetwork;
+        const newTensorNetwork = findConnectedComponent(result.operation.data.legosToAdd![0], droppedLegos, connections) as TensorNetwork;
         setTensorNetwork(newTensorNetwork);
     };
 
@@ -926,8 +931,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
     const handleLegPartitionDialogClose = () => {
         // Call cleanup to restore original state
-        (window as any).__restoreLegsState();
-        delete (window as any).__restoreLegsState;
+        const windowWithRestore = window as Window & { __restoreLegsState?: () => void };
+        windowWithRestore.__restoreLegsState?.();
+        delete windowWithRestore.__restoreLegsState;
         setShowLegPartitionDialog(false);
     };
 

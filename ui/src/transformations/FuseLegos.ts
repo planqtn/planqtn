@@ -1,7 +1,6 @@
 import { Connection, DroppedLego, LegoServerPayload, Operation, TensorNetworkLeg } from "../types";
 import axios from 'axios';
 import { getLegoStyle } from "../LegoStyles";
-import * as _ from 'lodash';
 export class FuseLegos {
 
     static operationCode: string = "fuse";

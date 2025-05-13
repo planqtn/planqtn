@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import { Connection, DroppedLego, Operation } from '../types';
 
 export class InjectTwoLegged {
@@ -21,7 +20,7 @@ export class InjectTwoLegged {
 
         // Add the new connections
         const finalConnections = [...externalConnections, ...newConnections];
-        let legosToUpdate: { oldLego: DroppedLego, newLego: DroppedLego }[] = [];
+        const legosToUpdate: { oldLego: DroppedLego, newLego: DroppedLego }[] = [];
         // Handle the lego
         let updatedLegos: DroppedLego[];
         let legosToAdd: DroppedLego[] = [];

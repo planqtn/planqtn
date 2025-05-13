@@ -1,6 +1,5 @@
 import { DroppedLego, Connection, Operation } from '../types';
 import { Z_REP_CODE, X_REP_CODE, getLegoStyle } from '../LegoStyles';
-import _ from 'lodash';
 
 export function canDoHopfRule(selectedLegos: DroppedLego[], connections: Connection[]): boolean {
     // Check if exactly two legos are selected

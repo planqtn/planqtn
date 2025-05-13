@@ -292,7 +292,7 @@ const TasksView: React.FC = () => {
         return `${runtime.toFixed(2)}s`;
     };
 
-    const parseTaskTitleFromArgs = (args: Array<any>) => {
+    const parseTaskTitleFromArgs = (args: Array<{ legos: Record<string, unknown> }>) => {
         try {
             if (args.length > 0) {
                 const firstArg = args[0];

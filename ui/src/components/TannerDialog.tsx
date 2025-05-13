@@ -124,7 +124,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 .split('\n')
                 .map(row => row
                     .trim()
-                    .replace(/[,\[\]()]/g, '')
+                    .replace(/[,()[\]]/g, '')
                     .replace(/\s+/g, '')
                     .split('')
                     .map(Number)
@@ -149,7 +149,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 const matrix = parseMatrix(input);
                 return matrix.map(row => row.join('')).join('\n');
             }
-        } catch (e) {
+        } catch  {
             // If conversion fails, return the original input
             return input;
         }
