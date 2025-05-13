@@ -19,13 +19,13 @@ import requests
 
 from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
-from server.config import get_firebase_user_from_token
-from server.task_store import TaskStore
-from server.tasks import REDIS_URL, weight_enumerator_task, celery_app
+from server.config import get_settings, get_supabase_user_from_token
+from server.task_store import RedisTaskStore
+from server.tasks import weight_enumerator_task, celery_app
 
 router = APIRouter()
 
-task_store: TaskStore = None
+task_store: RedisTaskStore = None
 
 
 def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:
@@ -238,10 +238,15 @@ class TaskStatusResponse(BaseModel):
 
 
 @router.post("/weightenumerator", response_model=TaskStatusResponse)
-async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
+async def calculate_weight_enumerator(
+    request: WeightEnumeratorRequest,
+    user: Annotated[dict, Depends(get_supabase_user_from_token)],
+):
     try:
         # Convert Pydantic model to dictionary
         request_dict = request.model_dump()
+        request_dict["user_id"] = user["uid"]
+        request_dict["token"] = user["token"]
         # Start the task
         print("kicking off task...")
         task = weight_enumerator_task.apply_async(
@@ -262,7 +267,7 @@ async def calculate_weight_enumerator(request: WeightEnumeratorRequest):
 )
 async def list_tasks():
     try:
-        task_store = TaskStore(REDIS_URL)
+        task_store = RedisTaskStore(redis_url=get_settings().redis_url)
         task_dict = task_store.get_all_tasks()
         print("task_dict", task_dict)
         all_tasks = []
@@ -297,6 +302,6 @@ async def cancel_task(request: CancelTaskRequest):
 
 
 @router.get("/userid")
-async def get_userid(user: Annotated[dict, Depends(get_firebase_user_from_token)]):
+async def get_userid(user: Annotated[dict, Depends(get_supabase_user_from_token)]):
     """gets the firebase connected user"""
     return {"id": user["uid"], "email": user["email"]}

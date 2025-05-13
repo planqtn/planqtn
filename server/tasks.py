@@ -1,4 +1,5 @@
 import json
+import pathlib
 import sys
 import time
 import traceback
@@ -7,6 +8,7 @@ from celery import Celery, Task
 from celery.utils.log import get_task_logger
 import os
 
+from dotenv import load_dotenv
 from galois import GF2
 import kombu
 from sympy import symbols
@@ -25,15 +27,23 @@ from server.api_types import (
     WeightEnumeratorRequest,
     WeightEnumeratorResponse,
 )
-from server.task_store import TaskStore
+from server.task_store import RedisTaskStore, SupabaseTaskStore, TaskStore
 
-# Get Redis URL from environment variable or use default
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Do not move this - it is needed to load the environment variables
+# before importing any other modules
+
+basedir = pathlib.Path(__file__).parents[0]
+load_dotenv(basedir / ".env", verbose=True)
+
+
+from server.config import get_settings
+
+settings = get_settings()
 
 celery_app = Celery(
     "mytasks",
-    broker=REDIS_URL,
-    backend=REDIS_URL,
+    broker=settings.redis_url,
+    backend=settings.redis_url,
     broker_connection_retry_on_startup=True,
     loglevel="INFO",
 )
@@ -61,28 +71,40 @@ kombu.utils.json.register_type(
 logger = get_task_logger(__name__)
 
 
-class CeleryProgressReporter(ProgressReporter):
+class TaskStoreProgressReporter(ProgressReporter):
     def __init__(
         self,
         task: Task,
         task_store: TaskStore,
         sub_reporter: ProgressReporter = None,
         iteration_report_frequency: float = 1.0,
+        user_id: str | None = None,
     ):
         self.task = task
         self.start_time = time.time()
         self.task_store = task_store
+        self.user_id = user_id
 
         super().__init__(sub_reporter, iteration_report_frequency)
 
     def __enter__(self):
-        self.task_store.add_task(self.task)
+        self.sub_reporter.__enter__()
+
+        logger.info(
+            f"adding task to task store {self.task.request.id} {self.user_id} - {type(self.task_store)}"
+        )
+        self.task_store.add_task(self.task, user_id=self.user_id)
+        logger.info(f"task added to task store {self.task.request.id} {self.user_id}")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.sub_reporter.__exit__(exc_type, exc_value, traceback)
+
         if exc_type is not None:
             self.task_store.update_task(
-                self.task.request.id, {"status": "FAILED", "result": str(exc_value)}
+                self.task.request.id,
+                {"status": "FAILED", "result": str(exc_value)},
+                user_id=self.user_id,
             )
         else:
             self.task_store.update_task(
@@ -90,12 +112,14 @@ class CeleryProgressReporter(ProgressReporter):
                 {
                     "status": "SUCCESS",
                 },
+                user_id=self.user_id,
             )
 
     def handle_result(self, result: Dict[str, Any]):
         self.task_store.update_task(
             self.task.request.id,
             {"status": "PROGRESS", "iteration_status": self.iterator_stack},
+            user_id=self.user_id,
         )
 
 
@@ -104,11 +128,18 @@ def weight_enumerator_task(self, request_dict: dict):
     try:
         # Convert dictionary back to TensorNetworkRequest
         request = WeightEnumeratorRequest(**request_dict)
-        task_store = TaskStore(REDIS_URL)
-        with CeleryProgressReporter(
+        task_store = RedisTaskStore(settings.redis_url)
+        with TaskStoreProgressReporter(
             self,
             task_store=task_store,
-            sub_reporter=TqdmProgressReporter(file=sys.stdout),
+            sub_reporter=TaskStoreProgressReporter(
+                self,
+                task_store=SupabaseTaskStore(
+                    settings.supabase_url, settings.supabase_key
+                ),
+                sub_reporter=TqdmProgressReporter(file=sys.stdout),
+                user_id=request_dict["user_id"],
+            ),
         ) as progress_reporter:
             # Create TensorStabilizerCodeEnumerator instances for each lego
             nodes = {}

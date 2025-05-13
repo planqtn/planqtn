@@ -1,10 +1,17 @@
 import logging
+import os
 import pathlib
 import sys
-import firebase_admin
 from dotenv import load_dotenv
-from server.task_store import TaskStore
-from server.tasks import REDIS_URL
+
+# Do not move this - it is needed to load the environment variables
+# before importing any other modules
+
+basedir = pathlib.Path(__file__).parents[0]
+load_dotenv(basedir / ".env", verbose=True)
+
+
+from server.task_store import RedisTaskStore, SupabaseTaskStore
 from server.web_endpoints import router
 from server.tasks import celery_app
 from fastapi import FastAPI
@@ -31,7 +38,6 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
-
 settings = get_settings()
 
 # Add CORS middleware
@@ -78,16 +84,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    basedir = pathlib.Path(__file__).parents[0]
-    load_dotenv(basedir / ".env")
-
-    firebase_admin.initialize_app()
-    pid = firebase_admin.get_app().project_id
-    if pid is None:
-        raise ValueError(
-            "Firebase project ID is not set, check the .env file for the correct configuration."
-        )
-
     if args.debug:
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)  # Set the minimum logging level
@@ -111,5 +107,7 @@ if __name__ == "__main__":
         f"Running server with frontend host {args.ui_host} and port {args.ui_port}, backend port {args.port}"
     )
 
-    TaskStore(REDIS_URL).clear_all_task_details()
+    if settings.storage_type == "redis":
+        RedisTaskStore(settings.redis_url).clear_all_task_details()
+
     uvicorn.run(app, host="0.0.0.0", port=args.port)

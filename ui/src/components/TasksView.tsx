@@ -21,8 +21,8 @@ import { ResizeHandle } from './ResizeHandle';
 import ProgressBars from './ProgressBars';
 import { useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { auth } from '../firebaseConfig';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { supabase } from '../supabaseClient.ts';
+import { Session, User } from '@supabase/supabase-js';
 import { UserMenu } from './UserMenu';
 import AuthDialog from './AuthDialog';
 
@@ -113,6 +113,7 @@ const TasksView: React.FC = () => {
     const bgColor = useColorModeValue('white', 'gray.800');
     const hoverBgColor = useColorModeValue('gray.50', 'gray.600');
     const selectedBgColor = useColorModeValue('gray.100', 'gray.700');
+    const borderColor = useColorModeValue('gray.200', 'gray.700');
 
     // Update the ref whenever selectedTask changes
     useEffect(() => {
@@ -122,14 +123,14 @@ const TasksView: React.FC = () => {
 
     // Add authentication effect
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-            if (!user) {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setCurrentUser(session?.user ?? null);
+            if (!session?.user) {
                 onOpen(); // Open auth modal if user is not authenticated
             }
         });
 
-        return () => unsubscribe();
+        return () => subscription.unsubscribe();
     }, [onOpen]);
 
     // Add title effect
@@ -263,7 +264,39 @@ const TasksView: React.FC = () => {
         };
     }, [currentUser]);
 
-    // Socket.IO connection for selected task
+    // // Socket.IO connection for selected task
+    // useEffect(() => {
+    //     if (!currentUser) {
+    //         return;
+    //     }
+    //     if (!selectedTask) {
+    //         setIterationStatus([]);
+    //         setWaitingForTaskUpdate(false);
+    //         if (socketSingleTaskRef.current) {
+    //             socketSingleTaskRef.current.disconnect();
+    //             socketSingleTaskRef.current = null;
+    //         }
+    //         return;
+    //     }
+    //     setWaitingForTaskUpdate(true);
+    //     if (socketSingleTaskRef.current) {
+    //         socketSingleTaskRef.current.disconnect();
+    //     }
+    //     const socket = io("/ws/task", { transports: ["websocket"] });
+    //     socketSingleTaskRef.current = socket;
+    //     socket.emit("join_room", { room_id: `task_${selectedTask.uuid}` });
+    //     socket.on("task_updated", (data: TaskUpdateMessage) => {
+    //         setWaitingForTaskUpdate(false);
+    //         if (data.type === "task_updated" && data.message.updates.iteration_status) {
+    //             setIterationStatus(data.message.updates.iteration_status);
+    //         }
+    //     });
+    //     return () => {
+    //         socket.disconnect();
+    //     };
+    // }, [selectedTask, currentUser]);
+
+    // Supabase realtime connection for selected task
     useEffect(() => {
         if (!currentUser) {
             return;
@@ -271,29 +304,40 @@ const TasksView: React.FC = () => {
         if (!selectedTask) {
             setIterationStatus([]);
             setWaitingForTaskUpdate(false);
-            if (socketSingleTaskRef.current) {
-                socketSingleTaskRef.current.disconnect();
-                socketSingleTaskRef.current = null;
-            }
             return;
         }
+
         setWaitingForTaskUpdate(true);
-        if (socketSingleTaskRef.current) {
-            socketSingleTaskRef.current.disconnect();
-        }
-        const socket = io("/ws/task", { transports: ["websocket"] });
-        socketSingleTaskRef.current = socket;
-        socket.emit("join_room", { room_id: `task_${selectedTask.uuid}` });
-        socket.on("task_updated", (data: TaskUpdateMessage) => {
-            setWaitingForTaskUpdate(false);
-            if (data.type === "task_updated" && data.message.updates.iteration_status) {
-                setIterationStatus(data.message.updates.iteration_status);
-            }
-        });
+
+        // Create a channel for task updates
+        const channel = supabase.channel(`task_${selectedTask.uuid}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: `uuid=eq.${selectedTask.uuid}`
+                },
+                (payload) => {
+                    console.log("Task updated", payload);
+                    if (payload.new) {
+                        const updates = payload.new.updates;
+                        if (updates?.iteration_status) {
+                            setIterationStatus(updates.iteration_status);
+                            setWaitingForTaskUpdate(false);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
         return () => {
-            socket.disconnect();
+            channel.unsubscribe();
         };
     }, [selectedTask, currentUser]);
+
+
 
     // Helper functions
     const getStateColor = (state: string) => {
@@ -380,7 +424,7 @@ const TasksView: React.FC = () => {
     return (
         <>
             {/* Header Bar */}
-            <Box as="header" w="100%" h={`${HEADER_HEIGHT}px`} px={6} py={2} bg={bgColor} borderBottom="1px" borderColor={useColorModeValue('gray.200', 'gray.700')} position="relative" zIndex={2}>
+            <Box as="header" w="100%" h={`${HEADER_HEIGHT}px`} px={6} py={2} bg={bgColor} borderBottom="1px" borderColor={borderColor} position="relative" zIndex={2}>
                 <Flex align="center" justify="flex-end" h="100%">
                     <UserMenu user={currentUser} />
                 </Flex>

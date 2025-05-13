@@ -6,7 +6,7 @@ from celery import Celery
 import json
 import asyncio
 from typing import Dict, Set
-from server.task_store import TaskStore
+from server.task_store import RedisTaskStore
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class SocketIOManager:
         self.app = ASGIApp(self.sio)
         self.active_rooms: Dict[str, Set[str]] = {}  # room_id -> set of socket_ids
         self.celery_app: Celery = None
-        self.task_store = TaskStore()
+        self.task_store = RedisTaskStore()
 
         # Register event handlers for the tasks namespace
 

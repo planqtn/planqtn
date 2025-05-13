@@ -1,16 +1,7 @@
 // Example using useEffect in a component or context
 import React, { useEffect, useState } from 'react';
-import { auth } from '../firebaseConfig';
-import {
-    onAuthStateChanged,
-    signOut,
-    User,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
-    sendPasswordResetEmail
-} from 'firebase/auth';
+import { supabase } from '../supabaseClient.ts';
+import { Session, User } from '@supabase/supabase-js';
 import {
     Button,
     FormControl,
@@ -48,16 +39,27 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     const [resetMessage, setResetMessage] = useState('');
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-            setCurrentUser(user);
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setCurrentUser(session?.user ?? null);
             setLoading(false);
-            if (user) {
-                onClose(); // Close the modal when user is authenticated
+            if (session?.user) {
+                onClose();
             }
         });
 
-        return () => unsubscribe();
-    }, [currentUser]);
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+            setCurrentUser(session?.user ?? null);
+            if (session?.user) {
+                onClose();
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
 
     const handleEmailPasswordAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,16 +67,26 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
         try {
             if (isSignUp) {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+
                 toast({
                     title: "Account created",
-                    description: "Your account has been created successfully",
+                    description: "Please check your email for verification",
                     status: "success",
                     duration: 3000,
                     isClosable: true,
                 });
             } else {
-                await signInWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+
                 toast({
                     title: "Signed in",
                     description: "You have been signed in successfully",
@@ -97,30 +109,19 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
     const handleGoogleSignIn = async () => {
         try {
-            const provider = new GoogleAuthProvider();
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
 
-            // Save the complete URL state
-            const currentUrl = window.location.href;
-            localStorage.setItem('pendingUrl', currentUrl);
-
-            // Change URL to minimal while preserving the origin
-            const minimalUrl = window.location.origin + '/auth';
-            window.history.replaceState({}, '', minimalUrl);
-
-            // Now call signInWithPopup
-            await signInWithPopup(auth, provider);
-
-            // After sign-in, restore the complete URL
-            const pendingUrl = localStorage.getItem('pendingUrl');
-            if (pendingUrl) {
-                window.history.replaceState({}, '', pendingUrl);
-                localStorage.removeItem('pendingUrl');
-            }
+            if (error) throw error;
 
             toast({
-                title: "Signed in with Google",
-                description: "You have been signed in successfully",
-                status: "success",
+                title: "Redirecting to Google",
+                description: "Please complete the sign in with Google",
+                status: "info",
                 duration: 3000,
                 isClosable: true,
             });
@@ -140,10 +141,29 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
         e.preventDefault();
         setResetMessage('');
         try {
-            await sendPasswordResetEmail(auth, resetEmail);
+            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            });
+            if (error) throw error;
+
             setResetMessage('Password reset email sent! Check your inbox.');
         } catch (err: any) {
             setResetMessage(err.message);
+        }
+    };
+
+    const handleSignOut = async () => {
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+        } catch (err: any) {
+            toast({
+                title: "Error signing out",
+                description: err.message,
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
         }
     };
 
@@ -163,7 +183,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                     {currentUser ? (
                         <VStack spacing={4}>
                             <Text>Welcome, {currentUser?.email || 'User'}!</Text>
-                            <Button onClick={() => signOut(auth)} colorScheme="red" width="full">
+                            <Button onClick={handleSignOut} colorScheme="red" width="full">
                                 Sign Out
                             </Button>
                         </VStack>

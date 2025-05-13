@@ -19,11 +19,11 @@ import { AddStopper } from './transformations/AddStopper'
 import { findConnectedComponent } from './utils/TensorNetwork'
 import { randomPlankterName } from './utils/RandomPlankterNames'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { onAuthStateChanged, User } from 'firebase/auth'
-import { auth } from './firebaseConfig'
 import { UserMenu } from './components/UserMenu'
 import AuthDialog from './components/AuthDialog'
 import { FiEdit } from 'react-icons/fi'
+import { supabase } from './supabaseClient'
+import { User } from '@supabase/supabase-js'
 // Add these helper functions near the top of the file
 const pointToLineDistance = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
     const A = x - x1;
@@ -1670,10 +1670,10 @@ const LegoStudioView: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setCurrentUser(session?.user ?? null);
         });
-        return () => unsubscribe();
+        return () => subscription.unsubscribe();
     }, []);
 
     const handleConnectionDoubleClick = (e: React.MouseEvent, connection: Connection) => {

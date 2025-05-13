@@ -7,7 +7,7 @@ from galois import GF2
 from qlego.legos import Legos
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from server.tasks import celery_app
-from server.task_store import TaskStore
+from server.task_store import RedisTaskStore
 import socketio
 import uuid
 import subprocess

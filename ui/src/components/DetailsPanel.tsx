@@ -14,11 +14,12 @@ import { canDoBialgebra, applyBialgebra } from '../transformations/Bialgebra'
 import { canDoInverseBialgebra, applyInverseBialgebra } from '../transformations/InverseBialgebra'
 import { canDoHopfRule, applyHopfRule } from '../transformations/Hopf'
 import { canDoConnectGraphNodes, applyConnectGraphNodes } from '../transformations/ConnectGraphNodesWithCenterLego.ts'
-import { findConnectedComponent } from '../utils/TensorNetwork.ts'
+import { findConnectedComponent } from '../utils/TensorNetwork'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 import ProgressBars from './ProgressBars'
 import { io, Socket } from "socket.io-client";
-import { User } from 'firebase/auth';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../supabaseClient';
 
 
 interface DetailsPanelProps {
@@ -284,6 +285,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 }, {} as Record<string, any>),
                 connections: tensorNetwork.connections,
                 truncate_length: truncateLength
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${await supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => session?.access_token)}`
+                }
             });
 
             if (response.data.status === "error") {
