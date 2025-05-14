@@ -13,6 +13,7 @@ import {
   Checkbox,
   Link,
   UseToastOptions,
+  Code,
 } from "@chakra-ui/react";
 import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
@@ -29,7 +30,7 @@ import axios, { AxiosResponse } from "axios";
 import { useState, useEffect, useRef } from "react";
 import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
-import TruncationLevelDialog from "./TruncationLevelDialog";
+import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
 import * as _ from "lodash";
 import { OperationHistory } from "../utils/OperationHistory";
 import { canDoBialgebra, applyBialgebra } from "../transformations/Bialgebra";
@@ -136,7 +137,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   >([]);
   const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
   const currentTensorNetworkRef = useRef<TensorNetwork | null>(null);
-  const [showTruncationDialog, setShowTruncationDialog] = useState(false);
+  const [
+    showWeightEnumeratorCalculationDialog,
+    setShowWeightEnumeratorCalculationDialog,
+  ] = useState(false);
   const socketAllTasksRef = useRef<Socket | null>(null);
   const socketSingleTaskRef = useRef<Socket | null>(null);
 
@@ -322,7 +326,55 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
-  const calculateWeightEnumerator = async (truncateLength: number | null) => {
+  const getExternalAndDanglingLegs = () => {
+    if (!tensorNetwork) return { externalLegs: [], danglingLegs: [] };
+    const allLegs: TensorNetworkLeg[] = tensorNetwork.legos.flatMap((lego) => {
+      const numLegs = lego.parity_check_matrix[0].length / 2;
+      return Array.from({ length: numLegs }, (_, i) => ({
+        instanceId: lego.instanceId,
+        legIndex: i,
+      }));
+    });
+    const connectedLegs = new Set<string>();
+    connections.forEach((conn) => {
+      connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
+      connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
+    });
+    // Legs in tensorNetwork but connected to something outside
+    const networkInstanceIds = new Set(
+      tensorNetwork.legos.map((l) => l.instanceId),
+    );
+    const externalLegs: TensorNetworkLeg[] = [];
+    const danglingLegs: TensorNetworkLeg[] = [];
+    allLegs.forEach((leg) => {
+      // Find if this leg is connected
+      const conn = connections.find(
+        (conn) =>
+          (conn.from.legoId === leg.instanceId &&
+            conn.from.legIndex === leg.legIndex) ||
+          (conn.to.legoId === leg.instanceId &&
+            conn.to.legIndex === leg.legIndex),
+      );
+      if (!conn) {
+        danglingLegs.push(leg);
+      } else {
+        // If the other side is not in the network, it's external
+        const other =
+          conn.from.legoId === leg.instanceId
+            ? conn.to.legoId
+            : conn.from.legoId;
+        if (!networkInstanceIds.has(other)) {
+          externalLegs.push(leg);
+        }
+      }
+    });
+    return { externalLegs, danglingLegs };
+  };
+
+  const calculateWeightEnumerator = async (
+    truncateLength: number | null,
+    openLegs?: TensorNetworkLeg[],
+  ) => {
     if (!tensorNetwork) return;
 
     // Clear any existing progress bars
@@ -373,6 +425,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         ),
         connections: tensorNetwork.connections,
         truncate_length: truncateLength,
+        open_legs: openLegs || [],
       });
 
       if (response.data.status === "error") {
@@ -1169,6 +1222,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
+  const { externalLegs, danglingLegs } = getExternalAndDanglingLegs();
+
   return (
     <Box
       h="100%"
@@ -1264,7 +1319,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     !weightEnumeratorCache.get(tensorNetwork.signature!) &&
                     !tensorNetwork.isCalculatingWeightEnumerator && (
                       <Button
-                        onClick={() => setShowTruncationDialog(true)}
+                        onClick={() =>
+                          setShowWeightEnumeratorCalculationDialog(true)
+                        }
                         colorScheme="teal"
                         size="sm"
                         width="full"
@@ -1397,11 +1454,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       })()}
                     </Box>
                     <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                      <Text fontFamily="mono">
+                      <Code as="pre">
                         {tensorNetwork.weightEnumerator ||
                           weightEnumeratorCache.get(tensorNetwork.signature!)!
                             .polynomial}
-                      </Text>
+                      </Code>
                     </Box>
 
                     <Heading size="sm">
@@ -1604,12 +1661,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }}
         numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
       />
-      <TruncationLevelDialog
-        open={showTruncationDialog}
-        onClose={() => setShowTruncationDialog(false)}
-        onSubmit={(truncateLength) => {
-          setShowTruncationDialog(false);
-          calculateWeightEnumerator(truncateLength);
+      <WeightEnumeratorCalculationDialog
+        open={showWeightEnumeratorCalculationDialog}
+        onClose={() => setShowWeightEnumeratorCalculationDialog(false)}
+        externalLegs={externalLegs}
+        danglingLegs={danglingLegs}
+        onSubmit={(truncateLength, openLegs) => {
+          setShowWeightEnumeratorCalculationDialog(false);
+          calculateWeightEnumerator(truncateLength, openLegs);
         }}
       />
     </Box>

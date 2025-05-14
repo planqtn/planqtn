@@ -42,13 +42,14 @@ class TensorNetworkRequest(BaseModel):
     connections: List[Dict[str, Any]]
 
 
-class WeightEnumeratorRequest(TensorNetworkRequest):
-    truncate_length: int | None = None
-
-
 class TensorNetworkLeg(BaseModel):
     instanceId: str
     legIndex: int
+
+
+class WeightEnumeratorRequest(TensorNetworkRequest):
+    truncate_length: int | None = None
+    open_legs: List[TensorNetworkLeg] = []
 
 
 class ParityCheckResponse(BaseModel):
