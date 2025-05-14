@@ -52,11 +52,11 @@ const WeightEnumeratorCalculationDialog: React.FC<
 
   // Update selection if legs change
   // (e.g. dialog is opened for a different network)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useMemo(() => {
     setSelectedExternal(new Set(externalKeys));
   }, [externalKeys.join(",")]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useMemo(() => {
     setSelectedDangling(new Set());
   }, [danglingKeys.join(",")]);
