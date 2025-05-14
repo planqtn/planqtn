@@ -13,18 +13,19 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
-      - name: cd ui
-        run: |
-          cd ui
       - name: Install dependencies
+        working-directory: ui
         run: |
           npm install --include=dev
       - name: prettier check
+        working-directory: ui
         run: |
           npx prettier --check .
       - name: eslint check
+        working-directory: ui
         run: |
           npx eslint src
       - name: Run tests
+        working-directory: ui
         run: |
           npm run test
