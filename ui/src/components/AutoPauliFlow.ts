@@ -1,5 +1,5 @@
 import { cloneDeep } from 'lodash';
-import { DroppedLego, Connection, TensorNetwork } from '../types';
+import { DroppedLego, Connection, TensorNetwork } from '../types'
 
 /**
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.
@@ -8,27 +8,23 @@ import { DroppedLego, Connection, TensorNetwork } from '../types';
  * @param setDroppedLegos 
  * @param setTensorNetwork 
  */
-export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
+export function simpleAutoFlow(changedLego: DroppedLego | null,
+    tensorNetwork: TensorNetwork | null,
     connections: Connection[],
     setDroppedLegos: (updateFn: (prev: DroppedLego[]) => DroppedLego[]) => void,
     setTensorNetwork: (updateFn: (prev: TensorNetwork | null) => TensorNetwork | null) => void
-): void {
+): void {    
     if (!tensorNetwork) {
         return;
     }   
-
     let changed = true;
     let tnLegos = cloneDeep(tensorNetwork.legos);
-
     while(changed) {
         changed = false;
-
         for (const lego of tnLegos) {
-            // Skip legos with existing highlights 
-            if (lego.selectedMatrixRows.length > 0) {
+            if (lego.instanceId === changedLego?.instanceId) {
                 continue;
             }
-
             const neighborConns = connections.filter(conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId);
             if (neighborConns.length === 0) {
                 continue;
@@ -53,12 +49,21 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                         ? neighborConn.from.legIndex 
                         : neighborConn.to.legIndex;
 
+                const legoLegHighlightOp = getHighlightOp(lego, legoLegIndex);
                 const neighborLegHighlightOp = getHighlightOp(neighborLego, neighborLegIndex);
                 const {xRowIndices, zRowIndices} = findRowIndices(lego, legoLegIndex);
                 console.log("neighborLegHighlightOp: ", neighborLegHighlightOp, ", xRowIndices: ", xRowIndices, ", zRowIndices: ", zRowIndices);
-
+                
+                // Skip if lego and neighbor already have the same operation
+                if (neighborLegHighlightOp[0] === legoLegHighlightOp[0] &&
+                    neighborLegHighlightOp[1] === legoLegHighlightOp[1]) {
+                    continue;
+                }
+                if (!isSimpleLego(lego)) {
+                    continue;
+                }
                 // Skip if there is more than one option to choose from 
-                if (xRowIndices.length > 1 && zRowIndices.length > 1) {
+                if(xRowIndices.length > 1 && zRowIndices.length > 1) {
                     continue;
                 }
 
@@ -72,6 +77,8 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                 else if (neighborLegHighlightOp[0] === 1 && neighborLegHighlightOp[1] === 1 
                     && xRowIndices.length === 1 && zRowIndices.length === 1) {
                     newRows = zRowIndices[0] != xRowIndices[0] ? [xRowIndices[0], zRowIndices[0]] : [xRowIndices[0]]
+                } else if (!(legoLegHighlightOp[0] === 0 && legoLegHighlightOp[1] === 0)) { 
+                    newRows = [];
                 }
 
                 if(newRows !== null) {
@@ -82,12 +89,19 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
                         setDroppedLegos,
                         setTensorNetwork
                       );
+                      
                     changed = true;
                 }
             }
         }
     }
+    // Do one final state update, without this the last update will not be reflected
+    setDroppedLegos(() => tnLegos.map(l => ({ ...l })));
+    setTensorNetwork(prev =>
+        prev ? { ...prev, legos: tnLegos } : null
+    );
 }
+
 
 /**
  * Helper method to update the given lego in the tensor network 
@@ -98,6 +112,7 @@ export function simpleAutoFlow(tensorNetwork: TensorNetwork | null,
  * @param setTensorNetwork 
  * @returns new list of legos after the update
  */
+
 const updateLego = (
     tnLegos: DroppedLego[],
     targetId: string,
@@ -108,7 +123,7 @@ const updateLego = (
     const updatedLegos = tnLegos.map(l =>
       l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
     );
-  
+
     // call both setters exactly once for this update
     setDroppedLegos(prev => prev.map(l =>
       l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
@@ -116,7 +131,7 @@ const updateLego = (
     setTensorNetwork(prev =>
       prev ? { ...prev, legos: updatedLegos } : null
     );
-  
+    
     return updatedLegos;
   }
 
@@ -127,7 +142,7 @@ const updateLego = (
  * @returns X and Z parts of the highlight operation
  */
 const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
-    const numLegs = lego.parity_check_matrix[0].length / 2
+    const nLegoLegs = lego.parity_check_matrix[0].length / 2;
     const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
 
     for (const rowIndex of lego.selectedMatrixRows) {
@@ -136,7 +151,7 @@ const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
         });
     }
     const xPart = combinedRow[legIndex];
-    const zPart = combinedRow[legIndex + numLegs];
+    const zPart = combinedRow[legIndex + nLegoLegs];
     return [xPart, zPart]
 }
 
@@ -161,3 +176,36 @@ const findRowIndices = (
 
     return { xRowIndices, zRowIndices };
 };
+
+/**
+ * Checks if the given lego is simple, i.e. if it has only one possible operation for each leg.
+ * @param lego 
+ * @returns boolean true if the lego is simple, false otherwise
+ */
+const isSimpleLego = (lego: DroppedLego): boolean => {
+    const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+    if(lego.parity_check_matrix.length < 2) {
+        return true;
+    }
+    if(lego.parity_check_matrix.length > 2) {
+        return false;
+    }
+    const [row1, row2] = lego.parity_check_matrix;
+    const combinedRow = row1.map((val, i) => (val + row2[i]) % 2);
+
+    const legActions: Set<string>[] = Array.from({ length: nLegoLegs }, () => new Set<string>());
+
+    for (const row of [row1, row2, combinedRow]) {
+        for (let i = 0; i < nLegoLegs; i++) {
+            const xPart = row[i];
+            const zPart = row[i + nLegoLegs];
+
+            const key = `${xPart}${zPart}`;
+            if(legActions[i].has(key)) {
+                return false;
+            }
+            legActions[i].add(key);
+        }
+    }
+    return true;
+}

@@ -18,6 +18,7 @@ import { findConnectedComponent } from '../utils/TensorNetwork.ts'
 import { canDoCompleteGraphViaHadamards, applyCompleteGraphViaHadamards } from '../transformations/CompleteGraphViaHadamards'
 import ProgressBars from './ProgressBars'
 import { io, Socket } from "socket.io-client";
+import { simpleAutoFlow } from './AutoPauliFlow.ts';
 
 
 interface DetailsPanelProps {
@@ -360,7 +361,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const handleMatrixRowSelection = (selectedRows: number[]) => {
         setSelectedMatrixRows(selectedRows);
         if (selectedLego) {
-
             const updatedLego = {
                 ...selectedLego,
                 selectedMatrixRows: selectedRows
@@ -369,9 +369,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             const updatedDroppedLegos = droppedLegos.map(l =>
                 l.instanceId === selectedLego.instanceId ? updatedLego : l
             );
+
             setSelectedLego(updatedLego);
             setDroppedLegos(updatedDroppedLegos);
             encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
+
+            let selectedNetwork = findConnectedComponent(updatedLego, updatedDroppedLegos, connections);
+            simpleAutoFlow(
+                updatedLego,
+                selectedNetwork,
+                connections,
+                (updateFn) => setDroppedLegos(updateFn(updatedDroppedLegos)),
+                setTensorNetwork
+            );
         }
     };
 

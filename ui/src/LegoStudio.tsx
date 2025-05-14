@@ -1984,7 +1984,7 @@ const LegoStudioView: React.FC = () => {
         const rowIndex = clickedLego.parity_check_matrix.findIndex(row =>
             row.every((val, idx) => val === baseRepresentative[idx])
         );
-
+        
         // Update the selected rows based on the pushed legs
         const selectedRows = [rowIndex].filter(row => row !== -1);
 
@@ -2003,6 +2003,9 @@ const LegoStudioView: React.FC = () => {
         );
         setDroppedLegos(newDroppedLegos);
         encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
+
+        let selectedNetwork = findConnectedComponent(clickedLego, newDroppedLegos, connections);
+        simpleAutoFlow(updatedLego, selectedNetwork, connections, setDroppedLegos, setTensorNetwork);
     };
 
     const fuseLegos = async (legosToFuse: DroppedLego[]) => {
@@ -2346,21 +2349,6 @@ const LegoStudioView: React.FC = () => {
                         </MenuItem>
                         <MenuItem onClick={() => setIsMspDialogOpen(true)}>
                             Measurement State Prep Network
-                        </MenuItem>
-
-                    </MenuList>
-                </Menu>
-                <Menu>
-                    <MenuButton
-                        as={Button}
-                        variant="ghost"
-                        size="sm"
-                    >
-                        Automations
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItem onClick={() => simpleAutoFlow(tensorNetwork, connections, setDroppedLegos, setTensorNetwork)}>
-                            Auto-highlight for simple legos
                         </MenuItem>
 
                     </MenuList>
