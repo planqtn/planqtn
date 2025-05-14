@@ -22,7 +22,7 @@ import ProgressBars from './ProgressBars';
 import { useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { supabase } from '../supabaseClient.ts';
-import { Session, User } from '@supabase/supabase-js';
+import {  User } from '@supabase/supabase-js';
 import { UserMenu } from './UserMenu';
 import AuthDialog from './AuthDialog';
 
@@ -66,23 +66,23 @@ interface Task {
 }
 
 
-interface TaskUpdateMessage {
-    type: string;
-    message: {
-        updates: {
-            status: string;
-            iteration_status: Array<{
-                desc: string;
-                total_size: number;
-                current_item: number;
-                start_time: number;
-                end_time: number | null;
-                duration: number;
-                avg_time_per_item: number;
-            }>;
-        };
-    };
-}
+// interface TaskUpdateMessage {
+//     type: string;
+//     message: {
+//         updates: {
+//             status: string;
+//             iteration_status: Array<{
+//                 desc: string;
+//                 total_size: number;
+//                 current_item: number;
+//                 start_time: number;
+//                 end_time: number | null;
+//                 duration: number;
+//                 avg_time_per_item: number;
+//             }>;
+//         };
+//     };
+// }
 
 const TasksView: React.FC = () => {
     const location = useLocation();
@@ -105,7 +105,7 @@ const TasksView: React.FC = () => {
 
     // Refs
     const socketAllTasksRef = useRef<Socket | null>(null);
-    const socketSingleTaskRef = useRef<Socket | null>(null);
+    // const socketSingleTaskRef = useRef<Socket | null>(null);
     const selectedTaskRef = useRef<Task | null>(null);
 
 
