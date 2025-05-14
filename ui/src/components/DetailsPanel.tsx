@@ -137,7 +137,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   >([]);
   const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
   const currentTensorNetworkRef = useRef<TensorNetwork | null>(null);
-  const [showWeightEnumeratorCalculationDialog, setShowWeightEnumeratorCalculationDialog] = useState(false);
+  const [
+    showWeightEnumeratorCalculationDialog,
+    setShowWeightEnumeratorCalculationDialog,
+  ] = useState(false);
   const socketAllTasksRef = useRef<Socket | null>(null);
   const socketSingleTaskRef = useRef<Socket | null>(null);
 
@@ -325,34 +328,41 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const getExternalAndDanglingLegs = () => {
     if (!tensorNetwork) return { externalLegs: [], danglingLegs: [] };
-    const allLegs: TensorNetworkLeg[] = tensorNetwork.legos.flatMap(lego => {
+    const allLegs: TensorNetworkLeg[] = tensorNetwork.legos.flatMap((lego) => {
       const numLegs = lego.parity_check_matrix[0].length / 2;
       return Array.from({ length: numLegs }, (_, i) => ({
         instanceId: lego.instanceId,
-        legIndex: i
+        legIndex: i,
       }));
     });
     const connectedLegs = new Set<string>();
-    connections.forEach(conn => {
+    connections.forEach((conn) => {
       connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
       connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
     });
     // Legs in tensorNetwork but connected to something outside
-    const networkInstanceIds = new Set(tensorNetwork.legos.map(l => l.instanceId));
+    const networkInstanceIds = new Set(
+      tensorNetwork.legos.map((l) => l.instanceId),
+    );
     const externalLegs: TensorNetworkLeg[] = [];
     const danglingLegs: TensorNetworkLeg[] = [];
-    allLegs.forEach(leg => {
-      const key = `${leg.instanceId}:${leg.legIndex}`;
+    allLegs.forEach((leg) => {
       // Find if this leg is connected
-      const conn = connections.find(conn =>
-        (conn.from.legoId === leg.instanceId && conn.from.legIndex === leg.legIndex) ||
-        (conn.to.legoId === leg.instanceId && conn.to.legIndex === leg.legIndex)
+      const conn = connections.find(
+        (conn) =>
+          (conn.from.legoId === leg.instanceId &&
+            conn.from.legIndex === leg.legIndex) ||
+          (conn.to.legoId === leg.instanceId &&
+            conn.to.legIndex === leg.legIndex),
       );
       if (!conn) {
         danglingLegs.push(leg);
       } else {
         // If the other side is not in the network, it's external
-        const other = conn.from.legoId === leg.instanceId ? conn.to.legoId : conn.from.legoId;
+        const other =
+          conn.from.legoId === leg.instanceId
+            ? conn.to.legoId
+            : conn.from.legoId;
         if (!networkInstanceIds.has(other)) {
           externalLegs.push(leg);
         }
@@ -361,7 +371,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     return { externalLegs, danglingLegs };
   };
 
-  const calculateWeightEnumerator = async (truncateLength: number | null, openLegs?: TensorNetworkLeg[]) => {
+  const calculateWeightEnumerator = async (
+    truncateLength: number | null,
+    openLegs?: TensorNetworkLeg[],
+  ) => {
     if (!tensorNetwork) return;
 
     // Clear any existing progress bars
@@ -1306,7 +1319,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     !weightEnumeratorCache.get(tensorNetwork.signature!) &&
                     !tensorNetwork.isCalculatingWeightEnumerator && (
                       <Button
-                        onClick={() => setShowWeightEnumeratorCalculationDialog(true)}
+                        onClick={() =>
+                          setShowWeightEnumeratorCalculationDialog(true)
+                        }
                         colorScheme="teal"
                         size="sm"
                         width="full"
@@ -1439,7 +1454,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       })()}
                     </Box>
                     <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                    <Code as="pre">
+                      <Code as="pre">
                         {tensorNetwork.weightEnumerator ||
                           weightEnumeratorCache.get(tensorNetwork.signature!)!
                             .polynomial}
