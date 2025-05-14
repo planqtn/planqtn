@@ -1,15 +1,15 @@
 name: UI Checks
-run-name: ${{ github.actor }} is checking the UI 
+run-name: ${{ github.actor }} is checking the UI
 on: [push]
 jobs:
-  UI-checks:   
+  UI-checks:
     runs-on: ubuntu-latest
     steps:
       - run: |
           sudo apt-get update && \
-          apt-get install -y curl gnupg && \
-          curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-          apt-get install -y nodejs && \
+          sudo apt-get install -y curl gnupg && \
+          sudo curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+          sudo apt-get install -y nodejs && \
           npm install -g npm@latest
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -18,16 +18,16 @@ jobs:
           ls ${{ github.workspace }}
       - name: cd ui
         run: |
-          cd ui          
+          cd ui
       - name: Install dependencies
         run: |
           npm install --include=dev
       - name: prettier check
         run: |
-            npx prettier --check .
+          npx prettier --check .
       - name: eslint check
         run: |
-            npx eslint src
+          npx eslint src
       - name: Run tests
         run: |
           npm run test
