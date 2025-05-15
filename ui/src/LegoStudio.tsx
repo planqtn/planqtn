@@ -3443,8 +3443,8 @@ const LegoStudioView: React.FC = () => {
               makeSpace={(
                 center: { x: number; y: number },
                 radius: number,
-                skipLegos: string[],
-                legosToCheck: string[],
+                skipLegos: DroppedLego[],
+                legosToCheck: DroppedLego[],
               ) => makeSpace(center, radius, skipLegos, legosToCheck)}
               toast={toast}
             />
