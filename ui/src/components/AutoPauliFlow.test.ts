@@ -1,17 +1,16 @@
-import { simpleAutoFlow } from './AutoPauliFlow';
+import { simpleAutoFlow } from "./AutoPauliFlow";
 //import { Connection, DroppedLego, TensorNetwork } from '../types';
 //import { GenericStyle } from '../LegoStyles';
 
+describe("simple auto flow", () => {
+  let mockSetDroppedLegos: jest.Mock;
+  let mockSetTensorNetwork: jest.Mock;
 
-describe('simple auto flow', () => {
-    let mockSetDroppedLegos: jest.Mock;
-    let mockSetTensorNetwork: jest.Mock;
-
-    beforeEach(() => {
-        mockSetDroppedLegos = jest.fn();
-        mockSetTensorNetwork = jest.fn();
-    });
-    /*
+  beforeEach(() => {
+    mockSetDroppedLegos = jest.fn();
+    mockSetTensorNetwork = jest.fn();
+  });
+  /*
     const makeLego = ({
         id,
         name,
@@ -48,13 +47,13 @@ describe('simple auto flow', () => {
         toIdx: number
     ) => new Connection({ legoId: fromId, legIndex: fromIdx }, { legoId: toId, legIndex: toIdx });
     */
-    it('do nothing if tensor network is null', () => {
-        simpleAutoFlow(null, null, [], mockSetDroppedLegos, mockSetTensorNetwork);
+  it("do nothing if tensor network is null", () => {
+    simpleAutoFlow(null, null, [], mockSetDroppedLegos, mockSetTensorNetwork);
 
-        expect(mockSetDroppedLegos).not.toHaveBeenCalled();
-        expect(mockSetTensorNetwork).not.toHaveBeenCalled();
-    });
-    /*
+    expect(mockSetDroppedLegos).not.toHaveBeenCalled();
+    expect(mockSetTensorNetwork).not.toHaveBeenCalled();
+  });
+  /*
     it('do nothing if everything is highlighted', () => {
         const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
         const tensorNetwork: TensorNetwork = {
