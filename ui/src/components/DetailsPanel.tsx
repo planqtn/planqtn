@@ -50,6 +50,7 @@ import {
 } from "../transformations/CompleteGraphViaHadamards";
 import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
+import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -526,6 +527,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setSelectedLego(updatedLego);
       setDroppedLegos(updatedDroppedLegos);
       encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
+
+      const selectedNetwork = findConnectedComponent(
+        updatedLego,
+        updatedDroppedLegos,
+        connections,
+      );
+      simpleAutoFlow(
+        updatedLego,
+        selectedNetwork,
+        connections,
+        (updateFn) => setDroppedLegos(updateFn(updatedDroppedLegos)),
+        setTensorNetwork,
+      );
     }
   };
 

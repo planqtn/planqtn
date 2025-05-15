@@ -51,6 +51,8 @@ import { AddStopper } from "./transformations/AddStopper";
 import { findConnectedComponent } from "./utils/TensorNetwork";
 import { randomPlankterName } from "./utils/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
+import { simpleAutoFlow } from "./components/AutoPauliFlow";
+
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
   x: number,
@@ -2408,6 +2410,19 @@ const LegoStudioView: React.FC = () => {
     );
     setDroppedLegos(newDroppedLegos);
     encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
+
+    const selectedNetwork = findConnectedComponent(
+      clickedLego,
+      newDroppedLegos,
+      connections,
+    );
+    simpleAutoFlow(
+      updatedLego,
+      selectedNetwork,
+      connections,
+      setDroppedLegos,
+      setTensorNetwork,
+    );
   };
 
   const fuseLegos = async (legosToFuse: DroppedLego[]) => {
@@ -3425,9 +3440,12 @@ const LegoStudioView: React.FC = () => {
               operationHistory={operationHistory}
               encodeCanvasState={encodeCanvasState}
               hideConnectedLegs={hideConnectedLegs}
-              makeSpace={(center, radius, skipLegos, legosToCheck) =>
-                makeSpace(center, radius, skipLegos, legosToCheck)
-              }
+              makeSpace={(
+                center: { x: number; y: number },
+                radius: number,
+                skipLegos: DroppedLego[],
+                legosToCheck: DroppedLego[],
+              ) => makeSpace(center, radius, skipLegos, legosToCheck)}
               toast={toast}
             />
           </Panel>
