@@ -1,16 +1,16 @@
-import { simpleAutoFlow } from "./AutoPauliFlow";
-//import { Connection, DroppedLego, TensorNetwork } from '../types';
-//import { GenericStyle } from '../LegoStyles';
+import { simpleAutoFlow } from './AutoPauliFlow';
+import { Connection, DroppedLego, TensorNetwork } from '../types';
+import { GenericStyle } from '../LegoStyles';
 
 describe("simple auto flow", () => {
   let mockSetDroppedLegos: jest.Mock;
   let mockSetTensorNetwork: jest.Mock;
 
-  beforeEach(() => {
-    mockSetDroppedLegos = jest.fn();
-    mockSetTensorNetwork = jest.fn();
-  });
-  /*
+    beforeEach(() => {
+        mockSetDroppedLegos = jest.fn();
+        mockSetTensorNetwork = jest.fn();
+    });
+    
     const makeLego = ({
         id,
         name,
@@ -46,34 +46,14 @@ describe("simple auto flow", () => {
         toId: string,
         toIdx: number
     ) => new Connection({ legoId: fromId, legIndex: fromIdx }, { legoId: toId, legIndex: toIdx });
-    */
-  it("do nothing if tensor network is null", () => {
-    simpleAutoFlow(null, null, [], mockSetDroppedLegos, mockSetTensorNetwork);
-
-    expect(mockSetDroppedLegos).not.toHaveBeenCalled();
-    expect(mockSetTensorNetwork).not.toHaveBeenCalled();
-  });
-  /*
-    it('do nothing if everything is highlighted', () => {
-        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
-        const tensorNetwork: TensorNetwork = {
-            legos: [
-                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
-                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
-                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                    ], selectedRows: [1]})],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+    
+    it('do nothing if tensor network is null', () => {
+        simpleAutoFlow(null, null, [], mockSetDroppedLegos, mockSetTensorNetwork);
 
         expect(mockSetDroppedLegos).not.toHaveBeenCalled();
         expect(mockSetTensorNetwork).not.toHaveBeenCalled();
     });
-
+    
     it('do nothing if no highlights', () => {
         const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
         const tensorNetwork: TensorNetwork = {
@@ -88,164 +68,415 @@ describe("simple auto flow", () => {
             connections: connections,
         };
 
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).not.toHaveBeenCalled();
-        expect(mockSetTensorNetwork).not.toHaveBeenCalled();
-    });
-
-    it('do not highlight if >1 option', () => {
-        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 1)];
-        
-        const tensorNetwork: TensorNetwork = {
-            legos: [makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
-                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
-                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                ], selectedRows: []})],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).not.toHaveBeenCalled();
-        expect(mockSetTensorNetwork).not.toHaveBeenCalled();
-    });
-
-    it('highlights single neighbor option', () => {
-        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
-        const tensorNetwork: TensorNetwork = {
-            legos: [
-                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
-                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
-                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                ], selectedRows: []})],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).toHaveBeenCalled();
-        expect(mockSetTensorNetwork).toHaveBeenCalled();
-
-        const updatedLegos = mockSetDroppedLegos.mock.calls[0][0](tensorNetwork.legos);
-        const updatedLego2 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
-        expect(updatedLego2.selectedMatrixRows).toEqual([0]);
-    });
-
-    it('highlights multiple rows in a lego', () => {
-        const connections: Connection[] = [
-            makeConn('lego1', 0, 'lego3', 0),
-            makeConn('lego2', 0, 'lego3', 2),
-            makeConn('lego3', 1, 'lego4', 1),
-            makeConn('lego4', 0, 'lego5', 4)
-        ];
-
-        const tensorNetwork: TensorNetwork = {
-            legos: [makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: []}),
-                makeLego({id: 'lego2', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: []}),
-                makeLego({id: 'lego3', name: 'tensor 512', parityMatrix: [
-                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                    ], selectedRows: [2, 3]}),
-                makeLego({id: 'lego4', name: 'hadamard', parityMatrix: [
-                        [1, 0, 0, 1],
-                        [0, 1, 1, 0]
-                    ], selectedRows: []}),
-                makeLego({id: 'lego5', name: 'tensor 512', parityMatrix: [
-                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                ], selectedRows: []})
-            ],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).toHaveBeenCalledTimes(4);
-        expect(mockSetTensorNetwork).toHaveBeenCalledTimes(4);
+        simpleAutoFlow(tensorNetwork.legos[0], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
 
         const updatedLegos = mockSetDroppedLegos.mock.calls
             .map(call => call[0])
             .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
-        const updatedHadamard = updatedLegos.find((lego: any) => lego.instanceId === 'lego4');
-        expect(updatedHadamard.selectedMatrixRows).toEqual(expect.arrayContaining([0, 1]));
-        expect(updatedHadamard.selectedMatrixRows).toHaveLength(2);
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
-        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego5');
-        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([2,3]));
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toHaveLength(0);
+    });
+
+    it('highlight single connected stopper', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: []}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [0]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedX.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('highlight single connected hadamard', () => {
+        const connections: Connection[] = [makeConn('lego1', 1, 'lego2', 0)];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: []}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [0]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedX.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+
+        // Switch legs of 5,1,2 tensor to make sure hadamard switches too
+        tensorNetwork.legos[1].selectedMatrixRows = [1];
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+        
+        const updatedLegos2 = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX2 = updatedLegos2.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX2.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedX2.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT52 = updatedLegos2.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT52.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('do not highlight single connected complex lego', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: []})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[0], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedX.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toHaveLength(0);
+    });
+
+    it('remove highlight from simple lego that does not match', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3)];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [1]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toHaveLength(0);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('highlight hadamard and stoppers', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3),
+            makeConn('lego2', 0, 'lego3', 1),
+            makeConn('lego3', 0, 'lego4', 0)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: []}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [0]}),
+                makeLego({id: 'lego3', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: []}),
+                makeLego({id: 'lego4', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: []})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+
+        const updatedH = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedH.selectedMatrixRows).toHaveLength(1);
+
+        const updatedZ = updatedLegos.find((lego: any) => lego.instanceId === 'lego4');
+        expect(updatedZ.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('change highlights on hadamard and stoppers', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3),
+            makeConn('lego2', 0, 'lego3', 1),
+            makeConn('lego3', 0, 'lego4', 0)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [1]}),
+                makeLego({id: 'lego3', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: [1]}),
+                makeLego({id: 'lego4', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: [0]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toHaveLength(0);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+
+        const updatedH = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedH.selectedMatrixRows).toHaveLength(1);
+
+        const updatedZ = updatedLegos.find((lego: any) => lego.instanceId === 'lego4');
+        expect(updatedZ.selectedMatrixRows).toHaveLength(0);
+    });
+
+    it('do not highlight complex legos', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego2', 3),
+            makeConn('lego2', 2, 'lego3', 0),
+            makeConn('lego2', 1, 'lego4', 7),
+            makeConn('lego2', 2, 'lego5', 0)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: []}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [1]}),
+                makeLego({id: 'lego3', name: 'tensor 40', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 1, 1, 1],
+                    [1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1]
+                ], selectedRows: []}),
+                makeLego({id: 'lego4', name: 'steane', parityMatrix: [
+                        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+                        [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+                ], selectedRows: []}),
+                makeLego({id: 'lego5', name: 'tensor 512', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                ], selectedRows: []})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedX = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedX.selectedMatrixRows).toHaveLength(0);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT5.selectedMatrixRows).toHaveLength(1);
+
+        const updatedH = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH.selectedMatrixRows).toHaveLength(0);
+
+        const updatedZ = updatedLegos.find((lego: any) => lego.instanceId === 'lego4');
+        expect(updatedZ.selectedMatrixRows).toHaveLength(0);
+
+        const updatedT52 = updatedLegos.find((lego: any) => lego.instanceId === 'lego5');
+        expect(updatedT52.selectedMatrixRows).toHaveLength(0);
+    });
+
+    it('highlight updates shared lego', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego3', 1),
+            makeConn('lego2', 2, 'lego3', 0)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'tensor 512', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                ], selectedRows: [1]}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [1]}),
+                makeLego({id: 'lego3', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: [0]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedT51 = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT51.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT52 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT52.selectedMatrixRows).toHaveLength(1);
+
+        const updatedH = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedH.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('do not remove highlight on shared lego', () => {
+        const connections: Connection[] = [makeConn('lego1', 0, 'lego3', 1),
+            makeConn('lego2', 2, 'lego3', 0)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'tensor 512', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                ], selectedRows: [1]}),
+                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
+                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                    ], selectedRows: [2]}),
+                makeLego({id: 'lego3', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: [1]})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[1], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedT51 = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
+        expect(updatedT51.selectedMatrixRows).toHaveLength(1);
+
+        const updatedT52 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([2]));
+        expect(updatedT52.selectedMatrixRows).toHaveLength(1);
+
+        const updatedH = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
+        expect(updatedH.selectedMatrixRows).toHaveLength(1);
+    });
+
+    it('highlight multiple rows in simple lego', () => {
+        const connections: Connection[] = [makeConn('lego1', 3, 'lego3', 0),
+            makeConn('lego1', 0, 'lego2', 0),
+            makeConn('lego2', 1, 'lego3', 1)
+        ];
+        const tensorNetwork: TensorNetwork = {
+            legos: [ 
+                makeLego({id: 'lego1', name: 'tensor 512', parityMatrix: [
+                    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
+                    [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+                ], selectedRows: [0,1]}),
+                makeLego({id: 'lego2', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: []}),
+                makeLego({id: 'lego3', name: 'hadmard', parityMatrix: [[1, 0, 0, 1],
+                    [0, 1, 1, 0]], selectedRows: []})],
+            connections: connections,
+        };
+
+        simpleAutoFlow(tensorNetwork.legos[0], tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
+
+        const updatedLegos = mockSetDroppedLegos.mock.calls
+            .map(call => call[0])
+            .reduce((state, updater) => updater(state), tensorNetwork.legos);
+
+        const updatedT5 = updatedLegos.find((lego: any) => lego.instanceId === 'lego1');
+        expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0,1]));
         expect(updatedT5.selectedMatrixRows).toHaveLength(2);
+
+        const updatedH1 = updatedLegos.find((lego: any) => lego.instanceId === 'lego2');
+        expect(updatedH1.selectedMatrixRows).toEqual(expect.arrayContaining([0,1]));
+        expect(updatedH1.selectedMatrixRows).toHaveLength(2);
+
+        const updatedH2 = updatedLegos.find((lego: any) => lego.instanceId === 'lego3');
+        expect(updatedH2.selectedMatrixRows).toEqual(expect.arrayContaining([0,1]));
+        expect(updatedH2.selectedMatrixRows).toHaveLength(2);
     });
-
-    
-    it('highlight all tensors in chain', () => {
-        const connections: Connection[] = [
-            makeConn('lego1', 0, 'lego3', 0),
-            makeConn('lego3', 1, 'lego2', 0),
-            makeConn('lego2', 2, 'lego4', 0)
-        ];
-        
-        const tensorNetwork: TensorNetwork = {
-            legos: [makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
-                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
-                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                    ], selectedRows: []}),
-                makeLego({id: 'lego3', name: 'hadamard', parityMatrix: [
-                        [1, 0, 0, 1],
-                        [0, 1, 1, 0]
-                    ], selectedRows: []}),
-                makeLego({id: 'lego4', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: []}),
-            ],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).toHaveBeenCalledTimes(3);
-        expect(mockSetTensorNetwork).toHaveBeenCalledTimes(3);
-    });
-
-    it('highlight all but last', () => {
-        const connections: Connection[] = [
-            makeConn('lego1', 0, 'lego3', 0),
-            makeConn('lego3', 1, 'lego2', 0),
-            makeConn('lego2', 4, 'lego4', 0)
-        ];
-        
-        const tensorNetwork: TensorNetwork = {
-            legos: [makeLego({id: 'lego1', name: 'x stopper', parityMatrix: [[1, 0]], selectedRows: [0]}),
-                makeLego({id: 'lego2', name: 'tensor 512', parityMatrix: [
-                        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], 
-                        [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-                    ], selectedRows: []}),
-                makeLego({id: 'lego3', name: 'hadamard', parityMatrix: [
-                        [1, 0, 0, 1],
-                        [0, 1, 1, 0]
-                    ], selectedRows: []}),
-                makeLego({id: 'lego4', name: 'z stopper', parityMatrix: [[0,1]], selectedRows: []}),
-            ],
-            connections: connections,
-        };
-
-        simpleAutoFlow(tensorNetwork, connections, mockSetDroppedLegos, mockSetTensorNetwork);
-
-        expect(mockSetDroppedLegos).toHaveBeenCalledTimes(2);
-        expect(mockSetTensorNetwork).toHaveBeenCalledTimes(2);
-    });
-    */
 });
