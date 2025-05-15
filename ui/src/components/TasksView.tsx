@@ -22,7 +22,12 @@ import ProgressBars from "./ProgressBars";
 import { useLocation } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import { supabase } from "../supabaseClient.ts";
-import { User } from "@supabase/supabase-js";
+import {
+  AuthChangeEvent,
+  User,
+  Session as SupabaseSession,
+  RealtimePostgresChangesPayload,
+} from "@supabase/supabase-js";
 import { UserMenu } from "./UserMenu";
 import AuthDialog from "./AuthDialog";
 
@@ -63,6 +68,17 @@ interface Task {
   args: string;
   kwargs: string;
   revoked: number | null;
+  updates: {
+    iteration_status: Array<{
+      desc: string;
+      total_size: number;
+      current_item: number;
+      start_time: number;
+      end_time: number | null;
+      duration: number;
+      avg_time_per_item: number;
+    }>;
+  };
 }
 
 // interface TaskUpdateMessage {
@@ -143,12 +159,14 @@ const TasksView: React.FC = () => {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user ?? null);
-      if (!session?.user) {
-        onOpen(); // Open auth modal if user is not authenticated
-      }
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: SupabaseSession | null) => {
+        setCurrentUser(session?.user ?? null);
+        if (!session?.user) {
+          onOpen(); // Open auth modal if user is not authenticated
+        }
+      },
+    );
 
     return () => subscription.unsubscribe();
   }, [onOpen]);
@@ -189,6 +207,9 @@ const TasksView: React.FC = () => {
               args: event.args,
               kwargs: event.kwargs,
               revoked: null,
+              updates: {
+                iteration_status: [],
+              },
             };
 
       switch (event.type) {
@@ -209,7 +230,6 @@ const TasksView: React.FC = () => {
             newTask.title =
               event.uuid + " " + parseTaskTitleFromArgs(JSON.parse(event.args));
           }
-          console.log("Args:", newTask.args);
           newTask.runtime = event.runtime || null;
           newTask.result = event.result || null;
           break;
@@ -348,10 +368,10 @@ const TasksView: React.FC = () => {
           table: "tasks",
           filter: `uuid=eq.${selectedTask.uuid}`,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Task>) => {
           console.log("Task updated", payload);
           if (payload.new) {
-            const updates = payload.new.updates;
+            const updates = (payload.new as Task).updates;
             if (updates?.iteration_status) {
               setIterationStatus(updates.iteration_status);
               setWaitingForTaskUpdate(false);

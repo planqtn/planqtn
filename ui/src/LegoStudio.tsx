@@ -2970,7 +2970,7 @@ const LegoStudioView: React.FC = () => {
                 <LegoPanel
                   legos={legos}
                   onDragStart={handleDragStart}
-                  onLegoSelect={(_) => {
+                  onLegoSelect={() => {
                     // Handle lego selection if needed
                   }}
                 />
