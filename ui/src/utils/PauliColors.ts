@@ -19,34 +19,37 @@ export const Y_COLOR_DARK = "purple.700";
 
 // SVG hex colors
 export const SVG_COLORS = {
-    I: "#A0AEC0",  // gray.400
-    X: "#F56565",  // red.400
-    Z: "#4299E1",  // blue.400
-    Y: "#9F7AEA",  // purple.400
+  I: "#A0AEC0", // gray.400
+  X: "#F56565", // red.400
+  Z: "#4299E1", // blue.400
+  Y: "#9F7AEA", // purple.400
 };
 
-export function getPauliColor(operator: PauliOperator, forSvg: boolean = false): string {
-    if (forSvg) {
-        switch (operator) {
-            case PauliOperator.X:
-                return SVG_COLORS.X;
-            case PauliOperator.Z:
-                return SVG_COLORS.Z;
-            case PauliOperator.Y:
-                return SVG_COLORS.Y;
-            default:
-                return SVG_COLORS.I;
-        }
-    }
-
+export function getPauliColor(
+  operator: PauliOperator,
+  forSvg: boolean = false,
+): string {
+  if (forSvg) {
     switch (operator) {
-        case PauliOperator.X:
-            return X_COLOR;
-        case PauliOperator.Z:
-            return Z_COLOR;
-        case PauliOperator.Y:
-            return Y_COLOR;
-        default:
-            return I_COLOR;
+      case PauliOperator.X:
+        return SVG_COLORS.X;
+      case PauliOperator.Z:
+        return SVG_COLORS.Z;
+      case PauliOperator.Y:
+        return SVG_COLORS.Y;
+      default:
+        return SVG_COLORS.I;
     }
+  }
+
+  switch (operator) {
+    case PauliOperator.X:
+      return X_COLOR;
+    case PauliOperator.Z:
+      return Z_COLOR;
+    case PauliOperator.Y:
+      return Y_COLOR;
+    default:
+      return I_COLOR;
+  }
 }
