@@ -57,6 +57,8 @@ import AuthDialog from "./components/AuthDialog";
 import { FiEdit } from "react-icons/fi";
 import { supabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
+import { simpleAutoFlow } from "./components/AutoPauliFlow";
+
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
   x: number,
@@ -2424,6 +2426,19 @@ const LegoStudioView: React.FC = () => {
     );
     setDroppedLegos(newDroppedLegos);
     encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
+
+    const selectedNetwork = findConnectedComponent(
+      clickedLego,
+      newDroppedLegos,
+      connections,
+    );
+    simpleAutoFlow(
+      updatedLego,
+      selectedNetwork,
+      connections,
+      setDroppedLegos,
+      setTensorNetwork,
+    );
   };
 
   const fuseLegos = async (legosToFuse: DroppedLego[]) => {
@@ -3481,9 +3496,12 @@ const LegoStudioView: React.FC = () => {
               operationHistory={operationHistory}
               encodeCanvasState={encodeCanvasState}
               hideConnectedLegs={hideConnectedLegs}
-              makeSpace={(center, radius, skipLegos, legosToCheck) =>
-                makeSpace(center, radius, skipLegos, legosToCheck)
-              }
+              makeSpace={(
+                center: { x: number; y: number },
+                radius: number,
+                skipLegos: DroppedLego[],
+                legosToCheck: DroppedLego[],
+              ) => makeSpace(center, radius, skipLegos, legosToCheck)}
               toast={toast}
               user={currentUser}
             />
