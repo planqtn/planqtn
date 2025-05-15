@@ -16,26 +16,32 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
 ): void {    
     if (!tensorNetwork) {
         return;
-    }   
+    }
+
+    let count = 0;
     let changed = true;
     let tnLegos = cloneDeep(tensorNetwork.legos);
-    while(changed) {
+    const seenLegos = new Set<string>(); 
+    // count variable shouldn't be needed, but it is a safety measure to prevent infinite loops - can remove later
+    while(changed && count < 50) {
         changed = false;
+        count++;
+
         for (const lego of tnLegos) {
             if (lego.instanceId === changedLego?.instanceId) {
                 continue;
             }
-            const neighborConns = connections.filter(conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId);
+            const neighborConns = connections
+                .filter(conn => conn.from.legoId === lego.instanceId || conn.to.legoId === lego.instanceId);
+   
             if (neighborConns.length === 0) {
                 continue;
             }
-
             for (const neighborConn of neighborConns) {
                 const neighborLego = tnLegos.find(l => 
                     (l.instanceId === neighborConn.from.legoId || l.instanceId === neighborConn.to.legoId)
                                                                         && l.instanceId != lego.instanceId); 
-
-                if (!neighborLego || neighborLego.selectedMatrixRows.length === 0) {
+                if (!neighborLego) {
                     continue;
                 }
 
@@ -52,18 +58,14 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
                 const legoLegHighlightOp = getHighlightOp(lego, legoLegIndex);
                 const neighborLegHighlightOp = getHighlightOp(neighborLego, neighborLegIndex);
                 const {xRowIndices, zRowIndices} = findRowIndices(lego, legoLegIndex);
-                console.log("neighborLegHighlightOp: ", neighborLegHighlightOp, ", xRowIndices: ", xRowIndices, ", zRowIndices: ", zRowIndices);
                 
                 // Skip if lego and neighbor already have the same operation
                 if (neighborLegHighlightOp[0] === legoLegHighlightOp[0] &&
                     neighborLegHighlightOp[1] === legoLegHighlightOp[1]) {
+                    seenLegos.add(lego.instanceId);
                     continue;
                 }
                 if (!isSimpleLego(lego)) {
-                    continue;
-                }
-                // Skip if there is more than one option to choose from 
-                if(xRowIndices.length > 1 && zRowIndices.length > 1) {
                     continue;
                 }
 
@@ -80,18 +82,26 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
                 } else if (!(legoLegHighlightOp[0] === 0 && legoLegHighlightOp[1] === 0)) { 
                     newRows = [];
                 }
-
+          
                 if(newRows !== null) {
-                    tnLegos = updateLego(
-                        tnLegos,
-                        lego.instanceId,
-                        newRows,
-                        setDroppedLegos,
-                        setTensorNetwork
-                      );
-                      
-                    changed = true;
+                    // ensure the lego has not been changed already
+                    if((!seenLegos.has(lego.instanceId) 
+                        // lego can only be changed again if highlighting an unhighlighted lego 
+                        || (newRows?.length > 0 && lego.selectedMatrixRows.length === 0)) 
+                        // or can be changed again if neighbor of changedLego --> it has priority
+                        || (lego.selectedMatrixRows.length > 0 && neighborLego.instanceId === changedLego?.instanceId && newRows?.length > 0)) {                        
+                        tnLegos = updateLego(
+                            tnLegos,
+                            lego.instanceId,
+                            newRows,
+                            setDroppedLegos,
+                            setTensorNetwork
+                        );
+                        seenLegos.add(lego.instanceId);
+                        changed = true;
+                    }
                 }
+                
             }
         }
     }
@@ -112,7 +122,6 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
  * @param setTensorNetwork 
  * @returns new list of legos after the update
  */
-
 const updateLego = (
     tnLegos: DroppedLego[],
     targetId: string,
@@ -123,7 +132,8 @@ const updateLego = (
     const updatedLegos = tnLegos.map(l =>
       l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
     );
-
+    console.log("Updating lego: ", targetId, ", newRows: ", newRows);
+    
     // call both setters exactly once for this update
     setDroppedLegos(prev => prev.map(l =>
       l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
