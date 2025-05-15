@@ -96,12 +96,12 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toHaveLength(0);
   });
@@ -144,13 +144,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -197,13 +197,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -223,13 +223,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX2 = updatedLegos2.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX2.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX2.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos2.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
@@ -273,13 +273,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toHaveLength(0);
   });
@@ -322,12 +322,12 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -390,24 +390,24 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
 
     const updatedZ = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4",
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(1);
   });
@@ -469,24 +469,24 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
 
     const updatedZ = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4",
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(0);
   });
@@ -571,28 +571,28 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH.selectedMatrixRows).toHaveLength(0);
 
     const updatedZ = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4",
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(0);
 
     const updatedT52 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego5",
+      (lego: DroppedLego) => lego.instanceId === "lego5",
     );
     expect(updatedT52.selectedMatrixRows).toHaveLength(0);
   });
@@ -652,19 +652,19 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT51 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT51.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
@@ -725,19 +725,19 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT51 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT51.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([2]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
@@ -797,7 +797,7 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT5 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1",
     );
     expect(updatedT5.selectedMatrixRows).toEqual(
       expect.arrayContaining([0, 1]),
@@ -805,7 +805,7 @@ describe("simple auto flow", () => {
     expect(updatedT5.selectedMatrixRows).toHaveLength(2);
 
     const updatedH1 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2",
     );
     expect(updatedH1.selectedMatrixRows).toEqual(
       expect.arrayContaining([0, 1]),
@@ -813,7 +813,7 @@ describe("simple auto flow", () => {
     expect(updatedH1.selectedMatrixRows).toHaveLength(2);
 
     const updatedH2 = updatedLegos.find(
-      (lego: any) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3",
     );
     expect(updatedH2.selectedMatrixRows).toEqual(
       expect.arrayContaining([0, 1]),
