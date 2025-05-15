@@ -17,11 +17,12 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
     if (!tensorNetwork) {
         return;
     }
-
     let count = 0;
     let changed = true;
     let tnLegos = cloneDeep(tensorNetwork.legos);
     const seenLegos = new Set<string>(); 
+    const updatedLegosMap: Map<string, number[]> = new Map();
+
     // count variable shouldn't be needed, but it is a safety measure to prevent infinite loops - can remove later
     while(changed && count < 50) {
         changed = false;
@@ -93,10 +94,9 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
                         tnLegos = updateLego(
                             tnLegos,
                             lego.instanceId,
-                            newRows,
-                            setDroppedLegos,
-                            setTensorNetwork
+                            newRows
                         );
+                        updatedLegosMap.set(lego.instanceId, newRows);
                         seenLegos.add(lego.instanceId);
                         changed = true;
                     }
@@ -105,11 +105,24 @@ export function simpleAutoFlow(changedLego: DroppedLego | null,
             }
         }
     }
-    // Do one final state update, without this the last update will not be reflected
-    setDroppedLegos(() => tnLegos.map(l => ({ ...l })));
-    setTensorNetwork(prev =>
-        prev ? { ...prev, legos: tnLegos } : null
-    );
+    // Apply all changes at once to make sure all updates are done
+    setDroppedLegos(prev =>
+        prev.map(l => 
+          updatedLegosMap.has(l.instanceId)
+            ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
+            : l
+        )
+      );
+      
+    setTensorNetwork(prev => {
+        if (!prev) return null;
+        const updatedLegos = prev.legos.map(l => 
+            updatedLegosMap.has(l.instanceId)
+            ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
+            : l
+        );
+        return { ...prev, legos: updatedLegos };
+    });
 }
 
 
@@ -126,22 +139,10 @@ const updateLego = (
     tnLegos: DroppedLego[],
     targetId: string,
     newRows: number[],
-    setDroppedLegos: (fn: (prev: DroppedLego[]) => DroppedLego[]) => void,
-    setTensorNetwork: (fn: (prev: TensorNetwork | null) => TensorNetwork | null) => void
   ): DroppedLego[] => {
     const updatedLegos = tnLegos.map(l =>
       l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
     );
-    console.log("Updating lego: ", targetId, ", newRows: ", newRows);
-    
-    // call both setters exactly once for this update
-    setDroppedLegos(prev => prev.map(l =>
-      l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
-    ));
-    setTensorNetwork(prev =>
-      prev ? { ...prev, legos: updatedLegos } : null
-    );
-    
     return updatedLegos;
   }
 
