@@ -1,0 +1,31 @@
+name: UI Checks
+run-name: ${{ github.actor }} is checking the UI
+on: [push]
+jobs:
+  UI-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Install dependencies
+        working-directory: ui
+        run: |
+          npm install --include=dev
+      - name: prettier check
+        working-directory: ui
+        run: |
+          npx prettier --check .
+      - name: eslint check
+        working-directory: ui
+        run: |
+          npx eslint src
+      - name: Run tests
+        working-directory: ui
+        run: |
+          npm run test

@@ -21,6 +21,7 @@ from qlego.progress_reporter import (
     TqdmProgressReporter,
 )
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from qlego.symplectic import symp_to_str
 from qlego.tensor_network import TensorNetwork
 from server.api_types import (
     TensorNetworkRequest,
@@ -163,6 +164,8 @@ def weight_enumerator_task(self, request_dict: dict):
                     [conn["to"]["legIndex"]],
                 )
 
+            open_legs = [(leg.instanceId, leg.legIndex) for leg in request.open_legs]
+
             start = time.time()
 
             # Conjoin all nodes to get the final tensor network
@@ -170,13 +173,16 @@ def weight_enumerator_task(self, request_dict: dict):
                 verbose=False,
                 progress_reporter=progress_reporter,
                 cotengra=len(nodes) > 5,
+                open_legs=open_legs,
             )
             end = time.time()
 
             print("WEP calculation time", end - start)
             print("polynomial", polynomial)
 
-            if polynomial.is_scalar():
+            if open_legs:
+                poly_b = "not supported for open legs yet"
+            elif polynomial.is_scalar():
                 poly_b = polynomial
             elif request.truncate_length is not None:
                 poly_b = "not defined for truncated enumerator"
@@ -192,8 +198,21 @@ def weight_enumerator_task(self, request_dict: dict):
                 print("poly_b", poly_b)
 
             # Convert the polynomial to a string representation
-            polynomial_str = str(polynomial)
-            normalizer_polynomial_str = str(poly_b)
+            if open_legs:
+
+                def format_pauli(pauli):
+                    return symp_to_str(pauli)
+
+                polynomial_str = "\n".join(
+                    [
+                        f"{format_pauli(pauli)}: {str(wep)}"
+                        for pauli, wep in polynomial.items()
+                    ]
+                )
+                normalizer_polynomial_str = "not supported for open legs yet"
+            else:
+                polynomial_str = str(polynomial)
+                normalizer_polynomial_str = str(poly_b)
             res = {
                 "polynomial": polynomial_str,
                 "normalizer_polynomial": normalizer_polynomial_str,

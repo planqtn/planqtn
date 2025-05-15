@@ -1,199 +1,234 @@
-import { DroppedLego, Connection, Operation } from '../types';
-import { getLegoStyle } from '../LegoStyles';
+import { DroppedLego, Connection, Operation } from "../types";
+import { getLegoStyle } from "../LegoStyles";
 
-async function getDynamicLego(legoId: string, numLegs: number): Promise<DroppedLego> {
-    const response = await fetch('/api/dynamiclego', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            lego_id: legoId,
-            parameters: {
-                d: numLegs
-            }
-        })
-    });
+async function getDynamicLego(
+  legoId: string,
+  numLegs: number,
+): Promise<DroppedLego> {
+  const response = await fetch("/api/dynamiclego", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      lego_id: legoId,
+      parameters: {
+        d: numLegs,
+      },
+    }),
+  });
 
-    if (!response.ok) {
-        throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-    }
+  if (!response.ok) {
+    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
+  }
 
-    const data = await response.json();
-    return {
-        ...data,
-        instanceId: String("not set"),
-        style: getLegoStyle(data.id, numLegs),
-        x: 0,
-        y: 0
-    };
+  const data = await response.json();
+  return {
+    ...data,
+    instanceId: String("not set"),
+    style: getLegoStyle(data.id, numLegs),
+    x: 0,
+    y: 0,
+  };
 }
 
-export const canDoCompleteGraphViaHadamards = (legos: DroppedLego[]): boolean => {
-    return legos.length > 1 && legos.every(lego => lego.id === 'z_rep_code');
+export const canDoCompleteGraphViaHadamards = (
+  legos: DroppedLego[],
+): boolean => {
+  return legos.length > 1 && legos.every((lego) => lego.id === "z_rep_code");
 };
 
-const getDanglingLegs = (legos: DroppedLego[], connections: Connection[]): { lego: DroppedLego, danglingLegs: number[] }[] => {
-    return legos.map(lego => {
-        const numLegs = lego.parity_check_matrix[0].length / 2;
-        const connectedLegs = new Set<number>();
+const getDanglingLegs = (
+  legos: DroppedLego[],
+  connections: Connection[],
+): { lego: DroppedLego; danglingLegs: number[] }[] => {
+  return legos.map((lego) => {
+    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const connectedLegs = new Set<number>();
 
-        // Find all connected legs
-        connections.forEach(conn => {
-            if (conn.from.legoId === lego.instanceId) {
-                connectedLegs.add(conn.from.legIndex);
-            }
-            if (conn.to.legoId === lego.instanceId) {
-                connectedLegs.add(conn.to.legIndex);
-            }
-        });
-
-        // Find all dangling legs
-        const danglingLegs: number[] = [];
-        for (let i = 0; i < numLegs; i++) {
-            if (!connectedLegs.has(i)) {
-                danglingLegs.push(i);
-            }
-        }
-
-        return {
-            lego,
-            danglingLegs
-        };
+    // Find all connected legs
+    connections.forEach((conn) => {
+      if (conn.from.legoId === lego.instanceId) {
+        connectedLegs.add(conn.from.legIndex);
+      }
+      if (conn.to.legoId === lego.instanceId) {
+        connectedLegs.add(conn.to.legIndex);
+      }
     });
-}
-export const applyCompleteGraphViaHadamards = async (
-    legos: DroppedLego[],
-    allLegos: DroppedLego[],
-    connections: Connection[]
-): Promise<{
-    droppedLegos: DroppedLego[];
-    connections: Connection[];
-    operation: Operation;
-}> => {
-    // Get max instance ID
-    const maxInstanceId = Math.max(...allLegos.map(l => parseInt(l.instanceId)));
 
-    // Find dangling legs for each lego
-    const oldLegoDanglingLegs = getDanglingLegs(legos, connections);
-
-    // Create new legos with extra legs for connections
-    const newLegos: DroppedLego[] = await Promise.all(oldLegoDanglingLegs.map(async ({ lego, danglingLegs }) => {
-        // Calculate how many new legs we need
-        const numNewLegs = legos.length - 1 - danglingLegs.length; // Each lego needs to connect to all others
-        if (numNewLegs <= 0) {
-            return lego; // Keep the lego as is if it has enough dangling legs
-        }
-        const newLego = await getDynamicLego('z_rep_code', lego.parity_check_matrix[0].length / 2 + numNewLegs);
-        return { ...lego, id: newLego.id, parity_check_matrix: newLego.parity_check_matrix, style: newLego.style };
-    }));
-
-    const legoDanglingLegs = getDanglingLegs(newLegos, connections);
-
-    // Create Hadamard legos for each connection
-    const hadamardLegos: DroppedLego[] = [];
-    const newConnections: Connection[] = [];
-    let hadamardIndex = 0;
-
-    // Track which dangling legs have been used for each lego
-    const usedDanglingLegs: Map<string, Set<number>> = new Map();
-    legos.forEach(lego => usedDanglingLegs.set(lego.instanceId, new Set()));
-
-    // Create connections between all pairs of legos
-    for (let i = 0; i < legos.length; i++) {
-        const lego1 = newLegos[i];
-        const lego1DanglingLegs = legoDanglingLegs[i].danglingLegs;
-        let newLegsOffset1 = 0;
-
-        for (let j = i + 1; j < legos.length; j++) {
-            const lego2 = newLegos[j];
-            const lego2DanglingLegs = legoDanglingLegs[j].danglingLegs;
-
-            // Create Hadamard lego
-            const hadamardLego: DroppedLego = {
-                id: 'h',
-                name: 'Hadamard',
-                shortName: 'H',
-                description: 'Hadamard',
-                instanceId: (maxInstanceId + 1 + hadamardIndex).toString(),
-                x: (lego1.x + lego2.x) / 2,
-                y: (lego1.y + lego2.y) / 2,
-                parity_check_matrix: [[1, 0, 0, 1], [0, 1, 1, 0]],
-                logical_legs: [],
-                gauge_legs: [],
-                style: getLegoStyle('h', 2),
-                selectedMatrixRows: []
-            };
-            hadamardLegos.push(hadamardLego);
-
-            // Find next unused dangling leg for lego1
-            let legIndex1: number;
-            const usedLegs1 = usedDanglingLegs.get(lego1.instanceId)!;
-            const availableDanglingLeg1 = lego1DanglingLegs.find(leg => !usedLegs1.has(leg));
-
-            if (availableDanglingLeg1 !== undefined) {
-                legIndex1 = availableDanglingLeg1;
-                usedLegs1.add(legIndex1);
-            } else {
-                // Use a new leg if no dangling legs are available
-                legIndex1 = lego1.parity_check_matrix[0].length / 2 - (legos.length - 1) + newLegsOffset1;
-                newLegsOffset1++;
-            }
-
-            // Find next unused dangling leg for lego2
-            let legIndex2: number;
-            const usedLegs2 = usedDanglingLegs.get(lego2.instanceId)!;
-            const availableDanglingLeg2 = lego2DanglingLegs.find(leg => !usedLegs2.has(leg));
-
-            if (availableDanglingLeg2 !== undefined) {
-                legIndex2 = availableDanglingLeg2;
-                usedLegs2.add(legIndex2);
-            } else {
-                // Use a new leg if no dangling legs are available
-                legIndex2 = lego2.parity_check_matrix[0].length / 2 - (legos.length - j) + usedLegs2.size;
-            }
-
-            // Create connections
-            newConnections.push(
-                new Connection(
-                    { legoId: lego1.instanceId, legIndex: legIndex1 },
-                    { legoId: hadamardLego.instanceId, legIndex: 0 }
-                ),
-                new Connection(
-                    { legoId: hadamardLego.instanceId, legIndex: 1 },
-                    { legoId: lego2.instanceId, legIndex: legIndex2 }
-                )
-            );
-
-            hadamardIndex++;
-        }
+    // Find all dangling legs
+    const danglingLegs: number[] = [];
+    for (let i = 0; i < numLegs; i++) {
+      if (!connectedLegs.has(i)) {
+        danglingLegs.push(i);
+      }
     }
 
-    // Update state
-    const updatedLegos = [
-        ...allLegos.filter(l => !legos.some(selected => selected.instanceId === l.instanceId)),
-        ...newLegos,
-        ...hadamardLegos
-    ];
-
-    const updatedConnections = [
-        ...connections,
-        ...newConnections
-    ];
-
-    // Create operation for undo/redo
-    const operation: Operation = {
-        type: 'completeGraphViaHadamards',
-        data: {
-            legosToUpdate: (legos.map((lego, i) => ({ oldLego: lego, newLego: newLegos[i] }))),
-            legosToAdd: hadamardLegos,
-            connectionsToAdd: newConnections
-        }
-    };
-
     return {
-        droppedLegos: updatedLegos,
-        connections: updatedConnections,
-        operation
+      lego,
+      danglingLegs,
     };
-}; 
+  });
+};
+export const applyCompleteGraphViaHadamards = async (
+  legos: DroppedLego[],
+  allLegos: DroppedLego[],
+  connections: Connection[],
+): Promise<{
+  droppedLegos: DroppedLego[];
+  connections: Connection[];
+  operation: Operation;
+}> => {
+  // Get max instance ID
+  const maxInstanceId = Math.max(
+    ...allLegos.map((l) => parseInt(l.instanceId)),
+  );
+
+  // Find dangling legs for each lego
+  const oldLegoDanglingLegs = getDanglingLegs(legos, connections);
+
+  // Create new legos with extra legs for connections
+  const newLegos: DroppedLego[] = await Promise.all(
+    oldLegoDanglingLegs.map(async ({ lego, danglingLegs }) => {
+      // Calculate how many new legs we need
+      const numNewLegs = legos.length - 1 - danglingLegs.length; // Each lego needs to connect to all others
+      if (numNewLegs <= 0) {
+        return lego; // Keep the lego as is if it has enough dangling legs
+      }
+      const newLego = await getDynamicLego(
+        "z_rep_code",
+        lego.parity_check_matrix[0].length / 2 + numNewLegs,
+      );
+      return {
+        ...lego,
+        id: newLego.id,
+        parity_check_matrix: newLego.parity_check_matrix,
+        style: newLego.style,
+      };
+    }),
+  );
+
+  const legoDanglingLegs = getDanglingLegs(newLegos, connections);
+
+  // Create Hadamard legos for each connection
+  const hadamardLegos: DroppedLego[] = [];
+  const newConnections: Connection[] = [];
+  let hadamardIndex = 0;
+
+  // Track which dangling legs have been used for each lego
+  const usedDanglingLegs: Map<string, Set<number>> = new Map();
+  legos.forEach((lego) => usedDanglingLegs.set(lego.instanceId, new Set()));
+
+  // Create connections between all pairs of legos
+  for (let i = 0; i < legos.length; i++) {
+    const lego1 = newLegos[i];
+    const lego1DanglingLegs = legoDanglingLegs[i].danglingLegs;
+    let newLegsOffset1 = 0;
+
+    for (let j = i + 1; j < legos.length; j++) {
+      const lego2 = newLegos[j];
+      const lego2DanglingLegs = legoDanglingLegs[j].danglingLegs;
+
+      // Create Hadamard lego
+      const hadamardLego: DroppedLego = {
+        id: "h",
+        name: "Hadamard",
+        shortName: "H",
+        description: "Hadamard",
+        instanceId: (maxInstanceId + 1 + hadamardIndex).toString(),
+        x: (lego1.x + lego2.x) / 2,
+        y: (lego1.y + lego2.y) / 2,
+        parity_check_matrix: [
+          [1, 0, 0, 1],
+          [0, 1, 1, 0],
+        ],
+        logical_legs: [],
+        gauge_legs: [],
+        style: getLegoStyle("h", 2),
+        selectedMatrixRows: [],
+      };
+      hadamardLegos.push(hadamardLego);
+
+      // Find next unused dangling leg for lego1
+      let legIndex1: number;
+      const usedLegs1 = usedDanglingLegs.get(lego1.instanceId)!;
+      const availableDanglingLeg1 = lego1DanglingLegs.find(
+        (leg) => !usedLegs1.has(leg),
+      );
+
+      if (availableDanglingLeg1 !== undefined) {
+        legIndex1 = availableDanglingLeg1;
+        usedLegs1.add(legIndex1);
+      } else {
+        // Use a new leg if no dangling legs are available
+        legIndex1 =
+          lego1.parity_check_matrix[0].length / 2 -
+          (legos.length - 1) +
+          newLegsOffset1;
+        newLegsOffset1++;
+      }
+
+      // Find next unused dangling leg for lego2
+      let legIndex2: number;
+      const usedLegs2 = usedDanglingLegs.get(lego2.instanceId)!;
+      const availableDanglingLeg2 = lego2DanglingLegs.find(
+        (leg) => !usedLegs2.has(leg),
+      );
+
+      if (availableDanglingLeg2 !== undefined) {
+        legIndex2 = availableDanglingLeg2;
+        usedLegs2.add(legIndex2);
+      } else {
+        // Use a new leg if no dangling legs are available
+        legIndex2 =
+          lego2.parity_check_matrix[0].length / 2 -
+          (legos.length - j) +
+          usedLegs2.size;
+      }
+
+      // Create connections
+      newConnections.push(
+        new Connection(
+          { legoId: lego1.instanceId, legIndex: legIndex1 },
+          { legoId: hadamardLego.instanceId, legIndex: 0 },
+        ),
+        new Connection(
+          { legoId: hadamardLego.instanceId, legIndex: 1 },
+          { legoId: lego2.instanceId, legIndex: legIndex2 },
+        ),
+      );
+
+      hadamardIndex++;
+    }
+  }
+
+  // Update state
+  const updatedLegos = [
+    ...allLegos.filter(
+      (l) => !legos.some((selected) => selected.instanceId === l.instanceId),
+    ),
+    ...newLegos,
+    ...hadamardLegos,
+  ];
+
+  const updatedConnections = [...connections, ...newConnections];
+
+  // Create operation for undo/redo
+  const operation: Operation = {
+    type: "completeGraphViaHadamards",
+    data: {
+      legosToUpdate: legos.map((lego, i) => ({
+        oldLego: lego,
+        newLego: newLegos[i],
+      })),
+      legosToAdd: hadamardLegos,
+      connectionsToAdd: newConnections,
+    },
+  };
+
+  return {
+    droppedLegos: updatedLegos,
+    connections: updatedConnections,
+    operation,
+  };
+};

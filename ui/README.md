@@ -11,7 +11,7 @@ A modern, interactive web interface for designing and analyzing quantum error co
   - Single-click selection for individual legos
   - Box selection for multiple components
   - Network selection for connected components
-- **Smart Connections**: 
+- **Smart Connections**:
   - Visual connection system with numbered legs
   - Intuitive drag-and-drop connection creation
   - Double-click to remove connections
@@ -41,12 +41,14 @@ A modern, interactive web interface for designing and analyzing quantum error co
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone <repository-url>
    cd ui
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    # or
@@ -65,22 +67,26 @@ A modern, interactive web interface for designing and analyzing quantum error co
 ### Basic Operations
 
 1. **Adding Components**:
+
    - Drag components from the left panel onto the canvas
    - Shift+drag to create copies of existing components
 
 2. **Making Connections**:
+
    - Drag from one leg to another to create connections
    - Numbers indicate leg indices
    - Double-click connections to remove them
 
 3. **Selection**:
+
    - Click to select individual components
    - Click and drag on canvas to create selection box
    - Click selected component again to select its network
 
 4. **Movement**:
+
    - Drag components to move them
-   - Selected groups move together   
+   - Selected groups move together
 
 5. **Analysis**:
    - Select a connected network to view its properties
@@ -97,6 +103,7 @@ A modern, interactive web interface for designing and analyzing quantum error co
 ## Development
 
 The UI is built with:
+
 - React for component management
 - Chakra UI for styling and components
 - TypeScript for type safety
@@ -123,131 +130,131 @@ ui/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-
 # Future ideas / backlog
 
+User stories:
 
-User stories: 
-- As a code designer I want to play around with legos, put them together and see the resulting code. I want to see whether I created an LDPC code, or not. What are the logical operators? 
+- As a code designer I want to play around with legos, put them together and see the resulting code. I want to see whether I created an LDPC code, or not. What are the logical operators?
 
-
- - The parity check matrix display should become "Stabilizers display" 
-    - option to switch between stabilizers and symplectic view - DONE 
-    - in both views one can drag a stabilizer onto another one and thus create a new generate from the product - DONE 
-    - option to do Gauss elimination on given columns 
-    - all of this with undos within a session, then the stabilizers are saved to the given component - DONE (for TN )
-    - allow for the above on a lego piece
-    - we need a way to name logical and gauge operators (X1, X2, ...) - WON'T DO 
-    - marking a leg as a gauge, logical, or physical degree of freedom - do we need gauge?! 
-    - conjoined matrices should have info about the original lego pieces - DONE 
-    - auto-sparsification of generators ???
-- operator flow 
-    - we fix with an operator highlight X (blue) or Z (red) on a leg or multiple legs DONE
-        - we see the number of stabilizers that match the fix, and we can iterate through the highlights DONE 
-- option to merge tensornetworks into a full lego piece - DONE 
+- The parity check matrix display should become "Stabilizers display"
+  - option to switch between stabilizers and symplectic view - DONE
+  - in both views one can drag a stabilizer onto another one and thus create a new generate from the product - DONE
+  - option to do Gauss elimination on given columns
+  - all of this with undos within a session, then the stabilizers are saved to the given component - DONE (for TN )
+  - allow for the above on a lego piece
+  - we need a way to name logical and gauge operators (X1, X2, ...) - WON'T DO
+  - marking a leg as a gauge, logical, or physical degree of freedom - do we need gauge?!
+  - conjoined matrices should have info about the original lego pieces - DONE
+  - auto-sparsification of generators ???
+- operator flow
+  - we fix with an operator highlight X (blue) or Z (red) on a leg or multiple legs DONE
+    - we see the number of stabilizers that match the fix, and we can iterate through the highlights DONE
+- option to merge tensornetworks into a full lego piece - DONE
 - unfuse
-  - ZX spiders - DONE 
-  - arbitrary lego to Tanner - DONE via copy-paste of parity check matrix 
-  - arbitrary lego to measurement circuit  - DONE via copy-paste of parity check matrix 
 
+  - ZX spiders - DONE
+  - arbitrary lego to Tanner - DONE via copy-paste of parity check matrix
+  - arbitrary lego to measurement circuit - DONE via copy-paste of parity check matrix
 
-- load a TensorNetwork instance in the UI 
-    - we could have placement hints in the Tensornetwork (similar to qubit annotations in Stim) - DONE (annotations)
-    - we could have an automated graph layout algorithms ?? instead graphical language story below 
-- retrieve, evaluate, and visualize contraction schedules     
-- lego display customization 
-    - 422, 512, 602 tensors - DONE for ZX spiders 
-- WEPs 
-    - display the polynomial in different formats 
-    - bar chart 
-    - calculate normalizer enumerator (MacWilliams transform)
-- lego database 
-    - clicking on a lego type should display it's properties (WEP, stabilizer check)
-    - stoppers - DONE 
-    - searchable IBM database 
-- UI features 
-    - resizable, scrollable canvas DONE 
-- handled disconnected networks too - this is good for educational purposes - DONE 
+- load a TensorNetwork instance in the UI
+  - we could have placement hints in the Tensornetwork (similar to qubit annotations in Stim) - DONE (annotations)
+  - we could have an automated graph layout algorithms ?? instead graphical language story below
+- retrieve, evaluate, and visualize contraction schedules
+- lego display customization
+  - 422, 512, 602 tensors - DONE for ZX spiders
+- WEPs
+  - display the polynomial in different formats
+  - bar chart
+  - calculate normalizer enumerator (MacWilliams transform)
+- lego database
+  - clicking on a lego type should display it's properties (WEP, stabilizer check)
+  - stoppers - DONE
+  - searchable IBM database
+- UI features
+  - resizable, scrollable canvas DONE
+- handled disconnected networks too - this is good for educational purposes - DONE
 
-I want to put together the new compass code construction with Charles's construction and see the weight enumerators - DONE  
-
+I want to put together the new compass code construction with Charles's construction and see the weight enumerators - DONE
 
 # Big stories
 
-## A QEC database for the community 
-- a local database for caching tensornetwork weight enumerators / parity check matrices 
+## A QEC database for the community
+
+- a local database for caching tensornetwork weight enumerators / parity check matrices
 - a global database and automated Github authenticated contribution workflow
 
+## User authentication
 
-## User authentication 
+Mostly required to limit unwanted DB requests
 
-Mostly required to limit unwanted DB requests 
+- [maybe] unauthenticated (local-only) mode - only lego drops + manual flow tracking
+-
 
-- [maybe]  unauthenticated (local-only) mode - only lego drops + manual flow tracking 
-- 
+## Job management
 
-## Job management 
-- statistics database for insights 
-   - sparsity metrics 
+- statistics database for insights
 
-- support different platforms 
-   - run a job on a single server node (MPI?)
-   - run slurm jobs 
-   - run k8s jobs 
+  - sparsity metrics
 
-## Graphical contraction schedule analysis 
+- support different platforms
+  - run a job on a single server node (MPI?)
+  - run slurm jobs
+  - run k8s jobs
 
-- see the actual contraction visually on tensornetworks, with a "trace slider" for analysis 
-   - show the sparsity, size, order of intermediate tensor(s) 
+## Graphical contraction schedule analysis
 
-## Transformation automations 
+- see the actual contraction visually on tensornetworks, with a "trace slider" for analysis
+  - show the sparsity, size, order of intermediate tensor(s)
+
+## Transformation automations
 
 - derivation rules applied in bulk (similar to how zxlive does it)
-- 
+-
 
-## AI assistance 
-- how can we have a gen-AI based assistant here? 
+## AI assistance
 
-## qLego Qonstruct: A graphical language 
+- how can we have a gen-AI based assistant here?
 
-A visual language to create parameterized tensornetworks. 
+## qLego Qonstruct: A graphical language
 
-- concatenate - specify a Set of legos and the new layer - could be multiple 
+A visual language to create parameterized tensornetworks.
+
+- concatenate - specify a Set of legos and the new layer - could be multiple
 - tiling - given a lattice, place a lego to each coordinate - the user can define a function that maps a coordinate to a lego
-   - support different Euclidean (6.6.6, 4.4.4.4, 4.8.12, 4.8.8, aperiodic ones, etc.) and hyperbolic lattices 
-- connect 
-- sparsify 
-- product codes 
-   - provide the classical codes as parity check matrices 
+  - support different Euclidean (6.6.6, 4.4.4.4, 4.8.12, 4.8.8, aperiodic ones, etc.) and hyperbolic lattices
+- connect
+- sparsify
+- product codes
+  - provide the classical codes as parity check matrices
 - graph states (easy)
 
-## Hybrid enumerator support 
+## Hybrid enumerator support
 
-- mix A and B type enumerators in nodes 
+- mix A and B type enumerators in nodes
 
-## v0.1 WEP lib optimization goals 
+## v0.1 WEP lib optimization goals
 
+## v0.1 UI optimization goals
 
-## v0.1 UI optimization goals 
+A 17x17 rotated surface code should be managable by the UI, this translates to
 
-A 17x17 rotated surface code should be managable by the UI, this translates to 
-- 289 dangling legs for parity check matrix 
-- 
+- 289 dangling legs for parity check matrix
+-
 
 ## Qudit support
 
+## Cosets
 
-## Cosets 
+Setup cosets and calculate enumerators for them
 
-Setup cosets and calculate enumerators for them 
-- UI: ability to mark a lego with a coset 
+- UI: ability to mark a lego with a coset
 
-## Research ideas 
-- logical representative finding - can we get an advantage there over brute force? 
-- generalized qubit-wise tensor - if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? are there other tilings that result in interesting codes? 
-- how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there a possibility of reusing intermediate results? 
+## Research ideas
+
+- logical representative finding - can we get an advantage there over brute force?
+- generalized qubit-wise tensor - if we can generalize the [[4,2,2]] code to arbitrary arity local tensors for qLDPC codes, what codes would come out of Penrose tilings? are there other tilings that result in interesting codes?
+- how much reuse is possible for coset enumerator calculations given a trivial enumerator? when calculating cosets in bulk, is there a possibility of reusing intermediate results?
 - graph state based code generation - is it straightforward to read off the distance of different legs? I think it is based on some graph properties - but I haven't seen yet using encoding tensors used this way...
-
 
 ## License
 
