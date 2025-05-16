@@ -52,6 +52,7 @@ import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 import { Legos } from "../utils/Legos";
+import { generateConstructionCode } from "../lib/constructionCode";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -485,26 +486,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
-  const generateConstructionCode = async () => {
+  const handleGenerateConstructionCode = () => {
     if (!tensorNetwork) return;
 
     try {
-      const response = await axios.post("/api/constructioncode", {
-        legos: tensorNetwork.legos.reduce(
-          (acc, lego) => {
-            acc[lego.instanceId] = lego;
-            return acc;
-          },
-          {} as Record<string, DroppedLego>,
-        ),
-        connections: tensorNetwork.connections,
-      });
-
+      const code = generateConstructionCode(tensorNetwork);
       setTensorNetwork((prev) =>
         prev
           ? {
               ...prev,
-              constructionCode: response.data.code,
+              constructionCode: code,
             }
           : null,
       );
@@ -1329,7 +1320,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       </Button>
                     )}
                   <Button
-                    onClick={generateConstructionCode}
+                    onClick={handleGenerateConstructionCode}
                     colorScheme="purple"
                     size="sm"
                     width="full"

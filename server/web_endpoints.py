@@ -108,33 +108,6 @@ async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     )
 
 
-@router.post("/constructioncode", response_model=ConstructionCodeResponse)
-async def generate_construction_code(network: TensorNetworkRequest):
-    # Create TensorStabilizerCodeEnumerator instances for each lego
-    nodes = {}
-    for instance_id, lego in network.legos.items():
-        # Convert the parity check matrix to numpy array
-        h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
-
-    # Create TensorNetwork instance
-    tn = TensorNetwork(nodes)
-
-    # Add traces for each connection
-    for conn in network.connections:
-        tn.self_trace(
-            conn["from"]["legoId"],
-            conn["to"]["legoId"],
-            [conn["from"]["legIndex"]],
-            [conn["to"]["legIndex"]],
-        )
-
-    # Get the construction code
-    code = tn.construction_code()
-
-    return ConstructionCodeResponse(code=code)
-
-
 @router.post("/tannernetwork", response_model=TensorNetworkResponse)
 async def create_tanner_network(request: TannerRequest):
     try:

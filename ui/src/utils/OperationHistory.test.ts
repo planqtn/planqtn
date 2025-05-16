@@ -332,8 +332,8 @@ describe("OperationHistory", () => {
         currentState.connections,
         currentState.droppedLegos,
       );
-      console.log("currentState", currentState);
-      console.log("initialState", initialState);
+      // console.log("currentState", currentState);
+      // console.log("initialState", initialState);
       expect(currentState).toEqual(initialState);
     });
   });
