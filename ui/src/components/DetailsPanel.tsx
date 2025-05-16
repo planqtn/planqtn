@@ -19,12 +19,12 @@ import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   DroppedLego,
-  TensorNetwork,
-  TensorNetworkLeg,
   LegoServerPayload,
   Connection,
   Operation,
-} from "../types.ts";
+} from "../lib/types.ts";
+import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
+
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosResponse } from "axios";
 import { useState, useEffect, useRef } from "react";
@@ -32,7 +32,7 @@ import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
 import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
 import * as _ from "lodash";
-import { OperationHistory } from "../utils/OperationHistory";
+import { OperationHistory } from "../lib/OperationHistory.ts";
 import { canDoBialgebra, applyBialgebra } from "../transformations/Bialgebra";
 import {
   canDoInverseBialgebra,
@@ -43,16 +43,15 @@ import {
   canDoConnectGraphNodes,
   applyConnectGraphNodes,
 } from "../transformations/ConnectGraphNodesWithCenterLego.ts";
-import { findConnectedComponent } from "../utils/TensorNetwork.ts";
+import { findConnectedComponent } from "../lib/TensorNetwork.ts";
 import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards,
 } from "../transformations/CompleteGraphViaHadamards";
 import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
-import { simpleAutoFlow } from "./AutoPauliFlow.ts";
-import { Legos } from "../utils/Legos";
-import { generateConstructionCode } from "../lib/constructionCode";
+import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
+import { Legos } from "../lib/Legos.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -175,7 +174,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     socketAllTasksRef.current = socket;
     socket.emit("join_room", { room_id: "tasks" });
     socket.on("celery_event", (event) => {
-      // Handle celery events (task-sent, task-received, task-started, task-succeeded, etc.)
       if (event.type === "task-succeeded" && event.result) {
         let result = event.result;
         if (typeof result === "string") {
@@ -196,16 +194,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             weightEnumeratorCache.set(signature, updatedCacheEntry);
             const currentTensorNetwork = currentTensorNetworkRef.current;
             if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev) =>
+              setTensorNetwork((prev: TensorNetwork | null) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       weightEnumerator: result.polynomial,
                       normalizerPolynomial: result.normalizer_polynomial,
                       isCalculatingWeightEnumerator: false,
                       taskId: event.uuid,
                       truncateLength: result.truncate_length,
-                    }
+                    })
                   : null,
               );
               setIterationStatus([]);
@@ -228,13 +226,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             if (currentTensorNetwork?.signature === signature) {
               setTensorNetwork((prev) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       isCalculatingWeightEnumerator: false,
                       weightEnumerator: "",
                       normalizerPolynomial: "",
                       taskId: undefined,
-                    }
+                    })
                   : null,
               );
             }
@@ -247,12 +245,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             setError(`Task ${event.uuid} was cancelled.`);
             const currentTensorNetwork = currentTensorNetworkRef.current;
             if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev) =>
+              setTensorNetwork((prev: TensorNetwork | null) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       isCalculatingWeightEnumerator: false,
-                    }
+                    })
                   : null,
               );
             }
@@ -261,7 +259,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           }
         }
       }
-      // You can add more event types as needed
     });
     return () => {
       socket.disconnect();
@@ -316,11 +313,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         legIndex: leg.legIndex,
       }));
 
-      setTensorNetwork({
-        ...tensorNetwork,
-        parityCheckMatrix: response.data.matrix,
-        legOrdering: legOrdering,
-      });
+      setTensorNetwork(
+        new TensorNetwork(
+          tensorNetwork.legos,
+          tensorNetwork.connections,
+          response.data.matrix,
+          tensorNetwork.weightEnumerator,
+          tensorNetwork.normalizerPolynomial,
+          tensorNetwork.truncateLength,
+          tensorNetwork.isCalculatingWeightEnumerator,
+          tensorNetwork.taskId,
+          tensorNetwork.constructionCode,
+          legOrdering,
+          tensorNetwork.signature,
+        ),
+      );
 
       parityCheckMatrixCache.set(tensorNetwork.signature!, response);
     } catch (error) {
@@ -386,13 +393,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const signature = tensorNetwork.signature!;
     const cachedEnumerator = weightEnumeratorCache.get(signature);
     if (cachedEnumerator) {
-      setTensorNetwork({
-        ...tensorNetwork,
-        taskId: cachedEnumerator.taskId,
-        weightEnumerator: cachedEnumerator.polynomial,
-        normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-        isCalculatingWeightEnumerator: cachedEnumerator.polynomial === "",
-      });
+      setTensorNetwork(
+        TensorNetwork.fromObj({
+          ...tensorNetwork,
+          taskId: cachedEnumerator.taskId,
+          weightEnumerator: cachedEnumerator.polynomial,
+          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
+          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === "",
+        }),
+      );
 
       joinTaskRoom(cachedEnumerator.taskId);
       return;
@@ -401,12 +410,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     try {
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               isCalculatingWeightEnumerator: true,
               weightEnumerator: undefined,
               taskId: undefined,
-            }
+            })
           : null,
       );
 
@@ -441,10 +450,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               taskId: taskId,
-            }
+            })
           : null,
       );
       joinTaskRoom(taskId);
@@ -477,10 +486,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setError("Failed to calculate weight enumerator");
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               isCalculatingWeightEnumerator: false,
-            }
+            })
           : null,
       );
     }
@@ -490,13 +499,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     if (!tensorNetwork) return;
 
     try {
-      const code = generateConstructionCode(tensorNetwork);
-      setTensorNetwork((prev) =>
+      console.log("tensorNetwork", tensorNetwork);
+      const code = tensorNetwork.generateConstructionCode();
+      setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               constructionCode: code,
-            }
+            })
           : null,
       );
     } catch (error) {
@@ -538,12 +548,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const handleLegOrderingChange = (newLegOrdering: TensorNetworkLeg[]) => {
     if (tensorNetwork) {
       // Update the tensor network state
-      setTensorNetwork((prev) =>
+      setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               legOrdering: newLegOrdering,
-            }
+            })
           : null,
       );
 
@@ -1171,7 +1181,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       result.operation.data.legosToAdd![0],
       droppedLegos,
       connections,
-    ) as TensorNetwork;
+    );
     setTensorNetwork(newTensorNetwork);
   };
 
@@ -1346,12 +1356,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     }
                     onMatrixChange={(newMatrix) => {
                       // Update the tensor network state
-                      setTensorNetwork((prev) =>
+                      setTensorNetwork((prev: TensorNetwork | null) =>
                         prev
-                          ? {
+                          ? TensorNetwork.fromObj({
                               ...prev,
                               parityCheckMatrix: newMatrix,
-                            }
+                            })
                           : null,
                       );
 

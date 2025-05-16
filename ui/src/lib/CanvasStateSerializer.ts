@@ -1,6 +1,5 @@
-import { DroppedLego, LegoPiece, Connection, CanvasState } from "../types";
+import { DroppedLego, LegoPiece, Connection, CanvasState } from "./types";
 import { GenericStyle, getLegoStyle } from "../LegoStyles";
-import axios from "axios";
 import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {

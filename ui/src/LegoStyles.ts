@@ -1,4 +1,4 @@
-import { DroppedLego, PauliOperator } from "./types";
+import { DroppedLego, PauliOperator } from "./lib/types";
 import {
   getPauliColor,
   I_COLOR,
@@ -10,7 +10,7 @@ import {
   Z_COLOR,
   Z_COLOR_DARK,
   Z_COLOR_LIGHT,
-} from "./utils/PauliColors";
+} from "./lib/PauliColors";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";

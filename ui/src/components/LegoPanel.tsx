@@ -10,12 +10,12 @@ import {
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
-import { LegoPiece } from "../types.ts";
+import { LegoPiece } from "../lib/types.ts";
 import { DynamicLegoDialog } from "./DynamicLegoDialog";
 import { useState } from "react";
 import { DroppedLegoDisplay } from "./DroppedLegoDisplay.tsx";
 import { getLegoStyle } from "../LegoStyles.ts";
-import { Legos } from "../utils/Legos";
+import { Legos } from "../lib/Legos.ts";
 
 interface LegoPanelProps {
   legos: LegoPiece[];

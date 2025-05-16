@@ -1,4 +1,4 @@
-import { LegoStyle } from "./LegoStyles";
+import { LegoStyle } from "../LegoStyles";
 
 export interface LegoPiece {
   id: string;
@@ -62,25 +62,6 @@ export class Connection {
       (this.to.legoId === legoId && this.to.legIndex === legIndex)
     );
   }
-}
-
-export interface TensorNetworkLeg {
-  instanceId: string;
-  legIndex: number;
-}
-
-export interface TensorNetwork {
-  legos: DroppedLego[];
-  connections: Connection[];
-  parityCheckMatrix?: number[][];
-  weightEnumerator?: string;
-  normalizerPolynomial?: string;
-  truncateLength?: number;
-  isCalculatingWeightEnumerator?: boolean;
-  taskId?: string;
-  constructionCode?: string;
-  legOrdering?: TensorNetworkLeg[];
-  signature?: string;
 }
 
 export interface LegDragState {

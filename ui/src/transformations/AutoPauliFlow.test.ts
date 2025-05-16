@@ -1,5 +1,5 @@
 import { simpleAutoFlow } from "./AutoPauliFlow";
-import { Connection, DroppedLego, TensorNetwork } from "../types";
+import { Connection, DroppedLego, TensorNetwork } from "../lib/types";
 import { GenericStyle } from "../LegoStyles";
 
 describe("simple auto flow", () => {

@@ -1,6 +1,6 @@
-import { DroppedLego, Connection, Operation } from "../types";
+import { DroppedLego, Connection, Operation } from "../lib/types";
 import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
-import { Legos } from "../utils/Legos";
+import { Legos } from "../lib/Legos";
 
 export function canDoHopfRule(
   selectedLegos: DroppedLego[],

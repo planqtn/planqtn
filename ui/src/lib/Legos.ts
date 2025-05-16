@@ -1,4 +1,4 @@
-import { LegoPiece, DroppedLego } from "../types";
+import { LegoPiece, DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
 
 export enum LegoType {

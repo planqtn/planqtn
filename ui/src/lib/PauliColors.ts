@@ -1,4 +1,4 @@
-import { PauliOperator } from "../types";
+import { PauliOperator } from "./types";
 
 // Chakra UI color tokens
 export const I_COLOR = "gray.400";

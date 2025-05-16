@@ -1,15 +1,11 @@
-import { generateConstructionCode } from "./constructionCode";
-import { Connection, TensorNetwork } from "../types";
+import { Connection } from "./types";
 import { getLegoStyle } from "../LegoStyles";
 import { exec } from "child_process";
-
+import { TensorNetwork } from "./TensorNetwork";
 describe("constructionCode", () => {
   it("should generate empty network for empty tensor network", () => {
-    const tensorNetwork = {
-      legos: [],
-      connections: [],
-    } as TensorNetwork;
-    const code = generateConstructionCode(tensorNetwork);
+    const tensorNetwork = new TensorNetwork([], []);
+    const code = tensorNetwork.generateConstructionCode();
     expect(code)
       .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from qlego.tensor_network import TensorNetwork
@@ -26,8 +22,8 @@ tn = TensorNetwork(nodes)
   });
 
   it("should generate construction code for a tensor network with one lego", () => {
-    const tensorNetwork = {
-      legos: [
+    const tensorNetwork = new TensorNetwork(
+      [
         {
           id: "x_rep_code",
           name: "X-Repetition Code",
@@ -49,9 +45,9 @@ tn = TensorNetwork(nodes)
           selectedMatrixRows: [],
         },
       ],
-      connections: [],
-    } as TensorNetwork;
-    const code = generateConstructionCode(tensorNetwork);
+      [],
+    );
+    const code = tensorNetwork.generateConstructionCode();
     expect(code)
       .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from qlego.tensor_network import TensorNetwork
@@ -74,8 +70,8 @@ tn = TensorNetwork(nodes)
   });
 
   it("should generate python runnable code with the right parity check matrix", async () => {
-    const code = generateConstructionCode({
-      legos: [
+    const code = new TensorNetwork(
+      [
         {
           id: "x_rep_code",
           name: "X-Repetition Code",
@@ -176,7 +172,7 @@ tn = TensorNetwork(nodes)
           selectedMatrixRows: [],
         },
       ],
-      connections: [
+      [
         new Connection(
           { legoId: "1", legIndex: 0 },
           { legoId: "3", legIndex: 7 },
@@ -194,7 +190,7 @@ tn = TensorNetwork(nodes)
           { legoId: "5", legIndex: 0 },
         ),
       ],
-    } as TensorNetwork);
+    ).generateConstructionCode();
     expect(code).toBeDefined();
 
     const python_script = code + "\n\n" + "print(tn.conjoin_nodes().h)";

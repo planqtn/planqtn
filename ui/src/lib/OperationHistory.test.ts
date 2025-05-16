@@ -1,5 +1,5 @@
 import { OperationHistory } from "./OperationHistory";
-import { Operation, Connection, DroppedLego } from "../types";
+import { Operation, Connection, DroppedLego } from "./types";
 import { GenericStyle, HadamardStyle } from "../LegoStyles";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 

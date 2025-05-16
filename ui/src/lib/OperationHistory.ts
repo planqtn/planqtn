@@ -1,4 +1,4 @@
-import { Connection, DroppedLego, Operation } from "../types";
+import { Connection, DroppedLego, Operation } from "./types";
 import * as _ from "lodash";
 
 export class OperationHistory {

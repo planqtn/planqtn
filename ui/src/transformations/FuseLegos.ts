@@ -4,7 +4,7 @@ import {
   LegoServerPayload,
   Operation,
   TensorNetworkLeg,
-} from "../types";
+} from "../lib/types";
 import axios from "axios";
 import { getLegoStyle } from "../LegoStyles";
 export class FuseLegos {

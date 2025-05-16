@@ -5,7 +5,7 @@ import {
   LegDragState,
   DragState,
   Connection,
-} from "../types";
+} from "../lib/types";
 
 // Add shared function for leg position calculations
 export interface LegPosition {

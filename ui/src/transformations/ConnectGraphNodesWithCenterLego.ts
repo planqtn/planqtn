@@ -1,7 +1,7 @@
-import { DroppedLego, Connection, Operation } from "../types";
+import { DroppedLego, Connection, Operation } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
 import { zip } from "lodash";
-import { Legos } from "../utils/Legos";
+import { Legos } from "../lib/Legos";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return legos.length > 0 && legos.every((lego) => lego.id === "z_rep_code");

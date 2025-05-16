@@ -1,5 +1,5 @@
 import { cloneDeep } from "lodash";
-import { DroppedLego, Connection, TensorNetwork } from "../types";
+import { DroppedLego, Connection, TensorNetwork } from "../lib/types";
 
 /**
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.

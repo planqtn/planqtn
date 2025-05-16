@@ -1,8 +1,8 @@
 import { Box, Button } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
-import { TensorNetworkLeg } from "../types";
+import { TensorNetworkLeg } from "../lib/types";
 import * as d3 from "d3-force";
-import { SVG_COLORS } from "../utils/PauliColors";
+import { SVG_COLORS } from "../lib/PauliColors";
 
 interface Point {
   x: number;
