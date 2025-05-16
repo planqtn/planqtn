@@ -336,11 +336,8 @@ const LegoStudioView: React.FC = () => {
       }
     };
 
-    // Only fetch legos if backend is healthy
-    if (isBackendHealthy) {
-      fetchData();
-    }
-  }, [isBackendHealthy]); // Depend on backend health status
+    fetchData();
+  }, []);
 
   // Add a new effect to handle initial URL state
   useEffect(() => {
