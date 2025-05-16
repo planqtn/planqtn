@@ -9,7 +9,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  useClipboard,
   MenuItemOption,
   useToast,
   Editable,
@@ -203,7 +202,6 @@ const LegoStudioView: React.FC = () => {
   });
   const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
   const [weightEnumeratorCache] = useState<Map<string, string>>(new Map());
-  const { onCopy: onCopyCode } = useClipboard("");
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDynamicLego, setSelectedDynamicLego] =
