@@ -1,41 +1,11 @@
 import { DroppedLego, Connection, Operation } from "../types";
 import { getLegoStyle } from "../LegoStyles";
 import { zip } from "lodash";
+import { Legos } from "../utils/Legos";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return legos.length > 0 && legos.every((lego) => lego.id === "z_rep_code");
 };
-
-async function getDynamicLego(
-  legoId: string,
-  numLegs: number,
-): Promise<DroppedLego> {
-  const response = await fetch("/api/dynamiclego", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lego_id: legoId,
-      parameters: {
-        d: numLegs,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    instanceId: String("not set"),
-    style: getLegoStyle(data.id, numLegs),
-    x: 0,
-    y: 0,
-  };
-}
 
 export const applyConnectGraphNodes = async (
   legos: DroppedLego[],
@@ -53,13 +23,13 @@ export const applyConnectGraphNodes = async (
   const numLegs = legos.length + 1;
 
   // Create the connector lego
-  const connectorLegoData = await getDynamicLego("z_rep_code", numLegs);
-  const connectorLego: DroppedLego = {
-    ...connectorLegoData,
-    instanceId: (maxInstanceId + 1).toString(),
-    x: legos.reduce((sum, l) => sum + l.x, 0) / legos.length,
-    y: legos.reduce((sum, l) => sum + l.y, 0) / legos.length,
-  };
+  const connectorLego = Legos.createDynamicLego(
+    "z_rep_code",
+    numLegs,
+    (maxInstanceId + 1).toString(),
+    legos.reduce((sum, l) => sum + l.x, 0) / legos.length,
+    legos.reduce((sum, l) => sum + l.y, 0) / legos.length,
+  );
 
   // Find dangling legs for each lego
   const legoDanglingLegs = legos.map((lego) => {
@@ -89,22 +59,19 @@ export const applyConnectGraphNodes = async (
   });
 
   // Create new legos with one extra leg
-  const newLegos: DroppedLego[] = await Promise.all(
-    legoDanglingLegs.map(async ({ lego, danglingLeg }) => {
+  const newLegos: DroppedLego[] = legoDanglingLegs.map(
+    ({ lego, danglingLeg }) => {
       if (danglingLeg !== lego.parity_check_matrix[0].length / 2) {
         return lego; // Keep the lego as is if it has dangling legs
       }
-      const newLego = await getDynamicLego(
+      return Legos.createDynamicLego(
         "z_rep_code",
         lego.parity_check_matrix[0].length / 2 + 1,
+        lego.instanceId,
+        lego.x,
+        lego.y,
       );
-      return {
-        ...lego,
-        id: newLego.id,
-        parity_check_matrix: newLego.parity_check_matrix,
-        style: newLego.style,
-      };
-    }),
+    },
   );
 
   // Create Hadamard legos

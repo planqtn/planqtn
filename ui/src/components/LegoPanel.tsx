@@ -15,6 +15,7 @@ import { DynamicLegoDialog } from "./DynamicLegoDialog";
 import { useState } from "react";
 import { DroppedLegoDisplay } from "./DroppedLegoDisplay.tsx";
 import { getLegoStyle } from "../LegoStyles.ts";
+import { Legos } from "../utils/Legos";
 
 interface LegoPanelProps {
   legos: LegoPiece[];
@@ -45,22 +46,10 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
     if (!selectedDynamicLego) return;
 
     try {
-      const response = await fetch(`/api/dynamiclego`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lego_id: selectedDynamicLego.id,
-          parameters,
-        }),
+      const dynamicLego = Legos.getDynamicLego({
+        lego_id: selectedDynamicLego.id,
+        parameters,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to create dynamic lego");
-      }
-
-      const dynamicLego = await response.json();
       onLegoSelect(dynamicLego);
     } catch (error) {
       toast({

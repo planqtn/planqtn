@@ -70,11 +70,6 @@ async def health_check():
     return HealthResponse(message="Server is running", status="healthy")
 
 
-@router.get("/legos", response_model=List[LegoPiece])
-async def list_legos():
-    return Legos.list_available_legos()
-
-
 @router.post("/paritycheck", response_model=ParityCheckResponse)
 async def calculate_parity_check_matrix(network: TensorNetworkRequest):
     # Create TensorStabilizerCodeEnumerator instances for each lego
@@ -138,34 +133,6 @@ async def generate_construction_code(network: TensorNetworkRequest):
     code = tn.construction_code()
 
     return ConstructionCodeResponse(code=code)
-
-
-@router.post("/dynamiclego", response_model=LegoPiece)
-async def get_dynamic_lego(request: DynamicLegoRequest):
-    # Get the lego definition from Legos class
-    legos = Legos.list_available_legos()
-    lego_def = next((l for l in legos if l["id"] == request.lego_id), None)
-
-    if not lego_def or not lego_def.get("is_dynamic"):
-        print("Retrieved lego definition", lego_def, "for id", request.lego_id)
-        raise HTTPException(
-            status_code=400, detail=f"Invalid or non-dynamic lego ID: {request.lego_id}"
-        )
-
-    # Get the method from Legos class
-    method = getattr(Legos, request.lego_id)
-    if not method:
-        raise HTTPException(status_code=400, detail="Lego method not found")
-
-    # Call the method with the provided parameters
-    try:
-        matrix = method(**request.parameters)
-        # Update the lego definition with the new matrix
-        lego_def["parity_check_matrix"] = matrix.tolist()
-        return lego_def
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/tannernetwork", response_model=TensorNetworkResponse)

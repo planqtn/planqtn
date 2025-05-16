@@ -51,6 +51,7 @@ import {
 import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
+import { Legos } from "../utils/Legos";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -783,33 +784,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       });
 
       // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
-      const [response1, response2] = await Promise.all([
-        fetch(`/api/dynamiclego`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lego_id: lego.id,
-            parameters: { d: lego1Legs + 1 },
-          }),
+      const [lego1Data, lego2Data] = [
+        Legos.getDynamicLego({
+          lego_id: lego.id,
+          parameters: { d: lego1Legs + 1 },
         }),
-        fetch(`/api/dynamiclego`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lego_id: lego.id,
-            parameters: { d: lego2Legs + 1 },
-          }),
+        Legos.getDynamicLego({
+          lego_id: lego.id,
+          parameters: { d: lego2Legs + 1 },
         }),
-      ]);
-
-      if (!response1.ok || !response2.ok) {
-        throw new Error("Failed to get dynamic lego");
-      }
-
-      const [lego1Data, lego2Data] = await Promise.all([
-        response1.json(),
-        response2.json(),
-      ]);
+      ];
 
       // Create the two new legos
       const lego1: DroppedLego = {

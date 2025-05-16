@@ -52,6 +52,7 @@ import { findConnectedComponent } from "./utils/TensorNetwork";
 import { randomPlankterName } from "./utils/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
 import { simpleAutoFlow } from "./components/AutoPauliFlow";
+import { Legos } from "./utils/Legos";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -293,6 +294,7 @@ const LegoStudioView: React.FC = () => {
       return await stateSerializerRef.current.decode(encoded);
     } catch (error) {
       console.error("Failed to decode canvas state:", error);
+      if (error instanceof Error) console.log(error.stack);
       // Create a new error with a user-friendly message
       throw error;
     }
@@ -328,10 +330,9 @@ const LegoStudioView: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const legosResponse = await axios.get("/api/legos");
-        setLegos(legosResponse.data);
+        setLegos(Legos.listAvailableLegos());
       } catch (error) {
-        setError("Failed to fetch legos");
+        setError("Failed to load legos");
         console.error("Error:", error);
       }
     };
@@ -654,29 +655,11 @@ const LegoStudioView: React.FC = () => {
     if (!selectedDynamicLego || !pendingDropPosition) return;
 
     try {
-      const response = await fetch(`/api/dynamiclego`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lego_id: selectedDynamicLego.id,
-          parameters,
-        }),
+      const dynamicLego = Legos.getDynamicLego({
+        lego_id: selectedDynamicLego.id,
+        parameters,
       });
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: "Unknown error occurred" }));
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            `Error: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const dynamicLego = await response.json();
       const instanceId = newInstanceId(droppedLegos);
       const numLegs = dynamicLego.parity_check_matrix[0].length / 2;
       const newLego = {
@@ -2531,24 +2514,12 @@ const LegoStudioView: React.FC = () => {
 
     try {
       // Get the new repetition code with one more leg
-      const response = await fetch(`/api/dynamiclego`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const newLegoData = Legos.getDynamicLego({
+        lego_id: lego.id,
+        parameters: {
+          d: numLegs + 1,
         },
-        body: JSON.stringify({
-          lego_id: lego.id,
-          parameters: {
-            d: numLegs + 1,
-          },
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to get dynamic lego");
-      }
-
-      const newLegoData = await response.json();
 
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = {
