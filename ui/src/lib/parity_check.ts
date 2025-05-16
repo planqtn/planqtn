@@ -119,6 +119,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
   const legs = [x1, x2, z1, z2];
 
   // First perform Gaussian elimination on the specified columns
+  console.log("r,n: ", r, n, "legs", legs);
   const mx = GF2.gauss(h, { col_subset: legs });
 
   // Keep track of rows to keep
@@ -240,4 +241,18 @@ export function block_diag(...matrices: number[][][]): number[][] {
   }
 
   return result;
+}
+
+export function is_gauss_equivalent(h1: GF2, h2: GF2): boolean {
+  // Check if matrices have the same shape
+  if (h1.shape[0] !== h2.shape[0] || h1.shape[1] !== h2.shape[1]) {
+    return false;
+  }
+
+  // Perform Gaussian elimination on both matrices
+  const h1_gauss = GF2.gauss(h1);
+  const h2_gauss = GF2.gauss(h2);
+
+  // Compare the resulting matrices
+  return h1_gauss.equals(h2_gauss);
 }

@@ -26,7 +26,7 @@ import {
 import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { useState, useEffect, useRef } from "react";
 import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
@@ -52,6 +52,8 @@ import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
+import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
+import { GF2 } from "../lib/GF2.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -109,9 +111,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(
     tensorNetwork?.constructionCode || "",
   );
-  const [parityCheckMatrixCache] = useState<
-    Map<string, AxiosResponse<{ matrix: number[][]; legs: TensorNetworkLeg[] }>>
-  >(new Map());
+  const [parityCheckMatrixCache] = useState<Map<string, StabilizerCodeTensor>>(
+    new Map(),
+  );
   const [weightEnumeratorCache] = useState<
     Map<
       string,
@@ -289,35 +291,28 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
     try {
-      const response = await axios.post(`/api/paritycheck`, {
-        legos: tensorNetwork.legos.reduce(
-          (acc, lego) => {
-            acc[lego.instanceId] = {
-              instanceId: lego.instanceId,
-              shortName: lego.shortName || "Generic Lego",
-              name: lego.shortName || "Generic Lego",
-              id: lego.id,
-              parity_check_matrix: lego.parity_check_matrix,
-              logical_legs: lego.logical_legs,
-              gauge_legs: lego.gauge_legs,
-            } as LegoServerPayload;
-            return acc;
-          },
-          {} as Record<string, LegoServerPayload>,
-        ),
-        connections: tensorNetwork.connections,
-      });
+      // Create a TensorNetwork and perform the fusion
+      const network = new TensorNetwork(
+        tensorNetwork.legos,
+        tensorNetwork.connections,
+      );
+      const result = network.conjoin_nodes();
 
-      const legOrdering = response.data.legs.map((leg: TensorNetworkLeg) => ({
+      if (!result) {
+        throw new Error("Cannot compute tensor network");
+      }
+
+      const legOrdering = result.legs.map((leg) => ({
         instanceId: leg.instanceId,
         legIndex: leg.legIndex,
       }));
 
+      // Update the tensor network with the new matrix and leg ordering
       setTensorNetwork(
         new TensorNetwork(
           tensorNetwork.legos,
           tensorNetwork.connections,
-          response.data.matrix,
+          result.h.getMatrix(),
           tensorNetwork.weightEnumerator,
           tensorNetwork.normalizerPolynomial,
           tensorNetwork.truncateLength,
@@ -329,7 +324,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         ),
       );
 
-      parityCheckMatrixCache.set(tensorNetwork.signature!, response);
+      parityCheckMatrixCache.set(tensorNetwork.signature!, result);
     } catch (error) {
       console.error("Error calculating parity check matrix:", error);
       setError("Failed to calculate parity check matrix");
@@ -561,13 +556,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const signature = tensorNetwork.signature!;
       const cachedResponse = parityCheckMatrixCache.get(signature);
       if (cachedResponse) {
-        parityCheckMatrixCache.set(signature, {
-          ...cachedResponse,
-          data: {
-            ...cachedResponse.data,
-            legs: newLegOrdering,
-          },
-        });
+        parityCheckMatrixCache.set(
+          signature,
+          new StabilizerCodeTensor(
+            cachedResponse.h,
+            cachedResponse.idx,
+            newLegOrdering,
+          ),
+        );
       }
     }
   };
@@ -1345,14 +1341,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                   <ParityCheckMatrixDisplay
                     matrix={
                       tensorNetwork.parityCheckMatrix ||
-                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.data
-                        .matrix
+                      parityCheckMatrixCache
+                        .get(tensorNetwork.signature!)!
+                        .h.getMatrix()
                     }
                     title="Parity Check Matrix"
                     legOrdering={
                       tensorNetwork.legOrdering ||
-                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.data
-                        .legs
+                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.legs
                     }
                     onMatrixChange={(newMatrix) => {
                       // Update the tensor network state
@@ -1370,13 +1366,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       const cachedResponse =
                         parityCheckMatrixCache.get(signature);
                       if (cachedResponse) {
-                        parityCheckMatrixCache.set(signature, {
-                          ...cachedResponse,
-                          data: {
-                            ...cachedResponse.data,
-                            matrix: newMatrix,
-                          },
-                        });
+                        parityCheckMatrixCache.set(
+                          signature,
+                          new StabilizerCodeTensor(
+                            new GF2(newMatrix),
+                            cachedResponse.idx,
+                            cachedResponse.legs,
+                          ),
+                        );
                       }
                     }}
                     onLegOrderingChange={handleLegOrderingChange}

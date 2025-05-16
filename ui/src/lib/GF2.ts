@@ -301,4 +301,8 @@ export class GF2 {
     // Return the right part of the zero rows
     return new GF2(zeroRows.map((row) => reduced.getRow(row).slice(rows)));
   }
+
+  public getMatrix(): number[][] {
+    return this.matrix;
+  }
 }

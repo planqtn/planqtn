@@ -1,5 +1,7 @@
 import { LegoPiece, DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
+import { GF2 } from "./GF2";
+import { is_gauss_equivalent } from "./parity_check";
 
 export enum LegoType {
   H = "h",
@@ -63,7 +65,7 @@ export class Legos {
   private static stopper_z_paulis = [[0, 1]];
   private static stopper_i_paulis = [[0, 0]];
 
-  private static z_rep_code(d: number = 3): number[][] {
+  public static z_rep_code(d: number = 3): number[][] {
     const gens: number[][] = [];
     for (let i = 0; i < d - 1; i++) {
       const g = Array(2 * d).fill(0);
@@ -79,7 +81,7 @@ export class Legos {
     return gens;
   }
 
-  private static x_rep_code(d: number = 3): number[][] {
+  public static x_rep_code(d: number = 3): number[][] {
     const gens: number[][] = [];
     for (let i = 0; i < d - 1; i++) {
       const g = Array(2 * d).fill(0);
@@ -105,6 +107,8 @@ export class Legos {
         parity_check_matrix: this.encoding_tensor_603,
         logical_legs: [4, 5],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       {
         id: LegoType.T5,
@@ -114,6 +118,8 @@ export class Legos {
         parity_check_matrix: this.encoding_tensor_512,
         logical_legs: [4],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       {
         id: LegoType.H,
@@ -123,6 +129,8 @@ export class Legos {
         parity_check_matrix: this.h,
         logical_legs: [],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       this.stopper_x(),
       this.stopper_z(),
@@ -157,6 +165,8 @@ export class Legos {
         parity_check_matrix: this.identity,
         logical_legs: [],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       {
         id: "steane",
@@ -166,6 +176,8 @@ export class Legos {
         parity_check_matrix: this.steane_code_813_encoding_tensor,
         logical_legs: [7],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       {
         id: "832",
@@ -188,6 +200,8 @@ export class Legos {
         ],
         logical_legs: [8, 9, 10],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
       {
         id: "15qrm",
@@ -215,6 +229,8 @@ export class Legos {
         ],
         logical_legs: [15],
         gauge_legs: [],
+        is_dynamic: false,
+        parameters: {},
       },
     ];
   }
@@ -227,6 +243,8 @@ export class Legos {
       parity_check_matrix: this.stopper_i_paulis,
       logical_legs: [],
       gauge_legs: [],
+      is_dynamic: false,
+      parameters: {},
     };
   }
   static stopper_z(): LegoPiece {
@@ -238,6 +256,8 @@ export class Legos {
       parity_check_matrix: this.stopper_z_paulis,
       logical_legs: [],
       gauge_legs: [],
+      is_dynamic: false,
+      parameters: {},
     };
   }
   static stopper_x(): LegoPiece {
@@ -249,6 +269,8 @@ export class Legos {
       parity_check_matrix: this.stopper_x_paulis,
       logical_legs: [],
       gauge_legs: [],
+      is_dynamic: false,
+      parameters: {},
     };
   }
 
@@ -312,4 +334,37 @@ export class Legos {
       selectedMatrixRows: [],
     };
   }
+}
+
+export function recognize_parity_check_matrix(h: GF2): string | null {
+  // Get all available legos
+  const legos = Legos.listAvailableLegos();
+
+  // First check static legos
+  for (const lego of legos) {
+    if (!lego.is_dynamic) {
+      const lego_matrix = new GF2(lego.parity_check_matrix);
+      if (is_gauss_equivalent(h, lego_matrix)) {
+        return lego.id;
+      }
+    }
+  }
+
+  // Then check for repetition codes
+  const num_qubits = h.shape[1] / 2;
+  if (num_qubits > 0) {
+    // Z repetition code
+    const z_rep = Legos.z_rep_code(num_qubits);
+    if (is_gauss_equivalent(h, new GF2(z_rep))) {
+      return "z_rep_code";
+    }
+
+    // X repetition code
+    const x_rep = Legos.x_rep_code(num_qubits);
+    if (is_gauss_equivalent(h, new GF2(x_rep))) {
+      return "x_rep_code";
+    }
+  }
+
+  return null;
 }

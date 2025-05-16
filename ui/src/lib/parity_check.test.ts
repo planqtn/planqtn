@@ -3,7 +3,6 @@ import {
   block_diag,
   conjoin,
   self_trace,
-  sstr,
   tensor_product,
 } from "./parity_check";
 

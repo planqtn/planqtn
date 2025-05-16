@@ -1,4 +1,6 @@
 import { Connection, DroppedLego } from "./types";
+import { GF2 } from "./GF2";
+import { StabilizerCodeTensor } from "./StabilizerCodeTensor";
 
 // Add this new function to find connected components
 export function findConnectedComponent(
@@ -139,5 +141,121 @@ export class TensorNetwork {
     }
 
     return code.join("\n");
+  }
+
+  public conjoin_nodes(): StabilizerCodeTensor {
+    // If there's only one lego and no connections, return its parity check matrix
+    if (this.legos.length === 1 && this.connections.length === 0) {
+      return new StabilizerCodeTensor(
+        new GF2(this.legos[0].parity_check_matrix),
+        this.legos[0].instanceId,
+        Array.from(
+          { length: this.legos[0].parity_check_matrix[0].length / 2 },
+          (_, i) => ({ instanceId: this.legos[0].instanceId, legIndex: i }),
+        ),
+      );
+    }
+
+    // Map from lego instanceId to its index in components list
+    type Component = {
+      tensor: StabilizerCodeTensor;
+      legos: Set<string>;
+    };
+    const components: Component[] = this.legos.map((lego) => ({
+      tensor: new StabilizerCodeTensor(
+        new GF2(lego.parity_check_matrix),
+        lego.instanceId,
+        Array.from(
+          { length: lego.parity_check_matrix[0].length / 2 },
+          (_, i) => ({ instanceId: lego.instanceId, legIndex: i }),
+        ),
+      ),
+      legos: new Set([lego.instanceId]),
+    }));
+    const legoToComponent = new Map<string, number>();
+    this.legos.forEach((lego, i) => legoToComponent.set(lego.instanceId, i));
+
+    // Process each connection
+    for (const conn of this.connections) {
+      console.log(
+        "=================conn",
+        conn.from.legoId,
+        "-",
+        conn.from.legIndex,
+        "->",
+        conn.to.legoId,
+        "-",
+        conn.to.legIndex,
+        "=====================",
+      );
+      const comp1Idx = legoToComponent.get(conn.from.legoId);
+      const comp2Idx = legoToComponent.get(conn.to.legoId);
+
+      if (comp1Idx === undefined || comp2Idx === undefined) {
+        throw new Error(
+          `Lego not found: ${conn.from.legoId} or ${conn.to.legoId}`,
+        );
+      }
+
+      // Case 1: Both legos are in the same component
+      if (comp1Idx === comp2Idx) {
+        const comp = components[comp1Idx];
+        console.log("self tracing", conn.from.legIndex, conn.to.legIndex);
+        console.log(
+          `legs: ${Array.from(comp.tensor.legToCol.entries()).map(
+            ([key, value]) => `${key}->${value}`,
+          )}`,
+        );
+        comp.tensor = comp.tensor.selfTrace(
+          [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
+          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }],
+        );
+      }
+      // Case 2: Legos are in different components - merge them
+      else {
+        console.log("merging", comp1Idx, comp2Idx);
+        console.log(`legs1: ${components[comp1Idx].tensor.legToCol}`);
+        console.log(`legs2: ${components[comp2Idx].tensor.legToCol}`);
+        const comp1 = components[comp1Idx];
+        const comp2 = components[comp2Idx];
+
+        // Conjoin the tensors
+        const newTensor = comp1.tensor.conjoin(
+          comp2.tensor,
+          [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
+          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }],
+        );
+
+        // Update the first component with merged result
+        comp1.tensor = newTensor;
+        // Merge the sets of legos
+        comp2.legos.forEach((legoId) => {
+          comp1.legos.add(legoId);
+          legoToComponent.set(legoId, comp1Idx);
+        });
+
+        // Remove the second component
+        components.splice(comp2Idx, 1);
+
+        // Update indices for all legos in components after the removed one
+        for (const [legoId, compIdx] of legoToComponent.entries()) {
+          if (compIdx > comp2Idx) {
+            legoToComponent.set(legoId, compIdx - 1);
+          }
+        }
+      }
+    }
+
+    // If we have multiple components at the end, tensor them together
+    if (components.length > 1) {
+      console.log("TENSORING", components.length);
+      let result = components[0].tensor;
+      for (let i = 1; i < components.length; i++) {
+        result = result.tensorWith(components[i].tensor);
+      }
+      return result;
+    }
+
+    return components[0].tensor;
   }
 }
