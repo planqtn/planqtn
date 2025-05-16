@@ -2,7 +2,6 @@ fastapi[standard]
 uvicorn[standard]
 pydantic[standard]
 pydantic-settings
-firebase-admin
 python-dotenv
 flower
 celery

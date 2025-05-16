@@ -303,5 +303,5 @@ async def cancel_task(request: CancelTaskRequest):
 
 @router.get("/userid")
 async def get_userid(user: Annotated[dict, Depends(get_supabase_user_from_token)]):
-    """gets the firebase connected user"""
+    """gets the supabase connected user"""
     return {"id": user["uid"], "email": user["email"]}
