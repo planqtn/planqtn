@@ -13,7 +13,7 @@ import {
   Grid,
   useToast,
 } from "@chakra-ui/react";
-import { LegoPiece, TensorNetworkLeg } from "../lib/types.ts";
+import { LegoPiece } from "../lib/types.ts";
 import { useState, useEffect, useRef } from "react";
 import { FaUndo, FaRedo, FaSync } from "react-icons/fa";
 import { StabilizerGraphView } from "./StabilizerGraphView";
@@ -26,6 +26,7 @@ import {
   Z_COLOR_DARK,
   Y_COLOR,
 } from "../lib/PauliColors.ts";
+import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];

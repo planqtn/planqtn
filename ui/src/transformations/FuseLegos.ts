@@ -3,8 +3,8 @@ import {
   DroppedLego,
   LegoServerPayload,
   Operation,
-  TensorNetworkLeg,
 } from "../lib/types";
+import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 import axios from "axios";
 import { getLegoStyle } from "../LegoStyles";
 export class FuseLegos {

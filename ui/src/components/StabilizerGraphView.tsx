@@ -1,6 +1,6 @@
 import { Box, Button } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
-import { TensorNetworkLeg } from "../lib/types";
+import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 import * as d3 from "d3-force";
 import { SVG_COLORS } from "../lib/PauliColors";
 

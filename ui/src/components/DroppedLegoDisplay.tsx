@@ -1,11 +1,6 @@
 import { Box } from "@chakra-ui/react";
-import {
-  DroppedLego,
-  TensorNetwork,
-  LegDragState,
-  DragState,
-  Connection,
-} from "../lib/types";
+import { DroppedLego, LegDragState, DragState, Connection } from "../lib/types";
+import { TensorNetwork } from "../lib/TensorNetwork";
 
 // Add shared function for leg position calculations
 export interface LegPosition {
