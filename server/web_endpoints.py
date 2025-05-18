@@ -1,23 +1,11 @@
-import time
 import traceback
-from celery import Celery
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from galois import GF2
 from pydantic import BaseModel
-from typing import List, Dict, Any, Tuple
-import sys
-import os
+from typing import List, Dict, Any
 import numpy as np
-from sympy import symbols
-import argparse
-from celery.result import AsyncResult
-from datetime import datetime
-import asyncio
-from contextlib import asynccontextmanager
-import requests
 
-from qlego.progress_reporter import DummyProgressReporter, TqdmProgressReporter
 from server.api_types import *
 from server.task_store import TaskStore
 from server.tasks import REDIS_URL, weight_enumerator_task, celery_app
@@ -37,75 +25,9 @@ def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:
     return np.array_equal(h1_gauss, h2_gauss)
 
 
-def recognize_parity_check_matrix(h: GF2) -> str | None:
-    """Recognize if a parity check matrix is equivalent to a known type."""
-    # Get all available legos
-    legos = Legos.list_available_legos()
-
-    # First check static legos
-    for lego in legos:
-        if not lego.get("is_dynamic"):
-            lego_matrix = GF2(lego["parity_check_matrix"])
-            if is_gauss_equivalent(h, lego_matrix):
-                return lego["id"]
-
-    # Then check for repetition codes
-    num_qubits = h.shape[1] // 2
-    if num_qubits > 0:
-        # Z repetition code
-        z_rep = Legos.z_rep_code(num_qubits)
-        if is_gauss_equivalent(h, z_rep):
-            return "z_rep_code"
-
-        # X repetition code
-        x_rep = Legos.x_rep_code(num_qubits)
-        if is_gauss_equivalent(h, x_rep):
-            return "x_rep_code"
-
-    return None
-
-
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(message="Server is running", status="healthy")
-
-
-@router.post("/paritycheck", response_model=ParityCheckResponse)
-async def calculate_parity_check_matrix(network: TensorNetworkRequest):
-    # Create TensorStabilizerCodeEnumerator instances for each lego
-    # print("network", repr(network))
-    nodes = {}
-    for instance_id, lego in network.legos.items():
-        # Convert the parity check matrix to numpy array
-        h = GF2(lego.parity_check_matrix)
-        nodes[instance_id] = StabilizerCodeTensorEnumerator(h=h, idx=instance_id)
-
-    # Create TensorNetwork instance
-    tn = TensorNetwork(nodes)
-
-    # Add traces for each connection
-    for conn in network.connections:
-        print(conn)
-        tn.self_trace(
-            conn["from"]["legoId"],
-            conn["to"]["legoId"],
-            [conn["from"]["legIndex"]],
-            [conn["to"]["legIndex"]],
-        )
-
-    # Conjoin all nodes to get the final parity check matrix
-    result = tn.conjoin_nodes(progress_reporter=TqdmProgressReporter(), verbose=False)
-
-    # Convert the resulting parity check matrix to a list for JSON serialization
-    matrix = result.h.tolist()
-    legs = [TensorNetworkLeg(instanceId=leg[0], legIndex=leg[1]) for leg in result.legs]
-
-    # Check if the matrix matches any known type
-    recognized_type = recognize_parity_check_matrix(result.h)
-
-    return ParityCheckResponse(
-        matrix=matrix, legs=legs, recognized_type=recognized_type
-    )
 
 
 @router.post("/tannernetwork", response_model=TensorNetworkResponse)

@@ -8,7 +8,7 @@ export class StabilizerCodeTensor {
   public constructor(
     public readonly h: GF2,
     public readonly idx: string,
-    private legs: TensorNetworkLeg[] = [],
+    public legs: TensorNetworkLeg[] = [],
   ) {
     // Initialize leg to column mapping
     this.legToCol = new Map(
