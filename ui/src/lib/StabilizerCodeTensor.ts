@@ -3,18 +3,11 @@ import { conjoin, self_trace, tensor_product } from "./parity_check";
 import { TensorNetworkLeg } from "./TensorNetwork";
 
 export class StabilizerCodeTensor {
-  public legToCol: Map<string, number>;
-
   public constructor(
     public readonly h: GF2,
     public readonly idx: string,
-    public legs: TensorNetworkLeg[] = [],
+    public readonly legs: TensorNetworkLeg[] = [],
   ) {
-    // Initialize leg to column mapping
-    this.legToCol = new Map(
-      legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i]),
-    );
-
     if (this.legs.length !== this.h.shape[1] / 2) {
       throw new Error(
         `Number of legs doesn't match number of legs in parity check matrix: ${this.legs.length} !== ${this.h.shape[1] / 2}`,
@@ -26,23 +19,23 @@ export class StabilizerCodeTensor {
     return this.h.shape[1] / 2;
   }
 
-  private removeLegs(legs: TensorNetworkLeg[]): void {
+  private removeLeg(
+    legToCol: Map<string, number>,
+    leg: TensorNetworkLeg,
+  ): void {
+    legToCol.delete(`${leg.instanceId}:${leg.legIndex}`);
+    legToCol.forEach((value, key) => {
+      if (value > leg.legIndex) {
+        legToCol.set(key, value - 1);
+      }
+    });
+  }
+  private removeLegs(
+    legToCol: Map<string, number>,
+    legs: TensorNetworkLeg[],
+  ): void {
     // Remove legs from the mapping
-    legs.forEach((leg) =>
-      this.legToCol.delete(`${leg.instanceId}:${leg.legIndex}`),
-    );
-
-    // Reindex remaining legs
-    const remainingLegs = Array.from(this.legToCol.keys()).sort();
-    this.legToCol = new Map(remainingLegs.map((key, i) => [key, i]));
-
-    // Remove legs from the legs array
-    this.legs = this.legs.filter(
-      (leg) =>
-        !legs.some(
-          (l) => l.instanceId === leg.instanceId && l.legIndex === leg.legIndex,
-        ),
-    );
+    legs.forEach((leg) => this.removeLeg(legToCol, leg));
   }
 
   public conjoin(
@@ -59,32 +52,36 @@ export class StabilizerCodeTensor {
     }
 
     // Create a new leg to column mapping that includes both tensors
-    const newLegToCol = new Map(this.legToCol);
+    const conjoinedLegToCol = new Map(
+      this.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i]),
+    );
     other.legs.forEach((leg, i) => {
-      newLegToCol.set(`${leg.instanceId}:${leg.legIndex}`, this.n + i);
+      conjoinedLegToCol.set(`${leg.instanceId}:${leg.legIndex}`, this.n + i);
     });
+
+    const otherLegToCol = new Map(
+      other.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i]),
+    );
 
     // Perform initial conjoin
     let newH = conjoin(
       this.h,
       other.h,
-      this.legToCol.get(`${legs1[0].instanceId}:${legs1[0].legIndex}`)!,
-      other.legToCol.get(`${legs2[0].instanceId}:${legs2[0].legIndex}`)!,
+      conjoinedLegToCol.get(`${legs1[0].instanceId}:${legs1[0].legIndex}`)!,
+      otherLegToCol.get(`${legs2[0].instanceId}:${legs2[0].legIndex}`)!,
     );
 
     // Remove the first pair of legs
-    this.removeLegs([legs1[0]]);
-    other.removeLegs([legs2[0]]);
+    this.removeLegs(conjoinedLegToCol, [legs1[0], legs2[0]]);
 
     // Process remaining leg pairs
     for (let i = 1; i < legs1.length; i++) {
       newH = self_trace(
         newH,
-        newLegToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
-        newLegToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!,
+        conjoinedLegToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
+        conjoinedLegToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!,
       );
-      this.removeLegs([legs1[i]]);
-      other.removeLegs([legs2[i]]);
+      this.removeLegs(conjoinedLegToCol, [legs1[i], legs2[i]]);
     }
 
     // Combine remaining legs
@@ -116,24 +113,31 @@ export class StabilizerCodeTensor {
       throw new Error("Number of legs must match for self trace operation");
     }
 
+    const legToCol = new Map(
+      this.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i]),
+    );
+
     let newH = this.h;
     for (let i = 0; i < legs1.length; i++) {
-      console.log(
-        `self tracing ${legs1[i].legIndex} ${legs2[i].legIndex}`,
-        this.legToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
-        this.legToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!,
-      );
       newH = self_trace(
         newH,
-        this.legToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
-        this.legToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!,
+        legToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
+        legToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!,
       );
     }
+    this.removeLegs(legToCol, [...legs1, ...legs2]);
 
-    // Remove traced legs
-    this.removeLegs([...legs1, ...legs2]);
-
-    return new StabilizerCodeTensor(newH, this.idx, this.legs);
+    return new StabilizerCodeTensor(
+      newH,
+      this.idx,
+      this.legs.filter(
+        (leg) =>
+          ![...legs1, ...legs2].some(
+            (l) =>
+              l.instanceId === leg.instanceId && l.legIndex === leg.legIndex,
+          ),
+      ),
+    );
   }
 
   public tensorWith(other: StabilizerCodeTensor): StabilizerCodeTensor {

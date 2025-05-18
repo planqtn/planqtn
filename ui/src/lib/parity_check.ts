@@ -119,7 +119,6 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
   const legs = [x1, x2, z1, z2];
 
   // First perform Gaussian elimination on the specified columns
-  console.log("r,n: ", r, n, "legs", legs);
   const mx = GF2.gauss(h, { col_subset: legs });
 
   // Keep track of rows to keep

@@ -88,9 +88,9 @@ describe("TensorNetwork", () => {
   });
 
   it("should calculate 6 lego TN parity check matrix", () => {
-    console.log(
-      "=================6 lego TN parity check matrix=====================",
-    );
+    // console.log(
+    //   "=================6 lego TN parity check matrix=====================",
+    // );
     const tn = TensorNetwork.fromObj({
       legos: [
         {
@@ -271,8 +271,8 @@ describe("TensorNetwork", () => {
       [1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ]));
 
-    console.log(sstr(GF2.gauss(conjoined.h)));
-    console.log(sstr(expectedMatrix));
+    // console.log(sstr(GF2.gauss(conjoined.h)));
+    // console.log(sstr(expectedMatrix));
     expect(GF2.gauss(conjoined.h)).toEqual(expectedMatrix);
   });
 });

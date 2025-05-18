@@ -177,17 +177,6 @@ export class TensorNetwork {
 
     // Process each connection
     for (const conn of this.connections) {
-      console.log(
-        "=================conn",
-        conn.from.legoId,
-        "-",
-        conn.from.legIndex,
-        "->",
-        conn.to.legoId,
-        "-",
-        conn.to.legIndex,
-        "=====================",
-      );
       const comp1Idx = legoToComponent.get(conn.from.legoId);
       const comp2Idx = legoToComponent.get(conn.to.legoId);
 
@@ -200,12 +189,6 @@ export class TensorNetwork {
       // Case 1: Both legos are in the same component
       if (comp1Idx === comp2Idx) {
         const comp = components[comp1Idx];
-        console.log("self tracing", conn.from.legIndex, conn.to.legIndex);
-        console.log(
-          `legs: ${Array.from(comp.tensor.legToCol.entries()).map(
-            ([key, value]) => `${key}->${value}`,
-          )}`,
-        );
         comp.tensor = comp.tensor.selfTrace(
           [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
           [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }],
@@ -213,9 +196,6 @@ export class TensorNetwork {
       }
       // Case 2: Legos are in different components - merge them
       else {
-        console.log("merging", comp1Idx, comp2Idx);
-        console.log(`legs1: ${components[comp1Idx].tensor.legToCol}`);
-        console.log(`legs2: ${components[comp2Idx].tensor.legToCol}`);
         const comp1 = components[comp1Idx];
         const comp2 = components[comp2Idx];
 
