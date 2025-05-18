@@ -9,7 +9,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  useClipboard,
   MenuItemOption,
   useToast,
   Editable,
@@ -29,29 +28,31 @@ import {
   LegoPiece,
   LegDragState,
   DragState,
-  TensorNetwork,
   GroupDragState,
   SelectionBoxState,
   PauliOperator,
   CanvasDragState,
-} from "./types";
+} from "./lib/types";
+import { TensorNetwork } from "./lib/TensorNetwork";
+
 import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
-import { CanvasStateSerializer } from "./utils/CanvasStateSerializer";
+import { CanvasStateSerializer } from "./lib/CanvasStateSerializer";
 import {
   DroppedLegoDisplay,
   calculateLegPosition,
 } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
 import { TannerDialog } from "./components/TannerDialog";
-import { OperationHistory } from "./utils/OperationHistory";
+import { OperationHistory } from "./lib/OperationHistory";
 import { FuseLegos } from "./transformations/FuseLegos";
 import { InjectTwoLegged } from "./transformations/InjectTwoLegged";
 import { AddStopper } from "./transformations/AddStopper";
-import { findConnectedComponent } from "./utils/TensorNetwork";
-import { randomPlankterName } from "./utils/RandomPlankterNames";
+import { findConnectedComponent } from "./lib/TensorNetwork";
+import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
-import { simpleAutoFlow } from "./components/AutoPauliFlow";
+import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
+import { Legos } from "./lib/Legos";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -201,7 +202,6 @@ const LegoStudioView: React.FC = () => {
   });
   const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
   const [weightEnumeratorCache] = useState<Map<string, string>>(new Map());
-  const { onCopy: onCopyCode } = useClipboard("");
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDynamicLego, setSelectedDynamicLego] =
@@ -293,6 +293,7 @@ const LegoStudioView: React.FC = () => {
       return await stateSerializerRef.current.decode(encoded);
     } catch (error) {
       console.error("Failed to decode canvas state:", error);
+      if (error instanceof Error) console.log(error.stack);
       // Create a new error with a user-friendly message
       throw error;
     }
@@ -328,19 +329,15 @@ const LegoStudioView: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const legosResponse = await axios.get("/api/legos");
-        setLegos(legosResponse.data);
+        setLegos(Legos.listAvailableLegos());
       } catch (error) {
-        setError("Failed to fetch legos");
+        setError("Failed to load legos");
         console.error("Error:", error);
       }
     };
 
-    // Only fetch legos if backend is healthy
-    if (isBackendHealthy) {
-      fetchData();
-    }
-  }, [isBackendHealthy]); // Depend on backend health status
+    fetchData();
+  }, []);
 
   // Add a new effect to handle initial URL state
   useEffect(() => {
@@ -654,29 +651,11 @@ const LegoStudioView: React.FC = () => {
     if (!selectedDynamicLego || !pendingDropPosition) return;
 
     try {
-      const response = await fetch(`/api/dynamiclego`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lego_id: selectedDynamicLego.id,
-          parameters,
-        }),
+      const dynamicLego = Legos.getDynamicLego({
+        lego_id: selectedDynamicLego.id,
+        parameters,
       });
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: "Unknown error occurred" }));
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            `Error: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const dynamicLego = await response.json();
       const instanceId = newInstanceId(droppedLegos);
       const numLegs = dynamicLego.parity_check_matrix[0].length / 2;
       const newLego = {
@@ -861,10 +840,7 @@ const LegoStudioView: React.FC = () => {
             if (newLegos.length === 0) {
               setTensorNetwork(null);
             } else {
-              const newNetwork = {
-                legos: newLegos,
-                connections: newConnections,
-              } as TensorNetwork;
+              const newNetwork = new TensorNetwork(newLegos, newConnections);
               newNetwork.signature = createNetworkSignature(newNetwork);
               setTensorNetwork(newNetwork);
             }
@@ -876,31 +852,22 @@ const LegoStudioView: React.FC = () => {
                 newLegos.some((l) => l.instanceId === conn.from.legoId) &&
                 newLegos.some((l) => l.instanceId === conn.to.legoId),
             );
-            const newNetwork = {
-              legos: newLegos,
-              connections: newConnections,
-            } as TensorNetwork;
+            const newNetwork = new TensorNetwork(newLegos, newConnections);
             newNetwork.signature = createNetworkSignature(newNetwork);
             setTensorNetwork(newNetwork);
           }
         } else if (selectedLego) {
-          const newNetwork = {
-            legos: [lego, selectedLego],
-            connections: connections.filter(
-              (conn) =>
-                conn.containsLego(lego.instanceId) &&
-                conn.containsLego(selectedLego.instanceId),
-            ),
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork(
+            [lego, selectedLego],
+            connections,
+          );
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
           setSelectedLego(null);
         } else {
           // If no tensor network exists, create one with just this lego
-          const newNetwork = {
-            legos: [lego],
-            connections: [],
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork([lego], []);
+
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
@@ -917,7 +884,7 @@ const LegoStudioView: React.FC = () => {
             lego,
             droppedLegos,
             connections,
-          ) as TensorNetwork;
+          );
           network.signature = createNetworkSignature(network);
           setTensorNetwork(network);
           setSelectedLego(null);
@@ -1027,17 +994,11 @@ const LegoStudioView: React.FC = () => {
               newLegos.some((l) => l.instanceId === conn.from.legoId) &&
               newLegos.some((l) => l.instanceId === conn.to.legoId),
           );
-          const newNetwork = {
-            legos: newLegos,
-            connections: newConnections,
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork(newLegos, newConnections);
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         } else {
-          const newNetwork = {
-            legos: selectedLegos,
-            connections: [],
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork(selectedLegos, []);
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
@@ -1056,10 +1017,7 @@ const LegoStudioView: React.FC = () => {
               newLegos.some((l) => l.instanceId === conn.from.legoId) &&
               newLegos.some((l) => l.instanceId === conn.to.legoId),
           );
-          const newNetwork = {
-            legos: newLegos,
-            connections: newConnections,
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork(newLegos, newConnections);
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         } else {
@@ -1071,10 +1029,10 @@ const LegoStudioView: React.FC = () => {
               selectedLegoIds.has(conn.from.legoId) &&
               selectedLegoIds.has(conn.to.legoId),
           );
-          const newNetwork = {
-            legos: selectedLegos,
-            connections: internalConnections,
-          } as TensorNetwork;
+          const newNetwork = new TensorNetwork(
+            selectedLegos,
+            internalConnections,
+          );
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
@@ -1089,10 +1047,10 @@ const LegoStudioView: React.FC = () => {
             selectedLegoIds.has(conn.from.legoId) &&
             selectedLegoIds.has(conn.to.legoId),
         );
-        const newNetwork = {
-          legos: selectedLegos,
-          connections: internalConnections,
-        } as TensorNetwork;
+        const newNetwork = new TensorNetwork(
+          selectedLegos,
+          internalConnections,
+        );
         newNetwork.signature = createNetworkSignature(newNetwork);
         setSelectedLego(null);
         setTensorNetwork(newNetwork);
@@ -1871,10 +1829,10 @@ const LegoStudioView: React.FC = () => {
               selectedLegoIds.has(conn.to.legoId),
           );
 
-          const tensorNetwork = {
-            legos: droppedLegos,
-            connections: internalConnections,
-          } as TensorNetwork;
+          const tensorNetwork = new TensorNetwork(
+            droppedLegos,
+            internalConnections,
+          );
 
           tensorNetwork.signature = createNetworkSignature(tensorNetwork);
 
@@ -2072,13 +2030,6 @@ const LegoStudioView: React.FC = () => {
     // Update URL state
     encodeCanvasState([], [], hideConnectedLegs);
   };
-
-  // Update the useClipboard hook when code changes
-  useEffect(() => {
-    if (tensorNetwork?.constructionCode) {
-      onCopyCode(tensorNetwork.constructionCode);
-    }
-  }, [tensorNetwork?.constructionCode]);
 
   // Modify the existing useEffect to clear both caches
   useEffect(() => {
@@ -2531,24 +2482,12 @@ const LegoStudioView: React.FC = () => {
 
     try {
       // Get the new repetition code with one more leg
-      const response = await fetch(`/api/dynamiclego`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const newLegoData = Legos.getDynamicLego({
+        lego_id: lego.id,
+        parameters: {
+          d: numLegs + 1,
         },
-        body: JSON.stringify({
-          lego_id: lego.id,
-          parameters: {
-            d: numLegs + 1,
-          },
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to get dynamic lego");
-      }
-
-      const newLegoData = await response.json();
 
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = {

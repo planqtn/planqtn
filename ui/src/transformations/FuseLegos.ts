@@ -1,12 +1,8 @@
-import {
-  Connection,
-  DroppedLego,
-  LegoServerPayload,
-  Operation,
-  TensorNetworkLeg,
-} from "../types";
-import axios from "axios";
+import { Connection, DroppedLego, Operation } from "../lib/types";
+import { TensorNetwork } from "../lib/TensorNetwork";
+import { recognize_parity_check_matrix } from "../lib/Legos";
 import { getLegoStyle } from "../LegoStyles";
+
 export class FuseLegos {
   static operationCode: string = "fuse";
 
@@ -64,42 +60,33 @@ export class FuseLegos {
         }
       });
 
-      // Prepare the request payload
-      const payload = {
-        legos: legosToFuse.reduce(
-          (acc, lego) => {
-            acc[lego.instanceId] = {
-              ...lego,
-              name: lego.shortName || "Generic Lego",
-            } as LegoServerPayload;
-            return acc;
-          },
-          {} as Record<string, LegoServerPayload>,
-        ),
-        connections: internalConnections,
-      };
+      // Create a TensorNetwork and perform the fusion
+      const network = new TensorNetwork(legosToFuse, internalConnections);
+      const result = network.conjoin_nodes();
 
-      // Call the paritycheck endpoint
-      const response = await axios.post(`/api/paritycheck`, payload);
-      const { matrix, legs, recognized_type } = response.data;
+      if (!result) {
+        throw new Error("Cannot fuse these legos");
+      }
+
+      // Try to recognize the type of the fused lego
+      const recognized_type =
+        recognize_parity_check_matrix(result.h) || "fused_lego";
 
       // Create a new lego with the calculated parity check matrix
-      const type_id = recognized_type || "fused_lego";
       const newLego: DroppedLego = {
-        id: type_id,
-        // it's important to use the max instance id + 1 to avoid collisions in the history, with connections especially
+        id: recognized_type,
         instanceId: (
           Math.max(...this.droppedLegos.map((l) => parseInt(l.instanceId))) + 1
         ).toString(),
         shortName: "Fused",
         name: "Fused Lego",
         description: "Fused " + legosToFuse.length + " legos",
-        parity_check_matrix: matrix,
+        parity_check_matrix: result.h.getMatrix(),
         logical_legs: [],
         gauge_legs: [],
-        x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length, // Center position
+        x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length,
         y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
-        style: getLegoStyle(type_id, matrix[0].length / 2),
+        style: getLegoStyle(recognized_type, result.legs.length),
         selectedMatrixRows: [],
       };
 
@@ -110,8 +97,8 @@ export class FuseLegos {
         );
         if (isFromInGroup) {
           // Find the new leg index from the legs array
-          const newLegIndex = legs.findIndex(
-            (leg: TensorNetworkLeg) =>
+          const newLegIndex = result.legs.findIndex(
+            (leg) =>
               leg.instanceId === conn.from.legoId &&
               leg.legIndex === conn.from.legIndex,
           );
@@ -120,8 +107,8 @@ export class FuseLegos {
             conn.to,
           );
         } else {
-          const newLegIndex = legs.findIndex(
-            (leg: TensorNetworkLeg) =>
+          const newLegIndex = result.legs.findIndex(
+            (leg) =>
               leg.instanceId === conn.to.legoId &&
               leg.legIndex === conn.to.legIndex,
           );
@@ -159,16 +146,7 @@ export class FuseLegos {
       };
     } catch (error) {
       console.error("Error fusing legos:", error);
-      if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message ||
-          error.response?.data?.detail ||
-          error.message;
-
-        throw new Error(`Failed to fuse legos: ${message}`);
-      } else {
-        throw new Error("Failed to fuse legos");
-      }
+      throw new Error("Failed to fuse legos");
     }
   }
 }

@@ -620,6 +620,9 @@ class TensorNetwork:
 
         return self._cot_traces, self._cot_tree
 
+    # weight_enumerator_polynomial
+    # - pass in a list of bool for each node True: stabilizer False: normalizer
+
     def stabilizer_enumerator_polynomial(
         self,
         open_legs: List[Tuple[int, int]] = [],
@@ -682,6 +685,8 @@ class TensorNetwork:
             #     assert (
             #         calc == parity_check_enums[hkey]
             #     ), f"for key {hkey}\n calc\n{calc}\n vs retrieved\n{parity_check_enums[hkey]}"
+
+            # call the right type here...
             tensor = node.stabilizer_enumerator_polynomial(
                 open_legs=traced_legs,
                 verbose=verbose,

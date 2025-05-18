@@ -5,6 +5,9 @@ jobs:
   UI-checks:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -25,7 +28,13 @@ jobs:
         working-directory: ui
         run: |
           npx eslint src
+      - name: install python dependencies
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install -r requirements.txt
       - name: Run tests
         working-directory: ui
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           npm run test

@@ -1,5 +1,5 @@
 import { OperationHistory } from "./OperationHistory";
-import { Operation, Connection, DroppedLego } from "../types";
+import { Operation, Connection, DroppedLego } from "./types";
 import { GenericStyle, HadamardStyle } from "../LegoStyles";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 
@@ -332,8 +332,8 @@ describe("OperationHistory", () => {
         currentState.connections,
         currentState.droppedLegos,
       );
-      console.log("currentState", currentState);
-      console.log("initialState", initialState);
+      // console.log("currentState", currentState);
+      // console.log("initialState", initialState);
       expect(currentState).toEqual(initialState);
     });
   });

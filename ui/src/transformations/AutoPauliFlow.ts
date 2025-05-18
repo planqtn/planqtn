@@ -1,5 +1,6 @@
 import { cloneDeep } from "lodash";
-import { DroppedLego, Connection, TensorNetwork } from "../types";
+import { DroppedLego, Connection } from "../lib/types";
+import { TensorNetwork } from "../lib/TensorNetwork.ts";
 
 /**
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.
@@ -46,7 +47,7 @@ export function simpleAutoFlow(
       }
       for (const neighborConn of neighborConns) {
         const neighborLego = tnLegos.find(
-          (l) =>
+          (l: DroppedLego) =>
             (l.instanceId === neighborConn.from.legoId ||
               l.instanceId === neighborConn.to.legoId) &&
             l.instanceId != lego.instanceId,
@@ -144,12 +145,12 @@ export function simpleAutoFlow(
 
   setTensorNetwork((prev) => {
     if (!prev) return null;
-    const updatedLegos = prev.legos.map((l) =>
+    const updatedLegos = prev.legos.map((l: DroppedLego) =>
       updatedLegosMap.has(l.instanceId)
         ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
         : l,
     );
-    return { ...prev, legos: updatedLegos };
+    return TensorNetwork.fromObj({ ...prev, legos: updatedLegos });
   });
 }
 

@@ -1,6 +1,7 @@
-import { DroppedLego, Connection, Operation } from "../types";
-import { Z_REP_CODE, X_REP_CODE, getLegoStyle } from "../LegoStyles";
+import { DroppedLego, Connection, Operation } from "../lib/types";
+import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
 import _ from "lodash";
+import { Legos } from "../lib/Legos";
 
 export function canDoBialgebra(
   selectedLegos: DroppedLego[],
@@ -22,37 +23,6 @@ export function canDoBialgebra(
   );
   // There should be exactly one connection between them
   return connectionsBetween.length === 1;
-}
-
-async function getDynamicLego(
-  legoId: string,
-  numLegs: number,
-): Promise<DroppedLego> {
-  const response = await fetch("/api/dynamiclego", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lego_id: legoId,
-      parameters: {
-        d: numLegs,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    instanceId: String("not set"),
-    style: getLegoStyle(data.id, numLegs),
-    x: 0,
-    y: 0,
-  };
 }
 
 export async function applyBialgebra(
@@ -111,25 +81,25 @@ export async function applyBialgebra(
 
   // Create first group of legos
   for (let i = 0; i < n_group_1; i++) {
-    const baseLego = await getDynamicLego(firstGroupType, legsPerLego1);
-    const newLego = {
-      ...baseLego,
-      instanceId: String(maxInstanceId + 1 + i),
-      x: lego1.x + i * 100, // Position them horizontally
-      y: lego1.y,
-    };
+    const newLego = Legos.createDynamicLego(
+      firstGroupType,
+      legsPerLego1,
+      String(maxInstanceId + 1 + i),
+      lego1.x + i * 100,
+      lego1.y,
+    );
     newLegos.push(newLego);
   }
 
   // Create second group of legos
   for (let i = 0; i < n_group_2; i++) {
-    const baseLego = await getDynamicLego(secondGroupType, legsPerLego2);
-    const newLego = {
-      ...baseLego,
-      instanceId: String(maxInstanceId + 1 + n_group_1 + i),
-      x: lego2.x + i * 100, // Position them horizontally
-      y: lego2.y + 100, // Position them below the first group
-    };
+    const newLego = Legos.createDynamicLego(
+      secondGroupType,
+      legsPerLego2,
+      String(maxInstanceId + 1 + n_group_1 + i),
+      lego2.x + i * 100,
+      lego2.y + 100,
+    );
     newLegos.push(newLego);
   }
 

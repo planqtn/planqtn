@@ -1,6 +1,6 @@
-import { DroppedLego, LegoPiece, Connection, CanvasState } from "../types";
+import { DroppedLego, LegoPiece, Connection, CanvasState } from "./types";
 import { GenericStyle, getLegoStyle } from "../LegoStyles";
-import axios from "axios";
+import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {
   constructor(private legos: LegoPiece[]) {}
@@ -46,8 +46,7 @@ export class CanvasStateSerializer {
       // Fetch legos if not already loaded
       let legosList = this.legos;
       if (this.legos.length === 0) {
-        const response = await axios.get("/api/legos");
-        legosList = response.data;
+        legosList = Legos.listAvailableLegos();
       }
 
       // Reconstruct dropped legos with full lego information
