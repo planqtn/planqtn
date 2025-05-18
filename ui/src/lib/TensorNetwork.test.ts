@@ -2,7 +2,6 @@ import { TensorNetwork } from "./TensorNetwork";
 import { DroppedLego, Connection } from "./types";
 import { getLegoStyle } from "../LegoStyles";
 import { GF2 } from "./GF2";
-import { sstr } from "./parity_check";
 
 describe("TensorNetwork", () => {
   it("should correctly conjoin nodes after double tracing 602 with identity stoppers", () => {

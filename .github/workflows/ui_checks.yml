@@ -27,5 +27,7 @@ jobs:
           npx eslint src
       - name: Run tests
         working-directory: ui
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           npm run test
