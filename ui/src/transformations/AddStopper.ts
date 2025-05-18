@@ -1,4 +1,4 @@
-import { Connection, DroppedLego, Operation } from "../types";
+import { Connection, DroppedLego, Operation } from "../lib/types";
 
 export class AddStopper {
   static operationCode = "addStopper";

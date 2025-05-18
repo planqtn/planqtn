@@ -1,5 +1,6 @@
-import { DroppedLego, Connection, Operation } from "../types";
-import { Z_REP_CODE, X_REP_CODE, getLegoStyle } from "../LegoStyles";
+import { DroppedLego, Connection, Operation } from "../lib/types";
+import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
+import { Legos } from "../lib/Legos";
 
 export function canDoHopfRule(
   selectedLegos: DroppedLego[],
@@ -24,37 +25,6 @@ export function canDoHopfRule(
 
   // Must have more than one connection between them
   return connectionsBetween.length > 1;
-}
-
-async function getDynamicLego(
-  legoId: string,
-  numLegs: number,
-): Promise<DroppedLego> {
-  const response = await fetch("/api/dynamiclego", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lego_id: legoId,
-      parameters: {
-        d: numLegs,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    instanceId: String("not set"),
-    style: getLegoStyle(data.id, numLegs),
-    x: 0,
-    y: 0,
-  };
 }
 
 export async function applyHopfRule(
@@ -104,16 +74,20 @@ export async function applyHopfRule(
   );
 
   // Create new legos with reduced legs
-  const newXLego = await getDynamicLego(X_REP_CODE, newXLegs);
-  const newZLego = await getDynamicLego(Z_REP_CODE, newZLegs);
-
-  // Set positions and IDs
-  newXLego.instanceId = String(maxInstanceId + 1);
-  newZLego.instanceId = String(maxInstanceId + 2);
-  newXLego.x = xLego.x;
-  newXLego.y = xLego.y;
-  newZLego.x = zLego.x;
-  newZLego.y = zLego.y;
+  const newXLego = Legos.createDynamicLego(
+    X_REP_CODE,
+    newXLegs,
+    String(maxInstanceId + 1),
+    xLego.x,
+    xLego.y,
+  );
+  const newZLego = Legos.createDynamicLego(
+    Z_REP_CODE,
+    newZLegs,
+    String(maxInstanceId + 2),
+    zLego.x,
+    zLego.y,
+  );
 
   const newLegos = [newXLego, newZLego];
   const newConnections: Connection[] = [];

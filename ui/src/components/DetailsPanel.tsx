@@ -19,20 +19,20 @@ import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   DroppedLego,
-  TensorNetwork,
-  TensorNetworkLeg,
   LegoServerPayload,
   Connection,
   Operation,
-} from "../types.ts";
+} from "../lib/types.ts";
+import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
+
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { useState, useEffect, useRef } from "react";
 import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
 import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
 import * as _ from "lodash";
-import { OperationHistory } from "../utils/OperationHistory";
+import { OperationHistory } from "../lib/OperationHistory.ts";
 import { canDoBialgebra, applyBialgebra } from "../transformations/Bialgebra";
 import {
   canDoInverseBialgebra,
@@ -43,7 +43,7 @@ import {
   canDoConnectGraphNodes,
   applyConnectGraphNodes,
 } from "../transformations/ConnectGraphNodesWithCenterLego.ts";
-import { findConnectedComponent } from "../utils/TensorNetwork";
+import { findConnectedComponent } from "../lib/TensorNetwork";
 import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards,
@@ -52,7 +52,10 @@ import ProgressBars from "./ProgressBars";
 import { io, Socket } from "socket.io-client";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
-import { simpleAutoFlow } from "./AutoPauliFlow.ts";
+import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
+import { Legos } from "../lib/Legos.ts";
+import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
+import { GF2 } from "../lib/GF2.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -112,9 +115,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(
     tensorNetwork?.constructionCode || "",
   );
-  const [parityCheckMatrixCache] = useState<
-    Map<string, AxiosResponse<{ matrix: number[][]; legs: TensorNetworkLeg[] }>>
-  >(new Map());
+  const [parityCheckMatrixCache] = useState<Map<string, StabilizerCodeTensor>>(
+    new Map(),
+  );
   const [weightEnumeratorCache] = useState<
     Map<
       string,
@@ -177,7 +180,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     socketAllTasksRef.current = socket;
     socket.emit("join_room", { room_id: "tasks" });
     socket.on("celery_event", (event) => {
-      // Handle celery events (task-sent, task-received, task-started, task-succeeded, etc.)
       if (event.type === "task-succeeded" && event.result) {
         let result = event.result;
         if (typeof result === "string") {
@@ -198,16 +200,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             weightEnumeratorCache.set(signature, updatedCacheEntry);
             const currentTensorNetwork = currentTensorNetworkRef.current;
             if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev) =>
+              setTensorNetwork((prev: TensorNetwork | null) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       weightEnumerator: result.polynomial,
                       normalizerPolynomial: result.normalizer_polynomial,
                       isCalculatingWeightEnumerator: false,
                       taskId: event.uuid,
                       truncateLength: result.truncate_length,
-                    }
+                    })
                   : null,
               );
               setIterationStatus([]);
@@ -230,13 +232,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             if (currentTensorNetwork?.signature === signature) {
               setTensorNetwork((prev) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       isCalculatingWeightEnumerator: false,
                       weightEnumerator: "",
                       normalizerPolynomial: "",
                       taskId: undefined,
-                    }
+                    })
                   : null,
               );
             }
@@ -249,12 +251,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             setError(`Task ${event.uuid} was cancelled.`);
             const currentTensorNetwork = currentTensorNetworkRef.current;
             if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev) =>
+              setTensorNetwork((prev: TensorNetwork | null) =>
                 prev
-                  ? {
+                  ? TensorNetwork.fromObj({
                       ...prev,
                       isCalculatingWeightEnumerator: false,
-                    }
+                    })
                   : null,
               );
             }
@@ -263,7 +265,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           }
         }
       }
-      // You can add more event types as needed
     });
     return () => {
       socket.disconnect();
@@ -294,37 +295,40 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
     try {
-      const response = await axios.post(`/api/paritycheck`, {
-        legos: tensorNetwork.legos.reduce(
-          (acc, lego) => {
-            acc[lego.instanceId] = {
-              instanceId: lego.instanceId,
-              shortName: lego.shortName || "Generic Lego",
-              name: lego.shortName || "Generic Lego",
-              id: lego.id,
-              parity_check_matrix: lego.parity_check_matrix,
-              logical_legs: lego.logical_legs,
-              gauge_legs: lego.gauge_legs,
-            } as LegoServerPayload;
-            return acc;
-          },
-          {} as Record<string, LegoServerPayload>,
-        ),
-        connections: tensorNetwork.connections,
-      });
+      // Create a TensorNetwork and perform the fusion
+      const network = new TensorNetwork(
+        tensorNetwork.legos,
+        tensorNetwork.connections,
+      );
+      const result = network.conjoin_nodes();
 
-      const legOrdering = response.data.legs.map((leg: TensorNetworkLeg) => ({
+      if (!result) {
+        throw new Error("Cannot compute tensor network");
+      }
+
+      const legOrdering = result.legs.map((leg) => ({
         instanceId: leg.instanceId,
         legIndex: leg.legIndex,
       }));
 
-      setTensorNetwork({
-        ...tensorNetwork,
-        parityCheckMatrix: response.data.matrix,
-        legOrdering: legOrdering,
-      });
+      // Update the tensor network with the new matrix and leg ordering
+      setTensorNetwork(
+        new TensorNetwork(
+          tensorNetwork.legos,
+          tensorNetwork.connections,
+          result.h.getMatrix(),
+          tensorNetwork.weightEnumerator,
+          tensorNetwork.normalizerPolynomial,
+          tensorNetwork.truncateLength,
+          tensorNetwork.isCalculatingWeightEnumerator,
+          tensorNetwork.taskId,
+          tensorNetwork.constructionCode,
+          legOrdering,
+          tensorNetwork.signature,
+        ),
+      );
 
-      parityCheckMatrixCache.set(tensorNetwork.signature!, response);
+      parityCheckMatrixCache.set(tensorNetwork.signature!, result);
     } catch (error) {
       console.error("Error calculating parity check matrix:", error);
       setError("Failed to calculate parity check matrix");
@@ -388,13 +392,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const signature = tensorNetwork.signature!;
     const cachedEnumerator = weightEnumeratorCache.get(signature);
     if (cachedEnumerator) {
-      setTensorNetwork({
-        ...tensorNetwork,
-        taskId: cachedEnumerator.taskId,
-        weightEnumerator: cachedEnumerator.polynomial,
-        normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-        isCalculatingWeightEnumerator: cachedEnumerator.polynomial === "",
-      });
+      setTensorNetwork(
+        TensorNetwork.fromObj({
+          ...tensorNetwork,
+          taskId: cachedEnumerator.taskId,
+          weightEnumerator: cachedEnumerator.polynomial,
+          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
+          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === "",
+        }),
+      );
 
       joinTaskRoom(cachedEnumerator.taskId);
       return;
@@ -403,12 +409,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     try {
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               isCalculatingWeightEnumerator: true,
               weightEnumerator: undefined,
               taskId: undefined,
-            }
+            })
           : null,
       );
 
@@ -451,10 +457,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               taskId: taskId,
-            }
+            })
           : null,
       );
       joinTaskRoom(taskId);
@@ -487,36 +493,27 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setError("Failed to calculate weight enumerator");
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               isCalculatingWeightEnumerator: false,
-            }
+            })
           : null,
       );
     }
   };
 
-  const generateConstructionCode = async () => {
+  const handleGenerateConstructionCode = () => {
     if (!tensorNetwork) return;
 
     try {
-      const response = await axios.post("/api/constructioncode", {
-        legos: tensorNetwork.legos.reduce(
-          (acc, lego) => {
-            acc[lego.instanceId] = lego;
-            return acc;
-          },
-          {} as Record<string, DroppedLego>,
-        ),
-        connections: tensorNetwork.connections,
-      });
-
-      setTensorNetwork((prev) =>
+      console.log("tensorNetwork", tensorNetwork);
+      const code = tensorNetwork.generateConstructionCode();
+      setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
-              constructionCode: response.data.code,
-            }
+              constructionCode: code,
+            })
           : null,
       );
     } catch (error) {
@@ -558,12 +555,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const handleLegOrderingChange = (newLegOrdering: TensorNetworkLeg[]) => {
     if (tensorNetwork) {
       // Update the tensor network state
-      setTensorNetwork((prev) =>
+      setTensorNetwork((prev: TensorNetwork | null) =>
         prev
-          ? {
+          ? TensorNetwork.fromObj({
               ...prev,
               legOrdering: newLegOrdering,
-            }
+            })
           : null,
       );
 
@@ -571,13 +568,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const signature = tensorNetwork.signature!;
       const cachedResponse = parityCheckMatrixCache.get(signature);
       if (cachedResponse) {
-        parityCheckMatrixCache.set(signature, {
-          ...cachedResponse,
-          data: {
-            ...cachedResponse.data,
-            legs: newLegOrdering,
-          },
-        });
+        parityCheckMatrixCache.set(
+          signature,
+          new StabilizerCodeTensor(
+            cachedResponse.h,
+            cachedResponse.idx,
+            newLegOrdering,
+          ),
+        );
       }
     }
   };
@@ -795,33 +793,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       });
 
       // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
-      const [response1, response2] = await Promise.all([
-        fetch(`/api/dynamiclego`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lego_id: lego.id,
-            parameters: { d: lego1Legs + 1 },
-          }),
+      const [lego1Data, lego2Data] = [
+        Legos.getDynamicLego({
+          lego_id: lego.id,
+          parameters: { d: lego1Legs + 1 },
         }),
-        fetch(`/api/dynamiclego`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lego_id: lego.id,
-            parameters: { d: lego2Legs + 1 },
-          }),
+        Legos.getDynamicLego({
+          lego_id: lego.id,
+          parameters: { d: lego2Legs + 1 },
         }),
-      ]);
-
-      if (!response1.ok || !response2.ok) {
-        throw new Error("Failed to get dynamic lego");
-      }
-
-      const [lego1Data, lego2Data] = await Promise.all([
-        response1.json(),
-        response2.json(),
-      ]);
+      ];
 
       // Create the two new legos
       const lego1: DroppedLego = {
@@ -1208,7 +1189,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       result.operation.data.legosToAdd![0],
       droppedLegos,
       connections,
-    ) as TensorNetwork;
+    );
     setTensorNetwork(newTensorNetwork);
   };
 
@@ -1358,7 +1339,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       </Button>
                     )}
                   <Button
-                    onClick={generateConstructionCode}
+                    onClick={handleGenerateConstructionCode}
                     colorScheme="purple"
                     size="sm"
                     width="full"
@@ -1373,23 +1354,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                   <ParityCheckMatrixDisplay
                     matrix={
                       tensorNetwork.parityCheckMatrix ||
-                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.data
-                        .matrix
+                      parityCheckMatrixCache
+                        .get(tensorNetwork.signature!)!
+                        .h.getMatrix()
                     }
                     title="Parity Check Matrix"
                     legOrdering={
                       tensorNetwork.legOrdering ||
-                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.data
-                        .legs
+                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.legs
                     }
                     onMatrixChange={(newMatrix) => {
                       // Update the tensor network state
-                      setTensorNetwork((prev) =>
+                      setTensorNetwork((prev: TensorNetwork | null) =>
                         prev
-                          ? {
+                          ? TensorNetwork.fromObj({
                               ...prev,
                               parityCheckMatrix: newMatrix,
-                            }
+                            })
                           : null,
                       );
 
@@ -1398,13 +1379,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       const cachedResponse =
                         parityCheckMatrixCache.get(signature);
                       if (cachedResponse) {
-                        parityCheckMatrixCache.set(signature, {
-                          ...cachedResponse,
-                          data: {
-                            ...cachedResponse.data,
-                            matrix: newMatrix,
-                          },
-                        });
+                        parityCheckMatrixCache.set(
+                          signature,
+                          new StabilizerCodeTensor(
+                            new GF2(newMatrix),
+                            cachedResponse.idx,
+                            cachedResponse.legs,
+                          ),
+                        );
                       }
                     }}
                     onLegOrderingChange={handleLegOrderingChange}

@@ -1,36 +1,6 @@
-import { DroppedLego, Connection, Operation } from "../types";
+import { DroppedLego, Connection, Operation } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
-
-async function getDynamicLego(
-  legoId: string,
-  numLegs: number,
-): Promise<DroppedLego> {
-  const response = await fetch("/api/dynamiclego", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lego_id: legoId,
-      parameters: {
-        d: numLegs,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    instanceId: String("not set"),
-    style: getLegoStyle(data.id, numLegs),
-    x: 0,
-    y: 0,
-  };
-}
+import { Legos } from "../lib/Legos";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[],
@@ -88,24 +58,21 @@ export const applyCompleteGraphViaHadamards = async (
   const oldLegoDanglingLegs = getDanglingLegs(legos, connections);
 
   // Create new legos with extra legs for connections
-  const newLegos: DroppedLego[] = await Promise.all(
-    oldLegoDanglingLegs.map(async ({ lego, danglingLegs }) => {
+  const newLegos: DroppedLego[] = oldLegoDanglingLegs.map(
+    ({ lego, danglingLegs }) => {
       // Calculate how many new legs we need
       const numNewLegs = legos.length - 1 - danglingLegs.length; // Each lego needs to connect to all others
       if (numNewLegs <= 0) {
         return lego; // Keep the lego as is if it has enough dangling legs
       }
-      const newLego = await getDynamicLego(
+      return Legos.createDynamicLego(
         "z_rep_code",
         lego.parity_check_matrix[0].length / 2 + numNewLegs,
+        lego.instanceId,
+        lego.x,
+        lego.y,
       );
-      return {
-        ...lego,
-        id: newLego.id,
-        parity_check_matrix: newLego.parity_check_matrix,
-        style: newLego.style,
-      };
-    }),
+    },
   );
 
   const legoDanglingLegs = getDanglingLegs(newLegos, connections);

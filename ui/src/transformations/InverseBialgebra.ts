@@ -1,6 +1,7 @@
-import { DroppedLego, Connection, Operation } from "../types";
-import { Z_REP_CODE, X_REP_CODE, getLegoStyle } from "../LegoStyles";
+import { DroppedLego, Connection, Operation } from "../lib/types";
+import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
 import _ from "lodash";
+import { Legos } from "../lib/Legos";
 
 export function canDoInverseBialgebra(
   selectedLegos: DroppedLego[],
@@ -64,37 +65,6 @@ export function canDoInverseBialgebra(
   }
 
   return true;
-}
-
-async function getDynamicLego(
-  legoId: string,
-  numLegs: number,
-): Promise<DroppedLego> {
-  const response = await fetch("/api/dynamiclego", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lego_id: legoId,
-      parameters: {
-        d: numLegs,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get dynamic lego: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return {
-    ...data,
-    instanceId: String("not set"),
-    style: getLegoStyle(data.id, numLegs),
-    x: 0,
-    y: 0,
-  };
 }
 
 export async function applyInverseBialgebra(
@@ -170,10 +140,6 @@ export async function applyInverseBialgebra(
     ...droppedLegos.map((l) => parseInt(l.instanceId)),
   );
 
-  // Create new legos (with opposite types)
-  const newZLego = await getDynamicLego(X_REP_CODE, zLegoLegs);
-  const newXLego = await getDynamicLego(Z_REP_CODE, xLegoLegs);
-
   // Set positions and IDs
   const avgZPos = {
     x: _.meanBy(zLegos, "x"),
@@ -184,12 +150,21 @@ export async function applyInverseBialgebra(
     y: _.meanBy(xLegos, "y"),
   };
 
-  newZLego.instanceId = String(maxInstanceId + 1);
-  newXLego.instanceId = String(maxInstanceId + 2);
-  newZLego.x = avgZPos.x;
-  newZLego.y = avgZPos.y;
-  newXLego.x = avgXPos.x;
-  newXLego.y = avgXPos.y;
+  // Create new legos (with opposite types)
+  const newZLego = Legos.createDynamicLego(
+    X_REP_CODE,
+    zLegoLegs,
+    String(maxInstanceId + 1),
+    avgZPos.x,
+    avgZPos.y,
+  );
+  const newXLego = Legos.createDynamicLego(
+    Z_REP_CODE,
+    xLegoLegs,
+    String(maxInstanceId + 2),
+    avgXPos.x,
+    avgXPos.y,
+  );
 
   const newLegos = [newZLego, newXLego];
   const newConnections: Connection[] = [];
