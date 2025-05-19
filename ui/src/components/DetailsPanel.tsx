@@ -27,7 +27,7 @@ import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios from "axios";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
 import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
@@ -48,7 +48,7 @@ import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards,
 } from "../transformations/CompleteGraphViaHadamards";
-import ProgressBars from "./ProgressBars";
+// import ProgressBars from "./ProgressBars";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
@@ -131,17 +131,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const [, setSelectedMatrixRows] = useState<number[]>([]);
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
   const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null);
-  const [iterationStatus, setIterationStatus] = useState<
-    Array<{
-      desc: string;
-      total_size: number;
-      current_item: number;
-      start_time: number;
-      end_time: number | null;
-      duration: number;
-      avg_time_per_item: number;
-    }>
-  >([]);
+  // const [iterationStatus, setIterationStatus] = useState<
+  //   Array<{
+  //     desc: string;
+  //     total_size: number;
+  //     current_item: number;
+  //     start_time: number;
+  //     end_time: number | null;
+  //     duration: number;
+  //     avg_time_per_item: number;
+  //   }>
+  // >([]);
 
   const [
     showWeightEnumeratorCalculationDialog,
@@ -243,7 +243,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     if (!tensorNetwork) return;
 
     // Clear any existing progress bars
-    setIterationStatus([]);
+    // setIterationStatus([]);
 
     const signature = tensorNetwork.signature!;
     const cachedEnumerator = weightEnumeratorCache.get(signature);
@@ -258,7 +258,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }),
       );
 
-      joinTaskRoom(cachedEnumerator.taskId);
+      // joinTaskRoom(cachedEnumerator.taskId);
       return;
     }
 
@@ -319,7 +319,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             })
           : null,
       );
-      joinTaskRoom(taskId);
+      // joinTaskRoom(taskId);
 
       // Show success toast with status URL
       toast({
@@ -1284,10 +1284,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             }}
                           />
                         </HStack>
-                        <ProgressBars
+                        {/* <ProgressBars
                           iterationStatus={iterationStatus}
                           waiting={waitingForTaskUpdate}
-                        />
+                        /> */}
                       </VStack>
                     </Box>
                   </Box>

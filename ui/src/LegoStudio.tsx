@@ -1,6 +1,6 @@
 import {
   Box,
-  Text,
+  // Text,
   VStack,
   HStack,
   useColorModeValue,
@@ -158,7 +158,7 @@ const LegoStudioView: React.FC = () => {
   const [fatalError, setFatalError] = useState<Error | null>(null);
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
-  const [message, setMessage] = useState<string>("Loading...");
+  // const [message, setMessage] = useState<string>("Loading...");
   const [legos, setLegos] = useState<LegoPiece[]>([]);
   const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
