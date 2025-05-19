@@ -39,23 +39,6 @@ app.use(
   }),
 );
 
-// WebSocket proxy
-app.use(
-  "/socket.io",
-  createProxyMiddleware({
-    target: wsBackendUrl,
-    changeOrigin: false,
-    ws: true,
-    onError: (err, req, res) => {
-      console.error("WebSocket Proxy Error:", err);
-      // For WebSocket errors, we can't send a response, just log the error
-      if (res && res.writeHead) {
-        res.writeHead(500);
-        res.end("WebSocket Proxy Error");
-      }
-    },
-  }),
-);
 
 // Support for HTML5 History API
 app.use(history());

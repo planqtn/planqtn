@@ -1,0 +1,29 @@
+services:
+  planqtn-api:
+    container_name: planqtn-api
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: python server/planqtn_server.py --reload
+    environment:
+      - PYTHONPATH=/app
+    develop:
+      watch:
+        - path: ./qlego
+          action: rebuild
+        - path: ./server
+          action: rebuild
+
+        - path: ./qlego
+          action: restart
+        - path: ./server
+          action: restart
+    ports:
+      - "5005:5005"
+    networks:
+      - supabase_network_planqtn-dev
+
+networks:
+  supabase_network_planqtn-dev:
+    external: true

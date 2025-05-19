@@ -8,12 +8,12 @@ import numpy as np
 
 from server.api_types import *
 from server.config import get_settings, get_supabase_user_from_token
-from server.task_store import RedisTaskStore
-from server.tasks import weight_enumerator_task, celery_app
+from server.task_store import SupabaseTaskStore
+from server.tasks import weight_enumerator_task
 
 router = APIRouter()
 
-task_store: RedisTaskStore = None
+task_store: SupabaseTaskStore = None
 
 
 def is_gauss_equivalent(h1: GF2, h2: GF2) -> bool:

@@ -59,6 +59,8 @@ import { supabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
+import { config, getApiUrl } from "./config";
+import { getAccessToken } from "./lib/auth";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -208,7 +210,6 @@ const LegoStudioView: React.FC = () => {
   });
   const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
   const [weightEnumeratorCache] = useState<Map<string, string>>(new Map());
-  const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDynamicLego, setSelectedDynamicLego] =
     useState<LegoPiece | null>(null);
@@ -306,33 +307,6 @@ const LegoStudioView: React.FC = () => {
       throw error;
     }
   }, []);
-
-  // Add checkBackendHealth function
-  const checkBackendHealth = useCallback(async () => {
-    try {
-      const response = await axios.get("/api/health");
-      setMessage(response.data.message);
-      setIsBackendHealthy(true);
-      setError(""); // Clear any previous backend errors
-    } catch (error) {
-      setMessage("Error connecting to backend");
-      setIsBackendHealthy(false);
-      setError("Backend connection lost");
-      console.error("Backend health check failed:", error);
-    }
-  }, []);
-
-  // Add periodic health check effect
-  useEffect(() => {
-    // Initial health check
-    checkBackendHealth();
-
-    // Set up periodic health check every 30 seconds
-    const healthCheckInterval = setInterval(checkBackendHealth, 10000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(healthCheckInterval);
-  }, [checkBackendHealth]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2232,10 +2206,22 @@ const LegoStudioView: React.FC = () => {
 
   const handleMspSubmit = async (matrix: number[][]) => {
     try {
-      const response = await axios.post(`/api/mspnetwork`, {
-        matrix,
-        start_node_index: newInstanceId(droppedLegos),
-      });
+      const acessToken = await getAccessToken();
+      const key = !acessToken ? config.anonKey : acessToken;
+      const response = await axios.post(
+        getApiUrl("tensorNetwork"),
+        {
+          matrix,
+          networkType: "MSP",
+          start_node_index: newInstanceId(droppedLegos),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+        },
+      );
       const { legos, connections } = response.data;
       const newMspConnections = connections.map((conn: Connection) => {
         return new Connection(conn.from, conn.to);
@@ -2936,19 +2922,6 @@ const LegoStudioView: React.FC = () => {
           {/* Main Content */}
           <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
             <Box h="100%" display="flex" flexDirection="column" p={4}>
-              {/* Status Bar */}
-              <Box p={2} borderWidth={1} borderRadius="lg" mb={4}>
-                <HStack spacing={2}>
-                  <Box
-                    w="8px"
-                    h="8px"
-                    borderRadius="full"
-                    bg={isBackendHealthy ? "green.400" : "red.400"}
-                  />
-                  <Text fontSize="sm">Backend Status: {message}</Text>
-                </HStack>
-              </Box>
-
               {/* Gray Panel */}
               <Box
                 ref={canvasRef}
@@ -3492,27 +3465,6 @@ const LegoStudioView: React.FC = () => {
         isOpen={authDialogOpen}
         onClose={() => setAuthDialogOpen(false)}
       />
-      {/* Status Bar */}
-
-      <Box
-        width="100%"
-        position="absolute"
-        bottom={0}
-        left={0}
-        right={0}
-        p={2}
-        bg="gray.100"
-      >
-        <HStack spacing={2}>
-          <Box
-            w="8px"
-            h="8px"
-            borderRadius="full"
-            bg={isBackendHealthy ? "green.400" : "red.400"}
-          />
-          <Text fontSize="sm">Backend: {message}</Text>
-        </HStack>
-      </Box>
     </VStack>
   );
 };

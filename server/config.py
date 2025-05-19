@@ -17,12 +17,10 @@ class Settings(BaseSettings):
 
     app_name: str = "PlanqTN"
     env: str = os.getenv("ENV", "development")
-    frontend_url: str = os.getenv("FRONTEND_URL", "")
-    storage_type: str = os.getenv("STORAGE_TYPE", "redis")
+    port: int = os.getenv("PORT", 5005)
     supabase_url: str = os.environ["SUPABASE_APP_URL"]
     supabase_key: str = os.environ["SUPABASE_KEY"]
     supabase_jwt_secret: str = os.environ["SUPABASE_JWT_SECRET"]
-    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 
 @lru_cache

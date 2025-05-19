@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "ui/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "staging": true,
+      "preview": true
+    }
+  }
+}

@@ -28,7 +28,7 @@ from server.api_types import (
     WeightEnumeratorRequest,
     WeightEnumeratorResponse,
 )
-from server.task_store import RedisTaskStore, SupabaseTaskStore, TaskStore
+from server.task_store import SupabaseTaskStore, TaskStore
 
 # Do not move this - it is needed to load the environment variables
 # before importing any other modules
@@ -40,34 +40,6 @@ load_dotenv(basedir / ".env", verbose=True)
 from server.config import get_settings
 
 settings = get_settings()
-
-celery_app = Celery(
-    "mytasks",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
-    broker_connection_retry_on_startup=True,
-    loglevel="INFO",
-)
-
-# Configure Celery
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    # Enable events
-    worker_send_task_events=True,
-    task_send_sent_event=True,
-    # Enable monitoring
-    event_queue_expires=60,
-    event_queue_ttl=60,
-    event_serializer="json",
-)
-
-kombu.utils.json.register_type(
-    IterationState, "IterationState", IterationStateEncoder()
-)
 
 logger = get_task_logger(__name__)
 
@@ -124,23 +96,16 @@ class TaskStoreProgressReporter(ProgressReporter):
         )
 
 
-@celery_app.task(bind=True)
 def weight_enumerator_task(self, request_dict: dict):
     try:
         # Convert dictionary back to TensorNetworkRequest
         request = WeightEnumeratorRequest(**request_dict)
-        task_store = RedisTaskStore(settings.redis_url)
+        task_store = SupabaseTaskStore(settings.supabase_url, settings.supabase_key)
         with TaskStoreProgressReporter(
             self,
             task_store=task_store,
-            sub_reporter=TaskStoreProgressReporter(
-                self,
-                task_store=SupabaseTaskStore(
-                    settings.supabase_url, settings.supabase_key
-                ),
-                sub_reporter=TqdmProgressReporter(file=sys.stdout),
-                user_id=request_dict["user_id"],
-            ),
+            user_id=request_dict["user_id"],
+            sub_reporter=TqdmProgressReporter(file=sys.stdout),
         ) as progress_reporter:
             # Create TensorStabilizerCodeEnumerator instances for each lego
             nodes = {}

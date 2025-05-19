@@ -49,7 +49,6 @@ import {
   applyCompleteGraphViaHadamards,
 } from "../transformations/CompleteGraphViaHadamards";
 import ProgressBars from "./ProgressBars";
-import { io, Socket } from "socket.io-client";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
@@ -143,154 +142,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       avg_time_per_item: number;
     }>
   >([]);
-  const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
-  const currentTensorNetworkRef = useRef<TensorNetwork | null>(null);
+
   const [
     showWeightEnumeratorCalculationDialog,
     setShowWeightEnumeratorCalculationDialog,
   ] = useState(false);
-  const socketAllTasksRef = useRef<Socket | null>(null);
-  const socketSingleTaskRef = useRef<Socket | null>(null);
-
-  // Keep the ref updated with the latest tensorNetwork
-  useEffect(() => {
-    const tn = currentTensorNetworkRef.current;
-    if (tn?.signature === tensorNetwork?.signature) {
-      return;
-    }
-    currentTensorNetworkRef.current = tensorNetwork;
-    const cachedEnumerator = weightEnumeratorCache.get(
-      tensorNetwork?.signature || "",
-    );
-    if (!tensorNetwork) {
-      setIterationStatus([]);
-    } else if (
-      tensorNetwork?.taskId &&
-      tensorNetwork?.weightEnumerator === ""
-    ) {
-      joinTaskRoom(tensorNetwork.taskId);
-    } else if (cachedEnumerator?.taskId && cachedEnumerator.polynomial === "") {
-      joinTaskRoom(cachedEnumerator.taskId);
-    }
-  }, [tensorNetwork]);
-
-  // General task updates via Socket.IO
-  useEffect(() => {
-    const socket = io("/ws/tasks", { transports: ["websocket"] });
-    socketAllTasksRef.current = socket;
-    socket.emit("join_room", { room_id: "tasks" });
-    socket.on("celery_event", (event) => {
-      if (event.type === "task-succeeded" && event.result) {
-        let result = event.result;
-        if (typeof result === "string") {
-          try {
-            result = JSON.parse(result.replace(/'/g, '"'));
-          } catch {
-            // fallback: leave as string
-          }
-        }
-        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-          if (cacheEntry.taskId === event.uuid) {
-            const updatedCacheEntry = {
-              taskId: event.uuid,
-              polynomial: result.polynomial,
-              normalizerPolynomial: result.normalizer_polynomial,
-              truncateLength: result.truncate_length,
-            };
-            weightEnumeratorCache.set(signature, updatedCacheEntry);
-            const currentTensorNetwork = currentTensorNetworkRef.current;
-            if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev: TensorNetwork | null) =>
-                prev
-                  ? TensorNetwork.fromObj({
-                      ...prev,
-                      weightEnumerator: result.polynomial,
-                      normalizerPolynomial: result.normalizer_polynomial,
-                      isCalculatingWeightEnumerator: false,
-                      taskId: event.uuid,
-                      truncateLength: result.truncate_length,
-                    })
-                  : null,
-              );
-              setIterationStatus([]);
-              // Disconnect task-specific socket if open
-              if (socketSingleTaskRef.current) {
-                socketSingleTaskRef.current.disconnect();
-                socketSingleTaskRef.current = null;
-              }
-            }
-            break;
-          }
-        }
-      } else if (event.type === "task-failed") {
-        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-          if (cacheEntry.taskId === event.uuid) {
-            setError(`Task failed: ${event.exception || "Unknown error"}`);
-
-            const currentTensorNetwork = currentTensorNetworkRef.current;
-            weightEnumeratorCache.delete(signature);
-            if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev) =>
-                prev
-                  ? TensorNetwork.fromObj({
-                      ...prev,
-                      isCalculatingWeightEnumerator: false,
-                      weightEnumerator: "",
-                      normalizerPolynomial: "",
-                      taskId: undefined,
-                    })
-                  : null,
-              );
-            }
-            break;
-          }
-        }
-      } else if (event.type === "task-revoked") {
-        for (const [signature, cacheEntry] of weightEnumeratorCache.entries()) {
-          if (cacheEntry.taskId === event.uuid) {
-            setError(`Task ${event.uuid} was cancelled.`);
-            const currentTensorNetwork = currentTensorNetworkRef.current;
-            if (currentTensorNetwork?.signature === signature) {
-              setTensorNetwork((prev: TensorNetwork | null) =>
-                prev
-                  ? TensorNetwork.fromObj({
-                      ...prev,
-                      isCalculatingWeightEnumerator: false,
-                    })
-                  : null,
-              );
-            }
-            weightEnumeratorCache.delete(signature);
-            break;
-          }
-        }
-      }
-    });
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Task-specific updates via Socket.IO
-  const joinTaskRoom = (taskId: string) => {
-    console.log("Joining task room", taskId);
-    setWaitingForTaskUpdate(true);
-
-    if (socketSingleTaskRef.current) socketSingleTaskRef.current.disconnect();
-    const socket = io("/ws/task", { transports: ["websocket"] });
-    socketSingleTaskRef.current = socket;
-    socket.emit("join_room", { room_id: `task_${taskId}` });
-
-    socket.on("task_updated", (data) => {
-      setWaitingForTaskUpdate(false);
-      if (
-        data.type === "task_updated" &&
-        data.message.updates.iteration_status
-      ) {
-        setIterationStatus(data.message.updates.iteration_status);
-      }
-    });
-  };
 
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
