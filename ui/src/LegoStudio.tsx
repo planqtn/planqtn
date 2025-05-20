@@ -61,6 +61,8 @@ import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
 import { config, getApiUrl } from "./config";
 import { getAccessToken } from "./lib/auth";
+import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
+import { TbPlugConnected } from "react-icons/tb";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -233,6 +235,11 @@ const LegoStudioView: React.FC = () => {
   const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [isRuntimeConfigOpen, setIsRuntimeConfigOpen] = useState(false);
+  const [isLocalRuntime] = useState(() => {
+    const storedConfig = localStorage.getItem("runtimeConfig");
+    return !!storedConfig;
+  });
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
@@ -2693,6 +2700,28 @@ const LegoStudioView: React.FC = () => {
     event.stopPropagation();
   }
 
+  const handleRuntimeConfigSubmit = (config: Record<string, string>) => {
+    // Store the config in localStorage
+    localStorage.setItem("runtimeConfig", JSON.stringify(config));
+    // Sign out the user
+    supabase.auth.signOut();
+    // Reload the page
+    window.location.href = "/";
+  };
+
+  const handleRuntimeToggle = () => {
+    if (isLocalRuntime) {
+      // Clear the runtime config and reload
+      localStorage.removeItem("runtimeConfig");
+      // Sign out the user
+      supabase.auth.signOut();
+      // Reload the page
+      window.location.href = "/";
+    } else {
+      setIsRuntimeConfigOpen(true);
+    }
+  };
+
   return (
     <VStack spacing={0} align="stretch" h="100vh">
       {/* Header Bar: Menu strip (left) + User menu (right) */}
@@ -2879,8 +2908,18 @@ const LegoStudioView: React.FC = () => {
           </Box>
 
           {/* User Menu (right) */}
-
           <Box flex={1} display="flex" justifyContent="flex-end" minW={0}>
+            {config.env !== "production" && (
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={handleRuntimeToggle}
+                mr={2}
+                leftIcon={<TbPlugConnected />}
+              >
+                Runtime: {isLocalRuntime ? "local" : "cloud"}
+              </Button>
+            )}
             <UserMenu
               user={currentUser}
               onSignIn={() => setAuthDialogOpen(true)}
@@ -3464,6 +3503,12 @@ const LegoStudioView: React.FC = () => {
       <AuthDialog
         isOpen={authDialogOpen}
         onClose={() => setAuthDialogOpen(false)}
+      />
+      <RuntimeConfigDialog
+        isOpen={isRuntimeConfigOpen}
+        onClose={() => setIsRuntimeConfigOpen(false)}
+        onSubmit={handleRuntimeConfigSubmit}
+        isLocal={isLocalRuntime}
       />
     </VStack>
   );
