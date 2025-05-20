@@ -70,7 +70,7 @@ FLOWER_PID=$!
 # Start the Python backend and redirect output to log file
 echo "Starting Python backend with frontend host $FRONTEND_HOST and port $FRONTEND_PORT"
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-(cd server && python planqtn_server.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
+(cd planqtn_api && python planqtn_server.py --port "$BACKEND_PORT" --ui-port "$FRONTEND_PORT" --ui-host "$FRONTEND_HOST") > "$SERVER_LOG" 2>&1 &
 BACKEND_PID=$!
 
 echo backend pid: $BACKEND_PID

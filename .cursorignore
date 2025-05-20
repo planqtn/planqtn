@@ -1,3 +1,4 @@
 node_modules
-server/.env
+planqtn/.env
 ui/.env
+.env

@@ -24,12 +24,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
-COPY server/requirements.txt /app/server/requirements.txt   
+COPY planqtn_api/requirements.txt /app/planqtn_api/requirements.txt   
 
-RUN pip install -r requirements.txt -r server/requirements.txt --root-user-action=ignore
+RUN pip install -r requirements.txt -r planqtn_api/requirements.txt --root-user-action=ignore
 
 COPY ./qlego /app/qlego
-COPY ./server /app/server
+COPY ./planqtn_api /app/planqtn_api
 COPY ./multi-service-container-entrypoint.sh /app/multi-service-container-entrypoint.sh
 COPY --from=ui-build /ui/dist /app/ui/dist
 COPY --from=ui-build /ui/serve.js /app/ui/serve.js

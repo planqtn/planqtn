@@ -3,24 +3,10 @@ import os
 import pathlib
 import sys
 from dotenv import load_dotenv
-
-# Do not move this - it is needed to load the environment variables
-# before importing any other modules
-
-basedir = pathlib.Path(__file__).parents[0]
-load_dotenv(basedir / ".env", verbose=True)
-
-
-from server.task_store import RedisTaskStore, SupabaseTaskStore
-from server.web_endpoints import router
+from planqtn_api.web_endpoints import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# from server.socketio_manager import socketio_manager
-from contextlib import asynccontextmanager
 import argparse
-import asyncio
-from server.config import get_settings
 
 
 app = FastAPI(
@@ -28,7 +14,6 @@ app = FastAPI(
     description="API for the PlanqTN application",
     version="0.1.0",
 )
-settings = get_settings()
 
 # Add CORS middleware
 app.add_middleware(
@@ -39,30 +24,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount the Socket.IO app
-# app.mount("/socket.io", socketio_manager.get_app())
-
 # Include the API router
 app.include_router(router)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the TNQEC server")
+
+    basedir = pathlib.Path(__file__).parents[0]
+    load_dotenv(basedir / ".env", verbose=True)
+
+    parser = argparse.ArgumentParser(description="Run the TNQEC planqtn_api")
     parser.add_argument(
         "--port",
         type=int,
-        default=settings.port,
-        help="Port to run the server on (default: 5005)",
+        default=os.getenv("PORT", 5005),
+        help="Port to run the planqtn_api on (default: 5005 if $PORT is not set)",
     )
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Run the server in debug mode",
+        help="Run the planqtn_api in debug mode",
     )
     parser.add_argument(
         "--reload",
         action="store_true",
-        help="Run the server in reload mode",
+        help="Run the planqtn_api in reload mode",
     )
 
     args = parser.parse_args()
@@ -86,7 +72,7 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    print(f"Running server with frontend host port {args.port}")
+    print(f"Running planqtn_api with frontend host port {args.port}")
 
     if args.reload:
         app.reload = True

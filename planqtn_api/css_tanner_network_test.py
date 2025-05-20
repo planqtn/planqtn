@@ -1,10 +1,7 @@
-import pytest
 from fastapi.testclient import TestClient
-import numpy as np
-from server.planqtn_server import app
+from planqtn_api.planqtn_server import app
 
 
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 

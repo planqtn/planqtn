@@ -1,23 +1,23 @@
 services:
-  planqtn-api:
-    container_name: planqtn-api
+  planqtn_api:
+    container_name: planqtn_api
     restart: always
     build:
       context: .
       dockerfile: Dockerfile.api
-    command: python server/planqtn_server.py --reload
+    command: python planqtn_api/planqtn_server.py --reload
     environment:
       - PYTHONPATH=/app
     develop:
       watch:
         - path: ./qlego
           action: rebuild
-        - path: ./server
+        - path: ./planqtn_api
           action: rebuild
 
         - path: ./qlego
           action: restart
-        - path: ./server
+        - path: ./planqtn_api
           action: restart
     ports:
       - "5005:5005"

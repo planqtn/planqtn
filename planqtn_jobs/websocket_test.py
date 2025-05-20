@@ -6,8 +6,6 @@ import json
 from galois import GF2
 from qlego.legos import Legos
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from server.tasks import celery_app
-from server.task_store import RedisTaskStore
 import socketio
 import uuid
 import subprocess
@@ -60,88 +58,6 @@ def wait_for_port(port: int, host: str = "localhost", timeout: int = 5) -> bool:
 
 
 @pytest.fixture(scope="session")
-def redis_server() -> Generator[subprocess.Popen, None, None]:
-    """Start the Redis server process and yield it for the test session."""
-    # Start Redis server
-    process = subprocess.Popen(
-        ["redis-server"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        preexec_fn=os.setsid,
-        text=True,
-        bufsize=1,
-    )
-
-    logger.info("Started Redis server")
-
-    # Give Redis time to start up
-    time.sleep(1)
-
-    yield process
-
-    # Cleanup: kill the process group
-    logger.info("Cleaning up Redis server")
-    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-    process.wait()
-
-
-@pytest.fixture(scope="session")
-def celery_worker(
-    redis_server: subprocess.Popen,
-) -> Generator[subprocess.Popen, None, None]:
-    """Start the Celery worker process and yield it for the test session."""
-    # Start the Celery worker
-    process = subprocess.Popen(
-        ["celery", "-A", "server.tasks", "worker", "--loglevel=info"],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        preexec_fn=os.setsid,
-        text=True,
-        bufsize=1,
-    )
-
-    logger.info("Started Celery worker")
-
-    # Give the worker time to start up
-    time.sleep(2)
-
-    yield process
-
-    # Cleanup: kill the process group
-    logger.info("Cleaning up Celery worker")
-    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-    process.wait()
-
-
-@pytest.fixture(scope="session")
-def flower_worker(
-    redis_server: subprocess.Popen,
-) -> Generator[subprocess.Popen, None, None]:
-    """Start the Celery worker process and yield it for the test session."""
-    # Start the Celery worker
-    process = subprocess.Popen(
-        ["celery", "-A", "server.tasks", "flower", "--loglevel=info"],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        preexec_fn=os.setsid,
-        text=True,
-        bufsize=1,
-    )
-
-    logger.info("Started flower")
-
-    # Give the worker time to start up
-    time.sleep(2)
-
-    yield process
-
-    # Cleanup: kill the process group
-    logger.info("Cleaning up flower")
-    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-    process.wait()
-
-
-@pytest.fixture(scope="session")
 def server_process(
     redis_server: subprocess.Popen,
     celery_worker: subprocess.Popen,
@@ -150,7 +66,7 @@ def server_process(
     """Start the server process and yield it for the test session."""
     # Start the server process
     process = subprocess.Popen(
-        ["python", "-m", "server.planqtn_server", "--debug"],
+        ["python", "-m", "planqtn_api.planqtn_server", "--debug"],
         stdout=sys.stdout,
         stderr=sys.stderr,
         preexec_fn=os.setsid,

@@ -1,27 +1,7 @@
+from typing import Any, Dict, List
+
 from pydantic import BaseModel
-from typing import List, Dict, Any, Tuple
-import sys
-import os
-
-# Add the parent directory to the Python path to import qlego
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from qlego.linalg import gauss
-from qlego.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
-from qlego.legos import Legos
-from qlego.tensor_network import (
-    TensorNetwork,
-    StabilizerCodeTensorEnumerator,
-)
-from qlego.codes.css_tanner_code import CssTannerCodeTN
-from qlego.codes.stabilizer_measurement_state_prep import (
-    StabilizerMeasurementStatePrepTN,
-)
-
-
-class HealthResponse(BaseModel):
-    message: str
-    status: str = "healthy"
+from qlego.tensor_network import TensorNetwork
 
 
 class LegoPiece(BaseModel):
@@ -52,36 +32,14 @@ class WeightEnumeratorRequest(TensorNetworkRequest):
     open_legs: List[TensorNetworkLeg] = []
 
 
-class ParityCheckResponse(BaseModel):
-    matrix: List[List[int]]
-    legs: List[TensorNetworkLeg]
-    recognized_type: str | None = None
-    message: str = "Successfully calculated parity check matrix"
-
-
 class WeightEnumeratorResponse(BaseModel):
     polynomial: str
     normalizer_polynomial: str
     message: str = "Successfully calculated weight enumerator polynomial"
 
 
-class ConstructionCodeResponse(BaseModel):
-    code: str
-    message: str = "Successfully generated construction code"
-
-
-class DynamicLegoRequest(BaseModel):
-    lego_id: str
-    parameters: Dict[str, Any]
-
-
 class TannerRequest(BaseModel):
     matrix: List[List[int]]
-    start_node_index: int = 0
-
-
-class PentaflakeRequest(BaseModel):
-    level: int = 0
     start_node_index: int = 0
 
 

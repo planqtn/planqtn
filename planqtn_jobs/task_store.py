@@ -1,6 +1,5 @@
 import abc
 import json
-import time
 import traceback
 from typing import Dict, Any, Optional
 from celery import Task

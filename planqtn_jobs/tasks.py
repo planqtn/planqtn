@@ -23,12 +23,12 @@ from qlego.progress_reporter import (
 from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from qlego.symplectic import symp_to_str
 from qlego.tensor_network import TensorNetwork
-from server.api_types import (
+from planqtn_api.api_types import (
     TensorNetworkRequest,
     WeightEnumeratorRequest,
     WeightEnumeratorResponse,
 )
-from server.task_store import SupabaseTaskStore, TaskStore
+from planqtn_api.task_store import SupabaseTaskStore, TaskStore
 
 # Do not move this - it is needed to load the environment variables
 # before importing any other modules
@@ -37,7 +37,7 @@ basedir = pathlib.Path(__file__).parents[0]
 load_dotenv(basedir / ".env", verbose=True)
 
 
-from server.config import get_settings
+from planqtn_api.config import get_settings
 
 settings = get_settings()
 

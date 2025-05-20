@@ -1,8 +1,8 @@
-name: API Server Checks
-run-name: ${{ github.actor }} is checking the API Server 🚀
+name: API planqtn_api Checks
+run-name: ${{ github.actor }} is checking the API planqtn_api 🚀
 on: [push]
 jobs:
-  API-Server-Checks:
+  API-planqtn_api-Checks:
     strategy:
       matrix:
         python-version: ["3.12"]

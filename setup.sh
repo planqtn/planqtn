@@ -85,10 +85,10 @@ else
     echo -e "${RED}Warning: ./requirements.txt not found${NC}"
 fi
 
-if [ -f "./server/requirements.txt" ]; then
-    pip install -r ./server/requirements.txt
+if [ -f "./planqtn_api/requirements.txt" ]; then
+    pip install -r ./planqtn_api/requirements.txt
 else
-    echo -e "${RED}Warning: ./server/requirements.txt not found${NC}"
+    echo -e "${RED}Warning: ./planqtn_api/requirements.txt not found${NC}"
 fi
 
 # Install Node.js dependencies
