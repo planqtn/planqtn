@@ -77,7 +77,7 @@ class ProgressReporter(abc.ABC):
         self.iteration_report_frequency = iteration_report_frequency
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         pass
@@ -186,5 +186,6 @@ class TqdmProgressReporter(ProgressReporter):
 
 
 class DummyProgressReporter(ProgressReporter):
+
     def handle_result(self, result: Dict[str, Any]):
         pass

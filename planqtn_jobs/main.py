@@ -1,24 +1,141 @@
-async def calculate_weight_enumerator(
-    request: WeightEnumeratorRequest,
-    user: Annotated[dict, Depends(get_supabase_user_from_token)],
-):
-    try:
-        # Convert Pydantic model to dictionary
-        request_dict = request.model_dump()
-        request_dict["user_id"] = user["uid"]
-        request_dict["token"] = user["token"]
-        # Start the task
-        print("kicking off task...")
-        task = weight_enumerator_task.apply_async(
-            args=[request_dict],
-        )
-        print("task", task.id)
+import argparse
+import json
+import logging
+import sys
+import traceback
+from typing import Optional
+from planqtn_jobs.task import SupabaseCredentials
+from planqtn_jobs.weight_enum_task import WeightEnumeratorTask
+from planqtn_jobs.task_store import SupabaseTaskStore
 
-        return TaskStatusResponse(task_id=task.id, status="started", result=None)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Calculate weight enumerator from various sources"
+    )
+    parser.add_argument("--task-uuid", help="UUID of the task in Supabase")
+    parser.add_argument("--user-id", help="User ID for Supabase")
+    parser.add_argument("--input-file", help="Path to JSON file containing the request")
+    parser.add_argument(
+        "--task-store-url",
+        help="Supabase URL (required for task-uuid and storing results)",
+    )
+    parser.add_argument(
+        "--task-store-key",
+        help="Supabase key (required for task-uuid and storing results)",
+    )
+
+    parser.add_argument(
+        "--realtime", action="store_true", help="Enable realtime updates"
+    )
+    parser.add_argument(
+        "--local-progress-bar", action="store_true", help="Enable local progress bar"
+    )
+    parser.add_argument(
+        "--realtime-update-frequency",
+        type=float,
+        default=5,
+        help="Update frequency for realtime updates",
+    )
+    parser.add_argument(
+        "--output-file",
+        help="Path to file to save the result, if not specified, the result will be printed to the console",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    args = parser.parse_args()
+
+    if args.task_uuid and args.input_file:
+        print("Error: Cannot specify both task-uuid and input-file")
+        sys.exit(1)
+
+    if not args.task_uuid and not args.input_file:
+        print("Error: Must specify either task-uuid or input-file")
+        sys.exit(1)
+
+    if args.task_uuid and not args.user_id:
+        print("Error: User ID required for task-uuid mode")
+        sys.exit(1)
+
+    if (
+        args.realtime
+        and not (args.task_store_url and args.task_store_key)
+        and not args.task_uuid
+    ):
+        print(
+            "Error: Task UUID mode and task store credentials required for realtime updates"
+        )
+        sys.exit(1)
+
+    if args.task_uuid and not (args.task_store_url and args.task_store_key):
+        print("Error: Task store credentials required for task-uuid mode")
+        sys.exit(1)
+
+    root = logging.getLogger()
+    root.setLevel(
+        logging.DEBUG if args.debug else logging.INFO
+    )  # Set the minimum logging level
+
+    # Create a StreamHandler to output to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
+
+    # Create a formatter to customize the log message format
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+
+    # Add the handler to the root logger
+    root.addHandler(handler)
+    logger = logging.getLogger(__name__)
+
+    if args.task_uuid:
+        logger.info(f"Starting task {args.task_uuid} with args {args}")
+    else:
+        logger.info(f"Starting task with args {args}")
+
+    try:
+        # Load the request
+        realtime_publisher = (
+            SupabaseCredentials(url=args.task_store_url, key=args.task_store_key)
+            if args.realtime
+            else None
+        )
+        task = WeightEnumeratorTask(
+            realtime_updates_enabled=args.realtime,
+            realtime_update_frequency=args.realtime_update_frequency,
+            realtime_publisher=realtime_publisher,
+            local_progress_bar=args.local_progress_bar,
+        )
+        if args.task_uuid:
+            task_store = SupabaseTaskStore(
+                args.task_store_url, args.task_store_key, args.user_id
+            )
+            request = task.initalize_args_from_supabase(args.task_uuid, task_store)
+        else:
+            request = task.initalize_args_from_file(args.input_file)
+
+        result = task.run()
+
+        if args.output_file:
+            with open(args.output_file, "w") as f:
+                f.write(result.model_dump_json())
+        else:
+            print(result)
+
+        if args.task_uuid:
+            print("hellllllooo....")
+            task_store.store_task_result(args.task_uuid, result.model_dump_json())
+            print(task_store.get_task(args.task_uuid))
+
     except Exception as e:
-        print("error", e)
+        print(f"Error: {str(e)}")
         traceback.print_exc()
-        return TaskStatusResponse(task_id="", status="error", error=str(e))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
 
 
 # @router.get(
@@ -39,25 +156,6 @@ async def calculate_weight_enumerator(
 #     except Exception as e:
 #         print("error", e)
 #         traceback.print_exc()
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-# class CancelTaskRequest(BaseModel):
-#     task_id: str
-
-
-# @router.post("/cancel_task")
-# async def cancel_task(request: CancelTaskRequest):
-#     try:
-#         # Revoke the task
-#         celery_app.control.revoke(request.task_id, terminate=True)
-#         return JSONResponse(
-#             content={
-#                 "status": "success",
-#                 "message": f"Task {request.task_id} has been cancelled",
-#             }
-#         )
-#     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -27,15 +27,15 @@ class TensorNetworkLeg(BaseModel):
     legIndex: int
 
 
-class WeightEnumeratorRequest(TensorNetworkRequest):
+class WeightEnumeratorCalculationArgs(TensorNetworkRequest):
     truncate_length: int | None = None
     open_legs: List[TensorNetworkLeg] = []
 
 
-class WeightEnumeratorResponse(BaseModel):
-    polynomial: str
+class WeightEnumeratorCalculationResult(BaseModel):
+    stabilizer_polynomial: str
     normalizer_polynomial: str
-    message: str = "Successfully calculated weight enumerator polynomial"
+    time: float
 
 
 class TannerRequest(BaseModel):

@@ -31,38 +31,64 @@ class TaskStore(abc.ABC):
     ):
         pass
 
+    @abc.abstractmethod
+    def get_task(self, task_id: str) -> Dict[str, Any]:
+        pass
+
 
 class SupabaseTaskStore(TaskStore):
-    def __init__(self, supabase_url: str, supabase_key: str):
+    def __init__(self, supabase_url: str, supabase_key: str, user_id: str):
         self.supabase_url = supabase_url
         self.supabase_key = supabase_key
         self.supabase = supabase.create_client(supabase_url, supabase_key)
+        self.user_id = user_id
 
     def add_task(self, task: Task, user_id: str | None = None):
         logger.info(
-            "adding task to supabase", task.request.id, task.request.args, user_id
+            "adding task to supabase", task.request.id, task.request.args, self.user_id
         )
 
         self.supabase.table("tasks").insert(
-            {"uuid": task.request.id, "args": task.request.args, "user_id": user_id}
+            {
+                "uuid": task.request.id,
+                "args": task.request.args,
+                "user_id": self.user_id,
+            }
         ).execute()
 
         logger.info(
-            "task added to supabase", task.request.id, task.request.args, user_id
+            "task added to supabase", task.request.id, task.request.args, self.user_id
         )
 
     def store_task_result(self, task_id: str, result: Any, user_id: str | None = None):
-        self.supabase.table("tasks").update({"result": result}).eq("id", task_id).eq(
-            "user_id", user_id
-        ).execute()
+        updated = (
+            self.supabase.table("tasks")
+            .update({"result": result, "state": 2})
+            .eq("uuid", task_id)
+            .eq("user_id", self.user_id)
+            .execute()
+        )
+        print(f"task result stored [{updated.count} records...]", result)
 
-    def update_task(
-        self, task_id: str, updates: Dict[str, Any], user_id: str | None = None
-    ):
+    def update_task(self, task_id: str, updates: Dict[str, Any]):
 
         self.supabase.table("tasks").update(
             {"updates": json.dumps(updates, cls=IterationStateEncoder)}
-        ).eq("uuid", task_id).eq("user_id", user_id).execute()
+        ).eq("uuid", task_id).eq("user_id", self.user_id).execute()
+
+    def get_task(self, task_id: str) -> Dict[str, Any]:
+        task_data = (
+            self.supabase.table("tasks")
+            .select("*")
+            .eq("uuid", task_id)
+            .eq("user_id", self.user_id)
+            .execute()
+            .data
+        )
+        if not task_data:
+            return None
+
+        return task_data[0]
 
 
 class RedisTaskStore(TaskStore):

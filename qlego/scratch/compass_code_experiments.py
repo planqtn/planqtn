@@ -199,15 +199,15 @@ def cotengra_fun(tn: TensorNetwork):
 
     assert set(trace_indices) == set(range(len(tn.traces))), "Some traces are missing!"
 
-    return traces
+    # return traces
     #     print(input_names[i], input_names[j])
     #     # print(traces[pair])
 
-    # print(json.dumps({str(k): v for k, v in tree.info.items()}, indent=4))
-    # tree.plot_tent()
-    # tree.print_contractions()
-    # tree.plot_contractions()
-    # print(tree.flat_tree())
+    print(json.dumps({str(k): v for k, v in tree.info.items()}, indent=4))
+    tree.plot_tent()
+    tree.print_contractions()
+    tree.plot_contractions()
+    print(tree.flat_tree())
 
 
 def compass_code_from_tanner():
@@ -304,7 +304,13 @@ if __name__ == "__main__":
             ]
         )
     )
+    # tn.analyze_traces(cotengra=True, minimize="combo", max_repeats=300)
+
+    # cotengra_fun(tn)
+
+    # print(tn.traces)
+
     wep = tn.stabilizer_enumerator_polynomial(
         verbose=False, progress_reporter=TqdmProgressReporter(), cotengra=True
     )
-    print(wep)
+    # print(wep)
