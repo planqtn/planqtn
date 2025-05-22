@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 import sys
 import traceback
 from typing import Optional
@@ -56,15 +57,21 @@ def main():
         print("Error: User ID required for task-uuid mode")
         sys.exit(1)
 
+    # check runtime context
+    runtime_supabase_url = os.environ.get("RUNTIME_SUPABASE_URL", args.task_store_url)
+    runtime_supabase_key = os.environ.get("RUNTIME_SUPABASE_KEY", args.task_store_key)
+
     if (
         args.realtime
-        and not (args.task_store_url and args.task_store_key)
+        and not (runtime_supabase_url and runtime_supabase_key)
         and not args.task_uuid
     ):
         print(
-            "Error: Task UUID mode and task store credentials required for realtime updates"
+            "Error: Task UUID mode and task store credentials required for realtime updates (or env vars RUNTIME_SUPABASE_URL/KEY)"
         )
         sys.exit(1)
+
+    # check user context
 
     if args.task_uuid and not (args.task_store_url and args.task_store_key):
         print("Error: Task store credentials required for task-uuid mode")
@@ -97,7 +104,7 @@ def main():
     try:
         # Load the request
         realtime_publisher = (
-            SupabaseCredentials(url=args.task_store_url, key=args.task_store_key)
+            SupabaseCredentials(url=runtime_supabase_url, key=runtime_supabase_key)
             if args.realtime
             else None
         )
@@ -124,9 +131,7 @@ def main():
             print(result)
 
         if args.task_uuid:
-            print("hellllllooo....")
             task_store.store_task_result(args.task_uuid, result.model_dump_json())
-            print(task_store.get_task(args.task_uuid))
 
     except Exception as e:
         print(f"Error: {str(e)}")

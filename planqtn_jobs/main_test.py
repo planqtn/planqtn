@@ -214,3 +214,62 @@ def test_main_with_task_store(
 
     finally:
         service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+
+
+def test_main_with_task_store_and_realtime(
+    temp_input_file, temp_output_file, supabase_setup, monkeypatch
+):
+    """Test main.py with task store integration."""
+    # Create Supabase client with test user token
+    supabase: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["test_user_token"]
+    )
+
+    # Create a task in Supabase
+    task_uuid = str(uuid.uuid4())
+    task_data = {
+        "uuid": task_uuid,
+        "user_id": supabase_setup["test_user_id"],
+        "args": json.loads(TEST_JSON),
+        "state": 0,  # PENDING
+    }
+
+    # Insert task using service role client to bypass RLS
+    service_client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+    try:
+        service_client.table("tasks").insert(task_data).execute()
+        args = [
+            "main.py",
+            "--task-uuid",
+            task_uuid,
+            "--task-store-url",
+            supabase_setup["api_url"],
+            "--task-store-key",
+            supabase_setup["test_user_token"],
+            "--user-id",
+            supabase_setup["test_user_id"],
+            "--output-file",
+            temp_output_file,
+            "--debug",
+            "--realtime",
+        ]
+        # Mock sys.argv to simulate command line arguments
+        monkeypatch.setattr("sys.argv", args)
+        print("Running\n\t", " ".join(args))
+
+        # Run the main function
+        main()
+
+        # Validate the result
+        validate_weight_enumerator_result_output_file(temp_output_file)
+
+        # Verify task was updated in Supabase
+        task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+        assert len(task.data) == 1
+        assert task.data[0]["state"] == 2  # SUCCESS
+        validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
+
+    finally:
+        service_client.table("tasks").delete().eq("uuid", task_uuid).execute()

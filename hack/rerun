@@ -2,4 +2,4 @@
 
 export PYTHONPATH="."
 
-find . -type f -name '*.py' -o -name 'Dockerfile' | entr -r $@
+find . -type f -name '*.py' -o -name 'Dockerfile' -o -name '*.js' | entr -r $@

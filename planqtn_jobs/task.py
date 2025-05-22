@@ -67,6 +67,7 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
 
     def __init__(
         self,
+        uuid: str,
         realtime_updates_enabled: bool = True,
         realtime_update_frequency: float = 5,
         realtime_publisher: SupabaseCredentials = None,
@@ -91,7 +92,6 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
         )
 
         if self.realtime_publisher is not None:
-            print("realtime publisher", self.realtime_publisher)
             return TaskStoreProgressReporter(
                 self.realtime_publisher.url,
                 self.realtime_publisher.key,
