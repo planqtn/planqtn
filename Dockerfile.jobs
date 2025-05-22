@@ -10,6 +10,7 @@ RUN pip install -r requirements.txt --root-user-action=ignore
 
 COPY ./qlego /app/qlego
 COPY ./planqtn_jobs /app/planqtn_jobs
+COPY ./planqtn_types /app/planqtn_types
 
 WORKDIR /app
 

@@ -7,6 +7,9 @@
     "add": "^2.0.6",
     "pg": "^8.16.0"
   },
+  "bin": {
+    "planqtn": "planqtn-cli/dist/index.js"
+  },
   "scripts": {
     "migrate": "node-pg-migrate"
   },
