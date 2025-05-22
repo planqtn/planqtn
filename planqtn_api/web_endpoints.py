@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from galois import GF2
 import numpy as np
 
-from planqtn_api.api_types import *
+from planqtn_types.api_types import *
 from qlego.codes.css_tanner_code import CssTannerCodeTN
 from qlego.codes.stabilizer_measurement_state_prep import (
     StabilizerMeasurementStatePrepTN,

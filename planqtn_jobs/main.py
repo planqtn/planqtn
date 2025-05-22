@@ -5,9 +5,8 @@ import os
 import sys
 import traceback
 from typing import Optional
-from planqtn_jobs.task import SupabaseCredentials
+from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore
 from planqtn_jobs.weight_enum_task import WeightEnumeratorTask
-from planqtn_jobs.task_store import SupabaseTaskStore
 
 
 def main():
@@ -58,16 +57,12 @@ def main():
         sys.exit(1)
 
     # check runtime context
-    runtime_supabase_url = os.environ.get("RUNTIME_SUPABASE_URL", args.task_store_url)
-    runtime_supabase_key = os.environ.get("RUNTIME_SUPABASE_KEY", args.task_store_key)
+    runtime_supabase_url = os.environ.get("RUNTIME_SUPABASE_URL")
+    runtime_supabase_key = os.environ.get("RUNTIME_SUPABASE_KEY")
 
-    if (
-        args.realtime
-        and not (runtime_supabase_url and runtime_supabase_key)
-        and not args.task_uuid
-    ):
+    if args.realtime and (not runtime_supabase_url or not runtime_supabase_key):
         print(
-            "Error: Task UUID mode and task store credentials required for realtime updates (or env vars RUNTIME_SUPABASE_URL/KEY)"
+            "Error: env vars RUNTIME_SUPABASE_URL/KEY are needed for realtime updates they are not set"
         )
         sys.exit(1)
 
@@ -77,23 +72,23 @@ def main():
         print("Error: Task store credentials required for task-uuid mode")
         sys.exit(1)
 
-    root = logging.getLogger()
-    root.setLevel(
-        logging.DEBUG if args.debug else logging.INFO
-    )  # Set the minimum logging level
+    # root = logging.getLogger()
+    # root.setLevel(
+    #     logging.DEBUG if args.debug else logging.INFO
+    # )  # Set the minimum logging level
 
-    # Create a StreamHandler to output to stdout
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    # # Create a StreamHandler to output to stdout
+    # handler = logging.StreamHandler(sys.stdout)
+    # handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
 
-    # Create a formatter to customize the log message format
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
+    # # Create a formatter to customize the log message format
+    # formatter = logging.Formatter(
+    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # )
+    # handler.setFormatter(formatter)
 
-    # Add the handler to the root logger
-    root.addHandler(handler)
+    # # Add the handler to the root logger
+    # root.addHandler(handler)
     logger = logging.getLogger(__name__)
 
     if args.task_uuid:
@@ -102,36 +97,32 @@ def main():
         logger.info(f"Starting task with args {args}")
 
     try:
-        # Load the request
-        realtime_publisher = (
-            SupabaseCredentials(url=runtime_supabase_url, key=runtime_supabase_key)
-            if args.realtime
+        task_store = (
+            SupabaseTaskStore(
+                task_db_credentials=SupabaseCredentials(
+                    url=args.task_store_url, key=args.task_store_key
+                ),
+                task_updates_db_credentials=(
+                    SupabaseCredentials(
+                        url=runtime_supabase_url, key=runtime_supabase_key
+                    )
+                    if args.realtime
+                    else None
+                ),
+            )
+            if args.task_uuid
             else None
         )
-        task = WeightEnumeratorTask(
-            realtime_updates_enabled=args.realtime,
-            realtime_update_frequency=args.realtime_update_frequency,
-            realtime_publisher=realtime_publisher,
+        WeightEnumeratorTask(
+            user_id=args.user_id,
+            uuid=args.task_uuid,
+            input_file=args.input_file,
+            output_file=args.output_file,
+            task_store=task_store,
             local_progress_bar=args.local_progress_bar,
-        )
-        if args.task_uuid:
-            task_store = SupabaseTaskStore(
-                args.task_store_url, args.task_store_key, args.user_id
-            )
-            request = task.initalize_args_from_supabase(args.task_uuid, task_store)
-        else:
-            request = task.initalize_args_from_file(args.input_file)
-
-        result = task.run()
-
-        if args.output_file:
-            with open(args.output_file, "w") as f:
-                f.write(result.model_dump_json())
-        else:
-            print(result)
-
-        if args.task_uuid:
-            task_store.store_task_result(args.task_uuid, result.model_dump_json())
+            realtime_update_frequency=args.realtime_update_frequency,
+            realtime_updates_enabled=args.realtime,
+        ).run()
 
     except Exception as e:
         print(f"Error: {str(e)}")

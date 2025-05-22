@@ -3,11 +3,15 @@ import os
 import tempfile
 import subprocess
 import uuid
+import threading
+import time
+import asyncio
 from pathlib import Path
 import pytest
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import create_client, Client
+from supabase.client import AsyncClient
 
 # Test data from weight_enum_task_test.py
 TEST_JSON = """{"legos":{"1":{"instanceId":"1","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]},"2":{"instanceId":"2","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]}},"connections":[{"from":{"legoId":"1","legIndex":1},"to":{"legoId":"2","legIndex":5}}],"truncate_length":3,"open_legs":[{"instanceId":"1","legIndex":3},{"instanceId":"1","legIndex":6}]}"""
@@ -31,7 +35,7 @@ def temp_output_file():
     os.unlink(f.name)
 
 
-def validate_weight_enumerator_result_output_file(output_file: str):
+def validate_weight_enumerator_result_output_file(output_file: str, expected=None):
     """Validate the weight enumerator calculation result.
 
     Args:
@@ -40,21 +44,19 @@ def validate_weight_enumerator_result_output_file(output_file: str):
     assert os.path.exists(output_file)
     with open(output_file, "r") as f:
         result = json.load(f)
-        validate_weight_enumerator_result(result)
+        validate_weight_enumerator_result(result, expected)
 
 
-def validate_weight_enumerator_result(result):
+def validate_weight_enumerator_result(result, expected=None):
     """Validate the weight enumerator calculation result.
 
     Args:
         output_file: Path to the output file containing the result
     """
 
-    assert isinstance(result, dict)
-    res = WeightEnumeratorCalculationResult(**result)
-    assert (
-        res.stabilizer_polynomial
-        == """II: {0:1}
+    if expected is None:
+        expected = WeightEnumeratorCalculationResult(
+            stabilizer_polynomial="""II: {0:1}
 ZZ: {2:2}
 IZ: {3:2}
 ZI: {3:2}
@@ -63,9 +65,16 @@ YY: {2:2}
 IX: {3:2}
 IY: {3:2}
 XI: {3:2}
-YI: {3:2}"""
-    )
-    assert res.normalizer_polynomial == "not supported for open legs yet"
+YI: {3:2}""",
+            normalizer_polynomial="not supported for open legs yet",
+            time=0.01,
+        )
+
+    assert isinstance(result, dict)
+
+    res = WeightEnumeratorCalculationResult(**result)
+    assert res.stabilizer_polynomial == expected.stabilizer_polynomial
+    assert res.normalizer_polynomial == expected.normalizer_polynomial
     assert res.time > 0
 
 
@@ -216,7 +225,8 @@ def test_main_with_task_store(
         service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
 
 
-def test_main_with_task_store_and_realtime(
+@pytest.mark.asyncio
+async def test_main_with_task_store_and_realtime(
     temp_input_file, temp_output_file, supabase_setup, monkeypatch
 ):
     """Test main.py with task store integration."""
@@ -230,7 +240,9 @@ def test_main_with_task_store_and_realtime(
     task_data = {
         "uuid": task_uuid,
         "user_id": supabase_setup["test_user_id"],
-        "args": json.loads(TEST_JSON),
+        # fmt: off
+        "args": json.loads("""{"legos":{"1":{"instanceId":"1","shortName":"QRM15","name":"QRM15","id":"15qrm","parity_check_matrix":[[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,1]],"logical_legs":[15],"gauge_legs":[]}},"connections":[],"truncate_length":null,"open_legs":[]}"""),
+        # fmt: on
         "state": 0,  # PENDING
     }
 
@@ -252,24 +264,105 @@ def test_main_with_task_store_and_realtime(
             supabase_setup["test_user_id"],
             "--output-file",
             temp_output_file,
-            "--debug",
+            # "--debug",
             "--realtime",
+            "--realtime-update-frequency",
+            "3",
         ]
         # Mock sys.argv to simulate command line arguments
         monkeypatch.setattr("sys.argv", args)
         print("Running\n\t", " ".join(args))
 
-        # Run the main function
-        main()
+        # Set environment variables for realtime updates
+        monkeypatch.setenv("RUNTIME_SUPABASE_URL", supabase_setup["api_url"])
+        monkeypatch.setenv("RUNTIME_SUPABASE_KEY", supabase_setup["service_role_key"])
+
+        # Set up realtime listener before running main
+        received_updates = []
+        update_event = asyncio.Event()
+
+        def handle_update(payload):
+            print(f"Received update: {payload}")
+            update_event.set()
+            received_updates.append(payload["data"]["record"])
+            # # Extract the actual update from the payload structure
+            # if payload.get("event") == "postgres_changes":
+            #     data = payload.get("payload", {}).get("data", {})
+            #     if data.get("type") == "UPDATE":
+            #         record = data.get("record", {})
+            #         updates = json.loads(record.get("updates", "{}"))
+            #         received_updates.append(updates)
+
+        # Create async client for realtime
+        async_client = AsyncClient(
+            supabase_setup["api_url"], supabase_setup["service_role_key"]
+        )
+
+        print("Setting up realtime subscription...")
+        channel = async_client.channel("task_updates")
+        subscription = channel.on_postgres_changes(
+            event="*",
+            schema="public",
+            table="task_updates",
+            filter=f"uuid=eq.{task_uuid}",
+            callback=handle_update,
+        )
+        print("Subscribing to channel...")
+        await subscription.subscribe()
+        print("Subscription completed")
+
+        # Run the main function in a separate thread
+        def run_main():
+            print("Starting main function...")
+            main()
+            print("Main function completed")
+
+        main_thread = threading.Thread(target=run_main)
+        main_thread.start()
+
+        # Wait for at least the "started" update
+        try:
+            await asyncio.wait_for(update_event.wait(), timeout=2)
+        except asyncio.TimeoutError:
+            raise AssertionError(
+                f"Did not receive 'started' update within timeout, updates: {received_updates}"
+            )
+
+        # Wait a bit more to get some iteration updates
+        await asyncio.sleep(2)
+
+        # Verify we got the expected updates
+        assert (
+            len(received_updates) >= 2
+        ), f"Expected at least 2 updates, got {len(received_updates)}"
+
+        # Wait for main thread to complete
+        main_thread.join()
+
+        expected = WeightEnumeratorCalculationResult(
+            stabilizer_polynomial="{0:1, 4:140, 6:448, 8:1350, 10:13888, 12:33740, 14:13440, 16:2529}",
+            normalizer_polynomial="{0:1, 4:140, 6:448, 8:1350, 10:13888, 12:33740, 14:13440, 16:2529}",
+            time=0.01,
+        )
 
         # Validate the result
-        validate_weight_enumerator_result_output_file(temp_output_file)
+        validate_weight_enumerator_result_output_file(
+            temp_output_file,
+            expected=expected,
+        )
 
         # Verify task was updated in Supabase
         task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
         assert len(task.data) == 1
         assert task.data[0]["state"] == 2  # SUCCESS
-        validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
+        validate_weight_enumerator_result(
+            json.loads(task.data[0]["result"]),
+            expected=expected,
+        )
 
     finally:
+        # Clean up realtime subscription
+        if "channel" in locals():
+            await channel.unsubscribe()
+
         service_client.table("tasks").delete().eq("uuid", task_uuid).execute()

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 import json
 import logging
 import sys
@@ -7,10 +8,11 @@ import time
 from typing import Any, Dict, TextIO
 
 from pydantic import BaseModel
+import supabase
 
-from planqtn_jobs.task_store import SupabaseTaskStore, TaskStore
 from qlego.progress_reporter import (
     DummyProgressReporter,
+    IterationStateEncoder,
     ProgressReporter,
     TqdmProgressReporter,
 )
@@ -26,15 +28,13 @@ class TaskStoreProgressReporter(ProgressReporter):
     def __init__(
         self,
         task: "Task",
-        task_store: TaskStore,
+        task_store: "SupabaseTaskStore",
         sub_reporter: ProgressReporter = None,
         iteration_report_frequency: float = 1.0,
-        user_id: str | None = None,
     ):
         self.task = task
         self.start_time = time.time()
         self.task_store = task_store
-        self.user_id = user_id
         self.logger = logging.getLogger(self.__class__.__name__)
 
         super().__init__(sub_reporter, iteration_report_frequency)
@@ -42,6 +42,7 @@ class TaskStoreProgressReporter(ProgressReporter):
     def __enter__(self):
 
         self.sub_reporter.__enter__()
+        self.task_store.start_task_updates(self.task)
 
         return self
 
@@ -49,17 +50,16 @@ class TaskStoreProgressReporter(ProgressReporter):
         self.sub_reporter.__exit__(exc_type, exc_value, traceback)
 
         if exc_type is not None:
-            self.task_store.update_task(
-                self.task.request.id,
-                {"state": 3, "result": str(exc_value)},
-                user_id=self.user_id,
+            self.task_store.store_task_result(
+                self.task,
+                str(exc_value),
+                TaskState.FAILED,
             )
 
     def handle_result(self, result: Dict[str, Any]):
-        self.task_store.update_task(
-            self.task.request.id,
+        self.task_store.send_task_update(
+            self.task,
             {"state": 1, "iteration_status": self.iterator_stack},
-            user_id=self.user_id,
         )
 
 
@@ -67,17 +67,31 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
 
     def __init__(
         self,
+        user_id: str,
         uuid: str,
+        input_file: str,
+        output_file: str,
+        task_store: "SupabaseTaskStore",
+        local_progress_bar: bool = True,
         realtime_updates_enabled: bool = True,
         realtime_update_frequency: float = 5,
-        realtime_publisher: SupabaseCredentials = None,
-        local_progress_bar: bool = True,
     ):
-        self.realtime_updates_enabled = realtime_updates_enabled
-        self.realtime_update_frequency = realtime_update_frequency
-        self.realtime_publisher = realtime_publisher
+        self.task_store = task_store
         self.local_progress_bar = local_progress_bar
         self.args = None
+        self.user_id = user_id
+        self.uuid = uuid
+        self.input_file = input_file
+        self.output_file = output_file
+        self.realtime_updates_enabled = realtime_updates_enabled
+        self.realtime_update_frequency = realtime_update_frequency
+
+        if self.input_file:
+            self.args = self._initalize_args_from_file(self.input_file)
+        elif self.uuid and self.uuid:
+            self.args = self._initalize_args_from_supabase()
+        else:
+            raise ValueError("Either file_path or uuid must be provided")
 
     def get_progress_reporter(self) -> ProgressReporter:
         if not self.realtime_updates_enabled and not self.local_progress_bar:
@@ -91,12 +105,12 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
             else DummyProgressReporter()
         )
 
-        if self.realtime_publisher is not None:
+        if self.task_store:
             return TaskStoreProgressReporter(
-                self.realtime_publisher.url,
-                self.realtime_publisher.key,
+                task=self,
+                task_store=self.task_store,
                 sub_reporter=local_reporter,
-                iteration_report_frequency=max(self.realtime_update_frequency, 5),
+                iteration_report_frequency=self.realtime_update_frequency,
             )
         else:
             return local_reporter
@@ -109,25 +123,99 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
 
     def run(self) -> ResultType:
         with self.get_progress_reporter() as progress_reporter:
-            return self.__execute__(self.args, progress_reporter)
+            res = self.__execute__(self.args, progress_reporter)
+
+            if self.output_file:
+                with open(self.output_file, "w") as f:
+                    f.write(res.model_dump_json())
+            else:
+                print(res)
+
+            if self.uuid:
+                self.task_store.store_task_result(
+                    self, res.model_dump_json(), TaskState.COMPLETED
+                )
+            return res
 
     @abstractmethod
     def __load_args_from_json__(self, json_data: str) -> ArgsType:
         pass
 
-    def initalize_args_from_file(self, file_path: str) -> ArgsType:
+    def _initalize_args_from_file(self, file_path: str) -> ArgsType:
         """Load a WeightEnumeratorRequest from a JSON file."""
         with open(file_path, "r") as f:
             data = json.load(f)
-        self.args = self.__load_args_from_json__(data)
-        return self.args
+        return self.__load_args_from_json__(data)
 
-    def initalize_args_from_supabase(
-        self, task_uuid: str, task_store: SupabaseTaskStore
-    ) -> ArgsType:
+    def _initalize_args_from_supabase(self) -> ArgsType:
         """Load a WeightEnumeratorRequest from Supabase tasks table."""
-        task_data = task_store.get_task(task_uuid)
+        task_data = self.task_store.get_task(self)
         if not task_data:
-            raise ValueError(f"Task {task_uuid} not found in Supabase")
-        self.args = self.__load_args_from_json__(task_data["args"])
-        return self.args
+            raise ValueError(f"Task {self.uuid} not found in Supabase")
+        return self.__load_args_from_json__(task_data["args"])
+
+
+class TaskState(Enum):
+    PENDING = 0
+    RUNNING = 1
+    COMPLETED = 2
+    FAILED = 3
+
+
+class SupabaseTaskStore:
+    def __init__(
+        self,
+        task_db_credentials: SupabaseCredentials,
+        task_updates_db_credentials: SupabaseCredentials,
+    ):
+        self.user_context_supabase_url = task_db_credentials.url
+        self.user_context_supabase_key = task_db_credentials.key
+        self.task_db = supabase.create_client(
+            self.user_context_supabase_url, self.user_context_supabase_key
+        )
+
+        self.task_updates_db = None
+        if task_updates_db_credentials:
+            self.task_updates_supabase_url = task_updates_db_credentials.url
+            self.task_updates_supabase_key = task_updates_db_credentials.key
+            self.task_updates_db = supabase.create_client(
+                self.task_updates_supabase_url, self.task_updates_supabase_key
+            )
+
+    def start_task_updates(self, task: Task):
+        if not self.task_updates_db:
+            return
+        self.task_updates_db.table("task_updates").insert(
+            {
+                "uuid": task.uuid,
+                "user_id": task.user_id,
+                "updates": "started",
+            }
+        ).execute()
+
+    def store_task_result(self, task: Task, result: Any, state: TaskState):
+        self.task_db.table("tasks").update({"result": result, "state": state.value}).eq(
+            "uuid", task.uuid
+        ).eq("user_id", task.user_id).execute()
+
+    def send_task_update(self, task: Task, updates: Dict[str, Any]):
+        if not self.task_updates_db:
+            return
+        self.task_updates_db.table("task_updates").update(
+            {"updates": json.dumps(updates, cls=IterationStateEncoder)}
+        ).eq("uuid", task.uuid).eq("user_id", task.user_id).execute()
+        print("Updated with iteration status: ", updates)
+
+    def get_task(self, task: Task) -> Dict[str, Any]:
+        task_data = (
+            self.task_db.table("tasks")
+            .select("*")
+            .eq("uuid", task.uuid)
+            .eq("user_id", task.user_id)
+            .execute()
+            .data
+        )
+        if not task_data:
+            return None
+
+        return task_data[0]

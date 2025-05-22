@@ -4,7 +4,7 @@ from typing import Any, Dict, TextIO
 
 from galois import GF2
 from sympy import symbols
-from planqtn_jobs.task import SupabaseCredentials, Task
+from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore, Task
 from planqtn_types.api_types import (
     WeightEnumeratorCalculationArgs,
     WeightEnumeratorCalculationResult,
@@ -23,16 +23,24 @@ class WeightEnumeratorTask(
 ):
     def __init__(
         self,
+        user_id: str,
+        uuid: str,
+        input_file: str,
+        output_file: str,
+        task_store: SupabaseTaskStore,
+        local_progress_bar: bool = True,
         realtime_updates_enabled: bool = True,
         realtime_update_frequency: float = 5,
-        realtime_publisher: SupabaseCredentials = None,
-        local_progress_bar: bool = True,
     ):
         super().__init__(
-            realtime_updates_enabled,
-            realtime_update_frequency,
-            realtime_publisher,
-            local_progress_bar,
+            user_id=user_id,
+            uuid=uuid,
+            input_file=input_file,
+            output_file=output_file,
+            task_store=task_store,
+            local_progress_bar=local_progress_bar,
+            realtime_update_frequency=realtime_update_frequency,
+            realtime_updates_enabled=realtime_updates_enabled,
         )
 
     def __load_args_from_json__(
