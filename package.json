@@ -1,7 +1,7 @@
 {
   "devDependencies": {
     "node-pg-migrate": "^8.0.0",
-    "supabase": "^2.22.12"
+    "supabase": "^2.23.4"
   },
   "dependencies": {
     "add": "^2.0.6",

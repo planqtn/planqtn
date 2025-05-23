@@ -54,3 +54,26 @@ To publish a new version:
 ## License
 
 ISC
+
+## TODO
+
+### create clusters
+
+Automate this with `planqtn start --full` (full version)
+
+```
+docker network create --driver=bridge --subnet=192.168.0.0/24 --gateway=192.168.0.1 -o --ip-masq -o --icc -o com.docker.network.driver.mtu=65535 --label=created_by.minikube.sigs.k8s.io=true --label=name.minikube.sigs.k8s.io=minikube planqtn-dev
+minikube start --network=planqtn-dev
+supabase start --network-id=planqtn-dev
+```
+
+Test out for `planqtn start` (runtime only) whether an edge runtime can be simplified or not.
+
+### create auth
+
+```
+minikube kubectl -- create serviceaccount planqtn-edge -n
+minikube kubectl -- create role planqtn-job-manager --verb=create,get,list,watch,delete --resource=jobs.batch
+minikube kubectl -- create rolebinding planqtn-job-manager-binding --role=planqtn-job-manager --serviceaccount=default:planqtn-edge
+minikube kubectl -- create token planqtn-edge
+```

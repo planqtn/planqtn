@@ -23,6 +23,14 @@ export const up = (pgm) => {
         type: "uuid",
         notNull: true,
       },
+      execution_id: {
+        type: "string",
+        notNull: false,
+      },
+      job_type: {
+        type: "string",
+        notNull: true,
+      },
       sent_at: {
         type: "timestamp with time zone",
       },

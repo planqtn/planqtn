@@ -4,6 +4,7 @@
 PUSH=false
 RUN=false
 RUND=false
+MINIKUBE_LOAD=false
 for arg in "$@"; do
     case $arg in
         --push)
@@ -16,6 +17,10 @@ for arg in "$@"; do
             ;;
         --rund)
             RUND=true
+            shift
+            ;;
+        --minikube-load)
+            MINIKUBE_LOAD=true
             shift
             ;;
     esac
@@ -43,6 +48,12 @@ if [ "$PUSH" = true ]; then
     echo "Image pushed successfully"
 fi
 
+if [ "$MINIKUBE_LOAD" = true ]; then
+    echo "Loading image into Minikube..."
+    minikube image load balopat/planqtn_jobs:${TAG}
+    echo "Image loaded into Minikube successfully"
+fi
+
 if [ "$RUN" = true ]; then
     echo "Running container with attached TTY..."
     docker run -t --rm -p 5173:5173 balopat/planqtn_jobs:${TAG}
@@ -52,11 +63,14 @@ elif [ "$RUND" = true ]; then
     echo "Container started with ID: ${CONTAINER_ID}"
     echo "Tailing logs (Ctrl+C to stop)..."
     docker logs -f ${CONTAINER_ID}
-elif [ "$PUSH" != true ]; then
+elif [ "$PUSH" != true ] && [ "$MINIKUBE_LOAD" != true ]; then
     echo "To push the image to the registry, run:"
     echo "    docker push balopat/planqtn_jobs:${TAG}"    
     echo "or run this script with the --push flag:"
     echo "    ./build_jobs_image.sh --push"
+    echo ""
+    echo "To load the image into Minikube, run:"
+    echo "    ./build_jobs_image.sh --minikube-load"
     echo ""
 elif [ "$RUN" != true ]; then
     echo "To run the container with attached TTY, use:"

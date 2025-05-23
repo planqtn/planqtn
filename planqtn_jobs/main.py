@@ -5,7 +5,7 @@ import os
 import sys
 import traceback
 from typing import Optional
-from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore
+from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore, TaskDetails
 from planqtn_jobs.weight_enum_task import WeightEnumeratorTask
 
 
@@ -114,10 +114,12 @@ def main():
             else None
         )
         WeightEnumeratorTask(
-            user_id=args.user_id,
-            uuid=args.task_uuid,
-            input_file=args.input_file,
-            output_file=args.output_file,
+            task_details=TaskDetails(
+                user_id=args.user_id,
+                uuid=args.task_uuid,
+                input_file=args.input_file,
+                output_file=args.output_file,
+            ),
             task_store=task_store,
             local_progress_bar=args.local_progress_bar,
             realtime_update_frequency=args.realtime_update_frequency,

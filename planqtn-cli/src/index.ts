@@ -4,7 +4,7 @@ import { Command } from "commander";
 import { runJob } from "./commands/run";
 import { getJobStatus } from "./commands/status";
 import { getJobLogs } from "./commands/logs";
-import { JOBS_CONFIG } from "./config/jobs_config";
+import { JOBS_CONFIG } from "../../supabase/functions/shared/config/jobs_config";
 
 const program = new Command();
 

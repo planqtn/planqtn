@@ -1,5 +1,5 @@
-import { K8sClient } from "../lib/k8s-client";
-import { JOBS_CONFIG } from "../config/jobs_config";
+import { K8sClient } from "../../../supabase/functions/shared/lib/k8s-client";
+import { JOBS_CONFIG } from "../../../supabase/functions/shared/config/jobs_config";
 
 export async function runJob(
     jobType: string,

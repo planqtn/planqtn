@@ -1,4 +1,4 @@
-import { K8sClient } from "../lib/k8s-client";
+import { K8sClient } from "../../../supabase/functions/shared/lib/k8s-client";
 
 export async function getJobLogs(
     jobId: string,

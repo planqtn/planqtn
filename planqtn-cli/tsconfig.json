@@ -11,6 +11,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "../supabase/functions/shared/lib",
+    "../supabase/functions/shared/config"
+  ],
   "exclude": ["node_modules", "dist"]
 }
