@@ -55,6 +55,8 @@ import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
 import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
 import { GF2 } from "../lib/GF2.ts";
+import { config, getApiUrl } from "../config.ts";
+import { getAccessToken } from "../lib/auth.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -273,32 +275,39 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             })
           : null,
       );
-
+      const acessToken = await getAccessToken();
+      const key = !acessToken ? config.anonKey : acessToken;
       const response = await axios.post(
-        "/api/weightenumerator",
+        getApiUrl("planqtnJob"),
         {
-          legos: tensorNetwork.legos.reduce(
-            (acc, lego) => {
-              acc[lego.instanceId] = {
-                instanceId: lego.instanceId,
-                shortName: lego.shortName || "Generic Lego",
-                name: lego.shortName || "Generic Lego",
-                id: lego.id,
-                parity_check_matrix: lego.parity_check_matrix,
-                logical_legs: lego.logical_legs,
-                gauge_legs: lego.gauge_legs,
-              } as LegoServerPayload;
-              return acc;
-            },
-            {} as Record<string, LegoServerPayload>,
-          ),
-          connections: tensorNetwork.connections,
-          truncate_length: truncateLength,
-          open_legs: openLegs || [],
+          user_id: user?.id,
+          request_time: new Date().toISOString(),
+          job_type: "weightenumerator",
+          payload: {
+            legos: tensorNetwork.legos.reduce(
+              (acc, lego) => {
+                acc[lego.instanceId] = {
+                  instanceId: lego.instanceId,
+                  shortName: lego.shortName || "Generic Lego",
+                  name: lego.shortName || "Generic Lego",
+                  id: lego.id,
+                  parity_check_matrix: lego.parity_check_matrix,
+                  logical_legs: lego.logical_legs,
+                  gauge_legs: lego.gauge_legs,
+                } as LegoServerPayload;
+                return acc;
+              },
+              {} as Record<string, LegoServerPayload>,
+            ),
+            connections: tensorNetwork.connections,
+            truncate_length: truncateLength,
+            open_legs: openLegs || [],
+          },
         },
         {
           headers: {
-            Authorization: `Bearer ${await supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => session?.access_token)}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
           },
         },
       );

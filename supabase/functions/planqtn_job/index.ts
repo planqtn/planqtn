@@ -9,12 +9,18 @@ import { JobRequest, JobResponse } from "./types.ts";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
+import { corsHeaders } from "../_shared/cors.ts";
+
 // Initialize Supabase client TODO get this from user token instead of service role key
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 Deno.serve(async (req) => {
+  console.log("Received request", req);
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   try {
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");

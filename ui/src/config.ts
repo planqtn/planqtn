@@ -12,6 +12,8 @@ interface ApiConfig {
     env: Environment;
     endpoints: {
         tensorNetwork: string;
+        planqtnJob: string;
+        planqtnJobLogs: string;
     };
 }
 
@@ -37,6 +39,8 @@ export const config: ApiConfig = {
     env: (import.meta.env.VITE_ENV || "production") as Environment,
     endpoints: {
         tensorNetwork: "/functions/v1/tensornetwork",
+        planqtnJob: "/functions/v1/planqtn_job",
+        planqtnJobLogs: "/functions/v1/planqtn_job_logs",
     },
 };
 
