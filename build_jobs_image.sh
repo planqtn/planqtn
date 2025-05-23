@@ -49,8 +49,11 @@ if [ "$PUSH" = true ]; then
 fi
 
 if [ "$MINIKUBE_LOAD" = true ]; then
-    echo "Loading image into Minikube..."
-    minikube image load balopat/planqtn_jobs:${TAG}
+    echo "Loading image balopat/planqtn_jobs:${TAG} into Minikube..."
+    # https://github.com/kubernetes/minikube/issues/18021 gotta do it via a file
+    temp_file=$(mktemp)
+    docker image save balopat/planqtn_jobs:${TAG} -o ${temp_file}
+    minikube image load ${temp_file}    
     echo "Image loaded into Minikube successfully"
 fi
 

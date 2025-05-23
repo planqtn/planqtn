@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import traceback
-from typing import Optional
+from typing import List, Optional, Tuple
 from kubernetes import client, config
 from supabase import create_client, Client
 import logging
@@ -59,15 +59,20 @@ class JobMonitor:
         # Track the last known state
         self.last_state: Optional[str] = None
 
-    def get_job_status(self) -> str:
+    def get_job_status(self) -> Tuple[str, Optional[List[str]]]:
         """Get the current status of the monitored job."""
         try:
             job = self.batch_api.read_namespaced_job(self.job_name, self.namespace)
+            print("Job details:")
+            print(job)
+            print("Job status:")
+            print(job.status)
 
             if not job.status:
-                return "pending"
+                return "pending", None
 
             if job.status.failed and job.status.failed > 0:
+                print("Job failed...")
                 # Check pod events for OOM
                 pods = self.core_api.list_namespaced_pod(
                     self.namespace, label_selector=f"job-name={self.job_name}"
@@ -79,35 +84,38 @@ class JobMonitor:
                         field_selector=f"involvedObject.name={pod.metadata.name}",
                     )
 
+                    reasons = []
                     for event in events.items:
                         if event.reason == "OOMKilled":
-                            return "oom"
-                return "stopped"
+                            return "oom", ["OOMKilled"]
+                        reasons.append(event.reason)
+
+                return "failed", reasons
 
             if job.status.succeeded and job.status.succeeded > 0:
-                return "stopped"
+                return "stopped", None
 
             if job.status.active and job.status.active > 0:
-                return "running"
+                return "running", None
 
-            return "pending"
+            return "pending", None
 
         except Exception as e:
             logger.error(f"Error getting job status: {e}")
-            return "error"
+            return "error", [f"Error getting job status: {e}"]
 
     def update_task_state(self, state: str):
         """Update the task state in Supabase."""
         try:
             if state != "stopped":
-                logger.info(f"Task {self.task_uuid} failed, storing result")
+                logger.info(f"Task {self.task_details.uuid} failed, storing result")
                 self.task_store.store_task_result(
                     task=self.task_details,
                     result=state,
                     state=TaskState.FAILED,
                 )
             else:
-                logger.info(f"Task {self.task_uuid} completed successfully")
+                logger.info(f"Task {self.task_details.uuid} completed successfully")
         except Exception as e:
             logger.error(f"Error updating task state: {e}")
             traceback.print_exc()
@@ -117,18 +125,18 @@ class JobMonitor:
         logger.info(f"Starting to monitor job {self.job_name}")
 
         while True:
-            current_state = self.get_job_status()
+            current_state, reasons = self.get_job_status()
 
             # Update state if it has changed
             if current_state != self.last_state:
                 logger.info(
-                    f"Job state changed from {self.last_state} to {current_state}"
+                    f"Job state changed from {self.last_state} to {current_state}, reasons: {reasons}"
                 )
                 self.update_task_state(current_state)
                 self.last_state = current_state
 
                 # Exit if the job is in a final state
-                if current_state in ["stopped", "oom", "error"]:
+                if current_state in ["stopped", "oom", "failed", "error"]:
                     logger.info(f"Job reached final state: {current_state}")
                     break
 

@@ -12,5 +12,11 @@ export const JOBS_CONFIG: Record<string, JobConfig> = {
         memoryLimit: "4Gi",
         cpuLimit: "2",
     },
-    // Add more job types here
+
+    "job-monitor": {
+        image: "balopat/planqtn_jobs:ec3e6a7-dirty",
+        timeout: 3600, // 1 hour
+        memoryLimit: "4Gi",
+        cpuLimit: "2",
+    },
 };

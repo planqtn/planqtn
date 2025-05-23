@@ -36,70 +36,6 @@ export class K8sClient {
         this.batchApi = this.kc.makeApiClient(k8s.BatchV1Api);
     }
 
-    private delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
-    async watchJobEvents(jobName: string, namespace: string) {
-        console.log(
-            `Watching events for job '${jobName}' in namespace '${namespace}'...`,
-        );
-
-        // Create a watch object for events
-        const watch = new k8s.Watch(this.kc);
-        const path = `/api/v1/namespaces/${namespace}/events`;
-
-        // Create a promise that we can resolve from outside
-        let resolveWatch: () => void;
-        const watchPromise = new Promise<void>((resolve) => {
-            resolveWatch = resolve;
-        });
-
-        // Start watching for events
-        const request = await watch.watch(
-            path,
-            {}, // Query parameters (e.g., fieldSelector, labelSelector)
-            (type, apiObj) => {
-                console.log(
-                    `Job Event [${type}]: ${apiObj.reason} - ${apiObj.message} \n ${
-                        JSON.stringify(apiObj)
-                    }`,
-                );
-
-                // Check if the message contains "weightenumerator"
-                if (apiObj.message?.includes("weightenumerator")) {
-                    console.log("Found weightenumerator message");
-                    resolveWatch();
-                }
-            },
-            (err) => {
-                if (err instanceof AbortError) {
-                    console.log("Job events watched");
-                    return;
-                }
-
-                console.error("Error watching job events:", err, typeof err);
-                // Reconnect or handle error appropriately in a real application
-                if (err.statusCode === 401) {
-                    console.error(
-                        "Authentication error. Check your KubeConfig permissions.",
-                    );
-                }
-            },
-        );
-
-        // Set a timeout to abort the watch after 5 minutes if we don't find the message
-        const timeoutId = setTimeout(() => {
-            request.abort();
-            resolveWatch(); // Resolve anyway to prevent hanging
-        }, 5 * 60 * 1000);
-
-        // Wait for either the message or timeout
-        await watchPromise;
-        clearTimeout(timeoutId);
-        request.abort();
-    }
-
     async testConnection(): Promise<void> {
         try {
             const timeoutPromise = new Promise((_, reject) => {
@@ -159,8 +95,10 @@ export class K8sClient {
 
     async createJob(
         jobType: string,
+        command: string[],
         args: string[],
         config: JobConfig,
+        serviceAccountName?: string,
     ): Promise<string> {
         const jobName = `planqtn-${jobType}-${Date.now()}`;
         const namespace = "default";
@@ -178,6 +116,7 @@ export class K8sClient {
                         containers: [{
                             name: jobType,
                             image: config.image,
+                            command: command,
                             args: args,
                             resources: {
                                 limits: {
@@ -192,6 +131,10 @@ export class K8sClient {
                 backoffLimit: 0,
             },
         };
+
+        if (serviceAccountName) {
+            job.spec.template.spec.serviceAccountName = serviceAccountName;
+        }
 
         try {
             console.log("Creating job with namespace:", namespace);
@@ -279,37 +222,27 @@ export class K8sClient {
 
     async getJobLogs(jobId: string): Promise<string> {
         const pods = await this.k8sApi.listNamespacedPod(
-            "default",
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            `job-name=${jobId}`,
+            {
+                namespace: "default",
+                labelSelector: `job-name=${jobId}`,
+            },
         );
+        console.log("Pods:", pods);
 
-        if (pods.body.items.length === 0) {
+        if (pods.items.length === 0) {
             throw new Error("No pods found for job");
         }
 
-        const podName = pods.body.items[0].metadata?.name;
+        const podName = pods.items[0].metadata?.name;
         if (!podName) {
             throw new Error("Pod name not found");
         }
 
-        const response = await this.k8sApi.readNamespacedPodLog(
-            podName,
-            "default",
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            true,
-        );
+        const response = await this.k8sApi.readNamespacedPodLog({
+            name: podName,
+            namespace: "default",
+        });
 
-        return response.body;
+        return response;
     }
 }

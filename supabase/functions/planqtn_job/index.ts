@@ -9,7 +9,7 @@ import { JobRequest, JobResponse } from "./types.ts";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
-// Initialize Supabase client
+// Initialize Supabase client TODO get this from user token instead of service role key
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -69,29 +69,52 @@ Deno.serve(async (req) => {
       await client.testConnection();
 
       const executionId = await client.createJob(jobRequest.job_type, [
+        "python",
+        "/app/planqtn_jobs/main.py",
+      ], [
         "--task-uuid",
         task.uuid,
-        ...Object.entries(jobRequest.payload).flatMap((
-          [key, value],
-        ) => [`--${key}`, value]),
+        "--task-store-url",
+        "http://host.docker.internal:54321",
+        "--task-store-key",
+        supabaseServiceKey,
+        "--user-id",
+        task.user_id,
+        "--debug",
       ], JOBS_CONFIG[jobRequest.job_type]);
 
       console.log("Job created successfully with execution ID:", executionId);
-
-      await client.watchJobEvents(executionId, "default");
 
       // Update the task with the execution ID
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
           execution_id: executionId,
-          state: 1, // running
+          state: 0, // pending
         })
         .eq("uuid", task.uuid);
 
       if (updateError) {
         throw new Error(`Failed to update task: ${updateError.message}`);
       }
+
+      // submit job-monitor job
+      const jobMonitorJob = await client.createJob(
+        `job-monitor`,
+        ["python", "/app/planqtn_jobs/monitor.py"],
+        [
+          executionId,
+          task.uuid,
+          task.user_id,
+          supabaseUrl,
+          supabaseServiceKey,
+        ],
+        JOBS_CONFIG["job-monitor"],
+      );
+      console.log(
+        "Job-monitor job created successfully with execution ID:",
+        jobMonitorJob,
+      );
 
       const response: JobResponse = {
         task_id: task.uuid,

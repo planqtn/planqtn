@@ -223,7 +223,8 @@ def test_main_with_task_store(
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
 
     finally:
-        service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+        # service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+        pass
 
 
 @pytest.mark.asyncio
@@ -367,4 +368,4 @@ async def test_main_with_task_store_and_realtime(
         if "channel" in locals():
             await channel.unsubscribe()
 
-        service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+        # service_client.table("tasks").delete().eq("uuid", task_uuid).execute()

@@ -329,3 +329,15 @@ entrypoint = "./functions/planqtn_job/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/planqtn_job/*.html" ]
+
+
+[functions.planqtn_job_logs]
+enabled = true
+verify_jwt = true
+import_map = "./functions/planqtn_job_logs/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/planqtn_job_logs/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/planqtn_job_logs/*.html" ]
