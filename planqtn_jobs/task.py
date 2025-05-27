@@ -161,6 +161,7 @@ class TaskState(Enum):
     RUNNING = 1
     COMPLETED = 2
     FAILED = 3
+    CANCELLED = 4
 
 
 class SupabaseTaskStore:
@@ -205,7 +206,6 @@ class SupabaseTaskStore:
         self.task_updates_db.table("task_updates").update(
             {"updates": json.dumps(updates, cls=IterationStateEncoder)}
         ).eq("uuid", task.uuid).eq("user_id", task.user_id).execute()
-        print("Updated with iteration status: ", updates)
 
     def get_task(self, task: TaskDetails) -> Dict[str, Any]:
         task_data = (

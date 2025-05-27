@@ -102,20 +102,35 @@ class JobMonitor:
 
         except Exception as e:
             logger.error(f"Error getting job status: {e}")
+            if "404" in str(e):
+                return "cancelled", ["Job cancelled"]
             return "error", [f"Error getting job status: {e}"]
 
     def update_task_state(self, state: str):
         """Update the task state in Supabase."""
         try:
-            if state != "stopped":
-                logger.info(f"Task {self.task_details.uuid} failed, storing result")
+            # only need to store result for failure! Cancellation, success are
+            # stored by the edge functions
+            if state in ["failed", "oom", "error"]:
+                logger.info(
+                    f"Task {self.task_details.uuid} failed with {state}, storing result"
+                )
                 self.task_store.store_task_result(
                     task=self.task_details,
                     result=state,
                     state=TaskState.FAILED,
                 )
+            elif state == "running":
+                logger.info(f"Task is running, storing result")
+                self.task_store.store_task_result(
+                    task=self.task_details,
+                    result=None,
+                    state=TaskState.RUNNING,
+                )
             else:
-                logger.info(f"Task {self.task_details.uuid} completed successfully")
+                logger.info(
+                    f"Task {self.task_details.uuid} is in state {state} - not storing result."
+                )
         except Exception as e:
             logger.error(f"Error updating task state: {e}")
             traceback.print_exc()
@@ -136,7 +151,7 @@ class JobMonitor:
                 self.last_state = current_state
 
                 # Exit if the job is in a final state
-                if current_state in ["stopped", "oom", "failed", "error"]:
+                if current_state != "running":
                     logger.info(f"Job reached final state: {current_state}")
                     break
 

@@ -30,6 +30,7 @@ import {
 } from "@supabase/supabase-js";
 import { UserMenu } from "./UserMenu";
 import AuthDialog from "./AuthDialog";
+import { Task, TaskUpdate } from "../lib/types";
 
 interface CeleryEvent {
   hostname: string;
@@ -52,7 +53,7 @@ interface CeleryEvent {
   runtime?: number;
 }
 
-interface Task {
+interface CeleryTask {
   uuid: string;
   name: string;
   title: string;
@@ -69,6 +70,7 @@ interface Task {
   kwargs: string;
   revoked: number | null;
   updates: {
+    status: string;
     iteration_status: Array<{
       desc: string;
       total_size: number;
@@ -365,13 +367,13 @@ const TasksView: React.FC = () => {
         {
           event: "UPDATE",
           schema: "public",
-          table: "tasks",
-          filter: `uuid=eq.${selectedTask.uuid}`,
+          table: "task_updates",
+          filter: `uuid=eq.${selectedTask.uuid} and user_id=eq.${currentUser.id}`,
         },
-        (payload: RealtimePostgresChangesPayload<Task>) => {
+        (payload: RealtimePostgresChangesPayload<TaskUpdate>) => {
           console.log("Task updated", payload);
           if (payload.new) {
-            const updates = (payload.new as Task).updates;
+            const updates = (payload.new as TaskUpdate).updates;
             if (updates?.iteration_status) {
               setIterationStatus(updates.iteration_status);
               setWaitingForTaskUpdate(false);
@@ -452,6 +454,66 @@ const TasksView: React.FC = () => {
         isClosable: true,
       });
     }
+  };
+
+  const handleTaskUpdate = (payload: TaskUpdate) => {
+    if (!selectedTaskRef.current) return;
+
+    setTasks((prevTasks) => {
+      const taskIndex = prevTasks.findIndex(
+        (t) => t.uuid === selectedTaskRef.current?.uuid,
+      );
+      if (taskIndex === -1) return prevTasks;
+
+      const newTask = { ...prevTasks[taskIndex] };
+      newTask.state = payload.updates.state;
+      if (payload.updates.iteration_status) {
+        setIterationStatus(payload.updates.iteration_status);
+      }
+
+      return [
+        ...prevTasks.slice(0, taskIndex),
+        newTask,
+        ...prevTasks.slice(taskIndex + 1),
+      ];
+    });
+  };
+
+  const handleCeleryEvent = (event: CeleryEvent) => {
+    setTasks((prevTasks) => {
+      const taskIndex = prevTasks.findIndex((t) => t.uuid === event.uuid);
+      const newTask: Task = {
+        uuid: event.uuid,
+        user_id: currentUser?.id || "",
+        sent_at: new Date(event.received).toISOString(),
+        started_at: event.started
+          ? new Date(event.started).toISOString()
+          : null,
+        ended_at: event.succeeded
+          ? new Date(event.succeeded).toISOString()
+          : null,
+        args: event.args,
+        state:
+          event.state === "SUCCESS"
+            ? 2
+            : event.state === "FAILURE"
+              ? 3
+              : event.state === "STARTED"
+                ? 1
+                : 0,
+        result: event.result,
+        execution_id: "",
+        job_type: event.name,
+      };
+
+      return taskIndex >= 0
+        ? [
+            ...prevTasks.slice(0, taskIndex),
+            newTask,
+            ...prevTasks.slice(taskIndex + 1),
+          ]
+        : [...prevTasks, newTask];
+    });
   };
 
   if (loading) {

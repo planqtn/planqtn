@@ -14,6 +14,7 @@ interface ApiConfig {
         tensorNetwork: string;
         planqtnJob: string;
         planqtnJobLogs: string;
+        cancelJob: string;
     };
 }
 
@@ -41,6 +42,7 @@ export const config: ApiConfig = {
         tensorNetwork: "/functions/v1/tensornetwork",
         planqtnJob: "/functions/v1/planqtn_job",
         planqtnJobLogs: "/functions/v1/planqtn_job_logs",
+        cancelJob: "/functions/v1/cancel_job",
     },
 };
 

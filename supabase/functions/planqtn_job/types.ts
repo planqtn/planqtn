@@ -9,8 +9,6 @@ export interface JobRequest {
 
 export interface JobResponse {
   task_id: string;
-  execution_id?: string;
-  state: number; // 0: pending, 1: running, 2: completed, 3: failed
   error?: string;
 }
 

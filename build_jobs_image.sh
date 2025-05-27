@@ -5,6 +5,7 @@ PUSH=false
 RUN=false
 RUND=false
 MINIKUBE_LOAD=false
+K3D_LOAD=false
 for arg in "$@"; do
     case $arg in
         --push)
@@ -21,6 +22,10 @@ for arg in "$@"; do
             ;;
         --minikube-load)
             MINIKUBE_LOAD=true
+            shift
+            ;;
+        --k3d-load)
+            K3D_LOAD=true
             shift
             ;;
     esac
@@ -57,6 +62,12 @@ if [ "$MINIKUBE_LOAD" = true ]; then
     echo "Image loaded into Minikube successfully"
 fi
 
+if [ "$K3D_LOAD" = true ]; then
+    echo "Loading image balopat/planqtn_jobs:${TAG} into k3d cluster..."
+    k3d image import balopat/planqtn_jobs:${TAG} -c plaqntn
+    echo "Image loaded into k3d cluster successfully"
+fi
+
 if [ "$RUN" = true ]; then
     echo "Running container with attached TTY..."
     docker run -t --rm -p 5173:5173 balopat/planqtn_jobs:${TAG}
@@ -66,7 +77,7 @@ elif [ "$RUND" = true ]; then
     echo "Container started with ID: ${CONTAINER_ID}"
     echo "Tailing logs (Ctrl+C to stop)..."
     docker logs -f ${CONTAINER_ID}
-elif [ "$PUSH" != true ] && [ "$MINIKUBE_LOAD" != true ]; then
+elif [ "$PUSH" != true ] && [ "$MINIKUBE_LOAD" != true ] && [ "$K3D_LOAD" != true ]; then
     echo "To push the image to the registry, run:"
     echo "    docker push balopat/planqtn_jobs:${TAG}"    
     echo "or run this script with the --push flag:"
@@ -74,6 +85,9 @@ elif [ "$PUSH" != true ] && [ "$MINIKUBE_LOAD" != true ]; then
     echo ""
     echo "To load the image into Minikube, run:"
     echo "    ./build_jobs_image.sh --minikube-load"
+    echo ""
+    echo "To load the image into k3d cluster, run:"
+    echo "    ./build_jobs_image.sh --k3d-load"
     echo ""
 elif [ "$RUN" != true ]; then
     echo "To run the container with attached TTY, use:"

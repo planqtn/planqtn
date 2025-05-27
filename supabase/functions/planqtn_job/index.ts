@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -41,7 +44,10 @@ Deno.serve(async (req) => {
     ) {
       return new Response(
         JSON.stringify({ error: "Invalid request body" }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -74,20 +80,33 @@ Deno.serve(async (req) => {
       // Test the connection first
       await client.testConnection();
 
-      const executionId = await client.createJob(jobRequest.job_type, [
-        "python",
-        "/app/planqtn_jobs/main.py",
-      ], [
-        "--task-uuid",
+      const executionId = await client.createJob(
+        jobRequest.job_type,
+        [
+          "python",
+          "/app/planqtn_jobs/main.py",
+        ],
+        [
+          "--task-uuid",
+          task.uuid,
+          "--task-store-url",
+          "http://host.docker.internal:54321",
+          "--task-store-key",
+          supabaseServiceKey,
+          "--user-id",
+          task.user_id,
+          "--debug",
+          "--realtime",
+          "--local-progress-bar",
+        ],
+        JOBS_CONFIG[jobRequest.job_type],
+        undefined,
         task.uuid,
-        "--task-store-url",
-        "http://host.docker.internal:54321",
-        "--task-store-key",
-        supabaseServiceKey,
-        "--user-id",
-        task.user_id,
-        "--debug",
-      ], JOBS_CONFIG[jobRequest.job_type]);
+        {
+          RUNTIME_SUPABASE_URL: "http://host.docker.internal:54321",
+          RUNTIME_SUPABASE_KEY: supabaseServiceKey,
+        },
+      );
 
       console.log("Job created successfully with execution ID:", executionId);
 
@@ -106,16 +125,18 @@ Deno.serve(async (req) => {
 
       // submit job-monitor job
       const jobMonitorJob = await client.createJob(
-        `job-monitor`,
-        ["python", "/app/planqtn_jobs/monitor.py"],
+        `job-monitor`, // job type
+        ["python", "/app/planqtn_jobs/monitor.py"], // command
         [
-          executionId,
-          task.uuid,
-          task.user_id,
-          supabaseUrl,
-          supabaseServiceKey,
+          executionId, // execution id
+          task.uuid, // task uuid
+          task.user_id, // user id
+          supabaseUrl, // supabase url
+          supabaseServiceKey, // supabase service role key
         ],
-        JOBS_CONFIG["job-monitor"],
+        JOBS_CONFIG["job-monitor"], // config
+        "job-monitor", // service account name
+        task.uuid, // postfix
       );
       console.log(
         "Job-monitor job created successfully with execution ID:",
@@ -124,13 +145,14 @@ Deno.serve(async (req) => {
 
       const response: JobResponse = {
         task_id: task.uuid,
-        execution_id: executionId,
-        state: 1,
       };
 
       return new Response(
         JSON.stringify(response),
-        { headers: { "Content-Type": "application/json" } },
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     } catch (error: unknown) {
       // Update task with error
@@ -157,7 +179,10 @@ Deno.serve(async (req) => {
       : "Unknown error occurred";
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });

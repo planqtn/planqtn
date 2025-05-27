@@ -22,11 +22,13 @@ import {
   LegoServerPayload,
   Connection,
   Operation,
+  TaskUpdate,
+  TaskUpdateIterationStatus,
 } from "../lib/types.ts";
 import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useState } from "react";
 import { getLegoStyle } from "../LegoStyles";
 import { LegPartitionDialog } from "./LegPartitionDialog";
@@ -48,8 +50,8 @@ import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards,
 } from "../transformations/CompleteGraphViaHadamards";
-// import ProgressBars from "./ProgressBars";
-import { User, Session } from "@supabase/supabase-js";
+import ProgressBars from "./ProgressBars";
+import { User, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
@@ -57,6 +59,7 @@ import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
 import { GF2 } from "../lib/GF2.ts";
 import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
+import { useEffect } from "react";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -133,17 +136,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const [, setSelectedMatrixRows] = useState<number[]>([]);
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
   const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null);
-  // const [iterationStatus, setIterationStatus] = useState<
-  //   Array<{
-  //     desc: string;
-  //     total_size: number;
-  //     current_item: number;
-  //     start_time: number;
-  //     end_time: number | null;
-  //     duration: number;
-  //     avg_time_per_item: number;
-  //   }>
-  // >([]);
+  const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
+  const [iterationStatus, setIterationStatus] = useState<
+    Array<TaskUpdateIterationStatus>
+  >([]);
 
   const [
     showWeightEnumeratorCalculationDialog,
@@ -238,6 +234,101 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     return { externalLegs, danglingLegs };
   };
 
+  const subscribeToTaskUpdates = (taskId: string) => {
+    console.log("Subscribing to task updates", taskId, "and user", user?.id);
+    if (!user) {
+      console.error("No user found, so not setting task updates");
+      return;
+    }
+    if (!tensorNetwork) {
+      setIterationStatus([]);
+      setWaitingForTaskUpdate(false);
+      return;
+    }
+
+    setWaitingForTaskUpdate(true);
+
+    // Create a channel for task updates
+    const channel = supabase
+      .channel(`task_${taskId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // Listen to all events
+          schema: "public",
+          table: "task_updates",
+          filter: `uuid=eq.${taskId}`, // Only filter by task ID first
+        },
+        (payload: RealtimePostgresChangesPayload<TaskUpdate>) => {
+          console.log("Task update received:", {
+            payload,
+            taskId,
+            userId: user?.id,
+            filter: `uuid=eq.${taskId}`,
+            payloadUserId: payload.new?.user_id,
+            payloadUuid: payload.new?.uuid,
+          });
+          if (payload.new) {
+            const updates = (payload.new as TaskUpdate).updates;
+            console.log("Processing updates:", updates);
+            if (updates?.iteration_status) {
+              console.log(
+                "Setting iteration status:",
+                updates.iteration_status,
+              );
+              setIterationStatus(updates.iteration_status);
+              setWaitingForTaskUpdate(false);
+            }
+            if (updates?.state !== undefined) {
+              console.log("Setting task state:", updates.state);
+              // Update the tensor network with the new state
+              setTensorNetwork((prev) => {
+                if (!prev) return null;
+                return TensorNetwork.fromObj({
+                  ...prev,
+                  isCalculatingWeightEnumerator: updates.state === 1, // 1 is RUNNING
+                });
+              });
+            }
+          }
+        },
+      )
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+        if (status === "SUBSCRIBED") {
+          console.log("Successfully subscribed to task updates");
+        } else if (status === "CLOSED") {
+          console.log("Subscription closed");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("Channel error occurred");
+        }
+      });
+
+    return () => {
+      console.log("Unsubscribing from task updates for task:", taskId);
+      channel.unsubscribe();
+    };
+  };
+
+  useEffect(() => {
+    console.log("useEffect triggered with:", {
+      taskId: tensorNetwork?.taskId,
+      userId: user?.id,
+      tensorNetwork: tensorNetwork ? "exists" : "null",
+    });
+    if (!tensorNetwork) return;
+
+    const signature = tensorNetwork.signature!;
+    const cachedEnumerator = weightEnumeratorCache.get(signature);
+    const taskId = tensorNetwork.taskId || cachedEnumerator?.taskId;
+    if (taskId) {
+      console.log("Setting up subscription for task:", taskId);
+      subscribeToTaskUpdates(taskId);
+    } else {
+      console.log("No task ID available for subscription");
+    }
+  }, [tensorNetwork, tensorNetwork?.taskId]);
+
   const calculateWeightEnumerator = async (
     truncateLength: number | null,
     openLegs?: TensorNetworkLeg[],
@@ -260,7 +351,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }),
       );
 
-      // joinTaskRoom(cachedEnumerator.taskId);
       return;
     }
 
@@ -277,6 +367,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       );
       const acessToken = await getAccessToken();
       const key = !acessToken ? config.anonKey : acessToken;
+
       const response = await axios.post(
         getApiUrl("planqtnJob"),
         {
@@ -312,6 +403,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         },
       );
 
+      console.log("Response", response);
+
       if (response.data.status === "error") {
         throw new Error(response.data.message);
       }
@@ -328,7 +421,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             })
           : null,
       );
-      // joinTaskRoom(taskId);
 
       // Show success toast with status URL
       toast({
@@ -355,6 +447,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       });
     } catch (error) {
       console.error("Error calculating weight enumerator:", error);
+      if (error instanceof AxiosError) {
+        console.error(error.response?.data);
+      }
       setError("Failed to calculate weight enumerator");
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
@@ -1086,7 +1181,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const handleCancelTask = async (taskId: string) => {
     try {
-      await axios.post(`/api/cancel_task`, { task_id: taskId });
+      const acessToken = await getAccessToken();
+      const key = !acessToken ? config.anonKey : acessToken;
+
+      await axios.post(
+        getApiUrl("cancelJob"),
+        { task_uuid: taskId },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+        },
+      );
       console.log("Task cancellation requested:", taskId);
     } catch (error) {
       console.error("Error cancelling task:", error);
@@ -1293,10 +1400,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             }}
                           />
                         </HStack>
-                        {/* <ProgressBars
+                        <ProgressBars
                           iterationStatus={iterationStatus}
                           waiting={waitingForTaskUpdate}
-                        /> */}
+                        />
                       </VStack>
                     </Box>
                   </Box>

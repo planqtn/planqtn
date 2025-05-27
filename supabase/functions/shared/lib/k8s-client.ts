@@ -1,34 +1,28 @@
 import * as k8s from "npm:@kubernetes/client-node";
 import { JobConfig } from "../config/jobs_config.ts";
-import { AbortError } from "npm:node-fetch";
 
 export class K8sClient {
     private kc: k8s.KubeConfig;
     private k8sApi: k8s.CoreV1Api;
     private batchApi: k8s.BatchV1Api;
 
-    constructor(
-        context: string = "local",
-        kubeconfig: string = "~/.kube/config",
-    ) {
+    constructor() {
         this.kc = new k8s.KubeConfig();
 
         // Configure the client with mTLS authentication
         this.kc.loadFromOptions({
             clusters: [{
-                name: "minikube",
-                server: `http://host.docker.internal:8001`,
+                name: "k3d-planqtn",
+                server: `http://k8sproxy:8001`,
                 skipTLSVerify: true,
             }],
-            users: [{
-                name: "minikube",
-            }],
+
             contexts: [{
-                name: "minikube",
-                cluster: "minikube",
-                user: "minikube",
+                name: "k3d-planqtn",
+                cluster: "k3d-planqtn",
+                user: "admin@k3d-planqtn",
             }],
-            currentContext: "minikube",
+            currentContext: "k3d-planqtn",
         });
 
         // Create API clients
@@ -80,8 +74,9 @@ export class K8sClient {
                         context: this.kc.getCurrentContext(),
                         user: this.kc.getCurrentUser()?.name,
                         errorType: error.constructor.name,
-                        errorCode: (error as any).code,
-                        errorErrno: (error as any).errno,
+                        errorCode: (error as unknown as { code: number }).code,
+                        errorErrno:
+                            (error as unknown as { errno: number }).errno,
                     });
                 }
             }
@@ -99,9 +94,19 @@ export class K8sClient {
         args: string[],
         config: JobConfig,
         serviceAccountName?: string,
+        postfix?: string,
+        env?: Record<string, string>,
     ): Promise<string> {
-        const jobName = `planqtn-${jobType}-${Date.now()}`;
+        const jobName = `${jobType}-${postfix || Date.now()}`;
         const namespace = "default";
+
+        // Convert env Record to array of V1EnvVar
+        const envVars = env
+            ? Object.entries(env).map(([name, value]) => ({
+                name,
+                value,
+            }))
+            : undefined;
 
         const job = {
             apiVersion: "batch/v1",
@@ -124,6 +129,7 @@ export class K8sClient {
                                     cpu: config.cpuLimit,
                                 },
                             },
+                            env: envVars,
                         }],
                         restartPolicy: "Never",
                     },
@@ -238,11 +244,48 @@ export class K8sClient {
             throw new Error("Pod name not found");
         }
 
-        const response = await this.k8sApi.readNamespacedPodLog({
-            name: podName,
-            namespace: "default",
-        });
+        const response = await this.k8sApi.readNamespacedPodLog(
+            podName,
+            "default",
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            true,
+        );
+        return response.body;
+    }
 
-        return response;
+    async deleteJob(jobId: string): Promise<void> {
+        try {
+            // Delete the job
+            await this.batchApi.deleteNamespacedJob({
+                name: jobId,
+                namespace: "default",
+                propagationPolicy: "Background",
+            });
+
+            // Also delete any associated pods
+            const pods = await this.k8sApi.listNamespacedPod({
+                namespace: "default",
+                labelSelector: `job-name=${jobId}`,
+            });
+
+            for (const pod of pods.items) {
+                if (pod.metadata?.name) {
+                    await this.k8sApi.deleteNamespacedPod({
+                        name: pod.metadata.name,
+                        namespace: "default",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error deleting job:", error);
+            throw new Error(`Failed to delete job: ${error}`);
+        }
     }
 }
