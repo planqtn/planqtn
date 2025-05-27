@@ -57,9 +57,9 @@ class JobMonitor:
         self.core_api = client.CoreV1Api()
 
         # Track the last known state
-        self.last_state: Optional[str] = None
+        self.last_state: Optional[TaskState] = None
 
-    def get_job_status(self) -> Tuple[str, Optional[List[str]]]:
+    def get_job_status(self) -> Tuple[TaskState, Optional[List[str]]]:
         """Get the current status of the monitored job."""
         try:
             job = self.batch_api.read_namespaced_job(self.job_name, self.namespace)
@@ -69,7 +69,7 @@ class JobMonitor:
             print(job.status)
 
             if not job.status:
-                return "pending", None
+                return TaskState.PENDING, None
 
             if job.status.failed and job.status.failed > 0:
                 print("Job failed...")
@@ -78,49 +78,56 @@ class JobMonitor:
                     self.namespace, label_selector=f"job-name={self.job_name}"
                 )
 
-                for pod in pods.items:
-                    events = self.core_api.list_namespaced_event(
-                        self.namespace,
-                        field_selector=f"involvedObject.name={pod.metadata.name}",
-                    )
+                pod = pods.items[0]
+                print("Pod:")
+                print(pod)
+                print("Events:")
+                events = self.core_api.list_namespaced_event(
+                    self.namespace,
+                    field_selector=f"involvedObject.name={pod.metadata.name}",
+                )
+                print(events)
+                print("Pod status:")
+                print(pod.status)
 
-                    reasons = []
-                    for event in events.items:
-                        if event.reason == "OOMKilled":
-                            return "oom", ["OOMKilled"]
-                        reasons.append(event.reason)
-
-                return "failed", reasons
+                reasons = [
+                    container_status.state.terminated.reason
+                    for container_status in pod.status.container_statuses
+                ]
+                return TaskState.FAILED, reasons
 
             if job.status.succeeded and job.status.succeeded > 0:
-                return "stopped", None
+                return TaskState.COMPLETED, None
 
             if job.status.active and job.status.active > 0:
-                return "running", None
+                return TaskState.RUNNING, None
 
-            return "pending", None
+            return TaskState.PENDING, None
 
         except Exception as e:
             logger.error(f"Error getting job status: {e}")
             if "404" in str(e):
-                return "cancelled", ["Job cancelled"]
-            return "error", [f"Error getting job status: {e}"]
+                return TaskState.CANCELLED, ["Job cancelled"]
+            return TaskState.FAILED, [f"Error getting job status: {e}"]
 
-    def update_task_state(self, state: str):
+    def update_task_state(self, state: TaskState, result: Optional[str] = None):
         """Update the task state in Supabase."""
         try:
             # only need to store result for failure! Cancellation, success are
             # stored by the edge functions
-            if state in ["failed", "oom", "error"]:
+            if state == TaskState.FAILED:
                 logger.info(
-                    f"Task {self.task_details.uuid} failed with {state}, storing result"
+                    f"Task {self.task_details.uuid} failed with {result}, storing result"
                 )
                 self.task_store.store_task_result(
                     task=self.task_details,
-                    result=state,
+                    result=result,
                     state=TaskState.FAILED,
                 )
-            elif state == "running":
+                self.task_store.send_task_update(
+                    self.task_details, {"state": TaskState.FAILED}
+                )
+            elif state == TaskState.RUNNING:
                 logger.info(f"Task is running, storing result")
                 self.task_store.store_task_result(
                     task=self.task_details,
@@ -139,6 +146,18 @@ class JobMonitor:
         """Monitor the job and update task state when it changes."""
         logger.info(f"Starting to monitor job {self.job_name}")
 
+        task = self.task_store.get_task(self.task_details)
+        if task and task["state"] not in [
+            TaskState.PENDING.value,
+            TaskState.RUNNING.value,
+        ]:
+            logger.info(
+                f"Task {self.task_details.uuid} is in state {task['state']}, exiting"
+            )
+            return
+
+        self.last_state = TaskState(task["state"])
+
         while True:
             current_state, reasons = self.get_job_status()
 
@@ -147,11 +166,16 @@ class JobMonitor:
                 logger.info(
                     f"Job state changed from {self.last_state} to {current_state}, reasons: {reasons}"
                 )
-                self.update_task_state(current_state)
+                self.update_task_state(
+                    current_state, "\n".join(reasons) if reasons else None
+                )
                 self.last_state = current_state
 
                 # Exit if the job is in a final state
-                if current_state != "running":
+                if current_state not in [
+                    TaskState.PENDING,
+                    TaskState.RUNNING,
+                ]:
                     logger.info(f"Job reached final state: {current_state}")
                     break
 

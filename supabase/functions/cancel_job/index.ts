@@ -112,6 +112,27 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Update the task status in the database
+    const { error: taskUpdateError } = await supabase
+      .from("task_updates")
+      .update({
+        updates: { state: 4, result: { error: "Task cancelled by user" } },
+      })
+      .eq("uuid", task.uuid);
+
+    if (taskUpdateError) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Failed to send realtime task update: ${taskUpdateError.message}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     return new Response(
       JSON.stringify({ message: "Job cancelled successfully" }),
       {

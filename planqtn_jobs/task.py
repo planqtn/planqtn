@@ -79,6 +79,7 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
         local_progress_bar: bool = True,
         realtime_updates_enabled: bool = True,
         realtime_update_frequency: float = 5,
+        debug: bool = False,
     ):
         self.task_details = task_details
         self.task_store = task_store
@@ -86,6 +87,7 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
         self.args = None
         self.realtime_updates_enabled = realtime_updates_enabled
         self.realtime_update_frequency = realtime_update_frequency
+        self.debug = debug
 
         if self.task_details.input_file:
             self.args = self._initalize_args_from_file(self.task_details.input_file)
@@ -135,6 +137,9 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
             if self.task_details.uuid:
                 self.task_store.store_task_result(
                     self.task_details, res.model_dump_json(), TaskState.COMPLETED
+                )
+                self.task_store.send_task_update(
+                    self.task_details, {"state": TaskState.COMPLETED.value}
                 )
             return res
 
@@ -187,13 +192,7 @@ class SupabaseTaskStore:
     def start_task_updates(self, task: TaskDetails):
         if not self.task_updates_db:
             return
-        self.task_updates_db.table("task_updates").insert(
-            {
-                "uuid": task.uuid,
-                "user_id": task.user_id,
-                "updates": "started",
-            }
-        ).execute()
+        self.send_task_update(task, {"state": 1})
 
     def store_task_result(self, task: TaskDetails, result: Any, state: TaskState):
         self.task_db.table("tasks").update({"result": result, "state": state.value}).eq(

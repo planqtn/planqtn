@@ -14,6 +14,7 @@ import {
   Link,
   UseToastOptions,
   Code,
+  Badge,
 } from "@chakra-ui/react";
 import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
@@ -24,6 +25,7 @@ import {
   Operation,
   TaskUpdate,
   TaskUpdateIterationStatus,
+  Task,
 } from "../lib/types.ts";
 import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
@@ -51,7 +53,11 @@ import {
   applyCompleteGraphViaHadamards,
 } from "../transformations/CompleteGraphViaHadamards";
 import ProgressBars from "./ProgressBars";
-import { User, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import {
+  User,
+  RealtimePostgresChangesPayload,
+  RealtimeChannel,
+} from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
@@ -60,6 +66,7 @@ import { GF2 } from "../lib/GF2.ts";
 import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
 import { useEffect } from "react";
+import TaskStateLabel from "./TaskStateLabel.tsx";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -72,6 +79,7 @@ interface DetailsPanelProps {
       | null
       | ((prev: TensorNetwork | null) => TensorNetwork | null),
   ) => void;
+
   setError: (error: string) => void;
   setDroppedLegos: (value: DroppedLego[]) => void;
   setSelectedLego: (value: DroppedLego | null) => void;
@@ -134,6 +142,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     >
   >(new Map());
   const [, setSelectedMatrixRows] = useState<number[]>([]);
+  const [task, setTask] = useState<Task | null>(null);
+  const [taskUpdatesChannel, setTaskUpdatesChannel] =
+    useState<RealtimeChannel | null>(null);
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
   const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null);
   const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
@@ -235,18 +246,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const subscribeToTaskUpdates = (taskId: string) => {
+    setIterationStatus([]);
+    setWaitingForTaskUpdate(false);
+
     console.log("Subscribing to task updates", taskId, "and user", user?.id);
     if (!user) {
       console.error("No user found, so not setting task updates");
       return;
     }
-    if (!tensorNetwork) {
-      setIterationStatus([]);
-      setWaitingForTaskUpdate(false);
-      return;
-    }
-
-    setWaitingForTaskUpdate(true);
 
     // Create a channel for task updates
     const channel = supabase
@@ -254,12 +261,20 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       .on(
         "postgres_changes",
         {
-          event: "*", // Listen to all events
+          event: "*",
           schema: "public",
           table: "task_updates",
-          filter: `uuid=eq.${taskId}`, // Only filter by task ID first
+          filter: `uuid=eq.${taskId}`,
         },
-        (payload: RealtimePostgresChangesPayload<TaskUpdate>) => {
+        async (payload: RealtimePostgresChangesPayload<TaskUpdate>) => {
+          // If we're cancelling and don't have a channel reference, ignore updates
+          // if (!taskUpdatesChannel) {
+          //   console.log(
+          //     "Ignoring updates during cancellation - no channel reference",
+          //   );
+          //   return;
+          // }
+
           console.log("Task update received:", {
             payload,
             taskId,
@@ -271,6 +286,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           if (payload.new) {
             const updates = (payload.new as TaskUpdate).updates;
             console.log("Processing updates:", updates);
+
+            // If we get state 4 (CANCELLED), unsubscribe and ignore all further updates
+            if (updates?.state === 4) {
+              console.log("Task cancelled, unsubscribing from updates");
+              try {
+                await channel.unsubscribe();
+                setTask((prev) => (prev ? { ...prev, state: 4 } : null));
+                setTaskUpdatesChannel(null);
+                setIterationStatus([]);
+                setWaitingForTaskUpdate(false);
+              } catch (error) {
+                console.error("Error unsubscribing from channel:", error);
+              }
+              return;
+            }
+
+            // Only process other updates if we haven't received state 4 yet
             if (updates?.iteration_status) {
               console.log(
                 "Setting iteration status:",
@@ -281,14 +313,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             }
             if (updates?.state !== undefined) {
               console.log("Setting task state:", updates.state);
-              // Update the tensor network with the new state
-              setTensorNetwork((prev) => {
-                if (!prev) return null;
-                return TensorNetwork.fromObj({
-                  ...prev,
-                  isCalculatingWeightEnumerator: updates.state === 1, // 1 is RUNNING
-                });
-              });
+              setTask((prev) =>
+                prev ? { ...prev, state: updates.state } : null,
+              );
+
+              if (updates.state !== 0 && updates.state !== 1) {
+                readAndUpdateTask(taskId);
+              }
             }
           }
         },
@@ -296,34 +327,62 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       .subscribe((status) => {
         console.log("Subscription status:", status);
         if (status === "SUBSCRIBED") {
-          console.log("Successfully subscribed to task updates");
-        } else if (status === "CLOSED") {
-          console.log("Subscription closed");
-        } else if (status === "CHANNEL_ERROR") {
-          console.error("Channel error occurred");
+          console.log("Task updates subscribed");
+          setTaskUpdatesChannel(channel);
         }
       });
-
     return () => {
       console.log("Unsubscribing from task updates for task:", taskId);
       channel.unsubscribe();
     };
   };
 
+  const readAndUpdateTask = async (taskId: string) => {
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("uuid", taskId)
+      .then(async ({ data, error }) => {
+        if (error) {
+          console.error("Error fetching task:", error);
+          setError("Error fetching task: " + error.message);
+        } else {
+          console.log("Task:", data);
+          if (data.length > 0) {
+            const task = data[0] as Task;
+            setTask(task);
+            if (task.state === 0 || task.state === 1) {
+              console.log("Setting up subscription for task:", taskId);
+              subscribeToTaskUpdates(taskId);
+            } else {
+              if (taskUpdatesChannel) {
+                console.log(
+                  "Unsubscribing from task updates for task:",
+                  taskId,
+                );
+                await taskUpdatesChannel.unsubscribe();
+                setTaskUpdatesChannel(null);
+                setIterationStatus([]);
+                setWaitingForTaskUpdate(false);
+              } else {
+                console.log(
+                  "No task updates channel found, so not unsubscribing",
+                );
+              }
+            }
+          }
+        }
+      });
+  };
+
   useEffect(() => {
-    console.log("useEffect triggered with:", {
-      taskId: tensorNetwork?.taskId,
-      userId: user?.id,
-      tensorNetwork: tensorNetwork ? "exists" : "null",
-    });
     if (!tensorNetwork) return;
 
     const signature = tensorNetwork.signature!;
     const cachedEnumerator = weightEnumeratorCache.get(signature);
     const taskId = tensorNetwork.taskId || cachedEnumerator?.taskId;
     if (taskId) {
-      console.log("Setting up subscription for task:", taskId);
-      subscribeToTaskUpdates(taskId);
+      readAndUpdateTask(taskId);
     } else {
       console.log("No task ID available for subscription");
     }
@@ -1195,6 +1254,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         },
       );
       console.log("Task cancellation requested:", taskId);
+      if (taskUpdatesChannel) {
+        console.log("Unsubscribing from task updates");
+        await taskUpdatesChannel.unsubscribe();
+        console.log("Task updates unsubscribed");
+      }
+      setTaskUpdatesChannel(null);
+      setIterationStatus([]);
+      setWaitingForTaskUpdate(false);
+      setTask((prev) => (prev ? { ...prev, state: 4 } : null));
     } catch (error) {
       console.error("Error cancelling task:", error);
       setError(`Failed to cancel task: ${error}`);
@@ -1373,7 +1441,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
                       <VStack align="stretch" spacing={4}>
                         <Heading size="sm">
-                          Calculating Weight Enumerator
+                          Weight Enumerator Calculation
                         </Heading>
                         <HStack>
                           <Text>
@@ -1383,27 +1451,42 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 tensorNetwork.signature!,
                               )?.taskId}
                           </Text>
-                          <IconButton
-                            aria-label="Cancel task"
-                            icon={<CloseIcon />}
-                            size="xs"
-                            colorScheme="red"
-                            onClick={() => {
-                              const taskId =
-                                tensorNetwork.taskId ||
-                                weightEnumeratorCache.get(
-                                  tensorNetwork.signature!,
-                                )?.taskId;
-                              if (taskId) {
-                                handleCancelTask(taskId);
-                              }
-                            }}
-                          />
+                          {task && (task.state === 0 || task.state === 1) && (
+                            <IconButton
+                              aria-label="Cancel task"
+                              icon={<CloseIcon />}
+                              size="xs"
+                              colorScheme="red"
+                              onClick={() => {
+                                const taskId =
+                                  tensorNetwork.taskId ||
+                                  weightEnumeratorCache.get(
+                                    tensorNetwork.signature!,
+                                  )?.taskId;
+                                if (taskId) {
+                                  handleCancelTask(taskId);
+                                }
+                              }}
+                            />
+                          )}
                         </HStack>
-                        <ProgressBars
-                          iterationStatus={iterationStatus}
-                          waiting={waitingForTaskUpdate}
-                        />
+                        {task && (
+                          <HStack>
+                            <Text>Task state:</Text>
+                            <TaskStateLabel state={task.state} />
+                          </HStack>
+                        )}
+
+                        {task && (task.state === 0 || task.state === 1) && (
+                          <ProgressBars
+                            iterationStatus={iterationStatus}
+                            waiting={waitingForTaskUpdate}
+                          />
+                        )}
+
+                        {task && task.state === 2 && (
+                          <Text>Task result: {task.result}</Text>
+                        )}
                       </VStack>
                     </Box>
                   </Box>

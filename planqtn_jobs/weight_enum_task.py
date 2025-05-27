@@ -28,6 +28,7 @@ class WeightEnumeratorTask(
         local_progress_bar: bool = True,
         realtime_updates_enabled: bool = True,
         realtime_update_frequency: float = 5,
+        debug: bool = False,
     ):
         super().__init__(
             task_details=task_details,
@@ -35,7 +36,9 @@ class WeightEnumeratorTask(
             local_progress_bar=local_progress_bar,
             realtime_update_frequency=realtime_update_frequency,
             realtime_updates_enabled=realtime_updates_enabled,
+            debug=debug,
         )
+        print("debug", debug, self.debug)
 
     def __load_args_from_json__(
         self, json_data: Dict[str, Any]
@@ -71,10 +74,11 @@ class WeightEnumeratorTask(
             open_legs = [(leg.instanceId, leg.legIndex) for leg in args.open_legs]
 
             start = time.time()
-
+            print("debug", self.debug)
+            print("progress_reporter", progress_reporter)
             # Conjoin all nodes to get the final tensor network
             polynomial = tn.stabilizer_enumerator_polynomial(
-                verbose=False,
+                verbose=self.debug,
                 progress_reporter=progress_reporter,
                 cotengra=len(nodes) > 5,
                 open_legs=open_legs,
@@ -105,7 +109,6 @@ class WeightEnumeratorTask(
             if open_legs:
 
                 def format_pauli(pauli):
-                    print(f"formatting {pauli}")
                     return symp_to_str(pauli)
 
                 polynomial_str = "\n".join(

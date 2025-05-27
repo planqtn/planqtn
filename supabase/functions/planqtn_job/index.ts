@@ -68,6 +68,28 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to create task: ${taskError.message}`);
     }
 
+    // Insert the pending task status
+    const { error: taskUpdateInsertError } = await supabase
+      .from("task_updates")
+      .insert({
+        uuid: task.uuid,
+        user_id: task.user_id,
+        updates: { state: 0 },
+      });
+
+    if (taskUpdateInsertError) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Failed to send realtime task update about pending task: ${taskUpdateInsertError.message}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     // Create the job in Kubernetes
     try {
       console.log("Creating job in Kubernetes");
