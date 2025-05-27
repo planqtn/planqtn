@@ -245,19 +245,12 @@ export class K8sClient {
         }
 
         const response = await this.k8sApi.readNamespacedPodLog(
-            podName,
-            "default",
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            true,
+            {
+                name: podName,
+                namespace: "default",
+            },
         );
-        return response.body;
+        return response;
     }
 
     async deleteJob(jobId: string): Promise<void> {

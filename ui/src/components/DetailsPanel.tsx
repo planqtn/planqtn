@@ -15,8 +15,15 @@ import {
   UseToastOptions,
   Code,
   Badge,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
+import { FaTable, FaCube, FaCode, FaCopy, FaFileAlt } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   DroppedLego,
@@ -156,6 +163,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     showWeightEnumeratorCalculationDialog,
     setShowWeightEnumeratorCalculationDialog,
   ] = useState(false);
+
+  const [taskLogs, setTaskLogs] = useState<string>("");
+  const {
+    isOpen: isLogsModalOpen,
+    onOpen: onLogsModalOpen,
+    onClose: onLogsModalClose,
+  } = useDisclosure();
 
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
@@ -1269,6 +1283,36 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
+  const fetchTaskLogs = async (taskId: string) => {
+    try {
+      const acessToken = await getAccessToken();
+      const key = !acessToken ? config.anonKey : acessToken;
+
+      const response = await axios.post(
+        getApiUrl("planqtnJobLogs"),
+        {
+          task_uuid: taskId,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+        },
+      );
+
+      if (response.data.status === "error") {
+        throw new Error(response.data.message);
+      }
+
+      setTaskLogs(response.data.logs || "No logs available");
+      onLogsModalOpen();
+    } catch (error) {
+      console.error("Error fetching task logs:", error);
+      setError("Failed to fetch task logs");
+    }
+  };
+
   const { externalLegs, danglingLegs } = getExternalAndDanglingLegs();
 
   return (
@@ -1483,9 +1527,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             waiting={waitingForTaskUpdate}
                           />
                         )}
-
                         {task && task.state === 2 && (
                           <Text>Task result: {task.result}</Text>
+                        )}
+                        {task && task.state === 3 && (
+                          <VStack align="stretch" spacing={3}>
+                            <Text>Task failed: {task.result}</Text>
+                            <Button
+                              leftIcon={<Icon as={FaFileAlt} />}
+                              size="sm"
+                              colorScheme="blue"
+                              onClick={() => fetchTaskLogs(task.uuid)}
+                            >
+                              View Logs
+                            </Button>
+                          </VStack>
                         )}
                       </VStack>
                     </Box>
@@ -1735,6 +1791,55 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           calculateWeightEnumerator(truncateLength, openLegs);
         }}
       />
+      <Modal
+        isOpen={isLogsModalOpen}
+        onClose={onLogsModalClose}
+        size="xl"
+        motionPreset="none"
+      >
+        <ModalOverlay />
+        <ModalContent
+          position="relative"
+          maxW="90vw"
+          maxH="85vh"
+          h="95vh"
+          bg="white"
+          borderRadius="lg"
+          boxShadow="xl"
+          display="flex"
+          flexDirection="column"
+        >
+          <ModalHeader borderBottomWidth={1} pb={4}>
+            Task Logs
+          </ModalHeader>
+          <ModalCloseButton />
+          <Box
+            p={4}
+            flex={1}
+            minHeight={0}
+            display="flex"
+            flexDirection="column"
+          >
+            <Box
+              as="pre"
+              p={4}
+              bg="gray.50"
+              borderRadius="md"
+              overflowX="auto"
+              overflowY="auto"
+              h="100%"
+              w="100%"
+              whiteSpace="pre-wrap"
+              fontFamily="mono"
+              fontSize="sm"
+              border="1px solid"
+              borderColor="gray.200"
+            >
+              {taskLogs}
+            </Box>
+          </Box>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

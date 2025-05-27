@@ -201,10 +201,17 @@ class SupabaseTaskStore:
 
     def send_task_update(self, task: TaskDetails, updates: Dict[str, Any]):
         if not self.task_updates_db:
-            return
-        self.task_updates_db.table("task_updates").update(
-            {"updates": json.dumps(updates, cls=IterationStateEncoder)}
-        ).eq("uuid", task.uuid).eq("user_id", task.user_id).execute()
+            print("No task updates db, returning None")
+            return None
+        res = (
+            self.task_updates_db.table("task_updates")
+            .update({"updates": json.dumps(updates, cls=IterationStateEncoder)})
+            .eq("uuid", task.uuid)
+            .eq("user_id", task.user_id)
+            .execute()
+        )
+        print(f"Task update result: {res}")
+        return res
 
     def get_task(self, task: TaskDetails) -> Dict[str, Any]:
         task_data = (

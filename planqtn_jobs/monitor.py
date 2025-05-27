@@ -41,7 +41,10 @@ class JobMonitor:
 
         # Initialize Supabase client
         self.task_store = SupabaseTaskStore(
-            task_db_credentials=SupabaseCredentials(url=supabase_url, key=supabase_key)
+            task_db_credentials=SupabaseCredentials(url=supabase_url, key=supabase_key),
+            task_updates_db_credentials=SupabaseCredentials(
+                url=supabase_url, key=supabase_key
+            ),
         )
 
         # Load in-cluster configuration
@@ -124,9 +127,13 @@ class JobMonitor:
                     result=result,
                     state=TaskState.FAILED,
                 )
-                self.task_store.send_task_update(
-                    self.task_details, {"state": TaskState.FAILED}
+                print(
+                    f"Sending task update for {self.task_details.uuid} to state {TaskState.FAILED}"
                 )
+                res = self.task_store.send_task_update(
+                    self.task_details, {"state": TaskState.FAILED.value}
+                )
+                print(f"Task update result: {res}")
             elif state == TaskState.RUNNING:
                 logger.info(f"Task is running, storing result")
                 self.task_store.store_task_result(
@@ -141,6 +148,7 @@ class JobMonitor:
         except Exception as e:
             logger.error(f"Error updating task state: {e}")
             traceback.print_exc()
+            raise e
 
     def monitor(self):
         """Monitor the job and update task state when it changes."""
