@@ -132,15 +132,12 @@ export class K8sClient {
                             env: envVars,
                         }],
                         restartPolicy: "Never",
+                        ...(serviceAccountName ? { serviceAccountName } : {}),
                     },
                 },
                 backoffLimit: 0,
             },
         };
-
-        if (serviceAccountName) {
-            job.spec.template.spec.serviceAccountName = serviceAccountName;
-        }
 
         try {
             console.log("Creating job with namespace:", namespace);
@@ -170,60 +167,6 @@ export class K8sClient {
             }
             throw error;
         }
-    }
-
-    async getJobStatus(
-        jobId: string,
-    ): Promise<"pending" | "running" | "stopped" | "timed_out" | "oom"> {
-        const response = await this.batchApi.readNamespacedJob(
-            jobId,
-            "default",
-        );
-        const job = response.body;
-
-        if (!job.status) {
-            return "pending";
-        }
-
-        if (job.status.failed && job.status.failed > 0) {
-            // Check pod events for OOM
-            const pods = await this.k8sApi.listNamespacedPod(
-                "default",
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                `job-name=${jobId}`,
-            );
-
-            for (const pod of pods.body.items) {
-                const events = await this.k8sApi.listNamespacedEvent(
-                    "default",
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    `involvedObject.name=${pod.metadata?.name}`,
-                );
-
-                for (const event of events.body.items) {
-                    if (event.reason === "OOMKilled") {
-                        return "oom";
-                    }
-                }
-            }
-            return "stopped";
-        }
-
-        if (job.status.succeeded && job.status.succeeded > 0) {
-            return "stopped";
-        }
-
-        if (job.status.active && job.status.active > 0) {
-            return "running";
-        }
-
-        return "pending";
     }
 
     async getJobLogs(jobId: string): Promise<string> {

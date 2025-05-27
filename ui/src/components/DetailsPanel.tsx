@@ -14,12 +14,10 @@ import {
   Link,
   UseToastOptions,
   Code,
-  Badge,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
-  ModalBody,
   ModalCloseButton,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -74,6 +72,7 @@ import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
 import { useEffect } from "react";
 import TaskStateLabel from "./TaskStateLabel.tsx";
+import { formatDuration, intervalToDuration } from "date-fns";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -170,6 +169,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     onOpen: onLogsModalOpen,
     onClose: onLogsModalClose,
   } = useDisclosure();
+
+  // Helper to format seconds using date-fns
+  function formatSecondsToDuration(seconds: number) {
+    const duration = intervalToDuration({
+      start: 0,
+      end: Math.round(seconds * 1000),
+    });
+
+    // Use a more explicit format that always includes seconds
+    return (
+      formatDuration(duration, {
+        format: ["hours", "minutes", "seconds"],
+        zero: true,
+        delimiter: " ",
+      }) || `${seconds.toFixed(2)}s`
+    ); // Fallback to simple format
+  }
 
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
@@ -281,22 +297,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           filter: `uuid=eq.${taskId}`,
         },
         async (payload: RealtimePostgresChangesPayload<TaskUpdate>) => {
-          // If we're cancelling and don't have a channel reference, ignore updates
-          // if (!taskUpdatesChannel) {
-          //   console.log(
-          //     "Ignoring updates during cancellation - no channel reference",
-          //   );
-          //   return;
-          // }
-
-          console.log("Task update received:", {
-            payload,
-            taskId,
-            userId: user?.id,
-            filter: `uuid=eq.${taskId}`,
-            payloadUserId: payload.new?.user_id,
-            payloadUuid: payload.new?.uuid,
-          });
           if (payload.new) {
             const updates = (payload.new as TaskUpdate).updates;
             console.log("Processing updates:", updates);
@@ -1483,10 +1483,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     ?.polynomial === "") ? (
                   <Box>
                     <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-                      <VStack align="stretch" spacing={4}>
-                        <Heading size="sm">
-                          Weight Enumerator Calculation
-                        </Heading>
+                      <VStack spacing={2} align="stretch">
+                        <Heading size="sm">Task Details</Heading>
                         <HStack>
                           <Text>
                             Task ID:{" "}
@@ -1515,10 +1513,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                           )}
                         </HStack>
                         {task && (
-                          <HStack>
-                            <Text>Task state:</Text>
-                            <TaskStateLabel state={task.state} />
-                          </HStack>
+                          <VStack align="left" spacing={2}>
+                            <HStack>
+                              <Text>Task state:</Text>
+                              <TaskStateLabel state={task.state} />
+                            </HStack>
+                            <Text>Job type: {task.job_type}</Text>
+                            {task.state === 2 && task.result && (
+                              <Text>
+                                Execution time:{" "}
+                                {(() => {
+                                  const time = JSON.parse(task.result!).time;
+                                  console.log(time, typeof time);
+                                  console.log(formatSecondsToDuration(time));
+                                  return formatSecondsToDuration(time);
+                                })()}
+                              </Text>
+                            )}
+                          </VStack>
                         )}
 
                         {task && (task.state === 0 || task.state === 1) && (
@@ -1527,9 +1539,65 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                             waiting={waitingForTaskUpdate}
                           />
                         )}
-                        {task && task.state === 2 && (
-                          <Text>Task result: {task.result}</Text>
-                        )}
+                        {task &&
+                          task.state === 2 &&
+                          task.result &&
+                          task.job_type === "weightenumerator" && (
+                            <VStack align="stretch" spacing={2}>
+                              <Heading size="sm">
+                                Stabilizer Weight Enumerator Polynomial
+                              </Heading>
+                              <Box>
+                                {(() => {
+                                  const truncLength =
+                                    tensorNetwork.truncateLength ??
+                                    weightEnumeratorCache.get(
+                                      tensorNetwork.signature!,
+                                    )?.truncateLength;
+                                  return truncLength !== null &&
+                                    truncLength !== undefined &&
+                                    !isNaN(Number(truncLength)) ? (
+                                    <Text>
+                                      Truncation length: {truncLength}
+                                    </Text>
+                                  ) : null;
+                                })()}
+                              </Box>
+                              <Box
+                                p={3}
+                                borderWidth={1}
+                                borderRadius="md"
+                                bg="gray.50"
+                              >
+                                <Code as="pre">
+                                  {(() => {
+                                    const parsedResult = JSON.parse(
+                                      task.result!,
+                                    );
+                                    return (
+                                      parsedResult.stabilizer_polynomial ||
+                                      "No polynomial available"
+                                    );
+                                  })()}
+                                </Code>
+                              </Box>
+                              <Heading size="sm">
+                                Normalizer Weight Enumerator Polynomial
+                              </Heading>
+                              <Box
+                                p={3}
+                                borderWidth={1}
+                                borderRadius="md"
+                                bg="gray.50"
+                              >
+                                <Text fontFamily="mono">
+                                  {JSON.parse(task.result!)
+                                    .normalizer_polynomial ||
+                                    "No polynomial available"}
+                                </Text>
+                              </Box>
+                            </VStack>
+                          )}
                         {task && task.state === 3 && (
                           <VStack align="stretch" spacing={3}>
                             <Text>Task failed: {task.result}</Text>
@@ -1546,52 +1614,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       </VStack>
                     </Box>
                   </Box>
-                ) : tensorNetwork.weightEnumerator ||
-                  (tensorNetwork &&
-                    weightEnumeratorCache.get(tensorNetwork.signature!)
-                      ?.polynomial) ? (
-                  <VStack align="stretch" spacing={2}>
-                    <Heading size="sm">
-                      Stabilizer Weight Enumerator Polynomial
-                    </Heading>
-                    <Box>
-                      <Text>
-                        Task ID:{" "}
-                        {tensorNetwork.taskId ||
-                          weightEnumeratorCache.get(tensorNetwork.signature!)
-                            ?.taskId}
-                      </Text>
-                      {(() => {
-                        const truncLength =
-                          tensorNetwork.truncateLength ??
-                          weightEnumeratorCache.get(tensorNetwork.signature!)
-                            ?.truncateLength;
-                        return truncLength !== null &&
-                          truncLength !== undefined &&
-                          !isNaN(Number(truncLength)) ? (
-                          <Text>Truncation length: {truncLength}</Text>
-                        ) : null;
-                      })()}
-                    </Box>
-                    <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                      <Code as="pre">
-                        {tensorNetwork.weightEnumerator ||
-                          weightEnumeratorCache.get(tensorNetwork.signature!)!
-                            .polynomial}
-                      </Code>
-                    </Box>
-
-                    <Heading size="sm">
-                      Normalizer Weight Enumerator Polynomial
-                    </Heading>
-                    <Box p={3} borderWidth={1} borderRadius="md" bg="gray.50">
-                      <Text fontFamily="mono">
-                        {tensorNetwork.normalizerPolynomial ||
-                          weightEnumeratorCache.get(tensorNetwork.signature!)!
-                            .normalizerPolynomial}
-                      </Text>
-                    </Box>
-                  </VStack>
                 ) : null}
                 {tensorNetwork.constructionCode && (
                   <VStack align="stretch" spacing={2}>

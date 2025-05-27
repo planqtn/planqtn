@@ -5,7 +5,6 @@ import "./index.css";
 
 import { BrowserRouter, Routes, Route } from "react-router";
 import LegoStudioView from "./LegoStudio";
-import TasksView from "./components/TasksView";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -15,7 +14,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LegoStudioView />} />
-            <Route path="/tasks" element={<TasksView />} />
           </Routes>
         </BrowserRouter>
       </ChakraProvider>
