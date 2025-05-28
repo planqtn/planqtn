@@ -14,13 +14,14 @@ import {
   Alert,
   AlertIcon,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface RuntimeConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (config: Record<string, string>) => void;
   isLocal: boolean;
+  initialConfig?: Record<string, string>;
 }
 
 export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
@@ -28,10 +29,20 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
   onClose,
   onSubmit,
   isLocal,
+  initialConfig,
 }) => {
   const [configText, setConfigText] = useState("");
   const [error, setError] = useState("");
   const toast = useToast();
+
+  // Prefill with initial config when dialog opens
+  useEffect(() => {
+    if (isOpen && initialConfig) {
+      setConfigText(JSON.stringify(initialConfig, null, 2));
+    } else if (isOpen && !initialConfig) {
+      setConfigText("");
+    }
+  }, [isOpen, initialConfig]);
 
   const handleSubmit = () => {
     try {
@@ -71,8 +82,8 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
             </Alert>
             <Text>
               {isLocal
-                ? "Paste the output of 'supabase status -o json' to switch to local runtime:"
-                : "Paste the output of 'supabase status -o json' to switch to cloud runtime:"}
+                ? "Clear the configuration below to switch to cloud runtime:"
+                : "Paste the output of 'supabase status -o json' to switch to local runtime:"}
             </Text>
             <Textarea
               value={configText}

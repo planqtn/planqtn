@@ -237,8 +237,8 @@ const LegoStudioView: React.FC = () => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [isRuntimeConfigOpen, setIsRuntimeConfigOpen] = useState(false);
   const [isLocalRuntime] = useState(() => {
-    const storedConfig = localStorage.getItem("runtimeConfig");
-    return !!storedConfig;
+    const isActive = localStorage.getItem("runtimeConfigActive");
+    return isActive === "true";
   });
 
   // Inside the App component, add this line near the other hooks
@@ -2703,6 +2703,8 @@ const LegoStudioView: React.FC = () => {
   const handleRuntimeConfigSubmit = (config: Record<string, string>) => {
     // Store the config in localStorage
     localStorage.setItem("runtimeConfig", JSON.stringify(config));
+    // Set the active flag
+    localStorage.setItem("runtimeConfigActive", "true");
     // Sign out the user
     supabase.auth.signOut();
     // Reload the page
@@ -2711,8 +2713,8 @@ const LegoStudioView: React.FC = () => {
 
   const handleRuntimeToggle = () => {
     if (isLocalRuntime) {
-      // Clear the runtime config and reload
-      localStorage.removeItem("runtimeConfig");
+      // Deactivate local runtime (but keep the config stored)
+      localStorage.setItem("runtimeConfigActive", "false");
       // Sign out the user
       supabase.auth.signOut();
       // Reload the page
@@ -3509,6 +3511,14 @@ const LegoStudioView: React.FC = () => {
         onClose={() => setIsRuntimeConfigOpen(false)}
         onSubmit={handleRuntimeConfigSubmit}
         isLocal={isLocalRuntime}
+        initialConfig={(() => {
+          try {
+            const storedConfig = localStorage.getItem("runtimeConfig");
+            return storedConfig ? JSON.parse(storedConfig) : undefined;
+          } catch {
+            return undefined;
+          }
+        })()}
       />
     </VStack>
   );
