@@ -76,6 +76,8 @@ Deno.serve(async (req) => {
     }
 
     const client = new K8sClient();
+    await client.connect();
+
     const logs = await client.getJobLogs(task.execution_id);
     console.log(`Found logs: ${logs}`);
     return new Response(

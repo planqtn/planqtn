@@ -1,3 +1,7 @@
 {
-  "imports": {}
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@cloudydeno/kubernetes-client": "jsr:@cloudydeno/kubernetes-client@^0.7.5",
+    "@cloudydeno/kubernetes-apis": "jsr:@cloudydeno/kubernetes-apis@^0.5.2"
+  }
 }

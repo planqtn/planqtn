@@ -1,37 +1,129 @@
-import * as k8s from "npm:@kubernetes/client-node";
+import * as k8s from "jsr:@cloudydeno/kubernetes-client@0.7.3";
+import { CoreV1NamespacedApi } from "https://deno.land/x/kubernetes_apis/builtin/core@v1/mod.ts";
+import { BatchV1NamespacedApi } from "https://deno.land/x/kubernetes_apis/builtin/batch@v1/mod.ts";
+import { Job } from "https://deno.land/x/kubernetes_apis/builtin/batch@v1/structs.ts";
 import { JobConfig } from "../config/jobs_config.ts";
+import { GoogleAuth } from "npm:google-auth-library";
+import { KubeConfigRestClient } from "jsr:@cloudydeno/kubernetes-client@0.7.3";
+import { toQuantity } from "https://deno.land/x/kubernetes_apis@v0.5.4/common.ts";
 
 export class K8sClient {
-    private kc: k8s.KubeConfig;
-    private k8sApi: k8s.CoreV1Api;
-    private batchApi: k8s.BatchV1Api;
+    private kc?: k8s.KubeConfig;
+    private k8sApi?: CoreV1NamespacedApi;
+    private batchApi?: BatchV1NamespacedApi;
+    private env: string;
+    private restClient?: k8s.RestClient;
 
     constructor() {
-        this.kc = new k8s.KubeConfig();
-
-        // Configure the client with mTLS authentication
-        this.kc.loadFromOptions({
-            clusters: [{
-                name: "k3d-planqtn",
-                server: `http://k8sproxy:8001`,
-                skipTLSVerify: true,
-            }],
-
-            contexts: [{
-                name: "k3d-planqtn",
-                cluster: "k3d-planqtn",
-                user: "admin@k3d-planqtn",
-            }],
-            currentContext: "k3d-planqtn",
-        });
-
-        // Create API clients
-        this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
-        this.batchApi = this.kc.makeApiClient(k8s.BatchV1Api);
+        const env = Deno.env.get("ENV");
+        if (!env) {
+            throw new Error("ENV is not set on this environment");
+        }
+        this.env = env;
     }
 
-    async testConnection(): Promise<void> {
+    async loadConfig(): Promise<void> {
+        if (this.env === "local") {
+            // Configure the client with mTLS authentication
+            this.kc = k8s.KubeConfig.getSimpleUrlConfig({
+                baseUrl: `http://k8sproxy:8001`,
+            });
+        } else {
+            // Production GKE setup
+            console.log(`Using GKE ${this.env} configuration`);
+            const clusterEndpoint = Deno.env.get("GKE_CLUSTER_ENDPOINT")!;
+            const clusterCaCertB64 = Deno.env.get("GKE_CLUSTER_CA_CERT_B64")!;
+            const saKeyJsonB64 = Deno.env.get(
+                "GCP_SERVICE_ACCOUNT_KEY_JSON_B64",
+            )!;
+
+            const missingVariables = [];
+            if (!clusterEndpoint) {
+                missingVariables.push("GKE_CLUSTER_ENDPOINT");
+            }
+            if (!clusterCaCertB64) {
+                missingVariables.push("GKE_CLUSTER_CA_CERT_B64");
+            }
+            if (!saKeyJsonB64) {
+                missingVariables.push("GCP_SERVICE_ACCOUNT_KEY_JSON_B64");
+            }
+            if (missingVariables.length > 0) {
+                console.error(
+                    "Missing GKE connection environment variables for production: " +
+                        missingVariables.join(", "),
+                );
+                throw new Error(
+                    "Missing GKE environment variables: " +
+                        missingVariables.join(", "),
+                );
+            }
+
+            // Decode base64 environment variables
+            // Deno's atob is for browser-like environments. For server-side Deno, you might need a utility or ensure it's available.
+            // Supabase Edge Functions run in Deno, which supports atob.
+            const saKeyJsonString = atob(saKeyJsonB64);
+            const serviceAccountCredentials = JSON.parse(saKeyJsonString);
+
+            const clusterCaCert = clusterCaCertB64; // This is the PEM string
+
+            // Initialize GoogleAuth with service account credentials
+            const auth = new GoogleAuth({
+                credentials: serviceAccountCredentials,
+                scopes: ["https://www.googleapis.com/auth/cloud-platform"], // Standard scope
+            });
+
+            // Get an access token
+            const client = await auth.getClient();
+            const accessTokenResponse = await client.getAccessToken();
+            if (!accessTokenResponse || !accessTokenResponse.token) {
+                console.error(
+                    "Failed to obtain access token from Google Auth Library.",
+                );
+                throw new Error(
+                    "Failed to obtain access token from Google Auth Library.",
+                );
+            }
+            const accessToken = accessTokenResponse.token;
+
+            this.kc = new k8s.KubeConfig({
+                apiVersion: "v1",
+                kind: "Config",
+                clusters: [{
+                    name: "gke-cluster",
+                    cluster: {
+                        "server": "https://" + clusterEndpoint,
+                        "certificate-authority-data": clusterCaCert, // Decoded CA certificate (PEM format)
+                        // skipTLSVerify: true, // This is the default when caData is provided; ensures TLS verification
+                    },
+                }],
+                users: [{
+                    name: "gcp-sa-user", // Arbitrary name for this user
+                    user: {
+                        token: accessToken, // The obtained OAuth2 token
+                    },
+                }],
+                contexts: [{
+                    name: "gke-context", // Arbitrary name for this context
+                    context: {
+                        "cluster": "gke-cluster", // Must match cluster name above
+                        "user": "gcp-sa-user", // Must match user name above
+                    },
+                }],
+                "current-context": "gke-context",
+            });
+            console.log("Successfully configured KubeConfig for GKE.");
+        }
+
+        // Create API clients
+        this.restClient = await KubeConfigRestClient.forKubeConfig(this.kc);
+        this.k8sApi = new CoreV1NamespacedApi(this.restClient, "default");
+        this.batchApi = new BatchV1NamespacedApi(this.restClient, "default");
+    }
+
+    async connect(): Promise<void> {
         try {
+            await this.loadConfig();
+
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(
                     () =>
@@ -45,8 +137,13 @@ export class K8sClient {
             });
 
             // Create the actual API call promise
-            const versionPromise = this.kc.makeApiClient(k8s.VersionApi)
-                .getCode();
+            const versionPromise = this.restClient?.performRequest(
+                {
+                    method: "GET",
+                    path: "/version",
+                    expectJson: true,
+                },
+            );
 
             // Race between the timeout and the API call
             const version = await Promise.race([
@@ -70,13 +167,7 @@ export class K8sClient {
                 // Additional error information for network-related errors
                 if (error.message.includes("request to")) {
                     console.error("Network error details:", {
-                        url: this.kc.getCurrentCluster()?.server,
-                        context: this.kc.getCurrentContext(),
-                        user: this.kc.getCurrentUser()?.name,
-                        errorType: error.constructor.name,
-                        errorCode: (error as unknown as { code: number }).code,
-                        errorErrno:
-                            (error as unknown as { errno: number }).errno,
+                        kc: this.kc,
                     });
                 }
             }
@@ -108,7 +199,7 @@ export class K8sClient {
             }))
             : undefined;
 
-        const job = {
+        const job: Job = {
             apiVersion: "batch/v1",
             kind: "Job",
             metadata: {
@@ -125,8 +216,8 @@ export class K8sClient {
                             args: args,
                             resources: {
                                 limits: {
-                                    memory: config.memoryLimit,
-                                    cpu: config.cpuLimit,
+                                    memory: toQuantity(config.memoryLimit),
+                                    cpu: toQuantity(config.cpuLimit),
                                 },
                             },
                             env: envVars,
@@ -143,19 +234,14 @@ export class K8sClient {
             console.log("Creating job with namespace:", namespace);
             console.log("Job configuration:", JSON.stringify(job, null, 2));
 
-            const batchApi = this.kc.makeApiClient(k8s.BatchV1Api);
-
             // Use the raw API client
-            const response: k8s.V1Job = await batchApi.createNamespacedJob({
-                namespace: namespace,
-                body: job,
-            });
+            const response = await this.batchApi?.createJob(job);
 
             console.log(
                 "Job created successfully:",
-                response.metadata?.name,
+                response?.metadata?.name || jobName,
             );
-            return response.metadata?.name || jobName;
+            return response?.metadata?.name || jobName;
         } catch (error) {
             console.error("Error creating job:", error);
             if (error instanceof Error) {
@@ -170,9 +256,8 @@ export class K8sClient {
     }
 
     async getJobLogs(jobId: string): Promise<string> {
-        const pods = await this.k8sApi.listNamespacedPod(
+        const pods = await this.k8sApi!.getPodList(
             {
-                namespace: "default",
                 labelSelector: `job-name=${jobId}`,
             },
         );
@@ -187,36 +272,25 @@ export class K8sClient {
             throw new Error("Pod name not found");
         }
 
-        const response = await this.k8sApi.readNamespacedPodLog(
-            {
-                name: podName,
-                namespace: "default",
-            },
-        );
-        return response;
+        const response = await this.k8sApi?.getPodLog(podName);
+        return response || "";
     }
 
     async deleteJob(jobId: string): Promise<void> {
         try {
             // Delete the job
-            await this.batchApi.deleteNamespacedJob({
-                name: jobId,
-                namespace: "default",
+            await this.batchApi?.deleteJob(jobId, {
                 propagationPolicy: "Background",
             });
 
             // Also delete any associated pods
-            const pods = await this.k8sApi.listNamespacedPod({
-                namespace: "default",
+            const pods = await this.k8sApi?.getPodList({
                 labelSelector: `job-name=${jobId}`,
             });
 
-            for (const pod of pods.items) {
+            for (const pod of pods?.items || []) {
                 if (pod.metadata?.name) {
-                    await this.k8sApi.deleteNamespacedPod({
-                        name: pod.metadata.name,
-                        namespace: "default",
-                    });
+                    await this.k8sApi?.deletePod(pod.metadata.name);
                 }
             }
         } catch (error) {

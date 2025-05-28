@@ -20,6 +20,8 @@ interface ApiConfig {
 
 // Function to get runtime config from localStorage
 const getRuntimeConfig = (): Record<string, string> | null => {
+    const isActive = localStorage.getItem("runtimeConfigActive");
+    if (isActive === "false") return null;
     const storedConfig = localStorage.getItem("runtimeConfig");
     if (!storedConfig) return null;
     try {

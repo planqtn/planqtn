@@ -98,9 +98,7 @@ Deno.serve(async (req) => {
       console.log("Payload:", jobRequest.payload);
 
       const client = new K8sClient();
-
-      // Test the connection first
-      await client.testConnection();
+      await client.connect();
 
       const executionId = await client.createJob(
         jobRequest.job_type,

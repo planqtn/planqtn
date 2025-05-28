@@ -397,8 +397,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const taskId = tensorNetwork.taskId || cachedEnumerator?.taskId;
     if (taskId) {
       readAndUpdateTask(taskId);
-    } else {
-      console.log("No task ID available for subscription");
     }
   }, [tensorNetwork, tensorNetwork?.taskId]);
 
@@ -1524,8 +1522,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 Execution time:{" "}
                                 {(() => {
                                   const time = JSON.parse(task.result!).time;
-                                  console.log(time, typeof time);
-                                  console.log(formatSecondsToDuration(time));
                                   return formatSecondsToDuration(time);
                                 })()}
                               </Text>

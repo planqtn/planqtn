@@ -89,6 +89,8 @@ Deno.serve(async (req) => {
 
     // Delete the job in Kubernetes
     const client = new K8sClient();
+    await client.connect();
+
     await client.deleteJob(task.execution_id);
 
     // Update the task status in the database

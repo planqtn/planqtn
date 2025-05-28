@@ -107,7 +107,7 @@ enabled = true
 # in emails.
 site_url = "http://127.0.0.1:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+additional_redirect_urls = []
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -283,7 +283,7 @@ policy = "oneshot"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
 # The Deno major version to use.
-deno_version = 1
+deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
@@ -322,7 +322,7 @@ entrypoint = "./functions/tensornetwork/index.ts"
 [functions.planqtn_job]
 enabled = true
 verify_jwt = true
-import_map = "./functions/planqtn_job/deno.json"
+import_map = "./functions/import_map.json" 
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job/index.ts"
@@ -334,7 +334,7 @@ entrypoint = "./functions/planqtn_job/index.ts"
 [functions.planqtn_job_logs]
 enabled = true
 verify_jwt = true
-import_map = "./functions/planqtn_job_logs/deno.json"
+import_map = "./functions/import_map.json" 
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job_logs/index.ts"
@@ -345,7 +345,7 @@ entrypoint = "./functions/planqtn_job_logs/index.ts"
 [functions.cancel_job]
 enabled = true
 verify_jwt = true
-import_map = "./functions/cancel_job/deno.json"
+import_map = "./functions/import_map.json" 
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/cancel_job/index.ts"
