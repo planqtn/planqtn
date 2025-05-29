@@ -445,6 +445,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           user_id: user?.id,
           request_time: new Date().toISOString(),
           job_type: "weightenumerator",
+          task_store_url: config.baseUrl,
           payload: {
             legos: tensorNetwork.legos.reduce(
               (acc, lego) => {

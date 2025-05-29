@@ -8,11 +8,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 interface CancelJobRequest {
   task_uuid: string;
 }
@@ -47,6 +42,11 @@ Deno.serve(async (req) => {
         },
       );
     }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the task from the database
     const { data: task, error: taskError } = await supabase

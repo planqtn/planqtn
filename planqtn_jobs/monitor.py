@@ -187,7 +187,7 @@ class JobMonitor:
                     logger.info(f"Job reached final state: {current_state}")
                     break
 
-            time.sleep(5)  # Check every 5 seconds
+            time.sleep(2)  # Check every 2 seconds
 
 
 def main():

@@ -1,6 +1,18 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+// These edge functions are meant to be next to the runtime cluster.
+// Typically, the user context (Task store) is the same as the runtime context (Task updates/Runtime store).
+// This is the case for:
+//  - production, cloud - cloud
+//  - preview: cloud - cloud
+//  - local development: local - runtime (local)
+// However, in the following cases this is not true, and they will be different:
+//  - when the user picks a local runtime, we assume a local instance of supabase, which this function runs in - this pertains to
+//      - production, cloud / runtime (local)
+//      - preview: cloud / runtime (local)
+//      - local development: cloud (dev) / runtime (local)
+// This means that the TASK_UPDATES_KEY is the SUPABASE_SERVICE_ROLE_KEY (well, should be a narrower key, but that's for another day)
+// The public URL of the TASK_UPDATES_URL is the same as the SUPABASE_URL, so we can use this.
+
+// The user context thus is coming from the UI config and not the SUBAPABSE_URL and SUPABASE_SERVICE_ROLE_KEY.
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -11,13 +23,40 @@ import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
 import { corsHeaders } from "../_shared/cors.ts";
 
-// Initialize Supabase client TODO get this from user token instead of service role key
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const validateJobRequest = (jobRequest: JobRequest) => {
+  const missingFields = [];
+  if (!jobRequest.user_id) {
+    missingFields.push("user_id");
+  }
+  if (!jobRequest.job_type) {
+    missingFields.push("job_type");
+  }
+  if (!jobRequest.request_time) {
+    missingFields.push("request_time");
+  }
+  if (!jobRequest.payload) {
+    missingFields.push("payload");
+  }
+
+  // Validate the request
+  if (
+    missingFields.length > 0
+  ) {
+    return new Response(
+      JSON.stringify({
+        error: `Invalid request body: missing fields: ${
+          missingFields.join(", ")
+        }`,
+      }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+};
 
 Deno.serve(async (req) => {
-  console.log("Received request", req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -37,22 +76,65 @@ Deno.serve(async (req) => {
     // Parse the request body
     const jobRequest: JobRequest = await req.json();
 
-    // Validate the request
-    if (
-      !jobRequest.user_id || !jobRequest.job_type || !jobRequest.request_time ||
-      !jobRequest.payload
-    ) {
+    const validationError = validateJobRequest(jobRequest);
+    if (validationError) {
+      return validationError;
+    }
+
+    const taskUpdatesUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    // TODO: make this narrower, i.e. only the key for the task updates table
+    const taskUpdatesServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+      "";
+
+    if (!taskUpdatesUrl || !taskUpdatesServiceKey) {
       return new Response(
-        JSON.stringify({ error: "Invalid request body" }),
+        JSON.stringify({
+          error:
+            "Missing task updates (SUPABASE_URL) or service key (SUPABASE_SERVICE_ROLE_KEY)",
+        }),
         {
-          status: 400,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
+    const taskUpdatesStore = createClient(
+      taskUpdatesUrl,
+      taskUpdatesServiceKey,
+    );
+
+    const taskStoreKey = authHeader.split(" ")[1];
+    if (!jobRequest.task_store_url || !taskStoreKey) {
+      console.error(
+        "Missing task store URL or service key",
+        jobRequest.task_store_url,
+        taskStoreKey,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "Missing task store URL or service key",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const localRuntime = jobRequest.task_store_url.includes("localhost") ||
+      jobRequest.task_store_url.includes("127.0.0.1");
+    const taskStoreUrl = localRuntime
+      ? taskUpdatesUrl
+      : jobRequest.task_store_url;
+
+    const taskStore = createClient(
+      taskStoreUrl,
+      taskStoreKey,
+    );
+
     // Insert the task into the database
-    const { data: task, error: taskError } = await supabase
+    const { data: task, error: taskError } = await taskStore
       .from("tasks")
       .insert({
         user_id: jobRequest.user_id,
@@ -65,11 +147,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (taskError) {
-      throw new Error(`Failed to create task: ${taskError.message}`);
+      throw new Error(`Failed to create task: ${taskError.message}`, {
+        cause: taskError,
+      });
     }
 
     // Insert the pending task status
-    const { error: taskUpdateInsertError } = await supabase
+    const { error: taskUpdateInsertError } = await taskUpdatesStore
       .from("task_updates")
       .insert({
         uuid: task.uuid,
@@ -110,9 +194,9 @@ Deno.serve(async (req) => {
           "--task-uuid",
           task.uuid,
           "--task-store-url",
-          "http://host.docker.internal:54321",
+          taskStoreUrl,
           "--task-store-key",
-          supabaseServiceKey,
+          taskStoreKey,
           "--user-id",
           task.user_id,
           "--debug",
@@ -123,15 +207,15 @@ Deno.serve(async (req) => {
         undefined,
         task.uuid,
         {
-          RUNTIME_SUPABASE_URL: "http://host.docker.internal:54321",
-          RUNTIME_SUPABASE_KEY: supabaseServiceKey,
+          RUNTIME_SUPABASE_URL: taskUpdatesUrl,
+          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
         },
       );
 
       console.log("Job created successfully with execution ID:", executionId);
 
       // Update the task with the execution ID
-      const { error: updateError } = await supabase
+      const { error: updateError } = await taskUpdatesStore
         .from("tasks")
         .update({
           execution_id: executionId,
@@ -151,8 +235,8 @@ Deno.serve(async (req) => {
           executionId, // execution id
           task.uuid, // task uuid
           task.user_id, // user id
-          supabaseUrl, // supabase url
-          supabaseServiceKey, // supabase service role key
+          taskUpdatesUrl, // supabase url
+          taskUpdatesServiceKey, // supabase service role key
         ],
         JOBS_CONFIG["job-monitor"], // config
         "job-monitor", // service account name
@@ -179,7 +263,7 @@ Deno.serve(async (req) => {
       const errorMessage = error instanceof Error
         ? error.message
         : "Unknown error occurred";
-      const { error: updateError } = await supabase
+      const { error: updateError } = await taskUpdatesStore
         .from("tasks")
         .update({
           state: 3, // failed

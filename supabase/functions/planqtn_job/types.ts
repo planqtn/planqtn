@@ -4,6 +4,7 @@ export interface JobRequest {
   user_id: string;
   job_type: JobType;
   request_time: string; // ISO timestamp with timezone
+  task_store_url: string;
   payload: Record<string, unknown>; // Job-specific payload
 }
 

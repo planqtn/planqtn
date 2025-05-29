@@ -1,4 +1,5 @@
 import argparse
+import base64
 import json
 import logging
 import os
@@ -18,11 +19,11 @@ def main():
     parser.add_argument("--input-file", help="Path to JSON file containing the request")
     parser.add_argument(
         "--task-store-url",
-        help="Supabase URL (required for task-uuid and storing results)",
+        help="Supabase URL (required for task state changes and storing results)",
     )
     parser.add_argument(
         "--task-store-key",
-        help="Supabase key (required for task-uuid and storing results)",
+        help="Supabase key (required for task state changes and storing results)",
     )
 
     parser.add_argument(
@@ -95,6 +96,16 @@ def main():
         logger.info(f"Starting task {args.task_uuid} with args {args}")
     else:
         logger.info(f"Starting task with args {args}")
+
+    print("The task store key is", args.task_store_key)
+    print(
+        "The task store key decoded [1] is",
+        base64.b64decode(args.task_store_key.split(".")[1]),
+    )
+    print(
+        "The task store key decoded [0] is",
+        base64.b64decode(args.task_store_key.split(".")[0]),
+    )
 
     try:
         task_store = (

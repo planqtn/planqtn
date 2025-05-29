@@ -195,9 +195,15 @@ class SupabaseTaskStore:
         self.send_task_update(task, {"state": 1})
 
     def store_task_result(self, task: TaskDetails, result: Any, state: TaskState):
-        self.task_db.table("tasks").update({"result": result, "state": state.value}).eq(
-            "uuid", task.uuid
-        ).eq("user_id", task.user_id).execute()
+        res = (
+            self.task_db.table("tasks")
+            .update({"result": result, "state": state.value}, count="exact")
+            .eq("uuid", task.uuid)
+            .eq("user_id", task.user_id)
+            .execute()
+        )
+        if res.count != 1:
+            raise Exception(f"Failed to store task result: {res}")
 
     def send_task_update(self, task: TaskDetails, updates: Dict[str, Any]):
         if not self.task_updates_db:
