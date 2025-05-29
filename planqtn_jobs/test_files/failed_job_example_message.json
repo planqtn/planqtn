@@ -1,0 +1,151 @@
+{
+  "insertId": "ncmqnsdeelm",
+  "labels": { "run.googleapis.com/execution_name": "planqtn-jobs-q5mr7" },
+  "logName": "projects/planqtn-dev/logs/cloudaudit.googleapis.com%2Fsystem_event",
+  "protoPayload": {
+    "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+    "methodName": "/Jobs.RunJob",
+    "resourceName": "namespaces/planqtn-dev/executions/planqtn-jobs-q5mr7",
+    "response": {
+      "@type": "type.googleapis.com/google.cloud.run.v1.Execution",
+      "apiVersion": "run.googleapis.com/v1",
+      "kind": "Execution",
+      "metadata": {
+        "annotations": {
+          "run.googleapis.com/client-name": "cloud-console",
+          "run.googleapis.com/creator": "patobalint@gmail.com",
+          "run.googleapis.com/execution-environment": "gen2",
+          "run.googleapis.com/lastModifier": "patobalint@gmail.com",
+          "run.googleapis.com/operation-id": "3a83e9ac-e1bd-4ba4-a2a7-b955f2e207db"
+        },
+        "creationTimestamp": "2025-05-29T21:28:53.230122Z",
+        "generation": 1,
+        "labels": {
+          "client.knative.dev/nonce": "qin_sov_qiz",
+          "cloud.googleapis.com/location": "us-east1",
+          "run.googleapis.com/job": "planqtn-jobs",
+          "run.googleapis.com/jobGeneration": "4",
+          "run.googleapis.com/jobResourceVersion": "1748553843249236",
+          "run.googleapis.com/jobUid": "f9f681fc-e0d4-4b89-9882-2c81342c3a4d"
+        },
+        "name": "planqtn-jobs-q5mr7",
+        "namespace": "73220634109",
+        "ownerReferences": [
+          {
+            "apiVersion": "serving.knative.dev/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "Job",
+            "name": "planqtn-jobs",
+            "uid": "f9f681fc-e0d4-4b89-9882-2c81342c3a4d"
+          }
+        ],
+        "resourceVersion": "AAY2TP3+wWk",
+        "selfLink": "/apis/run.googleapis.com/v1/namespaces/73220634109/executions/planqtn-jobs-q5mr7",
+        "uid": "d6520193-6ccb-4d48-97b7-7e44fdd36cd8"
+      },
+      "spec": {
+        "parallelism": 1,
+        "taskCount": 1,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "args": [
+                  "fail",
+                  "please",
+                  "--task-uuid",
+                  "12345",
+                  "--user-id",
+                  "user12345"
+                ],
+                "env": [
+                  {
+                    "name": "RUNTIME_SUPABASE_URL",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "latest",
+                        "name": "dev_url_supa"
+                      }
+                    }
+                  },
+                  {
+                    "name": "RUNTIME_SUPABASE_KEY",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "latest",
+                        "name": "dev_svc_key_supa"
+                      }
+                    }
+                  }
+                ],
+                "image": "mirror.gcr.io/balopat/planqtn_jobs@sha256:07708ba95ec9a395b731b0bbe77f23ac42dc53f7fe384c92f327142318087487",
+                "name": "planqtn-jobs-1",
+                "resources": { "limits": { "cpu": "1000m", "memory": "512Mi" } }
+              }
+            ],
+            "maxRetries": 3,
+            "serviceAccountName": "73220634109-compute@developer.gserviceaccount.com",
+            "timeoutSeconds": "600"
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2025-05-29T21:29:26.938863Z",
+        "conditions": [
+          {
+            "lastTransitionTime": "2025-05-29T21:29:26.938863Z",
+            "message": "Task planqtn-jobs-q5mr7-task0 failed with message: The container exited with an error.",
+            "reason": "NonZeroExitCode",
+            "status": "False",
+            "type": "Completed"
+          },
+          {
+            "lastTransitionTime": "2025-05-29T21:28:55.026974Z",
+            "status": "True",
+            "type": "ResourcesAvailable"
+          },
+          {
+            "lastTransitionTime": "2025-05-29T21:28:56.301827Z",
+            "status": "True",
+            "type": "Started"
+          },
+          {
+            "lastTransitionTime": "2025-05-29T21:28:54.947682Z",
+            "status": "True",
+            "type": "ContainerReady"
+          },
+          {
+            "lastTransitionTime": "2025-05-29T21:29:27.009641Z",
+            "message": "System will retry after 0:00:00 from lastTransitionTime for attempt 0.",
+            "reason": "ImmediateRetry",
+            "severity": "Info",
+            "status": "True",
+            "type": "Retry"
+          }
+        ],
+        "failedCount": 1,
+        "logUri": "https://console.cloud.google.com/logs/viewer?project=planqtn-dev&advancedFilter=resource.type%3D%22cloud_run_job%22%0Aresource.labels.job_name%3D%22planqtn-jobs%22%0Aresource.labels.location%3D%22us-east1%22%0Alabels.%22run.googleapis.com/execution_name%22%3D%22planqtn-jobs-q5mr7%22",
+        "observedGeneration": 1,
+        "retriedCount": 1,
+        "startTime": "2025-05-29T21:28:56.301827Z"
+      }
+    },
+    "serviceName": "run.googleapis.com",
+    "status": {
+      "code": 10,
+      "message": "Execution planqtn-jobs-q5mr7 has failed to complete, 0/1 tasks were a success."
+    }
+  },
+  "receiveTimestamp": "2025-05-29T21:29:27.843667779Z",
+  "resource": {
+    "labels": {
+      "job_name": "planqtn-jobs",
+      "location": "us-east1",
+      "project_id": "planqtn-dev"
+    },
+    "type": "cloud_run_job"
+  },
+  "severity": "ERROR",
+  "timestamp": "2025-05-29T21:29:27.039034Z"
+}

@@ -2214,7 +2214,7 @@ const LegoStudioView: React.FC = () => {
   const handleMspSubmit = async (matrix: number[][]) => {
     try {
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.anonKey : acessToken;
+      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
       const response = await axios.post(
         getApiUrl("tensorNetwork"),
         {

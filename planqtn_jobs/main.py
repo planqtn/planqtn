@@ -98,14 +98,6 @@ def main():
         logger.info(f"Starting task with args {args}")
 
     print("The task store key is", args.task_store_key)
-    print(
-        "The task store key decoded [1] is",
-        base64.b64decode(args.task_store_key.split(".")[1]),
-    )
-    print(
-        "The task store key decoded [0] is",
-        base64.b64decode(args.task_store_key.split(".")[0]),
-    )
 
     try:
         task_store = (

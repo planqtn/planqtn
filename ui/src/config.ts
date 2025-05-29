@@ -7,8 +7,10 @@ export type Environment =
 
 // API configuration
 interface ApiConfig {
-    baseUrl: string;
-    anonKey: string;
+    taskStoreUrl: string;
+    taskStoreAnonKey: string;
+    runtimeStoreUrl: string;
+    runtimeStoreAnonKey: string;
     env: Environment;
     endpoints: {
         tensorNetwork: string;
@@ -37,8 +39,12 @@ const runtimeConfig = getRuntimeConfig();
 
 // Override config with runtime config if available
 export const config: ApiConfig = {
-    baseUrl: runtimeConfig?.API_URL || import.meta.env.VITE_SUPABASE_URL,
-    anonKey: runtimeConfig?.ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY,
+    taskStoreUrl: import.meta.env.VITE_TASK_STORE_URL,
+    taskStoreAnonKey: import.meta.env.VITE_TASK_STORE_KEY,
+    runtimeStoreUrl: runtimeConfig?.API_URL ||
+        import.meta.env.VITE_SUPABASE_URL,
+    runtimeStoreAnonKey: runtimeConfig?.ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
     env: (import.meta.env.VITE_ENV || "production") as Environment,
     endpoints: {
         tensorNetwork: "/functions/v1/tensornetwork",
@@ -52,8 +58,8 @@ export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
     console.log(
         "resolved API url for endpoint",
         endpoint,
-        config.baseUrl,
+        config.runtimeStoreUrl,
         config.endpoints[endpoint],
     );
-    return `${config.baseUrl}${config.endpoints[endpoint]}`;
+    return `${config.runtimeStoreUrl}${config.endpoints[endpoint]}`;
 };

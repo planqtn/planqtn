@@ -7,14 +7,14 @@ export interface JobConfig {
 
 export const JOBS_CONFIG: Record<string, JobConfig> = {
     weightenumerator: {
-        image: "balopat/planqtn_jobs:6b5ce6d-dirty",
+        image: "balopat/planqtn_jobs:6c11e8e-dirty",
         timeout: 3600, // 1 hour
         memoryLimit: "4Gi",
         cpuLimit: "2",
     },
 
     "job-monitor": {
-        image: "balopat/planqtn_jobs:6b5ce6d-dirty",
+        image: "balopat/planqtn_jobs:6c11e8e-dirty",
         timeout: 3600, // 1 hour
         memoryLimit: "200M",
         cpuLimit: "1",

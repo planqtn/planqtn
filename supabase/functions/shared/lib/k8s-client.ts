@@ -1,9 +1,10 @@
 import * as k8s from "jsr:@cloudydeno/kubernetes-client@0.7.3";
-import { CoreV1NamespacedApi } from "https://deno.land/x/kubernetes_apis/builtin/core@v1/mod.ts";
-import { BatchV1NamespacedApi } from "https://deno.land/x/kubernetes_apis/builtin/batch@v1/mod.ts";
-import { Job } from "https://deno.land/x/kubernetes_apis/builtin/batch@v1/structs.ts";
+import { CoreV1NamespacedApi } from "https://deno.land/x/kubernetes_apis@v0.5.4/builtin/core@v1/mod.ts";
+import { BatchV1NamespacedApi } from "https://deno.land/x/kubernetes_apis@v0.5.4/builtin/batch@v1/mod.ts";
+import { Job } from "https://deno.land/x/kubernetes_apis@v0.5.4/builtin/batch@v1/structs.ts";
 import { JobConfig } from "../config/jobs_config.ts";
-import { GoogleAuth } from "npm:google-auth-library";
+import * as md from "npm:gcp-metadata@6.1.0";
+import { GoogleAuth } from "npm:google-auth-library@9.15.1";
 import { KubeConfigRestClient } from "jsr:@cloudydeno/kubernetes-client@0.7.3";
 import { toQuantity } from "https://deno.land/x/kubernetes_apis@v0.5.4/common.ts";
 

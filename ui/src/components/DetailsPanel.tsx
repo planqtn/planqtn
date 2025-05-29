@@ -437,7 +437,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           : null,
       );
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.anonKey : acessToken;
+      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
       const response = await axios.post(
         getApiUrl("planqtnJob"),
@@ -445,7 +445,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           user_id: user?.id,
           request_time: new Date().toISOString(),
           job_type: "weightenumerator",
-          task_store_url: config.baseUrl,
+          task_store_url: config.runtimeStoreUrl,
           payload: {
             legos: tensorNetwork.legos.reduce(
               (acc, lego) => {
@@ -1254,7 +1254,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const handleCancelTask = async (taskId: string) => {
     try {
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.anonKey : acessToken;
+      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
       await axios.post(
         getApiUrl("cancelJob"),
@@ -1285,7 +1285,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const fetchTaskLogs = async (taskId: string) => {
     try {
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.anonKey : acessToken;
+      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
       const response = await axios.post(
         getApiUrl("planqtnJobLogs"),

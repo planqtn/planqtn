@@ -19,10 +19,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { JobRequest, JobResponse } from "./types.ts";
-import { K8sClient } from "../shared/lib/k8s-client.ts";
+
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
 import { corsHeaders } from "../_shared/cors.ts";
+import { CloudRunClient } from "../shared/lib/cloud-run-client.ts";
 
 console.log("Current Deno version", Deno.version);
 
@@ -59,7 +60,7 @@ const validateJobRequest = (jobRequest: JobRequest) => {
   }
 };
 
-console.info("Starting planqtn_job function");
+console.info("Starting planqtn_job for Cloud Run function");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -196,10 +197,9 @@ Deno.serve(async (req) => {
       console.log("Task UUID:", task.uuid);
       console.log("Payload:", jobRequest.payload);
 
-      const client = new K8sClient();
-      await client.connect();
+      const client = new CloudRunClient();
 
-      const executionId = await client.createJob(
+      const response = await client.createJob(
         jobRequest.job_type,
         [
           "python",
@@ -226,45 +226,6 @@ Deno.serve(async (req) => {
           RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
         },
       );
-
-      console.log("Job created successfully with execution ID:", executionId);
-
-      // Update the task with the execution ID
-      const { error: updateError } = await taskUpdatesStore
-        .from("tasks")
-        .update({
-          execution_id: executionId,
-          state: 0, // pending
-        })
-        .eq("uuid", task.uuid);
-
-      if (updateError) {
-        throw new Error(`Failed to update task: ${updateError.message}`);
-      }
-
-      // submit job-monitor job
-      const jobMonitorJob = await client.createJob(
-        `job-monitor`, // job type
-        ["python", "/app/planqtn_jobs/monitor.py"], // command
-        [
-          executionId, // execution id
-          task.uuid, // task uuid
-          task.user_id, // user id
-          taskUpdatesUrl, // supabase url
-          taskUpdatesServiceKey, // supabase service role key
-        ],
-        JOBS_CONFIG["job-monitor"], // config
-        "job-monitor", // service account name
-        task.uuid, // postfix
-      );
-      console.log(
-        "Job-monitor job created successfully with execution ID:",
-        jobMonitorJob,
-      );
-
-      const response: JobResponse = {
-        task_id: task.uuid,
-      };
 
       return new Response(
         JSON.stringify(response),
@@ -305,15 +266,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/planqtn_job' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
