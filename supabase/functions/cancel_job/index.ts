@@ -10,6 +10,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 interface CancelJobRequest {
   task_uuid: string;
+  task_store_url: string;
+  task_store_anon_key: string;
 }
 
 Deno.serve(async (req) => {
@@ -44,12 +46,20 @@ Deno.serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const taskStore = createClient(
+      cancelJobRequest.task_store_url,
+      cancelJobRequest.task_store_anon_key,
+      {
+        global: {
+          headers: {
+            "Authorization": `${authHeader}`,
+          },
+        },
+      },
+    );
 
     // Get the task from the database
-    const { data: task, error: taskError } = await supabase
+    const { data: task, error: taskError } = await taskStore
       .from("tasks")
       .select("*")
       .eq("uuid", cancelJobRequest.task_uuid)
@@ -78,6 +88,7 @@ Deno.serve(async (req) => {
     }
 
     if (!task.execution_id) {
+      console.error("Task has no execution ID", task);
       return new Response(
         JSON.stringify({ error: "Task has no execution ID" }),
         {
@@ -94,7 +105,7 @@ Deno.serve(async (req) => {
     await client.deleteJob(task.execution_id);
 
     // Update the task status in the database
-    const { error: updateError } = await supabase
+    const { error: updateError } = await taskStore
       .from("tasks")
       .update({
         state: 4, // cancelled
@@ -115,7 +126,7 @@ Deno.serve(async (req) => {
     }
 
     // Update the task status in the database
-    const { error: taskUpdateError } = await supabase
+    const { error: taskUpdateError } = await taskStore
       .from("task_updates")
       .update({
         updates: { state: 4, result: { error: "Task cancelled by user" } },
@@ -146,6 +157,7 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error
       ? error.message
       : "Unknown error occurred";
+    console.error(error);
     return new Response(
       JSON.stringify({ error: `Failed to cancel job: ${errorMessage}` }),
       {

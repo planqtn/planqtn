@@ -64,7 +64,7 @@ import {
   RealtimePostgresChangesPayload,
   RealtimeChannel,
 } from "@supabase/supabase-js";
-import { userContextSupabase } from "../supabaseClient";
+import { runtimeStoreSupabase, userContextSupabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
 import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
@@ -288,7 +288,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
 
     // Create a channel for task updates
-    const channel = userContextSupabase
+    const channel = runtimeStoreSupabase
       .channel(`task_${taskId}`)
       .on(
         "postgres_changes",
@@ -438,8 +438,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             })
           : null,
       );
+      // we kick off the job with the task store key
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
       const response = await axios.post(
         getApiUrl("planqtnJob"),
@@ -473,7 +473,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
+            Authorization: `Bearer ${acessToken}`,
           },
         },
       );
@@ -1257,15 +1257,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const handleCancelTask = async (taskId: string) => {
     try {
       const acessToken = await getAccessToken();
-      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
       await axios.post(
         getApiUrl("cancelJob"),
-        { task_uuid: taskId },
+        {
+          task_uuid: taskId,
+          task_store_url: config.userContextURL,
+          task_store_anon_key: config.userContextAnonKey,
+        },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
+            Authorization: `Bearer ${acessToken}`,
           },
         },
       );

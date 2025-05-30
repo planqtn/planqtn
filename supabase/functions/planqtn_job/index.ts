@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
       console.log("Job created successfully with execution ID:", executionId);
 
       // Update the task with the execution ID
-      const { error: updateError } = await taskUpdatesStore
+      const { error: updateError } = await taskStore
         .from("tasks")
         .update({
           execution_id: executionId,
