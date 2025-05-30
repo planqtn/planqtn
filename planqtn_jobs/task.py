@@ -70,6 +70,7 @@ class TaskDetails(BaseModel):
     uuid: Optional[str] = None
     input_file: Optional[str] = None
     output_file: Optional[str] = None
+    execution_id: Optional[str] = None
 
 
 class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):

@@ -13,7 +13,7 @@ import {
 } from "@chakra-ui/react";
 import { FiUser } from "react-icons/fi";
 import { User } from "@supabase/supabase-js";
-import { taskStoreSupabase } from "../supabaseClient";
+import { userContextSupabase } from "../supabaseClient";
 interface UserMenuProps {
   user?: User | null;
   onSignIn?: () => void;
@@ -73,7 +73,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
         </VStack>
       </MenuButton>
       <MenuList bg={bgColor} borderColor={borderColor}>
-        <MenuItem onClick={() => taskStoreSupabase.auth.signOut()}>
+        <MenuItem onClick={() => userContextSupabase.auth.signOut()}>
           Sign Out
         </MenuItem>
       </MenuList>

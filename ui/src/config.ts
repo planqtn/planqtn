@@ -7,8 +7,8 @@ export type Environment =
 
 // API configuration
 interface ApiConfig {
-    taskStoreUrl: string;
-    taskStoreAnonKey: string;
+    userContextURL: string;
+    userContextAnonKey: string;
     runtimeStoreUrl: string;
     runtimeStoreAnonKey: string;
     env: Environment;
@@ -21,7 +21,7 @@ interface ApiConfig {
 }
 
 // Function to get runtime config from localStorage
-const getLocalRuntimeConfig = (): Record<string, string> | null => {
+const getLocalSupabaseConfig = (): Record<string, string> | null => {
     const isActive = localStorage.getItem("runtimeConfigActive");
     if (isActive === "false") return null;
     const storedConfig = localStorage.getItem("runtimeConfig");
@@ -35,12 +35,12 @@ const getLocalRuntimeConfig = (): Record<string, string> | null => {
 };
 
 // Get the runtime config if available
-const localRuntimeConfig = getLocalRuntimeConfig();
+const localRuntimeConfig = getLocalSupabaseConfig();
 
 // Override config with runtime config if available
 export const config: ApiConfig = {
-    taskStoreUrl: import.meta.env.VITE_TASK_STORE_URL,
-    taskStoreAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
+    userContextURL: import.meta.env.VITE_TASK_STORE_URL,
+    userContextAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
     runtimeStoreUrl: localRuntimeConfig?.API_URL ||
         import.meta.env.VITE_RUNTIME_STORE_URL,
     runtimeStoreAnonKey: localRuntimeConfig?.ANON_KEY ||

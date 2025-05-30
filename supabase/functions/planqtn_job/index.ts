@@ -107,8 +107,23 @@ Deno.serve(async (req) => {
 
     const taskStore = createClient(
       taskStoreUrl,
+      jobRequest.task_store_anon_key,
+      {
+        global: {
+          headers: {
+            "Authorization": `Bearer ${taskStoreKey}`,
+          },
+        },
+      },
+    );
+
+    const { data: user, error: userError } = await taskStore.auth.getUser(
       taskStoreKey,
     );
+    if (userError) {
+      console.error("Failed to get user", userError);
+      throw new Error(userError.message);
+    }
 
     console.info("Creating task in task store", taskStoreUrl, taskStoreKey);
 
@@ -174,6 +189,10 @@ Deno.serve(async (req) => {
           "/app/planqtn_jobs/main.py",
         ],
         [
+          "--action",
+          "run", // action
+          "--job-type",
+          jobRequest.job_type, // job type
           "--task-uuid",
           task.uuid,
           "--task-store-url",
@@ -215,17 +234,32 @@ Deno.serve(async (req) => {
       // submit job-monitor job
       const jobMonitorJob = await client.createJob(
         `job-monitor`, // job type
-        ["python", "/app/planqtn_jobs/monitor.py"], // command
+        ["python", "/app/planqtn_jobs/main.py"], // command
         [
+          "--action",
+          "monitor", // action
+          "--execution-id",
           executionId, // execution id
-          task.uuid, // task uuid
-          task.user_id, // user id
-          taskUpdatesUrl, // supabase url
-          taskUpdatesServiceKey, // supabase service role key
+          "--task-uuid",
+          task.uuid,
+          "--task-store-url",
+          taskStoreUrl,
+          "--task-store-user-key",
+          taskStoreKey,
+          "--task-store-anon-key",
+          jobRequest.task_store_anon_key,
+          "--user-id",
+          task.user_id,
+          "--debug",
+          "--realtime",
         ],
         JOBS_CONFIG["job-monitor"], // config
         "job-monitor", // service account name
         task.uuid, // postfix
+        {
+          RUNTIME_SUPABASE_URL: taskUpdatesUrl,
+          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
+        },
       );
       console.log(
         "Job-monitor job created successfully with execution ID:",

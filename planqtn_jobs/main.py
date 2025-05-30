@@ -6,6 +6,7 @@ import os
 import sys
 import traceback
 from typing import Optional
+from planqtn_jobs.monitor import JobMonitor
 from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore, TaskDetails
 from planqtn_jobs.weight_enum_task import WeightEnumeratorTask
 
@@ -13,6 +14,19 @@ from planqtn_jobs.weight_enum_task import WeightEnumeratorTask
 def main():
     parser = argparse.ArgumentParser(
         description="Calculate weight enumerator from various sources"
+    )
+    parser.add_argument(
+        "--action", help="Action to perform", default="run", choices=["run", "monitor"]
+    )
+    parser.add_argument(
+        "--job-type",
+        help="Job type",
+        default="weightenumerator",
+        choices=["weightenumerator", "qdistrnd"],
+    )
+    parser.add_argument(
+        "--execution-id",
+        help="Execution ID of the job in Kubernetes",
     )
     parser.add_argument("--task-uuid", help="UUID of the task in Supabase")
     parser.add_argument("--user-id", help="User ID for Supabase")
@@ -122,20 +136,34 @@ def main():
             if args.task_uuid
             else None
         )
-        WeightEnumeratorTask(
-            task_details=TaskDetails(
-                user_id=args.user_id,
-                uuid=args.task_uuid,
-                input_file=args.input_file,
-                output_file=args.output_file,
-            ),
-            task_store=task_store,
-            local_progress_bar=args.local_progress_bar,
-            realtime_update_frequency=args.realtime_update_frequency,
-            realtime_updates_enabled=args.realtime,
-            debug=args.debug,
-        ).run()
-
+        if args.action == "run":
+            if args.job_type == "weightenumerator":
+                WeightEnumeratorTask(
+                    task_details=TaskDetails(
+                        user_id=args.user_id,
+                        uuid=args.task_uuid,
+                        input_file=args.input_file,
+                        output_file=args.output_file,
+                    ),
+                    task_store=task_store,
+                    local_progress_bar=args.local_progress_bar,
+                    realtime_update_frequency=args.realtime_update_frequency,
+                    realtime_updates_enabled=args.realtime,
+                    debug=args.debug,
+                ).run()
+            elif args.job_type == "qdistrnd":
+                raise NotImplementedError("QDistRND job type not implemented")
+        elif args.action == "monitor":
+            JobMonitor(
+                task_details=TaskDetails(
+                    user_id=args.user_id,
+                    uuid=args.task_uuid,
+                    input_file=args.input_file,
+                    output_file=args.output_file,
+                    execution_id=args.execution_id,
+                ),
+                task_store=task_store,
+            ).monitor()
     except Exception as e:
         print(f"Error: {str(e)}")
         traceback.print_exc()

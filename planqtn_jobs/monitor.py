@@ -26,26 +26,13 @@ logger = logging.getLogger(__name__)
 class JobMonitor:
     def __init__(
         self,
-        job_name: str,
-        task_uuid: str,
-        user_id: str,
-        supabase_url: str,
-        supabase_key: str,
+        task_details: TaskDetails,
+        task_store: SupabaseTaskStore,
     ):
-        self.job_name = job_name
-        self.task_details = TaskDetails(
-            user_id=user_id,
-            uuid=task_uuid,
-        )
+        self.task_details = task_details
         self.namespace = "default"
 
-        # Initialize Supabase client
-        self.task_store = SupabaseTaskStore(
-            task_db_credentials=SupabaseCredentials(url=supabase_url, key=supabase_key),
-            task_updates_db_credentials=SupabaseCredentials(
-                url=supabase_url, key=supabase_key
-            ),
-        )
+        self.task_store = task_store
 
         # Load in-cluster configuration
         try:
@@ -65,7 +52,9 @@ class JobMonitor:
     def get_job_status(self) -> Tuple[TaskState, Optional[List[str]]]:
         """Get the current status of the monitored job."""
         try:
-            job = self.batch_api.read_namespaced_job(self.job_name, self.namespace)
+            job = self.batch_api.read_namespaced_job(
+                self.task_details.execution_id, self.namespace
+            )
             print("Job details:")
             print(job)
             print("Job status:")
@@ -78,7 +67,8 @@ class JobMonitor:
                 print("Job failed...")
                 # Check pod events for OOM
                 pods = self.core_api.list_namespaced_pod(
-                    self.namespace, label_selector=f"job-name={self.job_name}"
+                    self.namespace,
+                    label_selector=f"job-name={self.task_details.execution_id}",
                 )
 
                 pod = pods.items[0]
@@ -152,7 +142,7 @@ class JobMonitor:
 
     def monitor(self):
         """Monitor the job and update task state when it changes."""
-        logger.info(f"Starting to monitor job {self.job_name}")
+        logger.info(f"Starting to monitor job {self.task_details.execution_id}")
 
         task = self.task_store.get_task(self.task_details)
         if task and task["state"] not in [
@@ -188,24 +178,3 @@ class JobMonitor:
                     break
 
             time.sleep(2)  # Check every 2 seconds
-
-
-def main():
-    if len(sys.argv) != 6:
-        print(
-            "Usage: monitor.py <job_name> <task_uuid> <user_id> <supabase_url> <supabase_key>"
-        )
-        sys.exit(1)
-
-    job_name = sys.argv[1]
-    task_uuid = sys.argv[2]
-    user_id = sys.argv[3]
-    supabase_url = sys.argv[4]
-    supabase_key = sys.argv[5]
-
-    monitor = JobMonitor(job_name, task_uuid, user_id, supabase_url, supabase_key)
-    monitor.monitor()
-
-
-if __name__ == "__main__":
-    main()

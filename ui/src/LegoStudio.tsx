@@ -55,7 +55,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
 import AuthDialog from "./components/AuthDialog";
 import { FiEdit } from "react-icons/fi";
-import { taskStoreSupabase } from "./supabaseClient";
+import { userContextSupabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
@@ -1972,7 +1972,7 @@ const LegoStudioView: React.FC = () => {
   useEffect(() => {
     const {
       data: { subscription },
-    } = taskStoreSupabase.auth.onAuthStateChange((_event, session) => {
+    } = userContextSupabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
@@ -2705,20 +2705,17 @@ const LegoStudioView: React.FC = () => {
     localStorage.setItem("runtimeConfig", JSON.stringify(config));
     // Set the active flag
     localStorage.setItem("runtimeConfigActive", "true");
-    // Sign out the user
-    taskStoreSupabase.auth.signOut();
+
     // Reload the page
-    window.location.href = "/";
+    window.location.reload();
   };
 
   const handleRuntimeToggle = () => {
     if (isLocalRuntime) {
-      // Deactivate local runtime (but keep the config stored)
       localStorage.setItem("runtimeConfigActive", "false");
-      // Sign out the user
-      taskStoreSupabase.auth.signOut();
+
       // Reload the page
-      window.location.href = "/";
+      window.location.reload();
     } else {
       setIsRuntimeConfigOpen(true);
     }
