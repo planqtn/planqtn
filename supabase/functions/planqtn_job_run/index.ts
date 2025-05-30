@@ -208,10 +208,10 @@ Deno.serve(async (req) => {
 
     // Create the job in Kubernetes
     try {
-      console.log("Creating job in Kubernetes");
+      console.log("Creating job in Cloud Run");
       console.log("Job type:", jobRequest.job_type);
       console.log("Task UUID:", task.uuid);
-      console.log("Payload:", jobRequest.payload);
+      // console.log("Payload:", jobRequest.payload);
 
       const client = new CloudRunClient("planqtn-dev", "us-east1");
 
@@ -242,6 +242,19 @@ Deno.serve(async (req) => {
       );
 
       console.log("Job creation response", job_creation_response);
+
+      const { error: updateError } = await taskStore
+        .from("tasks")
+        .update({
+          execution_id: job_creation_response,
+          state: 1, // running
+        })
+        .eq("uuid", task.uuid)
+        .eq("user_id", task.user_id);
+
+      if (updateError) {
+        console.error("Failed to update task with error:", updateError);
+      }
 
       const response: JobResponse = {
         task_id: task.uuid,

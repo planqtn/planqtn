@@ -22,6 +22,7 @@ from qlego.progress_reporter import (
 class SupabaseCredentials:
     url: str
     key: str
+    anon_key: str = None
 
 
 class TaskStoreProgressReporter(ProgressReporter):
@@ -175,10 +176,14 @@ class SupabaseTaskStore:
         task_db_credentials: SupabaseCredentials,
         task_updates_db_credentials: SupabaseCredentials = None,
     ):
-        self.user_context_supabase_url = task_db_credentials.url
-        self.user_context_supabase_key = task_db_credentials.key
         self.task_db = supabase.create_client(
-            self.user_context_supabase_url, self.user_context_supabase_key
+            task_db_credentials.url,
+            task_db_credentials.anon_key,
+            options={
+                "global": {
+                    "headers": {"Authorization": f"Bearer {task_db_credentials.key}"}
+                }
+            },
         )
 
         self.task_updates_db = None
@@ -228,6 +233,7 @@ class SupabaseTaskStore:
             .execute()
             .data
         )
+        print(f"Task data: {task_data}")
         if not task_data:
             return None
 

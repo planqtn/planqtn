@@ -73,23 +73,23 @@ def main():
         print("Error: Task store credentials required for task-uuid mode")
         sys.exit(1)
 
-    # root = logging.getLogger()
-    # root.setLevel(
-    #     logging.DEBUG if args.debug else logging.INFO
-    # )  # Set the minimum logging level
+    root = logging.getLogger()
+    root.setLevel(
+        logging.DEBUG if args.debug else logging.INFO
+    )  # Set the minimum logging level
 
-    # # Create a StreamHandler to output to stdout
-    # handler = logging.StreamHandler(sys.stdout)
-    # handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    # Create a StreamHandler to output to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
 
-    # # Create a formatter to customize the log message format
-    # formatter = logging.Formatter(
-    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    # )
-    # handler.setFormatter(formatter)
+    # Create a formatter to customize the log message format
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
 
-    # # Add the handler to the root logger
-    # root.addHandler(handler)
+    # Add the handler to the root logger
+    root.addHandler(handler)
     logger = logging.getLogger(__name__)
 
     if args.task_uuid:

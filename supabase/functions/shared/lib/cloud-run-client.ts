@@ -22,6 +22,72 @@ interface Overrides {
     timeout?: string; // e.g., "3600s"
 }
 
+// Simplified LogEntry structure for what we need
+interface LogEntry {
+    textPayload?: string;
+    jsonPayload?: any;
+    protoPayload?: any;
+    timestamp: string;
+    severity: string;
+    labels?: Record<string, string>;
+    // Add other fields if needed, e.g., httpRequest, operation, etc.
+}
+
+interface ListLogEntriesResponse {
+    entries?: LogEntry[];
+    nextPageToken?: string;
+    error?: {
+        code: number;
+        message: string;
+        status: string;
+        details?: any[];
+    };
+}
+
+// For LRO polling
+interface CloudRunOperation {
+    name: string;
+    done?: boolean;
+    error?: { code: number; message: string; details: any[] }; // Standard Google API error object
+    response?: any; // May not be used for job executions if metadata holds the result
+    metadata?: CloudRunExecution | any; // For job executions, this contains the Execution object
+}
+
+// Updated representation of a Cloud Run Execution object (from LRO metadata/response)
+interface CloudRunExecution {
+    name: string; // Full resource name: projects/.../executions/EXECUTION_ID
+    uid: string;
+    generation: string; // e.g., "1"
+    labels?: Record<string, string>;
+    createTime: string;
+    startTime?: string;
+    completionTime?: string;
+    logUri?: string; // Direct link to logs in Cloud Console
+    job?: string; // Name of the job, e.g., "planqtn-jobs"
+    parallelism?: number;
+    taskCount?: number;
+    template?: any; // Could be more specific if needed
+    conditions?: Array<{
+        type: string;
+        state: string;
+        message?: string;
+        lastTransitionTime: string;
+        executionReason?: string;
+        reason?: string; // Sometimes 'reason' is used instead of 'executionReason'
+    }>;
+    observedGeneration?: string;
+    failedCount?: number;
+    succeededCount?: number;
+    cancelledCount?: number;
+    retriedCount?: number;
+    creator?: string;
+    updater?: string;
+    etag?: string;
+    reconciling?: boolean;
+    satisfiesPzs?: boolean;
+    launchStage?: string;
+}
+
 export const cloudRunHeaders = async (
     backendUrl: string,
 ) => {
@@ -56,12 +122,6 @@ export async function getIdTokenClientForCloudRun(
     }
 }
 
-// Define a type for the expected REST API operation response (simplified)
-interface CloudRunOperation {
-    name: string;
-    // Other fields like metadata, done, error, response might exist
-}
-
 export class CloudRunClient {
     private projectId: string;
     private location: string;
@@ -77,10 +137,15 @@ export class CloudRunClient {
 
         const credentials = googleCredentials();
 
+        console.log("Credentials", credentials);
         this.googleAuth = new GoogleAuth({
             credentials: credentials as any, // Cast to any to bypass strict library typing for now
             projectId: this.projectId,
-            scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+            // Ensure scopes cover logging.read or cloud-platform
+            scopes: [
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/logging.read",
+            ],
         });
 
         console.log(
@@ -101,7 +166,7 @@ export class CloudRunClient {
         env?: Record<string, string>,
     ): Promise<string> {
         const baseJobId = "planqtn-jobs";
-        const jobIdentifier = baseJobId;
+        const jobIdentifier = postfix ? `${baseJobId}-${postfix}` : baseJobId;
         const jobResourceName =
             `projects/${this.projectId}/locations/${this.location}/jobs/${jobIdentifier}`;
 
@@ -148,19 +213,26 @@ export class CloudRunClient {
                 body: JSON.stringify(requestBody),
             });
 
-            const responseBody = await response.json();
+            const responseBody: CloudRunOperation = await response.json();
 
             if (!response.ok) {
-                console.error("Error response from REST API:", responseBody);
+                console.error(
+                    "Error response from REST API creating job:",
+                    responseBody,
+                );
+                const errorMessage = responseBody.error?.message ||
+                    JSON.stringify(responseBody);
                 throw new Error(
                     `Failed to run job via REST API. Status: ${response.status} ${response.statusText}. ` +
-                        `Response: ${JSON.stringify(responseBody)}`,
+                        `Response: ${errorMessage}`,
                 );
             }
 
-            console.log("Job run initiated via REST. Operation:", responseBody);
-            const operation = responseBody as CloudRunOperation;
-            return operation.name || "unknown_operation_name_from_rest";
+            console.log(
+                "Job run LRO initiated via REST. Operation:",
+                responseBody,
+            );
+            return responseBody.name; // Returns the LRO name
         } catch (error) {
             console.error("Error running job via REST API:", error);
             if (
@@ -179,6 +251,213 @@ export class CloudRunClient {
             } else {
                 console.error(
                     "Caught an unknown error type during REST call:",
+                    error,
+                );
+            }
+            throw error;
+        }
+    }
+
+    async pollLRO(
+        lroName: string,
+        maxAttempts = 10,
+        delayMs = 5000,
+    ): Promise<CloudRunOperation> {
+        console.log(`Polling LRO: ${lroName}`);
+        const lroApiUrl = `https://run.googleapis.com/v2/${lroName}`;
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            console.log(
+                `LRO Poll attempt ${attempts}/${maxAttempts} for ${lroName}`,
+            );
+            const token = await this.googleAuth.getAccessToken();
+            if (!token) {
+                throw new Error(
+                    "Failed to retrieve access token for LRO polling.",
+                );
+            }
+
+            const response = await fetch(lroApiUrl, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            const lroStatus: CloudRunOperation = await response.json();
+
+            if (!response.ok) {
+                console.error("Error polling LRO:", lroStatus);
+                const errorMessage = lroStatus.error?.message ||
+                    JSON.stringify(lroStatus);
+                throw new Error(
+                    `Failed to poll LRO. Status: ${response.status} ${response.statusText}. ` +
+                        `Response: ${errorMessage}`,
+                );
+            }
+
+            if (lroStatus.done) {
+                console.log(`LRO ${lroName} is done. Status:`, lroStatus);
+                // If LRO is done, return its status, regardless of whether it contains an error.
+                // The caller can then inspect lroStatus.error to see if the underlying operation failed.
+                return lroStatus;
+            }
+
+            console.log(`LRO ${lroName} not done yet, waiting ${delayMs}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        throw new Error(
+            `LRO ${lroName} did not complete after ${maxAttempts} attempts.`,
+        );
+    }
+
+    // Helper to extract the short execution ID from the full execution resource name
+    private getShortExecutionId(fullExecutionResourceName: string): string {
+        if (
+            !fullExecutionResourceName ||
+            !fullExecutionResourceName.includes("/")
+        ) {
+            console.warn(
+                `Invalid fullExecutionResourceName for getShortExecutionId: ${fullExecutionResourceName}`,
+            );
+            return fullExecutionResourceName; // Return as is if not a valid path
+        }
+        return fullExecutionResourceName.substring(
+            fullExecutionResourceName.lastIndexOf("/") + 1,
+        );
+    }
+
+    async getJobLogs(
+        lroName: string,
+        defaultJobNameForFilter: string = "planqtn-jobs",
+    ): Promise<string> {
+        console.log(`Getting logs for LRO: ${lroName}`);
+
+        // 1. Poll the LRO to get Execution details
+        const completedLro = await this.pollLRO(lroName);
+
+        if (completedLro.error) {
+            console.warn(
+                `Warning: The job associated with LRO ${lroName} reported an error: ${completedLro.error.message}. Attempting to fetch logs anyway. Details:`,
+                JSON.stringify(completedLro.error.details || {}, null, 2),
+            );
+            // Do NOT throw; proceed to fetch logs as they are crucial for diagnosing job failures.
+        }
+
+        // For Cloud Run job executions, the Execution object is in the LRO's 'metadata' field.
+        if (!completedLro.metadata) {
+            throw new Error(
+                `LRO ${lroName} did not yield metadata containing execution details. Cannot determine execution to fetch logs for.`,
+            );
+        }
+
+        const executionDetails = completedLro.metadata as CloudRunExecution;
+        const executionResourceName = executionDetails.name;
+
+        if (!executionResourceName) {
+            throw new Error(
+                `Could not determine execution resource name from LRO metadata for ${lroName}.`,
+            );
+        }
+
+        // 2. Determine jobName for the filter
+        // Prefer job_name from execution labels or the job field in execution metadata if available
+        const jobNameFromLabel = executionDetails.labels
+            ?.["run.googleapis.com/job_name"];
+        const jobNameFromMetadata = executionDetails.job; // The 'job' field in Execution metadata often holds the short job name
+        const jobName = jobNameFromMetadata || jobNameFromLabel ||
+            defaultJobNameForFilter;
+
+        console.log(
+            `Using jobName: '${jobName}' for log filter (derived from metadata: ${!!jobNameFromMetadata}, label: ${!!jobNameFromLabel}).`,
+        );
+        if (executionDetails.logUri) {
+            console.log(
+                `Console Log URI for this execution: ${executionDetails.logUri}`,
+            );
+        }
+
+        // 3. Proceed with fetching logs using the executionResourceName
+        const shortExecutionId = this.getShortExecutionId(
+            executionResourceName,
+        );
+        console.log(
+            `Fetching logs for execution ID: ${shortExecutionId} (from resource ${executionResourceName}) of job: ${jobName}`,
+        );
+
+        const loggingApiUrl = "https://logging.googleapis.com/v2/entries:list";
+
+        // Match the filter exactly as it appears in the working Cloud Logging Console query
+        const filter =
+            `labels."run.googleapis.com/execution_name"="${shortExecutionId}"\n` +
+            `resource.type="cloud_run_job"\n` +
+            `resource.labels.job_name="${jobName}"\n` +
+            `resource.labels.location="${this.location}"`;
+
+        const requestBody = {
+            resourceNames: [`projects/${this.projectId}`],
+            filter: filter,
+            orderBy: "timestamp desc",
+            pageSize: 1000,
+        };
+
+        console.log("Requesting logs with filter:", filter);
+        console.log(
+            "Logging request body:",
+            JSON.stringify(requestBody, null, 2),
+        );
+
+        try {
+            const token = await this.googleAuth.getAccessToken();
+            if (!token) {
+                throw new Error("Failed to retrieve access token for logging.");
+            }
+
+            const response = await fetch(loggingApiUrl, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            const responseBody: ListLogEntriesResponse = await response.json();
+
+            console.log(
+                "Response body:",
+                JSON.stringify(responseBody, null, 2),
+            );
+
+            if (!response.ok) {
+                console.error("Error response from Logging API:", responseBody);
+                const errorMessage = responseBody.error?.message ||
+                    JSON.stringify(responseBody);
+                throw new Error(
+                    `Failed to get logs from Logging API. Status: ${response.status} ${response.statusText}. ` +
+                        `Response: ${errorMessage}`,
+                );
+            }
+
+            console.log(
+                `Found ${responseBody.entries?.length || 0} log entries.`,
+            );
+            return responseBody.entries?.map((entry) => entry.textPayload).join(
+                "\n",
+            ) || "";
+        } catch (error) {
+            console.error("Error fetching job logs:", error);
+            if (error instanceof Error) {
+                console.error("Error message:", error.message);
+                if (error.stack) {
+                    console.error("Error stack:", error.stack);
+                }
+            } else {
+                console.error(
+                    "Caught an unknown error type during log fetching:",
                     error,
                 );
             }

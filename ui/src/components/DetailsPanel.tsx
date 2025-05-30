@@ -20,6 +20,7 @@ import {
   ModalHeader,
   ModalCloseButton,
   useDisclosure,
+  Spinner,
 } from "@chakra-ui/react";
 import { FaTable, FaCube, FaCode, FaCopy, FaFileAlt } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
@@ -164,6 +165,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   ] = useState(false);
 
   const [taskLogs, setTaskLogs] = useState<string>("");
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const {
     isOpen: isLogsModalOpen,
     onOpen: onLogsModalOpen,
@@ -1284,6 +1286,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const fetchTaskLogs = async (taskId: string) => {
     try {
+      setIsLoadingLogs(true);
+      onLogsModalOpen();
+
       const acessToken = await getAccessToken();
       const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
 
@@ -1305,10 +1310,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }
 
       setTaskLogs(response.data.logs || "No logs available");
-      onLogsModalOpen();
     } catch (error) {
       console.error("Error fetching task logs:", error);
       setError("Failed to fetch task logs");
+      setTaskLogs("Error fetching logs. Please try again.");
+    } finally {
+      setIsLoadingLogs(false);
     }
   };
 
@@ -1853,8 +1860,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               fontSize="sm"
               border="1px solid"
               borderColor="gray.200"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              wordBreak="break-all"
             >
-              {taskLogs}
+              {isLoadingLogs ? (
+                <Spinner size="xl" color="blue.500" thickness="4px" />
+              ) : (
+                taskLogs
+              )}
             </Box>
           </Box>
         </ModalContent>

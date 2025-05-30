@@ -1,29 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { decodeBase64 } from "jsr:@std/encoding/base64";
-import { getIdTokenClientForCloudRun } from "../shared/lib/cloud-run-client.ts";
-
-const cloudRunHeaders = async (
-  backendUrl: string,
-) => {
-  console.log("Cloud Run mode!");
-  const serviceAccountBase64 = Deno.env.get("SVC_ACCOUNT");
-  if (!serviceAccountBase64) {
-    throw new Error("SVC_ACCOUNT environment variable not set");
-  }
-
-  const serviceAccountJson = new TextDecoder().decode(
-    decodeBase64(serviceAccountBase64),
-  );
-  const idTokenClient = await getIdTokenClientForCloudRun(
-    JSON.parse(serviceAccountJson),
-    backendUrl,
-  );
-  const headers = await idTokenClient.getRequestHeaders(backendUrl); // Pass the audience again if needed, or it can be inferred
-
-  return headers;
-};
+import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

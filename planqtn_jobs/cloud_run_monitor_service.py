@@ -55,8 +55,8 @@ async def handle_job_failed(request: Request):
 
     task_store = SupabaseTaskStore(
         task_db_credentials=SupabaseCredentials(
-            url=os.getenv("SUPABASE_URL"),
-            key=os.getenv("SUPABASE_KEY"),
+            url=os.environ["SUPABASE_URL"],
+            key=os.environ["SUPABASE_KEY"],
         )
     )
 

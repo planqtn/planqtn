@@ -32,6 +32,10 @@ for arg in "$@"; do
             DEPLOY_MONITOR=true
             shift
             ;;
+        --deploy-job)
+            DEPLOY_JOB=true
+            shift
+            ;;
     esac
 done
 
