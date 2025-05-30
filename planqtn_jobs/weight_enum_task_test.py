@@ -89,6 +89,7 @@ def supabase_setup():
 
     # Get service role key from status
     service_role_key = status["SERVICE_ROLE_KEY"]
+    anon_key = status["ANON_KEY"]
     api_url = status["API_URL"]
 
     # Create Supabase client with service role
@@ -119,6 +120,7 @@ def supabase_setup():
     yield {
         "api_url": api_url,
         "service_role_key": service_role_key,
+        "anon_key": anon_key,
         "test_user_id": test_user_id,
         "test_user_token": test_user_token,
         "service_client": service_client,
@@ -192,14 +194,17 @@ def test_main_with_task_store(
     )
     try:
         service_client.table("tasks").insert(task_data).execute()
+
         args = [
             "main.py",
             "--task-uuid",
             task_uuid,
             "--task-store-url",
             supabase_setup["api_url"],
-            "--task-store-key",
+            "--task-store-user-key",
             supabase_setup["test_user_token"],
+            "--task-store-anon-key",
+            supabase_setup["anon_key"],
             "--user-id",
             supabase_setup["test_user_id"],
             "--output-file",
@@ -255,14 +260,17 @@ async def test_main_with_task_store_and_realtime(
     )
     try:
         service_client.table("tasks").insert(task_data).execute()
+
         args = [
             "main.py",
             "--task-uuid",
             task_uuid,
             "--task-store-url",
             supabase_setup["api_url"],
-            "--task-store-key",
+            "--task-store-user-key",
             supabase_setup["test_user_token"],
+            "--task-store-anon-key",
+            supabase_setup["anon_key"],
             "--user-id",
             supabase_setup["test_user_id"],
             "--output-file",
@@ -270,7 +278,7 @@ async def test_main_with_task_store_and_realtime(
             # "--debug",
             "--realtime",
             "--realtime-update-frequency",
-            "3",
+            "1",
         ]
         # Mock sys.argv to simulate command line arguments
         monkeypatch.setattr("sys.argv", args)

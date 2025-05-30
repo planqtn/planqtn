@@ -18,46 +18,14 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { JobRequest, JobResponse } from "./types.ts";
+import { JobRequest, JobResponse } from "../shared/lib/types.ts";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
 import { corsHeaders } from "../_shared/cors.ts";
+import { validateJobRequest } from "../shared/lib/jobs.ts";
 
 console.log("Current Deno version", Deno.version);
-
-const validateJobRequest = (jobRequest: JobRequest) => {
-  const missingFields = [];
-  if (!jobRequest.user_id) {
-    missingFields.push("user_id");
-  }
-  if (!jobRequest.job_type) {
-    missingFields.push("job_type");
-  }
-  if (!jobRequest.request_time) {
-    missingFields.push("request_time");
-  }
-  if (!jobRequest.payload) {
-    missingFields.push("payload");
-  }
-
-  // Validate the request
-  if (
-    missingFields.length > 0
-  ) {
-    return new Response(
-      JSON.stringify({
-        error: `Invalid request body: missing fields: ${
-          missingFields.join(", ")
-        }`,
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-};
 
 console.info("Starting planqtn_job function");
 
@@ -210,8 +178,10 @@ Deno.serve(async (req) => {
           task.uuid,
           "--task-store-url",
           taskStoreUrl,
-          "--task-store-key",
+          "--task-store-user-key",
           taskStoreKey,
+          "--task-store-anon-key",
+          jobRequest.task_store_anon_key,
           "--user-id",
           task.user_id,
           "--debug",

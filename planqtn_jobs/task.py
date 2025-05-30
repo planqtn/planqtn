@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional, TextIO
 
 from pydantic import BaseModel
 import supabase
+import supabase.client
 
 from qlego.progress_reporter import (
     DummyProgressReporter,
@@ -158,7 +159,7 @@ class Task[ArgsType: BaseModel, ResultType: BaseModel](ABC):
         """Load a WeightEnumeratorRequest from Supabase tasks table."""
         task_data = self.task_store.get_task(self.task_details)
         if not task_data:
-            raise ValueError(f"Task {self.uuid} not found in Supabase")
+            raise ValueError(f"Task {self.task_details.uuid} not found in Supabase")
         return self.__load_args_from_json__(task_data["args"])
 
 
@@ -179,11 +180,9 @@ class SupabaseTaskStore:
         self.task_db = supabase.create_client(
             task_db_credentials.url,
             task_db_credentials.anon_key,
-            options={
-                "global": {
-                    "headers": {"Authorization": f"Bearer {task_db_credentials.key}"}
-                }
-            },
+            options=supabase.ClientOptions(
+                headers={"Authorization": f"Bearer {task_db_credentials.key}"}
+            ),
         )
 
         self.task_updates_db = None
@@ -197,7 +196,14 @@ class SupabaseTaskStore:
     def start_task_updates(self, task: TaskDetails):
         if not self.task_updates_db:
             return
-        self.send_task_update(task, {"state": 1})
+
+        self.task_updates_db.table("task_updates").insert(
+            {
+                "uuid": task.uuid,
+                "user_id": task.user_id,
+                "updates": json.dumps({"state": 1}),
+            }
+        ).execute()
 
     def store_task_result(self, task: TaskDetails, result: Any, state: TaskState):
         res = (
@@ -214,14 +220,21 @@ class SupabaseTaskStore:
         if not self.task_updates_db:
             print("No task updates db, returning None")
             return None
+        print(
+            f"Sending task update: {updates} for task {task.uuid} with user {task.user_id}"
+        )
         res = (
             self.task_updates_db.table("task_updates")
-            .update({"updates": json.dumps(updates, cls=IterationStateEncoder)})
+            .update(
+                {"updates": json.dumps(updates, cls=IterationStateEncoder)},
+                count="exact",
+            )
             .eq("uuid", task.uuid)
             .eq("user_id", task.user_id)
             .execute()
         )
-        print(f"Task update result: {res}")
+        if res.count != 1:
+            raise Exception(f"Failed to send task update: {res}")
         return res
 
     def get_task(self, task: TaskDetails) -> Dict[str, Any]:

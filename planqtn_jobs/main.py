@@ -22,8 +22,12 @@ def main():
         help="Supabase URL (required for task state changes and storing results)",
     )
     parser.add_argument(
-        "--task-store-key",
+        "--task-store-user-key",
         help="Supabase key (required for task state changes and storing results)",
+    )
+    parser.add_argument(
+        "--task-store-anon-key",
+        help="Supabase anon key (required for task state changes and storing results)",
     )
 
     parser.add_argument(
@@ -69,27 +73,29 @@ def main():
 
     # check user context
 
-    if args.task_uuid and not (args.task_store_url and args.task_store_key):
+    if args.task_uuid and not (
+        args.task_store_url and args.task_store_user_key and args.task_store_anon_key
+    ):
         print("Error: Task store credentials required for task-uuid mode")
         sys.exit(1)
 
-    root = logging.getLogger()
-    root.setLevel(
-        logging.DEBUG if args.debug else logging.INFO
-    )  # Set the minimum logging level
+    # root = logging.getLogger()
+    # root.setLevel(
+    #     logging.DEBUG if args.debug else logging.INFO
+    # )  # Set the minimum logging level
 
-    # Create a StreamHandler to output to stdout
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    # # Create a StreamHandler to output to stdout
+    # handler = logging.StreamHandler(sys.stdout)
+    # handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
 
-    # Create a formatter to customize the log message format
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
+    # # Create a formatter to customize the log message format
+    # formatter = logging.Formatter(
+    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # )
+    # handler.setFormatter(formatter)
 
-    # Add the handler to the root logger
-    root.addHandler(handler)
+    # # Add the handler to the root logger
+    # root.addHandler(handler)
     logger = logging.getLogger(__name__)
 
     if args.task_uuid:
@@ -97,13 +103,13 @@ def main():
     else:
         logger.info(f"Starting task with args {args}")
 
-    print("The task store key is", args.task_store_key)
-
     try:
         task_store = (
             SupabaseTaskStore(
                 task_db_credentials=SupabaseCredentials(
-                    url=args.task_store_url, key=args.task_store_key
+                    url=args.task_store_url,
+                    key=args.task_store_user_key,
+                    anon_key=args.task_store_anon_key,
                 ),
                 task_updates_db_credentials=(
                     SupabaseCredentials(

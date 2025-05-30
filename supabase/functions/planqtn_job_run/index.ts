@@ -18,48 +18,15 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { JobRequest, JobResponse } from "./types.ts";
+import { JobRequest, JobResponse } from "../shared/lib/types.ts";
 
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 
 import { corsHeaders } from "../_shared/cors.ts";
 import { CloudRunClient } from "../shared/lib/cloud-run-client.ts";
+import { validateJobRequest } from "../shared/lib/jobs.ts";
 
 console.log("Current Deno version", Deno.version);
-
-const validateJobRequest = (jobRequest: JobRequest) => {
-  const missingFields = [];
-  if (!jobRequest.user_id) {
-    missingFields.push("user_id");
-  }
-  if (!jobRequest.job_type) {
-    missingFields.push("job_type");
-  }
-  if (!jobRequest.request_time) {
-    missingFields.push("request_time");
-  }
-  if (!jobRequest.payload) {
-    missingFields.push("payload");
-  }
-
-  // Validate the request
-  if (
-    missingFields.length > 0
-  ) {
-    return new Response(
-      JSON.stringify({
-        error: `Invalid request body: missing fields: ${
-          missingFields.join(", ")
-        }`,
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-};
-
 console.info("Starting planqtn_job for Cloud Run function");
 
 Deno.serve(async (req) => {
@@ -115,7 +82,10 @@ Deno.serve(async (req) => {
     );
 
     const taskStoreKey = authHeader.split(" ")[1];
-    if (!jobRequest.task_store_url || !taskStoreKey) {
+    if (
+      !jobRequest.task_store_url || !taskStoreKey ||
+      !jobRequest.task_store_anon_key
+    ) {
       console.error(
         "Missing task store URL or service key",
         jobRequest.task_store_url,
@@ -138,10 +108,9 @@ Deno.serve(async (req) => {
       ? taskUpdatesUrl
       : jobRequest.task_store_url;
 
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const taskStore = createClient(
       taskStoreUrl,
-      anonKey,
+      jobRequest.task_store_anon_key,
       {
         global: {
           headers: {
@@ -206,7 +175,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create the job in Kubernetes
     try {
       console.log("Creating job in Cloud Run");
       console.log("Job type:", jobRequest.job_type);
@@ -224,8 +192,10 @@ Deno.serve(async (req) => {
           task.uuid,
           "--task-store-url",
           taskStoreUrl,
-          "--task-store-key",
+          "--task-store-user-key",
           taskStoreKey,
+          "--task-store-anon-key",
+          jobRequest.task_store_anon_key,
           "--user-id",
           task.user_id,
           "--debug",
