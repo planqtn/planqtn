@@ -88,6 +88,15 @@ interface CloudRunExecution {
     launchStage?: string;
 }
 
+// Add interface for logging request body
+interface LoggingRequestBody {
+    resourceNames: string[];
+    filter: string;
+    orderBy: string;
+    pageSize: number;
+    pageToken?: string;
+}
+
 export const cloudRunHeaders = async (
     backendUrl: string,
 ) => {
@@ -397,7 +406,7 @@ export class CloudRunClient {
             `resource.labels.job_name="${jobName}"\n` +
             `resource.labels.location="${this.location}"`;
 
-        const requestBody = {
+        const requestBody: LoggingRequestBody = {
             resourceNames: [`projects/${this.projectId}`],
             filter: filter,
             orderBy: "timestamp desc",
@@ -416,38 +425,57 @@ export class CloudRunClient {
                 throw new Error("Failed to retrieve access token for logging.");
             }
 
-            const response = await fetch(loggingApiUrl, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestBody),
-            });
+            let allEntries: LogEntry[] = [];
+            let nextPageToken: string | undefined;
 
-            const responseBody: ListLogEntriesResponse = await response.json();
+            do {
+                // Add pageToken to request if we have one
+                if (nextPageToken) {
+                    requestBody.pageToken = nextPageToken;
+                }
 
-            console.log(
-                "Response body:",
-                JSON.stringify(responseBody, null, 2),
-            );
+                const response = await fetch(loggingApiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestBody),
+                });
 
-            if (!response.ok) {
-                console.error("Error response from Logging API:", responseBody);
-                const errorMessage = responseBody.error?.message ||
-                    JSON.stringify(responseBody);
-                throw new Error(
-                    `Failed to get logs from Logging API. Status: ${response.status} ${response.statusText}. ` +
-                        `Response: ${errorMessage}`,
+                const responseBody: ListLogEntriesResponse = await response
+                    .json();
+
+                if (!response.ok) {
+                    console.error(
+                        "Error response from Logging API:",
+                        responseBody,
+                    );
+                    const errorMessage = responseBody.error?.message ||
+                        JSON.stringify(responseBody);
+                    throw new Error(
+                        `Failed to get logs from Logging API. Status: ${response.status} ${response.statusText}. ` +
+                            `Response: ${errorMessage}`,
+                    );
+                }
+
+                // Add entries from this page to our collection
+                if (responseBody.entries) {
+                    allEntries = allEntries.concat(responseBody.entries);
+                }
+
+                // Get the next page token for the next iteration
+                nextPageToken = responseBody.nextPageToken;
+
+                console.log(
+                    `Retrieved ${
+                        responseBody.entries?.length || 0
+                    } log entries. Total so far: ${allEntries.length}. Has next page: ${!!nextPageToken}`,
                 );
-            }
+            } while (nextPageToken);
 
-            console.log(
-                `Found ${responseBody.entries?.length || 0} log entries.`,
-            );
-            return responseBody.entries?.map((entry) => entry.textPayload).join(
-                "\n",
-            ) || "";
+            console.log(`Retrieved total of ${allEntries.length} log entries.`);
+            return allEntries.map((entry) => entry.textPayload).join("\n");
         } catch (error) {
             console.error("Error fetching job logs:", error);
             if (error instanceof Error) {
