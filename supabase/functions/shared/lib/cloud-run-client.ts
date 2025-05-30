@@ -492,4 +492,156 @@ export class CloudRunClient {
             throw error;
         }
     }
+
+    async cancelJob(lroName: string): Promise<void> {
+        console.log(`Cancelling job: ${lroName}`);
+
+        // Get the execution details from the LRO without waiting for completion
+        const lroApiUrl = `https://run.googleapis.com/v2/${lroName}`;
+
+        try {
+            const token = await this.googleAuth.getAccessToken();
+            if (!token) {
+                throw new Error(
+                    "Failed to retrieve access token for cancellation.",
+                );
+            }
+
+            const response = await fetch(lroApiUrl, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                const responseBody = await response.json();
+                console.error("Error response from LRO API:", responseBody);
+                const errorMessage = responseBody.error?.message ||
+                    JSON.stringify(responseBody);
+                throw new Error(
+                    `Failed to get LRO details. Status: ${response.status} ${response.statusText}. ` +
+                        `Response: ${errorMessage}`,
+                );
+            }
+
+            const lroStatus: CloudRunOperation = await response.json();
+
+            if (!lroStatus.metadata) {
+                throw new Error(
+                    `LRO ${lroName} did not yield metadata containing execution details. Cannot determine execution to cancel.`,
+                );
+            }
+
+            const executionDetails = lroStatus.metadata as CloudRunExecution;
+            const executionResourceName = executionDetails.name;
+
+            if (!executionResourceName) {
+                throw new Error(
+                    `Could not determine execution resource name from LRO metadata for ${lroName}.`,
+                );
+            }
+
+            // Construct the cancel API URL for the execution
+            const cancelApiUrl =
+                `https://run.googleapis.com/v2/${executionResourceName}:cancel`;
+
+            const cancelResponse = await fetch(cancelApiUrl, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({}), // Empty body as per API spec
+            });
+
+            if (!cancelResponse.ok) {
+                const responseBody = await cancelResponse.json();
+                console.error(
+                    "Error response from cancellation API:",
+                    responseBody,
+                );
+                const errorMessage = responseBody.error?.message ||
+                    JSON.stringify(responseBody);
+                throw new Error(
+                    `Failed to cancel execution. Status: ${cancelResponse.status} ${cancelResponse.statusText}. ` +
+                        `Response: ${errorMessage}`,
+                );
+            }
+
+            console.log(
+                `Successfully initiated cancellation for execution: ${executionResourceName}`,
+            );
+
+            // Poll the execution to confirm it's being cancelled
+            let attempts = 0;
+            const maxAttempts = 10;
+            const delayMs = 2000;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                console.log(
+                    `Checking cancellation status (attempt ${attempts}/${maxAttempts})...`,
+                );
+
+                const statusResponse = await fetch(
+                    `https://run.googleapis.com/v2/${executionResourceName}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json",
+                        },
+                    },
+                );
+
+                if (!statusResponse.ok) {
+                    const statusBody = await statusResponse.json();
+                    console.error(
+                        "Error checking execution status:",
+                        statusBody,
+                    );
+                    break;
+                }
+
+                const executionStatus = await statusResponse
+                    .json() as CloudRunExecution;
+                console.log("Execution status:", executionStatus);
+
+                // Check if any of the conditions indicate cancellation
+                const isCancelling = executionStatus.conditions?.some(
+                    (condition) =>
+                        condition.type === "Completed" &&
+                        condition.state === "CONDITION_FAILED" &&
+                        condition.executionReason === "CANCELLED",
+                );
+
+                if (isCancelling) {
+                    console.log("Execution is being cancelled successfully.");
+                    return;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+
+            console.warn(
+                `Cancellation initiated but could not confirm status after ${maxAttempts} attempts.`,
+            );
+        } catch (error) {
+            console.error("Error cancelling job:", error);
+            if (error instanceof Error) {
+                console.error("Error message:", error.message);
+                if (error.stack) {
+                    console.error("Error stack:", error.stack);
+                }
+            } else {
+                console.error(
+                    "Caught an unknown error type during cancellation:",
+                    error,
+                );
+            }
+            throw error;
+        }
+    }
 }

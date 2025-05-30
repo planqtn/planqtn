@@ -54,7 +54,9 @@ export const config: ApiConfig = {
         planqtnJobLogs: localRuntimeConfig
             ? "/functions/v1/planqtn_job_logs"
             : "/functions/v1/planqtn_job_logs_run",
-        cancelJob: "/functions/v1/cancel_job",
+        cancelJob: localRuntimeConfig
+            ? "/functions/v1/cancel_job"
+            : "/functions/v1/cancel_job_run",
     },
 };
 
