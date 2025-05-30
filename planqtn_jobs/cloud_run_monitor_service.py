@@ -5,7 +5,12 @@ from fastapi import FastAPI, Request
 import logging
 import uvicorn
 
-from planqtn_jobs.task import SupabaseTaskStore, TaskDetails, TaskState
+from planqtn_jobs.task import (
+    SupabaseCredentials,
+    SupabaseTaskStore,
+    TaskDetails,
+    TaskState,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,8 +19,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Cloud Run Job Monitor Service")
 
 
-def extract_details(decoded_data: str) -> str:
-    """Extract the job ID from the decoded data."""
+def extract_details_from_decoded_data(decoded_data: bytes) -> str:
     obj = json.loads(decoded_data)
     args = obj["protoPayload"]["response"]["spec"]["template"]["spec"]["containers"][0][
         "args"
@@ -33,20 +37,27 @@ def extract_details(decoded_data: str) -> str:
     return task_uuid, user_id, result
 
 
+def extract_details(body: dict) -> str:
+    """Extract the job ID from the decoded data."""
+    base64_data = body["message"]["data"]
+    decoded_data = base64.b64decode(base64_data)
+    return extract_details_from_decoded_data(decoded_data)
+
+
 @app.post("/job-failed")
 async def handle_job_failed(request: Request):
     """Handle job failed events from Cloud Run."""
     body = await request.json()
     logger.info(f"Received job failed event: {body}")
-    base64_data = body.get("data")
-    decoded_data = base64.b64decode(base64_data)
 
-    task_uuid, user_id, result = extract_details(decoded_data)
+    task_uuid, user_id, result = extract_details(body)
     logger.info(f"Task UUID: {task_uuid}")
 
     task_store = SupabaseTaskStore(
-        task_store_url=os.getenv("SUPABASE_URL"),
-        task_store_key=os.getenv("SUPABASE_KEY"),
+        task_db_credentials=SupabaseCredentials(
+            url=os.getenv("SUPABASE_URL"),
+            key=os.getenv("SUPABASE_KEY"),
+        )
     )
 
     task_details = TaskDetails(

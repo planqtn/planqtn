@@ -5,7 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { JobLogsRequest } from "./types.ts";
+import { JobLogsRequest } from "../shared/lib/types.ts";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 

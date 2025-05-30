@@ -28,6 +28,10 @@ for arg in "$@"; do
             K3D_LOAD=true
             shift
             ;;
+        --deploy-monitor)
+            DEPLOY_MONITOR=true
+            shift
+            ;;
     esac
 done
 
@@ -69,6 +73,18 @@ if [ "$K3D_LOAD" = true ]; then
     k3d image import balopat/planqtn_jobs:${TAG} -c plaqntn
     k3d image import balopat/planqtn_jobs:latest -c plaqntn
     echo "Image loaded into k3d cluster successfully"
+fi
+
+if [ "$DEPLOY_MONITOR" = true ]; then
+    echo "Deploying monitor service..."
+    gcloud run deploy planqtn-monitor --image balopat/planqtn_jobs:${TAG} 
+    echo "Monitor service deployed successfully"
+fi
+
+if [ "$DEPLOY_JOB" = true ]; then
+    echo "Deploying job..."
+    gcloud run jobs deploy planqtn-jobs --image balopat/planqtn_jobs:${TAG} 
+    echo "Job deployed successfully"
 fi
 
 if [ "$RUN" = true ]; then
