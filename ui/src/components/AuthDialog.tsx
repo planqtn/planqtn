@@ -1,6 +1,6 @@
 // Example using useEffect in a component or context
 import React, { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient.ts";
+import { taskStoreSupabase } from "../supabaseClient.ts";
 import { Session, User } from "@supabase/supabase-js";
 import {
   Button,
@@ -40,7 +40,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    taskStoreSupabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
@@ -51,7 +51,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
+    } = taskStoreSupabase.auth.onAuthStateChange(
       (_event: string, session: Session | null) => {
         setCurrentUser(session?.user ?? null);
         if (session?.user) {
@@ -71,7 +71,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { error } = await taskStoreSupabase.auth.signUp({
           email,
           password,
         });
@@ -85,7 +85,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           isClosable: true,
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error } = await taskStoreSupabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -124,7 +124,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await taskStoreSupabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: window.location.origin,
@@ -167,9 +167,12 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     e.preventDefault();
     setResetMessage("");
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error } = await taskStoreSupabase.auth.resetPasswordForEmail(
+        resetEmail,
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      );
       if (error) throw error;
 
       setResetMessage("Password reset email sent! Check your inbox.");
@@ -184,7 +187,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await taskStoreSupabase.auth.signOut();
       if (error) throw error;
     } catch (err: unknown) {
       if (err instanceof Error) {

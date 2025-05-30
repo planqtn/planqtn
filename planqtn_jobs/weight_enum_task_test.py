@@ -260,7 +260,13 @@ async def test_main_with_task_store_and_realtime(
     )
     try:
         service_client.table("tasks").insert(task_data).execute()
-
+        service_client.table("task_updates").insert(
+            {
+                "uuid": task_uuid,
+                "user_id": supabase_setup["test_user_id"],
+                "updates": json.dumps({"state": 1}),
+            }
+        ).execute()
         args = [
             "main.py",
             "--task-uuid",

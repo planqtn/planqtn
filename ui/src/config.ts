@@ -40,11 +40,11 @@ const localRuntimeConfig = getLocalRuntimeConfig();
 // Override config with runtime config if available
 export const config: ApiConfig = {
     taskStoreUrl: import.meta.env.VITE_TASK_STORE_URL,
-    taskStoreAnonKey: import.meta.env.VITE_TASK_STORE_KEY,
+    taskStoreAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
     runtimeStoreUrl: localRuntimeConfig?.API_URL ||
-        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_RUNTIME_STORE_URL,
     runtimeStoreAnonKey: localRuntimeConfig?.ANON_KEY ||
-        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        import.meta.env.VITE_RUNTIME_STORE_ANON_KEY,
     env: (import.meta.env.VITE_ENV || "production") as Environment,
     endpoints: {
         tensorNetwork: "/functions/v1/tensornetwork",

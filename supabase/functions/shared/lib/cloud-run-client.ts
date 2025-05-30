@@ -166,7 +166,7 @@ export class CloudRunClient {
         env?: Record<string, string>,
     ): Promise<string> {
         const baseJobId = "planqtn-jobs";
-        const jobIdentifier = postfix ? `${baseJobId}-${postfix}` : baseJobId;
+        const jobIdentifier = baseJobId;
         const jobResourceName =
             `projects/${this.projectId}/locations/${this.location}/jobs/${jobIdentifier}`;
 

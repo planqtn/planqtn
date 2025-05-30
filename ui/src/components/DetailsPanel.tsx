@@ -64,7 +64,7 @@ import {
   RealtimePostgresChangesPayload,
   RealtimeChannel,
 } from "@supabase/supabase-js";
-import { supabase } from "../supabaseClient";
+import { taskStoreSupabase } from "../supabaseClient";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
 import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
@@ -288,7 +288,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
 
     // Create a channel for task updates
-    const channel = supabase
+    const channel = taskStoreSupabase
       .channel(`task_${taskId}`)
       .on(
         "postgres_changes",
@@ -354,7 +354,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const readAndUpdateTask = async (taskId: string) => {
-    supabase
+    taskStoreSupabase
       .from("tasks")
       .select("*")
       .eq("uuid", taskId)
@@ -447,7 +447,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           user_id: user?.id,
           request_time: new Date().toISOString(),
           job_type: "weightenumerator",
-          task_store_url: config.runtimeStoreUrl,
+          task_store_url: config.taskStoreUrl,
+          task_store_anon_key: config.taskStoreAnonKey,
           payload: {
             legos: tensorNetwork.legos.reduce(
               (acc, lego) => {

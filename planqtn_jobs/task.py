@@ -197,13 +197,7 @@ class SupabaseTaskStore:
         if not self.task_updates_db:
             return
 
-        self.task_updates_db.table("task_updates").insert(
-            {
-                "uuid": task.uuid,
-                "user_id": task.user_id,
-                "updates": json.dumps({"state": 1}),
-            }
-        ).execute()
+        self.send_task_update(task, {"state": 1})
 
     def store_task_result(self, task: TaskDetails, result: Any, state: TaskState):
         res = (

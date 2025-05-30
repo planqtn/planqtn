@@ -55,7 +55,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
 import AuthDialog from "./components/AuthDialog";
 import { FiEdit } from "react-icons/fi";
-import { supabase } from "./supabaseClient";
+import { taskStoreSupabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
@@ -1972,7 +1972,7 @@ const LegoStudioView: React.FC = () => {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = taskStoreSupabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
@@ -2706,7 +2706,7 @@ const LegoStudioView: React.FC = () => {
     // Set the active flag
     localStorage.setItem("runtimeConfigActive", "true");
     // Sign out the user
-    supabase.auth.signOut();
+    taskStoreSupabase.auth.signOut();
     // Reload the page
     window.location.href = "/";
   };
@@ -2716,7 +2716,7 @@ const LegoStudioView: React.FC = () => {
       // Deactivate local runtime (but keep the config stored)
       localStorage.setItem("runtimeConfigActive", "false");
       // Sign out the user
-      supabase.auth.signOut();
+      taskStoreSupabase.auth.signOut();
       // Reload the page
       window.location.href = "/";
     } else {
