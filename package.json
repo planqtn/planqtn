@@ -4,6 +4,7 @@
     "supabase": "^2.23.4"
   },
   "dependencies": {
+    "@google-cloud/run": "^2.1.0",
     "add": "^2.0.6",
     "pg": "^8.16.0"
   },

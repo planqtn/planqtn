@@ -138,10 +138,26 @@ Deno.serve(async (req) => {
       ? taskUpdatesUrl
       : jobRequest.task_store_url;
 
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const taskStore = createClient(
       taskStoreUrl,
+      anonKey,
+      {
+        global: {
+          headers: {
+            "Authorization": `Bearer ${taskStoreKey}`,
+          },
+        },
+      },
+    );
+
+    const { data: user, error: userError } = await taskStore.auth.getUser(
       taskStoreKey,
     );
+    if (userError) {
+      console.error("Failed to get user", userError);
+      throw new Error(userError.message);
+    }
 
     console.info("Creating task in task store", taskStoreUrl, taskStoreKey);
 
@@ -197,15 +213,13 @@ Deno.serve(async (req) => {
       console.log("Task UUID:", task.uuid);
       console.log("Payload:", jobRequest.payload);
 
-      const client = new CloudRunClient();
+      const client = new CloudRunClient("planqtn-dev", "us-east1");
 
-      const response = await client.createJob(
+      const job_creation_response = await client.createJob(
         jobRequest.job_type,
+        [],
         [
-          "python",
           "/app/planqtn_jobs/main.py",
-        ],
-        [
           "--task-uuid",
           task.uuid,
           "--task-store-url",
@@ -226,6 +240,12 @@ Deno.serve(async (req) => {
           RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
         },
       );
+
+      console.log("Job creation response", job_creation_response);
+
+      const response: JobResponse = {
+        task_id: task.uuid,
+      };
 
       return new Response(
         JSON.stringify(response),

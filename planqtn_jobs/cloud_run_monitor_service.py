@@ -39,7 +39,7 @@ async def handle_job_failed(request: Request):
     body = await request.json()
     logger.info(f"Received job failed event: {body}")
     base64_data = body.get("data")
-    decoded_data = base64.b64decode(base64_data).decode("utf-8")
+    decoded_data = base64.b64decode(base64_data)
 
     task_uuid, user_id, result = extract_details(decoded_data)
     logger.info(f"Task UUID: {task_uuid}")
