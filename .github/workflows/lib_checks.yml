@@ -1,18 +1,16 @@
-name: API Server Checks
-run-name: ${{ github.actor }} is checking the API Server 🚀
+name: planqtn Library Checks
+run-name: ${{ github.actor }} is checking the planqtn library 🚀
 on:
   push:
     paths:
-      - "app/planqtn_api/**"
       - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
-
 jobs:
-  API-Server-Checks:
+  qLEGO-Lib-Checks:
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
 
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +25,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r app/planqtn_api/requirements.txt -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt
-      - name: Run tests & checks
+          pip install -r requirements.txt -r requirements.dev.txt
+      - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          check/api
+          check/qlego

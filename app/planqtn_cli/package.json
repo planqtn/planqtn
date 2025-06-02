@@ -1,0 +1,38 @@
+{
+  "name": "planqtn-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for PlanQTN",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "planqtn": "./dist/index.js",
+    "htn": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "planqtn"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "@kubernetes/client-node": "^0.20.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Ensure script is run from the root directory
+if [ ! -f "check/qlego" ]; then
+    echo "Error: This script must be run from the root directory of the repository"
+    echo "Current directory: $(pwd)"
+    echo "Expected to find: check/qlego"
+    exit 1
+fi
+
+check/qlego
+check/api
+check/jobs
+check/ui

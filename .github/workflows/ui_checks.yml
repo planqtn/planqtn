@@ -20,21 +20,10 @@ jobs:
         working-directory: ui
         run: |
           npm install --include=dev
-      - name: prettier check
-        working-directory: ui
-        run: |
-          npx prettier --check .
-      - name: eslint check
-        working-directory: ui
-        run: |
-          npx eslint src
       - name: install python dependencies
         working-directory: ${{ github.workspace }}
         run: |
           pip install -r requirements.txt
       - name: Run tests
-        working-directory: ui
-        env:
-          PYTHONPATH: ${{ github.workspace }}
         run: |
-          npm run test
+          check/ui

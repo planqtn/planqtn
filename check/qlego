@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Ensure script is run from the root directory
+if [ ! -f "./setup.py" ]; then
+    echo "Error: This script must be run from the root directory of the repository"
+    echo "Current directory: $(pwd)"
+    echo "Expected to find: setup.py"
+    exit 1
+fi
+
+black qlego --check
+pytest qlego
+
+echo "All checks passed"
