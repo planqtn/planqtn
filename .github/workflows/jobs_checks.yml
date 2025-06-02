@@ -30,3 +30,12 @@ jobs:
       - name: Run tests
         run: |
           check/jobs
+      - name: Prep supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start
+      - run: npx node-pg-migrate up
+      - name: Run integration tests
+        run: |
+          check/jobs-integration

@@ -16,4 +16,4 @@ black --check planqtn_jobs
 pytest planqtn_jobs
 
 cd ..
-hack/build_jobs_server.sh
+hack/build_jobs_image.sh

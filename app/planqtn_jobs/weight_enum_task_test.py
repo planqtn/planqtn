@@ -169,6 +169,7 @@ def test_main_with_progress_bar(temp_input_file, temp_output_file, monkeypatch):
     validate_weight_enumerator_result_output_file(temp_output_file)
 
 
+@pytest.mark.integration
 def test_main_with_task_store(
     temp_input_file, temp_output_file, supabase_setup, monkeypatch
 ):
@@ -232,6 +233,7 @@ def test_main_with_task_store(
         pass
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_main_with_task_store_and_realtime(
     temp_input_file, temp_output_file, supabase_setup, monkeypatch
