@@ -17,7 +17,7 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - name: Install dependencies
-        working-directory: ui
+        working-directory: app/ui
         run: |
           npm install --include=dev
       - name: install python dependencies
