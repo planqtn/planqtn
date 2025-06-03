@@ -1,3 +1,5 @@
+name: Integration Tests
+run-name: ${{ github.actor }} is running integration tests 🚀
 on:
   push:
     paths:
