@@ -85,7 +85,7 @@ def supabase_setup():
     result = subprocess.run(
         ["supabase", "status", "-o", "json"], capture_output=True, text=True
     )
-    print(result.stdout)
+    print(result.stdout, result.stderr)
 
     status = json.loads(result.stdout)
 
