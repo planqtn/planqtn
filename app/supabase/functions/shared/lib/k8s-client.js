@@ -50,7 +50,6 @@ class K8sClient {
     }
     async loadConfig() {
         if (this.env === "local") {
-            // Configure the client with mTLS authentication
             this.kc = k8s.KubeConfig.getSimpleUrlConfig({
                 baseUrl: `http://k8sproxy:8001`,
             });

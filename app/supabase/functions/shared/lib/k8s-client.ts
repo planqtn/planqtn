@@ -25,9 +25,12 @@ export class K8sClient {
 
     async loadConfig(): Promise<void> {
         if (this.env === "local") {
-            // Configure the client with mTLS authentication
             this.kc = k8s.KubeConfig.getSimpleUrlConfig({
-                baseUrl: `http://k8sproxy:8001`,
+                baseUrl: `http://k8sproxy-local:8001`,
+            });
+        } else if (this.env === "local-dev") {
+            this.kc = k8s.KubeConfig.getSimpleUrlConfig({
+                baseUrl: `http://k8sproxy-dev:8001`,
             });
         } else {
             // Production GKE setup
