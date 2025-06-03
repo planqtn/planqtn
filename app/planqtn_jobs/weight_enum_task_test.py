@@ -459,10 +459,44 @@ def test_e2e_local_through_function_call_and_k3d(
         assert len(task.data) == 1
         if task.data[0]["state"] != 2:
             print(f"Task data: {task.data[0]}")
+            print("Docker containers: ")
+            logs = subprocess.run(
+                ["docker", "ps", "-a"],
+                capture_output=True,
+                text=True,
+            )
+            print(logs.stdout)
+
+            print("k3d situation:")
+            k3d_logs = subprocess.run(
+                ["/home/runner/.planqtn/k3d", "cluster", "list"],
+                capture_output=True,
+                text=True,
+            )
+
+            print(k3d_logs.stdout)
+            import kubernetes
+            import yaml
+
+            def make_k8s_client(kubeconfig: dict) -> kubernetes.client.CoreV1Api:
+                api_client = kubernetes.config.new_client_from_config_dict(kubeconfig)
+                return kubernetes.client.CoreV1Api(api_client)
+
+            with open("/home/runner/.planqtn/kubeconfig.yaml") as f:
+                kubeconfig = yaml.safe_load(f)
+
+            batch_api = make_k8s_client(kubeconfig).BatchV1Api()
+            jobs = batch_api.list_namespaced_job(namespace="default")
+            print(f"Jobs: {jobs}")
+            print(jobs)
+
+            if logs.stderr:
+                print("Error logs:")
+                print(logs.stderr)
             print("logs from edge container:")
             container_name = (
                 "supabase_edge_runtime_planqtn-local"
-                if os.environ.get("SUPABASE_DIR")
+                if os.environ.get("SUPABASE_WORKDIR")
                 else "supabase_edge_runtime_planqtn-dev"
             )
             try:
