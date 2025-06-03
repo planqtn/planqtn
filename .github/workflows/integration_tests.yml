@@ -60,7 +60,7 @@ jobs:
 
       - name: Run jobs integration tests
         env:
-          SUPABASE_WORKDIR: ~/.planqtn
+          SUPABASE_WORKDIR: /home/runner/.planqtn
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
@@ -68,7 +68,7 @@ jobs:
 
       - name: Run api integration tests
         env:
-          SUPABASE_WORKDIR: ~/.planqtn
+          SUPABASE_WORKDIR: /home/runner/.planqtn
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
