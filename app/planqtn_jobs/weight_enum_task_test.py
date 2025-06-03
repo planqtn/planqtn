@@ -399,7 +399,7 @@ async def test_main_with_task_store_and_realtime(
 
 
 @pytest.mark.integration
-def test_e2e_local_through_function_call(
+def test_e2e_local_through_function_call_and_k3d(
     temp_input_file, temp_output_file, supabase_setup, monkeypatch
 ):
     # Create Supabase client with test user token
@@ -432,17 +432,31 @@ def test_e2e_local_through_function_call(
         response.status_code == 200
     ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
 
+    print(response.json())
     # Create a task in Supabase
-    task_uuid = str(uuid.uuid4())
+    task_uuid = response.json()["task_id"]
 
+    print(f"Task UUID: {task_uuid}")
     # Insert task using service role client to bypass RLS
     service_client = create_client(
         supabase_setup["api_url"], supabase_setup["service_role_key"]
     )
-    try:
 
-        # Validate the result
-        validate_weight_enumerator_result_output_file(temp_output_file)
+    try:
+        # Wait for the task to be created
+        while True:
+            task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+            if len(task.data) == 1:
+                break
+            time.sleep(1)
+
+        assert len(task.data) == 1, f"Task not found, task: {task.data}"
+
+        for _ in range(5):
+            task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+            if len(task.data) == 1 and task.data[0]["state"] == 2:
+                break
+            time.sleep(1)
 
         # Verify task was updated in Supabase
         task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
