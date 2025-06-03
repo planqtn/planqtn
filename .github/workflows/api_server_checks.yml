@@ -3,16 +3,16 @@ run-name: ${{ github.actor }} is checking the API Server 🚀
 on:
   push:
     paths:
-      - "app/planqtn_api/**"
       - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
+      - "conftest.py"
+
+      - "app/planqtn_api/**"
+      - "app/planqtn_types/**"
       - "check/api**"
       - ".github/workflows/api_server_checks.yml"
-      - "app/supabase/**"
-      - "app/migrations/**"
-      - "app/planqtn_types/**"
-      - "conftest.py"
+
 jobs:
   API-Server-Checks:
     strategy:
