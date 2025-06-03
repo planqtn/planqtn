@@ -478,17 +478,38 @@ def test_e2e_local_through_function_call_and_k3d(
             import kubernetes
             import yaml
 
-            def make_k8s_client(kubeconfig: dict) -> kubernetes.client.BatchV1Api:
-                api_client = kubernetes.config.new_client_from_config_dict(kubeconfig)
-                return kubernetes.client.BatchV1Api(api_client)
-
             with open("/home/runner/.planqtn/kubeconfig.yaml") as f:
                 kubeconfig = yaml.safe_load(f)
 
-            batch_api = make_k8s_client(kubeconfig)
-            jobs = batch_api.list_namespaced_job(namespace="default")
-            print(f"Jobs: {jobs}")
-            print(jobs)
+            client = kubernetes.config.new_client_from_config_dict(kubeconfig)
+            batch_api = kubernetes.client.BatchV1Api(client)
+            core_api = kubernetes.client.CoreV1Api(client)
+
+            pods = core_api.list_namespaced_pod(namespace="default")
+            for pod in pods.items:
+                print("========================")
+                print(pod.metadata.name)
+                print(pod.status)
+                print("========================")
+                print("pod logs:")
+                try:
+                    pod_logs = core_api.read_namespaced_pod_log(
+                        name=pod.metadata.name, namespace="default"
+                    )
+                    print(pod_logs)
+                except Exception as e:
+                    print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
+                print("========================")
+
+            # jobs = batch_api.list_namespaced_job(namespace="default")
+            # print(f"Jobs: {jobs}")
+            # for job in jobs.items:
+            #     print("========================")
+            #     print(job.metadata.name)
+            #     print("========================")
+
+            #     print(job.status)
+            #     print(job.spec)
 
             if logs.stderr:
                 print("Error logs:")
