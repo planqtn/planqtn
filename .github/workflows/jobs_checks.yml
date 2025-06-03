@@ -6,7 +6,8 @@ on:
       - "app/planqtn_jobs/**"
       - "requirements.txt"
       - "requirements.dev.txt"
-
+      - "check/jobs**"
+      - ".github/workflows/jobs_checks.yml"
 jobs:
   Job-Checks:
     strategy:
