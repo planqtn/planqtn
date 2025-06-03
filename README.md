@@ -1,3 +1,5 @@
+[![Unitary Foundation](https://img.shields.io/badge/Supported%20By-UNITARY%20FOUNDATION-brightgreen.svg?style=for-the-badge)](https://unitary.foundation)
+
 <p align="center">
 <img src="https://github.com/user-attachments/assets/486609eb-1180-4a2b-a605-588cd1d5a2e4" width="300"></img>
 </p>
