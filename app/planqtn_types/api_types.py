@@ -85,7 +85,7 @@ class TensorNetworkResponse(BaseModel):
                 "logical_legs": [],
                 "gauge_legs": [],
             }
-            print("lego", lego["shortName"], "x", lego["x"], "y", lego["y"])
+            # print("lego", lego["shortName"], "x", lego["x"], "y", lego["y"])
             legos.append(lego)
             instance_id_to_idx[instance_id] = i + start_node_index
         # Add connections from the tensor network's traces

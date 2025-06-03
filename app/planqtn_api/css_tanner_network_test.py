@@ -1,8 +1,14 @@
+import json
 from fastapi.testclient import TestClient
+from galois import GF2
+from app.planqtn_types.api_types import TensorNetworkResponse
 from planqtn_api.planqtn_server import app
 
 
 from fastapi.testclient import TestClient
+
+from qlego.codes.css_tanner_code import CssTannerCodeTN
+from qlego.tensor_network import TensorNetwork
 
 
 client = TestClient(app)
@@ -19,12 +25,27 @@ def test_css_tanner_network_bell_state():
         [1, 1, 0, 0],
     ]
 
-    response = client.post("/csstannernetwork", json={"matrix": matrix})
+    expected_response = TensorNetworkResponse.from_tensor_network(
+        CssTannerCodeTN(hx=GF2([[1, 1, 0, 0]]), hz=GF2([[0, 0, 1, 1]])),
+        start_node_index=10,
+    )
+
+    response = client.post(
+        "/csstannernetwork",
+        json={"matrix": matrix, "start_node_index": 10},
+    )
     assert response.status_code == 200
 
-    data = response.json()
-    assert "legos" in data
-    assert "connections" in data
+    data = json.dumps(response.json(), indent=2)
+
+    if data != expected_response.model_dump_json(indent=2):
+        with open("/tmp/expected_response.json", "w") as f:
+            f.write(expected_response.model_dump_json(indent=2))
+        with open("/tmp/response.json", "w") as f:
+            f.write(data)
+        assert (
+            False
+        ), f"Not equal. check /tmp/expected_response.json and /tmp/response.json"
 
     assert len(data["legos"]) == 12, "Expected 12 legos, got %d" % len(data["legos"])
 

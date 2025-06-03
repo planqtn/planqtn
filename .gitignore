@@ -10,3 +10,4 @@ logs
 .env
 .vercel
 .env*.local
+*dist*
