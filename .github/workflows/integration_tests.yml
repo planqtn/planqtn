@@ -13,6 +13,7 @@ on:
       - "app/planqtn_types/**"
       - "app/planqtn_api/**"
       - "app/planqtn_jobs/**"
+      - "app/planqtn_cli/**"
 
       - "check/**integration"
       - ".github/workflows/integration_tests.yml"
@@ -53,6 +54,7 @@ jobs:
               - "app/migrations/**"
               - "app/planqtn_types/**"
               - ".github/workflows/integration_tests.yml"
+              - "app/planqtn_cli/**"
       - name: Run jobs integration tests
         env:
           SUPABASE_WORKDIR: ~/.planqtn
