@@ -56,6 +56,7 @@ jobs:
               - "app/supabase/**"
               - "app/migrations/**"
               - "app/planqtn_types/**"
+              - ".github/workflows/integration_tests.yml"
       - name: Run jobs integration tests
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
