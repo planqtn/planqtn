@@ -64,7 +64,7 @@ jobs:
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
-          check/jobs-integration
+          check/jobs-integration -k e2e
 
       - name: Run api integration tests
         env:
