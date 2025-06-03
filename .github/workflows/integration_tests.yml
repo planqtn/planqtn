@@ -30,39 +30,12 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Prep supabase
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - name: setup functions .env file
-        working-directory: ${{ github.workspace }}/app
+      - name: Install planqtn cli
         run: |
-          echo "ENV=local" > supabase/functions/.env
-      - name: Start supabase
-        working-directory: ${{ github.workspace }}/app
-        run: supabase start
-      - name: Start k3d
-        uses: rinx/setup-k3d@v0.0.2
-        with:
-          name: planqtn
-          version: latest
-          options: "--network=supabase_network_planqtn-dev"
-      - name: setup roles
+          hack/cli_build.sh --install
+      - name: Start planqtn
         run: |
-          kubectl apply -f app/k8s/job-monitor-rbac.yaml --cluster k3d-planqtn
-      # TODO: somehow create the k3d-planqtn-in-cluster context...
-      - name: start proxy
-        run: |
-          docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts '.*' --context k3d-planqtn-in-cluster --address=0.0.0.0
-      - name: test proxy
-        run: |
-          docker run  --network supabase_network_planqtn-dev  --rm alpine/curl -f k8sproxy:8001/version
-          echo "Proxy is running and connection is ready to k8s"
-      - name: Run migrations
-        working-directory: ${{ github.workspace }}/app
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: npx node-pg-migrate up
+          htn start
       - uses: dorny/paths-filter@v3
         id: changes
         with:
@@ -81,12 +54,16 @@ jobs:
               - "app/planqtn_types/**"
               - ".github/workflows/integration_tests.yml"
       - name: Run jobs integration tests
+        env:
+          SUPABASE_WORKDIR: ~/.planqtn
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
           check/jobs-integration
 
       - name: Run api integration tests
+        env:
+          SUPABASE_WORKDIR: ~/.planqtn
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
