@@ -9,5 +9,4 @@ logs
 *node_modules*
 .env
 .vercel
-.env*.local
 *dist*
