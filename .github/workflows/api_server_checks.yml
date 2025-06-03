@@ -9,6 +9,10 @@ on:
       - "requirements.dev.txt"
       - "check/api**"
       - ".github/workflows/api_server_checks.yml"
+      - "app/supabase/**"
+      - "app/migrations/**"
+      - "app/planqtn_types/**"
+      - "conftest.py"
 jobs:
   API-Server-Checks:
     strategy:

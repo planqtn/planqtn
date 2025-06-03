@@ -1,0 +1,60 @@
+on:
+  push:
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "conftest.py"
+
+      - "app/supabase/**"
+      - "app/migrations/**"
+      - "app/planqtn_types/**"
+      - "app/planqtn_api/**"
+      - "app/planqtn_jobs/**"
+
+      - "check/**integration"
+      - ".github/workflows/integration_tests.yml"
+
+jobs:
+  Integration-Tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Prep supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start
+      - name: Run migrations
+        working-directory: ${{ github.workspace }}/app
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: npx node-pg-migrate up
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            jobs: 
+              - "app/planqtn_jobs/**"
+            api:
+              - "app/planqtn_api/**"                    
+            common: 
+              - "qlego/**"
+              - "requirements.txt"
+              - "requirements.dev.txt"
+              - "conftest.py"
+              - "app/supabase/**"
+              - "app/migrations/**"
+              - "app/planqtn_types/**"
+      - name: Run jobs integration tests
+        if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
+        run: |
+          check/jobs-integration
+      - name: Run api integration tests
+        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
+        run: |
+          check/api-integration
+      - name: stop supabase
+        run: |
+          supabase stop

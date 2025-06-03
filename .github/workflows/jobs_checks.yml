@@ -3,11 +3,16 @@ run-name: ${{ github.actor }} is checking the Job Execution 🚀
 on:
   push:
     paths:
-      - "app/planqtn_jobs/**"
+      - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
+      - "conftest.py"
+
+      - "app/planqtn_jobs/**"
       - "check/jobs**"
       - ".github/workflows/jobs_checks.yml"
+      - "app/planqtn_types/**"
+
 jobs:
   Job-Checks:
     strategy:
@@ -31,18 +36,3 @@ jobs:
       - name: Run tests
         run: |
           check/jobs
-      - name: Prep supabase
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - run: supabase start
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: npx node-pg-migrate up
-      - name: Run integration tests
-        run: |
-          check/jobs-integration
-      - name: stop supabase
-        run: |
-          supabase stop

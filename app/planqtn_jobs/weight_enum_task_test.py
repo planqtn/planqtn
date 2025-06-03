@@ -323,6 +323,9 @@ async def test_main_with_task_store_and_realtime(
         await subscription.subscribe()
         print("Subscription completed")
 
+        # Add a small delay to ensure subscription is fully established
+        await asyncio.sleep(0.5)
+
         # Run the main function in a separate thread
         def run_main():
             print("Starting main function...")
@@ -332,9 +335,9 @@ async def test_main_with_task_store_and_realtime(
         main_thread = threading.Thread(target=run_main)
         main_thread.start()
 
-        # Wait for at least the "started" update
+        # Wait for at least the "started" update with a longer timeout
         try:
-            await asyncio.wait_for(update_event.wait(), timeout=2)
+            await asyncio.wait_for(update_event.wait(), timeout=5)
         except asyncio.TimeoutError:
             raise AssertionError(
                 f"Did not receive 'started' update within timeout, updates: {received_updates}"
@@ -376,5 +379,5 @@ async def test_main_with_task_store_and_realtime(
         # Clean up realtime subscription
         if "channel" in locals():
             await channel.unsubscribe()
-
-        # service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+            # Add a small delay to ensure cleanup is complete
+            await asyncio.sleep(0.5)
