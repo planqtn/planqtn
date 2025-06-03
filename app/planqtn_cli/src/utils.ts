@@ -5,13 +5,14 @@ interface RunCommandOptions {
     verbose?: boolean;
     cwd?: string;
     env?: NodeJS.ProcessEnv;
+    returnOutput?: boolean;
 }
 
 export async function runCommand(
     command: string,
     args: string[],
     options: RunCommandOptions = {},
-): Promise<void> {
+): Promise<string | void> {
     return new Promise((resolve, reject) => {
         const fullCommand = `${command} ${args.join(" ")}`;
         if (options.verbose) {
@@ -19,12 +20,12 @@ export async function runCommand(
             if (options.cwd) {
                 console.log(`Working directory: ${options.cwd}`);
             }
-            if (options.env) {
-                console.log("Environment variables:");
-                Object.entries(options.env).forEach(([key, value]) => {
-                    console.log(`  ${key}=${value}`);
-                });
-            }
+            // if (options.env) {
+            //     console.log("Environment variables:");
+            //     Object.entries(options.env).forEach(([key, value]) => {
+            //         console.log(`  ${key}=${value}`);
+            //     });
+            // }
         }
 
         const proc = spawn(command, args, {
@@ -33,20 +34,27 @@ export async function runCommand(
             env: options.env,
             stdio: [
                 "pipe",
-                options.verbose ? "inherit" : "pipe",
-                options.verbose ? "inherit" : "pipe",
+                options.verbose && !options.returnOutput ? "inherit" : "pipe",
+                options.verbose && !options.returnOutput ? "inherit" : "pipe",
             ],
         });
 
-        if (!options.verbose) {
+        let output = "";
+        let errorOutput = "";
+
+        if (!options.verbose || options.returnOutput) {
             proc.stdout?.on("data", (data) => {
-                if (data.toString().trim()) {
-                    console.log(data.toString().trim());
+                const dataStr = data.toString();
+                output += dataStr;
+                if (!options.returnOutput && dataStr.trim()) {
+                    console.log(dataStr.trim());
                 }
             });
             proc.stderr?.on("data", (data) => {
-                if (data.toString().trim()) {
-                    console.error(data.toString().trim());
+                const dataStr = data.toString();
+                errorOutput += dataStr;
+                if (!options.returnOutput && dataStr.trim()) {
+                    console.error(dataStr.trim());
                 }
             });
         }
@@ -58,7 +66,11 @@ export async function runCommand(
                         `\nCommand completed successfully: ${fullCommand}`,
                     );
                 }
-                resolve();
+                if (options.returnOutput) {
+                    resolve(output);
+                } else {
+                    resolve();
+                }
             } else {
                 const error = new Error(
                     `Command failed with exit code ${code}: ${fullCommand}`,
@@ -66,7 +78,15 @@ export async function runCommand(
                 if (options.verbose) {
                     console.error(`\n${error.message}`);
                 }
-                reject(error);
+                if (options.returnOutput) {
+                    reject(
+                        new Error(
+                            `${error.message}\nOutput: ${output}\nError: ${errorOutput}`,
+                        ),
+                    );
+                } else {
+                    reject(error);
+                }
             }
         });
     });
@@ -78,19 +98,23 @@ export async function copyDir(
     options: { verbose?: boolean } = {},
 ): Promise<void> {
     return new Promise((resolve, reject) => {
-        const fullCommand = `rsync -av ${src}/ ${dest}/`;
+        const fullCommand = `rsync -av --delete ${src}/ ${dest}/`;
         if (options.verbose) {
             console.log(`\nExecuting: ${fullCommand}`);
         }
 
-        const proc = spawn("rsync", ["-av", src + "/", dest + "/"], {
-            shell: true,
-            stdio: [
-                "pipe",
-                options.verbose ? "inherit" : "pipe",
-                options.verbose ? "inherit" : "pipe",
-            ],
-        });
+        const proc = spawn(
+            "rsync",
+            ["-av", "--delete", src + "/", dest + "/"],
+            {
+                shell: true,
+                stdio: [
+                    "pipe",
+                    options.verbose ? "inherit" : "pipe",
+                    options.verbose ? "inherit" : "pipe",
+                ],
+            },
+        );
 
         if (!options.verbose) {
             proc.stdout?.on("data", (data) => {
@@ -126,9 +150,15 @@ export async function copyDir(
     });
 }
 
-export function ensureEmptyDir(dir: string): void {
-    if (fs.existsSync(dir)) {
+export function ensureEmptyDir(
+    dir: string,
+    forceRecreate: boolean = false,
+): void {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    } else if (forceRecreate) {
+        // Only remove and recreate if explicitly requested
         fs.rmSync(dir, { recursive: true, force: true });
+        fs.mkdirSync(dir, { recursive: true });
     }
-    fs.mkdirSync(dir, { recursive: true });
 }

@@ -89,7 +89,7 @@ def supabase_setup():
             "npx",
             "supabase",
             "--workdir",
-            f"{Path(__file__).parent.parent}",
+            os.environ.get("SUPABASE_WORKDIR", f"{Path(__file__).parent.parent}"),
             "--debug",
             "status",
             "-o",

@@ -24,11 +24,13 @@ export function setupKernelCommand(program: any) {
 
                 // Step 2: Setup directories
                 const planqtnDir = path.join(os.homedir(), ".planqtn");
-                ensureEmptyDir(planqtnDir);
+                ensureEmptyDir(planqtnDir, options.forceRecreate);
                 const supabaseDir = path.join(planqtnDir, "supabase");
                 const k8sDir = path.join(planqtnDir, "k8s");
-                ensureEmptyDir(supabaseDir);
-                ensureEmptyDir(k8sDir);
+                const migrationsDir = path.join(planqtnDir, "migrations");
+                ensureEmptyDir(supabaseDir, options.forceRecreate);
+                ensureEmptyDir(k8sDir, options.forceRecreate);
+                ensureEmptyDir(migrationsDir, options.forceRecreate);
 
                 // Step 3: Copy configuration files
                 console.log("Setting up configuration files...");
@@ -36,7 +38,22 @@ export function setupKernelCommand(program: any) {
                     path.join(getCliRootDir(), "supabase", "config.toml.local"),
                     path.join(supabaseDir, "config.toml"),
                 );
-                ensureEmptyDir(path.join(supabaseDir, "functions"));
+
+                // Stop edge runtime before recreating functions directory
+                console.log("Stopping edge runtime container...");
+                try {
+                    await runCommand("docker", [
+                        "stop",
+                        "supabase_edge_runtime_planqtn-local",
+                    ], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if container doesn't exist
+                }
+
+                // Always recreate functions directory to ensure updates
+                ensureEmptyDir(path.join(supabaseDir, "functions"), true);
                 fs.copyFileSync(
                     path.join(
                         getCliRootDir(),
@@ -61,72 +78,93 @@ export function setupKernelCommand(program: any) {
                     { verbose: options.verbose },
                 );
 
-                // Step 5: Install Supabase CLI
-                console.log("Installing Supabase CLI...");
-                await runCommand(
-                    "npm",
-                    ["install", "supabase", "--prefix", planqtnDir],
+                await copyDir(
+                    path.join(getCliRootDir(), "migrations"),
+                    migrationsDir,
                     { verbose: options.verbose },
                 );
 
-                // Step 6: Start Supabase
-                console.log("Starting Supabase...");
-                await runCommand("npx", ["supabase", "start"], {
-                    cwd: supabaseDir,
-                    verbose: options.verbose,
-                });
-
-                // Step 7: Check Supabase status
+                // Step 5: Check Supabase status and start if needed
                 console.log("Checking Supabase status...");
-                const supabaseStatus = await new Promise<string>(
-                    (resolve, reject) => {
-                        const proc = spawn("npx", [
-                            "supabase",
-                            "status",
-                            "-o",
-                            "json",
+                let supabaseRunning = false;
+                try {
+                    const supabaseStatus = await runCommand("npx", [
+                        "supabase",
+                        "status",
+                        "-o",
+                        "json",
+                    ], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                        returnOutput: true,
+                    }) as string;
+
+                    try {
+                        const status = JSON.parse(supabaseStatus);
+                        supabaseRunning = "API_URL" in status;
+                    } catch (e) {
+                        // If we can't parse the status, assume it's not running
+                        supabaseRunning = false;
+                    }
+                } catch (err) {
+                    // If status check fails, assume it's not running
+                    supabaseRunning = false;
+                }
+
+                if (!supabaseRunning) {
+                    console.log("Starting Supabase...");
+                    await runCommand("npx", ["supabase", "start"], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                    });
+                } else {
+                    console.log(
+                        "Supabase is already running, starting edge runtime...",
+                    );
+                    try {
+                        await runCommand("docker", [
+                            "start",
+                            "supabase_edge_runtime_planqtn-local",
                         ], {
-                            cwd: supabaseDir,
-                            shell: true,
-                            stdio: [
-                                "pipe",
-                                "pipe",
-                                options.verbose ? "inherit" : "pipe",
-                            ],
+                            verbose: options.verbose,
                         });
+                    } catch (err) {
+                        // If container doesn't exist, Supabase start will create it
+                        console.log(
+                            "Edge runtime container not found, Supabase will create it",
+                        );
+                    }
+                }
 
-                        let output = "";
-                        proc.stdout?.on("data", (data) => {
-                            output += data.toString();
-                        });
-
-                        if (!options.verbose) {
-                            proc.stderr?.on("data", (data) => {
-                                if (data.toString().trim()) {
-                                    console.error(data.toString().trim());
-                                }
-                            });
-                        }
-
-                        proc.on("close", (code) => {
-                            if (code === 0) {
-                                resolve(output);
-                            } else {
-                                reject(
-                                    new Error(
-                                        `Command failed with exit code ${code}`,
-                                    ),
-                                );
-                            }
-                        });
-                    },
+                // Create package.json for ES modules support
+                console.log("Setting up package.json for migrations...");
+                fs.writeFileSync(
+                    path.join(planqtnDir, "package.json"),
+                    JSON.stringify(
+                        {
+                            "type": "module",
+                            "private": true,
+                        },
+                        null,
+                        2,
+                    ),
                 );
 
-                try {
-                    JSON.parse(supabaseStatus);
-                } catch (e) {
-                    throw new Error("Invalid Supabase status JSON output");
-                }
+                // Run database migrations
+                console.log("Running database migrations...");
+                await runCommand(
+                    "npx",
+                    ["node-pg-migrate", "up"],
+                    {
+                        verbose: options.verbose,
+                        cwd: planqtnDir,
+                        env: {
+                            ...process.env,
+                            DATABASE_URL:
+                                "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+                        },
+                    },
+                );
 
                 // Step 8: Check Docker network
                 console.log("Checking Docker network...");
@@ -183,9 +221,27 @@ export function setupKernelCommand(program: any) {
                 const kubeconfigPath = path.join(planqtnDir, "kubeconfig.yaml");
 
                 try {
-                    await runCommand(k3dPath, ["cluster", "get", clusterName], {
+                    const clusterStatus = await runCommand(k3dPath, [
+                        "cluster",
+                        "get",
+                        clusterName,
+                    ], {
                         verbose: options.verbose,
-                    });
+                        returnOutput: true,
+                    }) as string;
+
+                    // Check if servers are running (0/1 means not running)
+                    if (clusterStatus.includes("0/1")) {
+                        console.log("Starting k3d cluster...");
+                        await runCommand(k3dPath, [
+                            "cluster",
+                            "start",
+                            clusterName,
+                        ], {
+                            verbose: options.verbose,
+                        });
+                    }
+
                     if (options.forceRecreate) {
                         await runCommand(k3dPath, [
                             "cluster",
@@ -206,12 +262,6 @@ export function setupKernelCommand(program: any) {
                             { verbose: options.verbose },
                         );
                     }
-                    await createKubeconfig(
-                        k3dPath,
-                        clusterName,
-                        kubeconfigPath,
-                        options.verbose,
-                    );
                 } catch (err) {
                     // Cluster doesn't exist, create it
                     await runCommand(
@@ -227,14 +277,21 @@ export function setupKernelCommand(program: any) {
                     );
                 }
 
+                await createKubeconfig(
+                    k3dPath,
+                    clusterName,
+                    kubeconfigPath,
+                    options.verbose,
+                );
+
                 // Step 13: Setup k8sproxy
                 console.log("Setting up k8sproxy...");
                 try {
-                    await runCommand("docker", ["inspect", "k8sproxy"], {
+                    await runCommand("docker", ["inspect", "k8sproxy-local"], {
                         verbose: options.verbose,
                     });
                     if (options.forceRecreate) {
-                        await runCommand("docker", ["stop", "k8sproxy"], {
+                        await runCommand("docker", ["stop", "k8sproxy-local"], {
                             verbose: options.verbose,
                         });
                         await createProxy(
@@ -263,7 +320,7 @@ export function setupKernelCommand(program: any) {
                         "--rm",
                         "alpine/curl",
                         "-f",
-                        "k8sproxy:8001/version",
+                        "k8sproxy-local:8001/version",
                     ],
                     { verbose: options.verbose },
                 );
@@ -281,15 +338,217 @@ export function setupKernelCommand(program: any) {
     kernelCommand
         .command("stop")
         .description("Stop the local PlanqTN kernel")
-        .action(async () => {
-            console.log("Stopping the local PlanqTN kernel");
+        .option("--verbose", "Show detailed output")
+        .action(async (options: any) => {
+            try {
+                // Check if Supabase is running
+                const supabaseDir = path.join(
+                    os.homedir(),
+                    ".planqtn",
+                    "supabase",
+                );
+                let supabaseRunning = false;
+                try {
+                    const supabaseStatus = await runCommand("npx", [
+                        "supabase",
+                        "status",
+                        "-o",
+                        "json",
+                    ], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                        returnOutput: true,
+                    }) as string;
+
+                    try {
+                        const status = JSON.parse(supabaseStatus);
+                        supabaseRunning = "API_URL" in status;
+                    } catch (e) {
+                        supabaseRunning = false;
+                    }
+                } catch (err) {
+                    supabaseRunning = false;
+                }
+
+                if (supabaseRunning) {
+                    console.log("Stopping Supabase...");
+                    await runCommand("npx", ["supabase", "stop"], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                    });
+                }
+
+                // Stop k8sproxy if it exists
+                console.log("Stopping k8sproxy...");
+                try {
+                    await runCommand("docker", ["stop", "k8sproxy-local"], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if container doesn't exist
+                }
+
+                // Stop k3d cluster
+                console.log("Stopping k3d cluster...");
+                const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
+                try {
+                    await runCommand(k3dPath, [
+                        "cluster",
+                        "stop",
+                        "planqtn-local",
+                    ], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if cluster doesn't exist
+                }
+
+                console.log("PlanqTN kernel stopped successfully!");
+            } catch (err) {
+                console.error(
+                    "Error:",
+                    err instanceof Error ? err.message : String(err),
+                );
+                process.exit(1);
+            }
         });
 
     kernelCommand
         .command("remove")
         .description("Delete everything related to the local PlanqTN kernel")
-        .action(async () => {
-            console.log("Deleting the local PlanqTN kernel");
+        .option("--verbose", "Show detailed output")
+        .action(async (options: any) => {
+            try {
+                // First stop everything
+                console.log("Stopping all components...");
+                const supabaseDir = path.join(
+                    os.homedir(),
+                    ".planqtn",
+                    "supabase",
+                );
+                let supabaseRunning = false;
+                try {
+                    const supabaseStatus = await runCommand("npx", [
+                        "supabase",
+                        "status",
+                        "-o",
+                        "json",
+                    ], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                        returnOutput: true,
+                    }) as string;
+
+                    try {
+                        const status = JSON.parse(supabaseStatus);
+                        supabaseRunning = "API_URL" in status;
+                    } catch (e) {
+                        supabaseRunning = false;
+                    }
+                } catch (err) {
+                    supabaseRunning = false;
+                }
+
+                if (supabaseRunning) {
+                    console.log("Stopping Supabase...");
+                    await runCommand("npx", ["supabase", "stop"], {
+                        cwd: supabaseDir,
+                        verbose: options.verbose,
+                    });
+                }
+
+                // Stop k8sproxy if it exists
+                console.log("Stopping k8sproxy...");
+                try {
+                    await runCommand("docker", ["stop", "k8sproxy-local"], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if container doesn't exist
+                }
+
+                // Stop and delete k3d cluster
+                console.log("Stopping and deleting k3d cluster...");
+                const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
+                try {
+                    await runCommand(k3dPath, [
+                        "cluster",
+                        "delete",
+                        "planqtn-local",
+                    ], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if cluster doesn't exist
+                }
+
+                // Delete Supabase volumes
+                console.log("Deleting Supabase volumes...");
+                try {
+                    const volumes = await new Promise<string>(
+                        (resolve, reject) => {
+                            const proc = spawn("docker", [
+                                "volume",
+                                "ls",
+                                "--filter",
+                                "label=com.supabase.cli.project=planqtn-local",
+                                "-q",
+                            ], {
+                                shell: true,
+                                stdio: [
+                                    "pipe",
+                                    "pipe",
+                                    options.verbose ? "inherit" : "pipe",
+                                ],
+                            });
+
+                            let output = "";
+                            proc.stdout?.on("data", (data) => {
+                                output += data.toString();
+                            });
+
+                            proc.on("close", (code) => {
+                                if (code === 0) {
+                                    resolve(output);
+                                } else {
+                                    reject(
+                                        new Error(
+                                            `Command failed with exit code ${code}`,
+                                        ),
+                                    );
+                                }
+                            });
+                        },
+                    );
+
+                    if (volumes.trim()) {
+                        await runCommand("docker", [
+                            "volume",
+                            "rm",
+                            ...volumes.trim().split("\n"),
+                        ], {
+                            verbose: options.verbose,
+                        });
+                    }
+                } catch (err) {
+                    // Ignore error if no volumes exist
+                }
+
+                // Remove .planqtn directory
+                console.log("Removing .planqtn directory...");
+                const planqtnDir = path.join(os.homedir(), ".planqtn");
+                if (fs.existsSync(planqtnDir)) {
+                    fs.rmSync(planqtnDir, { recursive: true, force: true });
+                }
+
+                console.log("PlanqTN kernel removed successfully!");
+            } catch (err) {
+                console.error(
+                    "Error:",
+                    err instanceof Error ? err.message : String(err),
+                );
+                process.exit(1);
+            }
         });
 }
 
@@ -345,6 +604,15 @@ async function createKubeconfig(
     kubeconfigPath: string,
     verbose: any,
 ) {
+    // Ensure kubeconfig path is a file, not a directory
+    if (fs.existsSync(kubeconfigPath)) {
+        const stats = fs.statSync(kubeconfigPath);
+        if (stats.isDirectory()) {
+            console.log("Removing existing kubeconfig directory...");
+            fs.rmSync(kubeconfigPath, { recursive: true, force: true });
+        }
+    }
+
     await runCommand(
         k3dPath,
         [
@@ -356,6 +624,16 @@ async function createKubeconfig(
         ],
         { verbose: verbose },
     );
+
+    // Verify the kubeconfig was created as a file
+    if (
+        !fs.existsSync(kubeconfigPath) ||
+        fs.statSync(kubeconfigPath).isDirectory()
+    ) {
+        throw new Error(
+            `Failed to create kubeconfig file at ${kubeconfigPath}`,
+        );
+    }
 
     // Read the generated kubeconfig
     const kubeconfig = fs.readFileSync(kubeconfigPath, "utf8");
@@ -384,10 +662,26 @@ async function createKubeconfig(
         },
     };
 
+    // Remove any existing in-cluster entries
+    config.clusters = config.clusters.filter((c: any) =>
+        c.name !== inClusterName
+    );
+    config.contexts = config.contexts.filter((c: any) =>
+        c.name !== inClusterName
+    );
+
     // Add the new cluster and context
     config.clusters.push(inCluster);
     config.contexts.push(inContext);
 
     // Write the updated kubeconfig
     fs.writeFileSync(kubeconfigPath, yaml.stringify(config));
+
+    // Final verification
+    if (
+        !fs.existsSync(kubeconfigPath) ||
+        fs.statSync(kubeconfigPath).isDirectory()
+    ) {
+        throw new Error(`Failed to write kubeconfig file at ${kubeconfigPath}`);
+    }
 }

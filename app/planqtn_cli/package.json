@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "tsc && npm run copy-config",
-    "copy-config": "mkdir -p dist/cfg && rsync -av --filter=':- ../../.gitignore' ../supabase/ dist/cfg/supabase/ && rsync -av ../k8s/ dist/cfg/k8s/",
+    "copy-config": "mkdir -p dist/cfg && rsync -av --filter=':- ../../.gitignore' ../supabase/ dist/cfg/supabase/ && rsync -av ../k8s/ dist/cfg/k8s/ && rsync -av ../migrations/ dist/cfg/migrations/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "prepare": "npm run build"
