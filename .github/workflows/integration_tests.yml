@@ -53,7 +53,11 @@ jobs:
       # TODO: somehow create the k3d-planqtn-in-cluster context...
       - name: start proxy
         run: |
-          docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts ".*" --context k3d-plaqntn-in-cluster --address=0.0.0.0
+          docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts ".*" --context k3d-planqtn-in-cluster --address=0.0.0.0
+      - name: test proxy
+        run: |
+          docker run  --network supabase_network_planqtn-dev  --rm alpine/curl -f k8sproxy:8001/version
+          echo "Proxy is running and connection is ready to k8s"
       - name: Run migrations
         working-directory: ${{ github.workspace }}/app
         env:
