@@ -37,7 +37,7 @@ jobs:
           hack/cli_build.sh --install
       - name: Start planqtn
         run: |
-          htn start
+          htn kernel start --verbose
       - uses: dorny/paths-filter@v3
         id: changes
         with:
