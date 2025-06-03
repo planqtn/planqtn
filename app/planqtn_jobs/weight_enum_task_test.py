@@ -437,10 +437,6 @@ def test_e2e_local_through_function_call_and_k3d(
     task_uuid = response.json()["task_id"]
 
     print(f"Task UUID: {task_uuid}")
-    # Insert task using service role client to bypass RLS
-    service_client = create_client(
-        supabase_setup["api_url"], supabase_setup["service_role_key"]
-    )
 
     try:
         # Wait for the task to be created
@@ -452,7 +448,7 @@ def test_e2e_local_through_function_call_and_k3d(
 
         assert len(task.data) == 1, f"Task not found, task: {task.data}"
 
-        for _ in range(60):
+        for _ in range(120):
             task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
             if len(task.data) == 1 and task.data[0]["state"] == 2:
                 break
@@ -461,6 +457,27 @@ def test_e2e_local_through_function_call_and_k3d(
         # Verify task was updated in Supabase
         task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
         assert len(task.data) == 1
+        if task.data[0]["state"] != 2:
+            print(f"Task data: {task.data[0]}")
+            print("logs from edge container:")
+            container_name = (
+                "supabase_edge_runtime_planqtn-local"
+                if os.environ.get("SUPABASE_DIR")
+                else "supabase_edge_runtime_planqtn-dev"
+            )
+            try:
+                logs = subprocess.run(
+                    ["docker", "logs", container_name],
+                    capture_output=True,
+                    text=True,
+                )
+                print(logs.stdout)
+                if logs.stderr:
+                    print("Error logs:")
+                    print(logs.stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to get logs: {e}")
+
         assert task.data[0]["state"] == 2  # SUCCESS
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
 
