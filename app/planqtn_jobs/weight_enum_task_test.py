@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import tempfile
@@ -8,6 +9,7 @@ import time
 import asyncio
 from pathlib import Path
 import pytest
+import requests
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import create_client, Client
@@ -83,7 +85,7 @@ def supabase_setup():
     """Set up Supabase test environment and create test user."""
     # Get local Supabase status
     result = subprocess.run(
-        ["supabase", "--workdir", "app", "status", "-o", "json"],
+        ["npx", "supabase", "status", "-o", "json"],
         capture_output=True,
         text=True,
     )
