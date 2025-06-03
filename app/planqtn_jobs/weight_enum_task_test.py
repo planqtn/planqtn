@@ -448,7 +448,7 @@ def test_e2e_local_through_function_call_and_k3d(
 
         assert len(task.data) == 1, f"Task not found, task: {task.data}"
 
-        for _ in range(120):
+        for _ in range(40):
             task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
             if len(task.data) == 1 and task.data[0]["state"] == 2:
                 break
@@ -469,7 +469,7 @@ def test_e2e_local_through_function_call_and_k3d(
 
             print("k3d situation:")
             k3d_logs = subprocess.run(
-                ["/home/runner/.planqtn/k3d", "cluster", "list"],
+                [os.path.expanduser("~/.planqtn/k3d"), "cluster", "list"],
                 capture_output=True,
                 text=True,
             )
@@ -478,7 +478,7 @@ def test_e2e_local_through_function_call_and_k3d(
             import kubernetes
             import yaml
 
-            with open("/home/runner/.planqtn/kubeconfig.yaml") as f:
+            with open(os.path.expanduser("~/.planqtn/kubeconfig.yaml")) as f:
                 kubeconfig = yaml.safe_load(f)
 
             client = kubernetes.config.new_client_from_config_dict(kubeconfig)
@@ -511,27 +511,27 @@ def test_e2e_local_through_function_call_and_k3d(
             #     print(job.status)
             #     print(job.spec)
 
-            if logs.stderr:
-                print("Error logs:")
-                print(logs.stderr)
-            print("logs from edge container:")
-            container_name = (
-                "supabase_edge_runtime_planqtn-local"
-                if os.environ.get("SUPABASE_WORKDIR")
-                else "supabase_edge_runtime_planqtn-dev"
-            )
-            try:
-                logs = subprocess.run(
-                    ["docker", "logs", container_name],
-                    capture_output=True,
-                    text=True,
-                )
-                print(logs.stdout)
-                if logs.stderr:
-                    print("Error logs:")
-                    print(logs.stderr)
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to get logs: {e}")
+            # if logs.stderr:
+            #     print("Error logs:")
+            #     print(logs.stderr)
+            # print("logs from edge container:")
+            # container_name = (
+            #     "supabase_edge_runtime_planqtn-local"
+            #     if os.environ.get("SUPABASE_WORKDIR")
+            #     else "supabase_edge_runtime_planqtn-dev"
+            # )
+            # try:
+            #     logs = subprocess.run(
+            #         ["docker", "logs", container_name],
+            #         capture_output=True,
+            #         text=True,
+            #     )
+            #     print(logs.stdout)
+            #     if logs.stderr:
+            #         print("Error logs:")
+            #         print(logs.stderr)
+            # except subprocess.CalledProcessError as e:
+            #     print(f"Failed to get logs: {e}")
 
         assert task.data[0]["state"] == 2  # SUCCESS
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
