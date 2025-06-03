@@ -85,7 +85,16 @@ def supabase_setup():
     """Set up Supabase test environment and create test user."""
     # Get local Supabase status
     result = subprocess.run(
-        ["npx", "supabase", "--debug", "status", "-o", "json"],
+        [
+            "npx",
+            "supabase",
+            "--workdir",
+            f"{Path(__file__).parent.parent}",
+            "--debug",
+            "status",
+            "-o",
+            "json",
+        ],
         capture_output=True,
         text=True,
     )

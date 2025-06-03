@@ -174,6 +174,14 @@ Deno.serve(async (req) => {
 
     // Create the job in Kubernetes
     try {
+      if (!JOBS_CONFIG[jobRequest.job_type]) {
+        throw new Error(
+          `Job type ${jobRequest.job_type} not found in JOBS_CONFIG, available job types: ${
+            Object.keys(JOBS_CONFIG).join(", ")
+          }`,
+        );
+      }
+
       console.log("Creating job in Kubernetes");
       console.log("Job type:", jobRequest.job_type);
       console.log("Task UUID:", task.uuid);
@@ -297,6 +305,7 @@ Deno.serve(async (req) => {
       throw new Error(errorMessage);
     }
   } catch (error: unknown) {
+    console.error("Error in planqtn_job function", error);
     const errorMessage = error instanceof Error
       ? error.message
       : "Unknown error occurred";

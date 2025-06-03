@@ -23,7 +23,7 @@ To setup the cluster and the connection to the supabase containers:
 - start proxy
 
 ```
-docker run --network supabase_network_planqtn-dev --rm --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts ".*" --context k3d-plaqntn-in-cluster --address=0.0.0.0
+docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts ".*" --context k3d-plaqntn-in-cluster --address=0.0.0.0
 ```
 
 - ensure images are loaded - for dev, build and load, for local prod ensure images are pulled first

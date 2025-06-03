@@ -200,6 +200,7 @@ export class K8sClient {
             }))
             : undefined;
 
+        console.log("config", config);
         const job: Job = {
             apiVersion: "batch/v1",
             kind: "Job",
