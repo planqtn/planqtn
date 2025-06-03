@@ -19,9 +19,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 pushd app/planqtn_cli
+npm install
 npm run build 
 if [ "$INSTALL" = true ]; then
-    npm install --save-dev
     npm install -g .
 fi
 popd
