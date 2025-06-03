@@ -299,6 +299,14 @@ export function setupKernelCommand(program: any) {
                     { verbose: options.verbose },
                 );
 
+                // Step 15: Setup job-monitor-rbac
+                console.log("Setting up job-monitor-rbac...");
+                await createRbac(
+                    kubeconfigPath,
+                    options.verbose,
+                    clusterName,
+                    path.join(planqtnDir, "k8s", "job-monitor-rbac.yaml"),
+                );
                 console.log("PlanqTN kernel setup completed successfully!");
             } catch (err) {
                 console.error(
@@ -558,11 +566,14 @@ export function setupKernelCommand(program: any) {
         });
 }
 
-async function createProxy(
+async function kubectl(
+    containerName: string,
+    dockerArgs: string[],
+    kubeCtlArgs: string[],
     kubeconfigPath: string,
     verbose: boolean,
     clusterName: string,
-): Promise<void> {
+) {
     const uid = await new Promise<string>((resolve, reject) => {
         const proc = spawn("id", ["-u"], { shell: true });
         let output = "";
@@ -587,20 +598,57 @@ async function createProxy(
             "--rm",
             "-d",
             "--name",
-            "k8sproxy-local",
+            containerName,
             "--user",
             uid,
             "-v",
             `${kubeconfigPath}:/.kube/config`,
+            ...dockerArgs,
             "d3fk/kubectl",
-            "proxy",
-            "--accept-hosts",
-            "'.*'",
-            "--address=0.0.0.0",
+            ...kubeCtlArgs,
             "--context",
             `${clusterName}-in-cluster`,
         ],
         { verbose },
+    );
+}
+
+async function createRbac(
+    kubeconfigPath: string,
+    verbose: boolean,
+    clusterName: string,
+    rbacPath: string,
+): Promise<void> {
+    return await kubectl(
+        "create-rbac-local",
+        [
+            "-v",
+            `${rbacPath}:/.kube/rbac.yaml`,
+        ],
+        ["apply", "-f", "/.kube/rbac.yaml"],
+        kubeconfigPath,
+        verbose,
+        clusterName,
+    );
+}
+
+async function createProxy(
+    kubeconfigPath: string,
+    verbose: boolean,
+    clusterName: string,
+): Promise<void> {
+    return await kubectl(
+        "k8sproxy-local",
+        [],
+        [
+            "proxy",
+            "--accept-hosts",
+            "'.*'",
+            "--address=0.0.0.0",
+        ],
+        kubeconfigPath,
+        verbose,
+        clusterName,
     );
 }
 
