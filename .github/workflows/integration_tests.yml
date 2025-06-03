@@ -14,6 +14,7 @@ on:
       - "app/planqtn_api/**"
       - "app/planqtn_jobs/**"
       - "app/planqtn_cli/**"
+      - "hack/*build*"
 
       - "check/**integration"
       - ".github/workflows/integration_tests.yml"
@@ -55,6 +56,8 @@ jobs:
               - "app/planqtn_types/**"
               - ".github/workflows/integration_tests.yml"
               - "app/planqtn_cli/**"
+              - "hack/*build*"
+
       - name: Run jobs integration tests
         env:
           SUPABASE_WORKDIR: ~/.planqtn
