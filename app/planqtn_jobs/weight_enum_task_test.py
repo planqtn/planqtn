@@ -478,14 +478,14 @@ def test_e2e_local_through_function_call_and_k3d(
             import kubernetes
             import yaml
 
-            def make_k8s_client(kubeconfig: dict) -> kubernetes.client.CoreV1Api:
+            def make_k8s_client(kubeconfig: dict) -> kubernetes.client.BatchV1Api:
                 api_client = kubernetes.config.new_client_from_config_dict(kubeconfig)
-                return kubernetes.client.CoreV1Api(api_client)
+                return kubernetes.client.BatchV1Api(api_client)
 
             with open("/home/runner/.planqtn/kubeconfig.yaml") as f:
                 kubeconfig = yaml.safe_load(f)
 
-            batch_api = make_k8s_client(kubeconfig).BatchV1Api()
+            batch_api = make_k8s_client(kubeconfig)
             jobs = batch_api.list_namespaced_job(namespace="default")
             print(f"Jobs: {jobs}")
             print(jobs)
