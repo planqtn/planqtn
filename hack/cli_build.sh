@@ -21,6 +21,7 @@ done
 pushd app/planqtn_cli
 npm run build 
 if [ "$INSTALL" = true ]; then
+    npm install --save-dev
     npm install -g .
 fi
 popd

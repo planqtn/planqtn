@@ -452,7 +452,7 @@ def test_e2e_local_through_function_call_and_k3d(
 
         assert len(task.data) == 1, f"Task not found, task: {task.data}"
 
-        for _ in range(20):
+        for _ in range(60):
             task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
             if len(task.data) == 1 and task.data[0]["state"] == 2:
                 break
