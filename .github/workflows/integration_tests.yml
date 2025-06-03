@@ -34,7 +34,18 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: supabase start
+      - name: Start supabase
+        working-directory: ${{ github.workspace }}/app
+        run: supabase start
+      # - name: Start k3d
+      #   uses: rinx/setup-k3d@v0.0.2
+      #   with:
+      #     version: latest
+      #     options: "--network=supabase_network_planqtn-dev"
+      # - name: start proxy
+      #   run: |
+      #     docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user `id -u` -v ~/.kube/config:/.kube/config d3fk/kubectl proxy --accept-hosts ".*" --context k3d-plaqntn-in-cluster --address=0.0.0.0
+
       - name: Run migrations
         working-directory: ${{ github.workspace }}/app
         env:

@@ -35,5 +35,5 @@ docker run --network supabase_network_planqtn-dev --rm -d --name k8sproxy --user
 Monitor:
 
 ```
-docker run --rm --network supabase_network_planqtn-dev -it -v ~/.kube/config:/root/.kube/config quay.io/derailed/k9s
+docker run --rm --network supabase_network_planqtn-dev -it -v ~/.kube/config:/root/.kube/config quay.io/derailed/k9s --context k3d-plaqntn-in-cluster
 ```

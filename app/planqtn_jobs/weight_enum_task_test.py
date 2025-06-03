@@ -396,3 +396,60 @@ async def test_main_with_task_store_and_realtime(
             await channel.unsubscribe()
             # Add a small delay to ensure cleanup is complete
             await asyncio.sleep(0.5)
+
+
+@pytest.mark.integration
+def test_e2e_local_through_function_call(
+    temp_input_file, temp_output_file, supabase_setup, monkeypatch
+):
+    # Create Supabase client with test user token
+    supabase: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["test_user_token"]
+    )
+
+    supabase_url = supabase_setup["api_url"]
+    supabase_anon_key = supabase_setup["anon_key"]
+    supabase_user_key = supabase_setup["test_user_token"]
+    url = f"{supabase_url}/functions/v1/planqtn_job"
+
+    response = requests.post(
+        url,
+        json={
+            "payload": json.loads(TEST_JSON),
+            "user_id": supabase_setup["test_user_id"],
+            "job_type": "weightenumerator",
+            "request_time": datetime.datetime.now().isoformat(),
+            "task_store_url": supabase_url,
+            "task_store_anon_key": supabase_anon_key,
+            "task_store_user_key": supabase_user_key,
+        },
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {supabase_user_key}",
+        },
+    )
+    assert (
+        response.status_code == 200
+    ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
+
+    # Create a task in Supabase
+    task_uuid = str(uuid.uuid4())
+
+    # Insert task using service role client to bypass RLS
+    service_client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+    try:
+
+        # Validate the result
+        validate_weight_enumerator_result_output_file(temp_output_file)
+
+        # Verify task was updated in Supabase
+        task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+        assert len(task.data) == 1
+        assert task.data[0]["state"] == 2  # SUCCESS
+        validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
+
+    finally:
+        # service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+        pass
