@@ -21,6 +21,13 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: Install shared dependencies
+        run: |
+          pip install  -r requirements.txt -r requirements.dev.txt
       - name: Prep supabase
         uses: supabase/setup-cli@v1
         with:
@@ -50,11 +57,15 @@ jobs:
       - name: Run jobs integration tests
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
+          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
           check/jobs-integration
+
       - name: Run api integration tests
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
+          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
           check/api-integration
+
       - name: stop supabase
         run: |
           supabase stop
