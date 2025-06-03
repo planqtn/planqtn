@@ -53,7 +53,18 @@ export function setupKernelCommand(program: any) {
                 }
 
                 // Always recreate functions directory to ensure updates
-                ensureEmptyDir(path.join(supabaseDir, "functions"), true);
+                ensureEmptyDir(
+                    path.join(supabaseDir, "functions"),
+                    options.forceRecreate,
+                );
+
+                // Copy directories
+                await copyDir(
+                    path.join(getCliRootDir(), "supabase", "functions"),
+                    path.join(supabaseDir, "functions"),
+                    { verbose: options.verbose },
+                );
+
                 fs.copyFileSync(
                     path.join(
                         getCliRootDir(),
@@ -62,13 +73,6 @@ export function setupKernelCommand(program: any) {
                         ".env.local",
                     ),
                     path.join(supabaseDir, "functions", ".env"),
-                );
-
-                // Copy directories
-                await copyDir(
-                    path.join(getCliRootDir(), "supabase", "functions"),
-                    path.join(supabaseDir, "functions"),
-                    { verbose: options.verbose },
                 );
 
                 // Step 4: Copy k8s config
@@ -101,7 +105,8 @@ export function setupKernelCommand(program: any) {
 
                     try {
                         const status = JSON.parse(supabaseStatus);
-                        supabaseRunning = "API_URL" in status;
+                        supabaseRunning = "API_URL" in status &&
+                            "SERVICE_ROLE_KEY" in status;
                     } catch (e) {
                         // If we can't parse the status, assume it's not running
                         supabaseRunning = false;
@@ -113,7 +118,10 @@ export function setupKernelCommand(program: any) {
 
                 if (!supabaseRunning) {
                     console.log("Starting Supabase...");
-                    await runCommand("npx", ["supabase", "start"], {
+                    await runCommand("npx", [
+                        "supabase",
+                        "start",
+                    ], {
                         cwd: supabaseDir,
                         verbose: options.verbose,
                     });
@@ -129,7 +137,6 @@ export function setupKernelCommand(program: any) {
                             verbose: options.verbose,
                         });
                     } catch (err) {
-                        // If container doesn't exist, Supabase start will create it
                         console.log(
                             "Edge runtime container not found, Supabase will create it",
                         );
