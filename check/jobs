@@ -10,10 +10,10 @@ fi
 
 export PYTHONPATH=`pwd`:`pwd`/app
 
+set -e
 cd app
 black --check planqtn_types
 black --check planqtn_jobs 
-pytest planqtn_jobs
 
 cd ..
 hack/build_jobs_image.sh

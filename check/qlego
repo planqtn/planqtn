@@ -8,6 +8,8 @@ if [ ! -f "./setup.py" ]; then
     exit 1
 fi
 
+set -e
+
 black qlego --check
 pytest qlego
 

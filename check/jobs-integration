@@ -10,6 +10,8 @@ fi
 
 export PYTHONPATH=`pwd`:`pwd`/app
 
+set -e
+
 cd app
 
 pytest --integration planqtn_jobs
