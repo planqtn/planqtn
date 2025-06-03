@@ -1,6 +1,11 @@
 name: UI Checks
 run-name: ${{ github.actor }} is checking the UI
-on: [push]
+on:
+  push:
+    paths:
+      - "app/ui/**"
+      - "check/ui**"
+      - ".github/workflows/ui_checks.yml"
 jobs:
   UI-checks:
     runs-on: ubuntu-latest
