@@ -205,6 +205,8 @@ export function setupKernelCommand(program: any) {
                             ...process.env,
                             K3D_INSTALL_DIR: planqtnDir,
                             USE_SUDO: "false",
+                            // hack for k3d install script to not complain about the binary not on path
+                            PATH: `${process.env.PATH}:${planqtnDir}`,
                         },
                     });
 
