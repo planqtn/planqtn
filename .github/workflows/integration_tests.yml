@@ -44,12 +44,12 @@ jobs:
       - name: Start k3d
         uses: rinx/setup-k3d@v0.0.2
         with:
-          name: k3d-planqtn
+          name: planqtn
           version: latest
           options: "--network=supabase_network_planqtn-dev"
       - name: setup roles
         run: |
-          kubectl apply -f app/k8s/job-monitor-rbac.yaml --cluster k3d-plaqntn
+          kubectl apply -f app/k8s/job-monitor-rbac.yaml --cluster k3d-planqtn
       # TODO: somehow create the k3d-planqtn-in-cluster context...
       - name: start proxy
         run: |
