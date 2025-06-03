@@ -44,7 +44,7 @@ jobs:
       - name: Start k3d
         uses: rinx/setup-k3d@v0.0.2
         with:
-          name: planqtn
+          name: k3d-planqtn
           version: latest
           options: "--network=supabase_network_planqtn-dev"
       - name: setup roles
