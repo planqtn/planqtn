@@ -14,4 +14,4 @@ set -e
 
 cd app
 
-pytest --integration planqtn_jobs
+pytest --integration planqtn_jobs $@
