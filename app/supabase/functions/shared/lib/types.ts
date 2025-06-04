@@ -15,6 +15,8 @@ export interface JobRequest {
   task_store_url: string;
   task_store_anon_key: string;
   payload: Record<string, unknown>; // Job-specific payload
+  memory_limit?: string;
+  cpu_limit?: string;
 }
 
 export interface JobResponse {

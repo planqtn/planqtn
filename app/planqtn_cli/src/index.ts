@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { setupKernelCommand } from "./commands/kernel";
 import { setupUiCommand } from "./commands/ui";
+import { setupPurgeCommand } from "./commands/purge";
 
 const program = new Command();
 
@@ -13,5 +14,6 @@ program
 
 setupUiCommand(program);
 setupKernelCommand(program);
+setupPurgeCommand(program);
 
 program.parse();

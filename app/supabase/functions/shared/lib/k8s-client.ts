@@ -221,8 +221,10 @@ export class K8sClient {
                             args: args,
                             resources: {
                                 limits: {
-                                    memory: toQuantity(config.memoryLimit),
-                                    cpu: toQuantity(config.cpuLimit),
+                                    memory: toQuantity(
+                                        config.memoryLimitDefault,
+                                    ),
+                                    cpu: toQuantity(config.cpuLimitDefault),
                                 },
                             },
                             env: envVars,

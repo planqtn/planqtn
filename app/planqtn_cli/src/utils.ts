@@ -6,6 +6,7 @@ interface RunCommandOptions {
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     returnOutput?: boolean;
+    tty?: boolean;
 }
 
 export async function runCommand(
@@ -32,7 +33,7 @@ export async function runCommand(
             shell: true,
             cwd: options.cwd,
             env: options.env,
-            stdio: [
+            stdio: options.tty ? "inherit" : [
                 "pipe",
                 options.verbose && !options.returnOutput ? "inherit" : "pipe",
                 options.verbose && !options.returnOutput ? "inherit" : "pipe",
@@ -42,7 +43,7 @@ export async function runCommand(
         let output = "";
         let errorOutput = "";
 
-        if (!options.verbose || options.returnOutput) {
+        if (!options.tty && (!options.verbose || options.returnOutput)) {
             proc.stdout?.on("data", (data) => {
                 const dataStr = data.toString();
                 output += dataStr;

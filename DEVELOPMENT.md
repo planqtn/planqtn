@@ -44,7 +44,43 @@ check/ui
 
 # Developing cloud features
 
-## planqTN CLI
+## Running the planqTN CLI
+
+The CLI can be run in two modes:
+
+- `local` mode - this is what end users will use, and what the CLI is meant to be used for in production and CI/CD environments. The tool operates in ~/.planqtn and has prepackaged configuration definitions for the supabase / k8s clusters. It does not need the project git repo to work. The postfix on all objects (containers, docker network, supabase instance) is `-local`.
+
+- `dev` mode - it works solely from the git repo, and is meant to "dog food" our own CLI tool, but without the need to build the tool and install it every time things change, also allowing for fast reload of function development in supabase. The postfix on all objects (containers, docker network, supabase instance) is `-dev`.
+
+This setup allows for the two different setups to coexist though currently ports are the same, so only one of them can be active at a time.
+
+### Dev mode - using htn for development
+
+Simply run `hack/htn` instead of `htn`, and things should work.
+
+### Building for local mode
+
+To build the tool, run
+
+```
+hack/cli_build.sh
+```
+
+This allows you to inspect the app/planqtn_cli/dist folder content.
+
+Install the tool globally, to use local kernel mode
+
+```
+hack/cli_build.sh --install
+```
+
+Now,
+
+```
+htn --help
+```
+
+should work.
 
 # Cloud runtime
 

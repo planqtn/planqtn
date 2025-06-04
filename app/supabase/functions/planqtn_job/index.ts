@@ -215,7 +215,13 @@ Deno.serve(async (req) => {
           "--realtime",
           "--local-progress-bar",
         ],
-        JOBS_CONFIG[jobRequest.job_type],
+        {
+          ...JOBS_CONFIG[jobRequest.job_type],
+          cpuLimitDefault: jobRequest.cpu_limit ??
+            JOBS_CONFIG[jobRequest.job_type].cpuLimitDefault,
+          memoryLimitDefault: jobRequest.memory_limit ??
+            JOBS_CONFIG[jobRequest.job_type].memoryLimitDefault,
+        },
         undefined,
         task.uuid,
         {

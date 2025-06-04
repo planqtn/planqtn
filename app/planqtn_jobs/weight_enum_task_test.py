@@ -10,6 +10,8 @@ import asyncio
 from pathlib import Path
 import pytest
 import requests
+import kubernetes
+import yaml
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import create_client, Client
@@ -84,12 +86,17 @@ YI: {3:2}""",
 def supabase_setup():
     """Set up Supabase test environment and create test user."""
     # Get local Supabase status
+    isDev = os.environ.get("KERNEL_ENV") != "local"
+    workdir = (
+        f"{Path(__file__).parent.parent}" if isDev else os.path.expanduser("~/.planqtn")
+    )
+    print("workdir:", workdir)
     result = subprocess.run(
         [
             "npx",
             "supabase",
             "--workdir",
-            os.environ.get("SUPABASE_WORKDIR", f"{Path(__file__).parent.parent}"),
+            workdir,
             "--debug",
             "status",
             "-o",
@@ -398,9 +405,44 @@ async def test_main_with_task_store_and_realtime(
             await asyncio.sleep(0.5)
 
 
+@pytest.fixture
+def k8s_apis():
+    """Create Kubernetes API clients based on environment."""
+    # Determine postfix based on KERNEL_ENV
+    postfix = "-local" if os.environ.get("KERNEL_ENV") == "local" else "-dev"
+    kubeconfig_path = os.path.expanduser(f"~/.planqtn/kubeconfig{postfix}.yaml")
+
+    with open(kubeconfig_path) as f:
+        kubeconfig = yaml.safe_load(f)
+
+    client = kubernetes.config.new_client_from_config_dict(kubeconfig)
+    batch_api = kubernetes.client.BatchV1Api(client)
+    core_api = kubernetes.client.CoreV1Api(client)
+
+    return {"batch_api": batch_api, "core_api": core_api}
+
+
+def list_pods(k8s_apis):
+    pods = k8s_apis["core_api"].list_namespaced_pod(namespace="default")
+    for pod in pods.items:
+        print("========================")
+        print(pod.metadata.name)
+        print(pod.status)
+        print("========================")
+        print("pod logs:")
+        try:
+            pod_logs = k8s_apis["core_api"].read_namespaced_pod_log(
+                name=pod.metadata.name, namespace="default"
+            )
+            print(pod_logs)
+        except Exception as e:
+            print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
+        print("========================")
+
+
 @pytest.mark.integration
 def test_e2e_local_through_function_call_and_k3d(
-    temp_input_file, temp_output_file, supabase_setup, monkeypatch
+    temp_input_file, temp_output_file, supabase_setup, monkeypatch, k8s_apis
 ):
     # Create Supabase client with test user token
     supabase: Client = create_client(
@@ -422,6 +464,8 @@ def test_e2e_local_through_function_call_and_k3d(
             "task_store_url": supabase_url,
             "task_store_anon_key": supabase_anon_key,
             "task_store_user_key": supabase_user_key,
+            "memory_limit": "1Gi",
+            "cpu_limit": "1",
         },
         headers={
             "Content-Type": "application/json",
@@ -473,69 +517,26 @@ def test_e2e_local_through_function_call_and_k3d(
                 capture_output=True,
                 text=True,
             )
-
+            list_pods(k8s_apis)
             print(k3d_logs.stdout)
-            import kubernetes
-            import yaml
-
-            with open(os.path.expanduser("~/.planqtn/kubeconfig.yaml")) as f:
-                kubeconfig = yaml.safe_load(f)
-
-            client = kubernetes.config.new_client_from_config_dict(kubeconfig)
-            batch_api = kubernetes.client.BatchV1Api(client)
-            core_api = kubernetes.client.CoreV1Api(client)
-
-            pods = core_api.list_namespaced_pod(namespace="default")
-            for pod in pods.items:
-                print("========================")
-                print(pod.metadata.name)
-                print(pod.status)
-                print("========================")
-                print("pod logs:")
-                try:
-                    pod_logs = core_api.read_namespaced_pod_log(
-                        name=pod.metadata.name, namespace="default"
-                    )
-                    print(pod_logs)
-                except Exception as e:
-                    print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
-                print("========================")
-
-            # jobs = batch_api.list_namespaced_job(namespace="default")
-            # print(f"Jobs: {jobs}")
-            # for job in jobs.items:
-            #     print("========================")
-            #     print(job.metadata.name)
-            #     print("========================")
-
-            #     print(job.status)
-            #     print(job.spec)
-
-            # if logs.stderr:
-            #     print("Error logs:")
-            #     print(logs.stderr)
-            # print("logs from edge container:")
-            # container_name = (
-            #     "supabase_edge_runtime_planqtn-local"
-            #     if os.environ.get("SUPABASE_WORKDIR")
-            #     else "supabase_edge_runtime_planqtn-dev"
-            # )
-            # try:
-            #     logs = subprocess.run(
-            #         ["docker", "logs", container_name],
-            #         capture_output=True,
-            #         text=True,
-            #     )
-            #     print(logs.stdout)
-            #     if logs.stderr:
-            #         print("Error logs:")
-            #         print(logs.stderr)
-            # except subprocess.CalledProcessError as e:
-            #     print(f"Failed to get logs: {e}")
 
         assert task.data[0]["state"] == 2  # SUCCESS
+
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
 
+        found = False
+        for pod in k8s_apis["core_api"].list_namespaced_pod(namespace="default").items:
+            if (
+                task_uuid in pod.metadata.name
+                and "weightenumerator" in pod.metadata.name
+            ):
+                assert pod.spec.containers[0].resources.limits["cpu"] == "1"
+                assert pod.spec.containers[0].resources.limits["memory"] == "1Gi"
+                found = True
+                break
+        if not found:
+            list_pods(k8s_apis)
+            raise AssertionError(f"Pod not found, task: {task.data[0]}")
+
     finally:
-        # service_client.table("tasks").delete().eq("uuid", task_uuid).execute()
-        pass
+        supabase.table("tasks").delete().eq("uuid", task_uuid).execute()

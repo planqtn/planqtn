@@ -3,7 +3,7 @@ import * as path from "path";
 import * as os from "os";
 import { spawn } from "child_process";
 import { copyDir, ensureEmptyDir, runCommand } from "../utils";
-import { getCliRootDir } from "../config";
+import { getCfgDefinitionsDir, isDev } from "../config";
 import * as yaml from "yaml";
 
 export function setupKernelCommand(program: any) {
@@ -20,69 +20,91 @@ export function setupKernelCommand(program: any) {
                 await runCommand("docker", ["--version"], {
                     verbose: options.verbose,
                 });
-
-                // Step 2: Setup directories
+                const postfix = isDev ? "-dev" : "-local";
                 const planqtnDir = path.join(os.homedir(), ".planqtn");
+
+                const supabaseDir = isDev
+                    ? path.join(getCfgDefinitionsDir(), "supabase")
+                    : path.join(planqtnDir, "supabase");
                 ensureEmptyDir(planqtnDir);
-                const supabaseDir = path.join(planqtnDir, "supabase");
-                const k8sDir = path.join(planqtnDir, "k8s");
-                const migrationsDir = path.join(planqtnDir, "migrations");
-                ensureEmptyDir(supabaseDir);
-                ensureEmptyDir(k8sDir);
-                ensureEmptyDir(migrationsDir);
 
-                // Step 3: Copy configuration files
-                console.log("Setting up configuration files...");
-                fs.copyFileSync(
-                    path.join(getCliRootDir(), "supabase", "config.toml.local"),
-                    path.join(supabaseDir, "config.toml"),
-                );
+                const cfgDir = isDev
+                    ? getCfgDefinitionsDir()
+                    : path.join(planqtnDir);
 
-                // Stop edge runtime before recreating functions directory
-                console.log("Stopping edge runtime container...");
-                try {
-                    await runCommand("docker", [
-                        "stop",
-                        "supabase_edge_runtime_planqtn-local",
-                    ], {
-                        verbose: options.verbose,
-                    });
-                } catch (err) {
-                    // Ignore error if container doesn't exist
+                if (!isDev) {
+                    // Step 2: Setup directories
+                    const k8sDir = path.join(planqtnDir, "k8s");
+                    const migrationsDir = path.join(planqtnDir, "migrations");
+                    ensureEmptyDir(supabaseDir);
+                    ensureEmptyDir(k8sDir);
+                    ensureEmptyDir(migrationsDir);
+
+                    // Step 3: Copy configuration files
+                    console.log("Setting up configuration files...");
+                    fs.copyFileSync(
+                        path.join(
+                            getCfgDefinitionsDir(),
+                            "supabase",
+                            "config.toml.local",
+                        ),
+                        path.join(supabaseDir, "config.toml"),
+                    );
+
+                    // Stop edge runtime before recreating functions directory
+                    console.log("Stopping edge runtime container...");
+                    try {
+                        await runCommand("docker", [
+                            "stop",
+                            `supabase_edge_runtime_planqtn${postfix}`,
+                        ], {
+                            verbose: options.verbose,
+                        });
+                    } catch (err) {
+                        // Ignore error if container doesn't exist
+                    }
+
+                    // Always recreate functions directory to ensure updates
+                    ensureEmptyDir(path.join(supabaseDir, "functions"));
+
+                    // Copy directories
+                    await copyDir(
+                        path.join(
+                            getCfgDefinitionsDir(),
+                            "supabase",
+                            "functions",
+                        ),
+                        path.join(supabaseDir, "functions"),
+                        { verbose: options.verbose },
+                    );
+
+                    fs.copyFileSync(
+                        path.join(
+                            getCfgDefinitionsDir(),
+                            "supabase",
+                            "functions",
+                            ".env.local",
+                        ),
+                        path.join(supabaseDir, "functions", ".env"),
+                    );
+
+                    // Step 4: Copy k8s config
+                    await copyDir(
+                        path.join(getCfgDefinitionsDir(), "k8s"),
+                        k8sDir,
+                        { verbose: options.verbose },
+                    );
+
+                    await copyDir(
+                        path.join(getCfgDefinitionsDir(), "migrations"),
+                        migrationsDir,
+                        { verbose: options.verbose },
+                    );
+                } else {
+                    console.log(
+                        "Running in dev mode, skipping directory/config setup, using existing files in repo",
+                    );
                 }
-
-                // Always recreate functions directory to ensure updates
-                ensureEmptyDir(path.join(supabaseDir, "functions"));
-
-                // Copy directories
-                await copyDir(
-                    path.join(getCliRootDir(), "supabase", "functions"),
-                    path.join(supabaseDir, "functions"),
-                    { verbose: options.verbose },
-                );
-
-                fs.copyFileSync(
-                    path.join(
-                        getCliRootDir(),
-                        "supabase",
-                        "functions",
-                        ".env.local",
-                    ),
-                    path.join(supabaseDir, "functions", ".env"),
-                );
-
-                // Step 4: Copy k8s config
-                await copyDir(
-                    path.join(getCliRootDir(), "k8s"),
-                    k8sDir,
-                    { verbose: options.verbose },
-                );
-
-                await copyDir(
-                    path.join(getCliRootDir(), "migrations"),
-                    migrationsDir,
-                    { verbose: options.verbose },
-                );
 
                 // Step 5: Check Supabase status and start if needed
                 console.log("Checking Supabase status...");
@@ -113,12 +135,16 @@ export function setupKernelCommand(program: any) {
                 }
 
                 if (!supabaseRunning) {
-                    console.log("Starting Supabase...");
+                    console.log(
+                        "Starting Supabase in working directory:",
+                        cfgDir,
+                    );
                     await runCommand("npx", [
                         "supabase",
                         "start",
+                        "--workdir",
+                        cfgDir,
                     ], {
-                        cwd: supabaseDir,
                         verbose: options.verbose,
                     });
                 } else {
@@ -128,7 +154,7 @@ export function setupKernelCommand(program: any) {
                     try {
                         await runCommand("docker", [
                             "start",
-                            "supabase_edge_runtime_planqtn-local",
+                            `supabase_edge_runtime_planqtn${postfix}`,
                         ], {
                             verbose: options.verbose,
                         });
@@ -139,19 +165,21 @@ export function setupKernelCommand(program: any) {
                     }
                 }
 
-                // Create package.json for ES modules support
-                console.log("Setting up package.json for migrations...");
-                fs.writeFileSync(
-                    path.join(planqtnDir, "package.json"),
-                    JSON.stringify(
-                        {
-                            "type": "module",
-                            "private": true,
-                        },
-                        null,
-                        2,
-                    ),
-                );
+                if (!isDev) {
+                    // Create package.json for ES modules support
+                    console.log("Setting up package.json for migrations...");
+                    fs.writeFileSync(
+                        path.join(planqtnDir, "package.json"),
+                        JSON.stringify(
+                            {
+                                "type": "module",
+                                "private": true,
+                            },
+                            null,
+                            2,
+                        ),
+                    );
+                }
 
                 // Run database migrations
                 console.log("Running database migrations...");
@@ -160,7 +188,7 @@ export function setupKernelCommand(program: any) {
                     ["node-pg-migrate", "up"],
                     {
                         verbose: options.verbose,
-                        cwd: planqtnDir,
+                        cwd: isDev ? getCfgDefinitionsDir() : planqtnDir,
                         env: {
                             ...process.env,
                             DATABASE_URL:
@@ -173,7 +201,11 @@ export function setupKernelCommand(program: any) {
                 console.log("Checking Docker network...");
                 await runCommand(
                     "docker",
-                    ["network", "inspect", "supabase_network_planqtn-local"],
+                    [
+                        "network",
+                        "inspect",
+                        `supabase_network_planqtn${postfix}`,
+                    ],
                     { verbose: options.verbose },
                 );
 
@@ -222,8 +254,11 @@ export function setupKernelCommand(program: any) {
 
                 // Step 12: Setup k3d cluster
                 console.log("Setting up k3d cluster...");
-                const clusterName = "planqtn-local";
-                const kubeconfigPath = path.join(planqtnDir, "kubeconfig.yaml");
+                const clusterName = `planqtn${postfix}`;
+                const kubeconfigPath = path.join(
+                    planqtnDir,
+                    `kubeconfig${postfix}.yaml`,
+                );
 
                 try {
                     const clusterStatus = await runCommand(k3dPath, [
@@ -254,7 +289,7 @@ export function setupKernelCommand(program: any) {
                             "cluster",
                             "create",
                             clusterName,
-                            "--network=supabase_network_planqtn-local",
+                            `--network=supabase_network_planqtn${postfix}`,
                             "--kubeconfig-update-default=false",
                         ],
                         { verbose: options.verbose },
@@ -271,7 +306,10 @@ export function setupKernelCommand(program: any) {
                 // Step 13: Setup k8sproxy
                 console.log("Setting up k8sproxy...");
                 try {
-                    await runCommand("docker", ["inspect", "k8sproxy-local"], {
+                    await runCommand("docker", [
+                        "inspect",
+                        `k8sproxy${postfix}`,
+                    ], {
                         verbose: options.verbose,
                     });
                 } catch (err) {
@@ -280,6 +318,7 @@ export function setupKernelCommand(program: any) {
                         kubeconfigPath,
                         options.verbose,
                         clusterName,
+                        postfix,
                     );
                 }
 
@@ -290,11 +329,11 @@ export function setupKernelCommand(program: any) {
                     [
                         "run",
                         "--network",
-                        "supabase_network_planqtn-local",
+                        `supabase_network_planqtn${postfix}`,
                         "--rm",
                         "alpine/curl",
                         "-f",
-                        "k8sproxy-local:8001/version",
+                        `k8sproxy${postfix}:8001/version`,
                     ],
                     { verbose: options.verbose },
                 );
@@ -305,7 +344,8 @@ export function setupKernelCommand(program: any) {
                     kubeconfigPath,
                     options.verbose,
                     clusterName,
-                    path.join(planqtnDir, "k8s", "job-monitor-rbac.yaml"),
+                    path.join(cfgDir, "k8s", "job-monitor-rbac.yaml"),
+                    postfix,
                 );
                 console.log("PlanqTN kernel setup completed successfully!");
             } catch (err) {
@@ -324,11 +364,13 @@ export function setupKernelCommand(program: any) {
         .action(async (options: any) => {
             try {
                 // Check if Supabase is running
-                const supabaseDir = path.join(
-                    os.homedir(),
-                    ".planqtn",
-                    "supabase",
-                );
+                const postfix = isDev ? "-dev" : "-local";
+                const planqtnDir = path.join(os.homedir(), ".planqtn");
+
+                const supabaseDir = isDev
+                    ? path.join(getCfgDefinitionsDir(), "supabase")
+                    : path.join(planqtnDir, "supabase");
+
                 let supabaseRunning = false;
                 try {
                     const supabaseStatus = await runCommand("npx", [
@@ -363,7 +405,7 @@ export function setupKernelCommand(program: any) {
                 // Stop k8sproxy if it exists
                 console.log("Stopping k8sproxy...");
                 try {
-                    await runCommand("docker", ["stop", "k8sproxy-local"], {
+                    await runCommand("docker", ["stop", `k8sproxy${postfix}`], {
                         verbose: options.verbose,
                     });
                 } catch (err) {
@@ -377,7 +419,7 @@ export function setupKernelCommand(program: any) {
                     await runCommand(k3dPath, [
                         "cluster",
                         "stop",
-                        "planqtn-local",
+                        `planqtn${postfix}`,
                     ], {
                         verbose: options.verbose,
                     });
@@ -402,6 +444,13 @@ export function setupKernelCommand(program: any) {
         .action(async (options: any) => {
             try {
                 // First stop everything
+
+                const postfix = isDev ? "-dev" : "-local";
+                const planqtnDir = path.join(os.homedir(), ".planqtn");
+
+                const supabaseDir = isDev
+                    ? path.join(getCfgDefinitionsDir(), "supabase")
+                    : path.join(planqtnDir, "supabase");
 
                 console.log("Stopping all components...");
 
@@ -446,7 +495,7 @@ export function setupKernelCommand(program: any) {
                 // Stop k8sproxy if it exists
                 console.log("Stopping k8sproxy...");
                 try {
-                    await runCommand("docker", ["stop", "k8sproxy-local"], {
+                    await runCommand("docker", ["stop", `k8sproxy${postfix}`], {
                         verbose: options.verbose,
                     });
                 } catch (err) {
@@ -460,7 +509,7 @@ export function setupKernelCommand(program: any) {
                     await runCommand(k3dPath, [
                         "cluster",
                         "delete",
-                        "planqtn-local",
+                        `planqtn${postfix}`,
                     ], {
                         verbose: options.verbose,
                     });
@@ -474,7 +523,7 @@ export function setupKernelCommand(program: any) {
                     "-a",
                     "-q",
                     "--filter",
-                    "label=com.supabase.cli.project=planqtn-local",
+                    `label=com.supabase.cli.project=planqtn${postfix}`,
                 ], {
                     verbose: options.verbose,
                     returnOutput: true,
@@ -504,7 +553,7 @@ export function setupKernelCommand(program: any) {
                                 "volume",
                                 "ls",
                                 "--filter",
-                                "label=com.supabase.cli.project=planqtn-local",
+                                `label=com.supabase.cli.project=planqtn${postfix}`,
                                 "-q",
                             ], {
                                 shell: true,
@@ -548,14 +597,67 @@ export function setupKernelCommand(program: any) {
                     console.log("volume error:", err);
                 }
 
-                // Remove .planqtn directory
-                console.log("Removing .planqtn directory...");
-                const planqtnDir = path.join(os.homedir(), ".planqtn");
-                if (fs.existsSync(planqtnDir)) {
-                    fs.rmSync(planqtnDir, { recursive: true, force: true });
+                // remove network
+                console.log("Removing network...");
+                try {
+                    await runCommand("docker", [
+                        "network",
+                        "rm",
+                        `supabase_network_planqtn${postfix}`,
+                    ], {
+                        verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if network doesn't exist
                 }
 
                 console.log("PlanqTN kernel removed successfully!");
+            } catch (err) {
+                console.error(
+                    "Error:",
+                    err instanceof Error ? err.message : String(err),
+                );
+                process.exit(1);
+            }
+        });
+
+    kernelCommand
+        .command("monitor")
+        .description("Monitor the local PlanqTN kernel")
+        .option("--verbose", "Show detailed output")
+        .action(async (options: any) => {
+            try {
+                const postfix = isDev ? "-dev" : "-local";
+                const planqtnDir = path.join(os.homedir(), ".planqtn");
+                const kubeconfigPath = path.join(
+                    planqtnDir,
+                    `kubeconfig${postfix}.yaml`,
+                );
+                const clusterName = `planqtn${postfix}`;
+
+                // Verify kubeconfig exists
+                if (!fs.existsSync(kubeconfigPath)) {
+                    throw new Error(
+                        `Kubeconfig not found at ${kubeconfigPath}. Please run 'htn kernel start' first.`,
+                    );
+                }
+
+                console.log("Starting k9s monitor...");
+                await runCommand("docker", [
+                    "run",
+                    "--rm",
+                    "--network",
+                    `supabase_network_planqtn${postfix}`,
+                    "-it",
+                    "-v",
+                    `${kubeconfigPath}:/root/.kube/config`,
+                    "quay.io/derailed/k9s",
+                    "--context",
+                    `${clusterName}-in-cluster`,
+                ], {
+                    verbose: options.verbose,
+                    tty: true,
+                });
             } catch (err) {
                 console.error(
                     "Error:",
@@ -573,6 +675,7 @@ async function kubectl(
     kubeconfigPath: string,
     verbose: boolean,
     clusterName: string,
+    postfix: string,
 ) {
     const uid = await new Promise<string>((resolve, reject) => {
         const proc = spawn("id", ["-u"], { shell: true });
@@ -594,7 +697,7 @@ async function kubectl(
         [
             "run",
             "--network",
-            "supabase_network_planqtn-local",
+            `supabase_network_planqtn${postfix}`,
             "--rm",
             "-d",
             "--name",
@@ -618,9 +721,10 @@ async function createRbac(
     verbose: boolean,
     clusterName: string,
     rbacPath: string,
+    postfix: string,
 ): Promise<void> {
     return await kubectl(
-        "create-rbac-local",
+        `create-rbac${postfix}`,
         [
             "-v",
             `${rbacPath}:/.kube/rbac.yaml`,
@@ -629,6 +733,7 @@ async function createRbac(
         kubeconfigPath,
         verbose,
         clusterName,
+        postfix,
     );
 }
 
@@ -636,9 +741,10 @@ async function createProxy(
     kubeconfigPath: string,
     verbose: boolean,
     clusterName: string,
+    postfix: string,
 ): Promise<void> {
     return await kubectl(
-        "k8sproxy-local",
+        `k8sproxy${postfix}`,
         [],
         [
             "proxy",
@@ -649,6 +755,7 @@ async function createProxy(
         kubeconfigPath,
         verbose,
         clusterName,
+        postfix,
     );
 }
 
@@ -701,7 +808,7 @@ async function createKubeconfig(
         name: inClusterName,
         cluster: {
             ...originalCluster.cluster,
-            server: "https://k3d-planqtn-local-serverlb:6443",
+            server: `https://k3d-${clusterName}-serverlb:6443`,
         },
     };
 

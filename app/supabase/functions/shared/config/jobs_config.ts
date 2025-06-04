@@ -1,22 +1,22 @@
 export interface JobConfig {
     image: string;
     timeout: number; // in seconds
-    memoryLimit: string;
-    cpuLimit: string;
+    memoryLimitDefault: string;
+    cpuLimitDefault: string;
 }
 
 export const JOBS_CONFIG: Record<string, JobConfig> = {
     weightenumerator: {
         image: "planqtn/planqtn_jobs:fec6fe6",
         timeout: 3600, // 1 hour
-        memoryLimit: "4Gi",
-        cpuLimit: "2",
+        memoryLimitDefault: "4Gi",
+        cpuLimitDefault: "1",
     },
 
     "job-monitor": {
         image: "planqtn/planqtn_jobs:fec6fe6",
         timeout: 3600, // 1 hour
-        memoryLimit: "1Gi",
-        cpuLimit: "1",
+        memoryLimitDefault: "1Gi",
+        cpuLimitDefault: "1",
     },
 };
