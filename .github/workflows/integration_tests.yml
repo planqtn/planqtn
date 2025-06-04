@@ -32,12 +32,18 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
+      - name: build jobs image
+        run: |
+          hack/htn images job --build
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
       - name: Start planqtn
         run: |
           htn kernel start --verbose
+      - name: load jobs image
+        run: |
+          hack/htn images job --load-no-restart --k3d-cluster local
       - uses: dorny/paths-filter@v3
         id: changes
         with:

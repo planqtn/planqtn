@@ -16,9 +16,13 @@ async function getGitTag(): Promise<string> {
     return status.trim() ? `${commitHash.trim()}-dirty` : commitHash.trim();
 }
 
-async function checkK3dRunning(): Promise<boolean> {
+async function checkK3dRunning(cluster: string): Promise<boolean> {
     try {
-        await runCommand("~/.planqtn/k3d", ["cluster", "get", "planqtn-dev"], {
+        await runCommand("~/.planqtn/k3d", [
+            "cluster",
+            "get",
+            `planqtn-${cluster}`,
+        ], {
             returnOutput: true,
         });
         return true;
@@ -67,13 +71,13 @@ async function updateSupabaseEnvFile(tag: string): Promise<void> {
     fs.writeFileSync(envPath, envContent);
 }
 
-async function restartSupabaseContainer(): Promise<void> {
-    // await runCommand("docker", ["stop", "supabase_edge_runtime_planqtn-dev"]);
-    // await runCommand("docker", ["start", "supabase_edge_runtime_planqtn-dev"]);
+async function restartSupabase(): Promise<void> {
+    console.log("Restarting Supabase...");
 
-    await runCommand("npx", ["supabase", "functions", "serve"], {
-        is_background: true,
-    });
+    await runCommand("npx", ["supabase", "stop"]);
+    await runCommand("npx", ["supabase", "start"]);
+
+    console.log("Restarted Supabase.");
 }
 
 export function setupImagesCommand(program: Command): void {
@@ -82,6 +86,15 @@ export function setupImagesCommand(program: Command): void {
         .argument("<image>", "Image to manage (job, api, ui)")
         .option("--build", "Build the image")
         .option("--load", "Load the image into k3d and update Supabase")
+        .option(
+            "--load-no-restart",
+            "Load the image into k3d and update Supabase without restarting Supabase",
+        )
+        .option(
+            "--k3d-cluster",
+            "K3d cluster to load the image into (dev or local)",
+            "dev",
+        )
         .option("--push", "Push the image to registry")
         .option("--deploy-monitor", "Deploy to Cloud Run monitor service")
         .option("--deploy-job", "Deploy to Cloud Run jobs service")
@@ -92,6 +105,15 @@ export function setupImagesCommand(program: Command): void {
             // Check if we're in dev mode
             if (!isDev) {
                 throw new Error("Images command is only supported in dev mode");
+            }
+
+            if (
+                options.k3dCluster &&
+                !["dev", "local"].includes(options.k3dCluster)
+            ) {
+                throw new Error(
+                    "--k3d-cluster must be either 'dev' or 'local'",
+                );
             }
 
             const tag = await getGitTag();
@@ -136,7 +158,7 @@ export function setupImagesCommand(program: Command): void {
                     );
                 }
 
-                const k3dRunning = await checkK3dRunning();
+                const k3dRunning = await checkK3dRunning(options.k3dCluster);
                 const supabaseRunning = await checkSupabaseRunning();
 
                 if (!k3dRunning || !supabaseRunning) {
@@ -151,15 +173,15 @@ export function setupImagesCommand(program: Command): void {
                     "import",
                     imageName,
                     "-c",
-                    "planqtn-dev",
+                    `planqtn-${options.k3dCluster}`,
                 ]);
 
                 console.log("Updating Supabase environment...");
                 await updateSupabaseEnvFile(tag);
 
-                console.log("Restarting Supabase edge runtime container...");
-                await restartSupabaseContainer();
-                console.log("Supabase edge runtime container restarted");
+                if (!options.loadNoRestart) {
+                    await restartSupabase();
+                }
             }
 
             if (options.push) {
