@@ -1,0 +1,7 @@
+#!/bin/bash
+
+pushd app/planqtn_cli 
+
+npm run dev $@
+
+popd 
