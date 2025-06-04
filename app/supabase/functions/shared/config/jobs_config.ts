@@ -5,16 +5,21 @@ export interface JobConfig {
     cpuLimitDefault: string;
 }
 
+const jobsImage = Deno.env.get("JOBS_IMAGE") ||
+    (() => {
+        throw new Error("JOBS_IMAGE is not set");
+    })();
+
 export const JOBS_CONFIG: Record<string, JobConfig> = {
     weightenumerator: {
-        image: "planqtn/planqtn_jobs:fec6fe6",
+        image: jobsImage,
         timeout: 3600, // 1 hour
         memoryLimitDefault: "4Gi",
         cpuLimitDefault: "1",
     },
 
     "job-monitor": {
-        image: "planqtn/planqtn_jobs:fec6fe6",
+        image: jobsImage,
         timeout: 3600, // 1 hour
         memoryLimitDefault: "1Gi",
         cpuLimitDefault: "1",

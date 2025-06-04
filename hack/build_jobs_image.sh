@@ -56,21 +56,19 @@ fi
 echo "Building and tagging image with commit: ${TAG}"
 
 docker build -t planqtn/planqtn_jobs:${TAG} --file=app/planqtn_jobs/Dockerfile .
-docker tag planqtn/planqtn_jobs:${TAG} planqtn/planqtn_jobs:latest
+
 
 echo "Image built successfully"
 
 if [ "$PUSH" = true ]; then
     echo "Pushing image to registry..."
     docker push planqtn/planqtn_jobs:${TAG}    
-    docker push planqtn/planqtn_jobs:latest
     echo "Image pushed successfully"
 fi
 
 if [ "$K3D_LOAD" = true ]; then
     echo "Loading image planqtn/planqtn_jobs:${TAG} into k3d cluster..."
     k3d image import planqtn/planqtn_jobs:${TAG} -c plaqntn
-    k3d image import planqtn/planqtn_jobs:latest -c plaqntn
     echo "Image loaded into k3d cluster successfully"
 fi
 

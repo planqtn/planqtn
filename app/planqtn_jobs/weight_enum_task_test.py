@@ -82,11 +82,15 @@ YI: {3:2}""",
     assert res.time > 0
 
 
+def isDev():
+    return os.environ.get("KERNEL_ENV") != "local"
+
+
 @pytest.fixture
 def supabase_setup():
     """Set up Supabase test environment and create test user."""
     # Get local Supabase status
-    isDev = os.environ.get("KERNEL_ENV") != "local"
+
     workdir = (
         f"{Path(__file__).parent.parent}" if isDev else os.path.expanduser("~/.planqtn")
     )
@@ -406,43 +410,38 @@ async def test_main_with_task_store_and_realtime(
 
 
 @pytest.fixture
-def k8s_apis():
-    """Create Kubernetes API clients based on environment."""
-    # Determine postfix based on KERNEL_ENV
-    postfix = "-local" if os.environ.get("KERNEL_ENV") == "local" else "-dev"
-    kubeconfig_path = os.path.expanduser(f"~/.planqtn/kubeconfig{postfix}.yaml")
+def image_tag():
+    """Get the current git commit ID."""
 
-    with open(kubeconfig_path) as f:
-        kubeconfig = yaml.safe_load(f)
+    git_commit_id = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
 
-    client = kubernetes.config.new_client_from_config_dict(kubeconfig)
-    batch_api = kubernetes.client.BatchV1Api(client)
-    core_api = kubernetes.client.CoreV1Api(client)
-
-    return {"batch_api": batch_api, "core_api": core_api}
-
-
-def list_pods(k8s_apis):
-    pods = k8s_apis["core_api"].list_namespaced_pod(namespace="default")
-    for pod in pods.items:
-        print("========================")
-        print(pod.metadata.name)
-        print(pod.status)
-        print("========================")
-        print("pod logs:")
-        try:
-            pod_logs = k8s_apis["core_api"].read_namespaced_pod_log(
-                name=pod.metadata.name, namespace="default"
-            )
-            print(pod_logs)
-        except Exception as e:
-            print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
-        print("========================")
+    if (
+        subprocess.run(
+            ["git", "status", "-s"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        != ""
+    ):
+        return f"{git_commit_id}-dirty"
+    else:
+        return git_commit_id
 
 
 @pytest.mark.integration
 def test_e2e_local_through_function_call_and_k3d(
-    temp_input_file, temp_output_file, supabase_setup, monkeypatch, k8s_apis
+    temp_input_file,
+    temp_output_file,
+    supabase_setup,
+    monkeypatch,
+    k8s_apis,
+    image_tag,
 ):
     # Create Supabase client with test user token
     supabase: Client = create_client(
@@ -532,6 +531,15 @@ def test_e2e_local_through_function_call_and_k3d(
             ):
                 assert pod.spec.containers[0].resources.limits["cpu"] == "1"
                 assert pod.spec.containers[0].resources.limits["memory"] == "1Gi"
+                assert (
+                    pod.spec.containers[0].image == f"planqtn/planqtn_jobs:{image_tag}"
+                ), (
+                    "Commit ID mismatch on image: "
+                    + pod.spec.containers[0].image
+                    + " != "
+                    + f"planqtn/planqtn_jobs:{image_tag}"
+                    + (" run `htn kernel build-and-reload-images`" if isDev() else "")
+                )
                 found = True
                 break
         if not found:
@@ -540,3 +548,38 @@ def test_e2e_local_through_function_call_and_k3d(
 
     finally:
         supabase.table("tasks").delete().eq("uuid", task_uuid).execute()
+
+
+@pytest.fixture
+def k8s_apis():
+    """Create Kubernetes API clients based on environment."""
+    # Determine postfix based on KERNEL_ENV
+    postfix = "-local" if os.environ.get("KERNEL_ENV") == "local" else "-dev"
+    kubeconfig_path = os.path.expanduser(f"~/.planqtn/kubeconfig{postfix}.yaml")
+
+    with open(kubeconfig_path) as f:
+        kubeconfig = yaml.safe_load(f)
+
+    client = kubernetes.config.new_client_from_config_dict(kubeconfig)
+    batch_api = kubernetes.client.BatchV1Api(client)
+    core_api = kubernetes.client.CoreV1Api(client)
+
+    return {"batch_api": batch_api, "core_api": core_api}
+
+
+def list_pods(k8s_apis):
+    pods = k8s_apis["core_api"].list_namespaced_pod(namespace="default")
+    for pod in pods.items:
+        print("========================")
+        print(pod.metadata.name)
+        print(pod.status)
+        print("========================")
+        print("pod logs:")
+        try:
+            pod_logs = k8s_apis["core_api"].read_namespaced_pod_log(
+                name=pod.metadata.name, namespace="default"
+            )
+            print(pod_logs)
+        except Exception as e:
+            print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
+        print("========================")

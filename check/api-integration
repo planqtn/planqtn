@@ -9,8 +9,6 @@ if [ ! -f "app/planqtn_api/Dockerfile" ]; then
 fi
 
 
-hack/build_api_server.sh
-
 export PYTHONPATH=`pwd`:`pwd`/app
 
 set -e
