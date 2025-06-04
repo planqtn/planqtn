@@ -64,7 +64,7 @@ jobs:
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
           pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
-          check/jobs-integration -k e2e
+          check/jobs-integration
 
       - name: Run api integration tests
         env:
@@ -74,6 +74,8 @@ jobs:
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
           check/api-integration
 
-      - name: stop supabase
+      - name: cleanup env
         run: |
-          supabase stop
+          htn kernel stop
+          htn kernel remove 
+          htn kernel purge
