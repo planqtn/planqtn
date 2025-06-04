@@ -10,8 +10,8 @@ fi
 
 export PYTHONPATH=`pwd`:`pwd`/app
 
+hack/build_jobs_image.sh
+
 set -e
 
-cd app
-
-pytest --integration planqtn_jobs $@
+pytest --integration app/planqtn_jobs $@

@@ -1,6 +1,8 @@
 from typing import Any, Dict, List
 
+from galois import GF2
 from pydantic import BaseModel
+from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from qlego.tensor_network import TensorNetwork
 
 
@@ -47,6 +49,26 @@ class TensorNetworkResponse(BaseModel):
     legos: List[Dict[str, Any]]
     connections: List[Dict[str, Any]]
     message: str = "Successfully created Tanner network"
+
+    def to_tensor_network(self):
+
+        nodes = [
+            StabilizerCodeTensorEnumerator(
+                idx=lego["instanceId"], h=GF2(lego["parity_check_matrix"])
+            )
+            for lego in self.legos
+        ]
+
+        tn = TensorNetwork(nodes)
+        for conn in self.connections:
+            tn.self_trace(
+                conn["from"]["legoId"],
+                conn["to"]["legoId"],
+                [conn["from"]["legIndex"]],
+                [conn["to"]["legIndex"]],
+            )
+
+        return tn
 
     @classmethod
     def from_tensor_network(cls, tn: TensorNetwork, start_node_index: int = 0):

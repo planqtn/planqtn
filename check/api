@@ -10,13 +10,10 @@ fi
 
 export PYTHONPATH=`pwd`:`pwd`/app
 
-cd app
+
 set -e
 set -x
 
-black --check planqtn_types
-black --check planqtn_api
-pytest planqtn_api
-
-cd ..
-hack/build_api_server.sh
+black --check app/planqtn_types
+black --check app/planqtn_api
+pytest app/planqtn_api
