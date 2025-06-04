@@ -7,6 +7,7 @@ interface RunCommandOptions {
     env?: NodeJS.ProcessEnv;
     returnOutput?: boolean;
     tty?: boolean;
+    is_background?: boolean;
 }
 
 export async function runCommand(
@@ -38,7 +39,14 @@ export async function runCommand(
                 options.verbose && !options.returnOutput ? "inherit" : "pipe",
                 options.verbose && !options.returnOutput ? "inherit" : "pipe",
             ],
+            detached: options.is_background,
         });
+
+        if (options.is_background) {
+            proc.unref();
+            resolve();
+            return;
+        }
 
         let output = "";
         let errorOutput = "";

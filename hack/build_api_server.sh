@@ -28,17 +28,7 @@ for arg in "$@"; do
             ;;
     esac
 done
-
-# Get the git commit hash
-COMMIT_HASH=$(git rev-parse --short HEAD)
-
-# Check if there are uncommitted changes
-if [[ -n $(git status -s) ]]; then
-    TAG="${COMMIT_HASH}-dirty"
-else
-    TAG="${COMMIT_HASH}"
-fi
-
+TAG=$(hack/image_tag)
 echo "Building and tagging image with commit: ${TAG}"
 
 docker build -t planqtn/planqtn_api:${TAG} --file=app/planqtn_api/Dockerfile .

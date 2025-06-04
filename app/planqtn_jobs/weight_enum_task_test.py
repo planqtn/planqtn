@@ -411,27 +411,14 @@ async def test_main_with_task_store_and_realtime(
 
 @pytest.fixture
 def image_tag():
-    """Get the current git commit ID."""
-
-    git_commit_id = subprocess.run(
-        ["git", "rev-parse", "--short", "HEAD"],
+    image_tag = subprocess.run(
+        ["hack/image_tag"],
         capture_output=True,
         text=True,
         check=True,
     ).stdout.strip()
 
-    if (
-        subprocess.run(
-            ["git", "status", "-s"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-        != ""
-    ):
-        return f"{git_commit_id}-dirty"
-    else:
-        return git_commit_id
+    return image_tag
 
 
 @pytest.mark.integration
@@ -538,7 +525,7 @@ def test_e2e_local_through_function_call_and_k3d(
                     + pod.spec.containers[0].image
                     + " != "
                     + f"planqtn/planqtn_jobs:{image_tag}"
-                    + (" run `htn kernel build-and-reload-images`" if isDev() else "")
+                    + (" run `hack/htn images job --build --load`" if isDev() else "")
                 )
                 found = True
                 break

@@ -68,8 +68,12 @@ async function updateSupabaseEnvFile(tag: string): Promise<void> {
 }
 
 async function restartSupabaseContainer(): Promise<void> {
-    await runCommand("docker", ["stop", "supabase_edge_runtime_planqtn-dev"]);
-    await runCommand("docker", ["start", "supabase_edge_runtime_planqtn-dev"]);
+    // await runCommand("docker", ["stop", "supabase_edge_runtime_planqtn-dev"]);
+    // await runCommand("docker", ["start", "supabase_edge_runtime_planqtn-dev"]);
+
+    await runCommand("npx", ["supabase", "functions", "serve"], {
+        is_background: true,
+    });
 }
 
 export function setupImagesCommand(program: Command): void {
@@ -197,5 +201,6 @@ export function setupImagesCommand(program: Command): void {
                     imageName,
                 ]);
             }
+            process.exit(0);
         });
 }
