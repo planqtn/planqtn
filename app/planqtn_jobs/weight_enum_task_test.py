@@ -92,7 +92,9 @@ def supabase_setup():
     # Get local Supabase status
 
     workdir = (
-        f"{Path(__file__).parent.parent}" if isDev else os.path.expanduser("~/.planqtn")
+        f"{Path(__file__).parent.parent}"
+        if isDev()
+        else os.path.expanduser("~/.planqtn")
     )
     print("workdir:", workdir)
     result = subprocess.run(

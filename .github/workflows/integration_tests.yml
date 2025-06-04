@@ -35,15 +35,12 @@ jobs:
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
-      - name: build jobs image
-        run: |
-          hack/htn images job --build
       - name: Start planqtn
         run: |
           htn kernel start --verbose
-      - name: load jobs image
+      - name: build and load jobs image
         run: |
-          hack/htn images job --load-no-restart --k3d-cluster local
+          hack/htn images job --build --load-no-restart --k3d-cluster local
       - uses: dorny/paths-filter@v3
         id: changes
         with:

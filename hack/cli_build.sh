@@ -18,6 +18,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+TAG=$(hack/image_tag)
+
+echo "Building planqtn cli with tag: $TAG"
+
+echo "JOBS_IMAGE=planqtn/planqtn_jobs:$TAG" >> app/supabase/functions/.env.local
+
 pushd app/planqtn_cli
 npm install
 npm run build 
@@ -25,3 +31,5 @@ if [ "$INSTALL" = true ]; then
     npm install -g .
 fi
 popd
+
+git checkout app/supabase/functions/.env.local

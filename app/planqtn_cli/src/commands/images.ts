@@ -74,7 +74,11 @@ async function updateSupabaseEnvFile(tag: string): Promise<void> {
 async function restartSupabase(): Promise<void> {
     console.log("Restarting Supabase...");
 
-    await runCommand("npx", ["supabase", "stop"]);
+    const supabaseRunning = await checkSupabaseRunning();
+    if (supabaseRunning) {
+        await runCommand("npx", ["supabase", "stop"]);
+    }
+
     await runCommand("npx", ["supabase", "start"]);
 
     console.log("Restarted Supabase.");
@@ -91,7 +95,7 @@ export function setupImagesCommand(program: Command): void {
             "Load the image into k3d and update Supabase without restarting Supabase",
         )
         .option(
-            "--k3d-cluster",
+            "--k3d-cluster <cluster>",
             "K3d cluster to load the image into (dev or local)",
             "dev",
         )
@@ -151,7 +155,7 @@ export function setupImagesCommand(program: Command): void {
                 ]);
             }
 
-            if (options.load) {
+            if (options.load || options.loadNoRestart) {
                 if (image !== "job") {
                     throw new Error(
                         "--load option is only supported for job image",
@@ -159,11 +163,10 @@ export function setupImagesCommand(program: Command): void {
                 }
 
                 const k3dRunning = await checkK3dRunning(options.k3dCluster);
-                const supabaseRunning = await checkSupabaseRunning();
 
-                if (!k3dRunning || !supabaseRunning) {
+                if (!k3dRunning) {
                     throw new Error(
-                        "Both k3d and Supabase must be running. Please run 'htn kernel start' first.",
+                        "k3d must be running for loading the image!",
                     );
                 }
 
