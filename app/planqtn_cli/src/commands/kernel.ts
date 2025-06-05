@@ -36,9 +36,11 @@ export function setupKernelCommand(program: any) {
                     // Step 2: Setup directories
                     const k8sDir = path.join(planqtnDir, "k8s");
                     const migrationsDir = path.join(planqtnDir, "migrations");
+                    const apiDir = path.join(planqtnDir, "planqtn_api");
                     ensureEmptyDir(supabaseDir);
                     ensureEmptyDir(k8sDir);
                     ensureEmptyDir(migrationsDir);
+                    ensureEmptyDir(apiDir);
 
                     // Step 3: Copy configuration files
                     console.log("Setting up configuration files...");
@@ -49,6 +51,24 @@ export function setupKernelCommand(program: any) {
                             "config.toml.local",
                         ),
                         path.join(supabaseDir, "config.toml"),
+                    );
+
+                    fs.copyFileSync(
+                        path.join(
+                            getCfgDefinitionsDir(),
+                            "planqtn_api",
+                            "compose.yml",
+                        ),
+                        path.join(apiDir, "compose.yml"),
+                    );
+
+                    fs.copyFileSync(
+                        path.join(
+                            getCfgDefinitionsDir(),
+                            "planqtn_api",
+                            ".env.local",
+                        ),
+                        path.join(apiDir, ".env"),
                     );
 
                     // Stop edge runtime before recreating functions directory
@@ -347,6 +367,28 @@ export function setupKernelCommand(program: any) {
                     path.join(cfgDir, "k8s", "job-monitor-rbac.yaml"),
                     postfix,
                 );
+                // Step 16: Setup API service
+                console.log("Setting up API service...");
+                const apiComposePath = path.join(
+                    cfgDir,
+                    "planqtn_api",
+                    "compose.yml",
+                );
+                await runCommand("docker", [
+                    "compose",
+                    "--env-file",
+                    path.join(cfgDir, "planqtn_api", ".env"),
+                    "-f",
+                    apiComposePath,
+                    "restart",
+                ], {
+                    verbose: options.verbose,
+                    env: {
+                        ...process.env,
+                        POSTFIX: postfix,
+                    },
+                });
+
                 console.log("PlanqTN kernel setup completed successfully!");
             } catch (err) {
                 console.error(
@@ -366,6 +408,10 @@ export function setupKernelCommand(program: any) {
                 // Check if Supabase is running
                 const postfix = isDev ? "-dev" : "-local";
                 const planqtnDir = path.join(os.homedir(), ".planqtn");
+
+                const cfgDir = isDev
+                    ? getCfgDefinitionsDir()
+                    : path.join(planqtnDir);
 
                 const supabaseDir = isDev
                     ? path.join(getCfgDefinitionsDir(), "supabase")
@@ -427,6 +473,31 @@ export function setupKernelCommand(program: any) {
                     // Ignore error if cluster doesn't exist
                 }
 
+                console.log("Stopping PlanqTN API...");
+                try {
+                    const apiComposePath = path.join(
+                        cfgDir,
+                        "planqtn_api",
+                        "compose.yml",
+                    );
+                    await runCommand("docker", [
+                        "compose",
+                        "--env-file",
+                        path.join(cfgDir, "planqtn_api", ".env"),
+                        "-f",
+                        apiComposePath,
+                        "down",
+                    ], {
+                        verbose: options.verbose,
+                        env: {
+                            ...process.env,
+                            POSTFIX: postfix,
+                        },
+                    });
+                } catch (err) {
+                    // Ignore error if container doesn't exist
+                }
+
                 console.log("PlanqTN kernel stopped successfully!");
             } catch (err) {
                 console.error(
@@ -447,6 +518,10 @@ export function setupKernelCommand(program: any) {
 
                 const postfix = isDev ? "-dev" : "-local";
                 const planqtnDir = path.join(os.homedir(), ".planqtn");
+
+                const cfgDir = isDev
+                    ? getCfgDefinitionsDir()
+                    : path.join(planqtnDir);
 
                 const supabaseDir = isDev
                     ? path.join(getCfgDefinitionsDir(), "supabase")
@@ -497,6 +572,31 @@ export function setupKernelCommand(program: any) {
                 try {
                     await runCommand("docker", ["stop", `k8sproxy${postfix}`], {
                         verbose: options.verbose,
+                    });
+                } catch (err) {
+                    // Ignore error if container doesn't exist
+                }
+
+                console.log("Stopping PlanqTN API...");
+                try {
+                    const apiComposePath = path.join(
+                        cfgDir,
+                        "planqtn_api",
+                        "compose.yml",
+                    );
+                    await runCommand("docker", [
+                        "compose",
+                        "--env-file",
+                        path.join(cfgDir, "planqtn_api", ".env"),
+                        "-f",
+                        apiComposePath,
+                        "down",
+                    ], {
+                        verbose: options.verbose,
+                        env: {
+                            ...process.env,
+                            POSTFIX: postfix,
+                        },
                     });
                 } catch (err) {
                     // Ignore error if container doesn't exist

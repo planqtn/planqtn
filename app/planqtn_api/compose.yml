@@ -1,0 +1,15 @@
+services:
+  planqtn-api:
+    image: ${API_IMAGE:-planqtn/planqtn-api:latest}
+    container_name: planqtn-api${POSTFIX:-}
+    networks:
+      - supabase_network_planqtn${POSTFIX:-}
+    environment:
+      - PORT=5005
+    restart: unless-stopped
+
+networks:
+  supabase_network_planqtn-dev:
+    external: true
+  supabase_network_planqtn-local:
+    external: true

@@ -3,6 +3,12 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
 
+const URL_CONFIG = {
+  MSP: "mspnetwork",
+  CSS_TANNER: "csstannernetwork",
+  TANNER: "tannernetwork",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -27,7 +33,14 @@ Deno.serve(async (req) => {
   if (!backendUrl) {
     throw new Error("API_URL environment variable not set");
   }
-  const apiUrl = `${backendUrl}/mspnetwork`;
+
+  if (!URL_CONFIG[reqJson.networkType]) {
+    throw new Error(`Invalid network type: ${reqJson.networkType}`);
+  }
+
+  const apiUrl = `${backendUrl}/${URL_CONFIG[reqJson.networkType]}`;
+  console.log(`API URL: ${apiUrl}`);
+
   const headers = backendUrl.includes("run.app")
     ? await cloudRunHeaders(backendUrl)
     : {

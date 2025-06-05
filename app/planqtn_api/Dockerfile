@@ -19,4 +19,4 @@ WORKDIR /app
 ENV TERM=xterm
 ENV PYTHONPATH=/app
 
-CMD ["python", "/app/planqtn_api/planqtn_server.py"]
+ENTRYPOINT ["python", "/app/planqtn_api/planqtn_server.py"]

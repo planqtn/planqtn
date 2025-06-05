@@ -46,14 +46,11 @@ async function checkSupabaseRunning(): Promise<boolean> {
     }
 }
 
-async function updateSupabaseEnvFile(tag: string): Promise<void> {
-    const envPath = path.join(
-        process.cwd(),
-        "..",
-        "supabase",
-        "functions",
-        ".env",
-    );
+async function updateEnvFile(
+    envPath: string,
+    key: string,
+    value: string,
+): Promise<void> {
     let envContent = "";
 
     if (fs.existsSync(envPath)) {
@@ -61,9 +58,12 @@ async function updateSupabaseEnvFile(tag: string): Promise<void> {
     }
 
     // Replace or add JOBS_IMAGE line
-    const jobsImageLine = `JOBS_IMAGE=planqtn/planqtn_jobs:${tag}`;
-    if (envContent.includes("JOBS_IMAGE=")) {
-        envContent = envContent.replace(/JOBS_IMAGE=.*/g, jobsImageLine);
+    const jobsImageLine = `${key}=${value}`;
+    if (envContent.includes(`${key}=`)) {
+        envContent = envContent.replace(
+            new RegExp(`${key}=.*`, "g"),
+            jobsImageLine,
+        );
     } else {
         envContent += `\n${jobsImageLine}\n`;
     }
@@ -153,6 +153,18 @@ export function setupImagesCommand(program: Command): void {
                     dockerfile,
                     "../..",
                 ]);
+                if (image === "api") {
+                    await updateEnvFile(
+                        path.join(
+                            process.cwd(),
+                            "..",
+                            "planqtn_api",
+                            ".env",
+                        ),
+                        "API_IMAGE",
+                        imageName,
+                    );
+                }
             }
 
             if (options.load || options.loadNoRestart) {
@@ -180,7 +192,17 @@ export function setupImagesCommand(program: Command): void {
                 ]);
 
                 console.log("Updating Supabase environment...");
-                await updateSupabaseEnvFile(tag);
+                await updateEnvFile(
+                    path.join(
+                        process.cwd(),
+                        "..",
+                        "supabase",
+                        "functions",
+                        ".env",
+                    ),
+                    "JOBS_IMAGE",
+                    imageName,
+                );
 
                 if (!options.loadNoRestart) {
                     await restartSupabase();

@@ -1,7 +1,6 @@
 import datetime
 import json
 import os
-import tempfile
 import subprocess
 import uuid
 import threading
@@ -10,33 +9,19 @@ import asyncio
 from pathlib import Path
 import pytest
 import requests
-import kubernetes
-import yaml
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import create_client, Client
 from supabase.client import AsyncClient
+from planqtn_fixtures import *
 
 # Test data from weight_enum_task_test.py
 TEST_JSON = """{"legos":{"1":{"instanceId":"1","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]},"2":{"instanceId":"2","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]}},"connections":[{"from":{"legoId":"1","legIndex":1},"to":{"legoId":"2","legIndex":5}}],"truncate_length":3,"open_legs":[{"instanceId":"1","legIndex":3},{"instanceId":"1","legIndex":6}]}"""
 
 
 @pytest.fixture
-def temp_input_file():
-    """Create a temporary file with the test JSON data."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        f.write(TEST_JSON)
-    yield f.name
-    os.unlink(f.name)
-
-
-@pytest.fixture
-def temp_output_file():
-    """Create a temporary file for output."""
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        pass
-    yield f.name
-    os.unlink(f.name)
+def test_data() -> str:
+    return TEST_JSON
 
 
 def validate_weight_enumerator_result_output_file(output_file: str, expected=None):
@@ -80,84 +65,6 @@ YI: {3:2}""",
     assert res.stabilizer_polynomial == expected.stabilizer_polynomial
     assert res.normalizer_polynomial == expected.normalizer_polynomial
     assert res.time > 0
-
-
-def isDev():
-    return os.environ.get("KERNEL_ENV") != "local"
-
-
-@pytest.fixture
-def supabase_setup():
-    """Set up Supabase test environment and create test user."""
-    # Get local Supabase status
-
-    workdir = (
-        f"{Path(__file__).parent.parent}"
-        if isDev()
-        else os.path.expanduser("~/.planqtn")
-    )
-    print("workdir:", workdir)
-    result = subprocess.run(
-        [
-            "npx",
-            "supabase",
-            "--workdir",
-            workdir,
-            "--debug",
-            "status",
-            "-o",
-            "json",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    print(result.stdout, result.stderr)
-
-    status = json.loads(result.stdout)
-
-    # Get service role key from status
-    service_role_key = status["SERVICE_ROLE_KEY"]
-    anon_key = status["ANON_KEY"]
-    api_url = status["API_URL"]
-
-    # Create Supabase client with service role
-    service_client: Client = create_client(api_url, service_role_key)
-
-    # Create test user
-    test_user_email = f"integration_test_{uuid.uuid4()}@example.com"
-    test_user_password = "test_password123"
-
-    # Create user with service role
-    auth_response = service_client.auth.admin.create_user(
-        {
-            "email": test_user_email,
-            "password": test_user_password,
-            "email_confirm": True,
-        }
-    )
-
-    test_user_id = auth_response.user.id
-
-    # Get user token
-    auth_response = service_client.auth.sign_in_with_password(
-        {"email": test_user_email, "password": test_user_password}
-    )
-
-    test_user_token = auth_response.session.access_token
-
-    yield {
-        "api_url": api_url,
-        "service_role_key": service_role_key,
-        "anon_key": anon_key,
-        "test_user_id": test_user_id,
-        "test_user_token": test_user_token,
-        "service_client": service_client,
-    }
-
-    # Create Supabase client with service role again
-    service_client: Client = create_client(api_url, service_role_key)
-    # Cleanup: Delete test user using service role client
-    service_client.auth.admin.delete_user(test_user_id)
 
 
 def test_main_without_progress_bar(temp_input_file, temp_output_file, monkeypatch):
@@ -411,18 +318,6 @@ async def test_main_with_task_store_and_realtime(
             await asyncio.sleep(0.5)
 
 
-@pytest.fixture
-def image_tag():
-    image_tag = subprocess.run(
-        ["hack/image_tag"],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-
-    return image_tag
-
-
 @pytest.mark.integration
 def test_e2e_local_through_function_call_and_k3d(
     temp_input_file,
@@ -537,38 +432,3 @@ def test_e2e_local_through_function_call_and_k3d(
 
     finally:
         supabase.table("tasks").delete().eq("uuid", task_uuid).execute()
-
-
-@pytest.fixture
-def k8s_apis():
-    """Create Kubernetes API clients based on environment."""
-    # Determine postfix based on KERNEL_ENV
-    postfix = "-local" if os.environ.get("KERNEL_ENV") == "local" else "-dev"
-    kubeconfig_path = os.path.expanduser(f"~/.planqtn/kubeconfig{postfix}.yaml")
-
-    with open(kubeconfig_path) as f:
-        kubeconfig = yaml.safe_load(f)
-
-    client = kubernetes.config.new_client_from_config_dict(kubeconfig)
-    batch_api = kubernetes.client.BatchV1Api(client)
-    core_api = kubernetes.client.CoreV1Api(client)
-
-    return {"batch_api": batch_api, "core_api": core_api}
-
-
-def list_pods(k8s_apis):
-    pods = k8s_apis["core_api"].list_namespaced_pod(namespace="default")
-    for pod in pods.items:
-        print("========================")
-        print(pod.metadata.name)
-        print(pod.status)
-        print("========================")
-        print("pod logs:")
-        try:
-            pod_logs = k8s_apis["core_api"].read_namespaced_pod_log(
-                name=pod.metadata.name, namespace="default"
-            )
-            print(pod_logs)
-        except Exception as e:
-            print(f"Failed to get logs for pod {pod.metadata.name}: {e}")
-        print("========================")
