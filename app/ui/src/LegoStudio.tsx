@@ -2751,39 +2751,28 @@ const LegoStudioView: React.FC = () => {
                 </MenuItem>
               </MenuList>
             </Menu>
-            <Menu>
-              <MenuButton
-                as={Button}
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const params = new URLSearchParams(location.search);
-                  const title = params.get("title");
-                  if (title) {
-                    window.open(
-                      `/tasks?title=${encodeURIComponent(title)}`,
-                      "_blank",
-                    );
-                  } else {
-                    window.open("/tasks", "_blank");
-                  }
-                }}
-              >
-                Tasks
-              </MenuButton>
-            </Menu>
+
             <Menu>
               <MenuButton as={Button} variant="ghost" size="sm">
                 Tensor Networks
               </MenuButton>
               <MenuList>
-                <MenuItem onClick={() => setIsCssTannerDialogOpen(true)}>
+                <MenuItem
+                  onClick={() => setIsCssTannerDialogOpen(true)}
+                  isDisabled={!currentUser}
+                >
                   CSS Tanner Network
                 </MenuItem>
-                <MenuItem onClick={() => setIsTannerDialogOpen(true)}>
+                <MenuItem
+                  onClick={() => setIsTannerDialogOpen(true)}
+                  isDisabled={!currentUser}
+                >
                   Tanner Network
                 </MenuItem>
-                <MenuItem onClick={() => setIsMspDialogOpen(true)}>
+                <MenuItem
+                  onClick={() => setIsMspDialogOpen(true)}
+                  isDisabled={!currentUser}
+                >
                   Measurement State Prep Network
                 </MenuItem>
               </MenuList>
