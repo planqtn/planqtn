@@ -36,6 +36,9 @@ jobs:
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
+      - name: build and load api image
+        run: |
+          hack/htn images api --build
       - name: Start planqtn
         run: |
           htn kernel start --verbose
