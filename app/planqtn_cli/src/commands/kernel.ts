@@ -380,7 +380,8 @@ export function setupKernelCommand(program: any) {
                     path.join(cfgDir, "planqtn_api", ".env"),
                     "-f",
                     apiComposePath,
-                    "restart",
+                    "up",
+                    "-d",
                 ], {
                     verbose: options.verbose,
                     env: {
