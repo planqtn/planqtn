@@ -10,7 +10,7 @@ import {
   VStack,
   Text,
   useToast,
-  Divider,
+  // Divider,
   FormErrorMessage,
   Image,
   Modal,
@@ -122,46 +122,46 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const { error } = await userContextSupabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-        },
-      });
+  // const handleGoogleSignIn = async () => {
+  //   try {
+  //     const { error } = await userContextSupabase.auth.signInWithOAuth({
+  //       provider: "google",
+  //       options: {
+  //         redirectTo: window.location.origin,
+  //       },
+  //     });
 
-      if (error) throw error;
+  //     if (error) throw error;
 
-      toast({
-        title: "Redirecting to Google",
-        description: "Please complete the sign in with Google",
-        status: "info",
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-        toast({
-          title: "Error",
-          description: err.message,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        setError("An unknown error occurred");
-        toast({
-          title: "Error",
-          description: "An unknown error occurred",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    }
-  };
+  //     toast({
+  //       title: "Redirecting to Google",
+  //       description: "Please complete the sign in with Google",
+  //       status: "info",
+  //       duration: 3000,
+  //       isClosable: true,
+  //     });
+  //   } catch (err: unknown) {
+  //     if (err instanceof Error) {
+  //       setError(err.message);
+  //       toast({
+  //         title: "Error",
+  //         description: err.message,
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     } else {
+  //       setError("An unknown error occurred");
+  //       toast({
+  //         title: "Error",
+  //         description: "An unknown error occurred",
+  //         status: "error",
+  //         duration: 5000,
+  //         isClosable: true,
+  //       });
+  //     }
+  //   }
+  // };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
