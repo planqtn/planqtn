@@ -297,6 +297,12 @@ echo $GCP_PROJECT
 
 Ensure it's the right one.
 
+We will store this info for the supabase functions:
+
+```
+echo GCP_PROJECT=$GCP_PROJECT  >> ~/.planqtn/.config/supa.functions.env
+```
+
 Then, get the email of the default service account. If this is a new project you should only see a single email here in the form of `<project-number>-compute@developer.gserviceaccount.com`
 
 ```
@@ -432,19 +438,28 @@ gcloud iam service-accounts create dev-api-svc
 Get the full email address:
 
 ```
-gcloud iam service-accounts list --format="get(email)" | grep dev-api
+SVC_ACC=`gcloud iam service-accounts list --format="get(email)" | grep dev-api-svc`
 ```
 
-And add replace `[dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com]` with the full email address in this command to add the Cloud Run Invoker role:
+Ensure it's something like `dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com`:
 
 ```
-gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.invoker --member=serviceAccount:[dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com]
+echo $SVC_ACC
 ```
 
-Then download a JSON key for this (again, replace `[dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com]`):
+Then add the roles for invoking Cloud Run services, kick off jobs with overrides, view statuses and logs:
 
 ```
-gcloud iam service-accounts keys create ~/.planqtn/.config/svc.json --iam-account=[dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com]
+gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.invoker --member=serviceAccount:$SVC_ACC
+gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.jobsExecutorWithOverrides --member=serviceAccount:$SVC_ACC
+gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.viewer --member=serviceAccount:$SVC_ACC
+gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/logging.viewAccessor --member=serviceAccount:$SVC_ACC
+```
+
+Then download a JSON key for this account:
+
+```
+gcloud iam service-accounts keys create ~/.planqtn/.config/svc.json --iam-account=$SVC_ACC
 ```
 
 Finally let's add this key as a base64 encoded secret into the config file for functions:

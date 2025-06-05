@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     }
 
     // Delete the job in Cloud Run
-    const client = new CloudRunClient("planqtn-dev", "us-east1");
+    const client = new CloudRunClient();
     await client.cancelJob(task.execution_id);
 
     // Update the task status in the database

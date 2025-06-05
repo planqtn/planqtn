@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       console.log("Task UUID:", task.uuid);
       // console.log("Payload:", jobRequest.payload);
 
-      const client = new CloudRunClient("planqtn-dev", "us-east1");
+      const client = new CloudRunClient();
 
       const job_creation_response = await client.createJob(
         jobRequest.job_type,

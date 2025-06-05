@@ -136,13 +136,17 @@ export class CloudRunClient {
     private location: string;
     private googleAuth: GoogleAuth;
 
-    constructor(projectId: string, location: string) {
+    constructor() {
+        this.projectId = Deno.env.get("GCP_PROJECT");
+        if (!this.projectId) {
+            throw new Error("GCP_PROJECT is not set");
+        }
+        this.location = Deno.env.get("GCP_REGION") ?? "us-east1";
+
         console.log(
-            `CloudRunClient constructor called with projectId: '${projectId}', location: '${location}'`,
+            `CloudRunClient constructor called with projectId: '${this.projectId}', location: '${this.location}'`,
         );
         console.log("Deno env vars", Deno.env.toObject());
-        this.projectId = projectId;
-        this.location = location;
 
         const credentials = googleCredentials();
 
@@ -156,13 +160,6 @@ export class CloudRunClient {
                 "https://www.googleapis.com/auth/logging.read",
             ],
         });
-
-        console.log(
-            "Initializing CloudRunClient (REST API version) with projectId:",
-            projectId,
-            "location:",
-            location,
-        );
     }
 
     async createJob(

@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const client = new CloudRunClient("planqtn-dev", "us-east1");
+    const client = new CloudRunClient();
 
     const logs = await client.getJobLogs(task.execution_id);
     console.log(`Found logs: ${logs}`);
