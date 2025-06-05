@@ -42,7 +42,10 @@ Deno.serve(async (req) => {
   console.log(`API URL: ${apiUrl}`);
 
   const headers = backendUrl.includes("run.app")
-    ? await cloudRunHeaders(backendUrl)
+    ? {
+      ...(await cloudRunHeaders(backendUrl)),
+      "Content-Type": "application/json",
+    }
     : {
       "Content-Type": "application/json",
     };

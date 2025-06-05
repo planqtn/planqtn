@@ -2041,12 +2041,32 @@ const LegoStudioView: React.FC = () => {
     weightEnumeratorCache.clear();
   }, [droppedLegos.length]);
 
+  const requestTensorNetwork = async (
+    matrix: number[][],
+    networkType: string,
+  ) => {
+    const acessToken = await getAccessToken();
+    const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
+    const response = await axios.post(
+      getApiUrl("tensorNetwork"),
+      {
+        matrix,
+        networkType: networkType,
+        start_node_index: newInstanceId(droppedLegos),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+      },
+    );
+    return response;
+  };
+
   const handleCssTannerSubmit = async (matrix: number[][]) => {
     try {
-      const response = await axios.post(`/api/csstannernetwork`, {
-        matrix,
-        start_node_index: newInstanceId(droppedLegos),
-      });
+      const response = await requestTensorNetwork(matrix, "CSS_TANNER");
       const { legos, connections } = response.data;
       const newConnections = connections.map((conn: Connection) => {
         return new Connection(conn.from, conn.to);
@@ -2131,10 +2151,7 @@ const LegoStudioView: React.FC = () => {
 
   const handleTannerSubmit = async (matrix: number[][]) => {
     try {
-      const response = await axios.post(`/api/tannernetwork`, {
-        matrix,
-        start_node_index: newInstanceId(droppedLegos),
-      });
+      const response = await requestTensorNetwork(matrix, "TANNER");
       const { legos, connections } = response.data;
       const newConnections = connections.map((conn: Connection) => {
         return new Connection(conn.from, conn.to);
@@ -2213,22 +2230,7 @@ const LegoStudioView: React.FC = () => {
 
   const handleMspSubmit = async (matrix: number[][]) => {
     try {
-      const acessToken = await getAccessToken();
-      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
-      const response = await axios.post(
-        getApiUrl("tensorNetwork"),
-        {
-          matrix,
-          networkType: "MSP",
-          start_node_index: newInstanceId(droppedLegos),
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
-          },
-        },
-      );
+      const response = await requestTensorNetwork(matrix, "MSP");
       const { legos, connections } = response.data;
       const newMspConnections = connections.map((conn: Connection) => {
         return new Connection(conn.from, conn.to);
