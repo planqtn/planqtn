@@ -32,6 +32,7 @@ export async function runCommand(
 
         const proc = spawn(command, args, {
             shell: true,
+
             cwd: options.cwd,
             env: options.env,
             stdio: options.tty ? "inherit" : [

@@ -2,3 +2,4 @@ node_modules
 planqtn/.env
 ui/.env
 .env
+.config

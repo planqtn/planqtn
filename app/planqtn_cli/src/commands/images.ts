@@ -3,6 +3,8 @@ import { runCommand } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
 import { isDev } from "../config";
+import * as os from "os";
+import * as tty from "tty";
 
 async function getGitTag(): Promise<string> {
     const commitHash = await runCommand(
@@ -124,13 +126,26 @@ export function setupImagesCommand(program: Command): void {
             let imageName = "";
             let dockerfile = "";
 
+            const planqtnDir = path.join(os.homedir(), ".planqtn");
+            const dockerRepoConfigPath = path.join(
+                planqtnDir,
+                ".config",
+                "docker-repo",
+            );
+            let dockerRepo = "planqtn";
+            if (fs.existsSync(dockerRepoConfigPath)) {
+                dockerRepo = fs.readFileSync(dockerRepoConfigPath, "utf-8")
+                    .split("\n")[0].trim();
+                console.log("Using user defined docker repo:", dockerRepo);
+            }
+
             switch (image) {
                 case "job":
-                    imageName = `planqtn/planqtn_jobs:${tag}`;
+                    imageName = `${dockerRepo}/planqtn_jobs:${tag}`;
                     dockerfile = "../planqtn_jobs/Dockerfile";
                     break;
                 case "api":
-                    imageName = `planqtn/planqtn_api:${tag}`;
+                    imageName = `${dockerRepo}/planqtn_api:${tag}`;
                     dockerfile = "../planqtn_api/Dockerfile";
                     break;
                 case "ui":
@@ -141,19 +156,30 @@ export function setupImagesCommand(program: Command): void {
                     throw new Error(`Unknown image type: ${image}`);
             }
 
-            console.log("options", options);
-            console.log("image", image);
             if (options.build) {
                 console.log(`Building ${imageName}...`);
-                await runCommand("docker", [
+                const isTTY = process.stdout instanceof tty.WriteStream &&
+                    process.stdout.isTTY;
+                const buildArgs = [
                     "build",
                     "-t",
                     imageName,
                     "--file",
                     dockerfile,
-                    "../..",
-                ]);
+                ];
+
+                if (!isTTY) {
+                    buildArgs.push("--progress=plain");
+                }
+
+                buildArgs.push("../..");
+
+                await runCommand("docker", buildArgs, {
+                    verbose: true,
+                    tty: isTTY,
+                });
                 if (image === "api") {
+                    // the api image is used as part of deployment to the cloud run service and the local Docker implementation
                     await updateEnvFile(
                         path.join(
                             process.cwd(),
@@ -162,6 +188,19 @@ export function setupImagesCommand(program: Command): void {
                             ".env",
                         ),
                         "API_IMAGE",
+                        imageName,
+                    );
+                } else if (image === "job") {
+                    // the job image is used in the supabase functions, so we need to update the env file
+                    await updateEnvFile(
+                        path.join(
+                            process.cwd(),
+                            "..",
+                            "supabase",
+                            "functions",
+                            ".env",
+                        ),
+                        "JOBS_IMAGE",
                         imageName,
                     );
                 }
@@ -192,17 +231,6 @@ export function setupImagesCommand(program: Command): void {
                 ]);
 
                 console.log("Updating Supabase environment...");
-                await updateEnvFile(
-                    path.join(
-                        process.cwd(),
-                        "..",
-                        "supabase",
-                        "functions",
-                        ".env",
-                    ),
-                    "JOBS_IMAGE",
-                    imageName,
-                );
 
                 if (!options.loadNoRestart) {
                     await restartSupabase();
@@ -211,7 +239,20 @@ export function setupImagesCommand(program: Command): void {
 
             if (options.push) {
                 console.log(`Pushing ${imageName}...`);
-                await runCommand("docker", ["push", imageName]);
+                const isTTY = process.stdout instanceof tty.WriteStream &&
+                    process.stdout.isTTY;
+                const pushArgs = ["push"];
+
+                if (!isTTY) {
+                    pushArgs.push("--progress=plain");
+                }
+
+                pushArgs.push(imageName);
+
+                await runCommand("docker", pushArgs, {
+                    verbose: true,
+                    tty: isTTY,
+                });
             }
 
             if (options.deployMonitor) {
