@@ -340,15 +340,15 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                 Forgot password?
               </Button>
 
-              <Divider />
+              {/* <Divider /> */}
 
-              <Button
+              {/* <Button
                 onClick={handleGoogleSignIn}
                 colorScheme="red"
                 width="full"
               >
                 {isSignUp ? "Sign up with Google" : "Sign in with Google"}
-              </Button>
+              </Button> */}
             </VStack>
           )}
         </ModalBody>
