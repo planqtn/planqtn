@@ -6,7 +6,7 @@ on:
       - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
-      - "conftest.py"
+      - "app/conftest.py"
 
       - "app/supabase/**"
       - "app/migrations/**"

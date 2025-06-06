@@ -6,7 +6,6 @@ on:
       - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
-      - "conftest.py"
 
 jobs:
   qLEGO-Lib-Checks:
