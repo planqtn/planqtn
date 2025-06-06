@@ -972,9 +972,7 @@ export function setupCloudCommand(program: Command): void {
                     await variable.loadFromEnv(userVars);
 
                     console.log(
-                        `${variable.getEnvVarName()}=${
-                            variable.getValue() || "[not set]"
-                        }`,
+                        `${variable.getEnvVarName()}:\${{ secrets.${variable.getEnvVarName()} }}`,
                     );
                     console.log();
                 }

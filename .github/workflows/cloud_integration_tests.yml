@@ -37,6 +37,8 @@ jobs:
         run: |
           hack/cli_build.sh --install
       - name: build and load api image
+        env:
+
         run: |
           hack/htn cloud deploy
       - uses: dorny/paths-filter@v3
