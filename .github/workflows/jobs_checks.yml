@@ -1,6 +1,19 @@
 name: Job Execution Checks
 run-name: ${{ github.actor }} is checking the Job Execution 🚀
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/planqtn_jobs/**"
+      - "check/jobs**"
+      - ".github/workflows/jobs_checks.yml"
+      - "app/planqtn_types/**"
   push:
     paths:
       - "qlego/**"
