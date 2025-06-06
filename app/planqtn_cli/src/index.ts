@@ -5,6 +5,7 @@ import { setupKernelCommand } from "./commands/kernel";
 import { setupUiCommand } from "./commands/ui";
 import { setupPurgeCommand } from "./commands/purge";
 import { setupImagesCommand } from "./commands/images";
+import { setupCloudCommand } from "./commands/cloud";
 
 const program = new Command();
 
@@ -17,5 +18,6 @@ setupUiCommand(program);
 setupKernelCommand(program);
 setupPurgeCommand(program);
 setupImagesCommand(program);
+setupCloudCommand(program);
 
 program.parseAsync();

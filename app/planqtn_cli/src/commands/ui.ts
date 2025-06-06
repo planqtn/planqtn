@@ -6,6 +6,7 @@ export function setupUiCommand(program: any) {
         .description("Start the local PlanqTN UI")
         .action(async () => {
             console.log("Starting the local PlanqTN UI");
+            throw new Error("Not implemented yet, kick it off manually");
         });
 
     uiCommand
@@ -13,5 +14,6 @@ export function setupUiCommand(program: any) {
         .description("Stop the local PlanqTN UI")
         .action(async () => {
             console.log("Stopping the local PlanqTN UI");
+            throw new Error("Not implemented yet, kick it off manually");
         });
 }
