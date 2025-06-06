@@ -4,7 +4,7 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "The GCP region to deploy resources"
+  description = "The GCP region"
   type        = string
   default     = "us-east1"
 }
@@ -31,7 +31,14 @@ variable "supabase_service_key" {
 }
 
 variable "environment" {
-  description = "The environment name (e.g., dev, prod)"
+  description = "The environment (e.g., dev, prod)"
   type        = string
   default     = "dev"
+}
+
+variable "google_credentials" {
+  description = "The Google Cloud credentials JSON. If not provided, will use Application Default Credentials"
+  type        = string
+  default     = ""
+  sensitive   = true
 } 

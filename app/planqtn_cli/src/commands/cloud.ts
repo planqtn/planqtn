@@ -224,14 +224,23 @@ async function setupGCP(
         await writeFile(tfvarsPath, "");
     }
 
-    const tfvars = await readTerraformVars(tfvarsPath);
-
     // Get image names from environment
     const jobsImage = await getImageFromEnv("job");
     const apiImage = await getImageFromEnv("api");
 
     if (!jobsImage || !apiImage) {
         throw new Error("Failed to get image names from environment");
+    }
+
+    let gcpSvcAccountKeyPath: string | undefined;
+    if (process.env.GCP_SVC_CREDENTIALS) {
+        const gcpSvcAccountKey = JSON.parse(process.env.GCP_SVC_CREDENTIALS);
+        gcpSvcAccountKeyPath = path.join(
+            APP_DIR,
+            "gcp",
+            "gcp-service-account-key",
+        );
+        await writeFile(gcpSvcAccountKeyPath, gcpSvcAccountKey);
     }
 
     // Write the tfvars file with all required variables
@@ -245,12 +254,24 @@ async function setupGCP(
         environment: "dev",
     });
 
+    const tfEnv = process.env.GCP_SVC_CREDENTIALS
+        ? {
+            ...process.env,
+            GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
+        }
+        : process.env;
+
     // Apply Terraform configuration
     const gcpDir = path.join(APP_DIR, "gcp");
-    execSync(`${terraformPath} init`, { cwd: gcpDir, stdio: "inherit" });
+    execSync(`${terraformPath} init`, {
+        cwd: gcpDir,
+        stdio: "inherit",
+        env: tfEnv,
+    });
     execSync(`${terraformPath} apply -auto-approve`, {
         cwd: gcpDir,
         stdio: "inherit",
+        env: tfEnv,
     });
 }
 

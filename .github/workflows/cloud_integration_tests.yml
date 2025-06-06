@@ -92,6 +92,8 @@ jobs:
           PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
 
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
