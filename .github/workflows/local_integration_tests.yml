@@ -18,7 +18,7 @@ on:
       - "hack/*build*"
 
       - "check/**integration"
-      - ".github/workflows/integration_tests.yml"
+      - ".github/workflows/local_integration_tests.yml"
 
 jobs:
   Local-Integration-Tests:
