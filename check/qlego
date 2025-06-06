@@ -10,7 +10,7 @@ fi
 
 set -e
 
-export PYTHONPATH=".":"app":$PYTHONPATH
+export PYTHONPATH="."
 
 black qlego --check
 pytest qlego
