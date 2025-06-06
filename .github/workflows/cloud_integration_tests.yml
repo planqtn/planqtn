@@ -93,7 +93,7 @@ jobs:
 
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
