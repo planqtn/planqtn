@@ -149,10 +149,6 @@ export async function handleImage(
             process.stdout.isTTY;
         const buildArgs = ["build", "-t", imageName, "--file", dockerfile];
 
-        if (!isTTY) {
-            buildArgs.push("--progress=plain");
-        }
-
         buildArgs.push("../..");
 
         await runCommand("docker", buildArgs, {
