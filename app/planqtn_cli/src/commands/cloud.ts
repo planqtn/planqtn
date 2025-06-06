@@ -401,7 +401,18 @@ class DerivedVar extends Variable {
     }
 
     compute(vars: Variable[]): void {
-        this.value = this.computeFn(vars);
+        try {
+            this.value = this.computeFn(vars);
+        } catch (error) {
+            if (error instanceof Error) {
+                console.warn(
+                    `Error deriving ${this.getName()}:`,
+                    error.message,
+                );
+            } else {
+                console.warn(`Error deriving ${this.getName()}:`, error);
+            }
+        }
     }
 
     async loadFromEnv(vars: Variable[]): Promise<void> {
@@ -578,7 +589,16 @@ class VariableManager {
 
     async loadExistingValues(): Promise<void> {
         for (const variable of this.variables) {
+            console.log("Loading existing value for", variable.getName());
             await variable.load(this.variables);
+            if (!variable.getValue()) {
+                await variable.loadFromEnv(this.variables);
+            }
+            console.log(
+                "Loaded value for",
+                variable.getName(),
+                variable.getValue(),
+            );
         }
         await this.loadGcpOutputs();
     }
@@ -804,11 +824,11 @@ export function setupCloudCommand(program: Command): void {
                     await mkdir(configDir, { recursive: true });
                 }
 
-                // Copy example config if it doesn't exist
-                const exampleConfig = path.join(APP_DIR, ".config.example");
-                if (!await exists(path.join(configDir, "docker-repo"))) {
-                    execSync(`cp -r ${exampleConfig}/* ${configDir}/`);
-                }
+                // // Copy example config if it doesn't exist
+                // const exampleConfig = path.join(APP_DIR, ".config.example");
+                // if (!await exists(path.join(configDir, "docker-repo"))) {
+                //     execSync(`cp -r ${exampleConfig}/* ${configDir}/`);
+                // }
 
                 const variableManager = new VariableManager(configDir);
                 await variableManager.loadExistingValues();
