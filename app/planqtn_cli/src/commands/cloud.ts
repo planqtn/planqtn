@@ -589,16 +589,10 @@ class VariableManager {
 
     async loadExistingValues(): Promise<void> {
         for (const variable of this.variables) {
-            console.log("Loading existing value for", variable.getName());
             await variable.load(this.variables);
             if (!variable.getValue()) {
                 await variable.loadFromEnv(this.variables);
             }
-            console.log(
-                "Loaded value for",
-                variable.getName(),
-                variable.getValue(),
-            );
         }
         await this.loadGcpOutputs();
     }

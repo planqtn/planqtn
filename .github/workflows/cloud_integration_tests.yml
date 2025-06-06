@@ -66,13 +66,6 @@ jobs:
           # Description: Supabase anonymous key
           PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
         run: |
-          echo "PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}"
-          echo "PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}"
-          echo "PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}"
-          echo "PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}"
-          echo "PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}"
-          echo "PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}"
-          echo "PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}"
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
         id: changes
