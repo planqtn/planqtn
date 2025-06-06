@@ -113,7 +113,7 @@ async function setupGCP(
     supabaseServiceKey: string,
     gcpProjectId: string,
     gcpRegion: string,
-): Promise<{ apiUrl: string; serviceAccountKey: string }> {
+): Promise<void> {
     const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
     const tfvars = await readTerraformVars(tfvarsPath);
 
@@ -143,22 +143,6 @@ async function setupGCP(
         cwd: gcpDir,
         stdio: "inherit",
     });
-
-    // Get Terraform outputs
-    const apiUrl = execSync("terraform output -raw api_service_url", {
-        cwd: gcpDir,
-    }).toString().trim();
-    const rawServiceAccountKey = execSync(
-        "terraform output -raw api_service_account_key",
-        { cwd: gcpDir },
-    ).toString().trim();
-
-    // Base64 encode the service account key using Buffer
-    const serviceAccountKey = Buffer.from(rawServiceAccountKey).toString(
-        "base64",
-    );
-
-    return { apiUrl, serviceAccountKey };
 }
 
 async function setupSupabaseSecrets(
@@ -204,175 +188,358 @@ interface VariableConfig {
     isSecret?: boolean;
     defaultValue?: string;
     requiredFor: ("images" | "supabase" | "supabase-secrets" | "gcp")[];
+    outputBy?: "images" | "supabase" | "gcp";
 }
 
-interface PhaseConfig {
-    variables: VariableConfig[];
+abstract class Variable {
+    protected value: string | undefined;
+    protected config: VariableConfig;
+
+    constructor(config: VariableConfig) {
+        this.config = config;
+    }
+
+    abstract load(): Promise<void>;
+    abstract save(): Promise<void>;
+
+    getValue(): string | undefined {
+        return this.value;
+    }
+
+    getRequiredValue(): string {
+        if (!this.value) {
+            throw new Error(`Required variable ${this.config.name} is not set`);
+        }
+        return this.value;
+    }
+
+    setValue(value: string): void {
+        this.value = value;
+    }
+
+    getName(): string {
+        return this.config.name;
+    }
+
+    getConfig(): VariableConfig {
+        return this.config;
+    }
+}
+
+class PlainFileVar extends Variable {
+    private filePath: string;
+
+    constructor(config: VariableConfig, configDir: string, filename: string) {
+        super(config);
+        this.filePath = path.join(configDir, filename);
+    }
+
+    async load(): Promise<void> {
+        try {
+            if (await exists(this.filePath)) {
+                const content = await readFile(this.filePath, "utf8");
+                if (content.trim()) {
+                    this.value = content.trim();
+                }
+            }
+        } catch (error) {
+            console.warn(`Warning: Could not load ${this.filePath}:`, error);
+        }
+    }
+
+    async save(): Promise<void> {
+        try {
+            if (this.value) {
+                await writeFile(this.filePath, this.value);
+            }
+        } catch (error) {
+            console.error(`Error saving ${this.filePath}:`, error);
+            throw error;
+        }
+    }
+}
+
+class DerivedVar extends Variable {
+    private computeFn: (vars: Record<string, string>) => string;
+
+    constructor(
+        config: VariableConfig,
+        computeFn: (vars: Record<string, string>) => string,
+    ) {
+        super(config);
+        this.computeFn = computeFn;
+    }
+
+    async load(): Promise<void> {
+        // Derived vars don't load from storage
+    }
+
+    async save(): Promise<void> {
+        // Derived vars don't save to storage
+    }
+
+    compute(vars: Record<string, string>): void {
+        this.value = this.computeFn(vars);
+    }
+}
+
+class EnvFileVar extends Variable {
+    private envFile: string;
+    private envKey: string;
+
+    constructor(config: VariableConfig, envFile: string, envKey: string) {
+        super(config);
+        this.envFile = envFile;
+        this.envKey = envKey;
+    }
+
+    async load(): Promise<void> {
+        this.value = await getImageFromEnv(this.envKey);
+    }
+
+    async save(): Promise<void> {
+        // Env vars don't save to storage
+    }
 }
 
 class VariableManager {
-    private values: Record<string, string> = {};
     private configDir: string;
-    private variables: VariableConfig[] = [
-        {
-            name: "dockerRepo",
-            description:
-                "Docker repository (e.g., Docker Hub username or repo)",
-            defaultValue: "planqtn",
-            requiredFor: ["images"],
-        },
-        {
-            name: "supabaseProjectRef",
-            description: "Supabase project ID",
-            requiredFor: ["supabase"],
-        },
-        {
-            name: "dbPassword",
-            description: "Supabase database password",
-            isSecret: true,
-            requiredFor: ["supabase"],
-        },
-        {
-            name: "environment",
-            description: "Environment",
-            defaultValue: "development",
-            requiredFor: ["supabase-secrets", "gcp"],
-        },
-        {
-            name: "jobsImage",
-            description: "Jobs image name",
-            requiredFor: ["supabase-secrets", "gcp"],
-        },
-        {
-            name: "gcpProjectId",
-            description: "GCP project ID",
-            requiredFor: ["supabase-secrets", "gcp"],
-        },
-        {
-            name: "apiUrl",
-            description: "API URL",
-            requiredFor: ["supabase-secrets"],
-        },
-        {
-            name: "gcpSvcAccountKey",
-            description: "GCP service account key",
-            isSecret: true,
-            requiredFor: ["supabase-secrets"],
-        },
-        {
-            name: "gcpRegion",
-            description: "GCP region",
-            defaultValue: "us-east1",
-            requiredFor: ["gcp"],
-        },
-        {
-            name: "supabaseUrl",
-            description: "Supabase URL",
-            requiredFor: ["gcp"],
-        },
-        {
-            name: "supabaseServiceKey",
-            description: "Supabase service key",
-            isSecret: true,
-            requiredFor: ["gcp"],
-        },
-        {
-            name: "apiImage",
-            description: "API image name",
-            requiredFor: ["gcp"],
-        },
-    ];
+    private variables: Variable[];
 
     constructor(configDir: string) {
         this.configDir = configDir;
+        this.variables = [
+            new PlainFileVar(
+                {
+                    name: "dockerRepo",
+                    description:
+                        "Docker repository (e.g., Docker Hub username or repo)",
+                    defaultValue: "planqtn",
+                    requiredFor: ["images"],
+                },
+                configDir,
+                "docker-repo",
+            ),
+            new PlainFileVar(
+                {
+                    name: "supabaseProjectRef",
+                    description: "Supabase project ID",
+                    requiredFor: ["supabase"],
+                },
+                configDir,
+                "supabase-project-id",
+            ),
+            new PlainFileVar(
+                {
+                    name: "dbPassword",
+                    description: "Supabase database password",
+                    isSecret: true,
+                    requiredFor: ["supabase"],
+                },
+                configDir,
+                "db-password",
+            ),
+            new PlainFileVar(
+                {
+                    name: "environment",
+                    description: "Environment",
+                    defaultValue: "development",
+                    requiredFor: ["supabase-secrets", "gcp"],
+                },
+                configDir,
+                "environment",
+            ),
+            new EnvFileVar(
+                {
+                    name: "jobsImage",
+                    description: "Jobs image name",
+                    requiredFor: ["supabase-secrets", "gcp"],
+                    outputBy: "images",
+                },
+                "job",
+                "job",
+            ),
+            new PlainFileVar(
+                {
+                    name: "gcpProjectId",
+                    description: "GCP project ID",
+                    requiredFor: ["supabase-secrets", "gcp"],
+                },
+                configDir,
+                "gcp-project-id",
+            ),
+            new PlainFileVar(
+                {
+                    name: "apiUrl",
+                    description: "Cloud Run PlanqTN API URL",
+                    requiredFor: ["supabase-secrets"],
+                    outputBy: "gcp",
+                },
+                configDir,
+                "api-url",
+            ),
+            new PlainFileVar(
+                {
+                    name: "gcpSvcAccountKey",
+                    description: "GCP service account key",
+                    isSecret: true,
+                    requiredFor: ["supabase-secrets"],
+                    outputBy: "gcp",
+                },
+                configDir,
+                "gcp-service-account-key",
+            ),
+            new PlainFileVar(
+                {
+                    name: "gcpRegion",
+                    description: "GCP region",
+                    defaultValue: "us-east1",
+                    requiredFor: ["gcp"],
+                },
+                configDir,
+                "gcp-region",
+            ),
+            new DerivedVar(
+                {
+                    name: "supabaseUrl",
+                    description: "Supabase URL",
+                    requiredFor: ["gcp"],
+                },
+                (vars) => `https://${vars.supabaseProjectRef}.supabase.co`,
+            ),
+            new PlainFileVar(
+                {
+                    name: "supabaseServiceKey",
+                    description: "Supabase service key",
+                    isSecret: true,
+                    requiredFor: ["gcp"],
+                },
+                configDir,
+                "supabase-service-key",
+            ),
+            new EnvFileVar(
+                {
+                    name: "apiImage",
+                    description: "API image name",
+                    requiredFor: ["gcp"],
+                    outputBy: "images",
+                },
+                "api",
+                "api",
+            ),
+        ];
+    }
+
+    async loadExistingValues(): Promise<void> {
+        for (const variable of this.variables) {
+            await variable.load();
+        }
+        await this.loadGcpOutputs();
+    }
+
+    async saveValues(): Promise<void> {
+        // Update derived variables
+        for (const variable of this.variables) {
+            if (variable instanceof DerivedVar) {
+                const otherVars = Object.fromEntries(
+                    this.variables
+                        .map((v) => [v.getName(), v.getValue()])
+                        .filter(([_, value]) => value !== undefined),
+                );
+                variable.compute(otherVars);
+            }
+        }
+
+        // Save all variables
+        for (const variable of this.variables) {
+            await variable.save();
+        }
+    }
+
+    getValue(key: string): string {
+        const variable = this.variables.find((v) => v.getName() === key);
+        if (!variable) {
+            throw new Error(`Variable ${key} not found`);
+        }
+        return variable.getRequiredValue();
+    }
+
+    async loadGcpOutputs(): Promise<void> {
+        console.log("Loading GCP outputs...");
+        const gcpDir = path.join(APP_DIR, "gcp");
+        const outputsPath = path.join(gcpDir, "outputs.tf");
+        if (await exists(outputsPath)) {
+            try {
+                // Get Terraform outputs
+                const apiUrl = execSync(
+                    "terraform output -raw api_service_url",
+                    {
+                        cwd: gcpDir,
+                    },
+                ).toString().trim();
+                console.log("API URL:", apiUrl);
+                const rawServiceAccountKey = execSync(
+                    "terraform output -raw api_service_account_key",
+                    { cwd: gcpDir },
+                ).toString().trim();
+
+                // Base64 encode the service account key using Buffer
+                const serviceAccountKey = Buffer.from(rawServiceAccountKey)
+                    .toString("base64");
+
+                // Set values on the Variable instances
+                const apiUrlVar = this.variables.find((v) =>
+                    v.getName() === "apiUrl"
+                );
+                const gcpSvcAccountKeyVar = this.variables.find((v) =>
+                    v.getName() === "gcpSvcAccountKey"
+                );
+
+                if (apiUrlVar) {
+                    apiUrlVar.setValue(apiUrl);
+                }
+                if (gcpSvcAccountKeyVar) {
+                    gcpSvcAccountKeyVar.setValue(serviceAccountKey);
+                }
+
+                console.log("Terraform outputs loaded successfully.");
+            } catch (error) {
+                // Silently fail if terraform commands fail - outputs might not be available yet
+                console.log(
+                    "Warning: Terraform outputs not found.",
+                    error,
+                );
+            }
+        } else {
+            console.log(
+                "Warning: Terraform outputs not found.",
+            );
+        }
     }
 
     private getRequiredVariables(
         skipPhases: { images: boolean; supabase: boolean; gcp: boolean },
-    ): VariableConfig[] {
-        const activePhases:
-            ("images" | "supabase" | "supabase-secrets" | "gcp")[] = [];
-
-        if (!skipPhases.images) {
-            activePhases.push("images");
-        }
-        if (!skipPhases.supabase) {
-            activePhases.push("supabase");
-            // If Supabase is not skipped, we need its secrets
-            activePhases.push("supabase-secrets");
-        }
-        if (!skipPhases.gcp) {
-            activePhases.push("gcp");
-        }
-
-        return this.variables.filter((variable) =>
-            variable.requiredFor.some((phase) => activePhases.includes(phase))
-        );
-    }
-
-    async loadExistingValues(): Promise<void> {
-        // Load existing values from config files
-
-        const dockerRepoPath = path.join(this.configDir, "docker-repo");
-        const supabaseProjectPath = path.join(
-            this.configDir,
-            "supabase-project-id",
-        );
-        const dbPasswordPath = path.join(this.configDir, "db-password");
-        const supabaseServiceKeyPath = path.join(
-            this.configDir,
-            "supabase-service-key",
-        );
-        const gcpProjectPath = path.join(this.configDir, "gcp-project-id");
-        const gcpRegionPath = path.join(this.configDir, "gcp-region");
-
-        if (await exists(dockerRepoPath)) {
-            this.values.dockerRepo = await readFile(dockerRepoPath, "utf8");
-        }
-        if (await exists(supabaseProjectPath)) {
-            this.values.supabaseProjectRef = await readFile(
-                supabaseProjectPath,
-                "utf8",
-            );
-            this.values.supabaseUrl =
-                `https://${this.values.supabaseProjectRef}.supabase.co`;
-        }
-        if (await exists(dbPasswordPath)) {
-            this.values.dbPassword = await readFile(dbPasswordPath, "utf8");
-        }
-        if (await exists(supabaseServiceKeyPath)) {
-            this.values.supabaseServiceKey = await readFile(
-                supabaseServiceKeyPath,
-                "utf8",
-            );
-        }
-        if (await exists(gcpProjectPath)) {
-            this.values.gcpProjectId = await readFile(gcpProjectPath, "utf8");
-        }
-        if (await exists(gcpRegionPath)) {
-            this.values.gcpRegion = await readFile(gcpRegionPath, "utf8");
-        }
-
-        const jobsImage = await getImageFromEnv("job");
-        if (jobsImage) {
-            this.values.jobsImage = jobsImage;
-        }
-        const apiImage = await getImageFromEnv("api");
-        if (apiImage) {
-            this.values.apiImage = apiImage;
-        }
-
-        // Try to load GCP-specific values from tfvars
-        const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
-        if (await exists(tfvarsPath)) {
-            const tfvars = await readTerraformVars(tfvarsPath);
-            if (tfvars.api_service_url) {
-                this.values.apiUrl = tfvars.api_service_url;
+        phase?: "images" | "supabase" | "gcp",
+    ): Variable[] {
+        return this.variables.filter((variable) => {
+            const config = variable.getConfig();
+            // Skip derived variables as they are computed
+            if (variable instanceof DerivedVar) {
+                return false;
             }
-            if (tfvars.api_service_account_key) {
-                this.values.gcpSvcAccountKey = tfvars.api_service_account_key;
+            // Skip variables that are output by non-skipped phases
+            if (config.outputBy && !skipPhases[config.outputBy]) {
+                return false;
             }
-        }
+            // If phase is specified, only include variables required for that phase
+            if (phase) {
+                return config.requiredFor.includes(phase) && !skipPhases[phase];
+            }
+            // Otherwise include variables required for any non-skipped phase
+            return config.requiredFor.some((p) =>
+                !skipPhases[p as keyof typeof skipPhases]
+            );
+        });
     }
 
     async prompt(
@@ -383,36 +550,38 @@ class VariableManager {
 
         const requiredVars = this.getRequiredVariables(skipPhases);
 
-        for (const varConfig of requiredVars) {
-            if (!this.values[varConfig.name]) {
-                const promptText = `Enter ${varConfig.description}${
-                    varConfig.defaultValue ? ` [${varConfig.defaultValue}]` : ""
+        for (const variable of requiredVars) {
+            const config = variable.getConfig();
+            if (!variable.getValue()) {
+                const promptText = `Enter ${config.description}${
+                    config.defaultValue ? ` [${config.defaultValue}]` : ""
                 }: `;
 
-                if (varConfig.isSecret) {
-                    this.values[varConfig.name] = prompt(promptText, {
-                        echo: "*",
-                    });
+                let value: string;
+                if (config.isSecret) {
+                    value = prompt(promptText, { echo: "*" });
                 } else {
-                    this.values[varConfig.name] = prompt(
-                        promptText,
-                        varConfig.defaultValue || "",
-                    );
+                    value = prompt(promptText, config.defaultValue || "");
+                }
+
+                if (value) {
+                    variable.setValue(value);
                 }
             }
         }
+        await this.saveValues();
     }
 
     async validatePhaseRequirements(
         phase: "images" | "supabase" | "gcp",
         skipPhases: { images: boolean; supabase: boolean; gcp: boolean },
     ): Promise<void> {
-        const requiredVars = this.getRequiredVariables(skipPhases);
+        const requiredVars = this.getRequiredVariables(skipPhases, phase);
         const missingVars: string[] = [];
 
-        for (const varConfig of requiredVars) {
-            if (!this.values[varConfig.name]) {
-                missingVars.push(varConfig.description);
+        for (const variable of requiredVars) {
+            if (!variable.getValue()) {
+                missingVars.push(variable.getConfig().description);
             }
         }
 
@@ -421,18 +590,6 @@ class VariableManager {
                 `Missing required variables: ${missingVars.join(", ")}`,
             );
         }
-    }
-
-    getValue(key: string): string {
-        const value = this.values[key];
-        if (!value) {
-            throw new Error(`Required variable ${key} is not set`);
-        }
-        return value;
-    }
-
-    setValue(key: string, value: string): void {
-        this.values[key] = value;
     }
 }
 
@@ -474,6 +631,11 @@ export function setupCloudCommand(program: Command): void {
                     supabaseSecrets: options.skipSupabaseSecrets,
                 };
 
+                // Load GCP outputs if GCP is not skipped
+                if (!skipPhases.gcp) {
+                    await variableManager.loadGcpOutputs();
+                }
+
                 if (options.interactive) {
                     await variableManager.prompt(skipPhases);
                 }
@@ -511,7 +673,7 @@ export function setupCloudCommand(program: Command): void {
                         "gcp",
                         skipPhases,
                     );
-                    const { apiUrl, serviceAccountKey } = await setupGCP(
+                    await setupGCP(
                         options.interactive,
                         variableManager.getValue("dockerRepo"),
                         variableManager.getValue("supabaseProjectRef"),
@@ -519,13 +681,8 @@ export function setupCloudCommand(program: Command): void {
                         variableManager.getValue("gcpProjectId"),
                         variableManager.getValue("gcpRegion"),
                     );
-
-                    // Store the GCP outputs in the variable manager
-                    variableManager.setValue("apiUrl", apiUrl);
-                    variableManager.setValue(
-                        "gcpSvcAccountKey",
-                        serviceAccountKey,
-                    );
+                    // Reload outputs after GCP setup
+                    await variableManager.loadGcpOutputs();
                 }
 
                 if (!skipPhases.supabaseSecrets) {
