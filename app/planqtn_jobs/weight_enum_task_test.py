@@ -7,11 +7,14 @@ import threading
 import time
 import asyncio
 from pathlib import Path
+import postgrest
 import pytest
 import requests
+import supabase
+from planqtn_fixtures.job_debugger import JobDebugger
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
-from supabase import create_client, Client
+from supabase import ClientOptions, create_client, Client
 from supabase.client import AsyncClient
 from planqtn_fixtures import *
 
@@ -105,6 +108,7 @@ def test_main_with_progress_bar(temp_input_file, temp_output_file, monkeypatch):
 
 
 @pytest.mark.integration
+@pytest.mark.local_only_integration
 def test_main_with_task_store(
     temp_input_file, temp_output_file, supabase_setup, monkeypatch
 ):
@@ -169,9 +173,10 @@ def test_main_with_task_store(
 
 
 @pytest.mark.integration
+@pytest.mark.local_only_integration
 @pytest.mark.asyncio
 async def test_main_with_task_store_and_realtime(
-    temp_input_file, temp_output_file, supabase_setup, monkeypatch
+    temp_output_file, supabase_setup, monkeypatch
 ):
     """Test main.py with task store integration."""
     # Create Supabase client with test user token
@@ -320,22 +325,28 @@ async def test_main_with_task_store_and_realtime(
 
 @pytest.mark.integration
 def test_e2e_local_through_function_call_and_k3d(
-    temp_input_file,
-    temp_output_file,
     supabase_setup,
-    monkeypatch,
     k8s_apis,
     image_tag,
 ):
     # Create Supabase client with test user token
-    supabase: Client = create_client(
-        supabase_setup["api_url"], supabase_setup["test_user_token"]
+    user_sb_client: Client = create_client(
+        supabase_setup["api_url"],
+        supabase_setup["anon_key"],
+        options=ClientOptions(
+            headers={"Authorization": f"Bearer {supabase_setup['test_user_token']}"}
+        ),
     )
 
     supabase_url = supabase_setup["api_url"]
     supabase_anon_key = supabase_setup["anon_key"]
     supabase_user_key = supabase_setup["test_user_token"]
-    url = f"{supabase_url}/functions/v1/planqtn_job"
+
+    url = (
+        f"{supabase_url}/functions/v1/planqtn_job"
+        if getEnvironment() != "cloud"
+        else f"{supabase_url}/functions/v1/planqtn_job_run"
+    )
 
     response = requests.post(
         url,
@@ -368,7 +379,13 @@ def test_e2e_local_through_function_call_and_k3d(
     try:
         # Wait for the task to be created
         while True:
-            task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+            task = (
+                user_sb_client.table("tasks")
+                .select("*")
+                .eq("uuid", task_uuid)
+                .eq("user_id", supabase_setup["test_user_id"])
+                .execute()
+            )
             if len(task.data) == 1:
                 break
             time.sleep(1)
@@ -376,59 +393,58 @@ def test_e2e_local_through_function_call_and_k3d(
         assert len(task.data) == 1, f"Task not found, task: {task.data}"
 
         for _ in range(40):
-            task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+            task = (
+                user_sb_client.table("tasks")
+                .select("*")
+                .eq("uuid", task_uuid)
+                .eq("user_id", supabase_setup["test_user_id"])
+                .execute()
+            )
             if len(task.data) == 1 and task.data[0]["state"] == 2:
                 break
             time.sleep(1)
 
         # Verify task was updated in Supabase
-        task = supabase.table("tasks").select("*").eq("uuid", task_uuid).execute()
+        task = user_sb_client.table("tasks").select("*").eq("uuid", task_uuid).execute()
         assert len(task.data) == 1
         if task.data[0]["state"] != 2:
             print(f"Task data: {task.data[0]}")
-            print("Docker containers: ")
-            logs = subprocess.run(
-                ["docker", "ps", "-a"],
-                capture_output=True,
-                text=True,
-            )
-            print(logs.stdout)
-
-            print("k3d situation:")
-            k3d_logs = subprocess.run(
-                [os.path.expanduser("~/.planqtn/k3d"), "cluster", "list"],
-                capture_output=True,
-                text=True,
-            )
-            list_pods(k8s_apis)
-            print(k3d_logs.stdout)
+            JobDebugger(k8s_apis).debug(task_uuid)
 
         assert task.data[0]["state"] == 2  # SUCCESS
 
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
 
-        found = False
-        for pod in k8s_apis["core_api"].list_namespaced_pod(namespace="default").items:
-            if (
-                task_uuid in pod.metadata.name
-                and "weightenumerator" in pod.metadata.name
+        if getEnvironment() != "cloud":
+            found = False
+            for pod in (
+                k8s_apis["core_api"].list_namespaced_pod(namespace="default").items
             ):
-                assert pod.spec.containers[0].resources.limits["cpu"] == "1"
-                assert pod.spec.containers[0].resources.limits["memory"] == "1Gi"
-                assert (
-                    pod.spec.containers[0].image == f"planqtn/planqtn_jobs:{image_tag}"
-                ), (
-                    "Commit ID mismatch on image: "
-                    + pod.spec.containers[0].image
-                    + " != "
-                    + f"planqtn/planqtn_jobs:{image_tag}"
-                    + (" run `hack/htn images job --build --load`" if isDev() else "")
-                )
-                found = True
-                break
-        if not found:
-            list_pods(k8s_apis)
-            raise AssertionError(f"Pod not found, task: {task.data[0]}")
+                if (
+                    task_uuid in pod.metadata.name
+                    and "weightenumerator" in pod.metadata.name
+                ):
+                    assert pod.spec.containers[0].resources.limits["cpu"] == "1"
+                    assert pod.spec.containers[0].resources.limits["memory"] == "1Gi"
+                    assert (
+                        pod.spec.containers[0].image
+                        == f"planqtn/planqtn_jobs:{image_tag}"
+                    ), (
+                        "Commit ID mismatch on image: "
+                        + pod.spec.containers[0].image
+                        + " != "
+                        + f"planqtn/planqtn_jobs:{image_tag}"
+                        + (
+                            " run `hack/htn images job --build --load`"
+                            if getEnvironment() == "dev"
+                            else ""
+                        )
+                    )
+                    found = True
+                    break
+            if not found:
+                list_pods(k8s_apis)
+                raise AssertionError(f"Pod not found, task: {task.data[0]}")
 
     finally:
-        supabase.table("tasks").delete().eq("uuid", task_uuid).execute()
+        user_sb_client.table("tasks").delete().eq("uuid", task_uuid).execute()

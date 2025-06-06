@@ -3,12 +3,17 @@ import os
 import pytest
 import yaml
 
+from app.planqtn_fixtures.env import getEnvironment
+
 
 @pytest.fixture
 def k8s_apis():
     """Create Kubernetes API clients based on environment."""
     # Determine postfix based on KERNEL_ENV
-    postfix = "-local" if os.environ.get("KERNEL_ENV") == "local" else "-dev"
+    env = getEnvironment()
+    if env == "cloud":
+        return None
+    postfix = "-local" if env == "local" else "-dev"
     kubeconfig_path = os.path.expanduser(f"~/.planqtn/kubeconfig{postfix}.yaml")
 
     with open(kubeconfig_path) as f:

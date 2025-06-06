@@ -5,42 +5,49 @@ import subprocess
 import uuid
 import pytest
 from supabase import Client, create_client
-from planqtn_fixtures.env import isDev
+from planqtn_fixtures.env import getEnvironment
 
 
 @pytest.fixture
 def supabase_setup():
     """Set up Supabase test environment and create test user."""
     # Get local Supabase status
+    env = getEnvironment()
 
-    workdir = (
-        f"{Path(__file__).parent.parent}"
-        if isDev()
-        else os.path.expanduser("~/.planqtn")
-    )
-    print("workdir:", workdir)
-    result = subprocess.run(
-        [
-            "npx",
-            "supabase",
-            "--workdir",
-            workdir,
-            "--debug",
-            "status",
-            "-o",
-            "json",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    print(result.stdout, result.stderr)
-
-    status = json.loads(result.stdout)
+    if env == "cloud":
+        # Load supabase_config.json
+        with open(
+            os.path.expanduser("~/.planqtn/.config/supabase_config.json"), "r"
+        ) as f:
+            config = json.load(f)
+    else:
+        workdir = (
+            f"{Path(__file__).parent.parent}"
+            if env == "local"
+            else os.path.expanduser("~/.planqtn")
+        )
+        print("workdir:", workdir)
+        result = subprocess.run(
+            [
+                "npx",
+                "supabase",
+                "--workdir",
+                workdir,
+                "--debug",
+                "status",
+                "-o",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        print(result.stdout, result.stderr)
+        config = json.loads(result.stdout)
 
     # Get service role key from status
-    service_role_key = status["SERVICE_ROLE_KEY"]
-    anon_key = status["ANON_KEY"]
-    api_url = status["API_URL"]
+    api_url = config["API_URL"]
+    service_role_key = config["SERVICE_ROLE_KEY"]
+    anon_key = config["ANON_KEY"]
 
     # Create Supabase client with service role
     service_client: Client = create_client(api_url, service_role_key)

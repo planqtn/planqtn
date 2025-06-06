@@ -83,7 +83,6 @@ def test_css_tanner_network_bell_state():
 def test_msp_tanner_network_bell_state_integration(supabase_setup, network_type):
 
     supabase_url = supabase_setup["api_url"]
-    supabase_anon_key = supabase_setup["anon_key"]
     supabase_user_key = supabase_setup["test_user_token"]
     url = f"{supabase_url}/functions/v1/tensornetwork"
 

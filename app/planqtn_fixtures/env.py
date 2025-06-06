@@ -16,5 +16,9 @@ def image_tag():
     return image_tag
 
 
-def isDev():
-    return os.environ.get("KERNEL_ENV") != "local"
+def getEnvironment():
+    env = os.environ.get("KERNEL_ENV", "dev")
+    assert env in ["local", "dev", "cloud"], (
+        "Only local, dev and cloud are supported, got: " + env
+    )
+    return env

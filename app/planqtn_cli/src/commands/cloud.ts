@@ -282,8 +282,15 @@ interface VariableConfig {
     description: string;
     isSecret?: boolean;
     defaultValue?: string;
-    requiredFor: ("images" | "supabase" | "supabase-secrets" | "gcp")[];
+    requiredFor: (
+        | "images"
+        | "supabase"
+        | "supabase-secrets"
+        | "gcp"
+        | "integration-test-config"
+    )[];
     outputBy?: "images" | "supabase" | "gcp";
+    hint?: string;
 }
 
 abstract class Variable {
@@ -294,7 +301,7 @@ abstract class Variable {
         this.config = config;
     }
 
-    abstract load(): Promise<void>;
+    abstract load(vars: Variable[]): Promise<void>;
     abstract save(): Promise<void>;
 
     getValue(): string | undefined {
@@ -303,7 +310,9 @@ abstract class Variable {
 
     getRequiredValue(): string {
         if (!this.value) {
-            throw new Error(`Required variable ${this.config.name} is not set`);
+            throw new Error(
+                `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`,
+            );
         }
         return this.value;
     }
@@ -329,7 +338,7 @@ class PlainFileVar extends Variable {
         this.filePath = path.join(configDir, filename);
     }
 
-    async load(): Promise<void> {
+    async load(vars: Variable[]): Promise<void> {
         try {
             if (await exists(this.filePath)) {
                 const content = await readFile(this.filePath, "utf8");
@@ -355,25 +364,25 @@ class PlainFileVar extends Variable {
 }
 
 class DerivedVar extends Variable {
-    private computeFn: (vars: Record<string, string>) => string;
+    private computeFn: (vars: Variable[]) => string;
 
     constructor(
         config: VariableConfig,
-        computeFn: (vars: Record<string, string>) => string,
+        computeFn: (vars: Variable[]) => string,
     ) {
         super(config);
         this.computeFn = computeFn;
     }
 
-    async load(): Promise<void> {
-        // Derived vars don't load from storage
+    async load(vars: Variable[]): Promise<void> {
+        this.compute(vars);
     }
 
     async save(): Promise<void> {
         // Derived vars don't save to storage
     }
 
-    compute(vars: Record<string, string>): void {
+    compute(vars: Variable[]): void {
         this.value = this.computeFn(vars);
     }
 }
@@ -388,7 +397,7 @@ class EnvFileVar extends Variable {
         this.envKey = envKey;
     }
 
-    async load(): Promise<void> {
+    async load(vars: Variable[]): Promise<void> {
         this.value = await getImageFromEnv(this.envKey);
     }
 
@@ -420,6 +429,8 @@ class VariableManager {
                     name: "supabaseProjectRef",
                     description: "Supabase project ID",
                     requiredFor: ["supabase"],
+                    hint:
+                        `Get it from your supabase project settings. Store it in ${configDir}/supabase-project-id`,
                 },
                 configDir,
                 "supabase-project-id",
@@ -500,14 +511,18 @@ class VariableManager {
                     description: "Supabase URL",
                     requiredFor: ["gcp"],
                 },
-                (vars) => `https://${vars.supabaseProjectRef}.supabase.co`,
+                (vars) =>
+                    `https://${
+                        vars.find((v) => v.getName() === "supabaseProjectRef")
+                            ?.getRequiredValue()
+                    }.supabase.co`,
             ),
             new PlainFileVar(
                 {
                     name: "supabaseServiceKey",
                     description: "Supabase service key",
                     isSecret: true,
-                    requiredFor: ["gcp"],
+                    requiredFor: ["gcp", "integration-test-config"],
                 },
                 configDir,
                 "supabase-service-key",
@@ -522,12 +537,22 @@ class VariableManager {
                 "api",
                 "api",
             ),
+            new PlainFileVar(
+                {
+                    name: "supabaseAnonKey",
+                    description: "Supabase anonymous key",
+                    isSecret: true,
+                    requiredFor: ["integration-test-config"],
+                },
+                configDir,
+                "supabase-anon-key",
+            ),
         ];
     }
 
     async loadExistingValues(): Promise<void> {
         for (const variable of this.variables) {
-            await variable.load();
+            await variable.load(this.variables);
         }
         await this.loadGcpOutputs();
     }
@@ -648,9 +673,15 @@ class VariableManager {
 
         for (const variable of requiredVars) {
             const config = variable.getConfig();
-            if (!variable.getValue()) {
+            const currentValue = variable.getValue();
+            // Only skip prompting if the value is set AND it's output by a non-skipped phase
+            if (!currentValue || (currentValue && !config.outputBy)) {
                 const promptText = `Enter ${config.description}${
                     config.defaultValue ? ` [${config.defaultValue}]` : ""
+                }${
+                    currentValue && !config.isSecret
+                        ? ` (current: ${currentValue})`
+                        : " (leave blank to keep current value)"
                 }: `;
 
                 let value: string;
@@ -687,17 +718,37 @@ class VariableManager {
             );
         }
     }
+
+    async generateIntegrationTestConfig(): Promise<void> {
+        const config = {
+            ANON_KEY: this.getValue("supabaseAnonKey"),
+            API_URL: this.getValue("supabaseUrl"),
+            SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey"),
+        };
+
+        const configPath = path.join(this.configDir, "supabase_config.json");
+        await writeFile(configPath, JSON.stringify(config, null, 2));
+        console.log("Integration test config generated at:", configPath);
+    }
 }
 
 export function setupCloudCommand(program: Command): void {
-    program
+    const cloudCommand = program
         .command("cloud")
+        .description("Deploy to cloud");
+
+    cloudCommand
+        .command("deploy")
         .description("Deploy to cloud")
-        .option("-i, --interactive", "Run in interactive mode", true)
+        .option("-q, --non-interactive", "Run in non-interactive mode", false)
         .option("--skip-images", "Skip building and pushing images")
         .option("--skip-supabase", "Skip Supabase deployment")
         .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
         .option("--skip-gcp", "Skip GCP deployment")
+        .option(
+            "--skip-integration-test-config",
+            "Skip integration test config generation",
+        )
         .action(async (options: CloudOptions) => {
             try {
                 const configDir = path.join(
@@ -725,6 +776,7 @@ export function setupCloudCommand(program: Command): void {
                     supabase: options.skipSupabase,
                     gcp: options.skipGcp,
                     supabaseSecrets: options.skipSupabaseSecrets,
+                    integrationTestConfig: options.skipIntegrationTestConfig,
                 };
 
                 // Load GCP outputs if GCP is not skipped
@@ -732,7 +784,7 @@ export function setupCloudCommand(program: Command): void {
                     await variableManager.loadGcpOutputs();
                 }
 
-                if (options.interactive) {
+                if (!options.nonInteractive) {
                     await variableManager.prompt(skipPhases);
                 }
 
@@ -770,7 +822,7 @@ export function setupCloudCommand(program: Command): void {
                         skipPhases,
                     );
                     await setupGCP(
-                        options.interactive,
+                        options.nonInteractive,
                         variableManager.getValue("dockerRepo"),
                         variableManager.getValue("supabaseProjectRef"),
                         variableManager.getValue("supabaseServiceKey"),
@@ -796,6 +848,46 @@ export function setupCloudCommand(program: Command): void {
                         variableManager.getValue("apiUrl"),
                     );
                 }
+
+                // Generate integration test config if needed
+                if (!skipPhases.integrationTestConfig) {
+                    await variableManager.generateIntegrationTestConfig();
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                process.exit(1);
+            }
+        });
+
+    cloudCommand
+        .command("generate-integration-test-config")
+        .description("Generate configuration for integration tests")
+        .action(async () => {
+            try {
+                const configDir = path.join(
+                    process.env.HOME || "",
+                    ".planqtn",
+                    ".config",
+                );
+
+                // Create config directory if it doesn't exist
+                if (!await exists(configDir)) {
+                    await mkdir(configDir, { recursive: true });
+                }
+
+                const variableManager = new VariableManager(configDir);
+                await variableManager.loadExistingValues();
+
+                // Only prompt for variables needed for integration test config
+                const skipPhases = {
+                    images: true,
+                    supabase: true,
+                    gcp: true,
+                    supabaseSecrets: true,
+                };
+
+                await variableManager.prompt(skipPhases);
+                await variableManager.generateIntegrationTestConfig();
             } catch (error) {
                 console.error("Error:", error);
                 process.exit(1);
@@ -804,9 +896,10 @@ export function setupCloudCommand(program: Command): void {
 }
 
 interface CloudOptions {
-    interactive: boolean;
+    nonInteractive: boolean;
     skipImages: boolean;
     skipSupabase: boolean;
     skipSupabaseSecrets: boolean;
     skipGcp: boolean;
+    skipIntegrationTestConfig: boolean;
 }
