@@ -328,6 +328,18 @@ abstract class Variable {
     getConfig(): VariableConfig {
         return this.config;
     }
+
+    getEnvVarName(): string {
+        return `PLANQTN_${this.config.name.toUpperCase()}`;
+    }
+
+    async loadFromEnv(vars: Variable[]): Promise<void> {
+        const envVarName = this.getEnvVarName();
+        const envValue = process.env[envVarName];
+        if (envValue) {
+            this.setValue(envValue);
+        }
+    }
 }
 
 class PlainFileVar extends Variable {
@@ -384,6 +396,14 @@ class DerivedVar extends Variable {
 
     compute(vars: Variable[]): void {
         this.value = this.computeFn(vars);
+    }
+
+    async loadFromEnv(vars: Variable[]): Promise<void> {
+        try {
+            await this.load(vars);
+        } catch (error) {
+            await super.loadFromEnv(vars);
+        }
     }
 }
 
@@ -557,6 +577,12 @@ class VariableManager {
         await this.loadGcpOutputs();
     }
 
+    async loadFromEnv(): Promise<void> {
+        for (const variable of this.variables) {
+            await variable.loadFromEnv(this.variables);
+        }
+    }
+
     async saveValues(): Promise<void> {
         // Update derived variables
         for (const variable of this.variables) {
@@ -696,6 +722,7 @@ class VariableManager {
                 }
             }
         }
+
         await this.saveValues();
     }
 
@@ -729,6 +756,14 @@ class VariableManager {
         const configPath = path.join(this.configDir, "supabase_config.json");
         await writeFile(configPath, JSON.stringify(config, null, 2));
         console.log("Integration test config generated at:", configPath);
+    }
+
+    getUserVariables(): Variable[] {
+        return this.variables.filter((variable) => {
+            const config = variable.getConfig();
+            // Only include variables that don't have outputBy (user-only variables)
+            return !config.outputBy;
+        });
     }
 }
 
@@ -786,6 +821,8 @@ export function setupCloudCommand(program: Command): void {
 
                 if (!options.nonInteractive) {
                     await variableManager.prompt(skipPhases);
+                } else {
+                    await variableManager.loadFromEnv();
                 }
 
                 // Now proceed with the setup using the collected variables
@@ -888,6 +925,57 @@ export function setupCloudCommand(program: Command): void {
 
                 await variableManager.prompt(skipPhases);
                 await variableManager.generateIntegrationTestConfig();
+            } catch (error) {
+                console.error("Error:", error);
+                process.exit(1);
+            }
+        });
+
+    cloudCommand
+        .command("print-env-vars")
+        .description(
+            "Print required environment variables for non-interactive mode",
+        )
+        .action(async () => {
+            try {
+                const configDir = path.join(
+                    process.env.HOME || "",
+                    ".planqtn",
+                    ".config",
+                );
+
+                const variableManager = new VariableManager(configDir);
+                const userVars = variableManager.getUserVariables();
+
+                console.log(
+                    "\nRequired environment variables for non-interactive mode:",
+                );
+                console.log(
+                    "=====================================================",
+                );
+                for (const variable of userVars) {
+                    const config = variable.getConfig();
+                    console.log(`# Description: ${config.description}`);
+                    if (config.hint) {
+                        console.log(`# Hint: ${config.hint}`);
+                    }
+                    if (config.defaultValue) {
+                        console.log(`Default: ${config.defaultValue}`);
+                    }
+                    await variable.loadFromEnv(userVars);
+
+                    console.log(
+                        `\n${variable.getEnvVarName()}=${
+                            variable.getValue() || "[not set]"
+                        }`,
+                    );
+                }
+                console.log(
+                    "\n=====================================================",
+                );
+                console.log(
+                    "\nSet these environment variables in your CI/CD secrets.",
+                );
             } catch (error) {
                 console.error("Error:", error);
                 process.exit(1);
