@@ -201,6 +201,12 @@ async function setupGCP(
 ): Promise<void> {
     const terraformPath = await ensureTerraformInstalled();
     const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
+
+    if (!(await exists(tfvarsPath))) {
+        console.log("Creating empty terraform.tfvars file...");
+        await writeFile(tfvarsPath, "");
+    }
+
     const tfvars = await readTerraformVars(tfvarsPath);
 
     // Get image names from environment
@@ -592,7 +598,7 @@ class VariableManager {
                         .map((v) => [v.getName(), v.getValue()])
                         .filter(([_, value]) => value !== undefined),
                 );
-                variable.compute(otherVars);
+                variable.compute(this.variables);
             }
         }
 
@@ -613,8 +619,7 @@ class VariableManager {
     async loadGcpOutputs(): Promise<void> {
         console.log("Loading GCP outputs...");
         const gcpDir = path.join(APP_DIR, "gcp");
-        const outputsPath = path.join(gcpDir, "outputs.tf");
-        if (await exists(outputsPath)) {
+        if (await exists(gcpDir)) {
             try {
                 const terraformPath = await ensureTerraformInstalled();
                 // Get Terraform outputs
@@ -707,7 +712,9 @@ class VariableManager {
                 }${
                     currentValue && !config.isSecret
                         ? ` (current: ${currentValue})`
-                        : " (leave blank to keep current value)"
+                        : currentValue && config.isSecret
+                        ? " (leave blank to keep current value)"
+                        : " (not set)"
                 }: `;
 
                 let value: string;
@@ -762,7 +769,7 @@ class VariableManager {
         return this.variables.filter((variable) => {
             const config = variable.getConfig();
             // Only include variables that don't have outputBy (user-only variables)
-            return !config.outputBy;
+            return !config.outputBy && !(variable instanceof DerivedVar);
         });
     }
 }
@@ -960,15 +967,16 @@ export function setupCloudCommand(program: Command): void {
                         console.log(`# Hint: ${config.hint}`);
                     }
                     if (config.defaultValue) {
-                        console.log(`Default: ${config.defaultValue}`);
+                        console.log(`# Default: ${config.defaultValue}`);
                     }
                     await variable.loadFromEnv(userVars);
 
                     console.log(
-                        `\n${variable.getEnvVarName()}=${
+                        `${variable.getEnvVarName()}=${
                             variable.getValue() || "[not set]"
                         }`,
                     );
+                    console.log();
                 }
                 console.log(
                     "\n=====================================================",
