@@ -234,13 +234,20 @@ async function setupGCP(
 
     let gcpSvcAccountKeyPath: string | undefined;
     if (process.env.GCP_SVC_CREDENTIALS) {
-        const gcpSvcAccountKey = JSON.parse(process.env.GCP_SVC_CREDENTIALS);
+        const decodedKey = Buffer.from(
+            process.env.GCP_SVC_CREDENTIALS,
+            "base64",
+        ).toString("utf-8");
+        const gcpSvcAccountKey = JSON.parse(decodedKey);
         gcpSvcAccountKeyPath = path.join(
             APP_DIR,
             "gcp",
             "gcp-service-account-key",
         );
-        await writeFile(gcpSvcAccountKeyPath, gcpSvcAccountKey);
+        await writeFile(
+            gcpSvcAccountKeyPath,
+            JSON.stringify(gcpSvcAccountKey, null, 2),
+        );
     }
 
     // Write the tfvars file with all required variables
