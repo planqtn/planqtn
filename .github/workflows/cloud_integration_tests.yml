@@ -90,6 +90,8 @@ jobs:
 
           # Description: Supabase anonymous key
           PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
+
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
