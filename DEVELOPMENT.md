@@ -200,7 +200,7 @@ For the jobs image use:
 cat app/supabase/functions/.env | grep JOBS
 ```
 
-The `app/supabase/functions/.env` file is used to determine the secrets for the local environment, but we'll also use it to deploy the jobs Clooud Run job and the job-monitor Cloud Run service.
+The `app/supabase/functions/.env` file is used to determine the secrets for the local environment, but we'll also use it to deploy the Cloud Run job, `planqtn-job` and the `job-monitor` Cloud Run service.
 
 For the API image use:
 
@@ -208,7 +208,7 @@ For the API image use:
 cat app/planqtn_api/.env | grep API
 ```
 
-The `~/.planqtn/planqtn_api/.env` file is used by the deployment command later to Cloud Run as well as the local kernel implementation uses it to determine which image to run when spinning up the API server.
+The `~/.planqtn/planqtn_api/.env` file is used by the deployment of the `plaqntn-api` service later to Cloud Run as well as the local kernel implementation uses it to determine which image to run when spinning up the API server.
 
 ### 3. Personal Supabase setup
 
