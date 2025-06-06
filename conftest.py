@@ -1,6 +1,6 @@
 import pytest
 
-from app.planqtn_fixtures.env import getEnvironment
+from planqtn_fixtures.env import getEnvironment
 
 
 def pytest_addoption(parser):
