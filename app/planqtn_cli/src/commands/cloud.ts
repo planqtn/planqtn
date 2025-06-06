@@ -5,6 +5,8 @@ import * as path from "path";
 import { promisify } from "util";
 import { getImageFromEnv, handleImage } from "./images";
 import promptSync from "prompt-sync";
+import * as https from "https";
+import * as os from "os";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -14,6 +16,7 @@ const unlink = promisify(fs.unlink);
 
 // Get the app directory path (one level up from planqtn_cli)
 const APP_DIR = path.join(process.cwd(), "..");
+const PLANQTN_BIN_DIR = path.join(process.env.HOME || "", ".planqtn", "bin");
 
 interface CloudConfig {
     project_id: string;
@@ -106,6 +109,88 @@ async function setupSupabase(
     );
 }
 
+async function ensureTerraformInstalled(): Promise<string> {
+    // Create bin directory if it doesn't exist
+    if (!await exists(PLANQTN_BIN_DIR)) {
+        await mkdir(PLANQTN_BIN_DIR, { recursive: true });
+    }
+
+    const terraformPath = path.join(PLANQTN_BIN_DIR, "terraform");
+
+    // Check if terraform is already installed
+    if (await exists(terraformPath)) {
+        return terraformPath;
+    }
+
+    console.log("Installing Terraform...");
+
+    // Determine OS and architecture
+    const platform = os.platform();
+    const arch = os.arch();
+
+    let osName: string;
+    let archName: string;
+
+    switch (platform) {
+        case "linux":
+            osName = "linux";
+            break;
+        case "darwin":
+            osName = "darwin";
+            break;
+        default:
+            throw new Error(`Unsupported OS: ${platform}`);
+    }
+
+    switch (arch) {
+        case "x64":
+            archName = "amd64";
+            break;
+        case "arm64":
+            archName = "arm64";
+            break;
+        default:
+            throw new Error(`Unsupported architecture: ${arch}`);
+    }
+
+    // Use a fixed version instead of fetching from API to avoid rate limiting issues
+    const version = "1.7.4";
+    const zipUrl =
+        `https://releases.hashicorp.com/terraform/${version}/terraform_${version}_${osName}_${archName}.zip`;
+    const zipPath = path.join(PLANQTN_BIN_DIR, "terraform.zip");
+
+    // Download Terraform
+    await new Promise<void>((resolve, reject) => {
+        https.get(zipUrl, (res) => {
+            if (res.statusCode !== 200) {
+                reject(
+                    new Error(
+                        `Failed to download Terraform: ${res.statusCode}`,
+                    ),
+                );
+                return;
+            }
+            const file = fs.createWriteStream(zipPath);
+            res.pipe(file);
+            file.on("finish", () => {
+                file.close();
+                resolve();
+            });
+            file.on("error", reject);
+        }).on("error", reject);
+    });
+
+    // Unzip Terraform
+    execSync(`unzip -o ${zipPath} -d ${PLANQTN_BIN_DIR}`);
+    await unlink(zipPath);
+
+    // Make terraform executable
+    execSync(`chmod +x ${terraformPath}`);
+
+    console.log("Terraform installed successfully.");
+    return terraformPath;
+}
+
 async function setupGCP(
     interactive: boolean,
     dockerRepo: string,
@@ -114,6 +199,7 @@ async function setupGCP(
     gcpProjectId: string,
     gcpRegion: string,
 ): Promise<void> {
+    const terraformPath = await ensureTerraformInstalled();
     const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
     const tfvars = await readTerraformVars(tfvarsPath);
 
@@ -138,8 +224,8 @@ async function setupGCP(
 
     // Apply Terraform configuration
     const gcpDir = path.join(APP_DIR, "gcp");
-    execSync("terraform init", { cwd: gcpDir, stdio: "inherit" });
-    execSync("terraform apply -auto-approve", {
+    execSync(`${terraformPath} init`, { cwd: gcpDir, stdio: "inherit" });
+    execSync(`${terraformPath} apply -auto-approve`, {
         cwd: gcpDir,
         stdio: "inherit",
     });
@@ -152,6 +238,15 @@ async function setupSupabaseSecrets(
     serviceAccountKey: string,
     apiUrl: string,
 ): Promise<void> {
+    if (!serviceAccountKey) {
+        throw new Error(
+            "GCP service account key is required for Supabase secrets setup",
+        );
+    }
+    if (!apiUrl) {
+        throw new Error("API URL is required for Supabase secrets setup");
+    }
+
     // Create a temporary .env file for Supabase secrets
     const envContent = [
         "ENV=development",
@@ -470,16 +565,17 @@ class VariableManager {
         const outputsPath = path.join(gcpDir, "outputs.tf");
         if (await exists(outputsPath)) {
             try {
+                const terraformPath = await ensureTerraformInstalled();
                 // Get Terraform outputs
                 const apiUrl = execSync(
-                    "terraform output -raw api_service_url",
+                    `${terraformPath} output -raw api_service_url`,
                     {
                         cwd: gcpDir,
                     },
                 ).toString().trim();
                 console.log("API URL:", apiUrl);
                 const rawServiceAccountKey = execSync(
-                    "terraform output -raw api_service_account_key",
+                    `${terraformPath} output -raw api_service_account_key`,
                     { cwd: gcpDir },
                 ).toString().trim();
 
