@@ -66,6 +66,7 @@ async function setupSupabase(
     projectId: string,
     dbPassword: string,
     supabaseServiceKey: string,
+    nonInteractive: boolean,
 ): Promise<void> {
     // Run migrations
     console.log("\nRunning database migrations...");
@@ -87,6 +88,26 @@ async function setupSupabase(
         ...process.env,
         SUPABASE_DB_PASSWORD: dbPassword,
     };
+
+    // Check for Supabase access token
+    const accessTokenPath = path.join(
+        os.homedir(),
+        ".supabase",
+        "access-token",
+    );
+    if (!process.env.SUPABASE_ACCESS_TOKEN && !fs.existsSync(accessTokenPath)) {
+        if (process.stdin.isTTY || !nonInteractive) {
+            console.log(
+                "Supabase access token not found. Please login to Supabase...",
+            );
+            execSync("npx supabase login", { stdio: "inherit" });
+        } else {
+            throw new Error(
+                "Supabase access token not found and not in interactive mode. Please run `supabase login` first.",
+            );
+        }
+    }
+
     execSync(
         `npx supabase --workdir ${APP_DIR} link --project-ref ${projectId}`,
         {
@@ -866,6 +887,7 @@ export function setupCloudCommand(program: Command): void {
                         variableManager.getValue("supabaseProjectRef"),
                         variableManager.getValue("dbPassword"),
                         variableManager.getValue("supabaseServiceKey"),
+                        options.nonInteractive,
                     );
                 }
 

@@ -156,7 +156,11 @@ This is a workflow tested automatically by Github Actions, and is only required 
 
 ## Github Actions secrets
 
-Setup on your personal repo the following secrets: `DOCKERHUB_TOKEN`, and then the env vars in `cloud print-env-vars`:
+Setup on your personal repo the following secrets: \
+
+- `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
+- `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
+- and then the env vars in `cloud print-env-vars`:
 
 ```
 Required environment variables for non-interactive mode:
