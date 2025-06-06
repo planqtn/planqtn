@@ -154,6 +154,46 @@ This is a workflow tested automatically by Github Actions, and is only required 
 
 # Reference for developer tools
 
+## Github Actions secrets
+
+Setup on your personal repo the following secrets: `DOCKERHUB_TOKEN`, and then the env vars in `cloud print-env-vars`:
+
+```
+Required environment variables for non-interactive mode:
+=====================================================
+# Description: Docker repository (e.g., Docker Hub username or repo)
+# Default: planqtn
+PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}
+
+# Description: Supabase project ID
+# Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
+PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}
+
+# Description: Supabase database password
+PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}
+
+# Description: Environment
+# Default: development
+PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
+
+# Description: GCP project ID
+PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}
+
+# Description: GCP region
+# Default: us-east1
+PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}
+
+# Description: Supabase service key
+PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}
+
+# Description: Supabase anonymous key
+PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
+```
+
+Variables:
+
+- `DOCKERHUB_USERNAME`
+
 ## Personal cloud setup
 
 We use GCP Cloud Run for executing workloads and the API and we use Supabase for the User context (authentication, task store, quota function, user content database) and the Runtime context (task management functions, api functions, realtime messaging database). Both Supabase references GCP (for the API/Job calls) and GCP references Supabase (to write results/task updates back to the Supabase database). Please follow the order of setup as listed below, start with Supabase, then with GCP, and finally deploy the Supabase functions/secrets.

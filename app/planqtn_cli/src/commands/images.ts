@@ -205,10 +205,6 @@ export async function handleImage(
             process.stdout.isTTY;
         const pushArgs = ["push"];
 
-        if (!isTTY) {
-            pushArgs.push("--progress=plain");
-        }
-
         pushArgs.push(imageName);
 
         await runCommand("docker", pushArgs, {

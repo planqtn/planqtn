@@ -23,7 +23,7 @@ def supabase_setup():
     else:
         workdir = (
             f"{Path(__file__).parent.parent}"
-            if env == "local"
+            if env == "dev"
             else os.path.expanduser("~/.planqtn")
         )
         print("workdir:", workdir)
