@@ -38,7 +38,33 @@ jobs:
           hack/cli_build.sh --install
       - name: build and load api image
         env:
+          # Description: Docker repository (e.g., Docker Hub username or repo)
+          # Default: planqtn
+          PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}
 
+          # Description: Supabase project ID
+          # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
+          PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}
+
+          # Description: Supabase database password
+          PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}
+
+          # Description: Environment
+          # Default: development
+          PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
+
+          # Description: GCP project ID
+          PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}
+
+          # Description: GCP region
+          # Default: us-east1
+          PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}
+
+          # Description: Supabase service key
+          PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}
+
+          # Description: Supabase anonymous key
+          PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
         run: |
           hack/htn cloud deploy
       - uses: dorny/paths-filter@v3
