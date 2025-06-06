@@ -67,22 +67,18 @@ async function setupSupabase(
     dbPassword: string,
     supabaseServiceKey: string,
 ): Promise<void> {
-    // Update database connection string
-    const dbConfig = {
-        db: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
-    };
-    await writeFile(
-        path.join(configDir, "db.json"),
-        JSON.stringify(dbConfig, null, 2),
-    );
-
     // Run migrations
     console.log("\nRunning database migrations...");
     execSync(
-        `npx node-pg-migrate up --envPath=${configDir}/supa.db.env -m ${
-            path.join(APP_DIR, "migrations")
-        }`,
-        { stdio: "inherit" },
+        `npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`,
+        {
+            stdio: "inherit",
+            env: {
+                ...process.env,
+                DATABASE_URL:
+                    `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
+            },
+        },
     );
 
     // Link and deploy Supabase functions
