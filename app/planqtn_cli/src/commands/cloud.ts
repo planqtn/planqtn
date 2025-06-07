@@ -100,7 +100,9 @@ async function setupSupabase(
             console.log(
                 "Supabase access token not found. Please login to Supabase...",
             );
-            execSync("npx supabase login", { stdio: "inherit" });
+            execSync(`npx supabase --workdir ${APP_DIR} login`, {
+                stdio: "inherit",
+            });
         } else {
             throw new Error(
                 "Supabase access token not found and not in interactive mode. Please run `supabase login` first.",
@@ -327,9 +329,12 @@ async function setupSupabaseSecrets(
 
     // Deploy secrets to Supabase
     console.log("\nDeploying Supabase secrets...");
-    execSync(`supabase secrets set --env-file ${envPath}`, {
-        stdio: "inherit",
-    });
+    execSync(
+        `npx supabase --workdir ${APP_DIR} secrets set --env-file ${envPath}`,
+        {
+            stdio: "inherit",
+        },
+    );
 
     // Clean up the temporary env file
     await unlink(envPath);
