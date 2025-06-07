@@ -1025,10 +1025,15 @@ export function setupCloudCommand(program: Command): void {
 
     cloudCommand
         .command("print-env-vars")
+        .option(
+            "--with-current-value",
+            "Print current value of the variable",
+            false,
+        )
         .description(
             "Print required environment variables for non-interactive mode",
         )
-        .action(async () => {
+        .action(async (options: { withCurrentValue: boolean }) => {
             try {
                 const configDir = path.join(
                     process.env.HOME || "",
@@ -1053,6 +1058,10 @@ export function setupCloudCommand(program: Command): void {
                     }
                     if (config.defaultValue) {
                         console.log(`# Default: ${config.defaultValue}`);
+                    }
+                    if (options.withCurrentValue) {
+                        await variable.load(userVars);
+                        console.log(`# Current value: ${variable.getValue()}`);
                     }
                     await variable.loadFromEnv(userVars);
 

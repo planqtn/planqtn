@@ -154,50 +154,6 @@ This is a workflow tested automatically by Github Actions, and is only required 
 
 # Reference for developer tools
 
-## Github Actions secrets
-
-Setup on your personal repo the following secrets: \
-
-- `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
-- `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
-- and then the env vars in `cloud print-env-vars`:
-
-```
-Required environment variables for non-interactive mode:
-=====================================================
-# Description: Docker repository (e.g., Docker Hub username or repo)
-# Default: planqtn
-PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}
-
-# Description: Supabase project ID
-# Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
-PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}
-
-# Description: Supabase database password
-PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}
-
-# Description: Environment
-# Default: development
-PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
-
-# Description: GCP project ID
-PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}
-
-# Description: GCP region
-# Default: us-east1
-PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}
-
-# Description: Supabase service key
-PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}
-
-# Description: Supabase anonymous key
-PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
-```
-
-Variables:
-
-- `DOCKERHUB_USERNAME`
-
 ## Personal cloud setup
 
 We use GCP Cloud Run for executing workloads and the API and we use Supabase for the User context (authentication, task store, quota function, user content database) and the Runtime context (task management functions, api functions, realtime messaging database). Both Supabase references GCP (for the API/Job calls) and GCP references Supabase (to write results/task updates back to the Supabase database). Please follow the order of setup as listed below, start with Supabase, then with GCP, and finally deploy the Supabase functions/secrets.
@@ -253,7 +209,51 @@ hack/htn cloud deploy
 
 This should walk you through the process automatically, and will ask you interactively for the secrets above.
 
-## Github Actions setup for your personal preview environment
+## Github Actions secrets for your personal integration testing environment
+
+Setup on your personal repo the following secrets: \
+
+- `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
+- `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
+- and then the env vars in `hack/htn cloud print-env-vars`:
+
+```
+Required environment variables for non-interactive mode:
+=====================================================
+# Description: Docker repository (e.g., Docker Hub username or repo)
+# Default: planqtn
+PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}
+
+# Description: Supabase project ID
+# Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
+PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}
+
+# Description: Supabase database password
+PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}
+
+# Description: Environment
+# Default: development
+PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
+
+# Description: GCP project ID
+PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}
+
+# Description: GCP region
+# Default: us-east1
+PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}
+
+# Description: Supabase service key
+PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}
+
+# Description: Supabase anonymous key
+PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
+```
+
+In order to make this a bit easier, you can use `hack/htn cloud print-env-vars --with-current-value` and then it will also add the current values in.
+
+Setup a variable:
+
+- `DOCKERHUB_USERNAME`
 
 We need a svc account for GCP with Github Actions:
 
@@ -276,6 +276,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 ```
 
+gcloud iam service-accounts keys create ~/.planqtn/.config/tf-deployer-svc.json --iam-account=tf-deployer@$PROJECT_ID.iam.gserviceaccount.com
+```
+
+4. In Github Actions Secrets, setup the `GCP_SVC_CREDENTIALS` to be the output of the following:
+
+```
+cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0
 ```
 
 ## PlanqTN CLI
