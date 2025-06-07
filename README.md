@@ -48,11 +48,11 @@ htn --help
 
 If you need to go beyond the limits of the cloud based execution, then you can use a local kernel to execute expensive weight enumerator job calculations, still connected to the official UI, and your results will be stored in the PlanqTN database under your profile.
 
-Run `htn kernel up` to start the kernel. The first time can take a couple of minutes as it will setup a k3d cluster and a local instance of supabase within your Docker engine. To stop everything, use `htn kernel stop`. To remove all images and data, use `htn remove`.
+Run `htn kernel start` to start the kernel. The first time can take a couple of minutes as it will setup a k3d cluster and a local instance of supabase within your Docker engine. To stop everything, use `htn kernel stop`. To remove all images and data, use `htn kernel remove`.
 
 ## Running the UI locally
 
-If you want to run the UI locally, use `htn ui up`.
+If you want to run the UI locally, go to the `DEVELOPMENT.md` for details.
 
 Then, open http://localhost:5173 in your browser, and you should see a screen similar as below:
 
