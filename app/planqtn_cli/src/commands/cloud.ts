@@ -208,7 +208,10 @@ async function ensureTerraformInstalled(): Promise<string> {
     return terraformPath;
 }
 
-async function terraform(args: string): Promise<string | null> {
+async function terraform(
+    args: string,
+    printOutput: boolean = false,
+): Promise<string | null> {
     const terraformPath = await ensureTerraformInstalled();
 
     let gcpSvcAccountKeyPath: string | undefined;
@@ -241,7 +244,7 @@ async function terraform(args: string): Promise<string | null> {
 
     const result = execSync(`${terraformPath} ${args}`, {
         cwd: gcpDir,
-        stdio: "inherit",
+        stdio: printOutput ? "inherit" : "pipe",
         env: tfEnv,
     });
     if (result) {
@@ -288,9 +291,10 @@ async function setupGCP(
 
     await terraform(
         `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+        true,
     );
 
-    await terraform(`apply -auto-approve`);
+    await terraform(`apply -auto-approve`, true);
 }
 
 async function setupSupabaseSecrets(
@@ -327,10 +331,8 @@ async function setupSupabaseSecrets(
         stdio: "inherit",
     });
 
-    console.log(envContent);
-
     // Clean up the temporary env file
-    // await unlink(envPath);
+    await unlink(envPath);
 }
 
 async function buildAndPushImages(): Promise<void> {
@@ -725,10 +727,10 @@ class VariableManager {
             );
 
             if (apiUrlVar) {
-                apiUrlVar.setValue(apiUrl);
+                apiUrlVar.setValue(apiUrl!);
             }
             if (gcpSvcAccountKeyVar) {
-                gcpSvcAccountKeyVar.setValue(rawServiceAccountKey);
+                gcpSvcAccountKeyVar.setValue(rawServiceAccountKey!);
             }
 
             console.log("Terraform outputs loaded successfully.");
