@@ -215,319 +215,68 @@ From the root of the repo we'll start with installing some necessary tools in th
 npm install --include-dev
 ```
 
-### 1. Configuration secrets
+- a free tier Supabase.com project and secrets (see below)
+- a free tier GCP project and secrets (see below)
 
-Configuration secrets, like DB passwords for your Supabase, or service accounts will be kept inside your home folder, within `$HOME/.planqtn/.config`. Note that `htn remove` will remove these secrets as well, so if you run it, you'll have to recreate them manually again.
-
-To get started, `cp -r app/.config.example $HOME/.planqtn/.config`.
-
-### 2. Setup docker repo for images
-
-1. In `$HOME/.planqtn/.config/docker-repo`, replace `[YOUR-DOCKER-REPO]`:
-
-```
-[YOUR-DOCKER-REPO]
-```
-
-2. Build & push the Jobs and API images
-
-```
-hack/htn images job --build --push
-hack/htn images api --build --push
-```
-
-You can verify that the right files are updated with the new image tag information.
-
-For the jobs image use:
-
-```
-cat app/supabase/functions/.env | grep JOBS
-```
-
-The `app/supabase/functions/.env` file is used to determine the secrets for the local environment, but we'll also use it to deploy the Cloud Run job, `planqtn-job` and the `job-monitor` Cloud Run service.
-
-For the API image use:
-
-```
-cat app/planqtn_api/.env | grep API
-```
-
-The `~/.planqtn/planqtn_api/.env` file is used by the deployment of the `plaqntn-api` service later to Cloud Run as well as the local kernel implementation uses it to determine which image to run when spinning up the API server.
-
-### 3. Personal Supabase setup
+### 1. Personal Supabase setup
 
 1. Setup your account at https://supabase.com/
 2. Create a new organization e.g. "Your Name"
-3. Create a a new project e.g. "<yourname>-planqtn-dev" or similar - remember, note down the database password, then in `$HOME/.planqtn/.config/db.json `, update the "db" connection string by replacing `[YOUR-SUPABASE-PROJECT-ID]` and `[YOUR-PASSWORD]` - the simplest way to add it from your Supabase dashboard "Connect" feature, most importantly **use the Transaction Pooler** connection string, not the direct one (we need IPv4 compatible URL for our migration tool):
+3. Create a a new project e.g. "<yourname>-planqtn-dev" or similar
+4. Note down the following secrets:
 
-```env
-DATABASE_URL='postgresql://postgres.[YOUR-SUPABASE-PROJECT-ID]:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres'
+- note down the database password (though you can reset it from your dashboard)
+- your project ref (which is in the `[project-ref].supabase.co` in the "Connect" menu point)
+  <img src="fig/supabase_connect.png">
+- Get the `service_role` key and `anon_key` from your personal Supabase project via Project Settings/API Keys, click Reveal for the service role key:
+  <img src="fig/supabase_connect3.png">
 
-```
-
-<img src="fig/supabase_connect.png">
-<img src="fig/supabase_connect2.png">
-
-4. Run migrations to test it, and to get your database schema initialized.
-
-```
-npx node-pg-migrate up --envPath=$HOME/.planqtn/.config/supa.db.env -m app/migrations
-```
-
-You should see something like this:
-
-```
-...
-initialization SQL
-...
-Migrations complete!
-```
-
-5. In order to deploy functions to your supabase instance, we'll need to link it, so run the following command and follow the instructions to login and pick your project:
-
-```
-npx supabase --workdir app link
-```
-
-And now we can deploy the functions:
-
-```
-npx supabase --workdir app functions deploy
-```
-
-6. We'll setup secrets now for GCP to be able to connect to Supabase. Get the `service_role` key from your personal Supabase project via Project Settings/API Keys, Reveal and add it into `$HOME/.planqtn/.config/gcp_secret_data_svc_key`, replace `[YOUR-SUPABASE-SERVICE-ROLE-KEY]` with your key:
-
-<img src="fig/supabase_connect3.png">
-
-7. Add your Supabase url to the `$HOME/.planqtn/.config/gcp_secret_data_api_url`, replace `[YOUR_SUPABASE_PROJECT_ID]` with your project id:
-
-```
-https://[YOUR_SUPABASE_PROJECT_ID].supabase.co
-```
-
-### 4. Personal GCP setup
+### 2. Personal GCP setup
 
 1. Register for a Google Cloud Platform and start a new GCP Project https://cloud.google.com/?hl=en - you will need to add a Billing account, but don't worry, none of the developments will cost anything at our size.
 2. Download `gcloud` on Linux/MacOSX, so that it can be used in the scripts: https://cloud.google.com/sdk/docs/install
 3. Run `gcloud init` to create a new local gcloud configuration that points to your project, choose `us-east1` if you're unsure what to choose for your environment.
 4. Run `gcloud auth login` to enable automatically gcloud to act on your behalf
-5. Enable the required APIs:
+5. Create the following for managing the state via terraform:
 
 ```
-gcloud services enable pubsub.googleapis.com
-gcloud services enable run.googleapis.com
-gcloud services enable secretmanager.googleapis.com
-gcloud services enable logging.googleapis.com
-gcloud services enable eventarc.googleapis.com
+export $MYNAME=<your-name>
+gsutil mb gs://planqtn-$MYNAME-tfstate
+gsutil versioning set on gs://planqtn-$MYNAME-tfstate
 ```
 
-6. Setup the Supabase connection secrets in the Secret Manager
+### 3. Deploy your project
 
 ```
- gcloud secrets create dev_svc_key_supa
- gcloud secrets versions add dev_svc_key_supa --data-file=$HOME/.planqtn/.config/gcp_secret_data_svc_key
- gcloud secrets create dev_url_supa
- gcloud secrets versions add dev_url_supa --data-file=$HOME/.planqtn/.config/gcp_secret_data_api_url
+hack/htn cloud deploy
 ```
 
-7. Give the default compute service account to have access to run the Jobs and Services and have access to the secrets:
-
-First let's store the project id:
-
-```
-GCP_PROJECT=$(gcloud config get-value project)
-echo $GCP_PROJECT
-```
-
-Ensure it's the right one.
-
-We will store this info for the supabase functions:
-
-```
-echo GCP_PROJECT=$GCP_PROJECT  >> ~/.planqtn/.config/supa.functions.env
-```
-
-Then, get the email of the default service account. If this is a new project you should only see a single email here in the form of `<project-number>-compute@developer.gserviceaccount.com`
-
-```
-gcloud iam service-accounts list --format="get(email)"
-```
-
-Now, with this `[SVC-ACCOUNT-EMAIL]`, run the following:
-
-```
- gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/secretmanager.secretAccessor --member="serviceAccount:[SVC-ACCOUNT-EMAIL]"
-```
-
-8. Deploy the Cloud Run job definition for the PlanqTN Jobs
-
-Store the `JOBS_IMAGE` env variable and verify that the output is the image you built.
-
-```
-export `cat app/supabase/functions/.env | grep JOBS`
-echo $JOBS_IMAGE
-```
-
-Then deploy the PlanqTN Cloud Run job definition:
-
-```
-gcloud run jobs deploy planqtn-jobs --image $JOBS_IMAGE   --set-secrets SUPABASE_URL=dev_url_supa:latest --set-secrets SUPABASE_KEY=dev_svc_key_supa:latest
-```
-
-You should see
-
-```
-Deploying container to Cloud Run job [planqtn-jobs] in project [<your-project>] region [us-east1]
-✓ Updating job... Done.
-Done.
-Job [planqtn-jobs] has successfully been deployed.
-
-To execute this job, use:
-gcloud run jobs execute planqtn-jobs
-```
-
-9. Deploy the Cloud Run job-monitor for the PlanqTN jobs
-
-Store the `JOBS_IMAGE` env variable and verify that the output is the image you built.
-
-```
-export `cat app/supabase/functions/.env | grep JOBS`
-echo $JOBS_IMAGE
-```
-
-Then deploy the PlanqTN Cloud Run `job-monitor` service definition:
-
-```
-gcloud run deploy planqtn-monitor --image $JOBS_IMAGE  --set-secrets SUPABASE_URL=dev_url_supa:latest --set-secrets SUPABASE_KEY=dev_svc_key_supa:latest --args /app/planqtn_jobs/cloud_run_monitor_service.py --no-allow-unauthenticated
-```
-
-You should see
-
-```
-Deploying container to Cloud Run service [planqtn-monitor] in project [your-project-id] region [us-east1]
-⠶ Deploying new service...
-  ⠶ Creating Revision...
-  . Routing traffic...
-```
-
-then eventually...
-
-```
-Deploying container to Cloud Run service [planqtn-monitor] in project [<your-project-id>] region [us-east1]
-✓ Deploying new service... Done.
-  ✓ Creating Revision...
-  ✓ Routing traffic...
-Done.
-Service [planqtn-monitor] revision [planqtn-monitor-00001-pbl] has been deployed and is serving 100 percent of traffic.
-Service URL: https://planqtn-monitor-<your-project-number>.us-east1.run.app
-```
-
-Now we'll setup the Cloud Run job failures reported through logs to the planqtn-monitor service. This needs a new PubSub topic:
-
-```
-gcloud pubsub topics create planqtn-jobs
-```
-
-Then we create a sink for the job failure logs to the topic:
-
-```
-gcloud logging sinks create planqtn-job-monitor pubsub.googleapis.com/projects/planqtn-dev/topics/planqtn-jobs --log-filter='protoPayload.methodName="Jobs.RunJob" AND NOT "has completed successfully"'
-```
-
-And finally we setup the trigger for the job-monitor service:
-
-```
-gcloud eventarc triggers create planqtn-failed-job-trigger --event-filters="type=google.cloud.pubsub.topic.v1.messagePublished" --destination-run-service=planqtn-monitor --transport-topic planqtn-jobs --location us-east1
-```
-
-10. Deploy the API server
-
-Store and verify that your `API_IMAGE` env variable contains the API image you built:
-
-```
-export `cat app/planqtn_api/.env | grep API`
-echo $API_IMAGE
-```
-
-Then deploy the service:
-
-```
-gcloud run deploy planqtn-api --image $API_IMAGE --no-allow-unauthenticated
-```
-
-You should see at the end:
-
-```
-Deploying container to Cloud Run service [planqtn-api] in project [<your-project-id>] region [us-east1]
-✓ Deploying new service... Done.
-  ✓ Creating Revision...
-  ✓ Routing traffic...
-Done.
-Service [planqtn-api] revision [planqtn-api-00001-srp] has been deployed and is serving 100 percent of traffic.
-Service URL: https://planqtn-api-<your-project-number>.us-east1.run.app
-```
-
-Take note of the service URL, and replace `[YOUR-CLOUD-RUN-API-SERVICE.run.app]` in the following command, to store it in `$HOME/.planqtn/.config/supa.functions.env`:
-
-```
-echo API_URL=[YOUR-CLOUD-RUN-API-SERVICE.run.app] >> $HOME/.planqtn/.config/supa.functions.env
-```
-
-11. Create the service account for the functions to call the API with
-
-```
-gcloud iam service-accounts create dev-api-svc
-```
-
-Get the full email address:
-
-```
-SVC_ACC=`gcloud iam service-accounts list --format="get(email)" | grep dev-api-svc`
-```
-
-Ensure it's something like `dev-api-svc@YOUR-PROJECT-ID.iam.gserviceaccount.com`:
-
-```
-echo $SVC_ACC
-```
-
-Then add the roles for invoking Cloud Run services, kick off jobs with overrides, view statuses and logs:
-
-```
-gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.invoker --member=serviceAccount:$SVC_ACC
-gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.jobsExecutorWithOverrides --member=serviceAccount:$SVC_ACC
-gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/run.viewer --member=serviceAccount:$SVC_ACC
-gcloud projects add-iam-policy-binding $GCP_PROJECT  --role=roles/logging.viewAccessor --member=serviceAccount:$SVC_ACC
-```
-
-Then download a JSON key for this account:
-
-```
-gcloud iam service-accounts keys create ~/.planqtn/.config/svc.json --iam-account=$SVC_ACC
-```
-
-Finally let's add this key as a base64 encoded secret into the config file for functions:
-
-```
-echo >> ~/.planqtn/.config/supa.functions.env
-echo -n "SVC_ACCOUNT=" >> ~/.planqtn/.config/supa.functions.env
-cat ~/.planqtn/.config/svc.json | base64 -w 0 >> ~/.planqtn/.config/supa.functions.env
-echo >> ~/.planqtn/.config/supa.functions.env
-```
-
-Well done, the your GCP project is setup!!
-
-### 5. Deploy Supabase secrets
-
-As a final step, let's deploy the Supabase secrets
-
-```
-supabase secrets set --env-file $HOME/.planqtn/.config/
-```
+This should walk you through the process automatically, and will ask you interactively for the secrets above.
 
 ## Github Actions setup for your personal preview environment
 
-TODO
+We need a svc account for GCP with Github Actions:
+
+1. Create a service account to manage the resources:
+
+```
+export PROJECT_ID=$(gcloud config get-value project)
+gcloud iam service-accounts create tf-deployer --project=$PROJECT_ID
+```
+
+2. Add editor role:
+
+```
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/editor"
+```
+
+3. Download a key for the service account:
+
+```
+
+```
 
 ## PlanqTN CLI
 

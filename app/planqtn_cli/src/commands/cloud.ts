@@ -215,6 +215,8 @@ async function setupGCP(
     supabaseServiceKey: string,
     gcpProjectId: string,
     gcpRegion: string,
+    terraformStateBucket: string,
+    terraformStatePrefix: string,
 ): Promise<void> {
     const terraformPath = await ensureTerraformInstalled();
     const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
@@ -270,16 +272,16 @@ async function setupGCP(
 
     // Apply Terraform configuration
     const gcpDir = path.join(APP_DIR, "gcp");
-    execSync(`${terraformPath} init`, {
-        cwd: gcpDir,
-        stdio: "inherit",
-        env: tfEnv,
-    });
-    execSync(`${terraformPath} import`, {
-        cwd: gcpDir,
-        stdio: "inherit",
-        env: tfEnv,
-    });
+
+    execSync(
+        `${terraformPath} init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+        {
+            cwd: gcpDir,
+            stdio: "inherit",
+            env: tfEnv,
+        },
+    );
+
     execSync(`${terraformPath} apply -auto-approve`, {
         cwd: gcpDir,
         stdio: "inherit",
@@ -321,8 +323,10 @@ async function setupSupabaseSecrets(
         stdio: "inherit",
     });
 
+    console.log(envContent);
+
     // Clean up the temporary env file
-    await unlink(envPath);
+    // await unlink(envPath);
 }
 
 async function buildAndPushImages(): Promise<void> {
@@ -592,6 +596,24 @@ class VariableManager {
                 configDir,
                 "gcp-region",
             ),
+            new PlainFileVar(
+                {
+                    name: "terraformStateBucket",
+                    description: "Terraform state bucket",
+                    requiredFor: ["gcp"],
+                },
+                configDir,
+                "terraform-state-bucket",
+            ),
+            new PlainFileVar(
+                {
+                    name: "terraformStatePrefix",
+                    description: "Terraform state prefix",
+                    requiredFor: ["gcp"],
+                },
+                configDir,
+                "terraform-state-prefix",
+            ),
             new DerivedVar(
                 {
                     name: "supabaseUrl",
@@ -699,10 +721,6 @@ class VariableManager {
                     { cwd: gcpDir },
                 ).toString().trim();
 
-                // Base64 encode the service account key using Buffer
-                const serviceAccountKey = Buffer.from(rawServiceAccountKey)
-                    .toString("base64");
-
                 // Set values on the Variable instances
                 const apiUrlVar = this.variables.find((v) =>
                     v.getName() === "apiUrl"
@@ -715,7 +733,7 @@ class VariableManager {
                     apiUrlVar.setValue(apiUrl);
                 }
                 if (gcpSvcAccountKeyVar) {
-                    gcpSvcAccountKeyVar.setValue(serviceAccountKey);
+                    gcpSvcAccountKeyVar.setValue(rawServiceAccountKey);
                 }
 
                 console.log("Terraform outputs loaded successfully.");
@@ -937,6 +955,8 @@ export function setupCloudCommand(program: Command): void {
                         variableManager.getValue("supabaseServiceKey"),
                         variableManager.getValue("gcpProjectId"),
                         variableManager.getValue("gcpRegion"),
+                        variableManager.getValue("terraformStateBucket"),
+                        variableManager.getValue("terraformStatePrefix"),
                     );
                     // Reload outputs after GCP setup
                     await variableManager.loadGcpOutputs();

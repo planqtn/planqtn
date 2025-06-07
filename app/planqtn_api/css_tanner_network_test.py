@@ -105,7 +105,7 @@ def test_msp_tanner_network_bell_state_integration(supabase_setup, network_type)
     )
     assert (
         response.status_code == 200
-    ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
+    ), f"Failed to call function, status code: {response.status_code}, response: {response}"
 
     data = response.json()
     response_h = gauss(

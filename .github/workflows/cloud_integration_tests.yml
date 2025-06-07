@@ -21,6 +21,24 @@ on:
 
       - "check/**integration"
       - ".github/workflows/cloud_integration_tests.yml"
+  push:
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/supabase/**"
+      - "app/migrations/**"
+      - "app/planqtn_types/**"
+      - "app/planqtn_api/**"
+      - "app/planqtn_jobs/**"
+      - "app/planqtn_cli/**"
+      - "app/planqtn_fixtures/**"
+      - "hack/*build*"
+
+      - "check/**integration"
+      - ".github/workflows/cloud_integration_tests.yml"
 
 jobs:
   Cloud-Integration-Tests:
@@ -76,6 +94,10 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
           GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
+
+          PLANQTN_TERRAFORMSTATEBUCKET: ${{ secrets.PLANQTN_TERRAFORMSTATEBUCKET }}
+
+          PLANQTN_TERRAFORMSTATEPREFIX: ${{ secrets.PLANQTN_TERRAFORMSTATEPREFIX }}
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
