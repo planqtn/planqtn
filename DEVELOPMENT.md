@@ -99,7 +99,7 @@ check/api
 Integration tests:
 
 ```
-export KERNEL_ENV=<local/dev/personal-cloud>
+export KERNEL_ENV=<local/dev/cloud>
 check/api-integration
 ```
 
@@ -122,7 +122,7 @@ In the database the `tasks` table contains the task execution results and `task_
 ### Checks and tests
 
 ```
-export KERNEL_ENV=<local/dev/personal-cloud>
+export KERNEL_ENV=<local/dev/cloud>
 check/jobs-integration
 ```
 
@@ -136,21 +136,21 @@ This is the typical, fastest way to check that things are working, but it's heav
 
 ### The `local` workflow
 
-This is a workflow tested automatically by Github Actions, and is only required for developers to run if there is an issue with the Github Actions. These steps basically follow the relevant steps from .github/integration_tests.yml:
+This is a workflow tested automatically by Github Actions, and is only required for developers to run if there is an issue with the Github Actions. These steps basically follow the relevant steps from .github/local_integration_tests.yml:
 
 - install the `htn` tool: `hack/cli_build.sh --install`
 - run `htn kernel start` to spin up the `local` kernel.
 - Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load-no-restart --k3d-cluster local`
 - After modifying `planqtn_jobs` or `qlego`, run `export KERNEL_ENV=local; check/jobs-integration`
 
-### The `personal-cloud` workflow
+### The `cloud` workflow
 
-This is a workflow tested automatically by Github Actions, and is only required for developers to run if there is an issue with the Github Actions. These steps basically follow the relevant steps from .github/integration_tests.yml:
+This is a workflow tested automatically by Github Actions, and is only required for developers to run if there is an issue with the Github Actions. These steps basically follow the relevant steps from .github/cloud_integration_tests.yml:
 
-- setup `gcloud` to point your GCP project, see Personal GCP setup below
+- setup `gcloud` to have you logged in, see Personal GCP setup below
 - ensure that your Supabase env points to your personal Supabase project, see Personal Supabase setup below
-- To build the jobs images and deploy them to Cloud Run, run `hack/htn images jobs --build --deploy`
-- After modifying any of the components run `export KERNEL_ENV=local; check/jobs-integration`
+- To build the jobs images and deploy them to Cloud Run, run `hack/htn cloud deploy`
+- After modifying any of the components run `export KERNEL_ENV=cloud; check/jobs-integration`
 
 # Reference for developer tools
 
@@ -211,7 +211,7 @@ This should walk you through the process automatically, and will ask you interac
 
 ## Github Actions secrets for your personal integration testing environment
 
-Setup on your personal repo the following secrets: \
+Setup on your personal repo the following secrets:
 
 - `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
 - `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
@@ -251,7 +251,7 @@ PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
 
 In order to make this a bit easier, you can use `hack/htn cloud print-env-vars --with-current-value` and then it will also add the current values in.
 
-Setup a variable:
+Setup the docker username variable in Github Actions variables section:
 
 - `DOCKERHUB_USERNAME`
 
@@ -264,7 +264,7 @@ export PROJECT_ID=$(gcloud config get-value project)
 gcloud iam service-accounts create tf-deployer --project=$PROJECT_ID
 ```
 
-2. Add editor role:
+2. Add the necessary roles:
 
 ```
 gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -299,9 +299,9 @@ The CLI can be run in two modes:
 
 - `local` mode - this is what end users will use, and what the CLI is meant to be used for in production and CI/CD environments. The tool operates in $HOME/.planqtn and has prepackaged configuration definitions for the supabase / k8s clusters. It does not need the project git repo to work. The postfix on all objects (containers, docker network, supabase instance) is `-local`.
 
-- `dev` mode - it works solely from the git repo, and is meant to "dog food" our own CLI tool, but without the need to build the tool and install it every time things change, also allowing for fast reload of function development in supabase. The postfix on all objects (containers, docker network, supabase instance) is `-dev`. The `dev` mode also allows for image building (`images` subcommand), and deployment to the cloud environments.
+- `dev` mode - it works solely from the git repo, and is meant to "dog food" our own CLI tool, but without the need to build the tool and install it every time things change, also allowing for fast reload of function development in supabase. The postfix on all objects (containers, docker network, supabase instance) is `-dev`. The `dev` mode also allows for image building (`images` subcommand), and deployment to the cloud environments. the `dev` mode is what's used for cloud deployment as well.
 
-### Dev mode - using htn for development
+### Dev mode - using htn for development (and cloud deployment)
 
 Simply run `hack/htn` instead of `htn`, and things should work. We wrap certain tasks into `htn` scripts that frequently happen together or need to happen together as an atomic unit, for example, spining up a local env and applying database migrations on it, or building an image and reloading it into a local env, or deploying a Cloud Run service with it.
 
@@ -337,7 +337,7 @@ The options for KERNEL_ENV are:
 
 - `local` simulates the user's local environment, assuming that there is a local kernel running and has the latest images.
 - `dev` for a locally running development kernel that allows "hot reload" features from the repo directly
-- `personal-cloud` will connect to the developer's personal cloud services, including Supabase and Google Cloud Platform (GCP) project for Cloud Run.
+- `cloud` will connect to the developer's personal cloud services, including Supabase and Google Cloud Platform (GCP) project for Cloud Run.
 
 Note that `local` and `dev` are allowed to coexist, but currently ports are the same, so only one of them can be active at a time.
 
@@ -367,11 +367,9 @@ hack/htn kernel start
 
 Warning, this needs roughly $HOME40-50GB disk space and $HOME5-15GB RAM for the Docker runtimes.
 
-### Setting up `personal-cloud` kernel
+### Setting up `cloud` kernel
 
-```
-hack/htn kernel start
-```
+See above for personal cloud setup.
 
 ## Database migrations
 
