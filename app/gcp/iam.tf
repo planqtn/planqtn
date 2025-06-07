@@ -21,64 +21,6 @@ resource "google_project_iam_member" "cloud_run_svc_roles" {
   member  = "serviceAccount:${google_service_account.cloud_run_svc.email}"
 }
 
-# Service account for GitHub Actions
-resource "google_service_account" "github_actions" {
-  account_id   = "${var.environment}-github-actions"
-  display_name = "PlanqTN GitHub Actions Service Account"
-  project      = var.project_id
-}
-
-# Grant necessary roles to GitHub Actions service account
-resource "google_project_iam_member" "github_actions_roles" {
-  for_each = toset([
-    # Core infrastructure roles
-    "roles/editor",                    # Basic project editing capabilities
-    "roles/resourcemanager.projectIamAdmin", # Manage IAM policies
-    "roles/serviceusage.serviceUsageAdmin", # Enable/disable APIs
-    
-    # Cloud Run roles
-    "roles/run.admin",                 # Full Cloud Run management
-    "roles/iam.serviceAccountUser",    # Service account impersonation
-    "roles/iam.serviceAccountAdmin",   # Manage service accounts
-    
-    # Storage roles
-    "roles/storage.admin",             # Full Storage management
-    "roles/storage.objectAdmin",       # Object management
-    
-    # Secret management
-    "roles/secretmanager.admin",       # Full Secret Manager access
-    "roles/secretmanager.secretAccessor",
-    
-    # Logging and monitoring
-    "roles/logging.admin",             # Full logging management
-    "roles/monitoring.admin",          # Full monitoring management
-    
-    # Pub/Sub roles
-    "roles/pubsub.admin",              # Full Pub/Sub management
-    
-    # Cloud Build roles (if needed for future)
-    "roles/cloudbuild.builds.editor",
-    
-    # Artifact Registry roles
-    "roles/artifactregistry.admin",
-
-    # Additional required roles for API management
-    "roles/serviceusage.serviceUsageConsumer", # To use APIs
-    "roles/iam.serviceAccountKeyAdmin",        # To manage service account keys
-    "roles/iam.workloadIdentityPoolAdmin",     # For workload identity (if needed)
-    "roles/iam.workloadIdentityUser",          # For workload identity (if needed)
-    
-  ])
-
-  project = var.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# Create service account key for GitHub Actions
-resource "google_service_account_key" "github_actions_key" {
-  service_account_id = google_service_account.github_actions.name
-}
 
 # Service account for API access
 resource "google_service_account" "api_svc" {
