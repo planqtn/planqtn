@@ -208,31 +208,8 @@ async function ensureTerraformInstalled(): Promise<string> {
     return terraformPath;
 }
 
-async function setupGCP(
-    interactive: boolean,
-    dockerRepo: string,
-    supabaseProjectId: string,
-    supabaseServiceKey: string,
-    gcpProjectId: string,
-    gcpRegion: string,
-    terraformStateBucket: string,
-    terraformStatePrefix: string,
-): Promise<void> {
+async function terraform(args: string): Promise<string> {
     const terraformPath = await ensureTerraformInstalled();
-    const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
-
-    if (!(await exists(tfvarsPath))) {
-        console.log("Creating empty terraform.tfvars file...");
-        await writeFile(tfvarsPath, "");
-    }
-
-    // Get image names from environment
-    const jobsImage = await getImageFromEnv("job");
-    const apiImage = await getImageFromEnv("api");
-
-    if (!jobsImage || !apiImage) {
-        throw new Error("Failed to get image names from environment");
-    }
 
     let gcpSvcAccountKeyPath: string | undefined;
     if (process.env.GCP_SVC_CREDENTIALS) {
@@ -252,6 +229,48 @@ async function setupGCP(
         );
     }
 
+    const tfEnv = process.env.GCP_SVC_CREDENTIALS
+        ? {
+            ...process.env,
+            GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
+        }
+        : process.env;
+
+    // Apply Terraform configuration
+    const gcpDir = path.join(APP_DIR, "gcp");
+
+    return execSync(`${terraformPath} ${args}`, {
+        cwd: gcpDir,
+        stdio: "inherit",
+        env: tfEnv,
+    }).toString().trim();
+}
+
+async function setupGCP(
+    interactive: boolean,
+    dockerRepo: string,
+    supabaseProjectId: string,
+    supabaseServiceKey: string,
+    gcpProjectId: string,
+    gcpRegion: string,
+    terraformStateBucket: string,
+    terraformStatePrefix: string,
+): Promise<void> {
+    const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
+
+    if (!(await exists(tfvarsPath))) {
+        console.log("Creating empty terraform.tfvars file...");
+        await writeFile(tfvarsPath, "");
+    }
+
+    // Get image names from environment
+    const jobsImage = await getImageFromEnv("job");
+    const apiImage = await getImageFromEnv("api");
+
+    if (!jobsImage || !apiImage) {
+        throw new Error("Failed to get image names from environment");
+    }
+
     // Write the tfvars file with all required variables
     await writeTerraformVars(tfvarsPath, {
         project_id: gcpProjectId,
@@ -263,30 +282,11 @@ async function setupGCP(
         environment: "dev",
     });
 
-    const tfEnv = process.env.GCP_SVC_CREDENTIALS
-        ? {
-            ...process.env,
-            GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
-        }
-        : process.env;
-
-    // Apply Terraform configuration
-    const gcpDir = path.join(APP_DIR, "gcp");
-
-    execSync(
-        `${terraformPath} init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
-        {
-            cwd: gcpDir,
-            stdio: "inherit",
-            env: tfEnv,
-        },
+    await terraform(
+        `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
     );
 
-    execSync(`${terraformPath} apply -auto-approve`, {
-        cwd: gcpDir,
-        stdio: "inherit",
-        env: tfEnv,
-    });
+    await terraform(`apply -auto-approve`);
 }
 
 async function setupSupabaseSecrets(
@@ -704,50 +704,31 @@ class VariableManager {
 
     async loadGcpOutputs(): Promise<void> {
         console.log("Loading GCP outputs...");
-        const gcpDir = path.join(APP_DIR, "gcp");
-        if (await exists(gcpDir)) {
-            try {
-                const terraformPath = await ensureTerraformInstalled();
-                // Get Terraform outputs
-                const apiUrl = execSync(
-                    `${terraformPath} output -raw api_service_url`,
-                    {
-                        cwd: gcpDir,
-                    },
-                ).toString().trim();
-                console.log("API URL:", apiUrl);
-                const rawServiceAccountKey = execSync(
-                    `${terraformPath} output -raw api_service_account_key`,
-                    { cwd: gcpDir },
-                ).toString().trim();
-
-                // Set values on the Variable instances
-                const apiUrlVar = this.variables.find((v) =>
-                    v.getName() === "apiUrl"
-                );
-                const gcpSvcAccountKeyVar = this.variables.find((v) =>
-                    v.getName() === "gcpSvcAccountKey"
-                );
-
-                if (apiUrlVar) {
-                    apiUrlVar.setValue(apiUrl);
-                }
-                if (gcpSvcAccountKeyVar) {
-                    gcpSvcAccountKeyVar.setValue(rawServiceAccountKey);
-                }
-
-                console.log("Terraform outputs loaded successfully.");
-            } catch (error) {
-                // Silently fail if terraform commands fail - outputs might not be available yet
-                console.log(
-                    "Warning: Terraform outputs not found.",
-                    error,
-                );
-            }
-        } else {
-            console.log(
-                "Warning: Terraform outputs not found.",
+        try {
+            // Get Terraform outputs
+            const apiUrl = await terraform(
+                `output -raw api_service_url`,
             );
+            const rawServiceAccountKey = await terraform(
+                `output -raw api_service_account_key`,
+            );
+            // Set values on the Variable instances
+            const apiUrlVar = this.variables.find((v) =>
+                v.getName() === "apiUrl"
+            );
+            const gcpSvcAccountKeyVar = this.variables.find((v) =>
+                v.getName() === "gcpSvcAccountKey"
+            );
+
+            if (apiUrlVar) {
+                apiUrlVar.setValue(apiUrl);
+            }
+            if (gcpSvcAccountKeyVar) {
+                gcpSvcAccountKeyVar.setValue(rawServiceAccountKey);
+            }
+
+            console.log("Terraform outputs loaded successfully.");
+        } catch (error) {
         }
     }
 
