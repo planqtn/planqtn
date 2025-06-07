@@ -270,6 +270,14 @@ gcloud iam service-accounts create tf-deployer --project=$PROJECT_ID
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/editor"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretVersionAdder"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
+ --role="roles/secretmanager.secretAccessor"
 ```
 
 3. Download a key for the service account:
