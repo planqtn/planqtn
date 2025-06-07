@@ -275,6 +275,11 @@ async function setupGCP(
         stdio: "inherit",
         env: tfEnv,
     });
+    execSync(`${terraformPath} import`, {
+        cwd: gcpDir,
+        stdio: "inherit",
+        env: tfEnv,
+    });
     execSync(`${terraformPath} apply -auto-approve`, {
         cwd: gcpDir,
         stdio: "inherit",
