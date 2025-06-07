@@ -208,7 +208,7 @@ async function ensureTerraformInstalled(): Promise<string> {
     return terraformPath;
 }
 
-async function terraform(args: string): Promise<string> {
+async function terraform(args: string): Promise<string | null> {
     const terraformPath = await ensureTerraformInstalled();
 
     let gcpSvcAccountKeyPath: string | undefined;
@@ -239,11 +239,15 @@ async function terraform(args: string): Promise<string> {
     // Apply Terraform configuration
     const gcpDir = path.join(APP_DIR, "gcp");
 
-    return execSync(`${terraformPath} ${args}`, {
+    const result = execSync(`${terraformPath} ${args}`, {
         cwd: gcpDir,
         stdio: "inherit",
         env: tfEnv,
-    }).toString().trim();
+    });
+    if (result) {
+        return result.toString().trim();
+    }
+    return null;
 }
 
 async function setupGCP(
