@@ -11,7 +11,7 @@ async function getGitTag(): Promise<string> {
   const commitHash = (await runCommand(
     "git",
     ["rev-parse", "--short", "HEAD"],
-    { returnOutput: true },
+    { returnOutput: true }
   )) as string;
   const status = (await runCommand("git", ["status", "-s"], {
     returnOutput: true,
@@ -26,7 +26,7 @@ async function checkK3dRunning(cluster: string): Promise<boolean> {
       ["cluster", "get", `planqtn-${cluster}`],
       {
         returnOutput: true,
-      },
+      }
     );
     return true;
   } catch {
@@ -45,7 +45,7 @@ async function checkSupabaseRunning(): Promise<boolean> {
         "--format",
         "{{.Names}}",
       ],
-      { returnOutput: true },
+      { returnOutput: true }
     )) as string;
     return result.trim() === "supabase_edge_runtime_planqtn-dev";
   } catch {
@@ -56,7 +56,7 @@ async function checkSupabaseRunning(): Promise<boolean> {
 async function updateEnvFile(
   envPath: string,
   key: string,
-  value: string,
+  value: string
 ): Promise<void> {
   let envContent = "";
 
@@ -69,7 +69,7 @@ async function updateEnvFile(
   if (envContent.includes(`${key}=`)) {
     envContent = envContent.replace(
       new RegExp(`${key}=.*`, "g"),
-      jobsImageLine,
+      jobsImageLine
     );
   } else {
     envContent += `\n${jobsImageLine}\n`;
@@ -103,7 +103,7 @@ interface ImageOptions {
 
 export async function handleImage(
   image: string,
-  options: ImageOptions,
+  options: ImageOptions
 ): Promise<void> {
   // Check if we're in dev mode
   if (!isDev) {
@@ -161,14 +161,14 @@ export async function handleImage(
       await updateEnvFile(
         path.join(process.cwd(), "..", "planqtn_api", ".env"),
         "API_IMAGE",
-        imageName,
+        imageName
       );
     } else if (image === "job") {
       // the job image is used in the supabase functions, so we need to update the env file
       await updateEnvFile(
         path.join(process.cwd(), "..", "supabase", "functions", ".env"),
         "JOBS_IMAGE",
-        imageName,
+        imageName
       );
     }
   }
@@ -217,7 +217,7 @@ export async function handleImage(
   if (options.deployMonitor) {
     if (image !== "job") {
       throw new Error(
-        "--deploy-monitor option is only supported for job image",
+        "--deploy-monitor option is only supported for job image"
       );
     }
     console.log("Deploying to Cloud Run monitor service...");
@@ -255,12 +255,12 @@ export function setupImagesCommand(program: Command): void {
     .option("--load", "Load the image into k3d and update Supabase")
     .option(
       "--load-no-restart",
-      "Load the image into k3d and update Supabase without restarting Supabase",
+      "Load the image into k3d and update Supabase without restarting Supabase"
     )
     .option(
       "--k3d-cluster <cluster>",
       "K3d cluster to load the image into (dev or local)",
-      "dev",
+      "dev"
     )
     .option("--push", "Push the image to registry")
     .option("--deploy-monitor", "Deploy to Cloud Run monitor service")
@@ -298,7 +298,7 @@ export async function getImageName(image: string): Promise<string> {
 }
 
 export async function getImageFromEnv(
-  image: string,
+  image: string
 ): Promise<string | undefined> {
   let envPath: string;
   let envVar: string;
@@ -317,7 +317,7 @@ export async function getImageFromEnv(
   }
 
   if (!fs.existsSync(envPath)) {
-    return undefined;
+    throw new Error(`Environment file ${envPath} not found for images!`);
   }
 
   const envConfig = dotenv.parse(fs.readFileSync(envPath));

@@ -186,7 +186,6 @@ async function terraform(
 
   let gcpSvcAccountKeyPath: string | undefined;
   if (process.env.GCP_SVC_CREDENTIALS) {
-    console.log("Writing GCP service account key to file...");
     const decodedKey = Buffer.from(
       process.env.GCP_SVC_CREDENTIALS,
       "base64"
