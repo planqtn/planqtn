@@ -174,7 +174,7 @@ npm install --include-dev
 - a free tier Supabase.com project and secrets (see below)
 - a free tier GCP project and secrets (see below)
 
-### 1. Personal Supabase setup
+### 1. Personal Supabase setup for database storage, realtime messaging and authentication
 
 1. Setup your account at https://supabase.com/
 2. Create a new organization e.g. "Your Name"
@@ -187,7 +187,7 @@ npm install --include-dev
 - Get the `service_role` key and `anon_key` from your personal Supabase project via Project Settings/API Keys, click Reveal for the service role key:
   <img src="fig/supabase_connect3.png">
 
-### 2. Personal GCP setup
+### 2. Personal GCP setup for running workloads
 
 1. Register for a Google Cloud Platform and start a new GCP Project https://cloud.google.com/?hl=en - you will need to add a Billing account, but don't worry, none of the developments will cost anything at our size.
 2. Download `gcloud` on Linux/MacOSX, so that it can be used in the scripts: https://cloud.google.com/sdk/docs/install
@@ -201,7 +201,58 @@ gsutil mb gs://planqtn-$MYNAME-tfstate
 gsutil versioning set on gs://planqtn-$MYNAME-tfstate
 ```
 
-### 3. Deploy your project
+### 3. Personal Vercel setup for UI hosting
+
+Sign up for Vercel on https://vercel.com. You'll need a social login or email + text number.
+Most importantly don't import your fork directly through the Vercel app, we handle the CI/CD deployment ourselves, the Vercel git integration will just get in the way.
+
+1. Install the vercel CLI tool
+
+```
+npm install -g
+```
+
+2. Login to vercel
+
+```
+vercel login
+```
+
+3. Create a new project
+
+```
+export VERCEL_PROJECT=planqtn-<yourname>
+vercel projects add $VERCEL_PROJECT
+```
+
+4. Link the project
+
+From the repo root run:
+
+```
+cd app/ui
+vercel link
+```
+
+This will ask you for
+
+- the "scope" (which is the team/organization)
+- link to existing project? Answer yes
+- you'll have to type in the name of your project (`planqtn-<yourname>`)
+
+```
+$ vercel link
+Vercel CLI 42.3.0
+? Set up “.../planqtn/app/ui”? yes
+? Which scope should contain your project? <your org name, e.g. John Doe's projects>
+? Link to existing project? yes
+? What’s the name of your existing project? planqtn-<yourname>
+✅  Linked to john-does-projects/planqtn-<yourname> (created .vercel)
+```
+
+Note that the project ID and organization ID are generated under `app/ui/.vercel/project.json` - this is what you'll need to setup Github Actions for your own repo and the `htn` tool will use this file to print out the values. To unlink, you need to run `rm -rf app/ui/.vercel`.
+
+### 4. Deploy your project
 
 ```
 hack/htn cloud deploy
@@ -214,6 +265,7 @@ This should walk you through the process automatically, and will ask you interac
 Setup on your personal repo the following secrets:
 
 - `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
+- `VERCEL_ACCESS_TOKEN` - Create an access token for Github Actions - on the https://vercel.com/account/settings/tokens page, create a Github Access token and save it securely somewhere.
 - `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
 - and then the env vars in `hack/htn cloud print-env-vars`:
 
@@ -374,3 +426,7 @@ See above for personal cloud setup.
 ## Database migrations
 
 TODO: this will be filled out after merging the first version of supabase to main and testing on the first change.
+
+```
+
+```

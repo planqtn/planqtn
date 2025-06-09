@@ -56,6 +56,12 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
+      - name: Install vercel cli
+        run: |
+          npm install -g vercel
+      - name: Login to vercel
+        run: |
+          vercel login --token ${{ secrets.VERCEL_ACCESS_TOKEN }}
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -101,6 +107,12 @@ jobs:
           PLANQTN_TERRAFORMSTATEBUCKET: ${{ secrets.PLANQTN_TERRAFORMSTATEBUCKET }}
 
           PLANQTN_TERRAFORMSTATEPREFIX: ${{ secrets.PLANQTN_TERRAFORMSTATEPREFIX }}
+          # Description: Vercel project ID
+          PLANQTN_VERCELPROJECTID: ${{ secrets.PLANQTN_VERCELPROJECTID }}
+
+          # Description: Vercel organization ID
+          PLANQTN_VERCELORGID: ${{ secrets.PLANQTN_VERCELORGID }}
+
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3

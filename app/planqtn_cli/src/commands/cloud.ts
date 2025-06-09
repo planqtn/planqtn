@@ -359,8 +359,9 @@ interface VariableConfig {
         | "supabase-secrets"
         | "gcp"
         | "integration-test-config"
+        | "vercel"
     )[];
-    outputBy?: "images" | "supabase" | "gcp";
+    outputBy?: "images" | "supabase" | "gcp" | "vercel";
     hint?: string;
 }
 
@@ -505,6 +506,40 @@ class EnvFileVar extends Variable {
 
     async save(): Promise<void> {
         // Env vars don't save to storage
+    }
+}
+
+class JsonFileVar extends Variable {
+    private filePath: string;
+    private jsonPath: string[];
+
+    constructor(config: VariableConfig, filePath: string, jsonPath: string[]) {
+        super(config);
+        this.filePath = filePath;
+        this.jsonPath = jsonPath;
+    }
+
+    async load(vars: Variable[]): Promise<void> {
+        try {
+            if (await exists(this.filePath)) {
+                const content = await readFile(this.filePath, "utf8");
+                const jsonData = JSON.parse(content);
+                let value = jsonData;
+                for (const key of this.jsonPath) {
+                    if (value === undefined) break;
+                    value = value[key];
+                }
+                if (value !== undefined) {
+                    this.value = value.toString();
+                }
+            }
+        } catch (error) {
+            console.warn(`Warning: Could not load ${this.filePath}:`, error);
+        }
+    }
+
+    async save(): Promise<void> {
+        // JsonFileVar doesn't save back to the file
     }
 }
 
@@ -667,6 +702,24 @@ class VariableManager {
                 configDir,
                 "supabase-anon-key",
             ),
+            new JsonFileVar(
+                {
+                    name: "vercelProjectId",
+                    description: "Vercel project ID",
+                    requiredFor: ["vercel"],
+                },
+                path.join(APP_DIR, "ui", ".vercel", "project.json"),
+                ["projectId"],
+            ),
+            new JsonFileVar(
+                {
+                    name: "vercelOrgId",
+                    description: "Vercel organization ID",
+                    requiredFor: ["vercel"],
+                },
+                path.join(APP_DIR, "ui", ".vercel", "project.json"),
+                ["orgId"],
+            ),
         ];
     }
 
@@ -744,8 +797,13 @@ class VariableManager {
     }
 
     private getRequiredVariables(
-        skipPhases: { images: boolean; supabase: boolean; gcp: boolean },
-        phase?: "images" | "supabase" | "gcp",
+        skipPhases: {
+            images: boolean;
+            supabase: boolean;
+            gcp: boolean;
+            vercel: boolean;
+        },
+        phase?: "images" | "supabase" | "gcp" | "vercel",
     ): Variable[] {
         return this.variables.filter((variable) => {
             const config = variable.getConfig();
@@ -769,7 +827,12 @@ class VariableManager {
     }
 
     async prompt(
-        skipPhases: { images: boolean; supabase: boolean; gcp: boolean },
+        skipPhases: {
+            images: boolean;
+            supabase: boolean;
+            gcp: boolean;
+            vercel: boolean;
+        },
     ): Promise<void> {
         const prompt = promptSync({ sigint: true });
         console.log("\n=== Collecting Configuration ===");
@@ -808,8 +871,13 @@ class VariableManager {
     }
 
     async validatePhaseRequirements(
-        phase: "images" | "supabase" | "gcp",
-        skipPhases: { images: boolean; supabase: boolean; gcp: boolean },
+        phase: "images" | "supabase" | "gcp" | "vercel",
+        skipPhases: {
+            images: boolean;
+            supabase: boolean;
+            gcp: boolean;
+            vercel: boolean;
+        },
     ): Promise<void> {
         const requiredVars = this.getRequiredVariables(skipPhases, phase);
         const missingVars: string[] = [];
@@ -848,6 +916,73 @@ class VariableManager {
     }
 }
 
+async function setupVercel(
+    configDir: string,
+    vercelProjectId: string,
+    vercelOrgId: string,
+    supabaseUrl: string,
+    supabaseAnonKey: string,
+): Promise<void> {
+    // Check if vercel CLI is installed and user is logged in
+    try {
+        execSync("vercel --version", { stdio: "pipe" });
+    } catch (error) {
+        throw new Error(
+            "Vercel CLI is not installed. Please install it with 'npm install -g vercel'",
+        );
+    }
+
+    let useToken = false;
+    try {
+        execSync("vercel whoami", { stdio: "pipe" });
+    } catch (error) {
+        if (process.env.VERCEL_ACCESS_TOKEN) {
+            useToken = true;
+        } else {
+            throw new Error(
+                "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable",
+            );
+        }
+    }
+
+    // Check if the project is already linked
+
+    if (!await exists(path.join(APP_DIR, "ui", ".vercel", "project.json"))) {
+        execSync(
+            `vercel link --yes --scope ${vercelOrgId} --project ${vercelProjectId}`,
+            {
+                cwd: path.join(APP_DIR, "ui"),
+                stdio: "inherit",
+            },
+        );
+    } else {
+        console.log("Project is already linked to Vercel. Skipping link step.");
+    }
+
+    // Create .env file
+    console.log("\nSetting up Vercel environment variables...");
+    const envContent = [
+        `VITE_TASK_STORE_URL=${supabaseUrl}`,
+        `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
+        `VITE_ENV="development"`,
+    ].join("\n");
+
+    const envPath = path.join(APP_DIR, "ui", ".env");
+    await writeFile(envPath, envContent);
+
+    // Deploy to Vercel
+    console.log("\nDeploying to Vercel...");
+    execSync(
+        `vercel deploy --prod ${
+            useToken ? "--token " + process.env.VERCEL_ACCESS_TOKEN : ""
+        }`,
+        {
+            cwd: path.join(APP_DIR, "ui"),
+            stdio: "inherit",
+        },
+    );
+}
+
 export function setupCloudCommand(program: Command): void {
     const cloudCommand = program
         .command("cloud")
@@ -861,6 +996,7 @@ export function setupCloudCommand(program: Command): void {
         .option("--skip-supabase", "Skip Supabase deployment")
         .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
         .option("--skip-gcp", "Skip GCP deployment")
+        .option("--skip-vercel", "Skip Vercel deployment")
         .option(
             "--skip-integration-test-config",
             "Skip integration test config generation",
@@ -892,6 +1028,7 @@ export function setupCloudCommand(program: Command): void {
                     supabase: options.skipSupabase,
                     gcp: options.skipGcp,
                     supabaseSecrets: options.skipSupabaseSecrets,
+                    vercel: options.skipVercel,
                     integrationTestConfig: options.skipIntegrationTestConfig,
                 };
 
@@ -970,6 +1107,21 @@ export function setupCloudCommand(program: Command): void {
                     );
                 }
 
+                // Setup Vercel if needed
+                if (!skipPhases.vercel) {
+                    await variableManager.validatePhaseRequirements(
+                        "vercel",
+                        skipPhases,
+                    );
+                    await setupVercel(
+                        configDir,
+                        variableManager.getValue("vercelProjectId"),
+                        variableManager.getValue("vercelOrgId"),
+                        variableManager.getValue("supabaseUrl"),
+                        variableManager.getValue("supabaseAnonKey"),
+                    );
+                }
+
                 // Generate integration test config if needed
                 if (!skipPhases.integrationTestConfig) {
                     await variableManager.generateIntegrationTestConfig();
@@ -1005,6 +1157,7 @@ export function setupCloudCommand(program: Command): void {
                     supabase: true,
                     gcp: true,
                     supabaseSecrets: true,
+                    vercel: true,
                 };
 
                 await variableManager.prompt(skipPhases);
@@ -1081,5 +1234,6 @@ interface CloudOptions {
     skipSupabase: boolean;
     skipSupabaseSecrets: boolean;
     skipGcp: boolean;
+    skipVercel: boolean;
     skipIntegrationTestConfig: boolean;
 }
