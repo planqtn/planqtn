@@ -4,79 +4,31 @@
 <img src="https://github.com/user-attachments/assets/486609eb-1180-4a2b-a605-588cd1d5a2e4" width="300"></img>
 </p>
 
-Welcome to the PlanqTN! We are before the v0.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
+Welcome to the PlanqTN!
 
-The project has two main components currently in the same repo:
+PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313).
 
-1. qlego Python library for weight enumerators, under the [qlego](./qlego) folder
-2. the PlanqTN app
-   1. UI under [ui](./ui)
-   2. Cloud based or local kernel
-      - API server Docker image in [planqtn_api](./planqtn_api) with example implementations for parameterized tensonetworks
-      - Jobs Docker image in [planqtn_jobs](./planqtn_jobs) for job execution (currently only weight enumerator jobs)
-      - Supabase edge functions in the [supabase](./supabase/) folder
-   3. The planqtn CLI in [planqtn_cli](./planqtn-cli) to manage local kernels
+## Getting started
 
-!WARNING!
+The idea with PlanqTN Tensor Studio is that you can start to explore the framework via small examples, including calculating weight enumerators and distance for small networks.
 
-You are seeing an early preview; there are many breaking changes expected in the library and the app, including significant design changes. Exciting times!
-
-# PlanqTN cloud
-
-Navigate to https://planqtn.com and start playing with the legos! Even without registering/authenticating, you can achieve a lot. After authenticating, you can run a certain amount of weight enumerator calculations and/or API calls for more complicated tensor network creations. This is completely free, supported by the Unitary Foundation.
-
-... TODO ... a tutorial will be linked here
-
-# Local setup
-
-For a local setup, you will need to install our CLI tool:
-
-1. Ensure you have npm installed and Docker installed on your machine.
-2. Run
-
-```
-npm install -g planqtn_cli
-```
-
-You can use `planqtn` or `htn` for short (as h is the Planck constant) to call the CLI tool.
-
-```
-htn --help
-```
-
-## Cloud UI with local kernel
-
-If you need to go beyond the limits of the cloud based execution, then you can use a local kernel to execute expensive weight enumerator job calculations, still connected to the official UI, and your results will be stored in the PlanqTN database under your profile.
-
-Run `htn kernel start` to start the kernel. The first time can take a couple of minutes as it will setup a k3d cluster and a local instance of supabase within your Docker engine. To stop everything, use `htn kernel stop`. To remove all images and data, use `htn kernel remove`.
-
-## Running the UI locally
-
-If you want to run the UI locally, go to the `DEVELOPMENT.md` for details.
-
-Then, open http://localhost:5173 in your browser, and you should see a screen similar as below:
-
-![image](https://github.com/user-attachments/assets/5e4cacdf-b062-4c75-9f38-e67c6b790314)
-
-# Install instructions for the qlego library only
-
-Quick start:
+If you want to get started with the Python library then simply
 
 1. Create a virtualenv
-2. Install qlego
+2. Install `planqtn`
 
 ```
-pip install -e .
+pip install planqtn
 ```
 
-3. Try it:
+3. Try generating a generic tensor network for any CSS codes and calculating the weight enumerator polynomial for it:
 
 ```python
 from galois import GF2
 
-from qlego.codes.compass_code import CompassCodeTN
-from qlego.codes.css_tanner_code import CssTannerCodeTN
-from qlego.progress_reporter import TqdmProgressReporter
+from planqtn.codes.compass_code import CompassCodeTN
+from planqtn.codes.css_tanner_code import CssTannerCodeTN
+from planqtn.progress_reporter import TqdmProgressReporter
 
 hz = GF2(
     [
@@ -98,6 +50,51 @@ hx = GF2(
 
 tn = CssTannerCodeTN(hx, hz)
 
-wep = tn.stabilizer_enumerator_polynomial(progress_reporter=TqdmProgressReporter(), verbose=False)
+wep = tn.stabilizer_enumerator_polynomial(
+    progress_reporter=TqdmProgressReporter(), verbose=False
+)
 print(wep)
+
 ```
+
+# Tutorials
+
+If you want to go deeper, check out these tutorials to get started:
+
+1. What is tensornetwork quantum error correction? (TODO: video)
+2. Follow the getting started started Notebook for the `planqtn` Python library (TODO)
+
+# Advanced workflows
+
+If you want to go beyond the small examples and start to explore even beyond what's available on the public instance of PlanqtTN Tensor Studio, we do have options for you:
+
+1. You can generate Python code to take out (TODO: link) your constructed code, and can immediately start to use it in `planqtn`
+2. You can spin up your own local kernel using your own resources with the UI (TODO: documentation)
+
+# Contributing
+
+PlanqTN is an open source project and we would love to see contributions from you!
+
+Please consider dropping in for
+
+- our bi-weekly community call (TODO)
+- our mailing list for development questions (TODO)
+
+To get started with contributions, check out [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), and follow the [DEVELOPMENT.md](./DEVELOPMENT.md) for setup, developer workflows, and design concepts.
+
+# Private preview notice
+
+You are looking at a private preview of PlanqTN. We are before the v2025.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
+
+The project has the following main parts:
+
+1. PlanqTN library for weight enumerators, under the [qlego](./qlego) folder
+2. the PlanqTN Tensor Studio under [app](./app) folder
+
+!WARNING!
+
+There are many breaking changes expected in the library and the app, including significant design changes. Exciting times!
+
+### Install instructions for the qlego library only
+
+!WARNING! this will change soon the planqtn! + we'll publish to PyPi.
