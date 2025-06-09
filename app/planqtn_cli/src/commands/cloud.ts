@@ -17,7 +17,8 @@ const unlink = promisify(fs.unlink);
 
 // Get the app directory path (one level up from planqtn_cli)
 const APP_DIR = path.join(process.cwd(), "..");
-const PLANQTN_BIN_DIR = path.join(process.env.HOME || "", ".planqtn", "bin");
+const CONFIG_DIR = path.join(process.env.HOME!, ".planqtn", ".config");
+const PLANQTN_BIN_DIR = path.join(process.env.HOME!, ".planqtn", "bin");
 
 interface TerraformVars {
   project_id?: string;
@@ -185,12 +186,16 @@ async function terraform(
 
   let gcpSvcAccountKeyPath: string | undefined;
   if (process.env.GCP_SVC_CREDENTIALS) {
+    console.log("Writing GCP service account key to file...");
     const decodedKey = Buffer.from(
       process.env.GCP_SVC_CREDENTIALS,
       "base64",
     ).toString("utf-8");
     const gcpSvcAccountKey = JSON.parse(decodedKey);
-    gcpSvcAccountKeyPath = path.join(APP_DIR, "gcp", "gcp-service-account-key");
+    gcpSvcAccountKeyPath = path.join(
+      CONFIG_DIR,
+      "gcp-service-account-key.json",
+    );
     await writeFile(
       gcpSvcAccountKeyPath,
       JSON.stringify(gcpSvcAccountKey, null, 2),
@@ -225,6 +230,7 @@ async function setupGCP(
   gcpRegion: string,
   terraformStateBucket: string,
   terraformStatePrefix: string,
+  loginCheck: boolean = false,
 ): Promise<void> {
   const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
 
@@ -257,7 +263,11 @@ async function setupGCP(
     true,
   );
 
-  await terraform(`apply -auto-approve`, true);
+  if (!loginCheck) {
+    await terraform(`apply -auto-approve`, true);
+  } else {
+    await terraform(`state list`, false);
+  }
 }
 
 async function setupSupabaseSecrets(
@@ -1126,30 +1136,16 @@ async function checkCredentials(
   if (!skipPhases.gcp) {
     console.log("Checking GCP credentials...");
     try {
-      // Check active account
-      execSync(
-        "gcloud auth list --filter=status:ACTIVE --format='value(account)'",
-        { stdio: "pipe" },
+     
+      setupGCP(
+        variableManager.getValue("supabaseProjectRef"),
+        variableManager.getValue("supabaseServiceKey"),
+        variableManager.getValue("gcpProjectId"),
+        variableManager.getValue("gcpRegion"),
+        variableManager.getValue("terraformStateBucket"),
+        variableManager.getValue("terraformStatePrefix"),
+        true,
       );
-
-      // Verify project access
-      const projectId = variableManager.getValue("gcpProjectId");
-      execSync(`gcloud projects describe ${projectId}`, { stdio: "pipe" });
-
-      // Check Terraform state access
-      console.log("Checking Terraform state access...");
-      const terraformStateBucket = variableManager.getValue(
-        "terraformStateBucket",
-      );
-      const terraformStatePrefix = variableManager.getValue(
-        "terraformStatePrefix",
-      );
-
-      // Initialize Terraform with the state configuration
-      await terraform("init -backend-config=\"bucket=" + terraformStateBucket + "\" -backend-config=\"prefix=" + terraformStatePrefix + "\"", true);
-
-      // Check Terraform state
-      await terraform("state list", false);
     } catch (error) {
       throw new Error(
         "Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " +
@@ -1216,18 +1212,12 @@ export function setupCloudCommand(program: Command): void {
     )
     .action(async (options: CloudOptions) => {
       try {
-        const configDir = path.join(
-          process.env.HOME || "",
-          ".planqtn",
-          ".config",
-        );
-
         // Create config directory if it doesn't exist
-        if (!(await exists(configDir))) {
-          await mkdir(configDir, { recursive: true });
+        if (!(await exists(CONFIG_DIR))) {
+          await mkdir(CONFIG_DIR, { recursive: true });
         }
 
-        const variableManager = new VariableManager(configDir);
+        const variableManager = new VariableManager(CONFIG_DIR);
         await variableManager.loadExistingValues();
 
         const skipPhases = {
@@ -1271,7 +1261,7 @@ export function setupCloudCommand(program: Command): void {
             skipPhases,
           );
           await setupSupabase(
-            configDir,
+            CONFIG_DIR,
             variableManager.getValue("supabaseProjectRef"),
             variableManager.getValue("dbPassword"),
             variableManager.getValue("supabaseServiceKey"),
@@ -1305,7 +1295,7 @@ export function setupCloudCommand(program: Command): void {
             throw new Error("Failed to get jobs image from environment");
           }
           await setupSupabaseSecrets(
-            configDir,
+            CONFIG_DIR,
             jobsImage,
             variableManager.getValue("gcpProjectId"),
             variableManager.getValue("gcpSvcAccountKey"),
@@ -1317,7 +1307,7 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.vercel) {
           await variableManager.validatePhaseRequirements("vercel", skipPhases);
           await setupVercel(
-            configDir,
+            CONFIG_DIR,
             variableManager.getValue("vercelProjectId"),
             variableManager.getValue("vercelOrgId"),
             variableManager.getValue("supabaseUrl"),
