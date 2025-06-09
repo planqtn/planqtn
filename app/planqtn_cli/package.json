@@ -35,13 +35,13 @@
     "g": "^2.0.1",
     "js-yaml": "^4.1.0",
     "prompt-sync": "^4.2.0",
+    "@types/pg": "^8.15.4",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.17.57",
-    "@types/pg": "^8.15.4",
     "eslint": "^9.28.0",
     "globals": "^16.2.0",
     "ts-node": "^10.9.0",
