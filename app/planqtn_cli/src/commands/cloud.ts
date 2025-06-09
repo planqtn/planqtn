@@ -305,9 +305,14 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
   if (refuseDirtyBuilds) {
     console.log("Checking git status...");
     try {
-      const status = execSync("git status --porcelain", { stdio: "pipe" }).toString().trim();
+      const status = execSync("git status --porcelain", { stdio: "pipe" })
+        .toString()
+        .trim();
       if (status) {
-        throw new Error("Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" + status);
+        throw new Error(
+          "Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" +
+            status,
+        );
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -343,7 +348,6 @@ interface VariableConfig {
 }
 
 abstract class Variable {
-  
   protected value: string | undefined;
   protected config: VariableConfig;
 
@@ -382,8 +386,8 @@ abstract class Variable {
   getEnvVarName(): string {
     // Convert camelCase to SCREAMING_SNAKE_CASE
     return this.config.name
-      .replace(/([A-Z])/g, '_$1') // Add underscore before capital letters
-      .replace(/^_/, '') // Remove leading underscore if present
+      .replace(/([A-Z])/g, "_$1") // Add underscore before capital letters
+      .replace(/^_/, "") // Remove leading underscore if present
       .toUpperCase();
   }
 
@@ -417,13 +421,13 @@ abstract class Variable {
       while (hint) {
         value = undefined;
         if (config.isSecret) {
-          value = prompt(promptText, { echo: "*" });        
+          value = prompt(promptText, { echo: "*" });
         } else {
           value = prompt(promptText, currentValue || config.defaultValue || "");
         }
         hint = value === "?";
         if (hint) {
-          console.log(config.hint);       
+          console.log(config.hint);
         }
       }
 
@@ -702,7 +706,7 @@ class VariableManager {
       new EnvFileVar(
         {
           name: "apiImage",
-          description: "API image name",          
+          description: "API image name",
           requiredFor: ["gcp"],
           outputBy: "images",
         },
@@ -900,7 +904,14 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       "integration-test-config": boolean;
       "github-actions": boolean;
     },
-    phase?: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets" | "integration-test-config" | "github-actions",
+    phase?:
+      | "images"
+      | "supabase"
+      | "gcp"
+      | "vercel"
+      | "supabase-secrets"
+      | "integration-test-config"
+      | "github-actions",
   ): Variable[] {
     return this.variables.filter((variable) => {
       const config = variable.getConfig();
@@ -938,14 +949,21 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     const requiredVars = this.getRequiredVariables(skipPhases);
 
     for (const variable of requiredVars) {
-     await variable.prompt(prompt)
+      await variable.prompt(prompt);
     }
 
     await this.saveValues();
   }
 
   async validatePhaseRequirements(
-    phase: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets" | "integration-test-config" | "github-actions",
+    phase:
+      | "images"
+      | "supabase"
+      | "gcp"
+      | "vercel"
+      | "supabase-secrets"
+      | "integration-test-config"
+      | "github-actions",
     skipPhases: {
       images: boolean;
       supabase: boolean;
@@ -1077,7 +1095,9 @@ async function checkCredentials(
     try {
       execSync("docker login", { stdio: "pipe" });
     } catch {
-      throw new Error("Not logged in to Docker Hub. Please run 'docker login' first.");
+      throw new Error(
+        "Not logged in to Docker Hub. Please run 'docker login' first.",
+      );
     }
   }
 
@@ -1089,13 +1109,16 @@ async function checkCredentials(
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
       const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
-      
+
       const client = new Client({ connectionString });
       await client.connect();
-      await client.query('SELECT 1');
+      await client.query("SELECT 1");
       await client.end();
-    } catch (error) {      
-      throw new Error("Failed to verify Supabase credentials. Please ensure you're logged in and have correct database credentials: " + error);
+    } catch (error) {
+      throw new Error(
+        "Failed to verify Supabase credentials. Please ensure you're logged in and have correct database credentials: " +
+          error,
+      );
     }
   }
 
@@ -1104,8 +1127,11 @@ async function checkCredentials(
     console.log("Checking GCP credentials...");
     try {
       // Check active account
-      execSync("gcloud auth list --filter=status:ACTIVE --format='value(account)'", { stdio: "pipe" });
-      
+      execSync(
+        "gcloud auth list --filter=status:ACTIVE --format='value(account)'",
+        { stdio: "pipe" },
+      );
+
       // Verify project access
       const projectId = variableManager.getValue("gcpProjectId");
       execSync(`gcloud projects describe ${projectId}`, { stdio: "pipe" });
@@ -1113,8 +1139,12 @@ async function checkCredentials(
       // Check Terraform state access
       console.log("Checking Terraform state access...");
       const terraformPath = await ensureTerraformInstalled();
-      const terraformStateBucket = variableManager.getValue("terraformStateBucket");
-      const terraformStatePrefix = variableManager.getValue("terraformStatePrefix");
+      const terraformStateBucket = variableManager.getValue(
+        "terraformStateBucket",
+      );
+      const terraformStatePrefix = variableManager.getValue(
+        "terraformStatePrefix",
+      );
 
       // Initialize Terraform with the state configuration
       execSync(
@@ -1131,7 +1161,10 @@ async function checkCredentials(
         stdio: "pipe",
       });
     } catch (error) {
-      throw new Error("Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " + error);
+      throw new Error(
+        "Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " +
+          error,
+      );
     }
   }
 
@@ -1140,16 +1173,18 @@ async function checkCredentials(
     console.log("Checking Vercel credentials...");
     try {
       execSync("vercel --version", { stdio: "pipe" });
-      
+
       // Check if we can access the project
       let tokenArg = "";
       if (process.env.VERCEL_ACCESS_TOKEN) {
         tokenArg = `--token ${process.env.VERCEL_ACCESS_TOKEN}`;
       }
-      
+
       execSync(`vercel project ls ${tokenArg}`, { stdio: "pipe" });
-    } catch (error) {     
-      throw new Error("Invalid Vercel credentials or missing project access. " + error);
+    } catch (error) {
+      throw new Error(
+        "Invalid Vercel credentials or missing project access. " + error,
+      );
     }
   }
 
@@ -1159,7 +1194,9 @@ async function checkCredentials(
     try {
       execSync("gh auth status", { stdio: "pipe" });
     } catch {
-      throw new Error("Not logged in to GitHub. Please run 'gh auth login' first.");
+      throw new Error(
+        "Not logged in to GitHub. Please run 'gh auth login' first.",
+      );
     }
   }
 
@@ -1210,7 +1247,7 @@ export function setupCloudCommand(program: Command): void {
           "supabase-secrets": options.skipSupabaseSecrets,
           vercel: options.skipVercel,
           "integration-test-config": options.skipIntegrationTestConfig,
-          "github-actions": true,          
+          "github-actions": true,
         };
 
         // Load GCP outputs if GCP is not skipped
@@ -1268,7 +1305,10 @@ export function setupCloudCommand(program: Command): void {
         }
 
         if (!skipPhases["supabase-secrets"]) {
-          await variableManager.validatePhaseRequirements("supabase-secrets", skipPhases);
+          await variableManager.validatePhaseRequirements(
+            "supabase-secrets",
+            skipPhases,
+          );
 
           const jobsImage = await getImageFromEnv("job");
           if (!jobsImage) {
@@ -1370,12 +1410,12 @@ export function setupCloudCommand(program: Command): void {
         for (const variable of userVars) {
           const config = variable.getConfig();
           let varText = `# Description: ${config.description}`;
-                    
+
           if (options.withCurrentValue) {
             await variable.load(userVars);
             varText += `\n${variable.getEnvVarName()}=${variable.getValue()}`;
-          }else{                   
-            varText += `\n${variable.getEnvVarName()}: \${{ ${config.isSecret ? "secrets" : "vars" }.${variable.getEnvVarName()} }}`;          
+          } else {
+            varText += `\n${variable.getEnvVarName()}: \${{ ${config.isSecret ? "secrets" : "vars"}.${variable.getEnvVarName()} }}`;
           }
           if (config.isSecret) {
             secrets.push(varText);
@@ -1383,7 +1423,7 @@ export function setupCloudCommand(program: Command): void {
             vars.push(varText);
           }
         }
-       
+
         console.log("\n# Secrets:");
         console.log(secrets.join("\n"));
         console.log("\n# Vars:");
@@ -1394,21 +1434,17 @@ export function setupCloudCommand(program: Command): void {
       }
     });
 
-
-    
   cloudCommand
-    .command("setup-github-actions")  
+    .command("setup-github-actions")
     .option(
       "--repo-name <repo-name>",
-      "Name of the repository, [HOST/]OWNER/REPO, default uses the current repository in the repo",        
-    )  
+      "Name of the repository, [HOST/]OWNER/REPO, default uses the current repository in the repo",
+    )
     .option(
       "--repo-env <repo-env>",
-      "Environment of the repository, default uses no environment",        
+      "Environment of the repository, default uses no environment",
     )
-    .description(
-      "Sets up github actions environment variablesfor the project",
-    )
+    .description("Sets up github actions environment variablesfor the project")
     .action(async () => {
       try {
         const configDir = path.join(
@@ -1420,13 +1456,14 @@ export function setupCloudCommand(program: Command): void {
         await variableManager.loadExistingValues();
         const userVars = variableManager.getUserVariables();
         const prompt = promptSync({ sigint: true });
-        for (const variable of userVars) {          
-          await variable.prompt(prompt);      
+        for (const variable of userVars) {
+          await variable.prompt(prompt);
           await variableManager.saveValues();
-
         }
 
-        const answer = prompt("Are you sure you want to set these up in Github Actions? (y/n)");
+        const answer = prompt(
+          "Are you sure you want to set these up in Github Actions? (y/n)",
+        );
         if (answer !== "y") {
           console.log("Aborting...");
           process.exit(0);
@@ -1435,17 +1472,19 @@ export function setupCloudCommand(program: Command): void {
         for (const variable of userVars) {
           const config = variable.getConfig();
           const val = variable.getValue();
-          
+
           if (config.isSecret) {
-              console.log(`Setting secret ${variable.getEnvVarName()}...`);
-              execSync(`gh secret set ${variable.getEnvVarName()} --body "${val}"`);
+            console.log(`Setting secret ${variable.getEnvVarName()}...`);
+            execSync(
+              `gh secret set ${variable.getEnvVarName()} --body "${val}"`,
+            );
           } else {
             console.log(`Setting var ${variable.getEnvVarName()}...`);
-            execSync(`gh variable set ${variable.getEnvVarName()} --body "${val}"`);
+            execSync(
+              `gh variable set ${variable.getEnvVarName()} --body "${val}"`,
+            );
           }
         }
-       
-        
       } catch (error) {
         console.error("Error:", error);
         process.exit(1);
