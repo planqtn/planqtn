@@ -7,6 +7,7 @@ import { getImageFromEnv, handleImage } from "./images";
 import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
+import { Client } from "pg";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -46,6 +47,7 @@ async function setupSupabase(
 ): Promise<void> {
   // Run migrations
   console.log("\nRunning database migrations...");
+  // console.log(`DATABASE_URL: postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`);
   execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
     stdio: "inherit",
     env: {
@@ -880,8 +882,10 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       gcp: boolean;
       vercel: boolean;
       "supabase-secrets": boolean;
+      "integration-test-config": boolean;
+      "github-actions": boolean;
     },
-    phase?: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets",
+    phase?: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets" | "integration-test-config" | "github-actions",
   ): Variable[] {
     return this.variables.filter((variable) => {
       const config = variable.getConfig();
@@ -910,6 +914,8 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     gcp: boolean;
     vercel: boolean;
     "supabase-secrets": boolean;
+    "integration-test-config": boolean;
+    "github-actions": boolean;
   }): Promise<void> {
     const prompt = promptSync({ sigint: true });
     console.log("\n=== Collecting Configuration ===");
@@ -924,13 +930,15 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
   }
 
   async validatePhaseRequirements(
-    phase: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets",
+    phase: "images" | "supabase" | "gcp" | "vercel" | "supabase-secrets" | "integration-test-config" | "github-actions",
     skipPhases: {
       images: boolean;
       supabase: boolean;
       gcp: boolean;
       vercel: boolean;
       "supabase-secrets": boolean;
+      "integration-test-config": boolean;
+      "github-actions": boolean;
     },
   ): Promise<void> {
     const requiredVars = this.getRequiredVariables(skipPhases, phase);
@@ -1034,6 +1042,115 @@ async function setupVercel(
   );
 }
 
+async function checkCredentials(
+  skipPhases: {
+    images: boolean;
+    supabase: boolean;
+    gcp: boolean;
+    vercel: boolean;
+    "supabase-secrets": boolean;
+    "integration-test-config": boolean;
+    "github-actions": boolean;
+  },
+  variableManager: VariableManager,
+): Promise<void> {
+  console.log("\n=== Checking Credentials ===");
+
+  // Check Docker Hub credentials (needed for images phase)
+  if (!skipPhases.images) {
+    console.log("Checking Docker Hub credentials...");
+    try {
+      execSync("docker login", { stdio: "pipe" });
+    } catch {
+      throw new Error("Not logged in to Docker Hub. Please run 'docker login' first.");
+    }
+  }
+
+  // Check Supabase credentials (needed for supabase and supabase-secrets phases)
+  if (!skipPhases.supabase || !skipPhases["supabase-secrets"]) {
+    console.log("Checking Supabase credentials...");
+    try {
+      // Test database connection using pg client
+      const projectId = variableManager.getValue("supabaseProjectRef");
+      const dbPassword = variableManager.getValue("dbPassword");
+      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
+      
+      const client = new Client({ connectionString });
+      await client.connect();
+      await client.query('SELECT 1');
+      await client.end();
+    } catch (error) {      
+      throw new Error("Failed to verify Supabase credentials. Please ensure you're logged in and have correct database credentials: " + error);
+    }
+  }
+
+  // Check GCP credentials (needed for gcp phase)
+  if (!skipPhases.gcp) {
+    console.log("Checking GCP credentials...");
+    try {
+      // Check active account
+      execSync("gcloud auth list --filter=status:ACTIVE --format='value(account)'", { stdio: "pipe" });
+      
+      // Verify project access
+      const projectId = variableManager.getValue("gcpProjectId");
+      execSync(`gcloud projects describe ${projectId}`, { stdio: "pipe" });
+
+      // Check Terraform state access
+      console.log("Checking Terraform state access...");
+      const terraformPath = await ensureTerraformInstalled();
+      const terraformStateBucket = variableManager.getValue("terraformStateBucket");
+      const terraformStatePrefix = variableManager.getValue("terraformStatePrefix");
+
+      // Initialize Terraform with the state configuration
+      execSync(
+        `${terraformPath} init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+        {
+          cwd: path.join(APP_DIR, "gcp"),
+          stdio: "pipe",
+        },
+      );
+
+      // Check Terraform state
+      execSync(`${terraformPath} state list`, {
+        cwd: path.join(APP_DIR, "gcp"),
+        stdio: "pipe",
+      });
+    } catch (error) {
+      throw new Error("Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " + error);
+    }
+  }
+
+  // Check Vercel credentials (needed for vercel phase)
+  if (!skipPhases.vercel) {
+    console.log("Checking Vercel credentials...");
+    try {
+      execSync("vercel --version", { stdio: "pipe" });
+      
+      // Check if we can access the project
+      let tokenArg = "";
+      if (process.env.VERCEL_ACCESS_TOKEN) {
+        tokenArg = `--token ${process.env.VERCEL_ACCESS_TOKEN}`;
+      }
+      
+      execSync(`vercel project ls ${tokenArg}`, { stdio: "pipe" });
+    } catch (error) {     
+      throw new Error("Invalid Vercel credentials or missing project access. " + error);
+    }
+  }
+
+  // Check GitHub credentials (needed for github-actions phase)
+  if (!skipPhases["github-actions"]) {
+    console.log("Checking GitHub credentials...");
+    try {
+      execSync("gh auth status", { stdio: "pipe" });
+    } catch {
+      throw new Error("Not logged in to GitHub. Please run 'gh auth login' first.");
+    }
+  }
+
+  console.log("All required credentials are valid.");
+}
+
 export function setupCloudCommand(program: Command): void {
   const cloudCommand = program.command("cloud").description("Deploy to cloud");
 
@@ -1063,7 +1180,6 @@ export function setupCloudCommand(program: Command): void {
           await mkdir(configDir, { recursive: true });
         }
 
-
         const variableManager = new VariableManager(configDir);
         await variableManager.loadExistingValues();
 
@@ -1073,7 +1189,8 @@ export function setupCloudCommand(program: Command): void {
           gcp: options.skipGcp,
           "supabase-secrets": options.skipSupabaseSecrets,
           vercel: options.skipVercel,
-          integrationTestConfig: options.skipIntegrationTestConfig,
+          "integration-test-config": options.skipIntegrationTestConfig,
+          "github-actions": true,          
         };
 
         // Load GCP outputs if GCP is not skipped
@@ -1086,6 +1203,9 @@ export function setupCloudCommand(program: Command): void {
         } else {
           await variableManager.loadFromEnv();
         }
+
+        // Check credentials before proceeding with deployment
+        await checkCredentials(skipPhases, variableManager);
 
         // Now proceed with the setup using the collected variables
         console.log("\n=== Starting Setup ===");
@@ -1157,7 +1277,7 @@ export function setupCloudCommand(program: Command): void {
         }
 
         // Generate integration test config if needed
-        if (!skipPhases.integrationTestConfig) {
+        if (!skipPhases["integration-test-config"]) {
           await variableManager.generateIntegrationTestConfig();
         }
       } catch (error) {
@@ -1192,6 +1312,8 @@ export function setupCloudCommand(program: Command): void {
           gcp: true,
           "supabase-secrets": true,
           vercel: true,
+          "integration-test-config": false,
+          "github-actions": true,
         };
 
         await variableManager.prompt(skipPhases);
@@ -1228,13 +1350,7 @@ export function setupCloudCommand(program: Command): void {
         for (const variable of userVars) {
           const config = variable.getConfig();
           let varText = `# Description: ${config.description}`;
-          
-          if (config.hint) {
-            varText += `\n# Hint: ${config.hint}`;
-          }
-          if (config.defaultValue) {
-            varText += `\n# Default: ${config.defaultValue}`;
-          }
+                    
           if (options.withCurrentValue) {
             await variable.load(userVars);
             varText += `\n${variable.getEnvVarName()}=${variable.getValue()}`;

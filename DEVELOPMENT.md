@@ -196,7 +196,7 @@ npm install --include-dev
 5. Create the following for managing the state via terraform:
 
 ```
-export $MYNAME=<your-name>
+export MYNAME=<your-name>
 gsutil mb gs://planqtn-$MYNAME-tfstate
 gsutil versioning set on gs://planqtn-$MYNAME-tfstate
 ```
