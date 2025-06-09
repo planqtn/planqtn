@@ -262,87 +262,17 @@ This should walk you through the process automatically, and will ask you interac
 
 ## Github Actions secrets for your personal integration testing environment
 
-Setup on your personal repo the following secrets:
-
-- `DOCKERHUB_TOKEN` - get a personal access token from docker.io, ensure that it can read/write to your public repos
-- `VERCEL_ACCESS_TOKEN` - Create an access token for Github Actions - on the https://vercel.com/account/settings/tokens page, create a Github Access token and save it securely somewhere.
-- `SUPABASE_ACCESS_TOKEN` - get a personal Supabase access token at https://supabase.com/dashboard/account/tokens
-- and then the env vars in `hack/htn cloud print-env-vars`:
-
+After your setup and deployed your project successfully ensure that the integration tests are passing: 
 ```
-Required environment variables for non-interactive mode:
-=====================================================
-# Description: Docker repository (e.g., Docker Hub username or repo)
-# Default: planqtn
-PLANQTN_DOCKERREPO: ${{ secrets.PLANQTN_DOCKERREPO }}
-
-# Description: Supabase project ID
-# Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
-PLANQTN_SUPABASEPROJECTREF: ${{ secrets.PLANQTN_SUPABASEPROJECTREF }}
-
-# Description: Supabase database password
-PLANQTN_DBPASSWORD: ${{ secrets.PLANQTN_DBPASSWORD }}
-
-# Description: Environment
-# Default: development
-PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
-
-# Description: GCP project ID
-PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}
-
-# Description: GCP region
-# Default: us-east1
-PLANQTN_GCPREGION: ${{ secrets.PLANQTN_GCPREGION }}
-
-# Description: Supabase service key
-PLANQTN_SUPABASESERVICEKEY: ${{ secrets.PLANQTN_SUPABASESERVICEKEY }}
-
-# Description: Supabase anonymous key
-PLANQTN_SUPABASEANONKEY: ${{ secrets.PLANQTN_SUPABASEANONKEY }}
+export KERNEL_ENV=cloud
+hack/job-integrations
+hack/api-integrations
 ```
 
-In order to make this a bit easier, you can use `hack/htn cloud print-env-vars --with-current-value` and then it will also add the current values in.
-
-Setup the docker username variable in Github Actions variables section:
-
-- `DOCKERHUB_USERNAME`
-
-We need a svc account for GCP with Github Actions:
-
-1. Create a service account to manage the resources:
+If everything's good, you're ready to setup Github Actions! As we need to setup a bunch of secrets and variables, we tried to make this less of a pain as well. Follow the prompts from this script:
 
 ```
-export PROJECT_ID=$(gcloud config get-value project)
-gcloud iam service-accounts create tf-deployer --project=$PROJECT_ID
-```
-
-2. Add the necessary roles:
-
-```
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/editor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretVersionAdder"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
- --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
- --role="roles/secretmanager.secretAccessor"
-```
-
-3. Download a key for the service account:
-
-```
-
-gcloud iam service-accounts keys create ~/.planqtn/.config/tf-deployer-svc.json --iam-account=tf-deployer@$PROJECT_ID.iam.gserviceaccount.com
-```
-
-4. In Github Actions Secrets, setup the `GCP_SVC_CREDENTIALS` to be the output of the following:
-
-```
-cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0
+hack/htn cloud setup-github-actions
 ```
 
 ## PlanqTN CLI
