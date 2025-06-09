@@ -82,7 +82,7 @@ jobs:
 
           # Description: Environment
           # Default: development
-          PLANQTN_ENVIRONMENT: ${{ secrets.PLANQTN_ENVIRONMENT }}
+          PLANQTN_ENVIRONMENT: "development"
 
           # Description: GCP project ID
           PLANQTN_GCPPROJECTID: ${{ secrets.PLANQTN_GCPPROJECTID }}

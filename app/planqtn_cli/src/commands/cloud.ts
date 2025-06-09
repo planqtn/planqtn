@@ -19,1221 +19,1169 @@ const APP_DIR = path.join(process.cwd(), "..");
 const PLANQTN_BIN_DIR = path.join(process.env.HOME || "", ".planqtn", "bin");
 
 interface CloudConfig {
-    project_id: string;
-    region: string;
-    jobs_image: string;
-    api_image: string;
-    supabase_url: string;
-    supabase_service_key: string;
-    environment: string;
+  project_id: string;
+  region: string;
+  jobs_image: string;
+  api_image: string;
+  supabase_url: string;
+  supabase_service_key: string;
+  environment: string;
 }
 
 interface TerraformVars {
-    project_id?: string;
-    region?: string;
-    zone?: string;
-    [key: string]: string | undefined;
+  project_id?: string;
+  region?: string;
+  zone?: string;
+  [key: string]: string | undefined;
 }
 
 async function readTerraformVars(filePath: string): Promise<TerraformVars> {
-    const content = await readFile(filePath, "utf8");
-    const vars: TerraformVars = {};
+  const content = await readFile(filePath, "utf8");
+  const vars: TerraformVars = {};
 
-    content.split("\n").forEach((line) => {
-        const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"([^"]*)"$/);
-        if (match) {
-            vars[match[1]] = match[2];
-        }
-    });
+  content.split("\n").forEach((line) => {
+    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"([^"]*)"$/);
+    if (match) {
+      vars[match[1]] = match[2];
+    }
+  });
 
-    return vars;
+  return vars;
 }
 
 async function writeTerraformVars(
-    filePath: string,
-    vars: TerraformVars,
+  filePath: string,
+  vars: TerraformVars
 ): Promise<void> {
-    const content = Object.entries(vars)
-        .filter(([_, value]) => value !== undefined)
-        .map(([key, value]) => `${key} = "${value}"`)
-        .join("\n");
+  const content = Object.entries(vars)
+    .filter(([_, value]) => value !== undefined)
+    .map(([key, value]) => `${key} = "${value}"`)
+    .join("\n");
 
-    await writeFile(filePath, content);
+  await writeFile(filePath, content);
 }
 
 async function setupSupabase(
-    configDir: string,
-    projectId: string,
-    dbPassword: string,
-    supabaseServiceKey: string,
-    nonInteractive: boolean,
+  configDir: string,
+  projectId: string,
+  dbPassword: string,
+  supabaseServiceKey: string,
+  nonInteractive: boolean
 ): Promise<void> {
-    // Run migrations
-    console.log("\nRunning database migrations...");
-    execSync(
-        `npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`,
-        {
-            stdio: "inherit",
-            env: {
-                ...process.env,
-                DATABASE_URL:
-                    `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
-            },
-        },
-    );
+  // Run migrations
+  console.log("\nRunning database migrations...");
+  execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
+    },
+  });
 
-    // Link and deploy Supabase functions
-    console.log("\nLinking and deploying Supabase functions...");
-    const supabaseEnv = {
-        ...process.env,
-        SUPABASE_DB_PASSWORD: dbPassword,
-    };
+  // Link and deploy Supabase functions
+  console.log("\nLinking and deploying Supabase functions...");
+  const supabaseEnv = {
+    ...process.env,
+    SUPABASE_DB_PASSWORD: dbPassword,
+  };
 
-    // Check for Supabase access token
-    const accessTokenPath = path.join(
-        os.homedir(),
-        ".supabase",
-        "access-token",
-    );
-    if (!process.env.SUPABASE_ACCESS_TOKEN && !fs.existsSync(accessTokenPath)) {
-        if (process.stdin.isTTY || !nonInteractive) {
-            console.log(
-                "Supabase access token not found. Please login to Supabase...",
-            );
-            execSync(`npx supabase --workdir ${APP_DIR} login`, {
-                stdio: "inherit",
-            });
-        } else {
-            throw new Error(
-                "Supabase access token not found and not in interactive mode. Please run `supabase login` first.",
-            );
-        }
-    }
-
-    execSync(
-        `npx supabase --workdir ${APP_DIR} link --project-ref ${projectId}`,
-        {
-            stdio: "inherit",
-            env: supabaseEnv,
-        },
-    );
-    execSync(`npx supabase --workdir ${APP_DIR} functions deploy`, {
+  // Check for Supabase access token
+  const accessTokenPath = path.join(os.homedir(), ".supabase", "access-token");
+  if (!process.env.SUPABASE_ACCESS_TOKEN && !fs.existsSync(accessTokenPath)) {
+    if (process.stdin.isTTY || !nonInteractive) {
+      console.log(
+        "Supabase access token not found. Please login to Supabase..."
+      );
+      execSync(`npx supabase --workdir ${APP_DIR} login`, {
         stdio: "inherit",
-    });
+      });
+    } else {
+      throw new Error(
+        "Supabase access token not found and not in interactive mode. Please run `supabase login` first."
+      );
+    }
+  }
 
-    // Save Supabase API URL
-    await writeFile(
-        path.join(configDir, "gcp_secret_data_api_url"),
-        `https://${projectId}.supabase.co`,
-    );
+  execSync(
+    `npx supabase --workdir ${APP_DIR} link --project-ref ${projectId}`,
+    {
+      stdio: "inherit",
+      env: supabaseEnv,
+    }
+  );
+  execSync(`npx supabase --workdir ${APP_DIR} functions deploy`, {
+    stdio: "inherit",
+  });
+
+  // Save Supabase API URL
+  await writeFile(
+    path.join(configDir, "gcp_secret_data_api_url"),
+    `https://${projectId}.supabase.co`
+  );
 }
 
 async function ensureTerraformInstalled(): Promise<string> {
-    // Create bin directory if it doesn't exist
-    if (!await exists(PLANQTN_BIN_DIR)) {
-        await mkdir(PLANQTN_BIN_DIR, { recursive: true });
-    }
+  // Create bin directory if it doesn't exist
+  if (!(await exists(PLANQTN_BIN_DIR))) {
+    await mkdir(PLANQTN_BIN_DIR, { recursive: true });
+  }
 
-    const terraformPath = path.join(PLANQTN_BIN_DIR, "terraform");
+  const terraformPath = path.join(PLANQTN_BIN_DIR, "terraform");
 
-    // Check if terraform is already installed
-    if (await exists(terraformPath)) {
-        return terraformPath;
-    }
-
-    console.log("Installing Terraform...");
-
-    // Determine OS and architecture
-    const platform = os.platform();
-    const arch = os.arch();
-
-    let osName: string;
-    let archName: string;
-
-    switch (platform) {
-        case "linux":
-            osName = "linux";
-            break;
-        case "darwin":
-            osName = "darwin";
-            break;
-        default:
-            throw new Error(`Unsupported OS: ${platform}`);
-    }
-
-    switch (arch) {
-        case "x64":
-            archName = "amd64";
-            break;
-        case "arm64":
-            archName = "arm64";
-            break;
-        default:
-            throw new Error(`Unsupported architecture: ${arch}`);
-    }
-
-    // Use a fixed version instead of fetching from API to avoid rate limiting issues
-    const version = "1.7.4";
-    const zipUrl =
-        `https://releases.hashicorp.com/terraform/${version}/terraform_${version}_${osName}_${archName}.zip`;
-    const zipPath = path.join(PLANQTN_BIN_DIR, "terraform.zip");
-
-    // Download Terraform
-    await new Promise<void>((resolve, reject) => {
-        https.get(zipUrl, (res) => {
-            if (res.statusCode !== 200) {
-                reject(
-                    new Error(
-                        `Failed to download Terraform: ${res.statusCode}`,
-                    ),
-                );
-                return;
-            }
-            const file = fs.createWriteStream(zipPath);
-            res.pipe(file);
-            file.on("finish", () => {
-                file.close();
-                resolve();
-            });
-            file.on("error", reject);
-        }).on("error", reject);
-    });
-
-    // Unzip Terraform
-    execSync(`unzip -o ${zipPath} -d ${PLANQTN_BIN_DIR}`);
-    await unlink(zipPath);
-
-    // Make terraform executable
-    execSync(`chmod +x ${terraformPath}`);
-
-    console.log("Terraform installed successfully.");
+  // Check if terraform is already installed
+  if (await exists(terraformPath)) {
     return terraformPath;
+  }
+
+  console.log("Installing Terraform...");
+
+  // Determine OS and architecture
+  const platform = os.platform();
+  const arch = os.arch();
+
+  let osName: string;
+  let archName: string;
+
+  switch (platform) {
+    case "linux":
+      osName = "linux";
+      break;
+    case "darwin":
+      osName = "darwin";
+      break;
+    default:
+      throw new Error(`Unsupported OS: ${platform}`);
+  }
+
+  switch (arch) {
+    case "x64":
+      archName = "amd64";
+      break;
+    case "arm64":
+      archName = "arm64";
+      break;
+    default:
+      throw new Error(`Unsupported architecture: ${arch}`);
+  }
+
+  // Use a fixed version instead of fetching from API to avoid rate limiting issues
+  const version = "1.7.4";
+  const zipUrl = `https://releases.hashicorp.com/terraform/${version}/terraform_${version}_${osName}_${archName}.zip`;
+  const zipPath = path.join(PLANQTN_BIN_DIR, "terraform.zip");
+
+  // Download Terraform
+  await new Promise<void>((resolve, reject) => {
+    https
+      .get(zipUrl, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`Failed to download Terraform: ${res.statusCode}`));
+          return;
+        }
+        const file = fs.createWriteStream(zipPath);
+        res.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve();
+        });
+        file.on("error", reject);
+      })
+      .on("error", reject);
+  });
+
+  // Unzip Terraform
+  execSync(`unzip -o ${zipPath} -d ${PLANQTN_BIN_DIR}`);
+  await unlink(zipPath);
+
+  // Make terraform executable
+  execSync(`chmod +x ${terraformPath}`);
+
+  console.log("Terraform installed successfully.");
+  return terraformPath;
 }
 
 async function terraform(
-    args: string,
-    printOutput: boolean = false,
+  args: string,
+  printOutput: boolean = false
 ): Promise<string | null> {
-    const terraformPath = await ensureTerraformInstalled();
+  const terraformPath = await ensureTerraformInstalled();
 
-    let gcpSvcAccountKeyPath: string | undefined;
-    if (process.env.GCP_SVC_CREDENTIALS) {
-        const decodedKey = Buffer.from(
-            process.env.GCP_SVC_CREDENTIALS,
-            "base64",
-        ).toString("utf-8");
-        const gcpSvcAccountKey = JSON.parse(decodedKey);
-        gcpSvcAccountKeyPath = path.join(
-            APP_DIR,
-            "gcp",
-            "gcp-service-account-key",
-        );
-        await writeFile(
-            gcpSvcAccountKeyPath,
-            JSON.stringify(gcpSvcAccountKey, null, 2),
-        );
-    }
+  let gcpSvcAccountKeyPath: string | undefined;
+  if (process.env.GCP_SVC_CREDENTIALS) {
+    const decodedKey = Buffer.from(
+      process.env.GCP_SVC_CREDENTIALS,
+      "base64"
+    ).toString("utf-8");
+    const gcpSvcAccountKey = JSON.parse(decodedKey);
+    gcpSvcAccountKeyPath = path.join(APP_DIR, "gcp", "gcp-service-account-key");
+    await writeFile(
+      gcpSvcAccountKeyPath,
+      JSON.stringify(gcpSvcAccountKey, null, 2)
+    );
+  }
 
-    const tfEnv = process.env.GCP_SVC_CREDENTIALS
-        ? {
-            ...process.env,
-            GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
-        }
-        : process.env;
+  const tfEnv = process.env.GCP_SVC_CREDENTIALS
+    ? {
+        ...process.env,
+        GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
+      }
+    : process.env;
 
-    // Apply Terraform configuration
-    const gcpDir = path.join(APP_DIR, "gcp");
+  // Apply Terraform configuration
+  const gcpDir = path.join(APP_DIR, "gcp");
 
-    const result = execSync(`${terraformPath} ${args}`, {
-        cwd: gcpDir,
-        stdio: printOutput ? "inherit" : "pipe",
-        env: tfEnv,
-    });
-    if (result) {
-        return result.toString().trim();
-    }
-    return null;
+  const result = execSync(`${terraformPath} ${args}`, {
+    cwd: gcpDir,
+    stdio: printOutput ? "inherit" : "pipe",
+    env: tfEnv,
+  });
+  if (result) {
+    return result.toString().trim();
+  }
+  return null;
 }
 
 async function setupGCP(
-    interactive: boolean,
-    dockerRepo: string,
-    supabaseProjectId: string,
-    supabaseServiceKey: string,
-    gcpProjectId: string,
-    gcpRegion: string,
-    terraformStateBucket: string,
-    terraformStatePrefix: string,
+  interactive: boolean,
+  dockerRepo: string,
+  supabaseProjectId: string,
+  supabaseServiceKey: string,
+  gcpProjectId: string,
+  gcpRegion: string,
+  terraformStateBucket: string,
+  terraformStatePrefix: string
 ): Promise<void> {
-    const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
+  const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
 
-    if (!(await exists(tfvarsPath))) {
-        console.log("Creating empty terraform.tfvars file...");
-        await writeFile(tfvarsPath, "");
-    }
+  if (!(await exists(tfvarsPath))) {
+    console.log("Creating empty terraform.tfvars file...");
+    await writeFile(tfvarsPath, "");
+  }
 
-    // Get image names from environment
-    const jobsImage = await getImageFromEnv("job");
-    const apiImage = await getImageFromEnv("api");
+  // Get image names from environment
+  const jobsImage = await getImageFromEnv("job");
+  const apiImage = await getImageFromEnv("api");
 
-    if (!jobsImage || !apiImage) {
-        throw new Error("Failed to get image names from environment");
-    }
+  if (!jobsImage || !apiImage) {
+    throw new Error("Failed to get image names from environment");
+  }
 
-    // Write the tfvars file with all required variables
-    await writeTerraformVars(tfvarsPath, {
-        project_id: gcpProjectId,
-        region: gcpRegion,
-        jobs_image: jobsImage,
-        api_image: apiImage,
-        supabase_url: `https://${supabaseProjectId}.supabase.co`,
-        supabase_service_key: supabaseServiceKey,
-        environment: "dev",
-    });
+  // Write the tfvars file with all required variables
+  await writeTerraformVars(tfvarsPath, {
+    project_id: gcpProjectId,
+    region: gcpRegion,
+    jobs_image: jobsImage,
+    api_image: apiImage,
+    supabase_url: `https://${supabaseProjectId}.supabase.co`,
+    supabase_service_key: supabaseServiceKey,
+    environment: "dev",
+  });
 
-    await terraform(
-        `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
-        true,
-    );
+  await terraform(
+    `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+    true
+  );
 
-    await terraform(`apply -auto-approve`, true);
+  await terraform(`apply -auto-approve`, true);
 }
 
 async function setupSupabaseSecrets(
-    configDir: string,
-    jobsImage: string,
-    gcpProjectId: string,
-    serviceAccountKey: string,
-    apiUrl: string,
+  configDir: string,
+  jobsImage: string,
+  gcpProjectId: string,
+  serviceAccountKey: string,
+  apiUrl: string
 ): Promise<void> {
-    if (!serviceAccountKey) {
-        throw new Error(
-            "GCP service account key is required for Supabase secrets setup",
-        );
-    }
-    if (!apiUrl) {
-        throw new Error("API URL is required for Supabase secrets setup");
-    }
-
-    // Create a temporary .env file for Supabase secrets
-    const envContent = [
-        "ENV=development",
-        `JOBS_IMAGE=${jobsImage}`,
-        `GCP_PROJECT=${gcpProjectId}`,
-        `SVC_ACCOUNT=${serviceAccountKey}`,
-        `API_URL=${apiUrl}`,
-    ].join("\n");
-
-    const envPath = path.join(configDir, "supabase.env");
-    await writeFile(envPath, envContent);
-
-    // Deploy secrets to Supabase
-    console.log("\nDeploying Supabase secrets...");
-    execSync(
-        `npx supabase --workdir ${APP_DIR} secrets set --env-file ${envPath}`,
-        {
-            stdio: "inherit",
-        },
+  if (!serviceAccountKey) {
+    throw new Error(
+      "GCP service account key is required for Supabase secrets setup"
     );
+  }
+  if (!apiUrl) {
+    throw new Error("API URL is required for Supabase secrets setup");
+  }
 
-    // Clean up the temporary env file
-    await unlink(envPath);
+  // Create a temporary .env file for Supabase secrets
+  const envContent = [
+    "ENV=development",
+    `JOBS_IMAGE=${jobsImage}`,
+    `GCP_PROJECT=${gcpProjectId}`,
+    `SVC_ACCOUNT=${serviceAccountKey}`,
+    `API_URL=${apiUrl}`,
+  ].join("\n");
+
+  const envPath = path.join(configDir, "supabase.env");
+  await writeFile(envPath, envContent);
+
+  // Deploy secrets to Supabase
+  console.log("\nDeploying Supabase secrets...");
+  execSync(
+    `npx supabase --workdir ${APP_DIR} secrets set --env-file ${envPath}`,
+    {
+      stdio: "inherit",
+    }
+  );
+
+  // Clean up the temporary env file
+  await unlink(envPath);
 }
 
 async function buildAndPushImages(): Promise<void> {
-    console.log("Building and pushing job image...");
-    await handleImage("job", { build: true, push: true });
+  console.log("Building and pushing job image...");
+  await handleImage("job", { build: true, push: true });
 
-    console.log("Building and pushing api image...");
-    await handleImage("api", { build: true, push: true });
+  console.log("Building and pushing api image...");
+  await handleImage("api", { build: true, push: true });
 }
 
 interface VariableConfig {
-    name: string;
-    description: string;
-    isSecret?: boolean;
-    defaultValue?: string;
-    requiredFor: (
-        | "images"
-        | "supabase"
-        | "supabase-secrets"
-        | "gcp"
-        | "integration-test-config"
-        | "vercel"
-    )[];
-    outputBy?: "images" | "supabase" | "gcp" | "vercel";
-    hint?: string;
+  name: string;
+  description: string;
+  isSecret?: boolean;
+  defaultValue?: string;
+  requiredFor: (
+    | "images"
+    | "supabase"
+    | "supabase-secrets"
+    | "gcp"
+    | "integration-test-config"
+    | "vercel"
+  )[];
+  outputBy?: "images" | "supabase" | "gcp" | "vercel";
+  hint?: string;
 }
 
 abstract class Variable {
-    protected value: string | undefined;
-    protected config: VariableConfig;
+  protected value: string | undefined;
+  protected config: VariableConfig;
 
-    constructor(config: VariableConfig) {
-        this.config = config;
+  constructor(config: VariableConfig) {
+    this.config = config;
+  }
+
+  abstract load(vars: Variable[]): Promise<void>;
+  abstract save(): Promise<void>;
+
+  getValue(): string | undefined {
+    return this.value;
+  }
+
+  getRequiredValue(): string {
+    if (!this.value) {
+      throw new Error(
+        `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`
+      );
     }
+    return this.value;
+  }
 
-    abstract load(vars: Variable[]): Promise<void>;
-    abstract save(): Promise<void>;
+  setValue(value: string): void {
+    this.value = value;
+  }
 
-    getValue(): string | undefined {
-        return this.value;
+  getName(): string {
+    return this.config.name;
+  }
+
+  getConfig(): VariableConfig {
+    return this.config;
+  }
+
+  getEnvVarName(): string {
+    return `PLANQTN_${this.config.name.toUpperCase()}`;
+  }
+
+  async loadFromEnv(vars: Variable[]): Promise<void> {
+    const envVarName = this.getEnvVarName();
+    const envValue = process.env[envVarName];
+    if (envValue) {
+      this.setValue(envValue);
     }
-
-    getRequiredValue(): string {
-        if (!this.value) {
-            throw new Error(
-                `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`,
-            );
-        }
-        return this.value;
-    }
-
-    setValue(value: string): void {
-        this.value = value;
-    }
-
-    getName(): string {
-        return this.config.name;
-    }
-
-    getConfig(): VariableConfig {
-        return this.config;
-    }
-
-    getEnvVarName(): string {
-        return `PLANQTN_${this.config.name.toUpperCase()}`;
-    }
-
-    async loadFromEnv(vars: Variable[]): Promise<void> {
-        const envVarName = this.getEnvVarName();
-        const envValue = process.env[envVarName];
-        if (envValue) {
-            this.setValue(envValue);
-        }
-    }
+  }
 }
 
 class PlainFileVar extends Variable {
-    private filePath: string;
+  private filePath: string;
 
-    constructor(config: VariableConfig, configDir: string, filename: string) {
-        super(config);
-        this.filePath = path.join(configDir, filename);
-    }
+  constructor(config: VariableConfig, configDir: string, filename: string) {
+    super(config);
+    this.filePath = path.join(configDir, filename);
+  }
 
-    async load(vars: Variable[]): Promise<void> {
-        try {
-            if (await exists(this.filePath)) {
-                const content = await readFile(this.filePath, "utf8");
-                if (content.trim()) {
-                    this.value = content.trim();
-                }
-            }
-        } catch (error) {
-            console.warn(`Warning: Could not load ${this.filePath}:`, error);
+  async load(vars: Variable[]): Promise<void> {
+    try {
+      if (await exists(this.filePath)) {
+        const content = await readFile(this.filePath, "utf8");
+        if (content.trim()) {
+          this.value = content.trim();
         }
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not load ${this.filePath}:`, error);
     }
+  }
 
-    async save(): Promise<void> {
-        try {
-            if (this.value) {
-                await writeFile(this.filePath, this.value);
-            }
-        } catch (error) {
-            console.error(`Error saving ${this.filePath}:`, error);
-            throw error;
-        }
+  async save(): Promise<void> {
+    try {
+      if (this.value) {
+        await writeFile(this.filePath, this.value);
+      }
+    } catch (error) {
+      console.error(`Error saving ${this.filePath}:`, error);
+      throw error;
     }
+  }
 }
 
 class DerivedVar extends Variable {
-    private computeFn: (vars: Variable[]) => string;
+  private computeFn: (vars: Variable[]) => string;
 
-    constructor(
-        config: VariableConfig,
-        computeFn: (vars: Variable[]) => string,
-    ) {
-        super(config);
-        this.computeFn = computeFn;
-    }
+  constructor(config: VariableConfig, computeFn: (vars: Variable[]) => string) {
+    super(config);
+    this.computeFn = computeFn;
+  }
 
-    async load(vars: Variable[]): Promise<void> {
-        this.compute(vars);
-    }
+  async load(vars: Variable[]): Promise<void> {
+    this.compute(vars);
+  }
 
-    async save(): Promise<void> {
-        // Derived vars don't save to storage
-    }
+  async save(): Promise<void> {
+    // Derived vars don't save to storage
+  }
 
-    compute(vars: Variable[]): void {
-        try {
-            this.value = this.computeFn(vars);
-        } catch (error) {
-            if (error instanceof Error) {
-                console.warn(
-                    `Error deriving ${this.getName()}:`,
-                    error.message,
-                );
-            } else {
-                console.warn(`Error deriving ${this.getName()}:`, error);
-            }
-        }
+  compute(vars: Variable[]): void {
+    try {
+      this.value = this.computeFn(vars);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.warn(`Error deriving ${this.getName()}:`, error.message);
+      } else {
+        console.warn(`Error deriving ${this.getName()}:`, error);
+      }
     }
+  }
 
-    async loadFromEnv(vars: Variable[]): Promise<void> {
-        try {
-            await this.load(vars);
-        } catch (error) {
-            await super.loadFromEnv(vars);
-        }
+  async loadFromEnv(vars: Variable[]): Promise<void> {
+    try {
+      await this.load(vars);
+    } catch (error) {
+      await super.loadFromEnv(vars);
     }
+  }
 }
 
 class EnvFileVar extends Variable {
-    private envFile: string;
-    private envKey: string;
+  private envFile: string;
+  private envKey: string;
 
-    constructor(config: VariableConfig, envFile: string, envKey: string) {
-        super(config);
-        this.envFile = envFile;
-        this.envKey = envKey;
-    }
+  constructor(config: VariableConfig, envFile: string, envKey: string) {
+    super(config);
+    this.envFile = envFile;
+    this.envKey = envKey;
+  }
 
-    async load(vars: Variable[]): Promise<void> {
-        this.value = await getImageFromEnv(this.envKey);
-    }
+  async load(vars: Variable[]): Promise<void> {
+    this.value = await getImageFromEnv(this.envKey);
+  }
 
-    async save(): Promise<void> {
-        // Env vars don't save to storage
-    }
+  async save(): Promise<void> {
+    // Env vars don't save to storage
+  }
 }
 
 class JsonFileVar extends Variable {
-    private filePath: string;
-    private jsonPath: string[];
+  private filePath: string;
+  private jsonPath: string[];
 
-    constructor(config: VariableConfig, filePath: string, jsonPath: string[]) {
-        super(config);
-        this.filePath = filePath;
-        this.jsonPath = jsonPath;
-    }
+  constructor(config: VariableConfig, filePath: string, jsonPath: string[]) {
+    super(config);
+    this.filePath = filePath;
+    this.jsonPath = jsonPath;
+  }
 
-    async load(vars: Variable[]): Promise<void> {
-        try {
-            if (await exists(this.filePath)) {
-                const content = await readFile(this.filePath, "utf8");
-                const jsonData = JSON.parse(content);
-                let value = jsonData;
-                for (const key of this.jsonPath) {
-                    if (value === undefined) break;
-                    value = value[key];
-                }
-                if (value !== undefined) {
-                    this.value = value.toString();
-                }
-            }
-        } catch (error) {
-            console.warn(`Warning: Could not load ${this.filePath}:`, error);
+  async load(vars: Variable[]): Promise<void> {
+    try {
+      if (await exists(this.filePath)) {
+        const content = await readFile(this.filePath, "utf8");
+        const jsonData = JSON.parse(content);
+        let value = jsonData;
+        for (const key of this.jsonPath) {
+          if (value === undefined) break;
+          value = value[key];
         }
+        if (value !== undefined) {
+          this.value = value.toString();
+        }
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not load ${this.filePath}:`, error);
     }
+  }
 
-    async save(): Promise<void> {
-        // JsonFileVar doesn't save back to the file
-    }
+  async save(): Promise<void> {
+    // JsonFileVar doesn't save back to the file
+  }
 }
 
 class VariableManager {
-    private configDir: string;
-    private variables: Variable[];
+  private configDir: string;
+  private variables: Variable[];
 
-    constructor(configDir: string) {
-        this.configDir = configDir;
-        this.variables = [
-            new PlainFileVar(
-                {
-                    name: "dockerRepo",
-                    description:
-                        "Docker repository (e.g., Docker Hub username or repo)",
-                    defaultValue: "planqtn",
-                    requiredFor: ["images"],
-                },
-                configDir,
-                "docker-repo",
-            ),
-            new PlainFileVar(
-                {
-                    name: "supabaseProjectRef",
-                    description: "Supabase project ID",
-                    requiredFor: ["supabase"],
-                    hint:
-                        `Get it from your supabase project settings. Store it in ${configDir}/supabase-project-id`,
-                },
-                configDir,
-                "supabase-project-id",
-            ),
-            new PlainFileVar(
-                {
-                    name: "dbPassword",
-                    description: "Supabase database password",
-                    isSecret: true,
-                    requiredFor: ["supabase"],
-                },
-                configDir,
-                "db-password",
-            ),
-            new PlainFileVar(
-                {
-                    name: "environment",
-                    description: "Environment",
-                    defaultValue: "development",
-                    requiredFor: ["supabase-secrets", "gcp"],
-                },
-                configDir,
-                "environment",
-            ),
-            new EnvFileVar(
-                {
-                    name: "jobsImage",
-                    description: "Jobs image name",
-                    requiredFor: ["supabase-secrets", "gcp"],
-                    outputBy: "images",
-                },
-                "job",
-                "job",
-            ),
-            new PlainFileVar(
-                {
-                    name: "gcpProjectId",
-                    description: "GCP project ID",
-                    requiredFor: ["supabase-secrets", "gcp"],
-                },
-                configDir,
-                "gcp-project-id",
-            ),
-            new PlainFileVar(
-                {
-                    name: "apiUrl",
-                    description: "Cloud Run PlanqTN API URL",
-                    requiredFor: ["supabase-secrets"],
-                    outputBy: "gcp",
-                },
-                configDir,
-                "api-url",
-            ),
-            new PlainFileVar(
-                {
-                    name: "gcpSvcAccountKey",
-                    description: "GCP service account key",
-                    isSecret: true,
-                    requiredFor: ["supabase-secrets"],
-                    outputBy: "gcp",
-                },
-                configDir,
-                "gcp-service-account-key",
-            ),
-            new PlainFileVar(
-                {
-                    name: "gcpRegion",
-                    description: "GCP region",
-                    defaultValue: "us-east1",
-                    requiredFor: ["gcp"],
-                },
-                configDir,
-                "gcp-region",
-            ),
-            new PlainFileVar(
-                {
-                    name: "terraformStateBucket",
-                    description: "Terraform state bucket",
-                    requiredFor: ["gcp"],
-                },
-                configDir,
-                "terraform-state-bucket",
-            ),
-            new PlainFileVar(
-                {
-                    name: "terraformStatePrefix",
-                    description: "Terraform state prefix",
-                    requiredFor: ["gcp"],
-                },
-                configDir,
-                "terraform-state-prefix",
-            ),
-            new DerivedVar(
-                {
-                    name: "supabaseUrl",
-                    description: "Supabase URL",
-                    requiredFor: ["gcp"],
-                },
-                (vars) =>
-                    `https://${
-                        vars.find((v) => v.getName() === "supabaseProjectRef")
-                            ?.getRequiredValue()
-                    }.supabase.co`,
-            ),
-            new PlainFileVar(
-                {
-                    name: "supabaseServiceKey",
-                    description: "Supabase service key",
-                    isSecret: true,
-                    requiredFor: ["gcp", "integration-test-config"],
-                },
-                configDir,
-                "supabase-service-key",
-            ),
-            new EnvFileVar(
-                {
-                    name: "apiImage",
-                    description: "API image name",
-                    requiredFor: ["gcp"],
-                    outputBy: "images",
-                },
-                "api",
-                "api",
-            ),
-            new PlainFileVar(
-                {
-                    name: "supabaseAnonKey",
-                    description: "Supabase anonymous key",
-                    isSecret: true,
-                    requiredFor: ["integration-test-config"],
-                },
-                configDir,
-                "supabase-anon-key",
-            ),
-            new JsonFileVar(
-                {
-                    name: "vercelProjectId",
-                    description: "Vercel project ID",
-                    requiredFor: ["vercel"],
-                },
-                path.join(APP_DIR, "ui", ".vercel", "project.json"),
-                ["projectId"],
-            ),
-            new JsonFileVar(
-                {
-                    name: "vercelOrgId",
-                    description: "Vercel organization ID",
-                    requiredFor: ["vercel"],
-                },
-                path.join(APP_DIR, "ui", ".vercel", "project.json"),
-                ["orgId"],
-            ),
-        ];
-    }
-
-    async loadExistingValues(): Promise<void> {
-        for (const variable of this.variables) {
-            await variable.load(this.variables);
-            if (!variable.getValue()) {
-                await variable.loadFromEnv(this.variables);
-            }
-        }
-        await this.loadGcpOutputs();
-    }
-
-    async loadFromEnv(): Promise<void> {
-        for (const variable of this.variables) {
-            await variable.loadFromEnv(this.variables);
-        }
-    }
-
-    async saveValues(): Promise<void> {
-        // Update derived variables
-        for (const variable of this.variables) {
-            if (variable instanceof DerivedVar) {
-                const otherVars = Object.fromEntries(
-                    this.variables
-                        .map((v) => [v.getName(), v.getValue()])
-                        .filter(([_, value]) => value !== undefined),
-                );
-                variable.compute(this.variables);
-            }
-        }
-
-        // Save all variables
-        for (const variable of this.variables) {
-            await variable.save();
-        }
-    }
-
-    getValue(key: string): string {
-        const variable = this.variables.find((v) => v.getName() === key);
-        if (!variable) {
-            throw new Error(`Variable ${key} not found`);
-        }
-        return variable.getRequiredValue();
-    }
-
-    async loadGcpOutputs(): Promise<void> {
-        console.log("Loading GCP outputs...");
-        try {
-            // Get Terraform outputs
-            const apiUrl = await terraform(
-                `output -raw api_service_url`,
-            );
-            const rawServiceAccountKey = await terraform(
-                `output -raw api_service_account_key`,
-            );
-            // Set values on the Variable instances
-            const apiUrlVar = this.variables.find((v) =>
-                v.getName() === "apiUrl"
-            );
-            const gcpSvcAccountKeyVar = this.variables.find((v) =>
-                v.getName() === "gcpSvcAccountKey"
-            );
-
-            if (apiUrlVar) {
-                apiUrlVar.setValue(apiUrl!);
-            }
-            if (gcpSvcAccountKeyVar) {
-                gcpSvcAccountKeyVar.setValue(rawServiceAccountKey!);
-            }
-
-            console.log("Terraform outputs loaded successfully.");
-        } catch (error) {
-        }
-    }
-
-    private getRequiredVariables(
-        skipPhases: {
-            images: boolean;
-            supabase: boolean;
-            gcp: boolean;
-            vercel: boolean;
+  constructor(configDir: string) {
+    this.configDir = configDir;
+    this.variables = [
+      new PlainFileVar(
+        {
+          name: "dockerRepo",
+          description: "Docker repository (e.g., Docker Hub username or repo)",
+          defaultValue: "planqtn",
+          requiredFor: ["images"],
         },
-        phase?: "images" | "supabase" | "gcp" | "vercel",
-    ): Variable[] {
-        return this.variables.filter((variable) => {
-            const config = variable.getConfig();
-            // Skip derived variables as they are computed
-            if (variable instanceof DerivedVar) {
-                return false;
-            }
-            // Skip variables that are output by non-skipped phases
-            if (config.outputBy && !skipPhases[config.outputBy]) {
-                return false;
-            }
-            // If phase is specified, only include variables required for that phase
-            if (phase) {
-                return config.requiredFor.includes(phase) && !skipPhases[phase];
-            }
-            // Otherwise include variables required for any non-skipped phase
-            return config.requiredFor.some((p) =>
-                !skipPhases[p as keyof typeof skipPhases]
-            );
-        });
-    }
-
-    async prompt(
-        skipPhases: {
-            images: boolean;
-            supabase: boolean;
-            gcp: boolean;
-            vercel: boolean;
+        configDir,
+        "docker-repo"
+      ),
+      new PlainFileVar(
+        {
+          name: "supabaseProjectRef",
+          description: "Supabase project ID",
+          requiredFor: ["supabase"],
+          hint: `Get it from your supabase project settings. Store it in ${configDir}/supabase-project-id`,
         },
-    ): Promise<void> {
-        const prompt = promptSync({ sigint: true });
-        console.log("\n=== Collecting Configuration ===");
-
-        const requiredVars = this.getRequiredVariables(skipPhases);
-
-        for (const variable of requiredVars) {
-            const config = variable.getConfig();
-            const currentValue = variable.getValue();
-            // Only skip prompting if the value is set AND it's output by a non-skipped phase
-            if (!currentValue || (currentValue && !config.outputBy)) {
-                const promptText = `Enter ${config.description}${
-                    config.defaultValue ? ` [${config.defaultValue}]` : ""
-                }${
-                    currentValue && !config.isSecret
-                        ? ` (current: ${currentValue})`
-                        : currentValue && config.isSecret
-                        ? " (leave blank to keep current value)"
-                        : " (not set)"
-                }: `;
-
-                let value: string;
-                if (config.isSecret) {
-                    value = prompt(promptText, { echo: "*" });
-                } else {
-                    value = prompt(promptText, config.defaultValue || "");
-                }
-
-                if (value) {
-                    variable.setValue(value);
-                }
-            }
-        }
-
-        await this.saveValues();
-    }
-
-    async validatePhaseRequirements(
-        phase: "images" | "supabase" | "gcp" | "vercel",
-        skipPhases: {
-            images: boolean;
-            supabase: boolean;
-            gcp: boolean;
-            vercel: boolean;
+        configDir,
+        "supabase-project-id"
+      ),
+      new PlainFileVar(
+        {
+          name: "dbPassword",
+          description: "Supabase database password",
+          isSecret: true,
+          requiredFor: ["supabase"],
         },
-    ): Promise<void> {
-        const requiredVars = this.getRequiredVariables(skipPhases, phase);
-        const missingVars: string[] = [];
+        configDir,
+        "db-password"
+      ),
+      new PlainFileVar(
+        {
+          name: "environment",
+          description: "Environment",
+          defaultValue: "development",
+          requiredFor: ["supabase-secrets", "gcp", "vercel"],
+        },
+        configDir,
+        "environment"
+      ),
+      new EnvFileVar(
+        {
+          name: "jobsImage",
+          description: "Jobs image name",
+          requiredFor: ["supabase-secrets", "gcp"],
+          outputBy: "images",
+        },
+        "job",
+        "job"
+      ),
+      new PlainFileVar(
+        {
+          name: "gcpProjectId",
+          description: "GCP project ID",
+          requiredFor: ["supabase-secrets", "gcp"],
+        },
+        configDir,
+        "gcp-project-id"
+      ),
+      new PlainFileVar(
+        {
+          name: "apiUrl",
+          description: "Cloud Run PlanqTN API URL",
+          requiredFor: ["supabase-secrets"],
+          outputBy: "gcp",
+        },
+        configDir,
+        "api-url"
+      ),
+      new PlainFileVar(
+        {
+          name: "gcpSvcAccountKey",
+          description: "GCP service account key",
+          isSecret: true,
+          requiredFor: ["supabase-secrets"],
+          outputBy: "gcp",
+        },
+        configDir,
+        "gcp-service-account-key"
+      ),
+      new PlainFileVar(
+        {
+          name: "gcpRegion",
+          description: "GCP region",
+          defaultValue: "us-east1",
+          requiredFor: ["gcp"],
+        },
+        configDir,
+        "gcp-region"
+      ),
+      new PlainFileVar(
+        {
+          name: "terraformStateBucket",
+          description: "Terraform state bucket",
+          requiredFor: ["gcp"],
+        },
+        configDir,
+        "terraform-state-bucket"
+      ),
+      new PlainFileVar(
+        {
+          name: "terraformStatePrefix",
+          description: "Terraform state prefix",
+          requiredFor: ["gcp"],
+        },
+        configDir,
+        "terraform-state-prefix"
+      ),
+      new DerivedVar(
+        {
+          name: "supabaseUrl",
+          description: "Supabase URL",
+          requiredFor: ["gcp"],
+        },
+        (vars) =>
+          `https://${vars
+            .find((v) => v.getName() === "supabaseProjectRef")
+            ?.getRequiredValue()}.supabase.co`
+      ),
+      new PlainFileVar(
+        {
+          name: "supabaseServiceKey",
+          description: "Supabase service key",
+          isSecret: true,
+          requiredFor: ["gcp", "integration-test-config"],
+        },
+        configDir,
+        "supabase-service-key"
+      ),
+      new EnvFileVar(
+        {
+          name: "apiImage",
+          description: "API image name",
+          requiredFor: ["gcp"],
+          outputBy: "images",
+        },
+        "api",
+        "api"
+      ),
+      new PlainFileVar(
+        {
+          name: "supabaseAnonKey",
+          description: "Supabase anonymous key",
+          isSecret: true,
+          requiredFor: ["integration-test-config"],
+        },
+        configDir,
+        "supabase-anon-key"
+      ),
+      new JsonFileVar(
+        {
+          name: "vercelProjectId",
+          description: "Vercel project ID",
+          requiredFor: ["vercel"],
+        },
+        path.join(APP_DIR, "ui", ".vercel", "project.json"),
+        ["projectId"]
+      ),
+      new JsonFileVar(
+        {
+          name: "vercelOrgId",
+          description: "Vercel organization ID",
+          requiredFor: ["vercel"],
+        },
+        path.join(APP_DIR, "ui", ".vercel", "project.json"),
+        ["orgId"]
+      ),
+    ];
+  }
 
-        for (const variable of requiredVars) {
-            if (!variable.getValue()) {
-                missingVars.push(variable.getConfig().description);
-            }
+  async loadExistingValues(): Promise<void> {
+    for (const variable of this.variables) {
+      await variable.load(this.variables);
+      if (!variable.getValue()) {
+        await variable.loadFromEnv(this.variables);
+      }
+    }
+    await this.loadGcpOutputs();
+  }
+
+  async loadFromEnv(): Promise<void> {
+    for (const variable of this.variables) {
+      await variable.loadFromEnv(this.variables);
+    }
+  }
+
+  async saveValues(): Promise<void> {
+    // Update derived variables
+    for (const variable of this.variables) {
+      if (variable instanceof DerivedVar) {
+        const otherVars = Object.fromEntries(
+          this.variables
+            .map((v) => [v.getName(), v.getValue()])
+            .filter(([_, value]) => value !== undefined)
+        );
+        variable.compute(this.variables);
+      }
+    }
+
+    // Save all variables
+    for (const variable of this.variables) {
+      await variable.save();
+    }
+  }
+
+  getValue(key: string): string {
+    const variable = this.variables.find((v) => v.getName() === key);
+    if (!variable) {
+      throw new Error(`Variable ${key} not found`);
+    }
+    return variable.getRequiredValue();
+  }
+
+  async loadGcpOutputs(): Promise<void> {
+    console.log("Loading GCP outputs...");
+    try {
+      // Get Terraform outputs
+      const apiUrl = await terraform(`output -raw api_service_url`);
+      const rawServiceAccountKey = await terraform(
+        `output -raw api_service_account_key`
+      );
+      // Set values on the Variable instances
+      const apiUrlVar = this.variables.find((v) => v.getName() === "apiUrl");
+      const gcpSvcAccountKeyVar = this.variables.find(
+        (v) => v.getName() === "gcpSvcAccountKey"
+      );
+
+      if (apiUrlVar) {
+        apiUrlVar.setValue(apiUrl!);
+      }
+      if (gcpSvcAccountKeyVar) {
+        gcpSvcAccountKeyVar.setValue(rawServiceAccountKey!);
+      }
+
+      console.log("Terraform outputs loaded successfully.");
+    } catch (error) {}
+  }
+
+  private getRequiredVariables(
+    skipPhases: {
+      images: boolean;
+      supabase: boolean;
+      gcp: boolean;
+      vercel: boolean;
+    },
+    phase?: "images" | "supabase" | "gcp" | "vercel"
+  ): Variable[] {
+    return this.variables.filter((variable) => {
+      const config = variable.getConfig();
+      // Skip derived variables as they are computed
+      if (variable instanceof DerivedVar) {
+        return false;
+      }
+      // Skip variables that are output by non-skipped phases
+      if (config.outputBy && !skipPhases[config.outputBy]) {
+        return false;
+      }
+      // If phase is specified, only include variables required for that phase
+      if (phase) {
+        return config.requiredFor.includes(phase) && !skipPhases[phase];
+      }
+      // Otherwise include variables required for any non-skipped phase
+      return config.requiredFor.some(
+        (p) => !skipPhases[p as keyof typeof skipPhases]
+      );
+    });
+  }
+
+  async prompt(skipPhases: {
+    images: boolean;
+    supabase: boolean;
+    gcp: boolean;
+    vercel: boolean;
+  }): Promise<void> {
+    const prompt = promptSync({ sigint: true });
+    console.log("\n=== Collecting Configuration ===");
+
+    const requiredVars = this.getRequiredVariables(skipPhases);
+
+    for (const variable of requiredVars) {
+      const config = variable.getConfig();
+      const currentValue = variable.getValue();
+      // Only skip prompting if the value is set AND it's output by a non-skipped phase
+      if (!currentValue || (currentValue && !config.outputBy)) {
+        const promptText = `Enter ${config.description}${
+          config.defaultValue ? ` [${config.defaultValue}]` : ""
+        }${
+          currentValue && !config.isSecret
+            ? ` (current: ${currentValue})`
+            : currentValue && config.isSecret
+            ? " (leave blank to keep current value)"
+            : " (not set)"
+        }: `;
+
+        let value: string;
+        if (config.isSecret) {
+          value = prompt(promptText, { echo: "*" });
+        } else {
+          value = prompt(promptText, config.defaultValue || "");
         }
 
-        if (missingVars.length > 0) {
-            throw new Error(
-                `Missing required variables: ${missingVars.join(", ")}`,
-            );
+        if (value) {
+          variable.setValue(value);
         }
+      }
     }
 
-    async generateIntegrationTestConfig(): Promise<void> {
-        const config = {
-            ANON_KEY: this.getValue("supabaseAnonKey"),
-            API_URL: this.getValue("supabaseUrl"),
-            SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey"),
-        };
+    await this.saveValues();
+  }
 
-        const configPath = path.join(this.configDir, "supabase_config.json");
-        await writeFile(configPath, JSON.stringify(config, null, 2));
-        console.log("Integration test config generated at:", configPath);
+  async validatePhaseRequirements(
+    phase: "images" | "supabase" | "gcp" | "vercel",
+    skipPhases: {
+      images: boolean;
+      supabase: boolean;
+      gcp: boolean;
+      vercel: boolean;
+    }
+  ): Promise<void> {
+    const requiredVars = this.getRequiredVariables(skipPhases, phase);
+    const missingVars: string[] = [];
+
+    for (const variable of requiredVars) {
+      if (!variable.getValue()) {
+        missingVars.push(variable.getConfig().description);
+      }
     }
 
-    getUserVariables(): Variable[] {
-        return this.variables.filter((variable) => {
-            const config = variable.getConfig();
-            // Only include variables that don't have outputBy (user-only variables)
-            return !config.outputBy && !(variable instanceof DerivedVar);
-        });
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required variables: ${missingVars.join(", ")}`);
     }
+  }
+
+  async generateIntegrationTestConfig(): Promise<void> {
+    const config = {
+      ANON_KEY: this.getValue("supabaseAnonKey"),
+      API_URL: this.getValue("supabaseUrl"),
+      SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey"),
+    };
+
+    const configPath = path.join(this.configDir, "supabase_config.json");
+    await writeFile(configPath, JSON.stringify(config, null, 2));
+    console.log("Integration test config generated at:", configPath);
+  }
+
+  getUserVariables(): Variable[] {
+    return this.variables.filter((variable) => {
+      const config = variable.getConfig();
+      // Only include variables that don't have outputBy (user-only variables)
+      return !config.outputBy && !(variable instanceof DerivedVar);
+    });
+  }
 }
 
 async function setupVercel(
-    configDir: string,
-    vercelProjectId: string,
-    vercelOrgId: string,
-    supabaseUrl: string,
-    supabaseAnonKey: string,
+  configDir: string,
+  vercelProjectId: string,
+  vercelOrgId: string,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  environment: string
 ): Promise<void> {
-    // Check if vercel CLI is installed and user is logged in
-    try {
-        execSync("vercel --version", { stdio: "pipe" });
-    } catch (error) {
-        throw new Error(
-            "Vercel CLI is not installed. Please install it with 'npm install -g vercel'",
-        );
-    }
-
-    let useToken = false;
-    try {
-        execSync("vercel whoami", { stdio: "pipe" });
-    } catch (error) {
-        if (process.env.VERCEL_ACCESS_TOKEN) {
-            useToken = true;
-        } else {
-            throw new Error(
-                "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable",
-            );
-        }
-    }
-
-    // Check if the project is already linked
-
-    if (!await exists(path.join(APP_DIR, "ui", ".vercel", "project.json"))) {
-        execSync(
-            `vercel link --yes --scope ${vercelOrgId} --project ${vercelProjectId}`,
-            {
-                cwd: path.join(APP_DIR, "ui"),
-                stdio: "inherit",
-            },
-        );
-    } else {
-        console.log("Project is already linked to Vercel. Skipping link step.");
-    }
-
-    // Create .env file
-    console.log("\nSetting up Vercel environment variables...");
-    const envContent = [
-        `VITE_TASK_STORE_URL=${supabaseUrl}`,
-        `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
-        `VITE_ENV="development"`,
-    ].join("\n");
-
-    const envPath = path.join(APP_DIR, "ui", ".env");
-    await writeFile(envPath, envContent);
-
-    // Deploy to Vercel
-    console.log("\nDeploying to Vercel...");
-    execSync(
-        `vercel deploy --prod ${
-            useToken ? "--token " + process.env.VERCEL_ACCESS_TOKEN : ""
-        }`,
-        {
-            cwd: path.join(APP_DIR, "ui"),
-            stdio: "inherit",
-        },
+  // Check if vercel CLI is installed and user is logged in
+  try {
+    execSync("vercel --version", { stdio: "pipe" });
+  } catch (error) {
+    throw new Error(
+      "Vercel CLI is not installed. Please install it with 'npm install -g vercel'"
     );
+  }
+
+  let tokenArg = "";
+  try {
+    execSync("vercel whoami", { stdio: "pipe" });
+  } catch (error) {
+    if (process.env.VERCEL_ACCESS_TOKEN) {
+      tokenArg = "--token " + process.env.VERCEL_ACCESS_TOKEN;
+    } else {
+      throw new Error(
+        "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable"
+      );
+    }
+  }
+
+  // Check if the project is already linked
+
+  if (!(await exists(path.join(APP_DIR, "ui", ".vercel", "project.json")))) {
+    execSync(
+      `vercel link --yes --scope ${vercelOrgId} --project ${vercelProjectId} ${tokenArg}`,
+      {
+        cwd: path.join(APP_DIR, "ui"),
+        stdio: "inherit",
+      }
+    );
+  } else {
+    console.log("Project is already linked to Vercel. Skipping link step.");
+  }
+
+  // Create .env file
+  console.log("\nSetting up Vercel environment variables...");
+  const envContent = [
+    `VITE_TASK_STORE_URL=${supabaseUrl}`,
+    `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
+    `VITE_ENV=${environment}`,
+  ].join("\n");
+
+  const envPath = path.join(APP_DIR, "ui", ".env");
+  await writeFile(envPath, envContent);
+
+  // Deploy to Vercel
+  console.log("\nDeploying to Vercel...");
+  execSync(
+    `vercel deploy ${environment == "production" ? "--prod " : ""} ${tokenArg}`,
+    {
+      cwd: path.join(APP_DIR, "ui"),
+      stdio: "inherit",
+    }
+  );
 }
 
 export function setupCloudCommand(program: Command): void {
-    const cloudCommand = program
-        .command("cloud")
-        .description("Deploy to cloud");
+  const cloudCommand = program.command("cloud").description("Deploy to cloud");
 
-    cloudCommand
-        .command("deploy")
-        .description("Deploy to cloud")
-        .option("-q, --non-interactive", "Run in non-interactive mode", false)
-        .option("--skip-images", "Skip building and pushing images")
-        .option("--skip-supabase", "Skip Supabase deployment")
-        .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
-        .option("--skip-gcp", "Skip GCP deployment")
-        .option("--skip-vercel", "Skip Vercel deployment")
-        .option(
-            "--skip-integration-test-config",
-            "Skip integration test config generation",
-        )
-        .action(async (options: CloudOptions) => {
-            try {
-                const configDir = path.join(
-                    process.env.HOME || "",
-                    ".planqtn",
-                    ".config",
-                );
+  cloudCommand
+    .command("deploy")
+    .description("Deploy to cloud")
+    .option("-q, --non-interactive", "Run in non-interactive mode", false)
+    .option("--skip-images", "Skip building and pushing images")
+    .option("--skip-supabase", "Skip Supabase deployment")
+    .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
+    .option("--skip-gcp", "Skip GCP deployment")
+    .option("--skip-vercel", "Skip Vercel deployment")
+    .option(
+      "--skip-integration-test-config",
+      "Skip integration test config generation"
+    )
+    .action(async (options: CloudOptions) => {
+      try {
+        const configDir = path.join(
+          process.env.HOME || "",
+          ".planqtn",
+          ".config"
+        );
 
-                // Create config directory if it doesn't exist
-                if (!await exists(configDir)) {
-                    await mkdir(configDir, { recursive: true });
-                }
+        // Create config directory if it doesn't exist
+        if (!(await exists(configDir))) {
+          await mkdir(configDir, { recursive: true });
+        }
 
-                // // Copy example config if it doesn't exist
-                // const exampleConfig = path.join(APP_DIR, ".config.example");
-                // if (!await exists(path.join(configDir, "docker-repo"))) {
-                //     execSync(`cp -r ${exampleConfig}/* ${configDir}/`);
-                // }
+        // // Copy example config if it doesn't exist
+        // const exampleConfig = path.join(APP_DIR, ".config.example");
+        // if (!await exists(path.join(configDir, "docker-repo"))) {
+        //     execSync(`cp -r ${exampleConfig}/* ${configDir}/`);
+        // }
 
-                const variableManager = new VariableManager(configDir);
-                await variableManager.loadExistingValues();
+        const variableManager = new VariableManager(configDir);
+        await variableManager.loadExistingValues();
 
-                const skipPhases = {
-                    images: options.skipImages,
-                    supabase: options.skipSupabase,
-                    gcp: options.skipGcp,
-                    supabaseSecrets: options.skipSupabaseSecrets,
-                    vercel: options.skipVercel,
-                    integrationTestConfig: options.skipIntegrationTestConfig,
-                };
+        const skipPhases = {
+          images: options.skipImages,
+          supabase: options.skipSupabase,
+          gcp: options.skipGcp,
+          supabaseSecrets: options.skipSupabaseSecrets,
+          vercel: options.skipVercel,
+          integrationTestConfig: options.skipIntegrationTestConfig,
+        };
 
-                // Load GCP outputs if GCP is not skipped
-                if (!skipPhases.gcp) {
-                    await variableManager.loadGcpOutputs();
-                }
+        // Load GCP outputs if GCP is not skipped
+        if (!skipPhases.gcp) {
+          await variableManager.loadGcpOutputs();
+        }
 
-                if (!options.nonInteractive) {
-                    await variableManager.prompt(skipPhases);
-                } else {
-                    await variableManager.loadFromEnv();
-                }
+        if (!options.nonInteractive) {
+          await variableManager.prompt(skipPhases);
+        } else {
+          await variableManager.loadFromEnv();
+        }
 
-                // Now proceed with the setup using the collected variables
-                console.log("\n=== Starting Setup ===");
+        // Now proceed with the setup using the collected variables
+        console.log("\n=== Starting Setup ===");
 
-                // Build images if needed
-                if (!skipPhases.images) {
-                    await variableManager.validatePhaseRequirements(
-                        "images",
-                        skipPhases,
-                    );
-                    console.log("\nBuilding and pushing images...");
-                    await buildAndPushImages();
-                }
+        // Build images if needed
+        if (!skipPhases.images) {
+          await variableManager.validatePhaseRequirements("images", skipPhases);
+          console.log("\nBuilding and pushing images...");
+          await buildAndPushImages();
+        }
 
-                // Setup Supabase if needed
-                if (!skipPhases.supabase) {
-                    await variableManager.validatePhaseRequirements(
-                        "supabase",
-                        skipPhases,
-                    );
-                    await setupSupabase(
-                        configDir,
-                        variableManager.getValue("supabaseProjectRef"),
-                        variableManager.getValue("dbPassword"),
-                        variableManager.getValue("supabaseServiceKey"),
-                        options.nonInteractive,
-                    );
-                }
+        // Setup Supabase if needed
+        if (!skipPhases.supabase) {
+          await variableManager.validatePhaseRequirements(
+            "supabase",
+            skipPhases
+          );
+          await setupSupabase(
+            configDir,
+            variableManager.getValue("supabaseProjectRef"),
+            variableManager.getValue("dbPassword"),
+            variableManager.getValue("supabaseServiceKey"),
+            options.nonInteractive
+          );
+        }
 
-                // Setup GCP if needed
-                if (!skipPhases.gcp) {
-                    await variableManager.validatePhaseRequirements(
-                        "gcp",
-                        skipPhases,
-                    );
-                    await setupGCP(
-                        options.nonInteractive,
-                        variableManager.getValue("dockerRepo"),
-                        variableManager.getValue("supabaseProjectRef"),
-                        variableManager.getValue("supabaseServiceKey"),
-                        variableManager.getValue("gcpProjectId"),
-                        variableManager.getValue("gcpRegion"),
-                        variableManager.getValue("terraformStateBucket"),
-                        variableManager.getValue("terraformStatePrefix"),
-                    );
-                    // Reload outputs after GCP setup
-                    await variableManager.loadGcpOutputs();
-                }
+        // Setup GCP if needed
+        if (!skipPhases.gcp) {
+          await variableManager.validatePhaseRequirements("gcp", skipPhases);
+          await setupGCP(
+            options.nonInteractive,
+            variableManager.getValue("dockerRepo"),
+            variableManager.getValue("supabaseProjectRef"),
+            variableManager.getValue("supabaseServiceKey"),
+            variableManager.getValue("gcpProjectId"),
+            variableManager.getValue("gcpRegion"),
+            variableManager.getValue("terraformStateBucket"),
+            variableManager.getValue("terraformStatePrefix")
+          );
+          // Reload outputs after GCP setup
+          await variableManager.loadGcpOutputs();
+        }
 
-                if (!skipPhases.supabaseSecrets) {
-                    const jobsImage = await getImageFromEnv("job");
-                    if (!jobsImage) {
-                        throw new Error(
-                            "Failed to get jobs image from environment",
-                        );
-                    }
-                    await setupSupabaseSecrets(
-                        configDir,
-                        jobsImage,
-                        variableManager.getValue("gcpProjectId"),
-                        variableManager.getValue("gcpSvcAccountKey"),
-                        variableManager.getValue("apiUrl"),
-                    );
-                }
+        if (!skipPhases.supabaseSecrets) {
+          const jobsImage = await getImageFromEnv("job");
+          if (!jobsImage) {
+            throw new Error("Failed to get jobs image from environment");
+          }
+          await setupSupabaseSecrets(
+            configDir,
+            jobsImage,
+            variableManager.getValue("gcpProjectId"),
+            variableManager.getValue("gcpSvcAccountKey"),
+            variableManager.getValue("apiUrl")
+          );
+        }
 
-                // Setup Vercel if needed
-                if (!skipPhases.vercel) {
-                    await variableManager.validatePhaseRequirements(
-                        "vercel",
-                        skipPhases,
-                    );
-                    await setupVercel(
-                        configDir,
-                        variableManager.getValue("vercelProjectId"),
-                        variableManager.getValue("vercelOrgId"),
-                        variableManager.getValue("supabaseUrl"),
-                        variableManager.getValue("supabaseAnonKey"),
-                    );
-                }
+        // Setup Vercel if needed
+        if (!skipPhases.vercel) {
+          await variableManager.validatePhaseRequirements("vercel", skipPhases);
+          await setupVercel(
+            configDir,
+            variableManager.getValue("vercelProjectId"),
+            variableManager.getValue("vercelOrgId"),
+            variableManager.getValue("supabaseUrl"),
+            variableManager.getValue("supabaseAnonKey"),
+            variableManager.getValue("environment")
+          );
+        }
 
-                // Generate integration test config if needed
-                if (!skipPhases.integrationTestConfig) {
-                    await variableManager.generateIntegrationTestConfig();
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                process.exit(1);
-            }
-        });
+        // Generate integration test config if needed
+        if (!skipPhases.integrationTestConfig) {
+          await variableManager.generateIntegrationTestConfig();
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        process.exit(1);
+      }
+    });
 
-    cloudCommand
-        .command("generate-integration-test-config")
-        .description("Generate configuration for integration tests")
-        .action(async () => {
-            try {
-                const configDir = path.join(
-                    process.env.HOME || "",
-                    ".planqtn",
-                    ".config",
-                );
+  cloudCommand
+    .command("generate-integration-test-config")
+    .description("Generate configuration for integration tests")
+    .action(async () => {
+      try {
+        const configDir = path.join(
+          process.env.HOME || "",
+          ".planqtn",
+          ".config"
+        );
 
-                // Create config directory if it doesn't exist
-                if (!await exists(configDir)) {
-                    await mkdir(configDir, { recursive: true });
-                }
+        // Create config directory if it doesn't exist
+        if (!(await exists(configDir))) {
+          await mkdir(configDir, { recursive: true });
+        }
 
-                const variableManager = new VariableManager(configDir);
-                await variableManager.loadExistingValues();
+        const variableManager = new VariableManager(configDir);
+        await variableManager.loadExistingValues();
 
-                // Only prompt for variables needed for integration test config
-                const skipPhases = {
-                    images: true,
-                    supabase: true,
-                    gcp: true,
-                    supabaseSecrets: true,
-                    vercel: true,
-                };
+        // Only prompt for variables needed for integration test config
+        const skipPhases = {
+          images: true,
+          supabase: true,
+          gcp: true,
+          supabaseSecrets: true,
+          vercel: true,
+        };
 
-                await variableManager.prompt(skipPhases);
-                await variableManager.generateIntegrationTestConfig();
-            } catch (error) {
-                console.error("Error:", error);
-                process.exit(1);
-            }
-        });
+        await variableManager.prompt(skipPhases);
+        await variableManager.generateIntegrationTestConfig();
+      } catch (error) {
+        console.error("Error:", error);
+        process.exit(1);
+      }
+    });
 
-    cloudCommand
-        .command("print-env-vars")
-        .option(
-            "--with-current-value",
-            "Print current value of the variable",
-            false,
-        )
-        .description(
-            "Print required environment variables for non-interactive mode",
-        )
-        .action(async (options: { withCurrentValue: boolean }) => {
-            try {
-                const configDir = path.join(
-                    process.env.HOME || "",
-                    ".planqtn",
-                    ".config",
-                );
+  cloudCommand
+    .command("print-env-vars")
+    .option(
+      "--with-current-value",
+      "Print current value of the variable",
+      false
+    )
+    .description(
+      "Print required environment variables for non-interactive mode"
+    )
+    .action(async (options: { withCurrentValue: boolean }) => {
+      try {
+        const configDir = path.join(
+          process.env.HOME || "",
+          ".planqtn",
+          ".config"
+        );
 
-                const variableManager = new VariableManager(configDir);
-                const userVars = variableManager.getUserVariables();
+        const variableManager = new VariableManager(configDir);
+        const userVars = variableManager.getUserVariables();
 
-                console.log(
-                    "\nRequired environment variables for non-interactive mode:",
-                );
-                console.log(
-                    "=====================================================",
-                );
-                for (const variable of userVars) {
-                    const config = variable.getConfig();
-                    console.log(`# Description: ${config.description}`);
-                    if (config.hint) {
-                        console.log(`# Hint: ${config.hint}`);
-                    }
-                    if (config.defaultValue) {
-                        console.log(`# Default: ${config.defaultValue}`);
-                    }
-                    if (options.withCurrentValue) {
-                        await variable.load(userVars);
-                        console.log(`# Current value: ${variable.getValue()}`);
-                    }
-                    await variable.loadFromEnv(userVars);
+        console.log(
+          "\nRequired environment variables for non-interactive mode:"
+        );
+        console.log("=====================================================");
+        for (const variable of userVars) {
+          const config = variable.getConfig();
+          console.log(`# Description: ${config.description}`);
+          if (config.hint) {
+            console.log(`# Hint: ${config.hint}`);
+          }
+          if (config.defaultValue) {
+            console.log(`# Default: ${config.defaultValue}`);
+          }
+          if (options.withCurrentValue) {
+            await variable.load(userVars);
+            console.log(`# Current value: ${variable.getValue()}`);
+          }
+          await variable.loadFromEnv(userVars);
 
-                    console.log(
-                        `${variable.getEnvVarName()}: \${{ secrets.${variable.getEnvVarName()} }}`,
-                    );
-                    console.log();
-                }
-                console.log(
-                    "\n=====================================================",
-                );
-                console.log(
-                    "\nSet these environment variables in your CI/CD secrets.",
-                );
-            } catch (error) {
-                console.error("Error:", error);
-                process.exit(1);
-            }
-        });
+          console.log(
+            `${variable.getEnvVarName()}: \${{ secrets.${variable.getEnvVarName()} }}`
+          );
+          console.log();
+        }
+        console.log("\n=====================================================");
+        console.log("\nSet these environment variables in your CI/CD secrets.");
+      } catch (error) {
+        console.error("Error:", error);
+        process.exit(1);
+      }
+    });
 }
 
 interface CloudOptions {
-    nonInteractive: boolean;
-    skipImages: boolean;
-    skipSupabase: boolean;
-    skipSupabaseSecrets: boolean;
-    skipGcp: boolean;
-    skipVercel: boolean;
-    skipIntegrationTestConfig: boolean;
+  nonInteractive: boolean;
+  skipImages: boolean;
+  skipSupabase: boolean;
+  skipSupabaseSecrets: boolean;
+  skipGcp: boolean;
+  skipVercel: boolean;
+  skipIntegrationTestConfig: boolean;
 }
