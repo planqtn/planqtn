@@ -1138,7 +1138,6 @@ async function checkCredentials(
 
       // Check Terraform state access
       console.log("Checking Terraform state access...");
-      const terraformPath = await ensureTerraformInstalled();
       const terraformStateBucket = variableManager.getValue(
         "terraformStateBucket",
       );
@@ -1147,19 +1146,10 @@ async function checkCredentials(
       );
 
       // Initialize Terraform with the state configuration
-      execSync(
-        `${terraformPath} init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
-        {
-          cwd: path.join(APP_DIR, "gcp"),
-          stdio: "pipe",
-        },
-      );
+      await terraform("init -backend-config=\"bucket=" + terraformStateBucket + "\" -backend-config=\"prefix=" + terraformStatePrefix + "\"", true);
 
       // Check Terraform state
-      execSync(`${terraformPath} state list`, {
-        cwd: path.join(APP_DIR, "gcp"),
-        stdio: "pipe",
-      });
+      await terraform("state list", false);
     } catch (error) {
       throw new Error(
         "Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " +
