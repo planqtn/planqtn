@@ -1,0 +1,34 @@
+name: CLI Checks
+run-name: ${{ github.actor }} is checking the CLI
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/planqtn_cli/**"
+      - "check/cli**"
+      - ".github/workflows/cli_checks.yml"
+  push:
+    paths:
+      - "app/planqtn_cli/**"
+      - "check/cli**"
+      - ".github/workflows/cli_checks.yml"
+jobs:
+  UI-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: app/planqtn_cli
+        run: |
+          npm install --include=dev
+      - name: Run checks
+        run: |
+          check/cli

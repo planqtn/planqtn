@@ -9,10 +9,7 @@ import { setupCloudCommand } from "./commands/cloud";
 
 const program = new Command();
 
-program
-    .command("htn")
-    .description("CLI tool for PlanqTN")
-    .version("1.0.0");
+program.command("htn").description("CLI tool for PlanqTN").version("1.0.0");
 
 setupUiCommand(program);
 setupKernelCommand(program);
