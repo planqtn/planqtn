@@ -301,7 +301,22 @@ async function setupSupabaseSecrets(
   await unlink(envPath);
 }
 
-async function buildAndPushImages(): Promise<void> {
+async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
+  if (refuseDirtyBuilds) {
+    console.log("Checking git status...");
+    try {
+      const status = execSync("git status --porcelain", { stdio: "pipe" }).toString().trim();
+      if (status) {
+        throw new Error("Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" + status);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Failed to check git status: " + error);
+    }
+  }
+
   console.log("Building and pushing job image...");
   await handleImage("job", { build: true, push: true });
 
@@ -1167,6 +1182,11 @@ export function setupCloudCommand(program: Command): void {
       "--skip-integration-test-config",
       "Skip integration test config generation",
     )
+    .option(
+      "--refuse-dirty-builds",
+      "Fail if git working directory is dirty",
+      false,
+    )
     .action(async (options: CloudOptions) => {
       try {
         const configDir = path.join(
@@ -1214,7 +1234,7 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.images) {
           await variableManager.validatePhaseRequirements("images", skipPhases);
           console.log("\nBuilding and pushing images...");
-          await buildAndPushImages();
+          await buildAndPushImages(options.refuseDirtyBuilds);
         }
 
         // Setup Supabase if needed
@@ -1441,4 +1461,5 @@ interface CloudOptions {
   skipGcp: boolean;
   skipVercel: boolean;
   skipIntegrationTestConfig: boolean;
+  refuseDirtyBuilds: boolean;
 }
