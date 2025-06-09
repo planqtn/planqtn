@@ -29,7 +29,7 @@ interface TerraformVars {
 
 async function writeTerraformVars(
   filePath: string,
-  vars: TerraformVars,
+  vars: TerraformVars
 ): Promise<void> {
   const content = Object.entries(vars)
     .filter(([, value]) => value !== undefined)
@@ -44,7 +44,7 @@ async function setupSupabase(
   projectId: string,
   dbPassword: string,
   _supabaseServiceKey: string,
-  nonInteractive: boolean,
+  nonInteractive: boolean
 ): Promise<void> {
   // Run migrations
   console.log("\nRunning database migrations...");
@@ -69,14 +69,14 @@ async function setupSupabase(
   if (!process.env.SUPABASE_ACCESS_TOKEN && !fs.existsSync(accessTokenPath)) {
     if (process.stdin.isTTY || !nonInteractive) {
       console.log(
-        "Supabase access token not found. Please login to Supabase...",
+        "Supabase access token not found. Please login to Supabase..."
       );
       execSync(`npx supabase --workdir ${APP_DIR} login`, {
         stdio: "inherit",
       });
     } else {
       throw new Error(
-        "Supabase access token not found and not in interactive mode. Please run `supabase login` first.",
+        "Supabase access token not found and not in interactive mode. Please run `supabase login` first."
       );
     }
   }
@@ -86,7 +86,7 @@ async function setupSupabase(
     {
       stdio: "inherit",
       env: supabaseEnv,
-    },
+    }
   );
   execSync(`npx supabase --workdir ${APP_DIR} functions deploy`, {
     stdio: "inherit",
@@ -95,7 +95,7 @@ async function setupSupabase(
   // Save Supabase API URL
   await writeFile(
     path.join(configDir, "gcp_secret_data_api_url"),
-    `https://${projectId}.supabase.co`,
+    `https://${projectId}.supabase.co`
   );
 }
 
@@ -180,7 +180,7 @@ async function ensureTerraformInstalled(): Promise<string> {
 
 async function terraform(
   args: string,
-  printOutput: boolean = false,
+  printOutput: boolean = false
 ): Promise<string | null> {
   const terraformPath = await ensureTerraformInstalled();
 
@@ -189,16 +189,16 @@ async function terraform(
     console.log("Writing GCP service account key to file...");
     const decodedKey = Buffer.from(
       process.env.GCP_SVC_CREDENTIALS,
-      "base64",
+      "base64"
     ).toString("utf-8");
     const gcpSvcAccountKey = JSON.parse(decodedKey);
     gcpSvcAccountKeyPath = path.join(
       CONFIG_DIR,
-      "gcp-service-account-key.json",
+      "gcp-service-account-key.json"
     );
     await writeFile(
       gcpSvcAccountKeyPath,
-      JSON.stringify(gcpSvcAccountKey, null, 2),
+      JSON.stringify(gcpSvcAccountKey, null, 2)
     );
   }
 
@@ -230,7 +230,7 @@ async function setupGCP(
   gcpRegion: string,
   terraformStateBucket: string,
   terraformStatePrefix: string,
-  loginCheck: boolean = false,
+  loginCheck: boolean = false
 ): Promise<void> {
   const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
 
@@ -260,7 +260,7 @@ async function setupGCP(
 
   await terraform(
     `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
-    true,
+    true
   );
 
   if (!loginCheck) {
@@ -275,11 +275,11 @@ async function setupSupabaseSecrets(
   jobsImage: string,
   gcpProjectId: string,
   serviceAccountKey: string,
-  apiUrl: string,
+  apiUrl: string
 ): Promise<void> {
   if (!serviceAccountKey) {
     throw new Error(
-      "GCP service account key is required for Supabase secrets setup",
+      "GCP service account key is required for Supabase secrets setup"
     );
   }
   if (!apiUrl) {
@@ -304,7 +304,7 @@ async function setupSupabaseSecrets(
     `npx supabase --workdir ${APP_DIR} secrets set --env-file ${envPath}`,
     {
       stdio: "inherit",
-    },
+    }
   );
 
   // Clean up the temporary env file
@@ -321,7 +321,7 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
       if (status) {
         throw new Error(
           "Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" +
-            status,
+            status
         );
       }
     } catch (error) {
@@ -375,7 +375,7 @@ abstract class Variable {
   getRequiredValue(): string {
     if (!this.value) {
       throw new Error(
-        `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`,
+        `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`
       );
     }
     return this.value;
@@ -421,8 +421,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-            ? " (leave blank to keep current value)"
-            : " (not set)"
+          ? " (leave blank to keep current value)"
+          : " (not set)"
       }${hintText}: `;
 
       let hint = true;
@@ -586,7 +586,7 @@ class VariableManager {
           requiredFor: ["images"],
         },
         configDir,
-        "docker-repo",
+        "docker-repo"
       ),
       new PlainFileVar(
         {
@@ -596,7 +596,7 @@ class VariableManager {
           hint: `Get it from your supabase connection string, which is typically <project-ref>.supabase.co`,
         },
         configDir,
-        "supabase-project-id",
+        "supabase-project-id"
       ),
       new PlainFileVar(
         {
@@ -607,7 +607,7 @@ class VariableManager {
           requiredFor: ["supabase"],
         },
         configDir,
-        "db-password",
+        "db-password"
       ),
       new PlainFileVar(
         {
@@ -617,7 +617,7 @@ class VariableManager {
           requiredFor: ["supabase-secrets", "gcp", "vercel"],
         },
         configDir,
-        "environment",
+        "environment"
       ),
       new EnvFileVar(
         {
@@ -627,7 +627,7 @@ class VariableManager {
           outputBy: "images",
         },
         "job",
-        "job",
+        "job"
       ),
       new PlainFileVar(
         {
@@ -637,7 +637,7 @@ class VariableManager {
           requiredFor: ["supabase-secrets", "gcp"],
         },
         configDir,
-        "gcp-project-id",
+        "gcp-project-id"
       ),
       new PlainFileVar(
         {
@@ -647,7 +647,7 @@ class VariableManager {
           outputBy: "gcp",
         },
         configDir,
-        "api-url",
+        "api-url"
       ),
       new PlainFileVar(
         {
@@ -658,7 +658,7 @@ class VariableManager {
           outputBy: "gcp",
         },
         configDir,
-        "gcp-service-account-key",
+        "gcp-service-account-key"
       ),
       new PlainFileVar(
         {
@@ -669,7 +669,7 @@ class VariableManager {
           hint: `Typically everything lives in us-east1 for now.`,
         },
         configDir,
-        "gcp-region",
+        "gcp-region"
       ),
       new PlainFileVar(
         {
@@ -679,7 +679,7 @@ class VariableManager {
           hint: `This is the name of the bucket that will be used to store the terraform state. It needs to be unique across all GCP projects globally.`,
         },
         configDir,
-        "terraform-state-bucket",
+        "terraform-state-bucket"
       ),
       new PlainFileVar(
         {
@@ -689,7 +689,7 @@ class VariableManager {
           hint: `This is the prefix that will be used to store the terraform state. Within the same project there could be a dev and a prod setup for example.`,
         },
         configDir,
-        "terraform-state-prefix",
+        "terraform-state-prefix"
       ),
       new DerivedVar(
         {
@@ -700,7 +700,7 @@ class VariableManager {
         (vars) =>
           `https://${vars
             .find((v) => v.getName() === "supabaseProjectRef")
-            ?.getRequiredValue()}.supabase.co`,
+            ?.getRequiredValue()}.supabase.co`
       ),
       new PlainFileVar(
         {
@@ -711,7 +711,7 @@ class VariableManager {
           hint: `Get it from your supabase Project Settings/API Keys section. Click Reveal on the Service Role Key input field.`,
         },
         configDir,
-        "supabase-service-key",
+        "supabase-service-key"
       ),
       new EnvFileVar(
         {
@@ -721,7 +721,7 @@ class VariableManager {
           outputBy: "images",
         },
         "api",
-        "api",
+        "api"
       ),
       new PlainFileVar(
         {
@@ -732,7 +732,7 @@ class VariableManager {
           requiredFor: ["integration-test-config"],
         },
         configDir,
-        "supabase-anon-key",
+        "supabase-anon-key"
       ),
       new JsonFileVar(
         {
@@ -742,7 +742,7 @@ class VariableManager {
           requiredFor: ["vercel"],
         },
         path.join(APP_DIR, "ui", ".vercel", "project.json"),
-        ["projectId"],
+        ["projectId"]
       ),
       new JsonFileVar(
         {
@@ -752,7 +752,7 @@ class VariableManager {
           requiredFor: ["vercel"],
         },
         path.join(APP_DIR, "ui", ".vercel", "project.json"),
-        ["orgId"],
+        ["orgId"]
       ),
       new PlainFileVar(
         {
@@ -763,7 +763,7 @@ class VariableManager {
           hint: `Get a personal access token from docker.io, ensure that it can read/write to your public repos.`,
         },
         configDir,
-        "dockerhub-token",
+        "dockerhub-token"
       ),
       new PlainFileVar(
         {
@@ -773,7 +773,7 @@ class VariableManager {
           hint: `Get it from your DockerHub account settings.`,
         },
         configDir,
-        "dockerhub-username",
+        "dockerhub-username"
       ),
       new PlainFileVar(
         {
@@ -784,7 +784,7 @@ class VariableManager {
           requiredFor: ["github-actions"],
         },
         configDir,
-        "vercel-access-token",
+        "vercel-access-token"
       ),
       new PlainFileVar(
         {
@@ -795,7 +795,7 @@ class VariableManager {
           requiredFor: ["github-actions"],
         },
         configDir,
-        "supabase-access-token",
+        "supabase-access-token"
       ),
       new PlainFileVar(
         {
@@ -834,7 +834,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
           requiredFor: ["github-actions"],
         },
         configDir,
-        "gcp-svc-credentials",
+        "gcp-svc-credentials"
       ),
     ];
   }
@@ -883,12 +883,12 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       // Get Terraform outputs
       const apiUrl = await terraform(`output -raw api_service_url`);
       const rawServiceAccountKey = await terraform(
-        `output -raw api_service_account_key`,
+        `output -raw api_service_account_key`
       );
       // Set values on the Variable instances
       const apiUrlVar = this.variables.find((v) => v.getName() === "apiUrl");
       const gcpSvcAccountKeyVar = this.variables.find(
-        (v) => v.getName() === "gcpSvcAccountKey",
+        (v) => v.getName() === "gcpSvcAccountKey"
       );
 
       if (apiUrlVar) {
@@ -921,7 +921,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       | "vercel"
       | "supabase-secrets"
       | "integration-test-config"
-      | "github-actions",
+      | "github-actions"
   ): Variable[] {
     return this.variables.filter((variable) => {
       const config = variable.getConfig();
@@ -939,7 +939,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       }
       // Otherwise include variables required for any non-skipped phase
       return config.requiredFor.some(
-        (p) => !skipPhases[p as keyof typeof skipPhases],
+        (p) => !skipPhases[p as keyof typeof skipPhases]
       );
     });
   }
@@ -982,7 +982,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       "supabase-secrets": boolean;
       "integration-test-config": boolean;
       "github-actions": boolean;
-    },
+    }
   ): Promise<void> {
     const requiredVars = this.getRequiredVariables(skipPhases, phase);
     const missingVars: string[] = [];
@@ -1025,14 +1025,14 @@ async function setupVercel(
   vercelOrgId: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
-  environment: string,
+  environment: string
 ): Promise<void> {
   // Check if vercel CLI is installed and user is logged in
   try {
     execSync("vercel --version", { stdio: "pipe" });
   } catch {
     throw new Error(
-      "Vercel CLI is not installed. Please install it with 'npm install -g vercel'",
+      "Vercel CLI is not installed. Please install it with 'npm install -g vercel'"
     );
   }
 
@@ -1044,7 +1044,7 @@ async function setupVercel(
       tokenArg = "--token " + process.env.VERCEL_ACCESS_TOKEN;
     } else {
       throw new Error(
-        "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable",
+        "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable"
       );
     }
   }
@@ -1057,7 +1057,7 @@ async function setupVercel(
       {
         cwd: path.join(APP_DIR, "ui"),
         stdio: "inherit",
-      },
+      }
     );
   } else {
     console.log("Project is already linked to Vercel. Skipping link step.");
@@ -1081,7 +1081,7 @@ async function setupVercel(
     {
       cwd: path.join(APP_DIR, "ui"),
       stdio: "inherit",
-    },
+    }
   );
 }
 
@@ -1095,7 +1095,7 @@ async function checkCredentials(
     "integration-test-config": boolean;
     "github-actions": boolean;
   },
-  variableManager: VariableManager,
+  variableManager: VariableManager
 ): Promise<void> {
   console.log("\n=== Checking Credentials ===");
 
@@ -1106,7 +1106,7 @@ async function checkCredentials(
       execSync("docker login", { stdio: "pipe" });
     } catch {
       throw new Error(
-        "Not logged in to Docker Hub. Please run 'docker login' first.",
+        "Not logged in to Docker Hub. Please run 'docker login' first."
       );
     }
   }
@@ -1127,7 +1127,7 @@ async function checkCredentials(
     } catch (error) {
       throw new Error(
         "Failed to verify Supabase credentials. Please ensure you're logged in and have correct database credentials: " +
-          error,
+          error
       );
     }
   }
@@ -1136,7 +1136,6 @@ async function checkCredentials(
   if (!skipPhases.gcp) {
     console.log("Checking GCP credentials...");
     try {
-     
       setupGCP(
         variableManager.getValue("supabaseProjectRef"),
         variableManager.getValue("supabaseServiceKey"),
@@ -1144,12 +1143,12 @@ async function checkCredentials(
         variableManager.getValue("gcpRegion"),
         variableManager.getValue("terraformStateBucket"),
         variableManager.getValue("terraformStatePrefix"),
-        true,
+        true
       );
     } catch (error) {
       throw new Error(
         "Not logged in to GCP or missing project access. Please run 'gcloud auth login' and verify project access. " +
-          error,
+          error
       );
     }
   }
@@ -1169,7 +1168,7 @@ async function checkCredentials(
       execSync(`vercel project ls ${tokenArg}`, { stdio: "pipe" });
     } catch (error) {
       throw new Error(
-        "Invalid Vercel credentials or missing project access. " + error,
+        "Invalid Vercel credentials or missing project access. " + error
       );
     }
   }
@@ -1181,7 +1180,7 @@ async function checkCredentials(
       execSync("gh auth status", { stdio: "pipe" });
     } catch {
       throw new Error(
-        "Not logged in to GitHub. Please run 'gh auth login' first.",
+        "Not logged in to GitHub. Please run 'gh auth login' first."
       );
     }
   }
@@ -1203,12 +1202,12 @@ export function setupCloudCommand(program: Command): void {
     .option("--skip-vercel", "Skip Vercel deployment")
     .option(
       "--skip-integration-test-config",
-      "Skip integration test config generation",
+      "Skip integration test config generation"
     )
     .option(
       "--refuse-dirty-builds",
       "Fail if git working directory is dirty",
-      false,
+      false
     )
     .action(async (options: CloudOptions) => {
       try {
@@ -1258,14 +1257,14 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.supabase) {
           await variableManager.validatePhaseRequirements(
             "supabase",
-            skipPhases,
+            skipPhases
           );
           await setupSupabase(
             CONFIG_DIR,
             variableManager.getValue("supabaseProjectRef"),
             variableManager.getValue("dbPassword"),
             variableManager.getValue("supabaseServiceKey"),
-            options.nonInteractive,
+            options.nonInteractive
           );
         }
 
@@ -1278,7 +1277,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getValue("gcpProjectId"),
             variableManager.getValue("gcpRegion"),
             variableManager.getValue("terraformStateBucket"),
-            variableManager.getValue("terraformStatePrefix"),
+            variableManager.getValue("terraformStatePrefix")
           );
           // Reload outputs after GCP setup
           await variableManager.loadGcpOutputs();
@@ -1287,7 +1286,7 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases["supabase-secrets"]) {
           await variableManager.validatePhaseRequirements(
             "supabase-secrets",
-            skipPhases,
+            skipPhases
           );
 
           const jobsImage = await getImageFromEnv("job");
@@ -1299,7 +1298,7 @@ export function setupCloudCommand(program: Command): void {
             jobsImage,
             variableManager.getValue("gcpProjectId"),
             variableManager.getValue("gcpSvcAccountKey"),
-            variableManager.getValue("apiUrl"),
+            variableManager.getValue("apiUrl")
           );
         }
 
@@ -1312,7 +1311,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getValue("vercelOrgId"),
             variableManager.getValue("supabaseUrl"),
             variableManager.getValue("supabaseAnonKey"),
-            variableManager.getValue("environment"),
+            variableManager.getValue("environment")
           );
         }
 
@@ -1334,7 +1333,7 @@ export function setupCloudCommand(program: Command): void {
         const configDir = path.join(
           process.env.HOME || "",
           ".planqtn",
-          ".config",
+          ".config"
         );
 
         // Create config directory if it doesn't exist
@@ -1369,17 +1368,17 @@ export function setupCloudCommand(program: Command): void {
     .option(
       "--with-current-value",
       "Print current value of the variable",
-      false,
+      false
     )
     .description(
-      "Print required environment variables for non-interactive mode",
+      "Print required environment variables for non-interactive mode"
     )
     .action(async (options: { withCurrentValue: boolean }) => {
       try {
         const configDir = path.join(
           process.env.HOME || "",
           ".planqtn",
-          ".config",
+          ".config"
         );
 
         const variableManager = new VariableManager(configDir);
@@ -1395,7 +1394,9 @@ export function setupCloudCommand(program: Command): void {
             await variable.load(userVars);
             varText += `\n${variable.getEnvVarName()}=${variable.getValue()}`;
           } else {
-            varText += `\n${variable.getEnvVarName()}: \${{ ${config.isSecret ? "secrets" : "vars"}.${variable.getEnvVarName()} }}`;
+            varText += `\n${variable.getEnvVarName()}: \${{ ${
+              config.isSecret ? "secrets" : "vars"
+            }.${variable.getEnvVarName()} }}`;
           }
           if (config.isSecret) {
             secrets.push(varText);
@@ -1418,11 +1419,11 @@ export function setupCloudCommand(program: Command): void {
     .command("setup-github-actions")
     .option(
       "--repo-name <repo-name>",
-      "Name of the repository, [HOST/]OWNER/REPO, default uses the current repository in the repo",
+      "Name of the repository, [HOST/]OWNER/REPO, default uses the current repository in the repo"
     )
     .option(
       "--repo-env <repo-env>",
-      "Environment of the repository, default uses no environment",
+      "Environment of the repository, default uses no environment"
     )
     .description("Sets up github actions environment variablesfor the project")
     .action(async () => {
@@ -1430,7 +1431,7 @@ export function setupCloudCommand(program: Command): void {
         const configDir = path.join(
           process.env.HOME || "",
           ".planqtn",
-          ".config",
+          ".config"
         );
         const variableManager = new VariableManager(configDir);
         await variableManager.loadExistingValues();
@@ -1442,7 +1443,7 @@ export function setupCloudCommand(program: Command): void {
         }
 
         const answer = prompt(
-          "Are you sure you want to set these up in Github Actions? (y/n)",
+          "Are you sure you want to set these up in Github Actions? (y/n)"
         );
         if (answer !== "y") {
           console.log("Aborting...");
@@ -1456,12 +1457,12 @@ export function setupCloudCommand(program: Command): void {
           if (config.isSecret) {
             console.log(`Setting secret ${variable.getEnvVarName()}...`);
             execSync(
-              `gh secret set ${variable.getEnvVarName()} --body "${val}"`,
+              `gh secret set ${variable.getEnvVarName()} --body "${val}"`
             );
           } else {
             console.log(`Setting var ${variable.getEnvVarName()}...`);
             execSync(
-              `gh variable set ${variable.getEnvVarName()} --body "${val}"`,
+              `gh variable set ${variable.getEnvVarName()} --body "${val}"`
             );
           }
         }
