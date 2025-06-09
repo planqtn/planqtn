@@ -37,10 +37,12 @@ const localRuntimeConfig = getLocalSupabaseConfig();
 export const config: ApiConfig = {
   userContextURL: import.meta.env.VITE_TASK_STORE_URL,
   userContextAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
-  runtimeStoreUrl: localRuntimeConfig?.API_URL ||
+  runtimeStoreUrl:
+    localRuntimeConfig?.API_URL ||
     import.meta.env.VITE_RUNTIME_STORE_URL ||
     import.meta.env.VITE_TASK_STORE_URL,
-  runtimeStoreAnonKey: localRuntimeConfig?.SERVICE_ROLE_KEY ||
+  runtimeStoreAnonKey:
+    localRuntimeConfig?.SERVICE_ROLE_KEY ||
     import.meta.env.VITE_RUNTIME_STORE_ANON_KEY ||
     import.meta.env.VITE_TASK_STORE_ANON_KEY,
   env: (import.meta.env.VITE_ENV || "production") as Environment,

@@ -110,6 +110,8 @@ jobs:
           # Description: Vercel organization ID
           PLANQTN_VERCELORGID: ${{ secrets.PLANQTN_VERCELORGID }}
 
+          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+
         run: |
           hack/htn cloud deploy -q
       - uses: dorny/paths-filter@v3
