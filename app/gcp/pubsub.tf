@@ -10,7 +10,7 @@ resource "google_pubsub_topic" "planqtn_jobs" {
 resource "google_logging_project_sink" "planqtn_job_monitor" {
   name        = "planqtn-job-monitor"
   destination = "pubsub.googleapis.com/projects/${var.project_id}/topics/${google_pubsub_topic.planqtn_jobs.name}"
-  filter      = "protoPayload.methodName=\"Jobs.RunJob\" AND NOT \"has completed successfully\""
+  filter      = "protoPayload.methodName=\"Jobs.RunJob\" OR protoPayload.methodName=\"/Jobs.RunJob\" AND NOT \"has completed successfully\""
 
   depends_on = [google_project_service.required_apis]
 }

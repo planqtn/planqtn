@@ -27,6 +27,7 @@ resource "google_cloud_run_v2_job" "planqtn_jobs" {
           }
         }
       }
+      max_retries = 0
     }
   }
 

@@ -6,7 +6,7 @@ export interface JobLogsResponse {
   logs: string;
 }
 
-export type JobType = "weightenumerator" | "qdistrnd";
+export type JobType = "weightenumerator" | "qdistrnd" | "dummy";
 
 export interface JobRequest {
   user_id: string;

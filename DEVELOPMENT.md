@@ -86,8 +86,6 @@ After you cloned the repo, you can setup the python dependencies with:
 pip install -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt -r app/planqtn_api/requirements.dev.txt
 ```
 
-To
-
 ### Checks and tests
 
 Unit tests:
@@ -151,6 +149,38 @@ This is a workflow tested automatically by Github Actions, and is only required 
 - ensure that your Supabase env points to your personal Supabase project, see Personal Supabase setup below
 - To build the jobs images and deploy them to Cloud Run, run `hack/htn cloud deploy`
 - After modifying any of the components run `export KERNEL_ENV=cloud; check/jobs-integration`
+
+### The `broken-hybrid-cloud` workflow with local Supabase Edge Functions + Cloud Run testing
+
+This is a fake/broken setup but provides the fastest development feedback loop with a local Supabase function setup with hot reload against a Cloud Run backend (which won't be able to talk back to the local Supabase instance). For now this is only manually supported, assuming that you just ran `hack/htn cloud deploy` successfully.
+
+Setup the `supabase/.env` with
+
+```
+JOBS_IMAGE=[jobs_image] # this is probably already populated - though not that important for the cloud workflow
+GCP_PROJECT=[your personal gcp project]
+SVC_ACCOUNT=[svc account base 64 encoded]
+API_URL=[api url]
+```
+
+Use terraform to get the Cloud Run service account key:
+
+```
+cd app/gcp
+$HOME/.planqtn/bin/terraform output -raw api_service_account_key | base64 --decode
+```
+
+and to get the Cloud Run PlanqTN API URL:
+
+```
+cd app/gcp
+$HOME/.planqtn/bin/terraform output api_service_url
+```
+
+Then run `hack/htn kernel start` to spin up the `dev` kernel or, if you want no k3d instance running, then just
+`npx supabase --workdir app start` and then `npx supabase --workdir app functions serve` to have a hot reload setup for the functions.
+
+You can use the `app/planqtn_fixtures/manual_testing/main.py` to get started with call manually the API / Job functions and inspect the results. You can use Google Cloud Console in parallel to inspect the kicked off jobs / API call logs.
 
 # Reference for developer tools
 
@@ -270,7 +300,8 @@ Also, you might need to rerun it, we've seen this kind of failure on new project
 
 ## Github Actions secrets for your personal integration testing environment
 
-After your setup and deployed your project successfully ensure that the integration tests are passing: 
+After your setup and deployed your project successfully ensure that the integration tests are passing:
+
 ```
 export KERNEL_ENV=cloud
 hack/job-integrations

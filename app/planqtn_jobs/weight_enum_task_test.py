@@ -12,11 +12,20 @@ import pytest
 import requests
 import supabase
 from planqtn_fixtures.job_debugger import JobDebugger
+from planqtn_fixtures.cloud_run import get_execution_details
 from planqtn_jobs.main import main
 from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import ClientOptions, create_client, Client
 from supabase.client import AsyncClient
 from planqtn_fixtures import *
+from google.cloud import run_v2
+from google.cloud.run_v2 import Execution, TaskTemplate, Container
+from google.longrunning import operations_pb2
+from google.api_core import operations_v1
+from google.api_core import grpc_helpers
+from google.protobuf import json_format
+from google.protobuf import any_pb2
+from google.cloud.run_v2.types.execution import Execution as ExecutionProto
 
 # Test data from weight_enum_task_test.py
 TEST_JSON = """{"legos":{"1":{"instanceId":"1","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]},"2":{"instanceId":"2","shortName":"STN","name":"STN","id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]}},"connections":[{"from":{"legoId":"1","legIndex":1},"to":{"legoId":"2","legIndex":5}}],"truncate_length":3,"open_legs":[{"instanceId":"1","legIndex":3},{"instanceId":"1","legIndex":6}]}"""
@@ -323,8 +332,52 @@ async def test_main_with_task_store_and_realtime(
             await asyncio.sleep(0.5)
 
 
+def assert_properties_of_pod(
+    k8s_apis, task_uuid, pod_name, image_tag, memory_limit, cpu_limit
+):
+    found = False
+    for pod in k8s_apis["core_api"].list_namespaced_pod(namespace="default").items:
+        if task_uuid in pod.metadata.name and "weightenumerator" in pod.metadata.name:
+            assert pod.spec.containers[0].resources.limits["cpu"] == cpu_limit
+            assert pod.spec.containers[0].resources.limits["memory"] == memory_limit
+            assert pod.spec.containers[0].image.endswith(f"planqtn_jobs:{image_tag}"), (
+                "Commit ID mismatch on image: "
+                + pod.spec.containers[0].image
+                + " != "
+                + f"planqtn/planqtn_jobs:{image_tag}"
+                + (
+                    " run `hack/htn images job --build --load`"
+                    if getEnvironment() == "dev"
+                    else ""
+                )
+            )
+            found = True
+            break
+    if not found:
+        list_pods(k8s_apis)
+    return found
+
+
+def assert_properties_of_job(
+    task_uuid, execution_id, job_name, memory_limit, cpu_limit
+):
+    execution_details = get_execution_details(execution_id)
+    if not execution_details:
+        return False
+    print(execution_details.template)
+    assert execution_details.template.containers[0].resources.limits["cpu"] == cpu_limit
+    assert (
+        execution_details.template.containers[0].resources.limits["memory"]
+        == memory_limit
+    )
+
+    assert execution_details.template.max_retries == 0
+    assert execution_details.template.timeout.seconds == 300
+    return True
+
+
 @pytest.mark.integration
-def test_e2e_local_through_function_call_and_k3d(
+def test_e2e_through_function_call(
     supabase_setup,
     k8s_apis,
     image_tag,
@@ -416,35 +469,17 @@ def test_e2e_local_through_function_call_and_k3d(
         validate_weight_enumerator_result(json.loads(task.data[0]["result"]))
 
         if getEnvironment() != "cloud":
-            found = False
-            for pod in (
-                k8s_apis["core_api"].list_namespaced_pod(namespace="default").items
-            ):
-                if (
-                    task_uuid in pod.metadata.name
-                    and "weightenumerator" in pod.metadata.name
-                ):
-                    assert pod.spec.containers[0].resources.limits["cpu"] == "1"
-                    assert pod.spec.containers[0].resources.limits["memory"] == "1Gi"
-                    assert (
-                        pod.spec.containers[0].image
-                        == f"planqtn/planqtn_jobs:{image_tag}"
-                    ), (
-                        "Commit ID mismatch on image: "
-                        + pod.spec.containers[0].image
-                        + " != "
-                        + f"planqtn/planqtn_jobs:{image_tag}"
-                        + (
-                            " run `hack/htn images job --build --load`"
-                            if getEnvironment() == "dev"
-                            else ""
-                        )
-                    )
-                    found = True
-                    break
-            if not found:
-                list_pods(k8s_apis)
-                raise AssertionError(f"Pod not found, task: {task.data[0]}")
+            assert assert_properties_of_pod(
+                k8s_apis, task_uuid, "weightenumerator", image_tag, "1Gi", "1"
+            ), f"Pod not found, task: {task.data[0]}"
+        else:
+            assert assert_properties_of_job(
+                task_uuid,
+                task.data[0]["execution_id"],
+                "weightenumerator",
+                "512Mi",
+                "1000m",
+            ), f"Job not found, task: {task.data[0]}"
 
     finally:
         user_sb_client.table("tasks").delete().eq("uuid", task_uuid).execute()
