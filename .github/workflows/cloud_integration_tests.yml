@@ -2,7 +2,6 @@ name: Cloud Integration Tests
 run-name: ${{ github.actor }} is running cloud integration tests 🚀
 concurrency:
   group: cloud-integration-tests
-  cancel-in-progress: true
 on:
   pull_request:
     paths:
