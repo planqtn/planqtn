@@ -278,7 +278,14 @@ async function setupGCP(
       ).toString("utf-8");
       const gcpSvcAccountKey = JSON.parse(decodedKey);
       const tfDeployerEmail = gcpSvcAccountKey.client_email;
-
+      // this is a bit hacky, but we rely on the terraform call to have already placed this ...
+      const gcpSvcAccountKeyPath = path.join(
+        CONFIG_DIR,
+        "gcp-service-account-key.json"
+      );
+      execSync(
+        `gcloud auth activate-service-account ${tfDeployerEmail} --key-file=${gcpSvcAccountKeyPath} --project=${gcpProjectId}`
+      );
       const policy = execSync(
         `gcloud projects get-iam-policy ${gcpProjectId} --flatten="bindings[].members" --format='table(bindings.role)' --filter="bindings.members:${tfDeployerEmail}"`
       );
@@ -457,8 +464,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-            ? " (leave blank to keep current value)"
-            : " (not set)"
+          ? " (leave blank to keep current value)"
+          : " (not set)"
       }${hintText}: `;
 
       let hint = true;
