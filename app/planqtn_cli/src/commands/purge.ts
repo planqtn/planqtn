@@ -23,9 +23,9 @@ export function setupPurgeCommand(program: Command) {
             "--format",
             "{{.Names}}",
             "--filter",
-            "name='supabase|planqtn'",
+            "name='supabase|planqtn'"
           ],
-          { returnOutput: true },
+          { returnOutput: true }
         )) as string;
         console.log(containers || "None found");
 
@@ -38,9 +38,9 @@ export function setupPurgeCommand(program: Command) {
             "--format",
             "{{.Name}}",
             "--filter",
-            "name='supabase|planqtn'",
+            "name='supabase|planqtn'"
           ],
-          { returnOutput: true },
+          { returnOutput: true }
         )) as string;
         console.log(networks || "None found");
 
@@ -53,9 +53,9 @@ export function setupPurgeCommand(program: Command) {
             "--format",
             "{{.Name}}",
             "--filter",
-            "name='supabase|planqtn'",
+            "name='supabase|planqtn'"
           ],
-          { returnOutput: true },
+          { returnOutput: true }
         )) as string;
         console.log(volumes || "None found");
 
@@ -65,7 +65,7 @@ export function setupPurgeCommand(program: Command) {
           const clusters = (await runCommand(
             k3dPath,
             ["cluster", "list", "--no-headers"],
-            { returnOutput: true },
+            { returnOutput: true }
           )) as string;
           console.log(clusters || "None found");
         } else {
@@ -84,13 +84,13 @@ export function setupPurgeCommand(program: Command) {
         if (!options.force) {
           const readline = createInterface({
             input: process.stdin,
-            output: process.stdout,
+            output: process.stdout
           });
 
           const answer = await new Promise<string>((resolve) => {
             readline.question(
               "\nAre you sure you want to remove all these resources? (y/N) ",
-              resolve,
+              resolve
             );
           });
           readline.close();
@@ -110,7 +110,7 @@ export function setupPurgeCommand(program: Command) {
           await runCommand("docker", [
             "rm",
             "-f",
-            ...containers.trim().split("\n"),
+            ...containers.trim().split("\n")
           ]);
         }
 
@@ -120,7 +120,7 @@ export function setupPurgeCommand(program: Command) {
           await runCommand("docker", [
             "network",
             "rm",
-            ...networks.trim().split("\n"),
+            ...networks.trim().split("\n")
           ]);
         }
 
@@ -130,7 +130,7 @@ export function setupPurgeCommand(program: Command) {
           await runCommand("docker", [
             "volume",
             "rm",
-            ...volumes.trim().split("\n"),
+            ...volumes.trim().split("\n")
           ]);
         }
 
@@ -140,7 +140,7 @@ export function setupPurgeCommand(program: Command) {
           const clusters = (await runCommand(
             k3dPath,
             ["cluster", "list", "--no-headers"],
-            { returnOutput: true },
+            { returnOutput: true }
           )) as string;
           if (clusters) {
             for (const cluster of clusters.trim().split("\n")) {
@@ -160,7 +160,7 @@ export function setupPurgeCommand(program: Command) {
       } catch (err) {
         console.error(
           "Error:",
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         process.exit(1);
       }

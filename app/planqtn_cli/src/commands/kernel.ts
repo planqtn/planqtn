@@ -20,7 +20,7 @@ export function setupKernelCommand(program: Command) {
         // Step 1: Check Docker installation
         console.log("Checking Docker installation...");
         await runCommand("docker", ["--version"], {
-          verbose: options.verbose,
+          verbose: options.verbose
         });
         const postfix = isDev ? "-dev" : "-local";
         const planqtnDir = path.join(os.homedir(), ".planqtn");
@@ -46,17 +46,17 @@ export function setupKernelCommand(program: Command) {
           console.log("Setting up configuration files...");
           fs.copyFileSync(
             path.join(getCfgDefinitionsDir(), "supabase", "config.toml.local"),
-            path.join(supabaseDir, "config.toml"),
+            path.join(supabaseDir, "config.toml")
           );
 
           fs.copyFileSync(
             path.join(getCfgDefinitionsDir(), "planqtn_api", "compose.yml"),
-            path.join(apiDir, "compose.yml"),
+            path.join(apiDir, "compose.yml")
           );
 
           fs.copyFileSync(
             path.join(getCfgDefinitionsDir(), "planqtn_api", ".env.local"),
-            path.join(apiDir, ".env"),
+            path.join(apiDir, ".env")
           );
 
           // Stop edge runtime before recreating functions directory
@@ -66,8 +66,8 @@ export function setupKernelCommand(program: Command) {
               "docker",
               ["stop", `supabase_edge_runtime_planqtn${postfix}`],
               {
-                verbose: options.verbose,
-              },
+                verbose: options.verbose
+              }
             );
           } catch {
             // Ignore error if container doesn't exist
@@ -80,7 +80,7 @@ export function setupKernelCommand(program: Command) {
           await copyDir(
             path.join(getCfgDefinitionsDir(), "supabase", "functions"),
             path.join(supabaseDir, "functions"),
-            { verbose: options.verbose },
+            { verbose: options.verbose }
           );
 
           fs.copyFileSync(
@@ -88,24 +88,24 @@ export function setupKernelCommand(program: Command) {
               getCfgDefinitionsDir(),
               "supabase",
               "functions",
-              ".env.local",
+              ".env.local"
             ),
-            path.join(supabaseDir, "functions", ".env"),
+            path.join(supabaseDir, "functions", ".env")
           );
 
           // Step 4: Copy k8s config
           await copyDir(path.join(getCfgDefinitionsDir(), "k8s"), k8sDir, {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
 
           await copyDir(
             path.join(getCfgDefinitionsDir(), "migrations"),
             migrationsDir,
-            { verbose: options.verbose },
+            { verbose: options.verbose }
           );
         } else {
           console.log(
-            "Running in dev mode, skipping directory/config setup, using existing files in repo",
+            "Running in dev mode, skipping directory/config setup, using existing files in repo"
           );
         }
 
@@ -119,8 +119,8 @@ export function setupKernelCommand(program: Command) {
             {
               cwd: supabaseDir,
               verbose: options.verbose,
-              returnOutput: true,
-            },
+              returnOutput: true
+            }
           )) as string;
 
           try {
@@ -139,7 +139,7 @@ export function setupKernelCommand(program: Command) {
         if (!supabaseRunning) {
           console.log("Starting Supabase in working directory:", cfgDir);
           await runCommand("npx", ["supabase", "start", "--workdir", cfgDir], {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         } else {
           console.log("Supabase is already running, starting edge runtime...");
@@ -148,12 +148,12 @@ export function setupKernelCommand(program: Command) {
               "docker",
               ["start", `supabase_edge_runtime_planqtn${postfix}`],
               {
-                verbose: options.verbose,
-              },
+                verbose: options.verbose
+              }
             );
           } catch {
             console.log(
-              "Edge runtime container not found, Supabase will create it",
+              "Edge runtime container not found, Supabase will create it"
             );
           }
         }
@@ -166,11 +166,11 @@ export function setupKernelCommand(program: Command) {
             JSON.stringify(
               {
                 type: "module",
-                private: true,
+                private: true
               },
               null,
-              2,
-            ),
+              2
+            )
           );
         }
 
@@ -182,8 +182,8 @@ export function setupKernelCommand(program: Command) {
           env: {
             ...process.env,
             DATABASE_URL:
-              "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
-          },
+              "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          }
         });
 
         // Step 8: Check Docker network
@@ -191,7 +191,7 @@ export function setupKernelCommand(program: Command) {
         await runCommand(
           "docker",
           ["network", "inspect", `supabase_network_planqtn${postfix}`],
-          { verbose: options.verbose },
+          { verbose: options.verbose }
         );
 
         // Step 9: Install k3d
@@ -206,9 +206,9 @@ export function setupKernelCommand(program: Command) {
               "-s",
               "https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh",
               "-o",
-              installScriptPath,
+              installScriptPath
             ],
-            { verbose: options.verbose },
+            { verbose: options.verbose }
           );
 
           // Step 10: Make k3d executable and install
@@ -220,8 +220,8 @@ export function setupKernelCommand(program: Command) {
               K3D_INSTALL_DIR: planqtnDir,
               USE_SUDO: "false",
               // hack for k3d install script to not complain about the binary not on path
-              PATH: `${process.env.PATH}:${planqtnDir}`,
-            },
+              PATH: `${process.env.PATH}:${planqtnDir}`
+            }
           });
 
           // Step 11: Verify k3d installation
@@ -237,7 +237,7 @@ export function setupKernelCommand(program: Command) {
         const clusterName = `planqtn${postfix}`;
         const kubeconfigPath = path.join(
           planqtnDir,
-          `kubeconfig${postfix}.yaml`,
+          `kubeconfig${postfix}.yaml`
         );
 
         try {
@@ -246,15 +246,15 @@ export function setupKernelCommand(program: Command) {
             ["cluster", "get", clusterName],
             {
               verbose: options.verbose,
-              returnOutput: true,
-            },
+              returnOutput: true
+            }
           )) as string;
 
           // Check if servers are running (0/1 means not running)
           if (clusterStatus.includes("0/1")) {
             console.log("Starting k3d cluster...");
             await runCommand(k3dPath, ["cluster", "start", clusterName], {
-              verbose: options.verbose,
+              verbose: options.verbose
             });
           }
         } catch {
@@ -266,9 +266,9 @@ export function setupKernelCommand(program: Command) {
               "create",
               clusterName,
               `--network=supabase_network_planqtn${postfix}`,
-              "--kubeconfig-update-default=false",
+              "--kubeconfig-update-default=false"
             ],
-            { verbose: options.verbose },
+            { verbose: options.verbose }
           );
         }
 
@@ -276,14 +276,14 @@ export function setupKernelCommand(program: Command) {
           k3dPath,
           clusterName,
           kubeconfigPath,
-          options.verbose,
+          options.verbose
         );
 
         // Step 13: Setup k8sproxy
         console.log("Setting up k8sproxy...");
         try {
           await runCommand("docker", ["inspect", `k8sproxy${postfix}`], {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         } catch {
           // Container doesn't exist, create it
@@ -291,7 +291,7 @@ export function setupKernelCommand(program: Command) {
             kubeconfigPath,
             options.verbose,
             clusterName,
-            postfix,
+            postfix
           );
         }
 
@@ -306,9 +306,9 @@ export function setupKernelCommand(program: Command) {
             "--rm",
             "alpine/curl",
             "-f",
-            `k8sproxy${postfix}:8001/version`,
+            `k8sproxy${postfix}:8001/version`
           ],
-          { verbose: options.verbose },
+          { verbose: options.verbose }
         );
 
         // Step 15: Setup job-monitor-rbac
@@ -318,7 +318,7 @@ export function setupKernelCommand(program: Command) {
           options.verbose,
           clusterName,
           path.join(cfgDir, "k8s", "job-monitor-rbac.yaml"),
-          postfix,
+          postfix
         );
         // Step 16: Setup API service
         console.log("Setting up API service...");
@@ -332,22 +332,22 @@ export function setupKernelCommand(program: Command) {
             "-f",
             apiComposePath,
             "up",
-            "-d",
+            "-d"
           ],
           {
             verbose: options.verbose,
             env: {
               ...process.env,
-              POSTFIX: postfix,
-            },
-          },
+              POSTFIX: postfix
+            }
+          }
         );
 
         console.log("PlanqTN kernel setup completed successfully!");
       } catch (err) {
         console.error(
           "Error:",
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         process.exit(1);
       }
@@ -377,8 +377,8 @@ export function setupKernelCommand(program: Command) {
             {
               cwd: supabaseDir,
               verbose: options.verbose,
-              returnOutput: true,
-            },
+              returnOutput: true
+            }
           )) as string;
 
           try {
@@ -395,7 +395,7 @@ export function setupKernelCommand(program: Command) {
           console.log("Stopping Supabase...");
           await runCommand("npx", ["supabase", "stop"], {
             cwd: supabaseDir,
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         }
 
@@ -403,7 +403,7 @@ export function setupKernelCommand(program: Command) {
         console.log("Stopping k8sproxy...");
         try {
           await runCommand("docker", ["stop", `k8sproxy${postfix}`], {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         } catch {
           // Ignore error if container doesn't exist
@@ -414,7 +414,7 @@ export function setupKernelCommand(program: Command) {
         const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
         try {
           await runCommand(k3dPath, ["cluster", "stop", `planqtn${postfix}`], {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         } catch {
           // Ignore error if cluster doesn't exist
@@ -425,7 +425,7 @@ export function setupKernelCommand(program: Command) {
           const apiComposePath = path.join(
             cfgDir,
             "planqtn_api",
-            "compose.yml",
+            "compose.yml"
           );
           await runCommand(
             "docker",
@@ -435,15 +435,15 @@ export function setupKernelCommand(program: Command) {
               path.join(cfgDir, "planqtn_api", ".env"),
               "-f",
               apiComposePath,
-              "down",
+              "down"
             ],
             {
               verbose: options.verbose,
               env: {
                 ...process.env,
-                POSTFIX: postfix,
-              },
-            },
+                POSTFIX: postfix
+              }
+            }
           );
         } catch {
           // Ignore error if container doesn't exist
@@ -453,7 +453,7 @@ export function setupKernelCommand(program: Command) {
       } catch (err) {
         console.error(
           "Error:",
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         process.exit(1);
       }
@@ -484,8 +484,8 @@ export function setupKernelCommand(program: Command) {
               {
                 cwd: supabaseDir,
                 verbose: options.verbose,
-                returnOutput: true,
-              },
+                returnOutput: true
+              }
             )) as string;
 
             try {
@@ -502,7 +502,7 @@ export function setupKernelCommand(program: Command) {
             console.log("Stopping Supabase...");
             await runCommand("npx", ["supabase", "stop"], {
               cwd: supabaseDir,
-              verbose: options.verbose,
+              verbose: options.verbose
             });
           }
         }
@@ -511,7 +511,7 @@ export function setupKernelCommand(program: Command) {
         console.log("Stopping k8sproxy...");
         try {
           await runCommand("docker", ["stop", `k8sproxy${postfix}`], {
-            verbose: options.verbose,
+            verbose: options.verbose
           });
         } catch {
           // Ignore error if container doesn't exist
@@ -522,7 +522,7 @@ export function setupKernelCommand(program: Command) {
           const apiComposePath = path.join(
             cfgDir,
             "planqtn_api",
-            "compose.yml",
+            "compose.yml"
           );
           await runCommand(
             "docker",
@@ -532,15 +532,15 @@ export function setupKernelCommand(program: Command) {
               path.join(cfgDir, "planqtn_api", ".env"),
               "-f",
               apiComposePath,
-              "down",
+              "down"
             ],
             {
               verbose: options.verbose,
               env: {
                 ...process.env,
-                POSTFIX: postfix,
-              },
-            },
+                POSTFIX: postfix
+              }
+            }
           );
         } catch {
           // Ignore error if container doesn't exist
@@ -554,8 +554,8 @@ export function setupKernelCommand(program: Command) {
             k3dPath,
             ["cluster", "delete", `planqtn${postfix}`],
             {
-              verbose: options.verbose,
-            },
+              verbose: options.verbose
+            }
           );
         } catch {
           // Ignore error if cluster doesn't exist
@@ -569,17 +569,17 @@ export function setupKernelCommand(program: Command) {
             "-a",
             "-q",
             "--filter",
-            `label=com.supabase.cli.project=planqtn${postfix}`,
+            `label=com.supabase.cli.project=planqtn${postfix}`
           ],
           {
             verbose: options.verbose,
-            returnOutput: true,
-          },
+            returnOutput: true
+          }
         );
         if (containers) {
           for (const container of containers.trim().split("\n")) {
             await runCommand("docker", ["rm", "-f", container], {
-              verbose: options.verbose,
+              verbose: options.verbose
             });
           }
         }
@@ -595,12 +595,12 @@ export function setupKernelCommand(program: Command) {
                 "ls",
                 "--filter",
                 `label=com.supabase.cli.project=planqtn${postfix}`,
-                "-q",
+                "-q"
               ],
               {
                 shell: true,
-                stdio: ["pipe", "pipe", options.verbose ? "inherit" : "pipe"],
-              },
+                stdio: ["pipe", "pipe", options.verbose ? "inherit" : "pipe"]
+              }
             );
 
             let output = "";
@@ -622,15 +622,15 @@ export function setupKernelCommand(program: Command) {
               "docker",
               ["volume", "rm", ...volumes.trim().split("\n")],
               {
-                verbose: options.verbose,
-              },
+                verbose: options.verbose
+              }
             );
           }
         } catch (err) {
           // Ignore error if no volumes exist
           console.log(
             "volume error:",
-            err instanceof Error ? err.message : String(err),
+            err instanceof Error ? err.message : String(err)
           );
         }
 
@@ -641,8 +641,8 @@ export function setupKernelCommand(program: Command) {
             "docker",
             ["network", "rm", `supabase_network_planqtn${postfix}`],
             {
-              verbose: options.verbose,
-            },
+              verbose: options.verbose
+            }
           );
         } catch {
           // Ignore error if network doesn't exist
@@ -652,7 +652,7 @@ export function setupKernelCommand(program: Command) {
       } catch (err) {
         console.error(
           "Error:",
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         process.exit(1);
       }
@@ -668,14 +668,14 @@ export function setupKernelCommand(program: Command) {
         const planqtnDir = path.join(os.homedir(), ".planqtn");
         const kubeconfigPath = path.join(
           planqtnDir,
-          `kubeconfig${postfix}.yaml`,
+          `kubeconfig${postfix}.yaml`
         );
         const clusterName = `planqtn${postfix}`;
 
         // Verify kubeconfig exists
         if (!fs.existsSync(kubeconfigPath)) {
           throw new Error(
-            `Kubeconfig not found at ${kubeconfigPath}. Please run 'htn kernel start' first.`,
+            `Kubeconfig not found at ${kubeconfigPath}. Please run 'htn kernel start' first.`
           );
         }
 
@@ -692,17 +692,17 @@ export function setupKernelCommand(program: Command) {
             `${kubeconfigPath}:/root/.kube/config`,
             "quay.io/derailed/k9s",
             "--context",
-            `${clusterName}-in-cluster`,
+            `${clusterName}-in-cluster`
           ],
           {
             verbose: options.verbose,
-            tty: true,
-          },
+            tty: true
+          }
         );
       } catch (err) {
         console.error(
           "Error:",
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         process.exit(1);
       }
@@ -716,7 +716,7 @@ async function kubectl(
   kubeconfigPath: string,
   verbose: boolean,
   clusterName: string,
-  postfix: string,
+  postfix: string
 ) {
   const uid = await new Promise<string>((resolve, reject) => {
     const proc = spawn("id", ["-u"], { shell: true });
@@ -751,9 +751,9 @@ async function kubectl(
       "d3fk/kubectl",
       ...kubeCtlArgs,
       "--context",
-      `${clusterName}-in-cluster`,
+      `${clusterName}-in-cluster`
     ],
-    { verbose },
+    { verbose }
   );
 }
 
@@ -762,7 +762,7 @@ async function createRbac(
   verbose: boolean,
   clusterName: string,
   rbacPath: string,
-  postfix: string,
+  postfix: string
 ): Promise<void> {
   return await kubectl(
     `create-rbac${postfix}`,
@@ -771,7 +771,7 @@ async function createRbac(
     kubeconfigPath,
     verbose,
     clusterName,
-    postfix,
+    postfix
   );
 }
 
@@ -779,7 +779,7 @@ async function createProxy(
   kubeconfigPath: string,
   verbose: boolean,
   clusterName: string,
-  postfix: string,
+  postfix: string
 ): Promise<void> {
   return await kubectl(
     `k8sproxy${postfix}`,
@@ -788,7 +788,7 @@ async function createProxy(
     kubeconfigPath,
     verbose,
     clusterName,
-    postfix,
+    postfix
   );
 }
 
@@ -796,7 +796,7 @@ async function createKubeconfig(
   k3dPath: string,
   clusterName: string,
   kubeconfigPath: string,
-  verbose: boolean,
+  verbose: boolean
 ) {
   // Ensure kubeconfig path is a file, not a directory
   if (fs.existsSync(kubeconfigPath)) {
@@ -810,7 +810,7 @@ async function createKubeconfig(
   await runCommand(
     k3dPath,
     ["kubeconfig", "write", clusterName, "--output", kubeconfigPath],
-    { verbose: verbose },
+    { verbose: verbose }
   );
 
   // Verify the kubeconfig was created as a file
@@ -833,8 +833,8 @@ async function createKubeconfig(
     name: inClusterName,
     cluster: {
       ...originalCluster.cluster,
-      server: `https://k3d-${clusterName}-serverlb:6443`,
-    },
+      server: `https://k3d-${clusterName}-serverlb:6443`
+    }
   };
 
   const originalContext = config.contexts[0];
@@ -844,16 +844,16 @@ async function createKubeconfig(
     name: inClusterName,
     context: {
       cluster: inClusterName,
-      user: originalContext.context.user,
-    },
+      user: originalContext.context.user
+    }
   };
 
   // Remove any existing in-cluster entries
   config.clusters = config.clusters.filter(
-    (c: Cluster) => c.name !== inClusterName,
+    (c: Cluster) => c.name !== inClusterName
   );
   config.contexts = config.contexts.filter(
-    (c: Context) => c.name !== inClusterName,
+    (c: Context) => c.name !== inClusterName
   );
 
   // Add the new cluster and context

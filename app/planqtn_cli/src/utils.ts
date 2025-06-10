@@ -13,7 +13,7 @@ interface RunCommandOptions {
 export async function runCommand(
   command: string,
   args: string[],
-  options: RunCommandOptions = {},
+  options: RunCommandOptions = {}
 ): Promise<string | void> {
   return new Promise((resolve, reject) => {
     const fullCommand = `${command} ${args.join(" ")}`;
@@ -40,9 +40,9 @@ export async function runCommand(
         : [
             "pipe",
             options.verbose && !options.returnOutput ? "inherit" : "pipe",
-            options.verbose && !options.returnOutput ? "inherit" : "pipe",
+            options.verbose && !options.returnOutput ? "inherit" : "pipe"
           ],
-      detached: options.is_background,
+      detached: options.is_background
     });
 
     if (options.is_background) {
@@ -83,7 +83,7 @@ export async function runCommand(
         }
       } else {
         const error = new Error(
-          `Command failed with exit code ${code}: ${fullCommand}`,
+          `Command failed with exit code ${code}: ${fullCommand}`
         );
         if (options.verbose) {
           console.error(`\n${error.message}`);
@@ -91,8 +91,8 @@ export async function runCommand(
         if (options.returnOutput) {
           reject(
             new Error(
-              `${error.message}\nOutput: ${output}\nError: ${errorOutput}`,
-            ),
+              `${error.message}\nOutput: ${output}\nError: ${errorOutput}`
+            )
           );
         } else {
           reject(error);
@@ -105,7 +105,7 @@ export async function runCommand(
 export async function copyDir(
   src: string,
   dest: string,
-  options: { verbose?: boolean } = {},
+  options: { verbose?: boolean } = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const fullCommand = `rsync -av --delete ${src}/ ${dest}/`;
@@ -118,8 +118,8 @@ export async function copyDir(
       stdio: [
         "pipe",
         options.verbose ? "inherit" : "pipe",
-        options.verbose ? "inherit" : "pipe",
-      ],
+        options.verbose ? "inherit" : "pipe"
+      ]
     });
 
     if (!options.verbose) {
@@ -143,7 +143,7 @@ export async function copyDir(
         resolve();
       } else {
         const error = new Error(
-          `rsync failed with exit code ${code}: ${fullCommand}`,
+          `rsync failed with exit code ${code}: ${fullCommand}`
         );
         if (options.verbose) {
           console.error(`\n${error.message}`);
@@ -156,7 +156,7 @@ export async function copyDir(
 
 export function ensureEmptyDir(
   dir: string,
-  forceRecreate: boolean = false,
+  forceRecreate: boolean = false
 ): void {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

@@ -14,7 +14,7 @@ async function getGitTag(): Promise<string> {
     { returnOutput: true }
   )) as string;
   const status = (await runCommand("git", ["status", "-s"], {
-    returnOutput: true,
+    returnOutput: true
   })) as string;
   return status.trim() ? `${commitHash.trim()}-dirty` : commitHash.trim();
 }
@@ -25,7 +25,7 @@ async function checkK3dRunning(cluster: string): Promise<boolean> {
       "~/.planqtn/k3d",
       ["cluster", "get", `planqtn-${cluster}`],
       {
-        returnOutput: true,
+        returnOutput: true
       }
     );
     return true;
@@ -43,7 +43,7 @@ async function checkSupabaseRunning(): Promise<boolean> {
         "--filter",
         "name=supabase_edge_runtime_planqtn-dev",
         "--format",
-        "{{.Names}}",
+        "{{.Names}}"
       ],
       { returnOutput: true }
     )) as string;
@@ -154,7 +154,7 @@ export async function handleImage(
 
     await runCommand("docker", buildArgs, {
       verbose: true,
-      tty: isTTY,
+      tty: isTTY
     });
     if (image === "api") {
       // the api image is used as part of deployment to the cloud run service and the local Docker implementation
@@ -190,7 +190,7 @@ export async function handleImage(
       "import",
       imageName,
       "-c",
-      `planqtn-${options.k3dCluster || "dev"}`,
+      `planqtn-${options.k3dCluster || "dev"}`
     ]);
 
     console.log("Updating Supabase environment...");
@@ -210,7 +210,7 @@ export async function handleImage(
 
     await runCommand("docker", pushArgs, {
       verbose: true,
-      tty: isTTY,
+      tty: isTTY
     });
   }
 
@@ -226,7 +226,7 @@ export async function handleImage(
       "deploy",
       "planqtn-monitor",
       "--image",
-      imageName,
+      imageName
     ]);
   }
 
@@ -241,7 +241,7 @@ export async function handleImage(
       "deploy",
       "planqtn-jobs",
       "--image",
-      imageName,
+      imageName
     ]);
   }
 }

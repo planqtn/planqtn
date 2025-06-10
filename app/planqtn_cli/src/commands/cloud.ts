@@ -53,15 +53,15 @@ async function setupSupabase(
     stdio: "inherit",
     env: {
       ...process.env,
-      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
-    },
+      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
+    }
   });
 
   // Link and deploy Supabase functions
   console.log("\nLinking and deploying Supabase functions...");
   const supabaseEnv = {
     ...process.env,
-    SUPABASE_DB_PASSWORD: dbPassword,
+    SUPABASE_DB_PASSWORD: dbPassword
   };
 
   // Check for Supabase access token
@@ -72,7 +72,7 @@ async function setupSupabase(
         "Supabase access token not found. Please login to Supabase..."
       );
       execSync(`npx supabase --workdir ${APP_DIR} login`, {
-        stdio: "inherit",
+        stdio: "inherit"
       });
     } else {
       throw new Error(
@@ -85,11 +85,11 @@ async function setupSupabase(
     `npx supabase --workdir ${APP_DIR} link --project-ref ${projectId}`,
     {
       stdio: "inherit",
-      env: supabaseEnv,
+      env: supabaseEnv
     }
   );
   execSync(`npx supabase --workdir ${APP_DIR} functions deploy`, {
-    stdio: "inherit",
+    stdio: "inherit"
   });
 
   // Save Supabase API URL
@@ -204,7 +204,7 @@ async function terraform(
   const tfEnv = process.env.GCP_SVC_CREDENTIALS
     ? {
         ...process.env,
-        GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath,
+        GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath
       }
     : process.env;
 
@@ -214,7 +214,7 @@ async function terraform(
   const result = execSync(`${terraformPath} ${args}`, {
     cwd: gcpDir,
     stdio: printOutput ? "inherit" : "pipe",
-    env: tfEnv,
+    env: tfEnv
   });
   if (result) {
     return result.toString().trim();
@@ -258,7 +258,7 @@ async function setupGCP(
     api_image: apiImage,
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
-    environment: "dev",
+    environment: "dev"
   });
 
   await terraform(
@@ -295,7 +295,7 @@ async function setupSupabaseSecrets(
     `JOBS_IMAGE=${jobsImage}`,
     `GCP_PROJECT=${gcpProjectId}`,
     `SVC_ACCOUNT=${serviceAccountKey}`,
-    `API_URL=${apiUrl}`,
+    `API_URL=${apiUrl}`
   ].join("\n");
 
   const envPath = path.join(configDir, "supabase.env");
@@ -306,7 +306,7 @@ async function setupSupabaseSecrets(
   execSync(
     `npx supabase --workdir ${APP_DIR} secrets set --env-file ${envPath}`,
     {
-      stdio: "inherit",
+      stdio: "inherit"
     }
   );
 
@@ -424,8 +424,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-          ? " (leave blank to keep current value)"
-          : " (not set)"
+            ? " (leave blank to keep current value)"
+            : " (not set)"
       }${hintText}: `;
 
       let hint = true;
@@ -586,7 +586,7 @@ class VariableManager {
           name: "dockerRepo",
           description: "Docker repository (e.g., Docker Hub username or repo)",
           defaultValue: "planqtn",
-          requiredFor: ["images"],
+          requiredFor: ["images"]
         },
         configDir,
         "docker-repo"
@@ -596,7 +596,7 @@ class VariableManager {
           name: "supabaseProjectRef",
           description: "Supabase project ID",
           requiredFor: ["supabase"],
-          hint: `Get it from your supabase connection string, which is typically <project-ref>.supabase.co`,
+          hint: `Get it from your supabase connection string, which is typically <project-ref>.supabase.co`
         },
         configDir,
         "supabase-project-id"
@@ -607,7 +607,7 @@ class VariableManager {
           description: "Supabase database password",
           hint: `Get it from your supabase project settings. If you forgot it, then you can reset it in the supabase project settings dashboard.`,
           isSecret: true,
-          requiredFor: ["supabase"],
+          requiredFor: ["supabase"]
         },
         configDir,
         "db-password"
@@ -617,7 +617,7 @@ class VariableManager {
           name: "environment",
           description: "Environment",
           defaultValue: "development",
-          requiredFor: ["supabase-secrets", "gcp", "vercel"],
+          requiredFor: ["supabase-secrets", "gcp", "vercel"]
         },
         configDir,
         "environment"
@@ -627,7 +627,7 @@ class VariableManager {
           name: "jobsImage",
           description: "Jobs image name",
           requiredFor: ["supabase-secrets", "gcp"],
-          outputBy: "images",
+          outputBy: "images"
         },
         "job",
         "job"
@@ -637,7 +637,7 @@ class VariableManager {
           name: "gcpProjectId",
           description: "GCP project ID",
           hint: `Get it from your GCP project settings. This is a string, not a number.`,
-          requiredFor: ["supabase-secrets", "gcp"],
+          requiredFor: ["supabase-secrets", "gcp"]
         },
         configDir,
         "gcp-project-id"
@@ -647,7 +647,7 @@ class VariableManager {
           name: "apiUrl",
           description: "Cloud Run PlanqTN API URL",
           requiredFor: ["supabase-secrets"],
-          outputBy: "gcp",
+          outputBy: "gcp"
         },
         configDir,
         "api-url"
@@ -658,7 +658,7 @@ class VariableManager {
           description: "GCP service account key",
           isSecret: true,
           requiredFor: ["supabase-secrets"],
-          outputBy: "gcp",
+          outputBy: "gcp"
         },
         configDir,
         "gcp-service-account-key"
@@ -669,7 +669,7 @@ class VariableManager {
           description: "GCP region",
           defaultValue: "us-east1",
           requiredFor: ["gcp"],
-          hint: `Typically everything lives in us-east1 for now.`,
+          hint: `Typically everything lives in us-east1 for now.`
         },
         configDir,
         "gcp-region"
@@ -679,7 +679,7 @@ class VariableManager {
           name: "terraformStateBucket",
           description: "Terraform state bucket",
           requiredFor: ["gcp"],
-          hint: `This is the name of the bucket that will be used to store the terraform state. It needs to be unique across all GCP projects globally.`,
+          hint: `This is the name of the bucket that will be used to store the terraform state. It needs to be unique across all GCP projects globally.`
         },
         configDir,
         "terraform-state-bucket"
@@ -689,7 +689,7 @@ class VariableManager {
           name: "terraformStatePrefix",
           description: "Terraform state prefix",
           requiredFor: ["gcp"],
-          hint: `This is the prefix that will be used to store the terraform state. Within the same project there could be a dev and a prod setup for example.`,
+          hint: `This is the prefix that will be used to store the terraform state. Within the same project there could be a dev and a prod setup for example.`
         },
         configDir,
         "terraform-state-prefix"
@@ -698,7 +698,7 @@ class VariableManager {
         {
           name: "supabaseUrl",
           description: "Supabase URL",
-          requiredFor: ["gcp"],
+          requiredFor: ["gcp"]
         },
         (vars) =>
           `https://${vars
@@ -711,7 +711,7 @@ class VariableManager {
           description: "Supabase service key",
           isSecret: true,
           requiredFor: ["gcp", "integration-test-config"],
-          hint: `Get it from your supabase Project Settings/API Keys section. Click Reveal on the Service Role Key input field.`,
+          hint: `Get it from your supabase Project Settings/API Keys section. Click Reveal on the Service Role Key input field.`
         },
         configDir,
         "supabase-service-key"
@@ -721,7 +721,7 @@ class VariableManager {
           name: "apiImage",
           description: "API image name",
           requiredFor: ["gcp"],
-          outputBy: "images",
+          outputBy: "images"
         },
         "api",
         "api"
@@ -732,7 +732,7 @@ class VariableManager {
           description: "Supabase anonymous key",
           hint: `Get it from your supabase Project Settings/API Keys section. It should be under Anon Key input field.`,
           isSecret: true,
-          requiredFor: ["integration-test-config"],
+          requiredFor: ["integration-test-config"]
         },
         configDir,
         "supabase-anon-key"
@@ -742,7 +742,7 @@ class VariableManager {
           name: "vercelProjectId",
           description: "Vercel project ID",
           hint: `This is automatically populated from the app/ui/.vercel/project.json file after you linked the project. No need to manually override it typically`,
-          requiredFor: ["vercel"],
+          requiredFor: ["vercel"]
         },
         path.join(APP_DIR, "ui", ".vercel", "project.json"),
         ["projectId"]
@@ -752,7 +752,7 @@ class VariableManager {
           name: "vercelOrgId",
           description: "Vercel organization ID",
           hint: `This is automatically populated from the app/ui/.vercel/project.json file after you linked the project. No need to manually override it typically`,
-          requiredFor: ["vercel"],
+          requiredFor: ["vercel"]
         },
         path.join(APP_DIR, "ui", ".vercel", "project.json"),
         ["orgId"]
@@ -763,7 +763,7 @@ class VariableManager {
           description: "DockerHub access token for GitHub Actions",
           isSecret: true,
           requiredFor: ["github-actions"],
-          hint: `Get a personal access token from docker.io, ensure that it can read/write to your public repos.`,
+          hint: `Get a personal access token from docker.io, ensure that it can read/write to your public repos.`
         },
         configDir,
         "dockerhub-token"
@@ -773,7 +773,7 @@ class VariableManager {
           name: "dockerhubUsername",
           description: "DockerHub username for GitHub Actions",
           requiredFor: ["github-actions"],
-          hint: `Get it from your DockerHub account settings.`,
+          hint: `Get it from your DockerHub account settings.`
         },
         configDir,
         "dockerhub-username"
@@ -784,7 +784,7 @@ class VariableManager {
           description: "Vercel access token for GitHub Actions",
           hint: `Create an access token for Github Actions - on the https://vercel.com/account/settings/tokens page, create a token, name it "PlanqTN Github Actions token" and save it securely somewhere.`,
           isSecret: true,
-          requiredFor: ["github-actions"],
+          requiredFor: ["github-actions"]
         },
         configDir,
         "vercel-access-token"
@@ -795,7 +795,7 @@ class VariableManager {
           description: "Supabase access token for GitHub Actions",
           hint: `Get a personal Supabase access token at https://supabase.com/dashboard/account/tokens`,
           isSecret: true,
-          requiredFor: ["github-actions"],
+          requiredFor: ["github-actions"]
         },
         configDir,
         "supabase-access-token"
@@ -834,11 +834,11 @@ gcloud iam service-accounts keys create ~/.planqtn/.config/tf-deployer-svc.json 
 4. Copy the output of the following command and paste it here:
 
 cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
-          requiredFor: ["github-actions"],
+          requiredFor: ["github-actions"]
         },
         configDir,
         "gcp-svc-credentials"
-      ),
+      )
     ];
   }
 
@@ -1005,7 +1005,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     const config = {
       ANON_KEY: this.getValue("supabaseAnonKey"),
       API_URL: this.getValue("supabaseUrl"),
-      SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey"),
+      SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey")
     };
 
     const configPath = path.join(this.configDir, "supabase_config.json");
@@ -1059,7 +1059,7 @@ async function setupVercel(
       `vercel link --yes --scope ${vercelOrgId} --project ${vercelProjectId} ${tokenArg}`,
       {
         cwd: path.join(APP_DIR, "ui"),
-        stdio: "inherit",
+        stdio: "inherit"
       }
     );
   } else {
@@ -1071,7 +1071,7 @@ async function setupVercel(
   const envContent = [
     `VITE_TASK_STORE_URL=${supabaseUrl}`,
     `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
-    `VITE_ENV=${environment}`,
+    `VITE_ENV=${environment}`
   ].join("\n");
 
   const envPath = path.join(APP_DIR, "ui", ".env");
@@ -1083,7 +1083,7 @@ async function setupVercel(
     `vercel deploy ${environment == "production" ? "--prod " : ""} ${tokenArg}`,
     {
       cwd: path.join(APP_DIR, "ui"),
-      stdio: "inherit",
+      stdio: "inherit"
     }
   );
 }
@@ -1229,7 +1229,7 @@ export function setupCloudCommand(program: Command): void {
           "supabase-secrets": options.skipSupabaseSecrets,
           vercel: options.skipVercel,
           "integration-test-config": options.skipIntegrationTestConfig,
-          "github-actions": true,
+          "github-actions": true
         };
 
         // Load GCP outputs if GCP is not skipped
@@ -1355,7 +1355,7 @@ export function setupCloudCommand(program: Command): void {
           "supabase-secrets": true,
           vercel: true,
           "integration-test-config": false,
-          "github-actions": true,
+          "github-actions": true
         };
 
         await variableManager.prompt(skipPhases);

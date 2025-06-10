@@ -14,7 +14,7 @@ export PYTHONPATH=`pwd`
 cd app/planqtn_cli
 
 # Check formatting
-npx prettier --check src
+npx prettier --check src --config ../.prettierrc
 if [ $? -ne 0 ]; then
     echo "Formatting check failed"
     echo "Run 'cd app/planqtn_cli && npx prettier --write src && cd -' to fix"
