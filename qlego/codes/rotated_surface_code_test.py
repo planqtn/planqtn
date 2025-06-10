@@ -144,9 +144,14 @@ def test_d3_creation():
         node_seq = idx[0] * 3 + idx[1]
         print(node.h)
         print(nodes[node_seq].h)
-        assert np.array_equal(
-            node.h, nodes[node_seq].h
-        ), f"Parities don't match at node {idx},\n{node.h}\n{nodes[node_seq].h}"
+        assert np.array_equal(node.h, nodes[node_seq].h), (
+            "Parities don't match at node "
+            + str(idx)
+            + ",\n"
+            + str(node.h)
+            + "\n"
+            + str(nodes[node_seq].h)
+        )
 
     assert tn.traces == [
         ((0, 0), (0, 1), [((0, 0), 2)], [((0, 1), 1)]),
@@ -161,7 +166,7 @@ def test_d3_creation():
         ((2, 0), (2, 1), [((2, 0), 2)], [((2, 1), 1)]),
         ((2, 1), (2, 2), [((2, 1), 3)], [((2, 2), 0)]),
         ((1, 2), (2, 2), [((1, 2), 2)], [((2, 2), 3)]),
-    ], f"Traces are not equal, got:\n{'\n'.join(str(tr)for tr in tn.traces)}"
+    ], "Traces are not equal, got:\n" + "\n".join(str(tr) for tr in tn.traces)
 
     print(tn.legs_left_to_join)
     assert tn.legs_left_to_join == {
@@ -174,7 +179,7 @@ def test_d3_creation():
         (0, 2): [((0, 2), 0), ((0, 2), 1)],
         (1, 2): [((1, 2), 1), ((1, 2), 0), ((1, 2), 2)],
         (2, 2): [((2, 2), 0), ((2, 2), 3)],
-    }, f"Legs to trace are not equal, got:\n{tn.legs_left_to_join}"
+    }, "Legs to trace are not equal, got:\n" + str(tn.legs_left_to_join)
 
 
 def test_d5_rotated_surface_code():

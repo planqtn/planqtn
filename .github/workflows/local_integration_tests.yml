@@ -1,0 +1,113 @@
+name: Local Integration Tests
+run-name: ${{ github.actor }} is running local integration tests 🚀
+concurrency:
+  group: local-integration-tests-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/supabase/**"
+      - "app/migrations/**"
+      - "app/planqtn_types/**"
+      - "app/planqtn_api/**"
+      - "app/planqtn_jobs/**"
+      - "app/planqtn_cli/**"
+      - "app/planqtn_fixtures/**"
+      - "hack/*build*"
+
+      - "check/**integration"
+      - ".github/workflows/local_integration_tests.yml"
+
+  push:
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/supabase/**"
+      - "app/migrations/**"
+      - "app/planqtn_types/**"
+      - "app/planqtn_api/**"
+      - "app/planqtn_jobs/**"
+      - "app/planqtn_cli/**"
+      - "app/planqtn_fixtures/**"
+      - "hack/*build*"
+
+      - "check/**integration"
+      - ".github/workflows/local_integration_tests.yml"
+
+jobs:
+  Local-Integration-Tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: Install shared dependencies
+        run: |
+          pip install  -r requirements.txt -r requirements.dev.txt
+      - name: Install planqtn cli
+        run: |
+          hack/cli_build.sh --install
+      - name: build and load api image
+        run: |
+          hack/htn images api --build
+      - name: Start planqtn
+        run: |
+          htn kernel start --verbose
+      - name: build and load jobs image
+        run: |
+          hack/htn images job --build --load-no-restart --k3d-cluster local
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            jobs: 
+              - "app/planqtn_jobs/**"
+            api:
+              - "app/planqtn_api/**"                    
+            common: 
+              - "qlego/**"
+              - "requirements.txt"
+              - "requirements.dev.txt"
+              - "conftest.py"
+              - "app/supabase/**"
+              - "app/migrations/**"
+              - "app/planqtn_types/**"
+              - "app/planqtn_fixtures/**"
+              - ".github/workflows/integration_tests.yml"
+              - "app/planqtn_cli/**"
+              - "hack/*build*"
+
+      - name: Run jobs integration tests
+        env:
+          KERNEL_ENV: local
+        if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
+        run: |
+          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
+          check/jobs-integration
+
+      - name: Run api integration tests
+        env:
+          KERNEL_ENV: local
+        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
+        run: |
+          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
+          check/api-integration
+
+      - name: cleanup env
+        run: |
+          htn kernel stop
+          htn kernel remove 
+          htn purge --force

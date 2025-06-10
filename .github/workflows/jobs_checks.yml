@@ -1,0 +1,51 @@
+name: Job Execution Checks
+run-name: ${{ github.actor }} is checking the Job Execution 🚀
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/planqtn_jobs/**"
+      - "check/jobs**"
+      - ".github/workflows/jobs_checks.yml"
+      - "app/planqtn_types/**"
+  push:
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/planqtn_jobs/**"
+      - "check/jobs**"
+      - ".github/workflows/jobs_checks.yml"
+      - "app/planqtn_types/**"
+
+jobs:
+  Job-Checks:
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt -r requirements.txt -r requirements.dev.txt
+      - name: Run tests
+        run: |
+          check/jobs

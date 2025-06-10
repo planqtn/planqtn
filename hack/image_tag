@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Get the git commit hash
+COMMIT_HASH=$(git rev-parse --short HEAD)
+
+# Check if there are uncommitted changes
+if [[ -n $(git status -s) ]]; then
+    TAG="${COMMIT_HASH}-dirty"
+else
+    TAG="${COMMIT_HASH}"
+fi
+
+echo $TAG

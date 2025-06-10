@@ -136,7 +136,7 @@ class StabilizerCodeTensorEnumerator:
         # print(f"Legs: {self.legs} because n = {self.n}, {self.h.shape}")
         assert (
             len(self.legs) == self.n
-        ), f"Leg number {len(self.legs)} does not match parity check matrix columns (qubit count) {self.n}"
+        ), f"Number of legs {len(self.legs)} != qubit count {self.n} for h: {self.h}"
         # a dict is a wonky tensor - TODO: rephrase this to proper tensor
         self._stabilizer_enums: Dict[sympy.Tuple, SimplePoly] = {}
 

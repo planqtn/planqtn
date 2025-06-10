@@ -8,3 +8,6 @@ build
 logs
 *node_modules*
 .env
+.vercel
+*dist*
+.config

@@ -1,12 +1,37 @@
 name: API Server Checks
 run-name: ${{ github.actor }} is checking the API Server 🚀
-on: [push]
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/planqtn_api/**"
+      - "app/planqtn_types/**"
+      - "check/api**"
+      - ".github/workflows/api_server_checks.yml"
+  push:
+    paths:
+      - "qlego/**"
+      - "requirements.txt"
+      - "requirements.dev.txt"
+      - "app/conftest.py"
+
+      - "app/planqtn_api/**"
+      - "app/planqtn_types/**"
+      - "check/api**"
+      - ".github/workflows/api_server_checks.yml"
+
 jobs:
   API-Server-Checks:
     strategy:
       matrix:
         python-version: ["3.12"]
-   
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -20,12 +45,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r server/requirements.txt -r requirements.txt -r requirements.dev.txt -r server/requirements.dev.txt
-      - name: install redis 
+          pip install -r app/planqtn_api/requirements.txt -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt
+      - name: Run tests & checks
         run: |
-          sudo apt-get install redis-server
-      - name: Run tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: |
-          pytest server
+          check/api

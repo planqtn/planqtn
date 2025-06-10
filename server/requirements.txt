@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-flower
-celery
-requests
-redis

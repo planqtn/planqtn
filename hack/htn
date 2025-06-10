@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Get the absolute path of the repo root
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Run the CLI from its location while working from the repo root
+cd "$REPO_ROOT"
+npm run dev --prefix app/planqtn_cli -- "$@"
+state=$?
+
+exit $state

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export PYTHONPATH=".."
+
+find src -type f -name '*.ts' | entr -r $@

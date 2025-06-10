@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "gcp-metadata": "npm:gcp-metadata@6.1.0",
+    "vm": "node:vm"
+  }
+}

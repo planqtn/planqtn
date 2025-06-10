@@ -824,18 +824,29 @@ class TensorNetwork:
             pte_list = list(set(self.ptes.values()))
             pte = pte_list[0]
             for pte2 in pte_list[1:]:
-                pte = pte.tensor_product(pte2, verbose=verbose)
+                pte = pte.tensor_product(
+                    pte2, verbose=verbose, progress_reporter=progress_reporter
+                )
 
         if len(pte.tensor) > 1:
             if verbose:
                 print(f"final PTE is a tensor: {pte}")
-                for k in list(pte.tensor.keys()):
-                    v = pte.tensor[k]
-                    if verbose:
-                        sprint(GF2([k]), end=" ")
-                        print(v)
+                if len(pte.tensor) > 5000:
+                    print(
+                        f"There are {len(pte.tensor)} keys in the final PTE, skipping printing."
+                    )
+                else:
+                    for k in list(pte.tensor.keys()):
+                        v = pte.tensor[k]
+                        if verbose:
+                            sprint(GF2([k]), end=" ")
+                            print(v)
 
-            self._wep = pte.ordered_key_tensor(open_legs)
+            self._wep = pte.ordered_key_tensor(
+                open_legs,
+                progress_reporter=progress_reporter,
+                verbose=verbose,
+            )
             # self._wep = SimplePoly()
             # for k, sub_wep in pte.tensor.items():
             #     self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
@@ -895,15 +906,31 @@ class _PartiallyTracedEnumerator:
     def __hash__(self):
         return hash((frozenset(self.nodes)))
 
-    def ordered_key_tensor(self, open_legs: List[Tuple[int, int]]):
-        print(f"open_legs: {open_legs}, tracable_legs: {self.tracable_legs}")
-        reindex = lambda key: tuple(
-            sslice(
-                GF2(key), [self.tracable_legs.index(leg) for leg in open_legs]
-            ).tolist()
-        )
+    def ordered_key_tensor(
+        self,
+        open_legs: List[Tuple[int, int]],
+        verbose: bool = False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+    ):
+        if self.tracable_legs == open_legs:
+            return self.tensor
+        index = [self.tracable_legs.index(leg) for leg in open_legs]
 
-        return {reindex(k): v for k, v in self.tensor.items()}
+        if verbose:
+            print("Need to reindex tracable legs: ")
+            print(f"open_legs: {open_legs}, tracable_legs: {self.tracable_legs}")
+            print(f"index: {index}")
+
+        reindex = lambda key: tuple(sslice(GF2(key), index).tolist())
+
+        return {
+            reindex(k): v
+            for k, v in progress_reporter.iterate(
+                iterable=self.tensor.items(),
+                desc=f"Reindexing keys in tensor for {len(self.tensor)} elements",
+                total_size=len(list(self.tensor.items())),
+            )
+        }
 
     def stabilizer_enumerator(self, legs: List[Tuple[int, int]], e):
         filtered_axes = [self.tracable_legs.index(leg) for leg in legs]
@@ -913,7 +940,12 @@ class _PartiallyTracedEnumerator:
 
         return self.tensor[indices]
 
-    def tensor_product(self, other, verbose=False):
+    def tensor_product(
+        self,
+        other,
+        verbose=False,
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+    ):
         if verbose:
             print(f"tensoring {self}")
             for k, v in self.tensor.items():
@@ -922,7 +954,11 @@ class _PartiallyTracedEnumerator:
             for k, v in other.tensor.items():
                 print(f"{k}: {v}")
         new_tensor = {}
-        for k1 in self.tensor.keys():
+        for k1 in progress_reporter.iterate(
+            iterable=self.tensor.keys(),
+            desc=f"PTE tensor product: {len(self.tensor)} x {len(other.tensor)} elements",
+            total_size=len(list(self.tensor.keys())),
+        ):
             for k2 in other.tensor.keys():
                 k = tuple(sconcat(k1, k2))
                 new_tensor[k] = self.tensor[k1] * other.tensor[k2]
