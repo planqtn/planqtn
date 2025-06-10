@@ -262,7 +262,7 @@ async function setupGCP(
   });
 
   await terraform(
-    `init -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+    `init -reconfigure -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
     true
   );
 
@@ -824,7 +824,16 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
- --role="roles/secretmanager.secretAccessor"
+ --role="roles/secretmanager.secretAccessor
+ 
+ gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
+ --role="roles/resourcemanager.projectIamAdmin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
+ --role="roles/logging.configWriter"
+ 
 
 3. Download a key for the service account:
 
@@ -881,7 +890,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
   }
 
   async loadGcpOutputs(): Promise<void> {
-    console.log("Loading GCP outputs...");
     try {
       // Get Terraform outputs
       const apiUrl = await terraform(`output -raw api_service_url`);
@@ -900,8 +908,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       if (gcpSvcAccountKeyVar) {
         gcpSvcAccountKeyVar.setValue(rawServiceAccountKey!);
       }
-
-      console.log("Terraform outputs loaded successfully.");
     } catch {
       // Ignore error
     }
