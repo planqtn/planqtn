@@ -47,6 +47,8 @@ on:
 jobs:
   Local-Integration-Tests:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
