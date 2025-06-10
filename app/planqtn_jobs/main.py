@@ -127,7 +127,7 @@ def main():
                 ),
                 task_updates_db_credentials=(
                     SupabaseCredentials(
-                        url=runtime_supabase_url, user_key=runtime_supabase_key
+                        url=runtime_supabase_url, service_role_key=runtime_supabase_key
                     )
                     if args.realtime
                     else None
