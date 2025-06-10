@@ -457,8 +457,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-          ? " (leave blank to keep current value)"
-          : " (not set)"
+            ? " (leave blank to keep current value)"
+            : " (not set)"
       }${hintText}: `;
 
       let hint = true;
