@@ -13,7 +13,6 @@ import {
   Checkbox,
   Link,
   UseToastOptions,
-  Code,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -1583,7 +1582,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                 borderRadius="md"
                                 bg="gray.50"
                               >
-                                <Code as="pre">
+                                <Text fontFamily="mono">
                                   {(() => {
                                     const parsedResult = JSON.parse(
                                       task.result!
@@ -1593,7 +1592,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                       "No polynomial available"
                                     );
                                   })()}
-                                </Code>
+                                </Text>
                               </Box>
                               <Heading size="sm">
                                 Normalizer Weight Enumerator Polynomial
