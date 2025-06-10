@@ -2,8 +2,6 @@ name: Job Execution Checks
 run-name: ${{ github.actor }} is checking the Job Execution 🚀
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "qlego/**"
       - "requirements.txt"

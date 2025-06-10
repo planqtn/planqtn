@@ -2,8 +2,6 @@ name: API Server Checks
 run-name: ${{ github.actor }} is checking the API Server 🚀
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "qlego/**"
       - "requirements.txt"
