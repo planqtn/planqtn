@@ -2,8 +2,6 @@ name: planqtn Library Checks
 run-name: ${{ github.actor }} is checking the planqtn library 🚀
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "qlego/**"
       - "requirements.txt"
