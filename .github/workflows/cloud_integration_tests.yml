@@ -45,6 +45,8 @@ jobs:
   Cloud-Integration-Tests:
     environment: Continuous Integration
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -110,6 +112,7 @@ jobs:
         run: |
           hack/htn cloud deploy -q --refuse-dirty-builds
       - uses: dorny/paths-filter@v3
+         
         id: changes
         with:
           filters: |
