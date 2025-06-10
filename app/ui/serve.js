@@ -1,7 +1,6 @@
 /* eslint-env node */
 /* global process */
 import express from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -18,28 +17,6 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.FRONTEND_PORT || 5173;
 
-// Setup proxies
-const backendPort = process.env.BACKEND_PORT || 5005;
-const backendUrl = `http://localhost:${backendPort}`;
-const wsBackendUrl = `ws://localhost:${backendPort}`;
-
-// API proxy
-app.use(
-  "/api",
-  createProxyMiddleware({
-    target: backendUrl,
-    changeOrigin: false,
-    pathRewrite: {
-      "^/api": "",
-    },
-    onError: (err, req, res) => {
-      console.error("API Proxy Error:", err);
-      res.status(500).send("API Proxy Error");
-    },
-  }),
-);
-
-
 // Support for HTML5 History API
 app.use(history());
 
@@ -54,6 +31,4 @@ app.get("*name", (req, res) => {
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`API Proxy target: ${backendUrl}`);
-  console.log(`WebSocket Proxy target: ${wsBackendUrl}`);
 });
