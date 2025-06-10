@@ -13,7 +13,6 @@ import {
   Checkbox,
   Link,
   UseToastOptions,
-  Code,
   Modal,
   ModalOverlay,
   ModalContent,
