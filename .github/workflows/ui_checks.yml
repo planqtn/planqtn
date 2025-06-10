@@ -2,8 +2,6 @@ name: UI Checks
 run-name: ${{ github.actor }} is checking the UI
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "app/ui/**"
       - "check/ui**"
