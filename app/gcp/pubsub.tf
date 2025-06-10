@@ -42,5 +42,7 @@ resource "google_eventarc_trigger" "planqtn_failed_job_trigger" {
     }
   }
 
+  service_account = google_service_account.cloud_run_svc.email
+
   depends_on = [google_project_service.required_apis]
 } 

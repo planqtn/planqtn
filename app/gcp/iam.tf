@@ -13,7 +13,8 @@ resource "google_project_iam_member" "cloud_run_svc_roles" {
     "roles/run.invoker",         # To invoke Cloud Run services
     "roles/run.jobsExecutor",    # To execute Cloud Run jobs
     "roles/logging.logWriter",   # To write logs
-    "roles/monitoring.metricWriter"  # To write metrics
+    "roles/monitoring.metricWriter",  # To write metrics
+    "roles/iam.serviceAccountTokenCreator", # To create service account tokens for Eventarc
   ])
 
   project = var.project_id
