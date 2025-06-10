@@ -243,7 +243,11 @@ async function setupGCP(
   const apiImage = await getImageFromEnv("api");
 
   if (!jobsImage || !apiImage) {
-    throw new Error("Failed to get image names from environment");
+    if (!loginCheck) {
+      throw new Error(
+        "Failed to get image names from environment for GCP build!"
+      );
+    }
   }
 
   // Write the tfvars file with all required variables
@@ -331,10 +335,10 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
     }
   }
 
-  console.log("Building and pushing job image...");
+  console.log("Building and pushing JOB image...");
   await handleImage("job", { build: true, push: true });
 
-  console.log("Building and pushing api image...");
+  console.log("Building and pushing API image...");
   await handleImage("api", { build: true, push: true });
 }
 
@@ -1135,7 +1139,7 @@ async function checkCredentials(
   if (!skipPhases.gcp) {
     console.log("Checking GCP credentials...");
     try {
-      setupGCP(
+      await setupGCP(
         variableManager.getValue("supabaseProjectRef"),
         variableManager.getValue("supabaseServiceKey"),
         variableManager.getValue("gcpProjectId"),

@@ -317,7 +317,7 @@ export async function getImageFromEnv(
   }
 
   if (!fs.existsSync(envPath)) {
-    throw new Error(`Environment file ${envPath} not found for images!`);
+    return undefined;
   }
 
   const envConfig = dotenv.parse(fs.readFileSync(envPath));
