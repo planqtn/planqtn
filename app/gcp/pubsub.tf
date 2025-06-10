@@ -12,6 +12,10 @@ resource "google_logging_project_sink" "planqtn_job_monitor" {
   destination = "pubsub.googleapis.com/projects/${var.project_id}/topics/${google_pubsub_topic.planqtn_jobs.name}"
   filter      = "protoPayload.methodName=\"Jobs.RunJob\" OR protoPayload.methodName=\"/Jobs.RunJob\" AND NOT \"has completed successfully\""
 
+  unique_writer_identity = true
+
+  # Use a user-managed service account
+  custom_writer_identity = google_service_account.cloud_run_svc.email
   depends_on = [google_project_service.required_apis]
 }
 
