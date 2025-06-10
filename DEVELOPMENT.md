@@ -260,6 +260,14 @@ hack/htn cloud deploy
 
 This should walk you through the process automatically, and will ask you interactively for the secrets above.
 
+During the first run, things might take a while, as APIs need to be enabled, and resources are created the first time.
+Also, you might need to rerun it, we've seen this kind of failure on new project creation:
+
+```
+│ Error: Error creating service account: googleapi: Error 403: Identity and Access Management (IAM) API has not been used in project [PROJECT-NUMBER] before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/iam.googleapis.com/overview?project=[PROJECT-NUMBER] then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.
+│ Details:
+```
+
 ## Github Actions secrets for your personal integration testing environment
 
 After your setup and deployed your project successfully ensure that the integration tests are passing: 

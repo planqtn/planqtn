@@ -2,8 +2,6 @@ name: CLI Checks
 run-name: ${{ github.actor }} is checking the CLI
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "app/planqtn_cli/**"
       - "check/cli**"
