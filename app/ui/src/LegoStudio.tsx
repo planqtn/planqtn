@@ -15,7 +15,7 @@ import {
   EditableInput,
   EditablePreview,
   Flex,
-  Icon,
+  Icon
 } from "@chakra-ui/react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
@@ -32,7 +32,7 @@ import {
   GroupDragState,
   SelectionBoxState,
   PauliOperator,
-  CanvasDragState,
+  CanvasDragState
 } from "./lib/types";
 import { TensorNetwork } from "./lib/TensorNetwork";
 
@@ -41,7 +41,7 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { CanvasStateSerializer } from "./lib/CanvasStateSerializer";
 import {
   DroppedLegoDisplay,
-  calculateLegPosition,
+  calculateLegPosition
 } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
 import { TannerDialog } from "./components/TannerDialog";
@@ -71,7 +71,7 @@ const pointToLineDistance = (
   x1: number,
   y1: number,
   x2: number,
-  y2: number,
+  y2: number
 ) => {
   const A = x - x1;
   const B = y - y1;
@@ -114,7 +114,7 @@ const isScalarLego = (lego: DroppedLego) => {
 function findClosestDanglingLeg(
   dropPosition: { x: number; y: number },
   droppedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): { lego: DroppedLego; legIndex: number } | null {
   let closestLego: DroppedLego | null = null;
   let closestLegIndex: number = -1;
@@ -128,7 +128,7 @@ function findClosestDanglingLeg(
         (conn) =>
           (conn.from.legoId === lego.instanceId &&
             conn.from.legIndex === legIndex) ||
-          (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex),
+          (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
       );
       if (isConnected) continue;
 
@@ -136,7 +136,7 @@ function findClosestDanglingLeg(
       const legX = lego.x + pos.endX;
       const legY = lego.y + pos.endY;
       const distance = Math.sqrt(
-        Math.pow(dropPosition.x - legX, 2) + Math.pow(dropPosition.y - legY, 2),
+        Math.pow(dropPosition.x - legX, 2) + Math.pow(dropPosition.y - legY, 2)
       );
 
       if (distance < minDistance && distance < 20) {
@@ -172,7 +172,7 @@ const LegoStudioView: React.FC = () => {
     startX: 0,
     startY: 0,
     currentX: 0,
-    currentY: 0,
+    currentY: 0
   });
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -181,18 +181,18 @@ const LegoStudioView: React.FC = () => {
     startY: 0,
     originalX: 0,
     originalY: 0,
-    justFinished: false,
+    justFinished: false
   });
   const [zoomLevel, setZoomLevel] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const stateSerializerRef = useRef<CanvasStateSerializer>(
-    new CanvasStateSerializer([]),
+    new CanvasStateSerializer([])
   );
   const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(
-    null,
+    null
   );
   const [operationHistory] = useState<OperationHistory>(
-    new OperationHistory([]),
+    new OperationHistory([])
   );
   const [mousePosition, setMousePosition] = useState<{
     x: number;
@@ -200,7 +200,7 @@ const LegoStudioView: React.FC = () => {
   } | null>(null);
 
   const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(
-    null,
+    null
   );
   const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
     isSelecting: false,
@@ -208,7 +208,7 @@ const LegoStudioView: React.FC = () => {
     startY: 0,
     currentX: 0,
     currentY: 0,
-    justFinished: false,
+    justFinished: false
   });
   const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
   const [weightEnumeratorCache] = useState<Map<string, string>>(new Map());
@@ -227,7 +227,7 @@ const LegoStudioView: React.FC = () => {
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
   const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(
-    null,
+    null
   );
   const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
@@ -256,7 +256,7 @@ const LegoStudioView: React.FC = () => {
       const newParams = new URLSearchParams(params);
       newParams.set("title", title);
       navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, {
-        replace: true,
+        replace: true
       });
     }
 
@@ -269,7 +269,7 @@ const LegoStudioView: React.FC = () => {
       const params = new URLSearchParams(location.search);
       params.set("title", newTitle);
       navigate(`${location.pathname}?${params.toString()}${location.hash}`, {
-        replace: true,
+        replace: true
       });
       document.title = newTitle;
       setCurrentTitle(newTitle);
@@ -293,7 +293,7 @@ const LegoStudioView: React.FC = () => {
     (
       pieces: DroppedLego[],
       conns: Connection[],
-      hideConnectedLegs: boolean,
+      hideConnectedLegs: boolean
     ) => {
       // console.log("Encoding droppedLegos", pieces, "connections", conns);
       // console.log(new Error().stack);
@@ -301,7 +301,7 @@ const LegoStudioView: React.FC = () => {
       // console.log('Canvas state encoding call stack:', new Error("just debugging").stack);
       stateSerializerRef.current.encode(pieces, conns, hideConnectedLegs);
     },
-    [],
+    []
   );
 
   const decodeCanvasState = useCallback(async (encoded: string) => {
@@ -344,7 +344,7 @@ const LegoStudioView: React.FC = () => {
           // window.history.replaceState(null, '', window.location.pathname + window.location.search)
           // Ensure error is an Error object
           setFatalError(
-            error instanceof Error ? error : new Error(String(error)),
+            error instanceof Error ? error : new Error(String(error))
           );
         }
       }
@@ -376,7 +376,7 @@ const LegoStudioView: React.FC = () => {
       if (isOverCanvas) {
         setMousePosition({
           x: e.clientX - canvasRect.left,
-          y: e.clientY - canvasRect.top,
+          y: e.clientY - canvasRect.top
         });
       } else {
         setMousePosition(null);
@@ -389,14 +389,14 @@ const LegoStudioView: React.FC = () => {
 
   const handleDragStart = (
     e: React.DragEvent<HTMLLIElement>,
-    lego: LegoPiece,
+    lego: LegoPiece
   ) => {
     if (lego.id === "custom") {
       // Store the drop position for the custom lego
       const rect = e.currentTarget.getBoundingClientRect();
       setCustomLegoPosition({
         x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
+        y: rect.top + rect.height / 2
       });
       // Set the draggedLego state for custom legos
       const draggedLego: DroppedLego = {
@@ -405,7 +405,7 @@ const LegoStudioView: React.FC = () => {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
         style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
       setDraggedLego(draggedLego);
     } else {
@@ -417,7 +417,7 @@ const LegoStudioView: React.FC = () => {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
         style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
       setDraggedLego(draggedLego);
     }
@@ -444,7 +444,7 @@ const LegoStudioView: React.FC = () => {
 
     connections.forEach((conn) => {
       const fromLego = droppedLegos.find(
-        (l) => l.instanceId === conn.from.legoId,
+        (l) => l.instanceId === conn.from.legoId
       );
       const toLego = droppedLegos.find((l) => l.instanceId === conn.to.legoId);
       if (!fromLego || !toLego) return;
@@ -454,11 +454,11 @@ const LegoStudioView: React.FC = () => {
 
       const fromPoint = {
         x: fromLego.x + fromPos.endX,
-        y: fromLego.y + fromPos.endY,
+        y: fromLego.y + fromPos.endY
       };
       const toPoint = {
         x: toLego.x + toPos.endX,
-        y: toLego.y + toPos.endY,
+        y: toLego.y + toPos.endY
       };
 
       // Calculate distance from point to line segment
@@ -468,7 +468,7 @@ const LegoStudioView: React.FC = () => {
         fromPoint.x,
         fromPoint.y,
         toPoint.x,
-        toPoint.y,
+        toPoint.y
       );
       if (distance < minDistance && distance < 20) {
         // 20 pixels threshold
@@ -482,19 +482,19 @@ const LegoStudioView: React.FC = () => {
 
   const handleDropStopperOnConnection = (
     dropPosition: { x: number; y: number },
-    draggedLego: LegoPiece,
+    draggedLego: LegoPiece
   ): boolean => {
     if (draggedLego.id.includes("stopper")) {
       const closestLeg = findClosestDanglingLeg(
         dropPosition,
         droppedLegos,
-        connections,
+        connections
       );
       if (!closestLeg) return false;
 
       // Get max instance ID
       const maxInstanceId = Math.max(
-        ...droppedLegos.map((l) => parseInt(l.instanceId)),
+        ...droppedLegos.map((l) => parseInt(l.instanceId))
       );
 
       // Create the stopper lego
@@ -504,14 +504,14 @@ const LegoStudioView: React.FC = () => {
         x: dropPosition.x,
         y: dropPosition.y,
         style: getLegoStyle(draggedLego.id, 1),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
       try {
         const addStopper = new AddStopper(connections, droppedLegos);
         const result = addStopper.apply(
           closestLeg.lego,
           closestLeg.legIndex,
-          stopperLego,
+          stopperLego
         );
         setConnections(result.connections);
         setDroppedLegos(result.droppedLegos);
@@ -519,7 +519,7 @@ const LegoStudioView: React.FC = () => {
         encodeCanvasState(
           result.droppedLegos,
           result.connections,
-          hideConnectedLegs,
+          hideConnectedLegs
         );
         return true;
       } catch (error) {
@@ -530,7 +530,7 @@ const LegoStudioView: React.FC = () => {
             error instanceof Error ? error.message : "Failed to add stopper",
           status: "error",
           duration: 3000,
-          isClosable: true,
+          isClosable: true
         });
         return false;
       }
@@ -543,7 +543,7 @@ const LegoStudioView: React.FC = () => {
 
     const dropPosition = {
       x: e.clientX - e.currentTarget.getBoundingClientRect().left,
-      y: e.clientY - e.currentTarget.getBoundingClientRect().top,
+      y: e.clientY - e.currentTarget.getBoundingClientRect().top
     };
 
     if (draggedLego.id === "custom_lego") {
@@ -576,7 +576,7 @@ const LegoStudioView: React.FC = () => {
       y,
       instanceId: newInstanceId(droppedLegos),
       style: getLegoStyle(draggedLego.id, numLegs),
-      selectedMatrixRows: [],
+      selectedMatrixRows: []
     };
 
     // Handle two-legged lego insertion
@@ -588,7 +588,7 @@ const LegoStudioView: React.FC = () => {
           ({
             connections: newConnections,
             droppedLegos: newDroppedLegos,
-            operation,
+            operation
           }) => {
             setDroppedLegos(newDroppedLegos);
             setConnections(newConnections);
@@ -596,9 +596,9 @@ const LegoStudioView: React.FC = () => {
             encodeCanvasState(
               newDroppedLegos,
               newConnections,
-              hideConnectedLegs,
+              hideConnectedLegs
             );
-          },
+          }
         )
         .catch((error) => {
           setError(`${error}`);
@@ -614,12 +614,12 @@ const LegoStudioView: React.FC = () => {
         setDroppedLegos((prev) => [...prev, newLego]);
         operationHistory.addOperation({
           type: "add",
-          data: { legosToAdd: [newLego] },
+          data: { legosToAdd: [newLego] }
         });
         encodeCanvasState(
           [...droppedLegos, newLego],
           connections,
-          hideConnectedLegs,
+          hideConnectedLegs
         );
       }
     }
@@ -635,14 +635,14 @@ const LegoStudioView: React.FC = () => {
   };
 
   const handleDynamicLegoSubmit = async (
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ) => {
     if (!selectedDynamicLego || !pendingDropPosition) return;
 
     try {
       const dynamicLego = Legos.getDynamicLego({
         lego_id: selectedDynamicLego.id,
-        parameters,
+        parameters
       });
 
       const instanceId = newInstanceId(droppedLegos);
@@ -653,23 +653,21 @@ const LegoStudioView: React.FC = () => {
         y: pendingDropPosition.y,
         instanceId,
         style: getLegoStyle(dynamicLego.id, numLegs),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
       setDroppedLegos((prev) => [...prev, newLego]);
       operationHistory.addOperation({
         type: "add",
-        data: { legosToAdd: [newLego] },
+        data: { legosToAdd: [newLego] }
       });
       encodeCanvasState(
         [...droppedLegos, newLego],
         connections,
-        hideConnectedLegs,
+        hideConnectedLegs
       );
     } catch (error) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to create dynamic lego",
+        error instanceof Error ? error.message : "Failed to create dynamic lego"
       );
     } finally {
       setIsDialogOpen(false);
@@ -693,7 +691,7 @@ const LegoStudioView: React.FC = () => {
         ...l,
         instanceId: newId,
         x: l.x + 20,
-        y: l.y + 20,
+        y: l.y + 20
       };
     });
 
@@ -702,20 +700,20 @@ const LegoStudioView: React.FC = () => {
       .filter(
         (conn) =>
           legosToClone.some((l) => l.instanceId === conn.from.legoId) &&
-          legosToClone.some((l) => l.instanceId === conn.to.legoId),
+          legosToClone.some((l) => l.instanceId === conn.to.legoId)
       )
       .map(
         (conn) =>
           new Connection(
             {
               legoId: instanceIdMap.get(conn.from.legoId)!,
-              legIndex: conn.from.legIndex,
+              legIndex: conn.from.legIndex
             },
             {
               legoId: instanceIdMap.get(conn.to.legoId)!,
-              legIndex: conn.to.legIndex,
-            },
-          ),
+              legIndex: conn.to.legIndex
+            }
+          )
       );
 
     // Add new legos and connections
@@ -730,7 +728,7 @@ const LegoStudioView: React.FC = () => {
 
     setGroupDragState({
       legoInstanceIds: newLegos.map((l) => l.instanceId),
-      originalPositions: positions,
+      originalPositions: positions
     });
 
     // Set up initial drag state for the first lego
@@ -741,7 +739,7 @@ const LegoStudioView: React.FC = () => {
       startY: clientY,
       originalX: lego.x + 20,
       originalY: lego.y + 20,
-      justFinished: false,
+      justFinished: false
     });
 
     // Add to history
@@ -749,15 +747,15 @@ const LegoStudioView: React.FC = () => {
       type: "add",
       data: {
         legosToAdd: newLegos,
-        connectionsToAdd: newConnections,
-      },
+        connectionsToAdd: newConnections
+      }
     });
 
     // Update URL state
     encodeCanvasState(
       droppedLegos.concat(newLegos),
       connections.concat(newConnections),
-      hideConnectedLegs,
+      hideConnectedLegs
     );
   };
   const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
@@ -769,7 +767,7 @@ const LegoStudioView: React.FC = () => {
       handleClone(lego, e.clientX, e.clientY);
     } else {
       const isPartOfSelection = tensorNetwork?.legos.some(
-        (l) => l.instanceId === lego.instanceId,
+        (l) => l.instanceId === lego.instanceId
       );
 
       if (isPartOfSelection) {
@@ -783,7 +781,7 @@ const LegoStudioView: React.FC = () => {
 
         setGroupDragState({
           legoInstanceIds: selectedLegos.map((l) => l.instanceId),
-          originalPositions: currentPositions,
+          originalPositions: currentPositions
         });
       }
 
@@ -794,7 +792,7 @@ const LegoStudioView: React.FC = () => {
         startY: e.clientY,
         originalX: lego.x,
         originalY: lego.y,
-        justFinished: false,
+        justFinished: false
       });
     }
   };
@@ -814,17 +812,17 @@ const LegoStudioView: React.FC = () => {
         // Handle Ctrl+click for toggling selection
         if (tensorNetwork) {
           const isSelected = tensorNetwork.legos.some(
-            (l) => l.instanceId === lego.instanceId,
+            (l) => l.instanceId === lego.instanceId
           );
           if (isSelected) {
             // Remove lego from tensor network
             const newLegos = tensorNetwork.legos.filter(
-              (l) => l.instanceId !== lego.instanceId,
+              (l) => l.instanceId !== lego.instanceId
             );
             const newConnections = tensorNetwork.connections.filter(
               (conn) =>
                 conn.from.legoId !== lego.instanceId &&
-                conn.to.legoId !== lego.instanceId,
+                conn.to.legoId !== lego.instanceId
             );
             if (newLegos.length === 0) {
               setTensorNetwork(null);
@@ -839,7 +837,7 @@ const LegoStudioView: React.FC = () => {
             const newConnections = connections.filter(
               (conn) =>
                 newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                newLegos.some((l) => l.instanceId === conn.to.legoId),
+                newLegos.some((l) => l.instanceId === conn.to.legoId)
             );
             const newNetwork = new TensorNetwork(newLegos, newConnections);
             newNetwork.signature = createNetworkSignature(newNetwork);
@@ -848,7 +846,7 @@ const LegoStudioView: React.FC = () => {
         } else if (selectedLego) {
           const newNetwork = new TensorNetwork(
             [lego, selectedLego],
-            connections,
+            connections
           );
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
@@ -872,7 +870,7 @@ const LegoStudioView: React.FC = () => {
           const network = findConnectedComponent(
             lego,
             droppedLegos,
-            connections,
+            connections
           );
           network.signature = createNetworkSignature(network);
           setTensorNetwork(network);
@@ -919,7 +917,7 @@ const LegoStudioView: React.FC = () => {
           startY: y,
           currentX: x,
           currentY: y,
-          justFinished: false,
+          justFinished: false
         });
       } else {
         setCanvasDragState({
@@ -927,7 +925,7 @@ const LegoStudioView: React.FC = () => {
           startX: x,
           startY: y,
           currentX: x,
-          currentY: y,
+          currentY: y
         });
       }
     }
@@ -936,7 +934,7 @@ const LegoStudioView: React.FC = () => {
   const handleLegMouseDown = (
     e: React.MouseEvent,
     legoId: string,
-    legIndex: number,
+    legIndex: number
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -953,7 +951,7 @@ const LegoStudioView: React.FC = () => {
       startX: x,
       startY: y,
       currentX: x,
-      currentY: y,
+      currentY: y
     });
   };
 
@@ -963,7 +961,7 @@ const LegoStudioView: React.FC = () => {
     right: number,
     top: number,
     bottom: number,
-    e: React.MouseEvent,
+    e: React.MouseEvent
   ) => {
     // Find Legos within the selection box
     const selectedLegos = droppedLegos.filter((lego) => {
@@ -981,7 +979,7 @@ const LegoStudioView: React.FC = () => {
           const newConnections = connections.filter(
             (conn) =>
               newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-              newLegos.some((l) => l.instanceId === conn.to.legoId),
+              newLegos.some((l) => l.instanceId === conn.to.legoId)
           );
           const newNetwork = new TensorNetwork(newLegos, newConnections);
           newNetwork.signature = createNetworkSignature(newNetwork);
@@ -1004,23 +1002,23 @@ const LegoStudioView: React.FC = () => {
           const newConnections = connections.filter(
             (conn) =>
               newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-              newLegos.some((l) => l.instanceId === conn.to.legoId),
+              newLegos.some((l) => l.instanceId === conn.to.legoId)
           );
           const newNetwork = new TensorNetwork(newLegos, newConnections);
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         } else {
           const selectedLegoIds = new Set(
-            selectedLegos.map((lego) => lego.instanceId),
+            selectedLegos.map((lego) => lego.instanceId)
           );
           const internalConnections = connections.filter(
             (conn) =>
               selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId),
+              selectedLegoIds.has(conn.to.legoId)
           );
           const newNetwork = new TensorNetwork(
             selectedLegos,
-            internalConnections,
+            internalConnections
           );
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
@@ -1029,16 +1027,16 @@ const LegoStudioView: React.FC = () => {
       } else {
         // Create a tensor network from the selected legos
         const selectedLegoIds = new Set(
-          selectedLegos.map((lego) => lego.instanceId),
+          selectedLegos.map((lego) => lego.instanceId)
         );
         const internalConnections = connections.filter(
           (conn) =>
             selectedLegoIds.has(conn.from.legoId) &&
-            selectedLegoIds.has(conn.to.legoId),
+            selectedLegoIds.has(conn.to.legoId)
         );
         const newNetwork = new TensorNetwork(
           selectedLegos,
-          internalConnections,
+          internalConnections
         );
         newNetwork.signature = createNetworkSignature(newNetwork);
         setSelectedLego(null);
@@ -1066,7 +1064,7 @@ const LegoStudioView: React.FC = () => {
       setSelectionBox((prev) => ({
         ...prev,
         currentX: x,
-        currentY: y,
+        currentY: y
       }));
 
       // Calculate selection box bounds
@@ -1090,13 +1088,13 @@ const LegoStudioView: React.FC = () => {
         startX: newX,
         startY: newY,
         currentX: newX,
-        currentY: newY,
+        currentY: newY
       }));
 
       const movedLegos = droppedLegos.map((lego) => ({
         ...lego,
         x: lego.x + deltaX,
-        y: lego.y + deltaY,
+        y: lego.y + deltaY
       }));
       setDroppedLegos(movedLegos);
       encodeCanvasState(movedLegos, connections, hideConnectedLegs);
@@ -1111,7 +1109,7 @@ const LegoStudioView: React.FC = () => {
       if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
         setDragState((prev) => ({
           ...prev,
-          isDragging: true,
+          isDragging: true
         }));
       }
       return;
@@ -1135,13 +1133,13 @@ const LegoStudioView: React.FC = () => {
           return {
             ...lego,
             x: originalPos.x + deltaX,
-            y: originalPos.y + deltaY,
+            y: originalPos.y + deltaY
           };
         } else if (index === dragState.draggedLegoIndex) {
           return {
             ...lego,
             x: newX,
-            y: newY,
+            y: newY
           };
         }
         return lego;
@@ -1151,7 +1149,7 @@ const LegoStudioView: React.FC = () => {
       if (groupDragState) {
         if (tensorNetwork) {
           tensorNetwork.legos = updatedLegos.filter((lego) =>
-            groupDragState.legoInstanceIds.includes(lego.instanceId),
+            groupDragState.legoInstanceIds.includes(lego.instanceId)
           );
         }
       } else if (
@@ -1167,7 +1165,7 @@ const LegoStudioView: React.FC = () => {
       const draggedLego = updatedLegos[dragState.draggedLegoIndex];
       if (draggedLego) {
         const draggedLegoHasConnections = connections.some((conn) =>
-          conn.containsLego(draggedLego.instanceId),
+          conn.containsLego(draggedLego.instanceId)
         );
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -1182,10 +1180,10 @@ const LegoStudioView: React.FC = () => {
 
           connections.forEach((conn) => {
             const fromLego = droppedLegos.find(
-              (l) => l.instanceId === conn.from.legoId,
+              (l) => l.instanceId === conn.from.legoId
             );
             const toLego = droppedLegos.find(
-              (l) => l.instanceId === conn.to.legoId,
+              (l) => l.instanceId === conn.to.legoId
             );
             if (!fromLego || !toLego) return;
 
@@ -1194,11 +1192,11 @@ const LegoStudioView: React.FC = () => {
 
             const fromPoint = {
               x: fromLego.x + fromPos.endX,
-              y: fromLego.y + fromPos.endY,
+              y: fromLego.y + fromPos.endY
             };
             const toPoint = {
               x: toLego.x + toPos.endX,
-              y: toLego.y + toPos.endY,
+              y: toLego.y + toPos.endY
             };
 
             const distance = pointToLineDistance(
@@ -1207,7 +1205,7 @@ const LegoStudioView: React.FC = () => {
               fromPoint.x,
               fromPoint.y,
               toPoint.x,
-              toPoint.y,
+              toPoint.y
             );
             if (distance < minDistance && distance < 20) {
               minDistance = distance;
@@ -1224,17 +1222,17 @@ const LegoStudioView: React.FC = () => {
           const closestLeg = findClosestDanglingLeg(
             { x, y },
             droppedLegos,
-            connections,
+            connections
           );
           if (closestLeg) {
             const pos = calculateLegPosition(
               closestLeg.lego,
-              closestLeg.legIndex,
+              closestLeg.legIndex
             );
             const legX = closestLeg.lego.x + pos.endX;
             const legY = closestLeg.lego.y + pos.endY;
             const distance = Math.sqrt(
-              Math.pow(x - legX, 2) + Math.pow(y - legY, 2),
+              Math.pow(x - legX, 2) + Math.pow(y - legY, 2)
             );
 
             if (distance < 20) {
@@ -1243,10 +1241,10 @@ const LegoStudioView: React.FC = () => {
                 new Connection(
                   {
                     legoId: closestLeg.lego.instanceId,
-                    legIndex: closestLeg.legIndex,
+                    legIndex: closestLeg.legIndex
                   },
-                  { legoId: draggedLego.instanceId, legIndex: 0 },
-                ),
+                  { legoId: draggedLego.instanceId, legIndex: 0 }
+                )
               );
             } else {
               setHoveredConnection(null);
@@ -1266,7 +1264,7 @@ const LegoStudioView: React.FC = () => {
       setLegDragState((prev) => ({
         ...prev!,
         currentX: mouseX,
-        currentY: mouseY,
+        currentY: mouseY
       }));
     }
   };
@@ -1283,7 +1281,7 @@ const LegoStudioView: React.FC = () => {
       const rescaledLegos = droppedLegos.map((lego) => ({
         ...lego,
         x: (lego.x - centerX) * scale + centerX,
-        y: (lego.y - centerY) * scale + centerY,
+        y: (lego.y - centerY) * scale + centerY
       }));
       setDroppedLegos(rescaledLegos);
       encodeCanvasState(rescaledLegos, connections, hideConnectedLegs);
@@ -1310,7 +1308,7 @@ const LegoStudioView: React.FC = () => {
       setSelectionBox((prev) => ({
         ...prev,
         isSelecting: false,
-        justFinished: true,
+        justFinished: true
       }));
       return;
     }
@@ -1321,7 +1319,7 @@ const LegoStudioView: React.FC = () => {
         startX: 0,
         startY: 0,
         currentX: 0,
-        currentY: 0,
+        currentY: 0
       };
       setCanvasDragState(newCanvasDragState);
       return;
@@ -1344,7 +1342,7 @@ const LegoStudioView: React.FC = () => {
             const updatedLego = {
               ...draggedLego,
               x: newX,
-              y: newY,
+              y: newY
             };
 
             const trafo = new InjectTwoLegged(connections, droppedLegos);
@@ -1352,20 +1350,20 @@ const LegoStudioView: React.FC = () => {
               .apply(updatedLego, hoveredConnection, {
                 ...draggedLego,
                 x: newX - deltaX,
-                y: newY - deltaY,
+                y: newY - deltaY
               })
               .then(
                 ({
                   connections: newConnections,
                   droppedLegos: newDroppedLegos,
-                  operation,
+                  operation
                 }) => {
                   updatedLegos = newDroppedLegos;
                   updatedConnections = newConnections;
                   setDroppedLegos(updatedLegos);
                   setConnections(updatedConnections);
                   operationHistory.addOperation(operation);
-                },
+                }
               )
               .catch((error) => {
                 setError(`${error}`);
@@ -1376,7 +1374,7 @@ const LegoStudioView: React.FC = () => {
             const updatedLego = {
               ...draggedLego,
               x: newX,
-              y: newY,
+              y: newY
             };
 
             const addStopper = new AddStopper(connections, droppedLegos);
@@ -1384,13 +1382,13 @@ const LegoStudioView: React.FC = () => {
               const {
                 connections: newConnections,
                 droppedLegos: newDroppedLegos,
-                operation,
+                operation
               } = addStopper.apply(
                 droppedLegos.find(
-                  (l) => l.instanceId === hoveredConnection.from.legoId,
+                  (l) => l.instanceId === hoveredConnection.from.legoId
                 )!,
                 hoveredConnection.from.legIndex,
-                updatedLego,
+                updatedLego
               );
               updatedLegos = newDroppedLegos;
               updatedConnections = newConnections;
@@ -1407,7 +1405,7 @@ const LegoStudioView: React.FC = () => {
                     : "Failed to add stopper",
                 status: "error",
                 duration: 3000,
-                isClosable: true,
+                isClosable: true
               });
             }
           }
@@ -1419,42 +1417,42 @@ const LegoStudioView: React.FC = () => {
             (instanceId) => ({
               oldLego: {
                 ...(droppedLegos.find(
-                  (lego) => lego.instanceId === instanceId,
+                  (lego) => lego.instanceId === instanceId
                 )! as DroppedLego),
                 x: groupDragState.originalPositions[instanceId].x,
-                y: groupDragState.originalPositions[instanceId].y,
+                y: groupDragState.originalPositions[instanceId].y
               },
               newLego: {
                 ...(droppedLegos.find(
-                  (lego) => lego.instanceId === instanceId,
+                  (lego) => lego.instanceId === instanceId
                 )! as DroppedLego),
                 x: groupDragState.originalPositions[instanceId].x + deltaX,
-                y: groupDragState.originalPositions[instanceId].y + deltaY,
-              },
-            }),
+                y: groupDragState.originalPositions[instanceId].y + deltaY
+              }
+            })
           );
 
           operationHistory.addOperation({
             type: "move",
-            data: { legosToUpdate: groupMoves },
+            data: { legosToUpdate: groupMoves }
           });
         } else if (tensorNetwork) {
           const groupMoves = tensorNetwork.legos.map((lego) => ({
             oldLego: {
               ...lego,
               x: lego.x - deltaX,
-              y: lego.y - deltaY,
+              y: lego.y - deltaY
             },
             newLego: {
               ...lego,
               x: lego.x,
-              y: lego.y,
-            },
+              y: lego.y
+            }
           }));
 
           operationHistory.addOperation({
             type: "move",
-            data: { legosToUpdate: groupMoves },
+            data: { legosToUpdate: groupMoves }
           });
         } else {
           operationHistory.addOperation({
@@ -1467,18 +1465,18 @@ const LegoStudioView: React.FC = () => {
                       dragState.draggedLegoIndex
                     ] as DroppedLego),
                     x: dragState.originalX,
-                    y: dragState.originalY,
+                    y: dragState.originalY
                   },
                   newLego: {
                     ...(droppedLegos[
                       dragState.draggedLegoIndex
                     ] as DroppedLego),
                     x: newX,
-                    y: newY,
-                  },
-                },
-              ],
-            },
+                    y: newY
+                  }
+                }
+              ]
+            }
           });
         }
       }
@@ -1497,12 +1495,12 @@ const LegoStudioView: React.FC = () => {
           const pos = calculateLegPosition(lego, i);
           const targetPoint = {
             x: lego.x + pos.endX,
-            y: lego.y + pos.endY,
+            y: lego.y + pos.endY
           };
 
           const distance = Math.sqrt(
             Math.pow(mouseX - targetPoint.x, 2) +
-              Math.pow(mouseY - targetPoint.y, 2),
+              Math.pow(mouseY - targetPoint.y, 2)
           );
 
           if (distance < 10) {
@@ -1512,13 +1510,13 @@ const LegoStudioView: React.FC = () => {
                 (conn.from.legoId === legDragState.legoId &&
                   conn.from.legIndex === legDragState.legIndex) ||
                 (conn.to.legoId === legDragState.legoId &&
-                  conn.to.legIndex === legDragState.legIndex),
+                  conn.to.legIndex === legDragState.legIndex)
             );
             const isTargetLegConnected = connections.some(
               (conn) =>
                 (conn.from.legoId === lego.instanceId &&
                   conn.from.legIndex === i) ||
-                (conn.to.legoId === lego.instanceId && conn.to.legIndex === i),
+                (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
             );
 
             if (
@@ -1542,19 +1540,19 @@ const LegoStudioView: React.FC = () => {
                 (conn.from.legoId === lego.instanceId &&
                   conn.from.legIndex === i &&
                   conn.to.legoId === legDragState.legoId &&
-                  conn.to.legIndex === legDragState.legIndex),
+                  conn.to.legIndex === legDragState.legIndex)
             );
 
             if (!connectionExists) {
               const newConnection = new Connection(
                 {
                   legoId: legDragState.legoId,
-                  legIndex: legDragState.legIndex,
+                  legIndex: legDragState.legIndex
                 },
                 {
                   legoId: lego.instanceId,
-                  legIndex: i,
-                },
+                  legIndex: i
+                }
               );
 
               setConnections((prev) => {
@@ -1562,14 +1560,14 @@ const LegoStudioView: React.FC = () => {
                 encodeCanvasState(
                   droppedLegos,
                   newConnections,
-                  hideConnectedLegs,
+                  hideConnectedLegs
                 );
                 return newConnections;
               });
 
               operationHistory.addOperation({
                 type: "connect",
-                data: { connectionsToAdd: [newConnection] },
+                data: { connectionsToAdd: [newConnection] }
               });
               return true;
             }
@@ -1586,7 +1584,7 @@ const LegoStudioView: React.FC = () => {
       ...prev,
       isDragging: false,
       draggedLegoIndex: -1,
-      justFinished: dragState.isDragging,
+      justFinished: dragState.isDragging
     }));
 
     setGroupDragState(null);
@@ -1600,7 +1598,7 @@ const LegoStudioView: React.FC = () => {
         startX: 0,
         startY: 0,
         currentX: 0,
-        currentY: 0,
+        currentY: 0
       });
     }
   };
@@ -1637,7 +1635,7 @@ const LegoStudioView: React.FC = () => {
           "-" +
           lego.instanceId +
           "-" +
-          lego.parity_check_matrix[0].length / 2,
+          lego.parity_check_matrix[0].length / 2
       );
     const sortedConnections = [...network.connections].sort((a, b) => {
       const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
@@ -1646,7 +1644,7 @@ const LegoStudioView: React.FC = () => {
     });
     const sig = JSON.stringify({
       legos: sortedLegos,
-      connections: sortedConnections,
+      connections: sortedConnections
     });
     return sig;
   };
@@ -1661,7 +1659,7 @@ const LegoStudioView: React.FC = () => {
       ) {
         e.preventDefault();
         const networkToCopy = tensorNetwork || {
-          legos: [selectedLego],
+          legos: [selectedLego]
         };
 
         const jsonStr = JSON.stringify(networkToCopy);
@@ -1673,7 +1671,7 @@ const LegoStudioView: React.FC = () => {
               description: "Network data has been copied",
               status: "success",
               duration: 2000,
-              isClosable: true,
+              isClosable: true
             });
           })
           .catch((error) => {
@@ -1682,7 +1680,7 @@ const LegoStudioView: React.FC = () => {
               description: "Failed to copy network data (" + error + ")",
               status: "error",
               duration: 2000,
-              isClosable: true,
+              isClosable: true
             });
           });
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
@@ -1733,12 +1731,9 @@ const LegoStudioView: React.FC = () => {
                   instanceId: newId,
                   x: l.x + dropX - pastedData.legos[0].x, // Maintain relative positions
                   y: l.y + dropY - pastedData.legos[0].y,
-                  style: getLegoStyle(
-                    l.id,
-                    l.parity_check_matrix[0].length / 2,
-                  ),
+                  style: getLegoStyle(l.id, l.parity_check_matrix[0].length / 2)
                 };
-              },
+              }
             );
 
             // Create new connections with updated instance IDs
@@ -1747,14 +1742,14 @@ const LegoStudioView: React.FC = () => {
                 return new Connection(
                   {
                     legoId: instanceIdMap.get(conn.from.legoId)!,
-                    legIndex: conn.from.legIndex,
+                    legIndex: conn.from.legIndex
                   },
                   {
                     legoId: instanceIdMap.get(conn.to.legoId)!,
-                    legIndex: conn.to.legIndex,
-                  },
+                    legIndex: conn.to.legIndex
+                  }
                 );
-              },
+              }
             );
 
             // Update state
@@ -1766,15 +1761,15 @@ const LegoStudioView: React.FC = () => {
               type: "add",
               data: {
                 legosToAdd: newLegos,
-                connectionsToAdd: newConnections,
-              },
+                connectionsToAdd: newConnections
+              }
             });
 
             // Update URL state
             encodeCanvasState(
               [...droppedLegos, ...newLegos],
               [...connections, ...newConnections],
-              hideConnectedLegs,
+              hideConnectedLegs
             );
 
             toast({
@@ -1782,7 +1777,7 @@ const LegoStudioView: React.FC = () => {
               description: `Pasted ${newLegos.length} lego${newLegos.length > 1 ? "s" : ""}`,
               status: "success",
               duration: 2000,
-              isClosable: true,
+              isClosable: true
             });
           }
         } catch (err) {
@@ -1791,7 +1786,7 @@ const LegoStudioView: React.FC = () => {
             description: "Invalid network data in clipboard (" + err + ")",
             status: "error",
             duration: 2000,
-            isClosable: true,
+            isClosable: true
           });
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
@@ -1808,19 +1803,19 @@ const LegoStudioView: React.FC = () => {
         if (droppedLegos.length > 0) {
           // Create a tensor network from all legos
           const selectedLegoIds = new Set(
-            droppedLegos.map((lego) => lego.instanceId),
+            droppedLegos.map((lego) => lego.instanceId)
           );
 
           // Collect only internal connections between selected legos
           const internalConnections = connections.filter(
             (conn) =>
               selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId),
+              selectedLegoIds.has(conn.to.legoId)
           );
 
           const tensorNetwork = new TensorNetwork(
             droppedLegos,
-            internalConnections,
+            internalConnections
           );
 
           tensorNetwork.signature = createNetworkSignature(tensorNetwork);
@@ -1845,8 +1840,8 @@ const LegoStudioView: React.FC = () => {
             legosToRemove.some(
               (lego) =>
                 conn.from.legoId === lego.instanceId ||
-                conn.to.legoId === lego.instanceId,
-            ),
+                conn.to.legoId === lego.instanceId
+            )
           );
 
           // Add to history
@@ -1854,8 +1849,8 @@ const LegoStudioView: React.FC = () => {
             type: "remove",
             data: {
               legosToRemove: legosToRemove,
-              connectionsToRemove: connectionsToRemove,
-            },
+              connectionsToRemove: connectionsToRemove
+            }
           });
 
           // Remove the connections and legos
@@ -1865,15 +1860,15 @@ const LegoStudioView: React.FC = () => {
                 !legosToRemove.some(
                   (lego) =>
                     conn.from.legoId === lego.instanceId ||
-                    conn.to.legoId === lego.instanceId,
-                ),
-            ),
+                    conn.to.legoId === lego.instanceId
+                )
+            )
           );
           setDroppedLegos((prev) =>
             prev.filter(
               (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId),
-            ),
+                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
+            )
           );
 
           // Clear selection states
@@ -1884,17 +1879,17 @@ const LegoStudioView: React.FC = () => {
           encodeCanvasState(
             droppedLegos.filter(
               (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId),
+                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
             ),
             connections.filter(
               (conn) =>
                 !legosToRemove.some(
                   (l) =>
                     conn.from.legoId === l.instanceId ||
-                    conn.to.legoId === l.instanceId,
-                ),
+                    conn.to.legoId === l.instanceId
+                )
             ),
-            hideConnectedLegs,
+            hideConnectedLegs
           );
         }
       } else if (e.key === "Escape") {
@@ -1931,7 +1926,7 @@ const LegoStudioView: React.FC = () => {
     operationHistory.addOperation,
     encodeCanvasState,
     hideConnectedLegs,
-    mousePosition,
+    mousePosition
   ]);
 
   useEffect(() => {
@@ -1948,7 +1943,7 @@ const LegoStudioView: React.FC = () => {
     const handleBlur = () => {
       setCanvasDragState((prev) => ({
         ...prev,
-        isDragging: false,
+        isDragging: false
       }));
       setAltKeyPressed(false);
     };
@@ -1960,7 +1955,7 @@ const LegoStudioView: React.FC = () => {
     const handleFocus = () => {
       setCanvasDragState((prev) => ({
         ...prev,
-        isDragging: false,
+        isDragging: false
       }));
       setAltKeyPressed(false);
     };
@@ -1971,7 +1966,7 @@ const LegoStudioView: React.FC = () => {
 
   useEffect(() => {
     const {
-      data: { subscription },
+      data: { subscription }
     } = userContextSupabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null);
     });
@@ -1979,7 +1974,7 @@ const LegoStudioView: React.FC = () => {
   }, []);
   const handleConnectionDoubleClick = (
     e: React.MouseEvent,
-    connection: Connection,
+    connection: Connection
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1987,7 +1982,7 @@ const LegoStudioView: React.FC = () => {
     // Add to history before removing
     operationHistory.addOperation({
       type: "disconnect",
-      data: { connectionsToRemove: [connection] },
+      data: { connectionsToRemove: [connection] }
     });
 
     // Remove the connection and update URL state with the new connections
@@ -1999,7 +1994,7 @@ const LegoStudioView: React.FC = () => {
             conn.from.legIndex === connection.from.legIndex &&
             conn.to.legoId === connection.to.legoId &&
             conn.to.legIndex === connection.to.legIndex
-          ),
+          )
       );
       encodeCanvasState(droppedLegos, newConnections, hideConnectedLegs);
       return newConnections;
@@ -2014,8 +2009,8 @@ const LegoStudioView: React.FC = () => {
       type: "remove",
       data: {
         legosToRemove: droppedLegos,
-        connectionsToRemove: connections,
-      },
+        connectionsToRemove: connections
+      }
     });
 
     // Clear all state
@@ -2043,7 +2038,7 @@ const LegoStudioView: React.FC = () => {
 
   const requestTensorNetwork = async (
     matrix: number[][],
-    networkType: string,
+    networkType: string
   ) => {
     const acessToken = await getAccessToken();
     const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
@@ -2052,14 +2047,14 @@ const LegoStudioView: React.FC = () => {
       {
         matrix,
         networkType: networkType,
-        start_node_index: newInstanceId(droppedLegos),
+        start_node_index: newInstanceId(droppedLegos)
       },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-      },
+          Authorization: `Bearer ${key}`
+        }
+      }
     );
     return response;
   };
@@ -2078,13 +2073,13 @@ const LegoStudioView: React.FC = () => {
 
       // Group legos by type
       const zNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("z"),
+        lego.shortName.startsWith("z")
       );
       const qNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("q"),
+        lego.shortName.startsWith("q")
       );
       const xNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("x"),
+        lego.shortName.startsWith("x")
       );
 
       // Calculate positions for each row
@@ -2105,7 +2100,7 @@ const LegoStudioView: React.FC = () => {
 
         // Calculate x position based on index in row
         const indexInRow = nodesInRow.findIndex(
-          (l) => l.instanceId === lego.instanceId,
+          (l) => l.instanceId === lego.instanceId
         );
         const x =
           (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
@@ -2116,7 +2111,7 @@ const LegoStudioView: React.FC = () => {
           x,
           y,
           style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         };
       });
 
@@ -2129,8 +2124,8 @@ const LegoStudioView: React.FC = () => {
         type: "add",
         data: {
           legosToAdd: newLegos,
-          connectionsToAdd: newConnections,
-        },
+          connectionsToAdd: newConnections
+        }
       });
 
       const updatedLegos = [...droppedLegos, ...newLegos];
@@ -2163,10 +2158,10 @@ const LegoStudioView: React.FC = () => {
 
       // Group legos by type
       const checkNodes = legos.filter(
-        (lego: DroppedLego) => !lego.shortName.startsWith("q"),
+        (lego: DroppedLego) => !lego.shortName.startsWith("q")
       );
       const qNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("q"),
+        lego.shortName.startsWith("q")
       );
 
       // Calculate positions for each row
@@ -2184,7 +2179,7 @@ const LegoStudioView: React.FC = () => {
 
         // Calculate x position based on index in row
         const indexInRow = nodesInRow.findIndex(
-          (l) => l.instanceId === lego.instanceId,
+          (l) => l.instanceId === lego.instanceId
         );
         const x =
           (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
@@ -2195,7 +2190,7 @@ const LegoStudioView: React.FC = () => {
           x,
           y,
           style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         };
       });
 
@@ -2208,8 +2203,8 @@ const LegoStudioView: React.FC = () => {
         type: "add",
         data: {
           legosToAdd: newLegos,
-          connectionsToAdd: newConnections,
-        },
+          connectionsToAdd: newConnections
+        }
       });
 
       const updatedLegos = [...droppedLegos, ...newLegos];
@@ -2260,7 +2255,7 @@ const LegoStudioView: React.FC = () => {
           y,
           style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
           pushedLegs: [],
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         };
       });
 
@@ -2273,8 +2268,8 @@ const LegoStudioView: React.FC = () => {
         type: "add",
         data: {
           legosToAdd: newLegos,
-          connectionsToAdd: newMspConnections,
-        },
+          connectionsToAdd: newMspConnections
+        }
       });
 
       const updatedLegos = [...droppedLegos, ...newLegos];
@@ -2286,7 +2281,7 @@ const LegoStudioView: React.FC = () => {
           error.response?.data?.detail ||
           error.message;
         setError(
-          `Failed to create measurement state preparation network: ${message}`,
+          `Failed to create measurement state preparation network: ${message}`
         );
       } else {
         setError("Failed to create measurement state preparation network");
@@ -2302,7 +2297,7 @@ const LegoStudioView: React.FC = () => {
     const numQubits = clickedLego.parity_check_matrix[0].length / 2;
     const h = clickedLego.parity_check_matrix;
     const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
-      (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1,
+      (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1
     );
     const currentOperator = existingPushedLeg
       ? h[existingPushedLeg][legIndex] == 1
@@ -2312,10 +2307,10 @@ const LegoStudioView: React.FC = () => {
 
     // Find available operators in parity check matrix for this leg
     const hasX = clickedLego.parity_check_matrix.some(
-      (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0,
+      (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0
     );
     const hasZ = clickedLego.parity_check_matrix.some(
-      (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1,
+      (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1
     );
 
     // Cycle through operators only if they exist in matrix
@@ -2351,7 +2346,7 @@ const LegoStudioView: React.FC = () => {
 
     // Find the row index that corresponds to the baseRepresentative
     const rowIndex = clickedLego.parity_check_matrix.findIndex((row) =>
-      row.every((val, idx) => val === baseRepresentative[idx]),
+      row.every((val, idx) => val === baseRepresentative[idx])
     );
 
     // Update the selected rows based on the pushed legs
@@ -2360,7 +2355,7 @@ const LegoStudioView: React.FC = () => {
     // Create a new lego instance with updated properties
     const updatedLego = {
       ...clickedLego,
-      selectedMatrixRows: selectedRows,
+      selectedMatrixRows: selectedRows
     };
 
     // Update the selectedLego state
@@ -2368,7 +2363,7 @@ const LegoStudioView: React.FC = () => {
 
     // Update droppedLegos by replacing the old lego with the new one
     const newDroppedLegos = droppedLegos.map((lego) =>
-      lego.instanceId === legoId ? updatedLego : lego,
+      lego.instanceId === legoId ? updatedLego : lego
     );
     setDroppedLegos(newDroppedLegos);
     encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
@@ -2376,14 +2371,14 @@ const LegoStudioView: React.FC = () => {
     const selectedNetwork = findConnectedComponent(
       clickedLego,
       newDroppedLegos,
-      connections,
+      connections
     );
     simpleAutoFlow(
       updatedLego,
       selectedNetwork,
       connections,
       setDroppedLegos,
-      setTensorNetwork,
+      setTensorNetwork
     );
   };
 
@@ -2393,7 +2388,7 @@ const LegoStudioView: React.FC = () => {
       const {
         connections: newConnections,
         droppedLegos: newDroppedLegos,
-        operation: operation,
+        operation: operation
       } = await trafo.apply(legosToFuse);
       operationHistory.addOperation(operation);
       setDroppedLegos(newDroppedLegos);
@@ -2412,7 +2407,7 @@ const LegoStudioView: React.FC = () => {
     center: { x: number; y: number },
     radius: number,
     skipLegos: DroppedLego[],
-    legosToCheck: DroppedLego[],
+    legosToCheck: DroppedLego[]
   ): DroppedLego[] => {
     const skipIds = new Set(skipLegos.map((l) => l.instanceId));
     return legosToCheck.map((lego) => {
@@ -2440,7 +2435,7 @@ const LegoStudioView: React.FC = () => {
 
   const handleCustomLegoSubmit = (
     matrix: number[][],
-    logicalLegs: number[],
+    logicalLegs: number[]
   ) => {
     const instanceId = newInstanceId(droppedLegos);
     const newLego: DroppedLego = {
@@ -2460,27 +2455,27 @@ const LegoStudioView: React.FC = () => {
       logical_legs: logicalLegs,
       gauge_legs: [],
       style: getLegoStyle("custom", matrix[0].length / 2),
-      selectedMatrixRows: [],
+      selectedMatrixRows: []
     };
 
     setDroppedLegos([...droppedLegos, newLego]);
     operationHistory.addOperation({
       type: "add",
       data: {
-        legosToAdd: [newLego],
-      },
+        legosToAdd: [newLego]
+      }
     });
     encodeCanvasState(
       [...droppedLegos, newLego],
       connections,
-      hideConnectedLegs,
+      hideConnectedLegs
     );
   };
 
   const handlePullOutSameColoredLeg = async (lego: DroppedLego) => {
     // Get max instance ID
     const maxInstanceId = Math.max(
-      ...droppedLegos.map((l) => parseInt(l.instanceId)),
+      ...droppedLegos.map((l) => parseInt(l.instanceId))
     );
     const numLegs = lego.parity_check_matrix[0].length / 2;
 
@@ -2488,7 +2483,7 @@ const LegoStudioView: React.FC = () => {
     const existingConnections = connections.filter(
       (conn) =>
         conn.from.legoId === lego.instanceId ||
-        conn.to.legoId === lego.instanceId,
+        conn.to.legoId === lego.instanceId
     );
 
     try {
@@ -2496,15 +2491,15 @@ const LegoStudioView: React.FC = () => {
       const newLegoData = Legos.getDynamicLego({
         lego_id: lego.id,
         parameters: {
-          d: numLegs + 1,
-        },
+          d: numLegs + 1
+        }
       });
 
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = {
         ...lego,
         style: getLegoStyle(lego.id, numLegs + 1),
-        parity_check_matrix: newLegoData.parity_check_matrix,
+        parity_check_matrix: newLegoData.parity_check_matrix
       };
 
       // Create a stopper based on the lego type
@@ -2521,37 +2516,36 @@ const LegoStudioView: React.FC = () => {
         gauge_legs: [],
         style: getLegoStyle(
           lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
-          1,
+          1
         ),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       // Create new connection to the stopper
       const newConnection: Connection = new Connection(
         {
           legoId: lego.instanceId,
-          legIndex: numLegs, // The new leg will be at index numLegs
+          legIndex: numLegs // The new leg will be at index numLegs
         },
         {
           legoId: stopperLego.instanceId,
-          legIndex: 0,
-        },
+          legIndex: 0
+        }
       );
 
       // Update the state
       const newLegos = [
         ...droppedLegos.filter((l) => l.instanceId !== lego.instanceId),
         newLego,
-        stopperLego,
+        stopperLego
       ];
       const newConnections = [
         ...connections.filter(
           (c) =>
-            c.from.legoId !== lego.instanceId &&
-            c.to.legoId !== lego.instanceId,
+            c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
         ),
         ...existingConnections,
-        newConnection,
+        newConnection
       ];
 
       setDroppedLegos(newLegos);
@@ -2564,8 +2558,8 @@ const LegoStudioView: React.FC = () => {
           legosToRemove: [lego],
           connectionsToRemove: [],
           legosToAdd: [newLego, stopperLego],
-          connectionsToAdd: [newConnection],
-        },
+          connectionsToAdd: [newConnection]
+        }
       });
 
       // Update the selected lego
@@ -2590,7 +2584,7 @@ const LegoStudioView: React.FC = () => {
         description: "Could not find the canvas panel",
         status: "error",
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
       return;
     }
@@ -2598,7 +2592,7 @@ const LegoStudioView: React.FC = () => {
     // Create a new SVG element that will contain everything
     const combinedSvg = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "svg",
+      "svg"
     );
 
     // First, let's calculate the total bounding box
@@ -2665,7 +2659,7 @@ const LegoStudioView: React.FC = () => {
     // Set the viewBox and size of the combined SVG
     combinedSvg.setAttribute(
       "viewBox",
-      `${minX - padding} ${minY - padding} ${width} ${height}`,
+      `${minX - padding} ${minY - padding} ${width} ${height}`
     );
     combinedSvg.setAttribute("width", width.toString());
     combinedSvg.setAttribute("height", height.toString());
@@ -2692,12 +2686,12 @@ const LegoStudioView: React.FC = () => {
       description: "SVG file has been downloaded",
       status: "success",
       duration: 3000,
-      isClosable: true,
+      isClosable: true
     });
   };
 
   function handleTitleKeyDown(
-    event: React.KeyboardEvent<HTMLDivElement>,
+    event: React.KeyboardEvent<HTMLDivElement>
   ): void {
     event.stopPropagation();
   }
@@ -2788,7 +2782,7 @@ const LegoStudioView: React.FC = () => {
                     encodeCanvasState(
                       droppedLegos,
                       connections,
-                      !hideConnectedLegs,
+                      !hideConnectedLegs
                     );
                   }}
                   isChecked={hideConnectedLegs}
@@ -2811,14 +2805,14 @@ const LegoStudioView: React.FC = () => {
                     const rescaledLegos = droppedLegos.map((lego) => ({
                       ...lego,
                       x: (lego.x - centerX) * scale + centerX,
-                      y: (lego.y - centerY) * scale + centerY,
+                      y: (lego.y - centerY) * scale + centerY
                     }));
                     setDroppedLegos(rescaledLegos);
                     setZoomLevel(1);
                     encodeCanvasState(
                       rescaledLegos,
                       connections,
-                      hideConnectedLegs,
+                      hideConnectedLegs
                     );
                   }}
                   isDisabled={zoomLevel === 1}
@@ -2836,7 +2830,7 @@ const LegoStudioView: React.FC = () => {
               onClick={() => {
                 const clearedLegos = droppedLegos.map((lego) => ({
                   ...lego,
-                  selectedMatrixRows: [],
+                  selectedMatrixRows: []
                 }));
                 setDroppedLegos(clearedLegos);
                 setSelectedLego(null);
@@ -2846,7 +2840,7 @@ const LegoStudioView: React.FC = () => {
                 !droppedLegos.some(
                   (lego) =>
                     lego.selectedMatrixRows &&
-                    lego.selectedMatrixRows.length > 0,
+                    lego.selectedMatrixRows.length > 0
                 )
               }
             >
@@ -2873,7 +2867,7 @@ const LegoStudioView: React.FC = () => {
                     px={2}
                     _hover={{
                       bg: useColorModeValue("gray.100", "gray.700"),
-                      cursor: "pointer",
+                      cursor: "pointer"
                     }}
                     as="p"
                     fontSize="large"
@@ -2975,7 +2969,7 @@ const LegoStudioView: React.FC = () => {
                     ? canvasDragState.isDragging
                       ? "grabbing"
                       : "grab"
-                    : "default",
+                    : "default"
                 }}
               >
                 {/* Connection Lines */}
@@ -2988,17 +2982,17 @@ const LegoStudioView: React.FC = () => {
                     width: "100%",
                     height: "100%",
                     pointerEvents: "none",
-                    userSelect: "none",
+                    userSelect: "none"
                   }}
                 >
                   {/* Existing connections */}
                   <g style={{ pointerEvents: "all" }}>
                     {connections.map((conn) => {
                       const fromLego = droppedLegos.find(
-                        (l) => l.instanceId === conn.from.legoId,
+                        (l) => l.instanceId === conn.from.legoId
                       );
                       const toLego = droppedLegos.find(
-                        (l) => l.instanceId === conn.to.legoId,
+                        (l) => l.instanceId === conn.to.legoId
                       );
                       if (!fromLego || !toLego) return null;
 
@@ -3009,24 +3003,24 @@ const LegoStudioView: React.FC = () => {
                               conn.from.legoId,
                               conn.from.legIndex,
                               conn.to.legoId,
-                              conn.to.legIndex,
+                              conn.to.legIndex
                             ]
                           : [
                               conn.to.legoId,
                               conn.to.legIndex,
                               conn.from.legoId,
-                              conn.from.legIndex,
+                              conn.from.legIndex
                             ];
                       const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
                       // Calculate positions using shared function
                       const fromPos = calculateLegPosition(
                         fromLego,
-                        conn.from.legIndex,
+                        conn.from.legIndex
                       );
                       const toPos = calculateLegPosition(
                         toLego,
-                        conn.to.legIndex,
+                        conn.to.legIndex
                       );
 
                       // Check if legs are connected and should be hidden
@@ -3035,24 +3029,24 @@ const LegoStudioView: React.FC = () => {
                           (c.from.legoId === fromLego.instanceId &&
                             c.from.legIndex === conn.from.legIndex) ||
                           (c.to.legoId === fromLego.instanceId &&
-                            c.to.legIndex === conn.from.legIndex),
+                            c.to.legIndex === conn.from.legIndex)
                       );
                       const toLegConnected = connections.some(
                         (c) =>
                           (c.from.legoId === toLego.instanceId &&
                             c.from.legIndex === conn.to.legIndex) ||
                           (c.to.legoId === toLego.instanceId &&
-                            c.to.legIndex === conn.to.legIndex),
+                            c.to.legIndex === conn.to.legIndex)
                       );
 
                       // Check if legs are highlighted
                       const fromLegStyle = fromLego.style.getLegStyle(
                         conn.from.legIndex,
-                        fromLego,
+                        fromLego
                       );
                       const toLegStyle = toLego.style.getLegStyle(
                         conn.to.legIndex,
-                        toLego,
+                        toLego
                       );
                       const fromLegHighlighted = fromLegStyle.is_highlighted;
                       const toLegHighlighted = toLegStyle.is_highlighted;
@@ -3080,23 +3074,23 @@ const LegoStudioView: React.FC = () => {
                         ? { x: fromLego.x, y: fromLego.y }
                         : {
                             x: fromLego.x + fromPos.endX,
-                            y: fromLego.y + fromPos.endY,
+                            y: fromLego.y + fromPos.endY
                           };
                       const toPoint = hideToLeg
                         ? { x: toLego.x, y: toLego.y }
                         : {
                             x: toLego.x + toPos.endX,
-                            y: toLego.y + toPos.endY,
+                            y: toLego.y + toPos.endY
                           };
 
                       // Get the colors of the connected legs
                       const fromLegColor = fromLego.style.getLegColor(
                         conn.from.legIndex,
-                        fromLego,
+                        fromLego
                       );
                       const toLegColor = toLego.style.getLegColor(
                         conn.to.legIndex,
-                        toLego,
+                        toLego
                       );
                       const colorsMatch = fromLegColor === toLegColor;
 
@@ -3108,7 +3102,7 @@ const LegoStudioView: React.FC = () => {
                           Math.cos(fromPos.angle) * controlPointDistance,
                         y:
                           fromPoint.y +
-                          Math.sin(fromPos.angle) * controlPointDistance,
+                          Math.sin(fromPos.angle) * controlPointDistance
                       };
                       const cp2 = {
                         x:
@@ -3116,7 +3110,7 @@ const LegoStudioView: React.FC = () => {
                           Math.cos(toPos.angle) * controlPointDistance,
                         y:
                           toPoint.y +
-                          Math.sin(toPos.angle) * controlPointDistance,
+                          Math.sin(toPos.angle) * controlPointDistance
                       };
 
                       // Create the path string for the cubic Bezier curve
@@ -3125,7 +3119,7 @@ const LegoStudioView: React.FC = () => {
                       // Calculate midpoint for warning sign
                       const midPoint = {
                         x: (fromPoint.x + toPoint.x) / 2,
-                        y: (fromPoint.y + toPoint.y) / 2,
+                        y: (fromPoint.y + toPoint.y) / 2
                       };
 
                       function fromChakraColorToHex(color: string): string {
@@ -3164,7 +3158,7 @@ const LegoStudioView: React.FC = () => {
                             strokeWidth="10"
                             fill="none"
                             style={{
-                              cursor: "pointer",
+                              cursor: "pointer"
                             }}
                             onDoubleClick={(e) =>
                               handleConnectionDoubleClick(e, conn)
@@ -3202,7 +3196,7 @@ const LegoStudioView: React.FC = () => {
                               stroke: connectorColor,
                               filter: isHovered
                                 ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
-                                : "none",
+                                : "none"
                             }}
                           />
                           {/* Warning sign if operators don't match */}
@@ -3228,23 +3222,23 @@ const LegoStudioView: React.FC = () => {
                   {legDragState?.isDragging &&
                     (() => {
                       const fromLego = droppedLegos.find(
-                        (l) => l.instanceId === legDragState.legoId,
+                        (l) => l.instanceId === legDragState.legoId
                       );
                       if (!fromLego) return null;
 
                       // Calculate position using shared function
                       const fromPos = calculateLegPosition(
                         fromLego,
-                        legDragState.legIndex,
+                        legDragState.legIndex
                       );
                       const fromPoint = {
                         x: fromLego.x + fromPos.endX,
-                        y: fromLego.y + fromPos.endY,
+                        y: fromLego.y + fromPos.endY
                       };
 
                       const legStyle = fromLego.style.getLegStyle(
                         legDragState.legIndex,
-                        fromLego,
+                        fromLego
                       );
                       const controlPointDistance = 30;
                       const cp1 = {
@@ -3253,11 +3247,11 @@ const LegoStudioView: React.FC = () => {
                           Math.cos(legStyle.angle) * controlPointDistance,
                         y:
                           fromPoint.y +
-                          Math.sin(legStyle.angle) * controlPointDistance,
+                          Math.sin(legStyle.angle) * controlPointDistance
                       };
                       const cp2 = {
                         x: legDragState.currentX,
-                        y: legDragState.currentY,
+                        y: legDragState.currentY
                       };
 
                       const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
@@ -3288,7 +3282,7 @@ const LegoStudioView: React.FC = () => {
                                 (c.from.legoId === lego.instanceId &&
                                   c.from.legIndex === legIndex) ||
                                 (c.to.legoId === lego.instanceId &&
-                                  c.to.legIndex === legIndex),
+                                  c.to.legIndex === legIndex)
                             );
 
                             // If leg is not connected, always show the label
@@ -3312,7 +3306,7 @@ const LegoStudioView: React.FC = () => {
 
                             const thisLegStyle = lego.style.getLegStyle(
                               legIndex,
-                              lego,
+                              lego
                             );
                             const isThisHighlighted =
                               thisLegStyle.is_highlighted;
@@ -3323,7 +3317,7 @@ const LegoStudioView: React.FC = () => {
                                 (c.from.legoId === lego.instanceId &&
                                   c.from.legIndex === legIndex) ||
                                 (c.to.legoId === lego.instanceId &&
-                                  c.to.legIndex === legIndex),
+                                  c.to.legIndex === legIndex)
                             );
 
                             if (!connection) return null;
@@ -3334,14 +3328,14 @@ const LegoStudioView: React.FC = () => {
                                 : connection.from;
 
                             const connectedLego = droppedLegos.find(
-                              (l) => l.instanceId === connectedLegInfo.legoId,
+                              (l) => l.instanceId === connectedLegInfo.legoId
                             );
                             if (!connectedLego) return null;
 
                             const connectedStyle =
                               connectedLego.style.getLegStyle(
                                 connectedLegInfo.legIndex,
-                                connectedLego,
+                                connectedLego
                               );
 
                             // Hide label if:
@@ -3375,7 +3369,7 @@ const LegoStudioView: React.FC = () => {
                                 {legIndex}
                               </text>
                             );
-                          }),
+                          })
                   )}
                 </svg>
 
@@ -3441,7 +3435,7 @@ const LegoStudioView: React.FC = () => {
                 center: { x: number; y: number },
                 radius: number,
                 skipLegos: DroppedLego[],
-                legosToCheck: DroppedLego[],
+                legosToCheck: DroppedLego[]
               ) => makeSpace(center, radius, skipLegos, legosToCheck)}
               toast={toast}
               user={currentUser}

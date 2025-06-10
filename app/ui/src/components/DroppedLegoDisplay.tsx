@@ -16,7 +16,7 @@ export interface LegPosition {
 export function calculateLegPosition(
   lego: DroppedLego,
   legIndex: number,
-  labelDistance: number = 15,
+  labelDistance: number = 15
 ): LegPosition {
   const legStyle = lego.style.getLegStyle(legIndex, lego);
 
@@ -52,7 +52,7 @@ interface DroppedLegoDisplayProps {
   handleLegMouseDown: (
     e: React.MouseEvent,
     legoId: string,
-    legIndex: number,
+    legIndex: number
   ) => void;
   handleLegoMouseDown: (e: React.MouseEvent, index: number) => void;
   handleLegoClick: (e: React.MouseEvent, lego: DroppedLego) => void;
@@ -80,7 +80,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
   hideConnectedLegs,
   connections,
   droppedLegos = [],
-  demoMode = false,
+  demoMode = false
 }) => {
   const size = lego.style.size;
   const totalLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
@@ -102,7 +102,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs;
     return {
       x: (size / 2) * Math.cos(angle) + size / 2,
-      y: (size / 2) * Math.sin(angle) + size / 2,
+      y: (size / 2) * Math.sin(angle) + size / 2
     };
   });
 
@@ -143,7 +143,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
             labelX,
             labelY,
             angle: legStyle.angle,
-            style: legStyle,
+            style: legStyle
           };
         });
 
@@ -153,7 +153,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
       (conn) =>
         (conn.from.legoId === lego.instanceId &&
           conn.from.legIndex === legIndex) ||
-        (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex),
+        (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
     );
   };
 
@@ -177,7 +177,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
           conn.from.legIndex === legIndex
         ) {
           const connectedLego = droppedLegos?.find(
-            (l) => l.instanceId === conn.to.legoId,
+            (l) => l.instanceId === conn.to.legoId
           );
           return (
             connectedLego?.style.getLegStyle(conn.to.legIndex, connectedLego)
@@ -189,7 +189,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
           conn.to.legIndex === legIndex
         ) {
           const connectedLego = droppedLegos?.find(
-            (l) => l.instanceId === conn.from.legoId,
+            (l) => l.instanceId === conn.from.legoId
           );
           return (
             connectedLego?.style.getLegStyle(conn.from.legIndex, connectedLego)
@@ -207,11 +207,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
         conn.from.legIndex === legIndex
       ) {
         const connectedLego = droppedLegos?.find(
-          (l) => l.instanceId === conn.to.legoId,
+          (l) => l.instanceId === conn.to.legoId
         );
         const connectedStyle = connectedLego?.style.getLegStyle(
           conn.to.legIndex,
-          connectedLego,
+          connectedLego
         );
         return (
           connectedStyle?.is_highlighted &&
@@ -220,11 +220,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
       }
       if (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex) {
         const connectedLego = droppedLegos?.find(
-          (l) => l.instanceId === conn.from.legoId,
+          (l) => l.instanceId === conn.from.legoId
         );
         const connectedStyle = connectedLego?.style.getLegStyle(
           conn.from.legIndex,
-          connectedLego,
+          connectedLego
         );
         return (
           connectedStyle?.is_highlighted &&
@@ -260,7 +260,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
           : "none",
         transform: demoMode
           ? "scale(0.5) translate(-50%, -50%)"
-          : "translate(-50%, -50%)",
+          : "translate(-50%, -50%)"
       }}
     >
       {/* Regular Legs (rendered with lower z-index) */}
@@ -287,7 +287,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
               overflow: "visible",
               ...legVisibility,
               zIndex: -1,
-              pointerEvents: "none",
+              pointerEvents: "none"
             }}
           >
             {/* Line */}
@@ -316,7 +316,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 pointerEvents: "all",
                 transition: "stroke 0.2s, fill 0.2s",
                 stroke: isBeingDragged ? "rgb(66, 153, 225)" : legColor,
-                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white",
+                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white"
               }}
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -504,7 +504,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
               overflow: "visible",
               ...legVisibility,
               zIndex: 1,
-              pointerEvents: "none",
+              pointerEvents: "none"
             }}
           >
             {/* Line */}
@@ -520,7 +520,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
               strokeDasharray={pos.style.style === "dashed" ? "5,5" : undefined}
               style={{
                 cursor: isLogical ? "pointer" : "default",
-                pointerEvents: isLogical ? "all" : "none",
+                pointerEvents: isLogical ? "all" : "none"
               }}
               onClick={(e) => {
                 if (isLogical && onLegClick) {
@@ -542,7 +542,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
                 pointerEvents: "all",
                 transition: "stroke 0.2s, fill 0.2s",
                 stroke: isBeingDragged ? "rgb(66, 153, 225)" : legColor,
-                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white",
+                fill: isBeingDragged ? "rgb(235, 248, 255)" : "white"
               }}
               onMouseDown={(e) => {
                 e.stopPropagation();

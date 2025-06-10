@@ -22,12 +22,12 @@ export const SVG_COLORS = {
   I: "#A0AEC0", // gray.400
   X: "#F56565", // red.400
   Z: "#4299E1", // blue.400
-  Y: "#9F7AEA", // purple.400
+  Y: "#9F7AEA" // purple.400
 };
 
 export function getPauliColor(
   operator: PauliOperator,
-  forSvg: boolean = false,
+  forSvg: boolean = false
 ): string {
   if (forSvg) {
     switch (operator) {

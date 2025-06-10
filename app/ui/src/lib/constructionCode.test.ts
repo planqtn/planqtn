@@ -34,7 +34,7 @@ tn = TensorNetwork(nodes)
           parity_check_matrix: [
             [1, 1, 0, 0, 0, 0],
             [0, 1, 1, 0, 0, 0],
-            [0, 0, 0, 1, 1, 1],
+            [0, 0, 0, 1, 1, 1]
           ],
           logical_legs: [],
           gauge_legs: [],
@@ -42,10 +42,10 @@ tn = TensorNetwork(nodes)
           y: 381.25,
           instanceId: "7",
           style: getLegoStyle("x_rep_code", 3),
-          selectedMatrixRows: [],
-        },
+          selectedMatrixRows: []
+        }
       ],
-      [],
+      []
     );
     const code = tensorNetwork.generateConstructionCode();
     expect(code)
@@ -82,7 +82,7 @@ tn = TensorNetwork(nodes)
           parity_check_matrix: [
             [1, 1, 0, 0, 0, 0],
             [0, 1, 1, 0, 0, 0],
-            [0, 0, 0, 1, 1, 1],
+            [0, 0, 0, 1, 1, 1]
           ],
           logical_legs: [],
           gauge_legs: [],
@@ -90,7 +90,7 @@ tn = TensorNetwork(nodes)
           y: 381.25,
           instanceId: "2",
           style: getLegoStyle("x_rep_code", 3),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "steane",
@@ -105,7 +105,7 @@ tn = TensorNetwork(nodes)
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
             [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
           ],
           logical_legs: [7],
           gauge_legs: [],
@@ -113,7 +113,7 @@ tn = TensorNetwork(nodes)
           x: 477.89581298828125,
           y: 308.25,
           style: getLegoStyle("steane", 8),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "x_rep_code",
@@ -126,7 +126,7 @@ tn = TensorNetwork(nodes)
             [1, 1, 0, 0, 0, 0, 0, 0],
             [0, 1, 1, 0, 0, 0, 0, 0],
             [0, 0, 1, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1, 1, 1]
           ],
           logical_legs: [],
           gauge_legs: [],
@@ -134,7 +134,7 @@ tn = TensorNetwork(nodes)
           y: 143.25,
           instanceId: "4",
           style: getLegoStyle("x_rep_code", 4),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "z_rep_code",
@@ -147,7 +147,7 @@ tn = TensorNetwork(nodes)
             [0, 0, 0, 0, 1, 1, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 1, 1],
-            [1, 1, 1, 1, 0, 0, 0, 0],
+            [1, 1, 1, 1, 0, 0, 0, 0]
           ],
           logical_legs: [],
           gauge_legs: [],
@@ -155,7 +155,7 @@ tn = TensorNetwork(nodes)
           y: 187.25,
           instanceId: "1",
           style: getLegoStyle("z_rep_code", 4),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "stopper_x",
@@ -169,27 +169,27 @@ tn = TensorNetwork(nodes)
           logical_legs: [],
           gauge_legs: [],
           style: getLegoStyle("stopper_x", 1),
-          selectedMatrixRows: [],
-        },
+          selectedMatrixRows: []
+        }
       ],
       [
         new Connection(
           { legoId: "1", legIndex: 0 },
-          { legoId: "3", legIndex: 7 },
+          { legoId: "3", legIndex: 7 }
         ),
         new Connection(
           { legoId: "1", legIndex: 1 },
-          { legoId: "2", legIndex: 2 },
+          { legoId: "2", legIndex: 2 }
         ),
         new Connection(
           { legoId: "4", legIndex: 0 },
-          { legoId: "1", legIndex: 2 },
+          { legoId: "1", legIndex: 2 }
         ),
         new Connection(
           { legoId: "1", legIndex: 3 },
-          { legoId: "5", legIndex: 0 },
-        ),
-      ],
+          { legoId: "5", legIndex: 0 }
+        )
+      ]
     ).generateConstructionCode();
     expect(code).toBeDefined();
 
@@ -212,7 +212,7 @@ tn = TensorNetwork(nodes)
           .trim()
           .split("\n")
           .map((line: string) =>
-            line.trim().replace(/[[\]]/g, "").split(" ").map(Number),
+            line.trim().replace(/[[\]]/g, "").split(" ").map(Number)
           );
 
         // prettier-ignore

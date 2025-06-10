@@ -15,7 +15,7 @@ import {
   FormLabel,
   Switch,
   Checkbox,
-  HStack,
+  HStack
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 
@@ -32,7 +32,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   onClose,
   onSubmit,
   title = "Create Tanner Network",
-  cssOnly = false,
+  cssOnly = false
 }) => {
   const defaultMspMatrix = `11110000
 00001100
@@ -128,7 +128,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
             .replace(/[,()[\]]/g, "")
             .replace(/\s+/g, "")
             .split("")
-            .map(Number),
+            .map(Number)
         );
     }
   };
@@ -236,7 +236,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
             const pauli1 = getPauliString(row1);
             const pauli2 = getPauliString(row2);
             throw new Error(
-              `Rows ${i + 1} (${pauli1}) and ${j + 1} (${pauli2}) do not commute`,
+              `Rows ${i + 1} (${pauli1}) and ${j + 1} (${pauli2}) do not commute`
             );
           }
         }
@@ -265,7 +265,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
         description: error,
         status: "error",
         duration: 5000,
-        isClosable: true,
+        isClosable: true
       });
     }
   };
@@ -296,7 +296,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                   const newUseStabilizer = e.target.checked;
                   const convertedInput = convertInput(
                     matrixText,
-                    newUseStabilizer,
+                    newUseStabilizer
                   );
                   setMatrixText(convertedInput);
                   setUseStabilizer(newUseStabilizer);
@@ -350,7 +350,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                           setLogicalLegs([...logicalLegs, i]);
                         } else {
                           setLogicalLegs(
-                            logicalLegs.filter((leg) => leg !== i),
+                            logicalLegs.filter((leg) => leg !== i)
                           );
                         }
                       }}

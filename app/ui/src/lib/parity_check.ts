@@ -24,7 +24,7 @@ export function sprint(h: GF2, end: string = "\n"): void {
 export function bring_col_to_front(
   h: GF2,
   col: number,
-  target_col: number,
+  target_col: number
 ): void {
   for (let c = col - 1; c >= target_col; c--) {
     h.swapColumns(c, c + 1);
@@ -67,7 +67,7 @@ export function tensor_product(h1: GF2, h2: GF2): GF2 {
           ...xRow,
           ...Array(halfN2).fill(0),
           ...zRow,
-          ...Array(halfN2).fill(0),
+          ...Array(halfN2).fill(0)
         ];
       } else {
         // Last r2 rows come from h2
@@ -77,10 +77,10 @@ export function tensor_product(h1: GF2, h2: GF2): GF2 {
           ...Array(halfN1).fill(0),
           ...xRow,
           ...Array(halfN1).fill(0),
-          ...zRow,
+          ...zRow
         ];
       }
-    }),
+    })
   );
 
   // Verify shape
@@ -89,7 +89,7 @@ export function tensor_product(h1: GF2, h2: GF2): GF2 {
     result.shape[1] !== 2 * (halfN1 + halfN2)
   ) {
     throw new Error(
-      `Invalid shape: ${result.shape} != (${r1 + r2}, ${2 * (halfN1 + halfN2)})`,
+      `Invalid shape: ${result.shape} != (${r1 + r2}, ${2 * (halfN1 + halfN2)})`
     );
   }
 
@@ -100,7 +100,7 @@ export function conjoin(
   h1: GF2,
   h2: GF2,
   leg1: number = 0,
-  leg2: number = 0,
+  leg2: number = 0
 ): GF2 {
   const n1 = Math.floor(h1.shape[1] / 2);
   const h = tensor_product(h1, h2);
@@ -181,7 +181,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
 
   // Get columns to keep (all except the legs)
   const keptCols = Array.from({ length: n }, (_, i) => i).filter(
-    (col) => !legs.includes(col),
+    (col) => !legs.includes(col)
   );
 
   if (keptCols.length === 0) {
@@ -194,7 +194,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
 
   // Create new matrix with kept rows and columns
   const result = new GF2(
-    keptRows.map((row) => keptCols.map((col) => mx.get(row, col))),
+    keptRows.map((row) => keptCols.map((col) => mx.get(row, col)))
   );
 
   // Perform final Gaussian elimination

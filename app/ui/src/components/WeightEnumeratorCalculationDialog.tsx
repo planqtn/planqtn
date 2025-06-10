@@ -11,7 +11,7 @@ import {
   Tooltip,
   HStack,
   Checkbox,
-  Box,
+  Box
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
 import { QuestionOutlineIcon } from "@chakra-ui/icons";
@@ -22,7 +22,7 @@ interface WeightEnumeratorCalculationDialogProps {
   onClose: () => void;
   onSubmit: (
     truncateLength: number | null,
-    openLegs: TensorNetworkLeg[],
+    openLegs: TensorNetworkLeg[]
   ) => void;
   externalLegs: TensorNetworkLeg[];
   danglingLegs: TensorNetworkLeg[];
@@ -35,19 +35,19 @@ const WeightEnumeratorCalculationDialog: React.FC<
   // Use string keys for easy lookup: "instanceId-legIndex"
   const externalKeys = useMemo(
     () => externalLegs.map((l) => `${l.instanceId}-${l.legIndex}`),
-    [externalLegs],
+    [externalLegs]
   );
   const danglingKeys = useMemo(
     () => danglingLegs.map((l) => `${l.instanceId}-${l.legIndex}`),
-    [danglingLegs],
+    [danglingLegs]
   );
 
   // By default, external legs selected, dangling legs not
   const [selectedExternal, setSelectedExternal] = useState<Set<string>>(
-    new Set(externalKeys),
+    new Set(externalKeys)
   );
   const [selectedDangling, setSelectedDangling] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
 
   // Update selection if legs change
@@ -71,7 +71,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
   const handleParentToggle = (
     all: string[],
     selected: Set<string>,
-    setSelected: (s: Set<string>) => void,
+    setSelected: (s: Set<string>) => void
   ) => {
     if (selected.size === all.length) {
       setSelected(new Set());
@@ -83,7 +83,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
   const handleChildToggle = (
     key: string,
     selected: Set<string>,
-    setSelected: (s: Set<string>) => void,
+    setSelected: (s: Set<string>) => void
   ) => {
     const newSet = new Set(selected);
     if (newSet.has(key)) {
@@ -97,11 +97,11 @@ const WeightEnumeratorCalculationDialog: React.FC<
   // Collect selected legs
   const selectedLegs: TensorNetworkLeg[] = [
     ...externalLegs.filter((l) =>
-      selectedExternal.has(`${l.instanceId}-${l.legIndex}`),
+      selectedExternal.has(`${l.instanceId}-${l.legIndex}`)
     ),
     ...danglingLegs.filter((l) =>
-      selectedDangling.has(`${l.instanceId}-${l.legIndex}`),
-    ),
+      selectedDangling.has(`${l.instanceId}-${l.legIndex}`)
+    )
   ];
 
   const subtitle =
@@ -173,7 +173,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                       handleParentToggle(
                         externalKeys,
                         selectedExternal,
-                        setSelectedExternal,
+                        setSelectedExternal
                       )
                     }
                     mb={1}
@@ -197,7 +197,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                             handleChildToggle(
                               key,
                               selectedExternal,
-                              setSelectedExternal,
+                              setSelectedExternal
                             )
                           }
                         >
@@ -229,7 +229,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                       handleParentToggle(
                         danglingKeys,
                         selectedDangling,
-                        setSelectedDangling,
+                        setSelectedDangling
                       )
                     }
                     mb={1}
@@ -253,7 +253,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                             handleChildToggle(
                               key,
                               selectedDangling,
-                              setSelectedDangling,
+                              setSelectedDangling
                             )
                           }
                         >

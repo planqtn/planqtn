@@ -5,13 +5,13 @@ export class AddStopper {
 
   constructor(
     private connections: Connection[],
-    private droppedLegos: DroppedLego[],
+    private droppedLegos: DroppedLego[]
   ) {}
 
   public apply(
     targetLego: DroppedLego,
     targetLegIndex: number,
-    stopperLego: DroppedLego,
+    stopperLego: DroppedLego
   ): {
     connections: Connection[];
     droppedLegos: DroppedLego[];
@@ -23,7 +23,7 @@ export class AddStopper {
         (conn.from.legoId === targetLego.instanceId &&
           conn.from.legIndex === targetLegIndex) ||
         (conn.to.legoId === targetLego.instanceId &&
-          conn.to.legIndex === targetLegIndex),
+          conn.to.legIndex === targetLegIndex)
     );
 
     if (isLegConnected) {
@@ -32,14 +32,14 @@ export class AddStopper {
 
     // Check if the stopper lego already exists in droppedLegos
     const existingStopperIndex = this.droppedLegos.findIndex(
-      (l) => l.instanceId === stopperLego.instanceId,
+      (l) => l.instanceId === stopperLego.instanceId
     );
     let updatedLegos: DroppedLego[];
 
     if (existingStopperIndex !== -1) {
       // Update the existing stopper lego
       updatedLegos = this.droppedLegos.map((lego, index) =>
-        index === existingStopperIndex ? stopperLego : lego,
+        index === existingStopperIndex ? stopperLego : lego
       );
     } else {
       // Add the new stopper lego
@@ -50,12 +50,12 @@ export class AddStopper {
     const newConnection = new Connection(
       {
         legoId: targetLego.instanceId,
-        legIndex: targetLegIndex,
+        legIndex: targetLegIndex
       },
       {
         legoId: stopperLego.instanceId,
-        legIndex: 0,
-      },
+        legIndex: 0
+      }
     );
 
     // Add the new connection
@@ -73,13 +73,13 @@ export class AddStopper {
               ? [
                   {
                     oldLego: this.droppedLegos[existingStopperIndex],
-                    newLego: stopperLego,
-                  },
+                    newLego: stopperLego
+                  }
                 ]
               : [],
-          connectionsToAdd: [newConnection],
-        },
-      },
+          connectionsToAdd: [newConnection]
+        }
+      }
     };
   }
 }

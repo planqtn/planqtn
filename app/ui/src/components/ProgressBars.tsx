@@ -49,7 +49,7 @@ const calculateETA = (status: IterationStatus): string => {
 
 const ProgressBars: React.FC<ProgressBarsProps> = ({
   iterationStatus,
-  waiting,
+  waiting
 }) => {
   if (waiting && (!iterationStatus || iterationStatus.length === 0)) {
     return (

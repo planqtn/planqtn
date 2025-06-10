@@ -8,7 +8,7 @@ import {
   Text,
   Badge,
   useColorModeValue,
-  useToast,
+  useToast
 } from "@chakra-ui/react";
 import { LegoPiece } from "../lib/types.ts";
 import { DynamicLegoDialog } from "./DynamicLegoDialog.tsx";
@@ -26,7 +26,7 @@ interface LegoPanelProps {
 export const LegoPanel: React.FC<LegoPanelProps> = ({
   legos,
   onLegoSelect,
-  onDragStart,
+  onDragStart
 }) => {
   const toast = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -35,20 +35,20 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
 
   const handleDragStart = (
     e: React.DragEvent<HTMLLIElement>,
-    lego: LegoPiece,
+    lego: LegoPiece
   ) => {
     onDragStart(e, lego);
   };
 
   const handleDynamicLegoSubmit = async (
-    parameters: Record<string, unknown>,
+    parameters: Record<string, unknown>
   ) => {
     if (!selectedDynamicLego) return;
 
     try {
       const dynamicLego = Legos.getDynamicLego({
         lego_id: selectedDynamicLego.id,
-        parameters,
+        parameters
       });
       onLegoSelect(dynamicLego);
     } catch (error) {
@@ -57,7 +57,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
         description: "Failed to create dynamic lego (" + error + ")",
         status: "error",
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
     }
   };
@@ -74,10 +74,10 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
       "Create a custom lego with specified parity check matrix and logical legs",
     parity_check_matrix: [
       [1, 1, 1, 1, 0, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 1, 1, 1]
     ],
     logical_legs: [],
-    gauge_legs: [],
+    gauge_legs: []
   };
 
   return (
@@ -111,7 +111,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
                     y: 20,
                     instanceId: customLego.id,
                     style: getLegoStyle(customLego.id, 2),
-                    selectedMatrixRows: [],
+                    selectedMatrixRows: []
                   }}
                   connections={[]}
                   index={0}
@@ -159,7 +159,7 @@ export const LegoPanel: React.FC<LegoPanelProps> = ({
                         y: numLegs <= 3 ? 20 : 13,
                         instanceId: lego.id,
                         style: getLegoStyle(lego.id, numLegs),
-                        selectedMatrixRows: [],
+                        selectedMatrixRows: []
                       }}
                       connections={[]}
                       index={0}

@@ -3,7 +3,7 @@ import {
   block_diag,
   conjoin,
   self_trace,
-  tensor_product,
+  tensor_product
 } from "./parity_check";
 
 describe("parity_check", () => {
@@ -17,16 +17,16 @@ describe("parity_check", () => {
   it("should conjoin single trace 422 codes", () => {
     const h1 = new GF2([
       [1, 1, 1, 1, 0, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 1, 1, 1]
     ]);
     const h2 = new GF2([
       [1, 1, 1, 1, 0, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 1, 1, 1]
     ]);
 
     const expected = new GF2([
       [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+      [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
     ]);
 
     expect(conjoin(h1, h2).equals(expected)).toBe(true);
@@ -39,12 +39,12 @@ describe("parity_check", () => {
       [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1]
     ]);
 
     const h2 = new GF2([
       [1, 1, 1, 1, 0, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 1, 1, 1]
     ]);
 
     const expected = GF2.gauss(
@@ -58,7 +58,7 @@ describe("parity_check", () => {
                 [0, 0, 0, 0, 0, 0,   0, 0, 0,      1, 1, 0, 0, 1, 1,  0, 0, 0],
                 [0, 0, 1, 1, 1, 1,   0, 0, 0,      0, 0, 0, 0, 0, 0,  0, 0, 0],  
                 [1, 1, 0, 0, 1, 1,   0, 0, 0,      0, 0, 0, 0, 0, 0,  0, 0, 0],                    
-      ]),
+      ])
     );
 
     const result = GF2.gauss(conjoin(h1, h2));
@@ -76,7 +76,7 @@ describe("parity_check", () => {
       [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1]
     ]);
 
     const h2 = new GF2([
@@ -85,7 +85,7 @@ describe("parity_check", () => {
       [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1]
     ]);
 
     const expected = new GF2([
@@ -98,7 +98,7 @@ describe("parity_check", () => {
       [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1]
     ]);
 
     const result = GF2.gauss(conjoin(h1, h2));
@@ -111,13 +111,13 @@ describe("parity_check", () => {
       [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
       [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
       [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-      [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1]
     ]);
 
     const expected = new GF2([
       [1, 1, 1, 1, 0, 0, 0, 0],
       [0, 0, 0, 0, 1, 0, 0, 1],
-      [0, 0, 0, 0, 0, 1, 0, 1],
+      [0, 0, 0, 0, 0, 1, 0, 1]
     ]);
 
     const result = self_trace(h);
@@ -127,13 +127,13 @@ describe("parity_check", () => {
       [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0],
       [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1]
     ]);
 
     const expected2 = new GF2([
       [1, 1, 1, 1, 0, 0, 0, 0],
       [0, 0, 0, 0, 1, 0, 1, 0],
-      [0, 0, 0, 0, 0, 1, 0, 1],
+      [0, 0, 0, 0, 0, 1, 0, 1]
     ]);
 
     const result2 = self_trace(h2);
@@ -143,18 +143,18 @@ describe("parity_check", () => {
   it("should conjoin with no error correcting on h1", () => {
     const h1 = new GF2([
       [1, 0, 1, 0, 0, 0],
-      [0, 0, 0, 1, 1, 1],
+      [0, 0, 0, 1, 1, 1]
     ]);
 
     const h2 = new GF2([
       [0, 1, 1, 0, 0, 0],
-      [0, 0, 0, 1, 1, 0],
+      [0, 0, 0, 1, 1, 0]
     ]);
 
     const expected = new GF2([
       [0, 0, 0, 0, 1, 1, 1, 0],
       [0, 0, 1, 1, 0, 0, 0, 0],
-      [1, 1, 0, 0, 0, 0, 0, 0],
+      [1, 1, 0, 0, 0, 0, 0, 0]
     ]);
 
     const result = conjoin(h1, h2, 1, 0);
@@ -164,11 +164,11 @@ describe("parity_check", () => {
   it("should create a block diagonal matrix", () => {
     const h1 = new GF2([
       [1, 0, 1],
-      [0, 0, 0],
+      [0, 0, 0]
     ]);
     const h2 = new GF2([
       [1, 1, 1],
-      [0, 0, 0],
+      [0, 0, 0]
     ]);
     const result = block_diag(h1.toArray(), h2.toArray());
 
@@ -176,7 +176,7 @@ describe("parity_check", () => {
       [1, 0, 1, 0, 0, 0],
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0]
     ];
     expect(result).toEqual(expected);
   });
@@ -184,11 +184,11 @@ describe("parity_check", () => {
   it("should calculate the tensor product of two CSS symplectic matrices", () => {
     const h1 = new GF2([
       [1, 0, 1, 0, 0, 0],
-      [0, 0, 0, 1, 1, 1],
+      [0, 0, 0, 1, 1, 1]
     ]);
     const h2 = new GF2([
       [1, 1, 1, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1],
+      [0, 0, 0, 0, 1, 1]
     ]);
     const result = tensor_product(h1, h2);
 
@@ -196,7 +196,7 @@ describe("parity_check", () => {
       [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
       [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
     ]);
 
     expect(result.equals(expected)).toBe(true);
@@ -205,11 +205,11 @@ describe("parity_check", () => {
   it("should calculate the tensor product of two non-CSS symplectic matrices", () => {
     const h1 = new GF2([
       [1, 0, 1, 0, 0, 1],
-      [0, 1, 0, 1, 1, 1],
+      [0, 1, 0, 1, 1, 1]
     ]);
     const h2 = new GF2([
       [1, 1, 1, 1, 0, 0],
-      [0, 0, 1, 0, 1, 1],
+      [0, 0, 1, 0, 1, 1]
     ]);
     const result = tensor_product(h1, h2);
 
@@ -217,7 +217,7 @@ describe("parity_check", () => {
       [1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
       [0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
       [0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0],
-      [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1]
     ]);
 
     expect(result.equals(expected)).toBe(true);
@@ -229,7 +229,7 @@ describe("GF2 Linear Algebra Tests", () => {
     const mx = new GF2([
       [0, 1, 0],
       [1, 0, 0],
-      [0, 0, 1],
+      [0, 0, 1]
     ]);
     const kernel = GF2.right_kernel(mx);
     // The kernel should be a 1x3 matrix
@@ -245,7 +245,7 @@ describe("GF2 Linear Algebra Tests", () => {
     const mx = new GF2([
       [0, 1, 0],
       [0, 1, 0],
-      [0, 0, 1],
+      [0, 0, 1]
     ]);
     const kernel = GF2.right_kernel(mx);
     expect(kernel.equals(new GF2([[1, 0, 0]]))).toBe(true);
@@ -261,7 +261,7 @@ describe("GF2 Linear Algebra Tests", () => {
     const mx = new GF2([
       [0, 1, 0],
       [1, 0, 0],
-      [0, 0, 1],
+      [0, 0, 1]
     ]);
     const result = GF2.gauss(mx, { noswaps: true });
     // The result should have the same shape and elements as the input
@@ -274,15 +274,15 @@ describe("GF2 Linear Algebra Tests", () => {
     const mx = new GF2([
       [1, 1, 0],
       [0, 1, 1],
-      [0, 0, 1],
+      [0, 0, 1]
     ]);
     const result = GF2.gauss(mx, { col_subset: [0, 1] });
     expect(result).toEqual(
       new GF2([
         [1, 0, 1],
         [0, 1, 1],
-        [0, 0, 1],
-      ]),
+        [0, 0, 1]
+      ])
     );
   });
 
@@ -290,15 +290,15 @@ describe("GF2 Linear Algebra Tests", () => {
     const mx = new GF2([
       [1, 1, 0],
       [1, 1, 1],
-      [0, 0, 1],
+      [0, 0, 1]
     ]);
     const result = GF2.gauss(mx, { col_subset: [0, 1] });
     expect(result).toEqual(
       new GF2([
         [1, 1, 0],
         [0, 0, 1],
-        [0, 0, 1],
-      ]),
+        [0, 0, 1]
+      ])
     );
   });
 });

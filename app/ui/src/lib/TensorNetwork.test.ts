@@ -22,11 +22,11 @@ describe("TensorNetwork", () => {
           [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0],
           [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+          [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
         ],
         logical_legs: [],
         gauge_legs: [],
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       },
       {
         id: "stopper_i",
@@ -40,7 +40,7 @@ describe("TensorNetwork", () => {
         parity_check_matrix: [[0, 0]],
         logical_legs: [],
         gauge_legs: [],
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       },
       {
         id: "stopper_i",
@@ -54,20 +54,20 @@ describe("TensorNetwork", () => {
         parity_check_matrix: [[0, 0]],
         logical_legs: [],
         gauge_legs: [],
-        selectedMatrixRows: [],
-      },
+        selectedMatrixRows: []
+      }
     ];
 
     // Create the connections
     const connections: Connection[] = [
       new Connection(
         { legoId: "stop1", legIndex: 0 },
-        { legoId: "0", legIndex: 4 },
+        { legoId: "0", legIndex: 4 }
       ),
       new Connection(
         { legoId: "stop2", legIndex: 0 },
-        { legoId: "0", legIndex: 5 },
-      ),
+        { legoId: "0", legIndex: 5 }
+      )
     ];
 
     // Create the tensor network
@@ -79,7 +79,7 @@ describe("TensorNetwork", () => {
     // Expected 422 parity check matrix
     const expected422Matrix = [
       [1, 1, 1, 1, 0, 0, 0, 0],
-      [0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 1, 1, 1]
     ];
 
     // Compare the matrices
@@ -101,7 +101,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -111,7 +111,7 @@ describe("TensorNetwork", () => {
           x: 894.7999877929688,
           y: 339.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "t5",
@@ -122,7 +122,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -132,7 +132,7 @@ describe("TensorNetwork", () => {
           x: 750.7999877929688,
           y: 334.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "t5",
@@ -143,7 +143,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -153,7 +153,7 @@ describe("TensorNetwork", () => {
           x: 625.7999877929688,
           y: 332.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "t5",
@@ -164,7 +164,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -174,7 +174,7 @@ describe("TensorNetwork", () => {
           x: 624.7999877929688,
           y: 141.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "t5",
@@ -185,7 +185,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -195,7 +195,7 @@ describe("TensorNetwork", () => {
           x: 749.7999877929688,
           y: 143.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
+          selectedMatrixRows: []
         },
         {
           id: "t5",
@@ -206,7 +206,7 @@ describe("TensorNetwork", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
           logical_legs: [4],
           gauge_legs: [],
@@ -216,43 +216,43 @@ describe("TensorNetwork", () => {
           x: 893.7999877929688,
           y: 148.20000076293945,
           style: getLegoStyle("t5", 5),
-          selectedMatrixRows: [],
-        },
+          selectedMatrixRows: []
+        }
       ],
       connections: [
         new Connection(
           { legoId: "5", legIndex: 0 },
-          { legoId: "6", legIndex: 3 },
+          { legoId: "6", legIndex: 3 }
         ),
         new Connection(
           { legoId: "4", legIndex: 0 },
-          { legoId: "5", legIndex: 3 },
+          { legoId: "5", legIndex: 3 }
         ),
         new Connection(
           { legoId: "4", legIndex: 2 },
-          { legoId: "3", legIndex: 3 },
+          { legoId: "3", legIndex: 3 }
         ),
         new Connection(
           { legoId: "4", legIndex: 1 },
-          { legoId: "3", legIndex: 0 },
+          { legoId: "3", legIndex: 0 }
         ),
         new Connection(
           { legoId: "5", legIndex: 2 },
-          { legoId: "2", legIndex: 3 },
+          { legoId: "2", legIndex: 3 }
         ),
         new Connection(
           { legoId: "6", legIndex: 1 },
-          { legoId: "1", legIndex: 0 },
+          { legoId: "1", legIndex: 0 }
         ),
         new Connection(
           { legoId: "2", legIndex: 1 },
-          { legoId: "1", legIndex: 2 },
+          { legoId: "1", legIndex: 2 }
         ),
         new Connection(
           { legoId: "1", legIndex: 3 },
-          { legoId: "2", legIndex: 0 },
-        ),
-      ],
+          { legoId: "2", legIndex: 0 }
+        )
+      ]
     });
     const conjoined = tn.conjoin_nodes();
 

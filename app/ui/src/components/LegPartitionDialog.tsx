@@ -8,7 +8,7 @@ import {
   ModalFooter,
   Button,
   VStack,
-  Checkbox,
+  Checkbox
 } from "@chakra-ui/react";
 
 interface LegPartitionDialogProps {
@@ -22,7 +22,7 @@ export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({
   open,
   numLegs,
   onClose,
-  onSubmit,
+  onSubmit
 }) => {
   const [legAssignments, setLegAssignments] = useState<number[]>([]);
 
@@ -32,7 +32,7 @@ export const LegPartitionDialog: React.FC<LegPartitionDialogProps> = ({
       setLegAssignments(
         Array(numLegs)
           .fill(0)
-          .map((_, i) => (i >= half ? 1 : 0)),
+          .map((_, i) => (i >= half ? 1 : 0))
       );
     }
   }, [open, numLegs]);

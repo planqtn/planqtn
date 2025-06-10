@@ -11,7 +11,7 @@ import {
   HStack,
   VStack,
   Grid,
-  useToast,
+  useToast
 } from "@chakra-ui/react";
 import { LegoPiece } from "../lib/types.ts";
 import { useState, useEffect, useRef } from "react";
@@ -24,7 +24,7 @@ import {
   Z_COLOR_LIGHT,
   X_COLOR_DARK,
   Z_COLOR_DARK,
-  Y_COLOR,
+  Y_COLOR
 } from "../lib/PauliColors.ts";
 import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
@@ -51,11 +51,11 @@ export const ParityCheckMatrixDisplay: React.FC<
   onLegOrderingChange,
   onRecalculate,
   selectedRows = [],
-  onRowSelectionChange,
+  onRowSelectionChange
 }) => {
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
-    null,
+    null
   );
   const [highlightedRowIndex] = useState<number | null>(null);
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
@@ -118,7 +118,7 @@ export const ParityCheckMatrixDisplay: React.FC<
       if (index === targetRowIndex) {
         // Add the dragged row to the target row (modulo 2)
         return row.map(
-          (cell, cellIndex) => (cell + matrix[draggedRowIndex][cellIndex]) % 2,
+          (cell, cellIndex) => (cell + matrix[draggedRowIndex][cellIndex]) % 2
         );
       }
       return row;
@@ -127,7 +127,7 @@ export const ParityCheckMatrixDisplay: React.FC<
     // Update history
     const newHistory = [
       ...matrixHistory.slice(0, currentHistoryIndex + 1),
-      newMatrix,
+      newMatrix
     ];
     setMatrixHistory(newHistory);
     setCurrentHistoryIndex(newHistory.length - 1);
@@ -230,7 +230,7 @@ export const ParityCheckMatrixDisplay: React.FC<
     // Update history
     const newHistory = [
       ...matrixHistory.slice(0, currentHistoryIndex + 1),
-      newMatrix,
+      newMatrix
     ];
     setMatrixHistory(newHistory);
     setCurrentHistoryIndex(newHistory.length - 1);
@@ -340,7 +340,7 @@ export const ParityCheckMatrixDisplay: React.FC<
     // Update history
     const newHistory = [
       ...matrixHistory.slice(0, currentHistoryIndex + 1),
-      newMatrix,
+      newMatrix
     ];
     setMatrixHistory(newHistory);
     setCurrentHistoryIndex(newHistory.length - 1);
@@ -374,7 +374,7 @@ export const ParityCheckMatrixDisplay: React.FC<
       description: "Matrix copied in numpy format",
       status: "success",
       duration: 2000,
-      isClosable: true,
+      isClosable: true
     });
   };
 
@@ -402,7 +402,7 @@ export const ParityCheckMatrixDisplay: React.FC<
       description: "Matrix copied in qdistrnd format",
       status: "success",
       duration: 2000,
-      isClosable: true,
+      isClosable: true
     });
   };
 

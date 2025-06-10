@@ -15,7 +15,7 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberIncrementStepper,
-  NumberDecrementStepper,
+  NumberDecrementStepper
 } from "@chakra-ui/react";
 import { useState, useRef, useEffect } from "react";
 import React from "react";
@@ -33,7 +33,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
   onClose,
   onSubmit,
   legoId,
-  parameters,
+  parameters
 }) => {
   const [values, setValues] = useState<Record<string, unknown>>(parameters);
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +63,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
   const renderParameterInput = (
     key: string,
     value: unknown,
-    isFirst: boolean,
+    isFirst: boolean
   ) => {
     if (typeof value === "number") {
       return (
@@ -105,7 +105,7 @@ export const DynamicLegoDialog: React.FC<DynamicLegoDialogProps> = ({
           <ModalBody>
             <VStack spacing={4}>
               {Object.entries(parameters).map(([key, value], index) =>
-                renderParameterInput(key, value, index === 0),
+                renderParameterInput(key, value, index === 0)
               )}
             </VStack>
           </ModalBody>

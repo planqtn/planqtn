@@ -47,7 +47,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
   height = 300,
   selectedStabilizer,
   onStabilizerSelect,
-  highlightedStabilizer,
+  highlightedStabilizer
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [points, setPoints] = useState<Point[]>([]);
@@ -72,7 +72,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
     // Draw connections between stabilizers and legs
     matrix.forEach((row, stabilizerIndex) => {
       const stabilizerPoint = points.find(
-        (p) => p.isStabilizer && p.stabilizerIndex === stabilizerIndex,
+        (p) => p.isStabilizer && p.stabilizerIndex === stabilizerIndex
       );
       if (!stabilizerPoint) return;
 
@@ -143,7 +143,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
           ctx.fillText(
             `${legs[legIndex].instanceId}-${legs[legIndex].legIndex}`,
             point.x,
-            point.y,
+            point.y
           );
         }
       }
@@ -161,7 +161,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
       isStabilizer: point.isStabilizer ?? false,
       stabilizerIndex: point.stabilizerIndex,
       type: point.type,
-      legIndex: (point as unknown as { legIndex: number }).legIndex,
+      legIndex: (point as unknown as { legIndex: number }).legIndex
     }));
 
     // Create links between stabilizers and legs
@@ -174,7 +174,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         links.push({
           source: stabilizerIndex,
           target: matrix.length + legIndex,
-          weight: stabilizerWeight,
+          weight: stabilizerWeight
         });
       });
     });
@@ -190,21 +190,21 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
           .distance(100)
           .strength((link) => {
             return 0.7 * (link.weight / matrix[0].length);
-          }),
+          })
       )
       .force(
         "charge",
         d3.forceManyBody<SimulationNode>().strength((d) => {
           if (d.isStabilizer) return -500;
           return -200;
-        }),
+        })
       )
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force(
         "collision",
         d3
           .forceCollide<SimulationNode>()
-          .radius((d) => (d.isStabilizer ? 40 : 30)),
+          .radius((d) => (d.isStabilizer ? 40 : 30))
       )
       .force("x", d3.forceX(width / 2).strength(0.1))
       .force("y", d3.forceY(height / 2).strength(0.1))
@@ -233,7 +233,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
       y: node.y,
       isStabilizer: node.isStabilizer,
       stabilizerIndex: node.stabilizerIndex,
-      type: node.type,
+      type: node.type
     }));
 
     setPoints(newPoints);
@@ -281,7 +281,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         y,
         isStabilizer: true,
         stabilizerIndex: index,
-        type,
+        type
       };
     });
 
@@ -302,7 +302,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         isStabilizer: false,
         stabilizerIndex: undefined,
         type: undefined as "X" | "Z" | undefined,
-        legIndex: index,
+        legIndex: index
       };
     });
 
@@ -353,7 +353,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
     legs,
     highlightedStabilizer,
     selectedStabilizer,
-    selectedPoints,
+    selectedPoints
   ]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -449,7 +449,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
             y: newY,
             isStabilizer: point.isStabilizer,
             stabilizerIndex: point.stabilizerIndex,
-            type: point.type,
+            type: point.type
           };
         });
 

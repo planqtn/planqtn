@@ -13,7 +13,7 @@ export class OperationHistory {
 
   public undo(
     connections: Connection[],
-    droppedLegos: DroppedLego[],
+    droppedLegos: DroppedLego[]
   ): { connections: Connection[]; droppedLegos: DroppedLego[] } {
     if (this.operations.length === 0) return { connections, droppedLegos };
 
@@ -31,29 +31,29 @@ export class OperationHistory {
     newConnections = newConnections.filter(
       (conn) =>
         !lastOperation.data?.connectionsToAdd?.some((removeMe) =>
-          removeMe.equals(conn),
-        ),
+          removeMe.equals(conn)
+        )
     );
     newConnections = [
       ...newConnections,
-      ...(lastOperation.data?.connectionsToRemove || []),
+      ...(lastOperation.data?.connectionsToRemove || [])
     ];
     // we remove the ones that were added
     newDroppedLegos = newDroppedLegos.filter(
       (lego) =>
         !lastOperation.data?.legosToAdd?.some(
-          (removeMe) => removeMe.instanceId === lego.instanceId,
-        ),
+          (removeMe) => removeMe.instanceId === lego.instanceId
+        )
     );
     // we add the ones that were removed
     newDroppedLegos = [
       ...newDroppedLegos,
-      ...(lastOperation.data?.legosToRemove || []),
+      ...(lastOperation.data?.legosToRemove || [])
     ];
     // we update the ones that were updated
     newDroppedLegos = newDroppedLegos.map((lego) => {
       const update = lastOperation.data?.legosToUpdate?.find(
-        (updateMe) => updateMe.newLego.instanceId === lego.instanceId,
+        (updateMe) => updateMe.newLego.instanceId === lego.instanceId
       );
       if (update) {
         return update.oldLego;
@@ -67,7 +67,7 @@ export class OperationHistory {
 
   public redo(
     connections: Connection[],
-    droppedLegos: DroppedLego[],
+    droppedLegos: DroppedLego[]
   ): { connections: Connection[]; droppedLegos: DroppedLego[] } {
     if (this.redoHistory.length === 0) return { connections, droppedLegos };
 
@@ -80,26 +80,26 @@ export class OperationHistory {
     newConnections = newConnections.filter(
       (conn) =>
         !nextOperation.data?.connectionsToRemove?.some((removeMe) =>
-          removeMe.equals(conn),
-        ),
+          removeMe.equals(conn)
+        )
     );
     newConnections = [
       ...newConnections,
-      ...(nextOperation.data?.connectionsToAdd || []),
+      ...(nextOperation.data?.connectionsToAdd || [])
     ];
     newDroppedLegos = newDroppedLegos.filter(
       (lego) =>
         !nextOperation.data?.legosToRemove?.some(
-          (removeMe) => removeMe.instanceId === lego.instanceId,
-        ),
+          (removeMe) => removeMe.instanceId === lego.instanceId
+        )
     );
     newDroppedLegos = [
       ...newDroppedLegos,
-      ...(nextOperation.data?.legosToAdd || []),
+      ...(nextOperation.data?.legosToAdd || [])
     ];
     newDroppedLegos = newDroppedLegos.map((lego) => {
       const update = nextOperation.data?.legosToUpdate?.find(
-        (updateMe) => updateMe.oldLego.instanceId === lego.instanceId,
+        (updateMe) => updateMe.oldLego.instanceId === lego.instanceId
       );
       if (update) {
         return update.newLego;

@@ -19,7 +19,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -27,14 +27,14 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const operation: Operation = {
         type: "add",
         data: {
-          legosToAdd: [lego],
-        },
+          legosToAdd: [lego]
+        }
       };
 
       // Initial state with the lego
@@ -44,7 +44,7 @@ describe("OperationHistory", () => {
       operationHistory.addOperation(operation);
       const afterUndo = operationHistory.undo(
         initialState.connections,
-        initialState.droppedLegos,
+        initialState.droppedLegos
       );
 
       // Verify undo removed the lego
@@ -54,7 +54,7 @@ describe("OperationHistory", () => {
       // Perform redo
       const afterRedo = operationHistory.redo(
         afterUndo.connections,
-        afterUndo.droppedLegos,
+        afterUndo.droppedLegos
       );
 
       // Verify redo restored the original state
@@ -71,7 +71,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -79,15 +79,15 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       // Add operation
       const addOperation: Operation = {
         type: "add",
         data: {
-          legosToAdd: [lego],
-        },
+          legosToAdd: [lego]
+        }
       };
 
       // Move operation
@@ -97,10 +97,10 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 },
-            },
-          ],
-        },
+              newLego: { ...lego, x: 10, y: 10 }
+            }
+          ]
+        }
       };
 
       // Add the lego
@@ -114,13 +114,13 @@ describe("OperationHistory", () => {
         droppedLegos: DroppedLego[];
       } = {
         connections: [],
-        droppedLegos: [{ ...lego, x: 10, y: 10 }],
+        droppedLegos: [{ ...lego, x: 10, y: 10 }]
       };
 
       // First undo: should move lego back to (0,0)
       currentState = operationHistory.undo(
         currentState.connections,
-        currentState.droppedLegos,
+        currentState.droppedLegos
       );
       expect(currentState.droppedLegos[0].x).toBe(0);
       expect(currentState.droppedLegos[0].y).toBe(0);
@@ -128,7 +128,7 @@ describe("OperationHistory", () => {
       // Second undo: should remove the lego completely
       currentState = operationHistory.undo(
         currentState.connections,
-        currentState.droppedLegos,
+        currentState.droppedLegos
       );
       expect(currentState.droppedLegos).toHaveLength(0);
       expect(currentState.connections).toHaveLength(0);
@@ -143,7 +143,7 @@ describe("OperationHistory", () => {
         description: "Hadamard Gate",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [],
         gauge_legs: [],
@@ -151,7 +151,7 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "h1",
         style: new HadamardStyle("h1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const zRep1: DroppedLego = {
@@ -162,7 +162,7 @@ describe("OperationHistory", () => {
         parity_check_matrix: [
           [0, 0, 0, 1, 1, 0],
           [0, 0, 0, 0, 1, 1],
-          [1, 1, 1, 0, 0, 0],
+          [1, 1, 1, 0, 0, 0]
         ],
         logical_legs: [],
         gauge_legs: [],
@@ -170,13 +170,13 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "1",
         style: new GenericStyle("zrep"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const zRep2: DroppedLego = {
         ...zRep1,
         instanceId: "2",
-        x: 200,
+        x: 200
       };
 
       // Create initial connections
@@ -184,30 +184,30 @@ describe("OperationHistory", () => {
         new Connection(
           {
             legoId: "hadamard",
-            legIndex: 0,
+            legIndex: 0
           },
           {
             legoId: "1",
-            legIndex: 0,
-          },
+            legIndex: 0
+          }
         ),
         new Connection(
           {
             legoId: "1",
-            legIndex: 1,
+            legIndex: 1
           },
           {
             legoId: "2",
-            legIndex: 0,
-          },
-        ),
+            legIndex: 0
+          }
+        )
       ];
 
       // Initial state
 
       const initialState = {
         connections: initialConnections,
-        droppedLegos: [hadamard, zRep1, zRep2],
+        droppedLegos: [hadamard, zRep1, zRep2]
       };
 
       // Fuse operation
@@ -218,10 +218,10 @@ describe("OperationHistory", () => {
           [1, 1, 1, 1, 0, 0, 0, 0],
           [0, 0, 0, 0, 1, 1, 0, 0],
           [0, 0, 0, 0, 0, 1, 1, 0],
-          [0, 0, 0, 0, 0, 0, 1, 1],
+          [0, 0, 0, 0, 0, 0, 1, 1]
         ],
         logical_legs: [],
-        gauge_legs: [],
+        gauge_legs: []
       };
       const fuseOperation: Operation = {
         type: "fuse",
@@ -233,15 +233,15 @@ describe("OperationHistory", () => {
             new Connection(
               {
                 legoId: "h1",
-                legIndex: 0,
+                legIndex: 0
               },
               {
                 legoId: "fused",
-                legIndex: 0,
-              },
-            ),
-          ],
-        },
+                legIndex: 0
+              }
+            )
+          ]
+        }
       };
 
       // Add fuse operation
@@ -253,29 +253,29 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0,
+              legIndex: 0
             },
             {
               legoId: "fused",
-              legIndex: 0,
-            },
-          ),
+              legIndex: 0
+            }
+          )
         ],
-        droppedLegos: [hadamard, fusedLego],
+        droppedLegos: [hadamard, fusedLego]
       };
 
       const zRep1_2: DroppedLego = {
         ...zRep1,
         instanceId: "zRep12",
         x: 150,
-        y: 0,
+        y: 0
       };
 
       const zRep2_2: DroppedLego = {
         ...zRep2,
         instanceId: "zRep22",
         x: 250,
-        y: 0,
+        y: 0
       };
 
       // Update state after fuse
@@ -284,25 +284,25 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0,
+              legIndex: 0
             },
             {
               legoId: "zRep12",
-              legIndex: 0,
-            },
+              legIndex: 0
+            }
           ),
           new Connection(
             {
               legoId: "zRep12",
-              legIndex: 2,
+              legIndex: 2
             },
             {
               legoId: "zRep22",
-              legIndex: 2,
-            },
-          ),
+              legIndex: 2
+            }
+          )
         ],
-        droppedLegos: [hadamard, zRep1_2, zRep2_2],
+        droppedLegos: [hadamard, zRep1_2, zRep2_2]
       };
 
       // Unfuse operation
@@ -312,8 +312,8 @@ describe("OperationHistory", () => {
           legosToRemove: stateAfterFuse.droppedLegos,
           connectionsToRemove: stateAfterFuse.connections,
           legosToAdd: stateAfterUnfuse.droppedLegos,
-          connectionsToAdd: stateAfterUnfuse.connections,
-        },
+          connectionsToAdd: stateAfterUnfuse.connections
+        }
       };
 
       // Add unfuse operation
@@ -322,7 +322,7 @@ describe("OperationHistory", () => {
       // First undo: should unfuse the legos
       let currentState = operationHistory.undo(
         stateAfterUnfuse.connections,
-        stateAfterUnfuse.droppedLegos,
+        stateAfterUnfuse.droppedLegos
       );
       expect(currentState).toEqual(stateAfterFuse);
 
@@ -330,7 +330,7 @@ describe("OperationHistory", () => {
 
       currentState = operationHistory.undo(
         currentState.connections,
-        currentState.droppedLegos,
+        currentState.droppedLegos
       );
       // console.log("currentState", currentState);
       // console.log("initialState", initialState);
@@ -352,7 +352,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -360,14 +360,14 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const operation: Operation = {
         type: "add",
         data: {
-          legosToAdd: [lego],
-        },
+          legosToAdd: [lego]
+        }
       };
 
       operationHistory.addOperation(operation);
@@ -384,7 +384,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -392,7 +392,7 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const operation: Operation = {
@@ -401,10 +401,10 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 },
-            },
-          ],
-        },
+              newLego: { ...lego, x: 10, y: 10 }
+            }
+          ]
+        }
       };
 
       operationHistory.addOperation(operation);
@@ -417,14 +417,14 @@ describe("OperationHistory", () => {
     it("should undo a connect operation", () => {
       const connection: Connection = new Connection(
         { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 },
+        { legoId: "instance2", legIndex: 1 }
       );
 
       const operation: Operation = {
         type: "connect",
         data: {
-          connectionsToAdd: [connection],
-        },
+          connectionsToAdd: [connection]
+        }
       };
 
       operationHistory.addOperation(operation);
@@ -448,7 +448,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -456,14 +456,14 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const operation: Operation = {
         type: "add",
         data: {
-          legosToAdd: [lego],
-        },
+          legosToAdd: [lego]
+        }
       };
 
       operationHistory.addOperation(operation);
@@ -482,7 +482,7 @@ describe("OperationHistory", () => {
         description: "Test Description",
         parity_check_matrix: [
           [1, 0],
-          [0, 1],
+          [0, 1]
         ],
         logical_legs: [0],
         gauge_legs: [1],
@@ -490,7 +490,7 @@ describe("OperationHistory", () => {
         y: 0,
         instanceId: "instance1",
         style: new GenericStyle("lego1"),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       const operation: Operation = {
@@ -499,10 +499,10 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 },
-            },
-          ],
-        },
+              newLego: { ...lego, x: 10, y: 10 }
+            }
+          ]
+        }
       };
 
       operationHistory.addOperation(operation);
@@ -516,14 +516,14 @@ describe("OperationHistory", () => {
     it("should redo a connect operation", () => {
       const connection: Connection = new Connection(
         { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 },
+        { legoId: "instance2", legIndex: 1 }
       );
 
       const operation: Operation = {
         type: "connect",
         data: {
-          connectionsToAdd: [connection],
-        },
+          connectionsToAdd: [connection]
+        }
       };
 
       operationHistory.addOperation(operation);

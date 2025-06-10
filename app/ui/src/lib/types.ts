@@ -16,7 +16,7 @@ export enum PauliOperator {
   X = "X",
   Z = "Z",
   Y = "Y",
-  I = "I",
+  I = "I"
 }
 
 export interface DroppedLego extends LegoPiece {
@@ -37,7 +37,7 @@ export class Connection {
     public to: {
       legoId: string;
       legIndex: number;
-    },
+    }
   ) {}
 
   public equals(other: Connection): boolean {

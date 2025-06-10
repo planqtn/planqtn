@@ -5,7 +5,7 @@ import { Legos } from "../lib/Legos";
 
 export function canDoBialgebra(
   selectedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): boolean {
   if (selectedLegos.length !== 2) return false;
   const [lego1, lego2] = selectedLegos;
@@ -18,8 +18,7 @@ export function canDoBialgebra(
   // Count connections between the two selected legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) &&
-      conn.containsLego(lego2.instanceId),
+      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
   );
   // There should be exactly one connection between them
   return connectionsBetween.length === 1;
@@ -28,7 +27,7 @@ export function canDoBialgebra(
 export async function applyBialgebra(
   legosToCommute: DroppedLego[],
   droppedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): Promise<{
   connections: Connection[];
   droppedLegos: DroppedLego[];
@@ -37,18 +36,17 @@ export async function applyBialgebra(
   const [lego1, lego2] = legosToCommute;
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) &&
-      conn.containsLego(lego2.instanceId),
+      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
   );
   const connectionsToLego1 = connections.filter(
     (conn) =>
       conn.containsLego(lego1.instanceId) &&
-      !conn.containsLego(lego2.instanceId),
+      !conn.containsLego(lego2.instanceId)
   );
   const connectionsToLego2 = connections.filter(
     (conn) =>
       conn.containsLego(lego2.instanceId) &&
-      !conn.containsLego(lego1.instanceId),
+      !conn.containsLego(lego1.instanceId)
   );
 
   const n_legs_lego1 = lego1.parity_check_matrix[0].length / 2;
@@ -76,7 +74,7 @@ export async function applyBialgebra(
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
-    ...droppedLegos.map((l) => parseInt(l.instanceId)),
+    ...droppedLegos.map((l) => parseInt(l.instanceId))
   );
 
   // Create first group of legos
@@ -86,7 +84,7 @@ export async function applyBialgebra(
       legsPerLego1,
       String(maxInstanceId + 1 + i),
       lego1.x + i * 100,
-      lego1.y,
+      lego1.y
     );
     newLegos.push(newLego);
   }
@@ -98,7 +96,7 @@ export async function applyBialgebra(
       legsPerLego2,
       String(maxInstanceId + 1 + n_group_1 + i),
       lego2.x + i * 100,
-      lego2.y + 100,
+      lego2.y + 100
     );
     newLegos.push(newLego);
   }
@@ -110,13 +108,13 @@ export async function applyBialgebra(
         new Connection(
           {
             legoId: newLegos[i].instanceId,
-            legIndex: j,
+            legIndex: j
           },
           {
             legoId: newLegos[n_group_1 + j].instanceId,
-            legIndex: i,
-          },
-        ),
+            legIndex: i
+          }
+        )
       );
     }
   }
@@ -135,10 +133,10 @@ export async function applyBialgebra(
       new Connection(
         {
           legoId: newLegos[index].instanceId,
-          legIndex: n_group_2, // Always use the last leg index for external connections
+          legIndex: n_group_2 // Always use the last leg index for external connections
         },
-        { legoId: externalLegoId, legIndex: externalLegIndex },
-      ),
+        { legoId: externalLegoId, legIndex: externalLegIndex }
+      )
     );
   });
 
@@ -156,17 +154,17 @@ export async function applyBialgebra(
       new Connection(
         {
           legoId: newLegos[n_group_1 + index].instanceId,
-          legIndex: n_group_1, // Always use the last leg index for external connections
+          legIndex: n_group_1 // Always use the last leg index for external connections
         },
-        { legoId: externalLegoId, legIndex: externalLegIndex },
-      ),
+        { legoId: externalLegoId, legIndex: externalLegIndex }
+      )
     );
   });
 
   // Remove old legos and connections
   const updatedDroppedLegos = droppedLegos
     .filter(
-      (lego) => !legosToCommute.some((l) => l.instanceId === lego.instanceId),
+      (lego) => !legosToCommute.some((l) => l.instanceId === lego.instanceId)
     )
     .concat(newLegos);
 
@@ -178,22 +176,22 @@ export async function applyBialgebra(
             c.from.legoId === conn.from.legoId &&
             c.from.legIndex === conn.from.legIndex &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex,
+            c.to.legIndex === conn.to.legIndex
         ) &&
         !connectionsToLego1.some(
           (c) =>
             c.from.legoId === conn.from.legoId &&
             c.from.legIndex === conn.from.legIndex &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex,
+            c.to.legIndex === conn.to.legIndex
         ) &&
         !connectionsToLego2.some(
           (c) =>
             c.from.legoId === conn.from.legoId &&
             c.from.legIndex === conn.from.legIndex &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex,
-        ),
+            c.to.legIndex === conn.to.legIndex
+        )
     )
     .concat(newConnections);
 
@@ -207,11 +205,11 @@ export async function applyBialgebra(
         connectionsToRemove: [
           ...connectionsBetween,
           ...connectionsToLego1,
-          ...connectionsToLego2,
+          ...connectionsToLego2
         ],
         legosToAdd: newLegos,
-        connectionsToAdd: newConnections,
-      },
-    },
+        connectionsToAdd: newConnections
+      }
+    }
   };
 }

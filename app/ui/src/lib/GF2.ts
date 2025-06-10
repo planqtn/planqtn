@@ -25,7 +25,7 @@ export class GF2 {
     return new GF2(
       Array(rows)
         .fill(0)
-        .map(() => Array(cols).fill(0)),
+        .map(() => Array(cols).fill(0))
     );
   }
 
@@ -33,7 +33,7 @@ export class GF2 {
     return new GF2(
       Array(rows)
         .fill(0)
-        .map(() => Array(cols).fill(1)),
+        .map(() => Array(cols).fill(1))
     );
   }
 
@@ -53,8 +53,8 @@ export class GF2 {
     }
     return new GF2(
       this.matrix.map((row, i) =>
-        row.map((val, j) => (val + other.matrix[i][j]) % 2),
-      ),
+        row.map((val, j) => (val + other.matrix[i][j]) % 2)
+      )
     );
   }
 
@@ -94,7 +94,7 @@ export class GF2 {
       return false;
     }
     return this.matrix.every((row, i) =>
-      row.every((val, j) => val === other.matrix[i][j]),
+      row.every((val, j) => val === other.matrix[i][j])
     );
   }
 
@@ -113,7 +113,7 @@ export class GF2 {
   setRow(row: number, values: number[]): void {
     if (values.length !== this.shape[1]) {
       throw new Error(
-        `Row length ${values.length} does not match matrix width ${this.shape[1]}`,
+        `Row length ${values.length} does not match matrix width ${this.shape[1]}`
       );
     }
     this.matrix[row] = values.map((v) => v % 2);
@@ -126,7 +126,7 @@ export class GF2 {
   swapRows(row1: number, row2: number): void {
     [this.matrix[row1], this.matrix[row2]] = [
       this.matrix[row2],
-      this.matrix[row1],
+      this.matrix[row1]
     ];
   }
 
@@ -134,7 +134,7 @@ export class GF2 {
     for (let i = 0; i < this.shape[0]; i++) {
       [this.matrix[i][col1], this.matrix[i][col2]] = [
         this.matrix[i][col2],
-        this.matrix[i][col1],
+        this.matrix[i][col1]
       ];
     }
   }
@@ -159,7 +159,7 @@ export class GF2 {
 
   static gauss(
     mx: GF2,
-    options: { noswaps?: boolean; col_subset?: number[] } = {},
+    options: { noswaps?: boolean; col_subset?: number[] } = {}
   ): GF2 {
     const { noswaps = false, col_subset } = options;
     const res = mx.copy();
@@ -265,7 +265,7 @@ export class GF2 {
     const identity = GF2.identity(rows);
     // Horizontally stack the matrices
     const augmented = new GF2(
-      res.toArray().map((row, i) => [...row, ...identity.getRow(i)]),
+      res.toArray().map((row, i) => [...row, ...identity.getRow(i)])
     );
     return GF2.gauss(augmented, { noswaps: true });
   }

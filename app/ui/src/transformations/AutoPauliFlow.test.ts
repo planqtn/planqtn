@@ -18,7 +18,7 @@ describe("simple auto flow", () => {
     parityMatrix,
     selectedRows = [] as number[],
     x = 0,
-    y = 0,
+    y = 0
   }: {
     id: string;
     name: string;
@@ -38,18 +38,18 @@ describe("simple auto flow", () => {
     y,
     instanceId: id,
     style: new GenericStyle(id),
-    selectedMatrixRows: selectedRows,
+    selectedMatrixRows: selectedRows
   });
 
   const makeConn = (
     fromId: string,
     fromIdx: number,
     toId: string,
-    toIdx: number,
+    toIdx: number
   ) =>
     new Connection(
       { legoId: fromId, legIndex: fromIdx },
-      { legoId: toId, legIndex: toIdx },
+      { legoId: toId, legIndex: toIdx }
     );
 
   it("do nothing if tensor network is null", () => {
@@ -67,7 +67,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego2",
@@ -76,12 +76,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [],
-        }),
+          selectedRows: []
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -89,7 +89,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -97,12 +97,12 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toHaveLength(0);
   });
@@ -115,7 +115,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego2",
@@ -124,12 +124,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [0],
-        }),
+          selectedRows: [0]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -137,7 +137,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -145,13 +145,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -166,9 +166,9 @@ describe("simple auto flow", () => {
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego2",
@@ -177,12 +177,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [0],
-        }),
+          selectedRows: [0]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -190,7 +190,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -198,13 +198,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -216,7 +216,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos2 = mockSetDroppedLegos.mock.calls
@@ -224,13 +224,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX2 = updatedLegos2.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX2.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX2.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos2.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
@@ -244,7 +244,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [0],
+          selectedRows: [0]
         }),
         makeLego({
           id: "lego2",
@@ -253,12 +253,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [],
-        }),
+          selectedRows: []
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -266,7 +266,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -274,13 +274,13 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toHaveLength(0);
   });
@@ -293,7 +293,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [0],
+          selectedRows: [0]
         }),
         makeLego({
           id: "lego2",
@@ -302,12 +302,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
-        }),
+          selectedRows: [1]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -315,7 +315,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -323,12 +323,12 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
@@ -338,7 +338,7 @@ describe("simple auto flow", () => {
     const connections: Connection[] = [
       makeConn("lego1", 0, "lego2", 3),
       makeConn("lego2", 0, "lego3", 1),
-      makeConn("lego3", 0, "lego4", 0),
+      makeConn("lego3", 0, "lego4", 0)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -346,7 +346,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego2",
@@ -355,27 +355,27 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [0],
+          selectedRows: [0]
         }),
         makeLego({
           id: "lego3",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego4",
           name: "z stopper",
           parityMatrix: [[0, 1]],
-          selectedRows: [],
-        }),
+          selectedRows: []
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -383,7 +383,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -391,24 +391,24 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(1);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
 
     const updatedZ = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4"
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(1);
   });
@@ -417,7 +417,7 @@ describe("simple auto flow", () => {
     const connections: Connection[] = [
       makeConn("lego1", 0, "lego2", 3),
       makeConn("lego2", 0, "lego3", 1),
-      makeConn("lego3", 0, "lego4", 0),
+      makeConn("lego3", 0, "lego4", 0)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -425,7 +425,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [0],
+          selectedRows: [0]
         }),
         makeLego({
           id: "lego2",
@@ -434,27 +434,27 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego3",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego4",
           name: "z stopper",
           parityMatrix: [[0, 1]],
-          selectedRows: [0],
-        }),
+          selectedRows: [0]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -462,7 +462,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -470,24 +470,24 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
 
     const updatedZ = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4"
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(0);
   });
@@ -497,7 +497,7 @@ describe("simple auto flow", () => {
       makeConn("lego1", 0, "lego2", 3),
       makeConn("lego2", 2, "lego3", 0),
       makeConn("lego2", 1, "lego4", 7),
-      makeConn("lego2", 2, "lego5", 0),
+      makeConn("lego2", 2, "lego5", 0)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -505,7 +505,7 @@ describe("simple auto flow", () => {
           id: "lego1",
           name: "x stopper",
           parityMatrix: [[1, 0]],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego2",
@@ -514,9 +514,9 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego3",
@@ -525,9 +525,9 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0],
             [0, 0, 0, 0, 1, 1, 1, 1],
             [1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1]
           ],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego4",
@@ -540,9 +540,9 @@ describe("simple auto flow", () => {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
             [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
           ],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego5",
@@ -551,12 +551,12 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [],
-        }),
+          selectedRows: []
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -564,7 +564,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -572,28 +572,28 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedX = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedX.selectedMatrixRows).toHaveLength(0);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT5.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH.selectedMatrixRows).toHaveLength(0);
 
     const updatedZ = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego4",
+      (lego: DroppedLego) => lego.instanceId === "lego4"
     );
     expect(updatedZ.selectedMatrixRows).toHaveLength(0);
 
     const updatedT52 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego5",
+      (lego: DroppedLego) => lego.instanceId === "lego5"
     );
     expect(updatedT52.selectedMatrixRows).toHaveLength(0);
   });
@@ -601,7 +601,7 @@ describe("simple auto flow", () => {
   it("highlight updates shared lego", () => {
     const connections: Connection[] = [
       makeConn("lego1", 0, "lego3", 1),
-      makeConn("lego2", 2, "lego3", 0),
+      makeConn("lego2", 2, "lego3", 0)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -612,9 +612,9 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego2",
@@ -623,21 +623,21 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego3",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [0],
-        }),
+          selectedRows: [0]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -645,7 +645,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -653,19 +653,19 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT51 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT51.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
@@ -674,7 +674,7 @@ describe("simple auto flow", () => {
   it("do not remove highlight on shared lego", () => {
     const connections: Connection[] = [
       makeConn("lego1", 0, "lego3", 1),
-      makeConn("lego2", 2, "lego3", 0),
+      makeConn("lego2", 2, "lego3", 0)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -685,9 +685,9 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [1],
+          selectedRows: [1]
         }),
         makeLego({
           id: "lego2",
@@ -696,21 +696,21 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [2],
+          selectedRows: [2]
         }),
         makeLego({
           id: "lego3",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [1],
-        }),
+          selectedRows: [1]
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -718,7 +718,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -726,19 +726,19 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT51 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedT51.selectedMatrixRows).toEqual(expect.arrayContaining([1]));
     expect(updatedT51.selectedMatrixRows).toHaveLength(1);
 
     const updatedT52 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedT52.selectedMatrixRows).toEqual(expect.arrayContaining([2]));
     expect(updatedT52.selectedMatrixRows).toHaveLength(1);
 
     const updatedH = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH.selectedMatrixRows).toEqual(expect.arrayContaining([0]));
     expect(updatedH.selectedMatrixRows).toHaveLength(1);
@@ -748,7 +748,7 @@ describe("simple auto flow", () => {
     const connections: Connection[] = [
       makeConn("lego1", 3, "lego3", 0),
       makeConn("lego1", 0, "lego2", 0),
-      makeConn("lego2", 1, "lego3", 1),
+      makeConn("lego2", 1, "lego3", 1)
     ];
     const tensorNetwork: TensorNetwork = new TensorNetwork(
       [
@@ -759,30 +759,30 @@ describe("simple auto flow", () => {
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
           ],
-          selectedRows: [0, 1],
+          selectedRows: [0, 1]
         }),
         makeLego({
           id: "lego2",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [],
+          selectedRows: []
         }),
         makeLego({
           id: "lego3",
           name: "hadmard",
           parityMatrix: [
             [1, 0, 0, 1],
-            [0, 1, 1, 0],
+            [0, 1, 1, 0]
           ],
-          selectedRows: [],
-        }),
+          selectedRows: []
+        })
       ],
-      connections,
+      connections
     );
 
     simpleAutoFlow(
@@ -790,7 +790,7 @@ describe("simple auto flow", () => {
       tensorNetwork,
       connections,
       mockSetDroppedLegos,
-      mockSetTensorNetwork,
+      mockSetTensorNetwork
     );
 
     const updatedLegos = mockSetDroppedLegos.mock.calls
@@ -798,26 +798,26 @@ describe("simple auto flow", () => {
       .reduce((state, updater) => updater(state), tensorNetwork.legos);
 
     const updatedT5 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego1",
+      (lego: DroppedLego) => lego.instanceId === "lego1"
     );
     expect(updatedT5.selectedMatrixRows).toEqual(
-      expect.arrayContaining([0, 1]),
+      expect.arrayContaining([0, 1])
     );
     expect(updatedT5.selectedMatrixRows).toHaveLength(2);
 
     const updatedH1 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego2",
+      (lego: DroppedLego) => lego.instanceId === "lego2"
     );
     expect(updatedH1.selectedMatrixRows).toEqual(
-      expect.arrayContaining([0, 1]),
+      expect.arrayContaining([0, 1])
     );
     expect(updatedH1.selectedMatrixRows).toHaveLength(2);
 
     const updatedH2 = updatedLegos.find(
-      (lego: DroppedLego) => lego.instanceId === "lego3",
+      (lego: DroppedLego) => lego.instanceId === "lego3"
     );
     expect(updatedH2.selectedMatrixRows).toEqual(
-      expect.arrayContaining([0, 1]),
+      expect.arrayContaining([0, 1])
     );
     expect(updatedH2.selectedMatrixRows).toHaveLength(2);
   });

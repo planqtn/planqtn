@@ -10,7 +10,7 @@ export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
 export const applyConnectGraphNodes = async (
   legos: DroppedLego[],
   allLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): Promise<{
   droppedLegos: DroppedLego[];
   connections: Connection[];
@@ -18,7 +18,7 @@ export const applyConnectGraphNodes = async (
 }> => {
   // Get max instance ID
   const maxInstanceId = Math.max(
-    ...allLegos.map((l) => parseInt(l.instanceId)),
+    ...allLegos.map((l) => parseInt(l.instanceId))
   );
   const numLegs = legos.length + 1;
 
@@ -28,7 +28,7 @@ export const applyConnectGraphNodes = async (
     numLegs,
     (maxInstanceId + 1).toString(),
     legos.reduce((sum, l) => sum + l.x, 0) / legos.length,
-    legos.reduce((sum, l) => sum + l.y, 0) / legos.length,
+    legos.reduce((sum, l) => sum + l.y, 0) / legos.length
   );
 
   // Find dangling legs for each lego
@@ -54,7 +54,7 @@ export const applyConnectGraphNodes = async (
 
     return {
       lego,
-      danglingLeg: danglingLeg < numLegs ? danglingLeg : numLegs,
+      danglingLeg: danglingLeg < numLegs ? danglingLeg : numLegs
     };
   });
 
@@ -69,9 +69,9 @@ export const applyConnectGraphNodes = async (
         lego.parity_check_matrix[0].length / 2 + 1,
         lego.instanceId,
         lego.x,
-        lego.y,
+        lego.y
       );
-    },
+    }
   );
 
   // Create Hadamard legos
@@ -88,14 +88,14 @@ export const applyConnectGraphNodes = async (
         y: (connectorLego.y + lego.y) / 2,
         parity_check_matrix: [
           [1, 0, 0, 1],
-          [0, 1, 1, 0],
+          [0, 1, 1, 0]
         ],
         logical_legs: [],
         gauge_legs: [],
         style: getLegoStyle("h", 2),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
-    },
+    }
   );
 
   // Create connections between connector, Hadamards, and new legos
@@ -104,24 +104,24 @@ export const applyConnectGraphNodes = async (
       return [
         new Connection(
           { legoId: connectorLego.instanceId, legIndex: index },
-          { legoId: hadamardLegos[index].instanceId, legIndex: 0 },
+          { legoId: hadamardLegos[index].instanceId, legIndex: 0 }
         ),
         new Connection(
           { legoId: hadamardLegos[index].instanceId, legIndex: 1 },
-          { legoId: lego.instanceId, legIndex: danglingLeg },
-        ),
+          { legoId: lego.instanceId, legIndex: danglingLeg }
+        )
       ];
-    },
+    }
   );
 
   // Update state
   const updatedLegos = [
     ...allLegos.filter(
-      (l) => !legos.some((selected) => selected.instanceId === l.instanceId),
+      (l) => !legos.some((selected) => selected.instanceId === l.instanceId)
     ),
     ...newLegos,
     connectorLego,
-    ...hadamardLegos,
+    ...hadamardLegos
   ];
 
   const updatedConnections = [...connections, ...newConnections];
@@ -131,16 +131,16 @@ export const applyConnectGraphNodes = async (
     type: "connectGraphNodesWithCenterLego",
     data: {
       legosToUpdate: (zip(legos, newLegos) as [DroppedLego, DroppedLego][]).map(
-        ([lego, newLego]) => ({ oldLego: lego, newLego: newLego }),
+        ([lego, newLego]) => ({ oldLego: lego, newLego: newLego })
       ),
       legosToAdd: [connectorLego, ...hadamardLegos],
-      connectionsToAdd: newConnections,
-    },
+      connectionsToAdd: newConnections
+    }
   };
 
   return {
     droppedLegos: updatedLegos,
     connections: updatedConnections,
-    operation,
+    operation
   };
 };

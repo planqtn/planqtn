@@ -8,7 +8,7 @@ export class FuseLegos {
 
   constructor(
     private connections: Connection[],
-    private droppedLegos: DroppedLego[],
+    private droppedLegos: DroppedLego[]
   ) {}
 
   public async apply(legosToFuse: DroppedLego[]): Promise<{
@@ -21,16 +21,16 @@ export class FuseLegos {
       const internalConnections = this.connections.filter(
         (conn) =>
           legosToFuse.some((l) => l.instanceId === conn.from.legoId) &&
-          legosToFuse.some((l) => l.instanceId === conn.to.legoId),
+          legosToFuse.some((l) => l.instanceId === conn.to.legoId)
       );
 
       // Get all connections to legos outside the fusion group
       const externalConnections = this.connections.filter((conn) => {
         const fromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId,
+          (l) => l.instanceId === conn.from.legoId
         );
         const toInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.to.legoId,
+          (l) => l.instanceId === conn.to.legoId
         );
         return (fromInGroup && !toInGroup) || (!fromInGroup && toInGroup);
       });
@@ -38,24 +38,24 @@ export class FuseLegos {
       const remainingConnections = this.connections.filter(
         (conn) =>
           !internalConnections.some((ic) => ic.equals(conn)) &&
-          !externalConnections.some((ec) => ec.equals(conn)),
+          !externalConnections.some((ec) => ec.equals(conn))
       );
 
       // Create a map of old leg indices to track external connections
       const legMap = new Map<string, { legoId: string; legIndex: number }>();
       externalConnections.forEach((conn) => {
         const isFromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId,
+          (l) => l.instanceId === conn.from.legoId
         );
         if (isFromInGroup) {
           legMap.set(`${conn.from.legoId}-${conn.from.legIndex}`, {
             legoId: conn.to.legoId,
-            legIndex: conn.to.legIndex,
+            legIndex: conn.to.legIndex
           });
         } else {
           legMap.set(`${conn.to.legoId}-${conn.to.legIndex}`, {
             legoId: conn.from.legoId,
-            legIndex: conn.from.legIndex,
+            legIndex: conn.from.legIndex
           });
         }
       });
@@ -87,34 +87,34 @@ export class FuseLegos {
         x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length,
         y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
         style: getLegoStyle(recognized_type, result.legs.length),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
 
       // Create new connections based on the leg mapping
       const newConnections = externalConnections.map((conn) => {
         const isFromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId,
+          (l) => l.instanceId === conn.from.legoId
         );
         if (isFromInGroup) {
           // Find the new leg index from the legs array
           const newLegIndex = result.legs.findIndex(
             (leg) =>
               leg.instanceId === conn.from.legoId &&
-              leg.legIndex === conn.from.legIndex,
+              leg.legIndex === conn.from.legIndex
           );
           return new Connection(
             { legoId: newLego.instanceId, legIndex: newLegIndex },
-            conn.to,
+            conn.to
           );
         } else {
           const newLegIndex = result.legs.findIndex(
             (leg) =>
               leg.instanceId === conn.to.legoId &&
-              leg.legIndex === conn.to.legIndex,
+              leg.legIndex === conn.to.legIndex
           );
           return new Connection(conn.from, {
             legoId: newLego.instanceId,
-            legIndex: newLegIndex,
+            legIndex: newLegIndex
           });
         }
       });
@@ -122,9 +122,9 @@ export class FuseLegos {
       // Update state
       const resultingDroppedLegos = [
         ...this.droppedLegos.filter(
-          (l) => !legosToFuse.some((fl) => fl.instanceId === l.instanceId),
+          (l) => !legosToFuse.some((fl) => fl.instanceId === l.instanceId)
         ),
-        newLego,
+        newLego
       ];
       const resultingConnections = [...remainingConnections, ...newConnections];
 
@@ -138,11 +138,11 @@ export class FuseLegos {
             legosToAdd: [newLego],
             connectionsToRemove: [
               ...internalConnections,
-              ...externalConnections,
+              ...externalConnections
             ],
-            connectionsToAdd: newConnections,
-          },
-        },
+            connectionsToAdd: newConnections
+          }
+        }
       };
     } catch (error) {
       console.error("Error fusing legos:", error);

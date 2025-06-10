@@ -8,7 +8,7 @@ export class CanvasStateSerializer {
   public encode(
     pieces: DroppedLego[],
     connections: Connection[],
-    hideConnectedLegs: boolean,
+    hideConnectedLegs: boolean
   ): void {
     const state: CanvasState = {
       pieces: pieces.map((piece) => ({
@@ -22,10 +22,10 @@ export class CanvasStateSerializer {
         parity_check_matrix: piece.parity_check_matrix,
         logical_legs: piece.logical_legs,
         gauge_legs: piece.gauge_legs,
-        selectedMatrixRows: piece.selectedMatrixRows,
+        selectedMatrixRows: piece.selectedMatrixRows
       })),
       connections,
-      hideConnectedLegs,
+      hideConnectedLegs
     };
 
     const encoded = btoa(JSON.stringify(state));
@@ -72,7 +72,7 @@ export class CanvasStateSerializer {
             piece.parity_check_matrix.length === 0
           ) {
             throw new Error(
-              `Piece ${piece.instanceId} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`,
+              `Piece ${piece.instanceId} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`
             );
           }
 
@@ -92,7 +92,7 @@ export class CanvasStateSerializer {
               logical_legs: piece.logical_legs || [],
               gauge_legs: piece.gauge_legs || [],
               style: new GenericStyle(piece.id),
-              selectedMatrixRows: piece.selectedMatrixRows || [],
+              selectedMatrixRows: piece.selectedMatrixRows || []
             };
           }
 
@@ -113,9 +113,9 @@ export class CanvasStateSerializer {
               gauge_legs: piece.gauge_legs || [],
               style: getLegoStyle(
                 piece.id,
-                piece.parity_check_matrix[0].length / 2,
+                piece.parity_check_matrix[0].length / 2
               ),
-              selectedMatrixRows: piece.selectedMatrixRows || [],
+              selectedMatrixRows: piece.selectedMatrixRows || []
             };
           }
 
@@ -129,19 +129,19 @@ export class CanvasStateSerializer {
             y: piece.y,
             style: getLegoStyle(
               predefinedLego.id,
-              predefinedLego.parity_check_matrix[0].length / 2,
+              predefinedLego.parity_check_matrix[0].length / 2
             ),
-            selectedMatrixRows: piece.selectedMatrixRows || [],
+            selectedMatrixRows: piece.selectedMatrixRows || []
           };
-        },
+        }
       );
       // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);
       return {
         pieces: reconstructedPieces,
         connections: decoded.connections.map(
-          (conn: Connection) => new Connection(conn.from, conn.to),
+          (conn: Connection) => new Connection(conn.from, conn.to)
         ),
-        hideConnectedLegs: decoded.hideConnectedLegs || false,
+        hideConnectedLegs: decoded.hideConnectedLegs || false
       };
     } catch (error) {
       console.error("Error decoding canvas state:", error);

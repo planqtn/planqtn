@@ -6,7 +6,7 @@ import { StabilizerCodeTensor } from "./StabilizerCodeTensor";
 export function findConnectedComponent(
   startLego: DroppedLego,
   droppedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): TensorNetwork {
   const visited = new Set<string>();
   const component: DroppedLego[] = [];
@@ -18,7 +18,7 @@ export function findConnectedComponent(
   while (queue.length > 0) {
     const currentLegoId = queue.shift()!;
     const currentLego = droppedLegos.find(
-      (l) => l.instanceId === currentLegoId,
+      (l) => l.instanceId === currentLegoId
     );
     if (!currentLego) continue;
     component.push(currentLego);
@@ -65,7 +65,7 @@ export class TensorNetwork {
     public taskId?: string,
     public constructionCode?: string,
     public legOrdering?: TensorNetworkLeg[],
-    public signature?: string,
+    public signature?: string
   ) {}
 
   public static fromObj(tn: {
@@ -92,7 +92,7 @@ export class TensorNetwork {
       tn.taskId,
       tn.constructionCode,
       tn.legOrdering,
-      tn.signature,
+      tn.signature
     );
   }
 
@@ -101,7 +101,7 @@ export class TensorNetwork {
 
     // Add imports
     code.push(
-      "from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator",
+      "from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
     );
     code.push("from qlego.tensor_network import TensorNetwork");
     code.push("from galois import GF2");
@@ -112,10 +112,10 @@ export class TensorNetwork {
     code.push("nodes = {");
     for (const lego of this.legos) {
       const matrix = lego.parity_check_matrix.map((row: number[]) =>
-        row.map((val: number) => `${val}`).join(", "),
+        row.map((val: number) => `${val}`).join(", ")
       );
       code.push(
-        `    "${lego.instanceId}": StabilizerCodeTensorEnumerator(idx="${lego.instanceId}", h=GF2([`,
+        `    "${lego.instanceId}": StabilizerCodeTensorEnumerator(idx="${lego.instanceId}", h=GF2([`
       );
       for (const row of matrix) {
         code.push(`            [${row}],`);
@@ -136,7 +136,7 @@ export class TensorNetwork {
     code.push("# Add traces");
     for (const conn of this.connections) {
       code.push(
-        `tn.self_trace("${conn.from.legoId}", "${conn.to.legoId}", [${conn.from.legIndex}], [${conn.to.legIndex}])`,
+        `tn.self_trace("${conn.from.legoId}", "${conn.to.legoId}", [${conn.from.legIndex}], [${conn.to.legIndex}])`
       );
     }
 
@@ -151,8 +151,8 @@ export class TensorNetwork {
         this.legos[0].instanceId,
         Array.from(
           { length: this.legos[0].parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: this.legos[0].instanceId, legIndex: i }),
-        ),
+          (_, i) => ({ instanceId: this.legos[0].instanceId, legIndex: i })
+        )
       );
     }
 
@@ -167,10 +167,10 @@ export class TensorNetwork {
         lego.instanceId,
         Array.from(
           { length: lego.parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: lego.instanceId, legIndex: i }),
-        ),
+          (_, i) => ({ instanceId: lego.instanceId, legIndex: i })
+        )
       ),
-      legos: new Set([lego.instanceId]),
+      legos: new Set([lego.instanceId])
     }));
     const legoToComponent = new Map<string, number>();
     this.legos.forEach((lego, i) => legoToComponent.set(lego.instanceId, i));
@@ -182,7 +182,7 @@ export class TensorNetwork {
 
       if (comp1Idx === undefined || comp2Idx === undefined) {
         throw new Error(
-          `Lego not found: ${conn.from.legoId} or ${conn.to.legoId}`,
+          `Lego not found: ${conn.from.legoId} or ${conn.to.legoId}`
         );
       }
 
@@ -191,7 +191,7 @@ export class TensorNetwork {
         const comp = components[comp1Idx];
         comp.tensor = comp.tensor.selfTrace(
           [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
-          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }],
+          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }]
         );
       }
       // Case 2: Legos are in different components - merge them
@@ -203,7 +203,7 @@ export class TensorNetwork {
         const newTensor = comp1.tensor.conjoin(
           comp2.tensor,
           [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
-          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }],
+          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }]
         );
 
         // Update the first component with merged result

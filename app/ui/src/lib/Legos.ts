@@ -15,7 +15,7 @@ export enum LegoType {
   STOPPER_Z = "stopper_z",
   STOPPER_Y = "stopper_y",
   STOPPER_I = "stopper_i",
-  ID = "identity",
+  ID = "identity"
 }
 
 export interface DynamicLegoRequest {
@@ -30,7 +30,7 @@ export class Legos {
     [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0],
     [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
   ];
 
   private static steane_code_813_encoding_tensor = [
@@ -41,24 +41,24 @@ export class Legos {
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
     [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
   ];
 
   private static identity = [
     [1, 1, 0, 0],
-    [0, 0, 1, 1],
+    [0, 0, 1, 1]
   ];
 
   private static encoding_tensor_512 = [
     [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
     [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
+    [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
   ];
 
   private static h = [
     [1, 0, 0, 1],
-    [0, 1, 1, 0],
+    [0, 1, 1, 0]
   ];
 
   private static stopper_x_paulis = [[1, 0]];
@@ -108,7 +108,7 @@ export class Legos {
         logical_legs: [4, 5],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       {
         id: LegoType.T5,
@@ -119,7 +119,7 @@ export class Legos {
         logical_legs: [4],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       {
         id: LegoType.H,
@@ -130,7 +130,7 @@ export class Legos {
         logical_legs: [],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       this.stopper_x(),
       this.stopper_z(),
@@ -144,7 +144,7 @@ export class Legos {
         parameters: { d: 3 },
         parity_check_matrix: this.z_rep_code(),
         logical_legs: [],
-        gauge_legs: [],
+        gauge_legs: []
       },
       {
         id: LegoType.XREP,
@@ -155,7 +155,7 @@ export class Legos {
         parameters: { d: 3 },
         parity_check_matrix: this.x_rep_code(),
         logical_legs: [],
-        gauge_legs: [],
+        gauge_legs: []
       },
       {
         id: LegoType.ID,
@@ -166,7 +166,7 @@ export class Legos {
         logical_legs: [],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       {
         id: "steane",
@@ -177,7 +177,7 @@ export class Legos {
         logical_legs: [7],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       {
         id: "832",
@@ -196,12 +196,12 @@ export class Legos {
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
         ],
         logical_legs: [8, 9, 10],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
+        parameters: {}
       },
       {
         id: "15qrm",
@@ -230,8 +230,8 @@ export class Legos {
         logical_legs: [15],
         gauge_legs: [],
         is_dynamic: false,
-        parameters: {},
-      },
+        parameters: {}
+      }
     ];
   }
   static stopper_i(): LegoPiece {
@@ -244,7 +244,7 @@ export class Legos {
       logical_legs: [],
       gauge_legs: [],
       is_dynamic: false,
-      parameters: {},
+      parameters: {}
     };
   }
   static stopper_z(): LegoPiece {
@@ -257,7 +257,7 @@ export class Legos {
       logical_legs: [],
       gauge_legs: [],
       is_dynamic: false,
-      parameters: {},
+      parameters: {}
     };
   }
   static stopper_x(): LegoPiece {
@@ -270,7 +270,7 @@ export class Legos {
       logical_legs: [],
       gauge_legs: [],
       is_dynamic: false,
-      parameters: {},
+      parameters: {}
     };
   }
 
@@ -303,7 +303,7 @@ export class Legos {
         return {
           ...legoDef,
           parity_check_matrix: matrix,
-          parameters: { d },
+          parameters: { d }
         };
       }
       default:
@@ -316,13 +316,13 @@ export class Legos {
     numLegs: number,
     instanceId: string,
     x: number,
-    y: number,
+    y: number
   ): DroppedLego {
     const data = this.getDynamicLego({
       lego_id: legoId,
       parameters: {
-        d: numLegs,
-      },
+        d: numLegs
+      }
     });
 
     return {
@@ -331,7 +331,7 @@ export class Legos {
       style: getLegoStyle(data.id, numLegs),
       x,
       y,
-      selectedMatrixRows: [],
+      selectedMatrixRows: []
     };
   }
 }

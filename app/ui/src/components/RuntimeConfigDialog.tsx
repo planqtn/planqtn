@@ -12,7 +12,7 @@ import {
   VStack,
   useToast,
   Alert,
-  AlertIcon,
+  AlertIcon
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 
@@ -29,7 +29,7 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
   onClose,
   onSubmit,
   isLocal,
-  initialConfig,
+  initialConfig
 }) => {
   const [configText, setConfigText] = useState("");
   const [error, setError] = useState("");
@@ -57,7 +57,7 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
         description: "Please provide valid JSON configuration",
         status: "error",
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
     }
   };

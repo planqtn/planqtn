@@ -9,7 +9,7 @@ import {
   X_COLOR_LIGHT,
   Z_COLOR,
   Z_COLOR_DARK,
-  Z_COLOR_LIGHT,
+  Z_COLOR_LIGHT
 } from "./lib/PauliColors";
 
 export const Z_REP_CODE = "z_rep_code";
@@ -44,7 +44,7 @@ const chakraToHexColors: { [key: string]: string } = {
   "gray.400": "#9CA3AF",
   "gray.500": "#6B7280",
   "gray.600": "#4B5563",
-  "gray.700": "#374151",
+  "gray.700": "#374151"
 };
 
 interface LegStyle {
@@ -128,14 +128,14 @@ export abstract class LegoStyle {
   getLegStyle(
     legIndex: number,
     lego: DroppedLego,
-    forSvg: boolean = false,
+    forSvg: boolean = false
   ): LegStyle {
     const isLogical = lego.logical_legs.includes(legIndex);
     const isGauge = lego.gauge_legs.includes(legIndex);
     const legCount = lego.parity_check_matrix[0].length / 2;
     const highlightPauliOperator = this.getLegHighlightPauliOperator(
       legIndex,
-      lego,
+      lego
     );
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
 
@@ -161,7 +161,7 @@ export abstract class LegoStyle {
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted,
+          is_highlighted: isHighlighted
         };
       }
 
@@ -170,7 +170,7 @@ export abstract class LegoStyle {
       const minSpreadPerLeg = Math.PI / 6; // 30 degrees
       const totalSpread = Math.min(
         Math.PI * 0.8,
-        minSpreadPerLeg * (logicalLegsCount - 1),
+        minSpreadPerLeg * (logicalLegsCount - 1)
       );
       const startAngle = -Math.PI / 2 - totalSpread / 2;
       const angle =
@@ -186,7 +186,7 @@ export abstract class LegoStyle {
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted,
+        is_highlighted: isHighlighted
       };
     } else if (isGauge) {
       // For gauge legs, calculate angle from bottom
@@ -201,14 +201,14 @@ export abstract class LegoStyle {
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted,
+        is_highlighted: isHighlighted
       };
     } else {
       // For physical legs
       // Create an array of all physical leg indices (non-logical, non-gauge legs)
       const physicalLegIndices = Array.from({ length: legCount }, (_, i) => i)
         .filter(
-          (i) => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i),
+          (i) => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i)
         )
         .sort((a, b) => a - b);
 
@@ -227,7 +227,7 @@ export abstract class LegoStyle {
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted,
+          is_highlighted: isHighlighted
         };
       }
 
@@ -244,7 +244,7 @@ export abstract class LegoStyle {
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted,
+          is_highlighted: isHighlighted
         };
       }
 
@@ -273,7 +273,7 @@ export abstract class LegoStyle {
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted,
+        is_highlighted: isHighlighted
       };
     }
   }
@@ -281,7 +281,7 @@ export abstract class LegoStyle {
   getLegColor(
     legIndex: number,
     lego: DroppedLego,
-    forSvg: boolean = false,
+    forSvg: boolean = false
   ): string {
     const legStyle = this.getLegStyle(legIndex, lego, forSvg);
     return legStyle.color;

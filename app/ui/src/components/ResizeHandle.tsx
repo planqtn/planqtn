@@ -8,7 +8,7 @@ interface ResizeHandleProps {
 
 export const ResizeHandle: React.FC<ResizeHandleProps> = ({
   id,
-  position = "right",
+  position = "right"
 }) => {
   const bgColor = useColorModeValue("gray.200", "gray.600");
 
@@ -24,7 +24,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
         style={{
           position: "absolute",
           [position]: "-2px",
-          top: 0,
+          top: 0
         }}
       />
     </PanelResizeHandle>

@@ -15,8 +15,8 @@ export function simpleAutoFlow(
   connections: Connection[],
   setDroppedLegos: (updateFn: (prev: DroppedLego[]) => DroppedLego[]) => void,
   setTensorNetwork: (
-    updateFn: (prev: TensorNetwork | null) => TensorNetwork | null,
-  ) => void,
+    updateFn: (prev: TensorNetwork | null) => TensorNetwork | null
+  ) => void
 ): void {
   if (!tensorNetwork) {
     return;
@@ -39,7 +39,7 @@ export function simpleAutoFlow(
       const neighborConns = connections.filter(
         (conn) =>
           conn.from.legoId === lego.instanceId ||
-          conn.to.legoId === lego.instanceId,
+          conn.to.legoId === lego.instanceId
       );
 
       if (neighborConns.length === 0) {
@@ -50,7 +50,7 @@ export function simpleAutoFlow(
           (l: DroppedLego) =>
             (l.instanceId === neighborConn.from.legoId ||
               l.instanceId === neighborConn.to.legoId) &&
-            l.instanceId != lego.instanceId,
+            l.instanceId != lego.instanceId
         );
         if (!neighborLego) {
           continue;
@@ -69,7 +69,7 @@ export function simpleAutoFlow(
         const legoLegHighlightOp = getHighlightOp(lego, legoLegIndex);
         const neighborLegHighlightOp = getHighlightOp(
           neighborLego,
-          neighborLegIndex,
+          neighborLegIndex
         );
         const { xRowIndices, zRowIndices } = findRowIndices(lego, legoLegIndex);
 
@@ -139,8 +139,8 @@ export function simpleAutoFlow(
     prev.map((l) =>
       updatedLegosMap.has(l.instanceId)
         ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
-        : l,
-    ),
+        : l
+    )
   );
 
   setTensorNetwork((prev) => {
@@ -148,7 +148,7 @@ export function simpleAutoFlow(
     const updatedLegos = prev.legos.map((l: DroppedLego) =>
       updatedLegosMap.has(l.instanceId)
         ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
-        : l,
+        : l
     );
     return TensorNetwork.fromObj({ ...prev, legos: updatedLegos });
   });
@@ -166,10 +166,10 @@ export function simpleAutoFlow(
 const updateLego = (
   tnLegos: DroppedLego[],
   targetId: string,
-  newRows: number[],
+  newRows: number[]
 ): DroppedLego[] => {
   const updatedLegos = tnLegos.map((l) =>
-    l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l,
+    l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
   );
   return updatedLegos;
 };
@@ -202,7 +202,7 @@ const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
  */
 const findRowIndices = (
   lego: DroppedLego,
-  legIndex: number,
+  legIndex: number
 ): { xRowIndices: number[]; zRowIndices: number[] } => {
   const nLegoLegs = lego.parity_check_matrix[0].length / 2;
   const xRowIndices: number[] = [];
@@ -234,7 +234,7 @@ const isSimpleLego = (lego: DroppedLego): boolean => {
 
   const legActions: Set<string>[] = Array.from(
     { length: nLegoLegs },
-    () => new Set<string>(),
+    () => new Set<string>()
   );
 
   for (const row of [row1, row2, combinedRow]) {

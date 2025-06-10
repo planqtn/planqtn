@@ -3,14 +3,14 @@ import { getLegoStyle } from "../LegoStyles";
 import { Legos } from "../lib/Legos";
 
 export const canDoCompleteGraphViaHadamards = (
-  legos: DroppedLego[],
+  legos: DroppedLego[]
 ): boolean => {
   return legos.length > 1 && legos.every((lego) => lego.id === "z_rep_code");
 };
 
 const getDanglingLegs = (
   legos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): { lego: DroppedLego; danglingLegs: number[] }[] => {
   return legos.map((lego) => {
     const numLegs = lego.parity_check_matrix[0].length / 2;
@@ -36,14 +36,14 @@ const getDanglingLegs = (
 
     return {
       lego,
-      danglingLegs,
+      danglingLegs
     };
   });
 };
 export const applyCompleteGraphViaHadamards = async (
   legos: DroppedLego[],
   allLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): Promise<{
   droppedLegos: DroppedLego[];
   connections: Connection[];
@@ -51,7 +51,7 @@ export const applyCompleteGraphViaHadamards = async (
 }> => {
   // Get max instance ID
   const maxInstanceId = Math.max(
-    ...allLegos.map((l) => parseInt(l.instanceId)),
+    ...allLegos.map((l) => parseInt(l.instanceId))
   );
 
   // Find dangling legs for each lego
@@ -70,9 +70,9 @@ export const applyCompleteGraphViaHadamards = async (
         lego.parity_check_matrix[0].length / 2 + numNewLegs,
         lego.instanceId,
         lego.x,
-        lego.y,
+        lego.y
       );
-    },
+    }
   );
 
   const legoDanglingLegs = getDanglingLegs(newLegos, connections);
@@ -107,12 +107,12 @@ export const applyCompleteGraphViaHadamards = async (
         y: (lego1.y + lego2.y) / 2,
         parity_check_matrix: [
           [1, 0, 0, 1],
-          [0, 1, 1, 0],
+          [0, 1, 1, 0]
         ],
         logical_legs: [],
         gauge_legs: [],
         style: getLegoStyle("h", 2),
-        selectedMatrixRows: [],
+        selectedMatrixRows: []
       };
       hadamardLegos.push(hadamardLego);
 
@@ -120,7 +120,7 @@ export const applyCompleteGraphViaHadamards = async (
       let legIndex1: number;
       const usedLegs1 = usedDanglingLegs.get(lego1.instanceId)!;
       const availableDanglingLeg1 = lego1DanglingLegs.find(
-        (leg) => !usedLegs1.has(leg),
+        (leg) => !usedLegs1.has(leg)
       );
 
       if (availableDanglingLeg1 !== undefined) {
@@ -139,7 +139,7 @@ export const applyCompleteGraphViaHadamards = async (
       let legIndex2: number;
       const usedLegs2 = usedDanglingLegs.get(lego2.instanceId)!;
       const availableDanglingLeg2 = lego2DanglingLegs.find(
-        (leg) => !usedLegs2.has(leg),
+        (leg) => !usedLegs2.has(leg)
       );
 
       if (availableDanglingLeg2 !== undefined) {
@@ -157,12 +157,12 @@ export const applyCompleteGraphViaHadamards = async (
       newConnections.push(
         new Connection(
           { legoId: lego1.instanceId, legIndex: legIndex1 },
-          { legoId: hadamardLego.instanceId, legIndex: 0 },
+          { legoId: hadamardLego.instanceId, legIndex: 0 }
         ),
         new Connection(
           { legoId: hadamardLego.instanceId, legIndex: 1 },
-          { legoId: lego2.instanceId, legIndex: legIndex2 },
-        ),
+          { legoId: lego2.instanceId, legIndex: legIndex2 }
+        )
       );
 
       hadamardIndex++;
@@ -172,10 +172,10 @@ export const applyCompleteGraphViaHadamards = async (
   // Update state
   const updatedLegos = [
     ...allLegos.filter(
-      (l) => !legos.some((selected) => selected.instanceId === l.instanceId),
+      (l) => !legos.some((selected) => selected.instanceId === l.instanceId)
     ),
     ...newLegos,
-    ...hadamardLegos,
+    ...hadamardLegos
   ];
 
   const updatedConnections = [...connections, ...newConnections];
@@ -186,16 +186,16 @@ export const applyCompleteGraphViaHadamards = async (
     data: {
       legosToUpdate: legos.map((lego, i) => ({
         oldLego: lego,
-        newLego: newLegos[i],
+        newLego: newLegos[i]
       })),
       legosToAdd: hadamardLegos,
-      connectionsToAdd: newConnections,
-    },
+      connectionsToAdd: newConnections
+    }
   };
 
   return {
     droppedLegos: updatedLegos,
     connections: updatedConnections,
-    operation,
+    operation
   };
 };

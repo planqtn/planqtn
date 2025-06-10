@@ -4,7 +4,7 @@ import { Legos } from "../lib/Legos";
 
 export function canDoHopfRule(
   selectedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): boolean {
   // Check if exactly two legos are selected
   if (selectedLegos.length !== 2) return false;
@@ -19,8 +19,7 @@ export function canDoHopfRule(
   // Count connections between the two legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) &&
-      conn.containsLego(lego2.instanceId),
+      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
   );
 
   // Must have more than one connection between them
@@ -30,7 +29,7 @@ export function canDoHopfRule(
 export async function applyHopfRule(
   selectedLegos: DroppedLego[],
   droppedLegos: DroppedLego[],
-  connections: Connection[],
+  connections: Connection[]
 ): Promise<{
   connections: Connection[];
   droppedLegos: DroppedLego[];
@@ -45,20 +44,19 @@ export async function applyHopfRule(
   // Get all connections between the two legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(xLego.instanceId) &&
-      conn.containsLego(zLego.instanceId),
+      conn.containsLego(xLego.instanceId) && conn.containsLego(zLego.instanceId)
   );
 
   // Get external connections for each lego
   const xExternalConns = connections.filter(
     (conn) =>
       conn.containsLego(xLego.instanceId) &&
-      !conn.containsLego(zLego.instanceId),
+      !conn.containsLego(zLego.instanceId)
   );
   const zExternalConns = connections.filter(
     (conn) =>
       conn.containsLego(zLego.instanceId) &&
-      !conn.containsLego(xLego.instanceId),
+      !conn.containsLego(xLego.instanceId)
   );
 
   // Calculate new number of legs for each lego (current - 2 for each pair removed)
@@ -70,7 +68,7 @@ export async function applyHopfRule(
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
-    ...droppedLegos.map((l) => parseInt(l.instanceId)),
+    ...droppedLegos.map((l) => parseInt(l.instanceId))
   );
 
   // Create new legos with reduced legs
@@ -79,14 +77,14 @@ export async function applyHopfRule(
     newXLegs,
     String(maxInstanceId + 1),
     xLego.x,
-    xLego.y,
+    xLego.y
   );
   const newZLego = Legos.createDynamicLego(
     Z_REP_CODE,
     newZLegs,
     String(maxInstanceId + 2),
     zLego.x,
-    zLego.y,
+    zLego.y
   );
 
   const newLegos = [newXLego, newZLego];
@@ -108,7 +106,7 @@ export async function applyHopfRule(
       !connectionsToRemove.some(
         (conn) =>
           (conn.from.legoId === xLego.instanceId && conn.from.legIndex === i) ||
-          (conn.to.legoId === xLego.instanceId && conn.to.legIndex === i),
+          (conn.to.legoId === xLego.instanceId && conn.to.legIndex === i)
       )
     ) {
       xLegMapping.set(i, nextXLegIndex++);
@@ -120,7 +118,7 @@ export async function applyHopfRule(
       !connectionsToRemove.some(
         (conn) =>
           (conn.from.legoId === zLego.instanceId && conn.from.legIndex === i) ||
-          (conn.to.legoId === zLego.instanceId && conn.to.legIndex === i),
+          (conn.to.legoId === zLego.instanceId && conn.to.legIndex === i)
       )
     ) {
       zLegMapping.set(i, nextZLegIndex++);
@@ -145,8 +143,8 @@ export async function applyHopfRule(
             : externalEnd,
           conn.from.legoId === xLego.instanceId
             ? externalEnd
-            : { legoId: newXLego.instanceId, legIndex: newLegIndex },
-        ),
+            : { legoId: newXLego.instanceId, legIndex: newLegIndex }
+        )
       );
     }
   });
@@ -169,8 +167,8 @@ export async function applyHopfRule(
             : externalEnd,
           conn.from.legoId === zLego.instanceId
             ? externalEnd
-            : { legoId: newZLego.instanceId, legIndex: newLegIndex },
-        ),
+            : { legoId: newZLego.instanceId, legIndex: newLegIndex }
+        )
       );
     }
   });
@@ -192,8 +190,8 @@ export async function applyHopfRule(
       newConnections.push(
         new Connection(
           { legoId: newXLego.instanceId, legIndex: newXLegIndex },
-          { legoId: newZLego.instanceId, legIndex: newZLegIndex },
-        ),
+          { legoId: newZLego.instanceId, legIndex: newZLegIndex }
+        )
       );
     }
   });
@@ -201,14 +199,14 @@ export async function applyHopfRule(
   // Remove old legos and their connections
   const updatedDroppedLegos = droppedLegos
     .filter(
-      (lego) => !selectedLegos.some((l) => l.instanceId === lego.instanceId),
+      (lego) => !selectedLegos.some((l) => l.instanceId === lego.instanceId)
     )
     .concat(newLegos);
 
   const updatedConnections = connections
     .filter(
       (conn) =>
-        !selectedLegos.some((lego) => conn.containsLego(lego.instanceId)),
+        !selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
     )
     .concat(newConnections);
 
@@ -220,11 +218,11 @@ export async function applyHopfRule(
       data: {
         legosToRemove: selectedLegos,
         connectionsToRemove: connections.filter((conn) =>
-          selectedLegos.some((lego) => conn.containsLego(lego.instanceId)),
+          selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
         ),
         legosToAdd: newLegos,
-        connectionsToAdd: newConnections,
-      },
-    },
+        connectionsToAdd: newConnections
+      }
+    }
   };
 }

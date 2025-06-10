@@ -9,7 +9,7 @@ import {
   Avatar,
   useColorModeValue,
   Icon,
-  VStack,
+  VStack
 } from "@chakra-ui/react";
 import { FiUser } from "react-icons/fi";
 import { User } from "@supabase/supabase-js";

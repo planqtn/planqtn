@@ -18,7 +18,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalCloseButton,
+  ModalCloseButton
 } from "@chakra-ui/react";
 
 interface AuthDialogProps {
@@ -50,14 +50,14 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
     // Listen for auth changes
     const {
-      data: { subscription },
+      data: { subscription }
     } = userContextSupabase.auth.onAuthStateChange(
       (_event: string, session: Session | null) => {
         setCurrentUser(session?.user ?? null);
         if (session?.user) {
           onClose();
         }
-      },
+      }
     );
 
     return () => {
@@ -73,7 +73,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
       if (isSignUp) {
         const { error } = await userContextSupabase.auth.signUp({
           email,
-          password,
+          password
         });
         if (error) throw error;
 
@@ -82,12 +82,12 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: "Please check your email for verification",
           status: "success",
           duration: 3000,
-          isClosable: true,
+          isClosable: true
         });
       } else {
         const { error } = await userContextSupabase.auth.signInWithPassword({
           email,
-          password,
+          password
         });
         if (error) throw error;
 
@@ -96,7 +96,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: "You have been signed in successfully",
           status: "success",
           duration: 3000,
-          isClosable: true,
+          isClosable: true
         });
       }
     } catch (err: unknown) {
@@ -107,7 +107,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: err.message,
           status: "error",
           duration: 5000,
-          isClosable: true,
+          isClosable: true
         });
       } else {
         setError("An unknown error occurred");
@@ -116,7 +116,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: "An unknown error occurred",
           status: "error",
           duration: 5000,
-          isClosable: true,
+          isClosable: true
         });
       }
     }
@@ -170,8 +170,8 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
       const { error } = await userContextSupabase.auth.resetPasswordForEmail(
         resetEmail,
         {
-          redirectTo: `${window.location.origin}/reset-password`,
-        },
+          redirectTo: `${window.location.origin}/reset-password`
+        }
       );
       if (error) throw error;
 
@@ -196,7 +196,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: err.message,
           status: "error",
           duration: 5000,
-          isClosable: true,
+          isClosable: true
         });
       } else {
         toast({
@@ -204,7 +204,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           description: "An unknown error occurred",
           status: "error",
           duration: 5000,
-          isClosable: true,
+          isClosable: true
         });
       }
     }

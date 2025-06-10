@@ -56,8 +56,8 @@ export const config: ApiConfig = {
       : "/functions/v1/planqtn_job_logs_run",
     cancelJob: localRuntimeConfig
       ? "/functions/v1/cancel_job"
-      : "/functions/v1/cancel_job_run",
-  },
+      : "/functions/v1/cancel_job_run"
+  }
 };
 
 export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
@@ -65,7 +65,7 @@ export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
     "resolved API url for endpoint",
     endpoint,
     config.runtimeStoreUrl,
-    config.endpoints[endpoint],
+    config.endpoints[endpoint]
   );
   return `${config.runtimeStoreUrl}${config.endpoints[endpoint]}`;
 };

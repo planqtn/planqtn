@@ -405,7 +405,7 @@ export const randomPlankterName = () => {
     "Gymnosomata",
     "Heterorhabdus",
     "mollusca",
-    "Pleuromamma",
+    "Pleuromamma"
   ];
   return names[Math.floor(Math.random() * names.length)];
 };

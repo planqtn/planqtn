@@ -13,7 +13,7 @@ interface State {
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null,
+    error: null
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -42,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
                 window.history.replaceState(
                   null,
                   "",
-                  window.location.pathname + window.location.search,
+                  window.location.pathname + window.location.search
                 );
                 window.location.reload();
               }}

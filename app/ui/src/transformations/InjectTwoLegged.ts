@@ -5,13 +5,13 @@ export class InjectTwoLegged {
 
   constructor(
     private connections: Connection[],
-    private droppedLegos: DroppedLego[],
+    private droppedLegos: DroppedLego[]
   ) {}
 
   public async apply(
     lego: DroppedLego,
     connection: Connection,
-    oldLego: DroppedLego | undefined = undefined,
+    oldLego: DroppedLego | undefined = undefined
   ): Promise<{
     connections: Connection[];
     droppedLegos: DroppedLego[];
@@ -22,11 +22,11 @@ export class InjectTwoLegged {
     // Create new connections
     const newConnections = [
       new Connection(connection.from, { legoId: lego.instanceId, legIndex: 0 }),
-      new Connection({ legoId: lego.instanceId, legIndex: 1 }, connection.to),
+      new Connection({ legoId: lego.instanceId, legIndex: 1 }, connection.to)
     ];
 
     const externalConnections = this.connections.filter(
-      (conn) => !connection.equals(conn),
+      (conn) => !connection.equals(conn)
     );
 
     // Add the new connections
@@ -44,7 +44,7 @@ export class InjectTwoLegged {
         if (l.instanceId === lego.instanceId) {
           legosToUpdate.push({
             oldLego: oldLego!,
-            newLego: lego,
+            newLego: lego
           });
           return lego;
         }
@@ -66,9 +66,9 @@ export class InjectTwoLegged {
           connectionsToAdd: newConnections,
           connectionsToRemove: [connection],
           legosToUpdate: legosToUpdate,
-          legosToAdd: legosToAdd,
-        },
-      },
+          legosToAdd: legosToAdd
+        }
+      }
     };
   }
 }
