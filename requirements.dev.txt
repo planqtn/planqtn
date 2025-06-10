@@ -3,3 +3,7 @@ ipython
 pytest-cov
 aiohttp
 black
+mypy
+types-tqdm
+types-networkx
+scipy-stubs

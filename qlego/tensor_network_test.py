@@ -1039,7 +1039,7 @@ def test_disconnected_networks_truncate_length():
         (9, {0: 1, 4: 21, 6: 42}),
     ],
 )
-def test_trace_two_422_codes_into_steane_via_tensornetwork(
+def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
     truncate_length, expected_wep
 ):
     enc_tens_422 = GF2(
