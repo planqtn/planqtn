@@ -45,6 +45,7 @@ on:
 
 jobs:
   Cloud-Integration-Tests:
+    environment: Continuous Integration
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
