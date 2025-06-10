@@ -122,12 +122,12 @@ def main():
             SupabaseTaskStore(
                 task_db_credentials=SupabaseCredentials(
                     url=args.task_store_url,
-                    key=args.task_store_user_key,
+                    user_key=args.task_store_user_key,
                     anon_key=args.task_store_anon_key,
                 ),
                 task_updates_db_credentials=(
                     SupabaseCredentials(
-                        url=runtime_supabase_url, key=runtime_supabase_key
+                        url=runtime_supabase_url, user_key=runtime_supabase_key
                     )
                     if args.realtime
                     else None

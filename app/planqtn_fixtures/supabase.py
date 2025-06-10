@@ -77,7 +77,7 @@ def create_supabase_setup():
         "anon_key": anon_key,
         "test_user_id": test_user_id,
         "test_user_token": test_user_token,
-        "service_client": service_client,
+        "user_client": service_client,
     }
 
     return setup
