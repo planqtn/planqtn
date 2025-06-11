@@ -23,8 +23,6 @@ resource "google_pubsub_topic_iam_member" "sink_publisher_binding" {
   topic   = google_pubsub_topic.planqtn_jobs.name
   role    = "roles/pubsub.publisher"
 
-  # This is the magic! It dynamically gets the writer identity from the sink resource
-  # you just defined above. You don't have to hardcode anything.
   member = google_logging_project_sink.planqtn_job_monitor.writer_identity
 }
 
