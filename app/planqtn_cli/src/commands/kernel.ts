@@ -474,7 +474,7 @@ export function setupKernelCommand(program: Command) {
 
         console.log("Stopping all components...");
 
-        if (fs.existsSync(path.join(os.homedir(), ".planqtn"))) {
+        if (fs.existsSync(path.join(os.homedir(), ".planqtn", "supabase"))) {
           const supabaseDir = path.join(os.homedir(), ".planqtn", "supabase");
           let supabaseRunning = false;
           try {
