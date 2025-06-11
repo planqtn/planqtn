@@ -1,0 +1,169 @@
+{
+  "protoPayload": {
+    "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+    "status": {
+      "code": 4,
+      "message": "Execution planqtn-jobs-fxf45 has failed to complete, 0/1 tasks were a success."
+    },
+    "serviceName": "run.googleapis.com",
+    "methodName": "/Jobs.RunJob",
+    "resourceName": "namespaces/planqtn2/executions/planqtn-jobs-fxf45",
+    "response": {
+      "metadata": {
+        "name": "planqtn-jobs-fxf45",
+        "namespace": "1049339308678",
+        "selfLink": "/apis/run.googleapis.com/v1/namespaces/1049339308678/executions/planqtn-jobs-fxf45",
+        "uid": "25dd4723-77bd-4a4e-ba5c-61173f4300e9",
+        "resourceVersion": "AAY3N8m4DzA",
+        "generation": 1,
+        "creationTimestamp": "2025-06-10T13:31:25.437239Z",
+        "labels": {
+          "run.googleapis.com/job": "planqtn-jobs",
+          "run.googleapis.com/jobResourceVersion": "1749562169225430",
+          "run.googleapis.com/jobGeneration": "27",
+          "run.googleapis.com/jobUid": "420c7492-5351-445d-9923-4afcdd29fd25",
+          "cloud.googleapis.com/location": "us-east1"
+        },
+        "annotations": {
+          "run.googleapis.com/execution-environment": "gen2",
+          "run.googleapis.com/creator": "dev-api-svc@planqtn2.iam.gserviceaccount.com",
+          "run.googleapis.com/lastModifier": "dev-api-svc@planqtn2.iam.gserviceaccount.com",
+          "run.googleapis.com/operation-id": "4def0251-3b75-412c-9c05-fc3150f9bac6"
+        },
+        "ownerReferences": [
+          {
+            "kind": "Job",
+            "name": "planqtn-jobs",
+            "uid": "420c7492-5351-445d-9923-4afcdd29fd25",
+            "apiVersion": "serving.knative.dev/v1",
+            "controller": true,
+            "blockOwnerDeletion": true
+          }
+        ]
+      },
+      "apiVersion": "run.googleapis.com/v1",
+      "kind": "Execution",
+      "spec": {
+        "parallelism": 1,
+        "taskCount": 1,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "image": "mirror.gcr.io/balopat/planqtn_jobs@sha256:fc0c1940190744b5ae7dee0f645a6b0604b4eafff0c3902ef6f14b27f7d36960",
+                "args": [
+                  "/app/planqtn_jobs/main.py",
+                  "--task-uuid",
+                  "dbf7464b-9f36-486c-8383-2ca3dd194b05",
+                  "--task-store-url",
+                  "https://qidfzwswpfpwouerlive.supabase.co",
+                  "--task-store-user-key",
+                  "[redacted]",
+                  "--task-store-anon-key",
+                  "[redacted]",
+                  "--user-id",
+                  "f96cb362-b3ab-4750-b5f7-43cb629e887f",
+                  "--debug",
+                  "--realtime",
+                  "--local-progress-bar"
+                ],
+                "env": [
+                  {
+                    "name": "SUPABASE_URL",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "latest",
+                        "name": "dev_url_supa"
+                      }
+                    }
+                  },
+                  {
+                    "name": "SUPABASE_KEY",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "latest",
+                        "name": "dev_svc_key_supa"
+                      }
+                    }
+                  },
+                  {
+                    "name": "RUNTIME_SUPABASE_URL",
+                    "value": "[redacted]"
+                  },
+                  {
+                    "name": "RUNTIME_SUPABASE_KEY",
+                    "value": "[redacted]"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                }
+              }
+            ],
+            "maxRetries": 0,
+            "timeoutSeconds": "300",
+            "serviceAccountName": "dev-cloud-run-svc@planqtn2.iam.gserviceaccount.com"
+          }
+        }
+      },
+      "status": {
+        "observedGeneration": 1,
+        "conditions": [
+          {
+            "type": "Completed",
+            "status": "False",
+            "message": "Task planqtn-jobs-fxf45-task0 failed with message: The configured timeout was reached.",
+            "lastTransitionTime": "2025-06-10T13:36:46.194779Z"
+          },
+          {
+            "type": "ResourcesAvailable",
+            "status": "True",
+            "lastTransitionTime": "2025-06-10T13:31:26.806756Z"
+          },
+          {
+            "type": "Started",
+            "status": "True",
+            "lastTransitionTime": "2025-06-10T13:31:28.153449Z"
+          },
+          {
+            "type": "ContainerReady",
+            "status": "True",
+            "lastTransitionTime": "2025-06-10T13:31:26.725691Z"
+          },
+          {
+            "type": "Retry",
+            "status": "True",
+            "reason": "ImmediateRetry",
+            "message": "System will retry after 0:00:00 from lastTransitionTime for attempt 0.",
+            "lastTransitionTime": "2025-06-10T13:36:47.275824Z",
+            "severity": "Info"
+          }
+        ],
+        "startTime": "2025-06-10T13:31:28.153449Z",
+        "completionTime": "2025-06-10T13:36:46.194779Z",
+        "failedCount": 1,
+        "logUri": "https://console.cloud.google.com/logs/viewer?project=planqtn2&advancedFilter=resource.type%3D%22cloud_run_job%22%0Aresource.labels.job_name%3D%22planqtn-jobs%22%0Aresource.labels.location%3D%22us-east1%22%0Alabels.%22run.googleapis.com/execution_name%22%3D%22planqtn-jobs-fxf45%22"
+      },
+      "@type": "type.googleapis.com/google.cloud.run.v1.Execution"
+    }
+  },
+  "insertId": "dw2si3d3lxa",
+  "resource": {
+    "type": "cloud_run_job",
+    "labels": {
+      "job_name": "planqtn-jobs",
+      "project_id": "planqtn2",
+      "location": "us-east1"
+    }
+  },
+  "timestamp": "2025-06-10T13:36:47.296051Z",
+  "severity": "ERROR",
+  "labels": {
+    "run.googleapis.com/execution_name": "planqtn-jobs-fxf45"
+  },
+  "logName": "projects/planqtn2/logs/cloudaudit.googleapis.com%2Fsystem_event",
+  "receiveTimestamp": "2025-06-10T13:36:48.124460027Z"
+}

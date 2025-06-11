@@ -270,6 +270,46 @@ async function setupGCP(
     await terraform(`apply -auto-approve`, true);
   } else {
     await terraform(`state list`, false);
+
+    if (process.env.GCP_SVC_CREDENTIALS) {
+      const decodedKey = Buffer.from(
+        process.env.GCP_SVC_CREDENTIALS,
+        "base64"
+      ).toString("utf-8");
+      const gcpSvcAccountKey = JSON.parse(decodedKey);
+      const tfDeployerEmail = gcpSvcAccountKey.client_email;
+      // this is a bit hacky, but we rely on the terraform call to have already placed this ...
+      const gcpSvcAccountKeyPath = path.join(
+        CONFIG_DIR,
+        "gcp-service-account-key.json"
+      );
+      execSync(
+        `gcloud auth activate-service-account ${tfDeployerEmail} --key-file=${gcpSvcAccountKeyPath} --project=${gcpProjectId}`
+      );
+      const policy = execSync(
+        `gcloud projects get-iam-policy ${gcpProjectId} --flatten="bindings[].members" --format='table(bindings.role)' --filter="bindings.members:${tfDeployerEmail}"`
+      );
+      const roles = policy.toString().split("\n");
+      console.log(roles);
+      const missingRoles = [];
+      for (const requiredRole of getRequiredTfDeployerRoles()) {
+        if (!roles.includes(requiredRole)) {
+          missingRoles.push(requiredRole);
+        }
+      }
+      if (missingRoles.length > 0) {
+        throw new Error(
+          `Missing roles ${missingRoles.join(
+            ", "
+          )} for ${tfDeployerEmail}. Please add them manually.\n\n` +
+            getRequiredTfDeployerRolesCommands(
+              gcpProjectId,
+              tfDeployerEmail,
+              missingRoles
+            )
+        );
+      }
+    }
   }
 }
 
@@ -574,6 +614,33 @@ class JsonFileVar extends Variable {
   }
 }
 
+function getRequiredTfDeployerRoles() {
+  return [
+    "roles/editor",
+    "roles/secretmanager.secretVersionAdder",
+    "roles/secretmanager.secretAccessor",
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/iam.serviceAccountAdmin",
+    "roles/logging.configWriter",
+    "roles/pubsub.admin"
+  ];
+}
+
+function getRequiredTfDeployerRolesCommands(
+  projectId: string,
+  svcAccountEmail: string,
+  missingRoles: string[] = getRequiredTfDeployerRoles()
+) {
+  const commands = missingRoles.map(
+    (role) => `
+  gcloud projects add-iam-policy-binding ${projectId} \
+  --member="serviceAccount:${svcAccountEmail}" \
+  --role="${role}"
+  `
+  );
+  return commands.join("\n\n");
+}
+
 class VariableManager {
   private configDir: string;
   private variables: Variable[];
@@ -814,25 +881,10 @@ gcloud iam service-accounts create tf-deployer --project=$PROJECT_ID
 
 2. Add the necessary roles:
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/editor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretVersionAdder"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
- --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
- --role="roles/secretmanager.secretAccessor
- 
- gcloud projects add-iam-policy-binding $PROJECT_ID \
- --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
- --role="roles/resourcemanager.projectIamAdmin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
- --member="serviceAccount:tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"  \
- --role="roles/logging.configWriter"
+${getRequiredTfDeployerRolesCommands(
+  "$PROJECT_ID",
+  "tf-deployer@$PROJECT_ID.iam.gserviceaccount.com"
+)}
  
 
 3. Download a key for the service account:

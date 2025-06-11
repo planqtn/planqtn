@@ -22,8 +22,33 @@ from qlego.progress_reporter import (
 @dataclass
 class SupabaseCredentials:
     url: str
-    key: str
+    user_key: str = None
     anon_key: str = None
+    service_role_key: str = None
+
+    def createClient(self):
+        if self.user_key and self.anon_key:
+            return supabase.create_client(
+                self.url,
+                self.anon_key,
+                options=supabase.ClientOptions(
+                    headers={"Authorization": f"Bearer {self.user_key}"}
+                ),
+            )
+        elif self.service_role_key:
+            return supabase.create_client(
+                self.url,
+                self.service_role_key,
+            )
+        elif self.anon_key:
+            return supabase.create_client(
+                self.url,
+                self.anon_key,
+            )
+        else:
+            raise ValueError(
+                "Either user_key or service_role_key or anon_key must be provided"
+            )
 
 
 class TaskStoreProgressReporter(ProgressReporter):
@@ -178,21 +203,11 @@ class SupabaseTaskStore:
         task_db_credentials: SupabaseCredentials,
         task_updates_db_credentials: SupabaseCredentials = None,
     ):
-        self.task_db = supabase.create_client(
-            task_db_credentials.url,
-            task_db_credentials.anon_key,
-            options=supabase.ClientOptions(
-                headers={"Authorization": f"Bearer {task_db_credentials.key}"}
-            ),
-        )
+        self.task_db = task_db_credentials.createClient()
 
         self.task_updates_db = None
         if task_updates_db_credentials:
-            self.task_updates_supabase_url = task_updates_db_credentials.url
-            self.task_updates_supabase_key = task_updates_db_credentials.key
-            self.task_updates_db = supabase.create_client(
-                self.task_updates_supabase_url, self.task_updates_supabase_key
-            )
+            self.task_updates_db = task_updates_db_credentials.createClient()
 
     def start_task_updates(self, task: TaskDetails):
         if not self.task_updates_db:
