@@ -2853,7 +2853,7 @@ const LegoStudioView: React.FC = () => {
               <MenuList>
                 <MenuItem
                   onClick={() => setIsCssTannerDialogOpen(true)}
-                  // isDisabled={!currentUser}
+                  isDisabled={!currentUser}
                 >
                   CSS Tanner Network
                 </MenuItem>
