@@ -2023,7 +2023,9 @@ const LegoStudioView: React.FC = () => {
       let status = supabaseStatus;
       if (!status) {
         setIsNetworkLoading(true);
-        setLoadingMessage("⚠️There seems to be an issue wtih the backend, checking...");
+        setLoadingMessage(
+          "⚠️There seems to be an issue wtih the backend, checking..."
+        );
         const timeoutPromise = new Promise<{
           isHealthy: boolean;
           message: string;
