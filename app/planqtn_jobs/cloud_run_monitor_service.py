@@ -57,7 +57,11 @@ async def handle_job_failed(request: Request):
         task_db_credentials=SupabaseCredentials(
             url=os.environ["SUPABASE_URL"],
             service_role_key=os.environ["SUPABASE_KEY"],
-        )
+        ),
+        task_updates_db_credentials=SupabaseCredentials(
+            url=os.environ["SUPABASE_URL"],
+            service_role_key=os.environ["SUPABASE_KEY"],
+        ),
     )
 
     task_details = TaskDetails(

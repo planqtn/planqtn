@@ -18,25 +18,39 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalCloseButton
+  ModalCloseButton,
+  ModalFooter,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Box
 } from "@chakra-ui/react";
+import { checkSupabaseStatus } from "../lib/errors.ts";
 
 interface AuthDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  connectionError?: string;
 }
 
-export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
+export default function AuthDialog({
+  isOpen,
+  onClose,
+  connectionError
+}: AuthDialogProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const toast = useToast();
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [retryingConnection, setRetryingConnection] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -69,6 +83,12 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     e.preventDefault();
     setError("");
 
+    if (connectionError) {
+      setError("Cannot sign in due to backend connection issues");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (isSignUp) {
         const { error } = await userContextSupabase.auth.signUp({
@@ -119,6 +139,8 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
           isClosable: true
         });
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -210,6 +232,44 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     }
   };
 
+  const handleRetryConnection = async () => {
+    setRetryingConnection(true);
+    try {
+      const status = await checkSupabaseStatus(userContextSupabase, 2);
+      if (status.isHealthy) {
+        // Connection restored
+        toast({
+          title: "Connection Restored",
+          description: "Backend connection is now available",
+          status: "success",
+          duration: 3000,
+          isClosable: true
+        });
+        // Force reload the page to reset all connections
+        window.location.reload();
+      } else {
+        // Still having issues
+        toast({
+          title: "Connection Failed",
+          description: status.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true
+        });
+      }
+    } catch {
+      toast({
+        title: "Connection Failed",
+        description: "Could not connect to backend service",
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      setRetryingConnection(false);
+    }
+  };
+
   if (loading) {
     return null;
   }
@@ -229,6 +289,30 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
+          {connectionError && (
+            <Alert
+              status="error"
+              mb={4}
+              flexDirection="column"
+              alignItems="center"
+              justifyContent="center"
+              textAlign="center"
+            >
+              <AlertIcon />
+              <AlertTitle mb={2}>Connection Error</AlertTitle>
+              <AlertDescription>
+                <Box mb={3}>{connectionError}</Box>
+                <Button
+                  colorScheme="red"
+                  size="sm"
+                  onClick={handleRetryConnection}
+                  isLoading={retryingConnection}
+                >
+                  Retry Connection
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {currentUser ? (
             <VStack spacing={4}>
               <Text>Welcome, {currentUser?.email || "User"}!</Text>
@@ -277,7 +361,12 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
               </Button>
             </VStack>
           ) : (
-            <VStack spacing={6} as="form" onSubmit={handleEmailPasswordAuth}>
+            <VStack
+              spacing={6}
+              as="form"
+              id="auth-form"
+              onSubmit={handleEmailPasswordAuth}
+            >
               <Image
                 src="/planqtn_logo.svg"
                 alt="PlanQTN Logo"
@@ -302,6 +391,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                     }
                   }}
                   required
+                  isDisabled={!!connectionError}
                 />
               </FormControl>
 
@@ -318,11 +408,18 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                   }}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  isDisabled={!!connectionError}
                 />
                 {error && <FormErrorMessage>{error}</FormErrorMessage>}
               </FormControl>
 
-              <Button type="submit" colorScheme="blue" width="full">
+              <Button
+                type="submit"
+                colorScheme="blue"
+                width="full"
+                isLoading={isLoading}
+                isDisabled={!!connectionError}
+              >
                 {isSignUp ? "Sign Up" : "Sign In"}
               </Button>
 
@@ -352,6 +449,24 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
             </VStack>
           )}
         </ModalBody>
+        <ModalFooter>
+          {!showReset && !currentUser && (
+            <Button
+              colorScheme="blue"
+              mr={3}
+              onClick={handleEmailPasswordAuth}
+              isLoading={isLoading}
+              isDisabled={!!connectionError}
+              form="auth-form"
+              type="submit"
+            >
+              {isSignUp ? "Sign Up" : "Sign In"}
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onClose}>
+            {currentUser || showReset ? "Close" : "Cancel"}
+          </Button>
+        </ModalFooter>
       </ModalContent>
     </Modal>
   );
