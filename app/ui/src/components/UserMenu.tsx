@@ -53,6 +53,25 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
     );
   }
 
+  const handleSignOut = async () => {
+    console.log("Signing out...");
+    userContextSupabase.auth
+      .signOut()
+      .then(() => {
+        userContextSupabase.auth
+          .getUser()
+          .then((user) => {
+            console.log("Signed out..." + user);
+          })
+          .catch((error) => {
+            console.error("Error getting user:", error);
+          });
+      })
+      .catch((error) => {
+        console.error("Error signing out:", error);
+      });
+  };
+
   return (
     <Menu>
       <MenuButton
@@ -73,9 +92,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
         </VStack>
       </MenuButton>
       <MenuList bg={bgColor} borderColor={borderColor}>
-        <MenuItem onClick={() => userContextSupabase.auth.signOut()}>
-          Sign Out
-        </MenuItem>
+        <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
       </MenuList>
     </Menu>
   );
