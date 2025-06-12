@@ -217,8 +217,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await taskStore
         .from("tasks")
         .update({
-          execution_id: job_creation_response,
-          state: 1 // running
+          execution_id: job_creation_response          
         })
         .eq("uuid", task.uuid)
         .eq("user_id", task.user_id);

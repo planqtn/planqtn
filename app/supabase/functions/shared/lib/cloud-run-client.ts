@@ -1,4 +1,3 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import { JobConfig } from "../config/jobs_config.ts";
 import {
   Credentials,

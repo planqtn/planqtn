@@ -36,6 +36,24 @@ check/qlego
 
 Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on qlego, and changes will trigger integration tests on Github Actions.
 
+## PlanqTN Studio 
+
+The PlanqTN Studio involves a couple of components: 
+
+- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running on Vercel in the hosted version
+- the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic 
+- the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons 
+
+
+We use GCP Cloud Run for executing workloads and the API and we use Supabase for realtime messaging, database, authentication. 
+It is important to understand the concepts of User context and Runtime context
+- **User context**: authentication, task store, quota function, user content database
+- **Runtime context**: task management functions, api functions, realtime messaging database 
+
+In the hosted version, a single Supabase instance takes care of both the User context and the Runtime context. However, the user can pick from the UI a local Runtime context. This ends up requiring a local kernel with a local Supabase installation. In the codebase we refer to the User context as "Task store" sometimes as it contains the definition for the tasks in the `tasks` table. The Runtime context only uses the `task_updates` table which is then used by the UI to subscribe to the realtime progress bar messages. 
+
+The reason for this complicated separation is to give a transparent way for the user to use local features by offloading the most expensive features of the cloud (edge function calls, realtime messaging, task execution), while keeping the ability to publish results in the public database or to just keep things like the canvas in a single hosted place for the user. 
+
 ## Web UI features
 
 A large set of the features are only in the UI, which doesn't need any backend infrastructure. The PlanqTN UI is based on Vite/ReactJS and is served using Vercel.
@@ -129,7 +147,7 @@ check/jobs-integration
 This is the typical, fastest way to check that things are working, but it's heavy on local resources.
 
 - run `hack/htn kernel start` to spin up the `dev` kernel.
-- Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions.
+- Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve --no-verify-jwt` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions. Use `--no-verify-jwt` when the dev kernel is only for runtime context, otherwise if it's for both user/runtime contexts, then JWT verification is fine. This is because runtime context is using the user JWT to authenticate as the user in the task store when storing back the results. However, if the runtime context supabase is separate from the task store instance, then the Supabase JWT verification will fail on the runtime context, as the JWT is valid only in the User Context Supabase instance. 
 - After modifying `planqtn_jobs` or `qlego` or the edge function `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
 
 ### The `local` workflow
@@ -154,7 +172,17 @@ This is a workflow tested automatically by Github Actions, and is only required 
 
 This is a fake/broken setup but provides the fastest development feedback loop with a local Supabase function setup with hot reload against a Cloud Run backend (which won't be able to talk back to the local Supabase instance). For now this is only manually supported, assuming that you just ran `hack/htn cloud deploy` successfully.
 
-Setup the `supabase/.env` with
+1. Setup the UI to think that the "cloud task store" is on the localhost, by setting the content of `app/ui/.env` to: 
+
+```
+VITE_TASK_STORE_URL=http://127.0.0.1:54321
+VITE_TASK_STORE_ANON_KEY=<your dev kernel's anon key>
+VITE_ENV=development
+```
+
+Note that this is very different from pointing your UI to your local kernel, that's only switching the Runtime Context. If you're confused, that's okay, check out the topic on Runtime Context vs User Context in [PlanqTN Studio](#planqtn-studio).
+
+2. Setup the `supabase/functions/.env` with
 
 ```
 JOBS_IMAGE=[jobs_image] # this is probably already populated - though not that important for the cloud workflow
@@ -178,7 +206,7 @@ $HOME/.planqtn/bin/terraform output api_service_url
 ```
 
 Then run `hack/htn kernel start` to spin up the `dev` kernel or, if you want no k3d instance running, then just
-`npx supabase --workdir app start` and then `npx supabase --workdir app functions serve` to have a hot reload setup for the functions.
+`npx supabase --workdir app start` and then `npx supabase --workdir app functions serve --no-verify-jwt` to have a hot reload setup for the functions.
 
 You can use the `app/planqtn_fixtures/manual_testing/main.py` to get started with call manually the API / Job functions and inspect the results. You can use Google Cloud Console in parallel to inspect the kicked off jobs / API call logs.
 
@@ -314,6 +342,12 @@ If everything's good, you're ready to setup Github Actions! As we need to setup 
 hack/htn cloud setup-github-actions
 ```
 
+To test that the service account was setup correctly, you can logout of gcloud by removing or moving the gcloud config dir (e.g. `rm -rf ~/.config/gcloud`) then try to deploy using it the same way we use it in Github Action: 
+
+```
+GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0) hack/htn cloud deploy -q
+```
+
 ## PlanqTN CLI
 
 The CLI can be run in two modes:
@@ -360,7 +394,11 @@ The options for KERNEL_ENV are:
 - `dev` for a locally running development kernel that allows "hot reload" features from the repo directly
 - `cloud` will connect to the developer's personal cloud services, including Supabase and Google Cloud Platform (GCP) project for Cloud Run.
 
-Note that `local` and `dev` are allowed to coexist, but currently ports are the same, so only one of them can be active at a time.
+Note that `local` and `dev` are allowed to coexist, but currently ports are the same, so only one of them can be active at a time. If you try to start both of them, then the second one will fail with error messages like this due to port collisions:
+
+```
+failed to start docker container: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint supabase_db_planqtn-dev (fbececa5f29188d872ba3d0b1db86ddc18703ad3e09f741743ba8a0d0938a306): Bind for 0.0.0.0:54322 failed: port is already allocated
+```
 
 ### Setting up `local` kernel
 

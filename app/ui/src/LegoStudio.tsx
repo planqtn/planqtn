@@ -1,38 +1,38 @@
 import {
   Box,
-  // Text,
-  VStack,
-  HStack,
-  useColorModeValue,
   Button,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuItemOption,
-  useToast,
   Editable,
   EditableInput,
   EditablePreview,
   Flex,
-  Icon
+  HStack,
+  Icon,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItemOption,
+  MenuList,
+  useColorModeValue,
+  useToast,
+  // Text,
+  VStack
 } from "@chakra-ui/react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import axios from "axios";
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import LegoPanel from "./components/LegoPanel";
 import {
+  CanvasDragState,
   Connection,
-  DroppedLego,
-  LegoPiece,
-  LegDragState,
   DragState,
+  DroppedLego,
   GroupDragState,
-  SelectionBoxState,
+  LegDragState,
+  LegoPiece,
   PauliOperator,
-  CanvasDragState
+  SelectionBoxState
 } from "./lib/types";
 import { TensorNetwork } from "./lib/TensorNetwork";
 
@@ -40,8 +40,8 @@ import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { CanvasStateSerializer } from "./lib/CanvasStateSerializer";
 import {
-  DroppedLegoDisplay,
-  calculateLegPosition
+  calculateLegPosition,
+  DroppedLegoDisplay
 } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
 import { TannerDialog } from "./components/TannerDialog";
@@ -63,6 +63,8 @@ import { config, getApiUrl } from "./config";
 import { getAccessToken } from "./lib/auth";
 import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
+import LoadingModal from "./components/LoadingModal.tsx";
+import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -240,6 +242,12 @@ const LegoStudioView: React.FC = () => {
     const isActive = localStorage.getItem("runtimeConfigActive");
     return isActive === "true";
   });
+  const [isNetworkLoading, setIsNetworkLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    isHealthy: boolean;
+    message: string;
+  } | null>(null);
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
@@ -1774,7 +1782,9 @@ const LegoStudioView: React.FC = () => {
 
             toast({
               title: "Paste successful",
-              description: `Pasted ${newLegos.length} lego${newLegos.length > 1 ? "s" : ""}`,
+              description: `Pasted ${newLegos.length} lego${
+                newLegos.length > 1 ? "s" : ""
+              }`,
               status: "success",
               duration: 2000,
               isClosable: true
@@ -1972,6 +1982,93 @@ const LegoStudioView: React.FC = () => {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Add Supabase status check on page load
+  useEffect(() => {
+    const checkStatus = async () => {
+      // Use 3 retries to ensure we're not showing errors due to temporary network issues
+      const status = await checkSupabaseStatus(userContextSupabase, 3);
+      setSupabaseStatus(status);
+
+      if (!status.isHealthy) {
+        console.error("Supabase connection issue:", status.message);
+
+        if (currentUser) {
+          // User is logged in, show error toast
+          toast({
+            title: "Backend Connection Issue",
+            description: status.message,
+            status: "error",
+            duration: 10000,
+            isClosable: true,
+            position: "top"
+          });
+        }
+      }
+    };
+
+    checkStatus();
+
+    // Set up periodic checks every 30 seconds
+    const intervalId = setInterval(checkStatus, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [currentUser, toast]);
+
+  // Update the auth dialog to show Supabase status error if needed
+  const handleAuthDialogOpen = async () => {
+    try {
+      let status = supabaseStatus;
+      if (!status) {
+        setIsNetworkLoading(true);
+        setLoadingMessage(
+          "⚠️There seems to be an issue wtih the backend, checking..."
+        );
+        const timeoutPromise = new Promise<{
+          isHealthy: boolean;
+          message: string;
+        }>((resolve) => {
+          setTimeout(() => {
+            resolve({
+              isHealthy: false,
+              message: "Connection timed out"
+            });
+          }, 3000);
+        });
+
+        // Race between the actual check and the timeout
+        status = await Promise.race([
+          checkSupabaseStatus(userContextSupabase, 1),
+          timeoutPromise
+        ]);
+
+        setSupabaseStatus(status);
+      }
+      // Check if Supabase is experiencing connection issues
+      if (status && !status.isHealthy) {
+        // Show an error toast
+        toast({
+          title: "Backend Connection Issue",
+          description: `Cannot sign in: ${status.message}. Please try again later.`,
+          status: "error",
+          duration: 10000,
+          isClosable: true
+        });
+
+        // Still open the dialog to show the connection error message
+        setAuthDialogOpen(true);
+        return;
+      }
+
+      // If no connection issues, open the auth dialog normally
+      setAuthDialogOpen(true);
+    } finally {
+      setIsNetworkLoading(false);
+    }
+  };
+
   const handleConnectionDoubleClick = (
     e: React.MouseEvent,
     connection: Connection
@@ -2040,23 +2137,30 @@ const LegoStudioView: React.FC = () => {
     matrix: number[][],
     networkType: string
   ) => {
-    const acessToken = await getAccessToken();
-    const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
-    const response = await axios.post(
-      getApiUrl("tensorNetwork"),
-      {
-        matrix,
-        networkType: networkType,
-        start_node_index: newInstanceId(droppedLegos)
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`
+    setIsNetworkLoading(true);
+    setLoadingMessage(`Generating network...`);
+
+    try {
+      const acessToken = await getAccessToken();
+      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
+      const response = await axios.post(
+        getApiUrl("tensorNetwork"),
+        {
+          matrix,
+          networkType: networkType,
+          start_node_index: newInstanceId(droppedLegos)
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`
+          }
         }
-      }
-    );
-    return response;
+      );
+      return response;
+    } finally {
+      setIsNetworkLoading(false);
+    }
   };
 
   const handleCssTannerSubmit = async (matrix: number[][]) => {
@@ -2132,11 +2236,9 @@ const LegoStudioView: React.FC = () => {
       encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message ||
-          error.response?.data?.detail ||
-          error.message;
-        setError(`Failed to create CSS Tanner network: ${message}`);
+        setError(
+          `Failed to create CSS Tanner network: ${getAxiosErrorMessage(error)}`
+        );
       } else {
         setError("Failed to create CSS Tanner network");
       }
@@ -2904,10 +3006,7 @@ const LegoStudioView: React.FC = () => {
                 Runtime: {isLocalRuntime ? "local" : "cloud"}
               </Button>
             )}
-            <UserMenu
-              user={currentUser}
-              onSignIn={() => setAuthDialogOpen(true)}
-            />
+            <UserMenu user={currentUser} onSignIn={handleAuthDialogOpen} />
           </Box>
         </Flex>
       </Box>
@@ -3377,10 +3476,20 @@ const LegoStudioView: React.FC = () => {
                 {selectionBox.isSelecting && (
                   <Box
                     position="absolute"
-                    left={`${Math.min(selectionBox.startX, selectionBox.currentX)}px`}
-                    top={`${Math.min(selectionBox.startY, selectionBox.currentY)}px`}
-                    width={`${Math.abs(selectionBox.currentX - selectionBox.startX)}px`}
-                    height={`${Math.abs(selectionBox.currentY - selectionBox.startY)}px`}
+                    left={`${Math.min(
+                      selectionBox.startX,
+                      selectionBox.currentX
+                    )}px`}
+                    top={`${Math.min(
+                      selectionBox.startY,
+                      selectionBox.currentY
+                    )}px`}
+                    width={`${Math.abs(
+                      selectionBox.currentX - selectionBox.startX
+                    )}px`}
+                    height={`${Math.abs(
+                      selectionBox.currentY - selectionBox.startY
+                    )}px`}
                     border="2px"
                     borderColor="blue.500"
                     bg="blue.50"
@@ -3487,6 +3596,11 @@ const LegoStudioView: React.FC = () => {
       <AuthDialog
         isOpen={authDialogOpen}
         onClose={() => setAuthDialogOpen(false)}
+        connectionError={
+          supabaseStatus && !supabaseStatus.isHealthy
+            ? supabaseStatus.message
+            : undefined
+        }
       />
       <RuntimeConfigDialog
         isOpen={isRuntimeConfigOpen}
@@ -3502,6 +3616,7 @@ const LegoStudioView: React.FC = () => {
           }
         })()}
       />
+      <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
     </VStack>
   );
 };
