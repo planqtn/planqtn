@@ -264,58 +264,7 @@ gsutil mb gs://planqtn-$MYNAME-tfstate
 gsutil versioning set on gs://planqtn-$MYNAME-tfstate
 ```
 
-### 3. Personal Vercel setup for UI hosting
-
-Sign up for Vercel on https://vercel.com. You'll need a social login or email + text number.
-Most importantly don't import your fork directly through the Vercel app, we handle the CI/CD deployment ourselves, the Vercel git integration will just get in the way.
-
-1. Install the vercel CLI tool
-
-```
-npm install -g
-```
-
-2. Login to vercel
-
-```
-vercel login
-```
-
-3. Create a new project
-
-```
-export VERCEL_PROJECT=planqtn-<yourname>
-vercel projects add $VERCEL_PROJECT
-```
-
-4. Link the project
-
-From the repo root run:
-
-```
-cd app/ui
-vercel link
-```
-
-This will ask you for
-
-- the "scope" (which is the team/organization)
-- link to existing project? Answer yes
-- you'll have to type in the name of your project (`planqtn-<yourname>`)
-
-```
-$ vercel link
-Vercel CLI 42.3.0
-? Set up “.../planqtn/app/ui”? yes
-? Which scope should contain your project? <your org name, e.g. John Doe's projects>
-? Link to existing project? yes
-? What’s the name of your existing project? planqtn-<yourname>
-✅  Linked to john-does-projects/planqtn-<yourname> (created .vercel)
-```
-
-Note that the project ID and organization ID are generated under `app/ui/.vercel/project.json` - this is what you'll need to setup Github Actions for your own repo and the `htn` tool will use this file to print out the values. To unlink, you need to run `rm -rf app/ui/.vercel`.
-
-### 4. Deploy your project
+### 3. Deploy your project
 
 ```
 hack/htn cloud deploy
