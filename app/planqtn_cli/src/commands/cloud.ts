@@ -609,7 +609,8 @@ function getRequiredTfDeployerRoles() {
     "roles/resourcemanager.projectIamAdmin",
     "roles/iam.serviceAccountAdmin",
     "roles/logging.configWriter",
-    "roles/pubsub.admin"
+    "roles/pubsub.admin",
+    "roles/run.admin"
   ];
 }
 
