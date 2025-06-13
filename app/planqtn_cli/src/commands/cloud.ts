@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { getImageFromEnv, handleImage } from "./images";
+import { getImageFromEnv, buildImage } from "./images";
 import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
@@ -376,10 +376,10 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
   }
 
   console.log("Building and pushing JOB image...");
-  await handleImage("job", { build: true, push: true });
+  await buildImage("job", { build: true, push: true });
 
   console.log("Building and pushing API image...");
-  await handleImage("api", { build: true, push: true });
+  await buildImage("api", { build: true, push: true });
 }
 
 interface VariableConfig {

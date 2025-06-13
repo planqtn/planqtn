@@ -101,7 +101,7 @@ interface ImageOptions {
   deployJob?: boolean;
 }
 
-export async function handleImage(
+export async function buildImage(
   image: string,
   options: ImageOptions
 ): Promise<void> {
@@ -139,7 +139,9 @@ export async function handleImage(
       dockerfile = "../planqtn_api/Dockerfile";
       break;
     case "ui":
-      throw new Error("UI image management not implemented yet");
+      imageName = `${dockerRepo}/planqtn_ui:${tag}`;
+      dockerfile = "../ui/Dockerfile";
+      break;
     default:
       throw new Error(`Unknown image type: ${image}`);
   }
@@ -269,7 +271,7 @@ export function setupImagesCommand(program: Command): void {
       const options = imagesCommand.opts();
       console.log("image", image);
       console.log("options", options);
-      await handleImage(image, options);
+      await buildImage(image, options);
       process.exit(0);
     });
 }
@@ -292,6 +294,8 @@ export async function getImageName(image: string): Promise<string> {
       return `${dockerRepo}/planqtn_jobs:${tag}`;
     case "api":
       return `${dockerRepo}/planqtn_api:${tag}`;
+    case "ui":
+      return `${dockerRepo}/planqtn_ui:${tag}`;
     default:
       throw new Error(`Unknown image type: ${image}`);
   }
@@ -311,6 +315,10 @@ export async function getImageFromEnv(
     case "api":
       envPath = path.join(process.cwd(), "..", "planqtn_api", ".env");
       envVar = "API_IMAGE";
+      break;
+    case "ui":
+      envPath = path.join(process.cwd(), "..", "ui", ".env");
+      envVar = "UI_IMAGE";
       break;
     default:
       throw new Error(`Unknown image type: ${image}`);
