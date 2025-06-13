@@ -4,9 +4,13 @@
 <img src="fig/architecture.png" width="100%"></img>
 </p>
 
-PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features.
+PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features. Key points to understand about the architecture: 
 
-# Setup
+- the UI only talks to the Supabase instance, for 4 reasons: authentication, edge functions (logic), the database for retrieval and realtime messages
+- Supabase functions contain the logic to talk to the API and the Job API of Cloud Run 
+
+
+# Developer Setup
 
 Depending on what you want to work on, your setup might require very minimal time/resouce investment or quite a bit, including setting up a local cloud on your laptop and/or a personal cloud infrastructure hooked up to Github Actions. Please review the development workflows below, and pick the required setup based on the component you want to contribute to.
 
@@ -67,18 +71,19 @@ Source code is contained within the `app/ui` folder. Vercel setup is in `vercel.
 After you cloned the repo, you can setup the npm dependencies with:
 
 ```
-cd app/ui
-npm install
-```
-
-Start the server in dev mode to get auto-reload:
-
-```
-cd app/ui
-npm run dev
+hack/htn ui start --dev
 ```
 
 This should give you a http://localhost:5173 URL for the UI.
+
+You can test the containerized setup by: 
+
+```
+hack/htn images ui --build 
+hack/htn ui start 
+```
+
+This should give you an http://localhost:8080 URL for the UI.
 
 ### Checks and tests
 

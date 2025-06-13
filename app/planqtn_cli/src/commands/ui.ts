@@ -20,6 +20,9 @@ export function setupUiCommand(program: Command) {
 
     if (options.dev) {
       console.log("Running in dev mode, you can exit by pressing Ctrl+C");
+      await runCommand("npm", ["install"], {
+        cwd: path.join(cfgDir, "ui")
+      });
       await runCommand("npm", ["run", "dev"], {
         cwd: path.join(cfgDir, "ui")
       });
