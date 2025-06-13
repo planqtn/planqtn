@@ -1357,9 +1357,7 @@ export function setupCloudCommand(program: Command): void {
       try {
         const repoWithName = options.repoName
           ? options.repoName
-          : execSync(
-              `gh repo view --json nameWithOwner --jq '.nameWithOwner'`
-            )
+          : execSync(`gh repo view --json nameWithOwner --jq '.nameWithOwner'`)
               .toString()
               .trim();
 
@@ -1383,7 +1381,6 @@ export function setupCloudCommand(program: Command): void {
           await variableManager.saveValues();
         }
 
-       
         const answer = prompt(
           `Are you sure you want to set these up in Github Actions on repo ${repoWithName} (y/n)`
         );
@@ -1392,7 +1389,10 @@ export function setupCloudCommand(program: Command): void {
           process.exit(0);
         }
 
-        const gh = "gh " + (options.repoName ? `-R ${options.repoName}` : '') + (options.repoEnv ? `-e ${options.repoEnv}` : '');
+        const gh =
+          "gh " +
+          (options.repoName ? `-R ${options.repoName}` : "") +
+          (options.repoEnv ? `-e ${options.repoEnv}` : "");
 
         for (const variable of userVars) {
           const config = variable.getConfig();
