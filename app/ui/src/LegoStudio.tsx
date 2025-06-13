@@ -16,7 +16,7 @@ import {
   useToast,
   Text,
   VStack,
-  Link,
+  Link
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
@@ -3629,36 +3629,42 @@ const LegoStudioView: React.FC = () => {
           zIndex={1}
           onClick={async () => {
             try {
-              const apiUrl = getApiUrl('version');
+              const apiUrl = getApiUrl("version");
               const response = await fetch(`${apiUrl}/version`);
               const versionInfo = await response.json();
               toast({
                 title: "Build Info",
                 description: (
                   <VStack align="start" spacing={1}>
-                    <Text>UI Image: {import.meta.env.VITE_UI_IMAGE || 'dev'}</Text>
-                    <Text>API Image: {versionInfo.api_image || 'unknown'}</Text>
-                    <Text>Function Job Image ref: {versionInfo.fn_jobs_image || 'unknown'}</Text>
+                    <Text>
+                      UI Image: {import.meta.env.VITE_UI_IMAGE || "dev"}
+                    </Text>
+                    <Text>API Image: {versionInfo.api_image || "unknown"}</Text>
+                    <Text>
+                      Function Job Image ref:{" "}
+                      {versionInfo.fn_jobs_image || "unknown"}
+                    </Text>
                   </VStack>
                 ),
                 status: "info",
                 duration: 5000,
-                isClosable: true,
+                isClosable: true
               });
             } catch (err) {
-              console.error('Error fetching version info:', err);
+              console.error("Error fetching version info:", err);
               toast({
                 title: "Error fetching version info",
-                description: "Could not retrieve version information from the backend",
+                description:
+                  "Could not retrieve version information from the backend",
                 status: "error",
                 duration: 3000,
-                isClosable: true,
+                isClosable: true
               });
             }
           }}
           _hover={{ color: "gray.700" }}
         >
-          {import.meta.env.VITE_UI_IMAGE || 'dev'}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}
         </Link>
       ) : (
         <Text
@@ -3669,7 +3675,7 @@ const LegoStudioView: React.FC = () => {
           color="gray.500"
           zIndex={1}
         >
-          {import.meta.env.VITE_UI_IMAGE || 'dev'}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}
         </Text>
       )}
     </VStack>
