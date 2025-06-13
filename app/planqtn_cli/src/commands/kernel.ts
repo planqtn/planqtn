@@ -23,11 +23,10 @@ export function setupKernelCommand(program: Command) {
         await runCommand("docker", ["--version"], {
           verbose: options.verbose
         });
-     
+
         const supabaseDir = isDev
           ? path.join(getCfgDefinitionsDir(), "supabase")
           : path.join(planqtnDir, "supabase");
-
 
         if (!isDev) {
           // Step 2: Setup directories

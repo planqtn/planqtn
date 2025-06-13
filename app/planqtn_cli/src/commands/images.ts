@@ -100,8 +100,12 @@ interface ImageOptions {
   deployJob?: boolean;
 }
 
-export async function getImageConfig(image: string): Promise<{ imageName: string, dockerfile: string, envPath: string, envVar: string }> {
-
+export async function getImageConfig(image: string): Promise<{
+  imageName: string;
+  dockerfile: string;
+  envPath: string;
+  envVar: string;
+}> {
   const tag = await getGitTag();
   let imageName = "";
   let dockerfile = "";
@@ -153,9 +157,13 @@ export async function getImageConfig(image: string): Promise<{ imageName: string
 export async function buildImage(
   image: string,
   options: ImageOptions,
-  imageConfig: { imageName: string, dockerfile: string, envPath: string, envVar: string }
+  imageConfig: {
+    imageName: string;
+    dockerfile: string;
+    envPath: string;
+    envVar: string;
+  }
 ): Promise<void> {
-
   const { imageName, dockerfile, envPath, envVar } = imageConfig;
 
   if (options.k3dCluster && !["dev", "local"].includes(options.k3dCluster)) {
@@ -174,12 +182,8 @@ export async function buildImage(
       verbose: true,
       tty: isTTY
     });
-      // the api image is used as part of deployment to the cloud run service and the local Docker implementation
-      await updateEnvFile(
-        envPath,
-        envVar,
-        imageName
-      );   
+    // the api image is used as part of deployment to the cloud run service and the local Docker implementation
+    await updateEnvFile(envPath, envVar, imageName);
   }
 
   if (options.load || options.loadNoRestart) {

@@ -222,7 +222,6 @@ async function terraform(
   return null;
 }
 
-
 async function setupGCP(
   supabaseProjectId: string,
   supabaseServiceKey: string,
@@ -357,7 +356,12 @@ async function setupSupabaseSecrets(
   await unlink(envPath);
 }
 
-async function buildAndPushImages(refuseDirtyBuilds: boolean, supabaseUrl: string, supabaseAnonKey: string, environment: string): Promise<void> {
+async function buildAndPushImages(
+  refuseDirtyBuilds: boolean,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  environment: string
+): Promise<void> {
   if (refuseDirtyBuilds) {
     console.log("Checking git status...");
     try {
@@ -379,14 +383,21 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean, supabaseUrl: strin
   }
 
   console.log("Building and pushing JOB image...");
-  await buildImage("job", { build: true, push: true }, await getImageConfig("job"));
+  await buildImage(
+    "job",
+    { build: true, push: true },
+    await getImageConfig("job")
+  );
 
   console.log("Building and pushing API image...");
-  await buildImage("api", { build: true, push: true }, await getImageConfig("api"));
+  await buildImage(
+    "api",
+    { build: true, push: true },
+    await getImageConfig("api")
+  );
 
   const uiImageConfig = await getImageConfig("ui");
-  const { imageName,  envPath, envVar } = uiImageConfig;
-
+  const { imageName, envPath, envVar } = uiImageConfig;
 
   const envContent = [
     `VITE_TASK_STORE_URL=${supabaseUrl}`,
@@ -396,10 +407,9 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean, supabaseUrl: strin
   ].join("\n");
 
   await writeFile(envPath, envContent);
-  
+
   console.log("Building and pushing UI image...");
   await buildImage("ui", { build: true, push: true }, uiImageConfig);
-
 }
 
 interface VariableConfig {
@@ -415,7 +425,7 @@ interface VariableConfig {
     | "github-actions"
     | "integration-test-config"
   )[];
-  outputBy?: "images" | "supabase" | "gcp" ;
+  outputBy?: "images" | "supabase" | "gcp";
   hint?: string;
 }
 
@@ -562,13 +572,13 @@ class DerivedVar extends Variable {
   compute(vars: Variable[]): void {
     try {
       this.value = this.computeFn(vars);
-    } catch  {
+    } catch {
       // fail silently
-        // if (error instanceof Error) {
-        //   console.warn(`Error deriving ${this.getName()}:`, error.message);
-        // } else {
-        //   console.warn(`Error deriving ${this.getName()}:`, error);
-        // }
+      // if (error instanceof Error) {
+      //   console.warn(`Error deriving ${this.getName()}:`, error.message);
+      // } else {
+      //   console.warn(`Error deriving ${this.getName()}:`, error);
+      // }
     }
   }
 
@@ -599,7 +609,6 @@ class EnvFileVar extends Variable {
     // Env vars don't save to storage
   }
 }
-
 
 function getRequiredTfDeployerRoles() {
   return [
@@ -792,7 +801,7 @@ class VariableManager {
         configDir,
         "supabase-anon-key"
       ),
-      
+
       new PlainFileVar(
         {
           name: "dockerhubToken",
@@ -814,7 +823,7 @@ class VariableManager {
         configDir,
         "dockerhub-username"
       ),
-     
+
       new PlainFileVar(
         {
           name: "supabaseAccessToken",
@@ -1035,7 +1044,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
   }
 }
 
-
 async function checkCredentials(
   skipPhases: {
     images: boolean;
@@ -1178,10 +1186,12 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.images) {
           await variableManager.validatePhaseRequirements("images", skipPhases);
           console.log("\nBuilding and pushing images...");
-          await buildAndPushImages(options.refuseDirtyBuilds, 
-            variableManager.getValue("supabaseUrl"), 
-            variableManager.getValue("supabaseAnonKey"), 
-            variableManager.getValue("environment"));
+          await buildAndPushImages(
+            options.refuseDirtyBuilds,
+            variableManager.getValue("supabaseUrl"),
+            variableManager.getValue("supabaseAnonKey"),
+            variableManager.getValue("environment")
+          );
         }
 
         // Setup Supabase if needed
@@ -1232,7 +1242,6 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getValue("apiUrl")
           );
         }
-
 
         // Generate integration test config if needed
         if (!skipPhases["integration-test-config"]) {

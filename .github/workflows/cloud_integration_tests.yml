@@ -133,7 +133,7 @@ jobs:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
 
         run: |
-          hack/htn cloud deploy -q --refuse-dirty-builds
+          hack/htn cloud deploy -q 
 
       - name: Run jobs integration tests
         env:

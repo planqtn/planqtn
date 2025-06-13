@@ -12,10 +12,10 @@ const program = new Command();
 
 program.command("htn").description("CLI tool for PlanqTN").version("1.0.0");
 
-  // Check if we're in dev mode
+// Check if we're in dev mode
 if (isDev) {
-    setupImagesCommand(program);
-    setupCloudCommand(program);  
+  setupImagesCommand(program);
+  setupCloudCommand(program);
 }
 
 setupUiCommand(program);
