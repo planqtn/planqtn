@@ -81,7 +81,7 @@ resource "google_cloud_run_v2_service" "planqtn_api" {
   }
 
   depends_on = [google_project_service.required_apis]
-} 
+}
 
 # Cloud Run service for UI
 resource "google_cloud_run_v2_service" "planqtn_ui" {
@@ -91,9 +91,17 @@ resource "google_cloud_run_v2_service" "planqtn_ui" {
   template {
     service_account = google_service_account.cloud_run_svc.email
     containers {
-      image = var.api_image
+      image = var.ui_image
     }
   }
 
   depends_on = [google_project_service.required_apis]
+}
+
+# Allow unauthenticated invocation of the UI service
+resource "google_cloud_run_service_iam_member" "public_access" {
+  location = google_cloud_run_v2_service.planqtn_ui.location
+  service  = google_cloud_run_v2_service.planqtn_ui.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 } 
