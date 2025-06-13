@@ -23,6 +23,8 @@ on:
 
 jobs:
   Deploy-to-Staging:
+    outputs:
+      url: ${{ steps.deploy.outputs.deploy_url }}
     permissions:
       statuses: write
       checks: write
@@ -49,7 +51,8 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Cloud deploy
+      - name: Cloud deploy  
+        id: deploy
         env:
           # Secrets:
           # Description: Supabase database password
@@ -85,4 +88,5 @@ jobs:
     
         run: |
           hack/htn cloud deploy -q 
+          echo "url=$(~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
      
