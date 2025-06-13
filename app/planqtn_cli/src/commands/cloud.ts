@@ -1352,9 +1352,21 @@ export function setupCloudCommand(program: Command): void {
       "--repo-env <repo-env>",
       "Environment of the repository, default uses no environment"
     )
-    .description("Sets up github actions environment variablesfor the project")
-    .action(async () => {
+    .description("Sets up github actions environment variables for the project")
+    .action(async (options: { repoName: string; repoEnv: string }) => {
       try {
+        const repoWithName = options.repoName
+          ? options.repoName
+          : execSync(`gh repo view --json nameWithOwner --jq '.nameWithOwner'`)
+              .toString()
+              .trim();
+
+        console.log("--------------------------------");
+        console.log(
+          `We'll be setting up github actions for repo ${repoWithName} in ${options.repoEnv || "no specific environment"}`
+        );
+        console.log("--------------------------------");
+
         const configDir = path.join(
           process.env.HOME || "",
           ".planqtn",
@@ -1370,12 +1382,17 @@ export function setupCloudCommand(program: Command): void {
         }
 
         const answer = prompt(
-          "Are you sure you want to set these up in Github Actions? (y/n)"
+          `Are you sure you want to set these up in Github Actions on repo ${repoWithName} (y/n)`
         );
         if (answer !== "y") {
           console.log("Aborting...");
           process.exit(0);
         }
+
+        const gh =
+          "gh " +
+          (options.repoName ? `-R ${options.repoName}` : "") +
+          (options.repoEnv ? `-e ${options.repoEnv}` : "");
 
         for (const variable of userVars) {
           const config = variable.getConfig();
@@ -1384,12 +1401,12 @@ export function setupCloudCommand(program: Command): void {
           if (config.isSecret) {
             console.log(`Setting secret ${variable.getEnvVarName()}...`);
             execSync(
-              `gh secret set ${variable.getEnvVarName()} --body "${val}"`
+              `${gh} secret set ${variable.getEnvVarName()} --body "${val}"`
             );
           } else {
             console.log(`Setting var ${variable.getEnvVarName()}...`);
             execSync(
-              `gh variable set ${variable.getEnvVarName()} --body "${val}"`
+              `${gh} variable set ${variable.getEnvVarName()} --body "${val}"`
             );
           }
         }
