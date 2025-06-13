@@ -134,6 +134,12 @@ def test_call_service_monitor_for_failed_job(supabase_setup, run_monitor_service
             .eq("uuid", "df5688de-0ad4-4cc3-83a0-f0c6a21577fc")
             .execute()
         )
+        res = (
+            service_client.table("task_updates")
+            .delete()
+            .eq("uuid", "df5688de-0ad4-4cc3-83a0-f0c6a21577fc")
+            .execute()
+        )
     except Exception as e:
         print("Can't delete task: ", e)
         pass
@@ -148,6 +154,14 @@ def test_call_service_monitor_for_failed_job(supabase_setup, run_monitor_service
                 "state": 0,
             }
         ).execute()
+        service_client.table("task_updates").insert(
+            {
+                "uuid": "df5688de-0ad4-4cc3-83a0-f0c6a21577fc",
+                "user_id": supabase_setup["test_user_id"],
+                "updates": json.dumps({"state": 0, "message": "Task pending..."}),
+            }
+        ).execute()
+
         message_with_encoded_data = create_encoded_message_with_user_id(
             supabase_setup["test_user_id"]
         )
@@ -160,6 +174,9 @@ def test_call_service_monitor_for_failed_job(supabase_setup, run_monitor_service
     finally:
         try:
             service_client.table("tasks").delete().eq(
+                "uuid", "df5688de-0ad4-4cc3-83a0-f0c6a21577fc"
+            ).execute()
+            service_client.table("task_updates").delete().eq(
                 "uuid", "df5688de-0ad4-4cc3-83a0-f0c6a21577fc"
             ).execute()
         except Exception as e:

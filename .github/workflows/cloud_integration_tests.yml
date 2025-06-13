@@ -79,10 +79,7 @@ jobs:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Install vercel cli
-        run: |
-          npm install -g vercel
+          pip install  -r requirements.txt -r requirements.dev.txt      
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -100,9 +97,6 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           # Description: Supabase anonymous key
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-
-          # Description: Vercel access token for GitHub Actions
-          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
           # Description: Supabase access token for GitHub Actions
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           # Description: GCP service account credentials for GitHub Actions
@@ -127,13 +121,9 @@ jobs:
           TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
           # Description: Terraform state prefix
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
-          # Description: Vercel project ID
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-          # Description: Vercel organization ID
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-
+    
         run: |
-          hack/htn cloud deploy -q --refuse-dirty-builds
+          hack/htn cloud deploy -q 
 
       - name: Run jobs integration tests
         env:

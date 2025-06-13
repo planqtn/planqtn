@@ -2,7 +2,6 @@ import { Command } from "commander";
 import { runCommand } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
-import { isDev } from "../config";
 import * as os from "os";
 import * as tty from "tty";
 import * as dotenv from "dotenv";
@@ -101,22 +100,17 @@ interface ImageOptions {
   deployJob?: boolean;
 }
 
-export async function handleImage(
-  image: string,
-  options: ImageOptions
-): Promise<void> {
-  // Check if we're in dev mode
-  if (!isDev) {
-    throw new Error("Images command is only supported in dev mode");
-  }
-
-  if (options.k3dCluster && !["dev", "local"].includes(options.k3dCluster)) {
-    throw new Error("--k3d-cluster must be either 'dev' or 'local'");
-  }
-
+export async function getImageConfig(image: string): Promise<{
+  imageName: string;
+  dockerfile: string;
+  envPath: string;
+  envVar: string;
+}> {
   const tag = await getGitTag();
   let imageName = "";
   let dockerfile = "";
+  let envPath = "";
+  let envVar = "";
 
   const planqtnDir = path.join(os.homedir(), ".planqtn");
   const dockerRepoConfigPath = path.join(planqtnDir, ".config", "docker-repo");
@@ -133,15 +127,47 @@ export async function handleImage(
     case "job":
       imageName = `${dockerRepo}/planqtn_jobs:${tag}`;
       dockerfile = "../planqtn_jobs/Dockerfile";
+      envPath = path.join(process.cwd(), "..", "planqtn_jobs", ".env");
+      envVar = "JOBS_IMAGE";
       break;
     case "api":
       imageName = `${dockerRepo}/planqtn_api:${tag}`;
       dockerfile = "../planqtn_api/Dockerfile";
+      envPath = path.join(process.cwd(), "..", "planqtn_api", ".env");
+      envVar = "API_IMAGE";
       break;
     case "ui":
-      throw new Error("UI image management not implemented yet");
+      imageName = `${dockerRepo}/planqtn_ui:${tag}`;
+      dockerfile = "../ui/Dockerfile";
+      envPath = path.join(process.cwd(), "..", "ui", ".env");
+      envVar = "VITE_UI_IMAGE";
+      break;
     default:
       throw new Error(`Unknown image type: ${image}`);
+  }
+
+  return {
+    imageName,
+    dockerfile,
+    envPath,
+    envVar
+  };
+}
+
+export async function buildImage(
+  image: string,
+  options: ImageOptions,
+  imageConfig: {
+    imageName: string;
+    dockerfile: string;
+    envPath: string;
+    envVar: string;
+  }
+): Promise<void> {
+  const { imageName, dockerfile, envPath, envVar } = imageConfig;
+
+  if (options.k3dCluster && !["dev", "local"].includes(options.k3dCluster)) {
+    throw new Error("--k3d-cluster must be either 'dev' or 'local'");
   }
 
   if (options.build) {
@@ -156,21 +182,8 @@ export async function handleImage(
       verbose: true,
       tty: isTTY
     });
-    if (image === "api") {
-      // the api image is used as part of deployment to the cloud run service and the local Docker implementation
-      await updateEnvFile(
-        path.join(process.cwd(), "..", "planqtn_api", ".env"),
-        "API_IMAGE",
-        imageName
-      );
-    } else if (image === "job") {
-      // the job image is used in the supabase functions, so we need to update the env file
-      await updateEnvFile(
-        path.join(process.cwd(), "..", "supabase", "functions", ".env"),
-        "JOBS_IMAGE",
-        imageName
-      );
-    }
+    // the api image is used as part of deployment to the cloud run service and the local Docker implementation
+    await updateEnvFile(envPath, envVar, imageName);
   }
 
   if (options.load || options.loadNoRestart) {
@@ -269,52 +282,17 @@ export function setupImagesCommand(program: Command): void {
       const options = imagesCommand.opts();
       console.log("image", image);
       console.log("options", options);
-      await handleImage(image, options);
+      const imageConfig = await getImageConfig(image);
+      await buildImage(image, options, imageConfig);
       process.exit(0);
     });
-}
-
-export async function getImageName(image: string): Promise<string> {
-  const tag = await getGitTag();
-  const planqtnDir = path.join(os.homedir(), ".planqtn");
-  const dockerRepoConfigPath = path.join(planqtnDir, ".config", "docker-repo");
-  let dockerRepo = "planqtn";
-  if (fs.existsSync(dockerRepoConfigPath)) {
-    dockerRepo = fs
-      .readFileSync(dockerRepoConfigPath, "utf-8")
-      .split("\n")[0]
-      .trim();
-    console.log("Using user defined docker repo:", dockerRepo);
-  }
-
-  switch (image) {
-    case "job":
-      return `${dockerRepo}/planqtn_jobs:${tag}`;
-    case "api":
-      return `${dockerRepo}/planqtn_api:${tag}`;
-    default:
-      throw new Error(`Unknown image type: ${image}`);
-  }
 }
 
 export async function getImageFromEnv(
   image: string
 ): Promise<string | undefined> {
-  let envPath: string;
-  let envVar: string;
-
-  switch (image) {
-    case "job":
-      envPath = path.join(process.cwd(), "..", "supabase", "functions", ".env");
-      envVar = "JOBS_IMAGE";
-      break;
-    case "api":
-      envPath = path.join(process.cwd(), "..", "planqtn_api", ".env");
-      envVar = "API_IMAGE";
-      break;
-    default:
-      throw new Error(`Unknown image type: ${image}`);
-  }
+  const imageConfig = await getImageConfig(image);
+  const { envPath, envVar } = imageConfig;
 
   if (!fs.existsSync(envPath)) {
     return undefined;
