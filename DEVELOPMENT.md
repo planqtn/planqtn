@@ -44,7 +44,7 @@ Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on qlego, and chan
 
 The PlanqTN Studio involves a couple of components: 
 
-- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running on Vercel in the hosted version
+- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud Run Service in the hosted version
 - the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic 
 - the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons 
 
@@ -60,11 +60,11 @@ The reason for this complicated separation is to give a transparent way for the 
 
 ## Web UI features
 
-A large set of the features are only in the UI, which doesn't need any backend infrastructure. The PlanqTN UI is based on Vite/ReactJS and is served using Vercel.
+A large set of the features are only in the UI, which doesn't need any backend infrastructure. The PlanqTN UI is based on Vite/ReactJS and is served as a Cloud Run Service.
 
 ### Components
 
-Source code is contained within the `app/ui` folder. Vercel setup is in `vercel.json`.
+Source code is contained within the `app/ui` folder.
 
 ### Development setup
 
