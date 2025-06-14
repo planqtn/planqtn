@@ -80,8 +80,7 @@ jobs:
               - "hack/*build*"
       - name: Display disk space
         run: |
-          df -h
-          du -sh .
+          df -h /dev/loop0 | tee disk_space_at_start.txt
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -116,10 +115,13 @@ jobs:
         run: |
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
           check/api-integration
-      - name: Display disk space at the end
+      - name: Display disk space
         run: |
-          df -h
-          du -sh .
+          df -h /dev/loop0 | tee /tmp/disk_space_at_end.txt
+          echo "## Disk space changes" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          diff /tmp/disk_space_at_start.txt /tmp/disk_space_at_end.txt >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
       - name: cleanup env
         run: |
           htn kernel stop
