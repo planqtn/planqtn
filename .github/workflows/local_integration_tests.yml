@@ -78,6 +78,10 @@ jobs:
               - ".github/workflows/local_integration_tests.yml"
               - "app/planqtn_cli/**"
               - "hack/*build*"
+      - name: Display disk space
+        run: |
+          df -h
+          du -sh .
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -112,7 +116,10 @@ jobs:
         run: |
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
           check/api-integration
-
+      - name: Display disk space at the end
+        run: |
+          df -h
+          du -sh .
       - name: cleanup env
         run: |
           htn kernel stop
