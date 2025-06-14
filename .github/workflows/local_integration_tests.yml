@@ -54,6 +54,8 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
+      - name: Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2.0.0
       - name: Check out repository code
         uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
