@@ -80,9 +80,13 @@ jobs:
               - "hack/*build*"
       - name: Display disk space
         run: |
-          echo "## Disk space changes" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          df -h /dev/loop0 | tee $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          "## Disk space changes"
+          Before: 
+          "\`\`\`" 
+          `df -h `
+          "\`\`\`" 
+          EOF
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -119,8 +123,13 @@ jobs:
           check/api-integration
       - name: Display disk space
         run: |
-          df -h /dev/loop0 | tee $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          
+          After: 
+          "\`\`\`" 
+          `df -h `
+          "\`\`\`" 
+          EOF
           
       - name: cleanup env
         run: |
