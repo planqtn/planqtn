@@ -1,0 +1,9 @@
+services:
+  planqtn-ui:
+    image: ${VITE_UI_IMAGE:-planqtn/planqtn-ui:latest}
+    container_name: planqtn-ui
+    environment:
+      - PORT=8080
+    ports:
+      - 8080:8080
+    restart: unless-stopped

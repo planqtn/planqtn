@@ -3,10 +3,11 @@ import * as path from "path";
 import * as os from "os";
 import { spawn } from "child_process";
 import { copyDir, ensureEmptyDir, runCommand } from "../utils";
-import { getCfgDefinitionsDir, isDev } from "../config";
+import { cfgDir, getCfgDefinitionsDir, isDev } from "../config";
 import * as yaml from "yaml";
 import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
+import { postfix, planqtnDir } from "../config";
 
 export function setupKernelCommand(program: Command) {
   const kernelCommand = program.command("kernel");
@@ -22,15 +23,10 @@ export function setupKernelCommand(program: Command) {
         await runCommand("docker", ["--version"], {
           verbose: options.verbose
         });
-        const postfix = isDev ? "-dev" : "-local";
-        const planqtnDir = path.join(os.homedir(), ".planqtn");
 
         const supabaseDir = isDev
           ? path.join(getCfgDefinitionsDir(), "supabase")
           : path.join(planqtnDir, "supabase");
-        ensureEmptyDir(planqtnDir);
-
-        const cfgDir = isDev ? getCfgDefinitionsDir() : path.join(planqtnDir);
 
         if (!isDev) {
           // Step 2: Setup directories

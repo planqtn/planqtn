@@ -19,6 +19,11 @@ variable "api_image" {
   type        = string
 }
 
+variable "ui_image" {
+  description = "The container image for PlanqTN UI"
+  type        = string
+}
+
 variable "supabase_url" {
   description = "The Supabase project URL"
   type        = string

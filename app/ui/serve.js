@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = process.env.FRONTEND_PORT || 5173;
+const PORT = process.env.PORT || 8080;
 
 // Support for HTML5 History API
 app.use(history());

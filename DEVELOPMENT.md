@@ -4,9 +4,13 @@
 <img src="fig/architecture.png" width="100%"></img>
 </p>
 
-PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features.
+PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features. Key points to understand about the architecture: 
 
-# Setup
+- the UI only talks to the Supabase instance, for 4 reasons: authentication, edge functions (logic), the database for retrieval and realtime messages
+- Supabase functions contain the logic to talk to the API and the Job API of Cloud Run 
+
+
+# Developer Setup
 
 Depending on what you want to work on, your setup might require very minimal time/resouce investment or quite a bit, including setting up a local cloud on your laptop and/or a personal cloud infrastructure hooked up to Github Actions. Please review the development workflows below, and pick the required setup based on the component you want to contribute to.
 
@@ -40,7 +44,7 @@ Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on qlego, and chan
 
 The PlanqTN Studio involves a couple of components: 
 
-- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running on Vercel in the hosted version
+- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud Run Service in the hosted version
 - the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic 
 - the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons 
 
@@ -56,29 +60,30 @@ The reason for this complicated separation is to give a transparent way for the 
 
 ## Web UI features
 
-A large set of the features are only in the UI, which doesn't need any backend infrastructure. The PlanqTN UI is based on Vite/ReactJS and is served using Vercel.
+A large set of the features are only in the UI, which doesn't need any backend infrastructure. The PlanqTN UI is based on Vite/ReactJS and is served as a Cloud Run Service.
 
 ### Components
 
-Source code is contained within the `app/ui` folder. Vercel setup is in `vercel.json`.
+Source code is contained within the `app/ui` folder.
 
 ### Development setup
 
 After you cloned the repo, you can setup the npm dependencies with:
 
 ```
-cd app/ui
-npm install
-```
-
-Start the server in dev mode to get auto-reload:
-
-```
-cd app/ui
-npm run dev
+hack/htn ui start --dev
 ```
 
 This should give you a http://localhost:5173 URL for the UI.
+
+You can test the containerized setup by: 
+
+```
+hack/htn images ui --build 
+hack/htn ui start 
+```
+
+This should give you an http://localhost:8080 URL for the UI.
 
 ### Checks and tests
 
@@ -259,58 +264,7 @@ gsutil mb gs://planqtn-$MYNAME-tfstate
 gsutil versioning set on gs://planqtn-$MYNAME-tfstate
 ```
 
-### 3. Personal Vercel setup for UI hosting
-
-Sign up for Vercel on https://vercel.com. You'll need a social login or email + text number.
-Most importantly don't import your fork directly through the Vercel app, we handle the CI/CD deployment ourselves, the Vercel git integration will just get in the way.
-
-1. Install the vercel CLI tool
-
-```
-npm install -g
-```
-
-2. Login to vercel
-
-```
-vercel login
-```
-
-3. Create a new project
-
-```
-export VERCEL_PROJECT=planqtn-<yourname>
-vercel projects add $VERCEL_PROJECT
-```
-
-4. Link the project
-
-From the repo root run:
-
-```
-cd app/ui
-vercel link
-```
-
-This will ask you for
-
-- the "scope" (which is the team/organization)
-- link to existing project? Answer yes
-- you'll have to type in the name of your project (`planqtn-<yourname>`)
-
-```
-$ vercel link
-Vercel CLI 42.3.0
-? Set up “.../planqtn/app/ui”? yes
-? Which scope should contain your project? <your org name, e.g. John Doe's projects>
-? Link to existing project? yes
-? What’s the name of your existing project? planqtn-<yourname>
-✅  Linked to john-does-projects/planqtn-<yourname> (created .vercel)
-```
-
-Note that the project ID and organization ID are generated under `app/ui/.vercel/project.json` - this is what you'll need to setup Github Actions for your own repo and the `htn` tool will use this file to print out the values. To unlink, you need to run `rm -rf app/ui/.vercel`.
-
-### 4. Deploy your project
+### 3. Deploy your project
 
 ```
 hack/htn cloud deploy

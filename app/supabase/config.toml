@@ -385,3 +385,13 @@ entrypoint = "./functions/cancel_job_run/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/cancel_job_run/*.html" ]
+[functions.version]
+enabled = true
+verify_jwt = true
+import_map = "./functions/version/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/version/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/version/*.html" ]

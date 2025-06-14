@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { getImageFromEnv, handleImage } from "./images";
+import { getImageFromEnv, buildImage, getImageConfig } from "./images";
 import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
@@ -241,8 +241,9 @@ async function setupGCP(
   // Get image names from environment
   const jobsImage = await getImageFromEnv("job");
   const apiImage = await getImageFromEnv("api");
+  const uiImage = await getImageFromEnv("ui");
 
-  if (!jobsImage || !apiImage) {
+  if (!jobsImage || !apiImage || !uiImage) {
     if (!loginCheck) {
       throw new Error(
         "Failed to get image names from environment for GCP build!"
@@ -256,6 +257,7 @@ async function setupGCP(
     region: gcpRegion,
     jobs_image: jobsImage,
     api_image: apiImage,
+    ui_image: uiImage,
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
     environment: "dev"
@@ -354,7 +356,12 @@ async function setupSupabaseSecrets(
   await unlink(envPath);
 }
 
-async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
+async function buildAndPushImages(
+  refuseDirtyBuilds: boolean,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  environment: string
+): Promise<void> {
   if (refuseDirtyBuilds) {
     console.log("Checking git status...");
     try {
@@ -376,10 +383,33 @@ async function buildAndPushImages(refuseDirtyBuilds: boolean): Promise<void> {
   }
 
   console.log("Building and pushing JOB image...");
-  await handleImage("job", { build: true, push: true });
+  await buildImage(
+    "job",
+    { build: true, push: true },
+    await getImageConfig("job")
+  );
 
   console.log("Building and pushing API image...");
-  await handleImage("api", { build: true, push: true });
+  await buildImage(
+    "api",
+    { build: true, push: true },
+    await getImageConfig("api")
+  );
+
+  const uiImageConfig = await getImageConfig("ui");
+  const { imageName, envPath, envVar } = uiImageConfig;
+
+  const envContent = [
+    `VITE_TASK_STORE_URL=${supabaseUrl}`,
+    `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
+    `VITE_ENV=${environment}`,
+    `${envVar}=${imageName}`
+  ].join("\n");
+
+  await writeFile(envPath, envContent);
+
+  console.log("Building and pushing UI image...");
+  await buildImage("ui", { build: true, push: true }, uiImageConfig);
 }
 
 interface VariableConfig {
@@ -392,11 +422,10 @@ interface VariableConfig {
     | "supabase"
     | "supabase-secrets"
     | "gcp"
-    | "vercel"
     | "github-actions"
     | "integration-test-config"
   )[];
-  outputBy?: "images" | "supabase" | "gcp" | "vercel";
+  outputBy?: "images" | "supabase" | "gcp";
   hint?: string;
 }
 
@@ -543,12 +572,13 @@ class DerivedVar extends Variable {
   compute(vars: Variable[]): void {
     try {
       this.value = this.computeFn(vars);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.warn(`Error deriving ${this.getName()}:`, error.message);
-      } else {
-        console.warn(`Error deriving ${this.getName()}:`, error);
-      }
+    } catch {
+      // fail silently
+      // if (error instanceof Error) {
+      //   console.warn(`Error deriving ${this.getName()}:`, error.message);
+      // } else {
+      //   console.warn(`Error deriving ${this.getName()}:`, error);
+      // }
     }
   }
 
@@ -580,40 +610,6 @@ class EnvFileVar extends Variable {
   }
 }
 
-class JsonFileVar extends Variable {
-  private filePath: string;
-  private jsonPath: string[];
-
-  constructor(config: VariableConfig, filePath: string, jsonPath: string[]) {
-    super(config);
-    this.filePath = filePath;
-    this.jsonPath = jsonPath;
-  }
-
-  async load(_vars: Variable[]): Promise<void> {
-    try {
-      if (await exists(this.filePath)) {
-        const content = await readFile(this.filePath, "utf8");
-        const jsonData = JSON.parse(content);
-        let value = jsonData;
-        for (const key of this.jsonPath) {
-          if (value === undefined) break;
-          value = value[key];
-        }
-        if (value !== undefined) {
-          this.value = value.toString();
-        }
-      }
-    } catch (error) {
-      console.warn(`Warning: Could not load ${this.filePath}:`, error);
-    }
-  }
-
-  async save(): Promise<void> {
-    // JsonFileVar doesn't save back to the file
-  }
-}
-
 function getRequiredTfDeployerRoles() {
   return [
     "roles/editor",
@@ -622,7 +618,8 @@ function getRequiredTfDeployerRoles() {
     "roles/resourcemanager.projectIamAdmin",
     "roles/iam.serviceAccountAdmin",
     "roles/logging.configWriter",
-    "roles/pubsub.admin"
+    "roles/pubsub.admin",
+    "roles/run.admin"
   ];
 }
 
@@ -684,7 +681,7 @@ class VariableManager {
           name: "environment",
           description: "Environment",
           defaultValue: "development",
-          requiredFor: ["supabase-secrets", "gcp", "vercel"]
+          requiredFor: ["supabase-secrets", "gcp"]
         },
         configDir,
         "environment"
@@ -804,26 +801,7 @@ class VariableManager {
         configDir,
         "supabase-anon-key"
       ),
-      new JsonFileVar(
-        {
-          name: "vercelProjectId",
-          description: "Vercel project ID",
-          hint: `This is automatically populated from the app/ui/.vercel/project.json file after you linked the project. No need to manually override it typically`,
-          requiredFor: ["vercel"]
-        },
-        path.join(APP_DIR, "ui", ".vercel", "project.json"),
-        ["projectId"]
-      ),
-      new JsonFileVar(
-        {
-          name: "vercelOrgId",
-          description: "Vercel organization ID",
-          hint: `This is automatically populated from the app/ui/.vercel/project.json file after you linked the project. No need to manually override it typically`,
-          requiredFor: ["vercel"]
-        },
-        path.join(APP_DIR, "ui", ".vercel", "project.json"),
-        ["orgId"]
-      ),
+
       new PlainFileVar(
         {
           name: "dockerhubToken",
@@ -845,17 +823,7 @@ class VariableManager {
         configDir,
         "dockerhub-username"
       ),
-      new PlainFileVar(
-        {
-          name: "vercelAccessToken",
-          description: "Vercel access token for GitHub Actions",
-          hint: `Create an access token for Github Actions - on the https://vercel.com/account/settings/tokens page, create a token, name it "PlanqTN Github Actions token" and save it securely somewhere.`,
-          isSecret: true,
-          requiredFor: ["github-actions"]
-        },
-        configDir,
-        "vercel-access-token"
-      ),
+
       new PlainFileVar(
         {
           name: "supabaseAccessToken",
@@ -970,7 +938,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       images: boolean;
       supabase: boolean;
       gcp: boolean;
-      vercel: boolean;
       "supabase-secrets": boolean;
       "integration-test-config": boolean;
       "github-actions": boolean;
@@ -979,7 +946,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       | "images"
       | "supabase"
       | "gcp"
-      | "vercel"
       | "supabase-secrets"
       | "integration-test-config"
       | "github-actions"
@@ -1009,7 +975,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     images: boolean;
     supabase: boolean;
     gcp: boolean;
-    vercel: boolean;
     "supabase-secrets": boolean;
     "integration-test-config": boolean;
     "github-actions": boolean;
@@ -1021,6 +986,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
     for (const variable of requiredVars) {
       await variable.prompt(prompt);
+      await this.saveValues();
     }
 
     await this.saveValues();
@@ -1031,7 +997,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       | "images"
       | "supabase"
       | "gcp"
-      | "vercel"
       | "supabase-secrets"
       | "integration-test-config"
       | "github-actions",
@@ -1039,7 +1004,6 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       images: boolean;
       supabase: boolean;
       gcp: boolean;
-      vercel: boolean;
       "supabase-secrets": boolean;
       "integration-test-config": boolean;
       "github-actions": boolean;
@@ -1080,78 +1044,11 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
   }
 }
 
-async function setupVercel(
-  _configDir: string,
-  vercelProjectId: string,
-  vercelOrgId: string,
-  supabaseUrl: string,
-  supabaseAnonKey: string,
-  environment: string
-): Promise<void> {
-  // Check if vercel CLI is installed and user is logged in
-  try {
-    execSync("vercel --version", { stdio: "pipe" });
-  } catch {
-    throw new Error(
-      "Vercel CLI is not installed. Please install it with 'npm install -g vercel'"
-    );
-  }
-
-  let tokenArg = "";
-  try {
-    execSync("vercel whoami", { stdio: "pipe" });
-  } catch {
-    if (process.env.VERCEL_ACCESS_TOKEN) {
-      tokenArg = "--token " + process.env.VERCEL_ACCESS_TOKEN;
-    } else {
-      throw new Error(
-        "Not logged in to Vercel. Please run 'vercel login' first or set the VERCEL_ACCESS_TOKEN environment variable"
-      );
-    }
-  }
-
-  // Check if the project is already linked
-
-  if (!(await exists(path.join(APP_DIR, "ui", ".vercel", "project.json")))) {
-    execSync(
-      `vercel link --yes --scope ${vercelOrgId} --project ${vercelProjectId} ${tokenArg}`,
-      {
-        cwd: path.join(APP_DIR, "ui"),
-        stdio: "inherit"
-      }
-    );
-  } else {
-    console.log("Project is already linked to Vercel. Skipping link step.");
-  }
-
-  // Create .env file
-  console.log("\nSetting up Vercel environment variables...");
-  const envContent = [
-    `VITE_TASK_STORE_URL=${supabaseUrl}`,
-    `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
-    `VITE_ENV=${environment}`
-  ].join("\n");
-
-  const envPath = path.join(APP_DIR, "ui", ".env");
-  await writeFile(envPath, envContent);
-
-  // Deploy to Vercel
-  console.log("\nDeploying to Vercel...");
-  execSync(
-    `vercel deploy ${environment == "production" ? "--prod " : ""} ${tokenArg}`,
-    {
-      cwd: path.join(APP_DIR, "ui"),
-      stdio: "inherit"
-    }
-  );
-}
-
 async function checkCredentials(
   skipPhases: {
     images: boolean;
     supabase: boolean;
     gcp: boolean;
-    vercel: boolean;
     "supabase-secrets": boolean;
     "integration-test-config": boolean;
     "github-actions": boolean;
@@ -1214,26 +1111,6 @@ async function checkCredentials(
     }
   }
 
-  // Check Vercel credentials (needed for vercel phase)
-  if (!skipPhases.vercel) {
-    console.log("Checking Vercel credentials...");
-    try {
-      execSync("vercel --version", { stdio: "pipe" });
-
-      // Check if we can access the project
-      let tokenArg = "";
-      if (process.env.VERCEL_ACCESS_TOKEN) {
-        tokenArg = `--token ${process.env.VERCEL_ACCESS_TOKEN}`;
-      }
-
-      execSync(`vercel project ls ${tokenArg}`, { stdio: "pipe" });
-    } catch (error) {
-      throw new Error(
-        "Invalid Vercel credentials or missing project access. " + error
-      );
-    }
-  }
-
   // Check GitHub credentials (needed for github-actions phase)
   if (!skipPhases["github-actions"]) {
     console.log("Checking GitHub credentials...");
@@ -1260,15 +1137,14 @@ export function setupCloudCommand(program: Command): void {
     .option("--skip-supabase", "Skip Supabase deployment")
     .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
     .option("--skip-gcp", "Skip GCP deployment")
-    .option("--skip-vercel", "Skip Vercel deployment")
     .option(
       "--skip-integration-test-config",
       "Skip integration test config generation"
     )
     .option(
-      "--refuse-dirty-builds",
-      "Fail if git working directory is dirty",
-      false
+      "--refuse-dirty-builds <boolean>",
+      "Fail if git working directory is dirty (default: true)",
+      true
     )
     .action(async (options: CloudOptions) => {
       try {
@@ -1285,7 +1161,6 @@ export function setupCloudCommand(program: Command): void {
           supabase: options.skipSupabase,
           gcp: options.skipGcp,
           "supabase-secrets": options.skipSupabaseSecrets,
-          vercel: options.skipVercel,
           "integration-test-config": options.skipIntegrationTestConfig,
           "github-actions": true
         };
@@ -1311,7 +1186,12 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.images) {
           await variableManager.validatePhaseRequirements("images", skipPhases);
           console.log("\nBuilding and pushing images...");
-          await buildAndPushImages(options.refuseDirtyBuilds);
+          await buildAndPushImages(
+            options.refuseDirtyBuilds,
+            variableManager.getValue("supabaseUrl"),
+            variableManager.getValue("supabaseAnonKey"),
+            variableManager.getValue("environment")
+          );
         }
 
         // Setup Supabase if needed
@@ -1363,19 +1243,6 @@ export function setupCloudCommand(program: Command): void {
           );
         }
 
-        // Setup Vercel if needed
-        if (!skipPhases.vercel) {
-          await variableManager.validatePhaseRequirements("vercel", skipPhases);
-          await setupVercel(
-            CONFIG_DIR,
-            variableManager.getValue("vercelProjectId"),
-            variableManager.getValue("vercelOrgId"),
-            variableManager.getValue("supabaseUrl"),
-            variableManager.getValue("supabaseAnonKey"),
-            variableManager.getValue("environment")
-          );
-        }
-
         // Generate integration test config if needed
         if (!skipPhases["integration-test-config"]) {
           await variableManager.generateIntegrationTestConfig();
@@ -1411,7 +1278,6 @@ export function setupCloudCommand(program: Command): void {
           supabase: true,
           gcp: true,
           "supabase-secrets": true,
-          vercel: true,
           "integration-test-config": false,
           "github-actions": true
         };
@@ -1486,9 +1352,21 @@ export function setupCloudCommand(program: Command): void {
       "--repo-env <repo-env>",
       "Environment of the repository, default uses no environment"
     )
-    .description("Sets up github actions environment variablesfor the project")
-    .action(async () => {
+    .description("Sets up github actions environment variables for the project")
+    .action(async (options: { repoName: string; repoEnv: string }) => {
       try {
+        const repoWithName = options.repoName
+          ? options.repoName
+          : execSync(`gh repo view --json nameWithOwner --jq '.nameWithOwner'`)
+              .toString()
+              .trim();
+
+        console.log("--------------------------------");
+        console.log(
+          `We'll be setting up github actions for repo ${repoWithName} in ${options.repoEnv || "no specific environment"}`
+        );
+        console.log("--------------------------------");
+
         const configDir = path.join(
           process.env.HOME || "",
           ".planqtn",
@@ -1504,12 +1382,17 @@ export function setupCloudCommand(program: Command): void {
         }
 
         const answer = prompt(
-          "Are you sure you want to set these up in Github Actions? (y/n)"
+          `Are you sure you want to set these up in Github Actions on repo ${repoWithName} (y/n)`
         );
         if (answer !== "y") {
           console.log("Aborting...");
           process.exit(0);
         }
+
+        const gh =
+          "gh " +
+          (options.repoName ? `-R ${options.repoName}` : "") +
+          (options.repoEnv ? `-e ${options.repoEnv}` : "");
 
         for (const variable of userVars) {
           const config = variable.getConfig();
@@ -1518,12 +1401,12 @@ export function setupCloudCommand(program: Command): void {
           if (config.isSecret) {
             console.log(`Setting secret ${variable.getEnvVarName()}...`);
             execSync(
-              `gh secret set ${variable.getEnvVarName()} --body "${val}"`
+              `${gh} secret set ${variable.getEnvVarName()} --body "${val}"`
             );
           } else {
             console.log(`Setting var ${variable.getEnvVarName()}...`);
             execSync(
-              `gh variable set ${variable.getEnvVarName()} --body "${val}"`
+              `${gh} variable set ${variable.getEnvVarName()} --body "${val}"`
             );
           }
         }
@@ -1540,7 +1423,7 @@ interface CloudOptions {
   skipSupabase: boolean;
   skipSupabaseSecrets: boolean;
   skipGcp: boolean;
-  skipVercel: boolean;
+  skipUi: boolean;
   skipIntegrationTestConfig: boolean;
   refuseDirtyBuilds: boolean;
 }

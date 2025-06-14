@@ -1,32 +1,13 @@
-name: Cloud Integration Tests
-run-name: ${{ github.actor }} is running cloud integration tests 🚀
+name: Deploy to Staging
+run-name: ${{ github.actor }} is deploying to staging 🚀
 concurrency:
-  group: cloud-integration-tests
-on:
-  pull_request:
-    paths:
-      - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
-      - "app/conftest.py"
-
-      - "app/supabase/**"
-      - "app/migrations/**"
-      - "app/planqtn_types/**"
-      - "app/planqtn_api/**"
-      - "app/planqtn_jobs/**"
-      - "app/planqtn_cli/**"
-      - "app/planqtn_fixtures/**"
-      - "hack/*build*"
-
-      - "check/**integration"
-      - ".github/workflows/cloud_integration_tests.yml"
+  group: deploy-to-staging
+on: 
   push:
     paths:
       - "qlego/**"
       - "requirements.txt"
       - "requirements.dev.txt"
-      - "app/conftest.py"
 
       - "app/supabase/**"
       - "app/migrations/**"
@@ -35,44 +16,26 @@ on:
       - "app/planqtn_jobs/**"
       - "app/planqtn_cli/**"
       - "app/planqtn_fixtures/**"
+      - "app/ui/**"
       - "hack/*build*"
 
-      - "check/**integration"
-      - ".github/workflows/cloud_integration_tests.yml"
+      - ".github/workflows/deploy_to_staging.yml"
 
 jobs:
-  Cloud-Integration-Tests:
+  Deploy-to-Staging:
+    outputs:
+      url: ${{ steps.deploy.outputs.deploy_url }}
     permissions:
       statuses: write
       checks: write
       contents: write
       pull-requests: write
       actions: write
-    environment: Continuous Integration
+    environment: Staging
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            jobs: 
-              - "app/planqtn_jobs/**"
-            api:
-              - "app/planqtn_api/**"                    
-            common: 
-              - "qlego/**"
-              - "requirements.txt"
-              - "requirements.dev.txt"
-              - "conftest.py"
-              - "app/supabase/**"
-              - "app/migrations/**"
-              - "app/planqtn_types/**"
-              - "app/planqtn_fixtures/**"
-              - ".github/workflows/integration_tests.yml"
-              - "app/planqtn_cli/**"
-              - "hack/*build*"
+        uses: actions/checkout@v4     
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -88,7 +51,8 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Cloud deploy
+      - name: Cloud deploy  
+        id: deploy
         env:
           # Secrets:
           # Description: Supabase database password
@@ -124,23 +88,5 @@ jobs:
     
         run: |
           hack/htn cloud deploy -q 
-
-      - name: Run jobs integration tests
-        env:
-          KERNEL_ENV: cloud
-          # Description: GCP service account credentials for GitHub Actions
-          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
-        if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
-        run: |
-          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
-          check/jobs-integration
-
-      - name: Run api integration tests
-        env:
-          KERNEL_ENV: cloud
-          # Description: GCP service account credentials for GitHub Actions
-          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
-        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
-        run: |
-          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
-          check/api-integration
+          echo "url=$(~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
+     

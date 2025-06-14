@@ -12,7 +12,7 @@ The main web interface built with React/TypeScript. Features include:
 - Component library for quantum error correction codes
 - Real-time network analysis
 - Modern UI with Chakra UI components
-- Built with Vite and served via Vercel
+- Built with Vite and served via Cloud Run
 
 ### `/planqtn_api`
 

@@ -13,6 +13,7 @@ interface ApiConfig {
     planqtnJob: string;
     planqtnJobLogs: string;
     cancelJob: string;
+    version: string;
   };
 }
 
@@ -56,7 +57,8 @@ export const config: ApiConfig = {
       : "/functions/v1/planqtn_job_logs_run",
     cancelJob: localRuntimeConfig
       ? "/functions/v1/cancel_job"
-      : "/functions/v1/cancel_job_run"
+      : "/functions/v1/cancel_job_run",
+    version: "/functions/v1/version"
   }
 };
 
