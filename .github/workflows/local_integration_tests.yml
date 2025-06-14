@@ -81,7 +81,8 @@ jobs:
       - name: Display disk space
         run: |
           cat <<EOF >> $GITHUB_STEP_SUMMARY
-          "## Disk space changes"
+          ## Disk space changes
+          
           Before: 
           \`\`\`
           `df -h /dev/root`
