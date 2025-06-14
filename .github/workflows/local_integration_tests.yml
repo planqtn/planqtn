@@ -119,9 +119,9 @@ jobs:
         run: |
           df -h /dev/loop0 | tee /tmp/disk_space_at_end.txt
           echo "## Disk space changes" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           diff /tmp/disk_space_at_start.txt /tmp/disk_space_at_end.txt >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
       - name: cleanup env
         run: |
           htn kernel stop
