@@ -4,6 +4,9 @@ concurrency:
   group: deploy-to-staging
 on: 
   push:
+    branches:
+      - "main"
+      - "hotfix/*"
     paths:
       - "qlego/**"
       - "requirements.txt"
@@ -20,6 +23,8 @@ on:
       - "hack/*build*"
 
       - ".github/workflows/deploy_to_staging.yml"
+    tags:
+      - "*dev*"
 
 jobs:
   Deploy-to-Staging:
