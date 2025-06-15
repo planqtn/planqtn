@@ -27,6 +27,22 @@ on:
       - "*dev*"
 
 jobs:
+  Publish-CLI:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Get image tag
+        id: image_tag
+        run: |
+          hack/image_tag
+        shell: bash
+      - name: Publish CLI
+        run: |
+          hack/cli_build.sh --install
+          
+     
+
   Deploy-to-Staging:
     outputs:
       url: ${{ steps.deploy.outputs.deploy_url }}

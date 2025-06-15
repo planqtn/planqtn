@@ -1,65 +1,85 @@
 # Versioning Policy
 
-This project uses a date-based versioning scheme, specifically [CalVer](https://calver.org/), to label its releases. This method helps us tie releases to our development timeline and provides a clear understanding of a version's age.
+This project uses [Semantic Versioning (SemVer)](https://semver.org/) to manage its releases. This scheme provides clear, predictable version numbers that communicate the scope of changes between releases.
+
+## Monorepo versioning
+
+Both the `planqtn` library and the PlanqTN Tensor Studio are versioned together with the same version. While this might change in the future, for now it makes life easier to manage a single repo.
 
 ## Version Format
 
-Our version numbers follow the `YY.MM.MICRO` format.
+Our version numbers follow the `MAJOR.MINOR.PATCH` format.
 
-* **`YY`**: The two-digit year of the release.
-* **`MM`**: The two-digit month of the release.
-* **`MICRO`**: A number that increments with each release within the same month, starting from `0`.
+* **`MAJOR`**: Incremented for incompatible API changes (breaking changes).
+* **`MINOR`**: Incremented for new, backward-compatible functionality.
+* **`PATCH`**: Incremented for backward-compatible bug fixes.
 
-**Example:** The first release in June 2025 would be `25.06.0`. A subsequent release in the same month would be `25.06.1`.
+**Example:** A bug fix for version `1.2.0` would be released as `1.2.1`. A new feature would be released as `1.3.0`. A breaking change would result in version `2.0.0`. Pre-release versions are denoted with a suffix, like `2.0.0-rc.1`.
 
 ## Branching and Release Strategy
 
-### `main` Branch and Staging
+### `main` Branch
 
-* The `main` branch is our primary development branch.
-* All changes are first merged into the `main` branch.
+* The `main` branch is our primary development branch, containing the latest code.
+* It always reflects the state of the *next* upcoming release.
+* All work is done in feature branches and merged into `main` via pull requests.
 
-### Pre-releases on Staging
+### Continuous Staging Deployments
 
-To ensure our packaging and deployment pipeline is sound for a production release, every merge to `main` is treated as a pre-release candidate.
+* Every commit merged into the `main` branch automatically triggers a build and deployment to our **staging** environment.
+* **Purpose**: This provides immediate, continuous feedback on the latest code in a production-like setting.
+* **Note**: These deployments are for internal testing only and do **not** result in a package being published to any public registry.
 
-* **Action**: A pre-release version is automatically built and deployed to our **staging** environment. These packages are **not** published to public registries like npm or PyPI.
-* **Format**: These staging versions are tagged with a `dev` suffix, such as `YY.MM.MICRO-dev.BUILD_NUMBER` (e.g., `25.06.0-dev.123`).
-* **Purpose**: This process validates that the package builds correctly and allows for thorough testing of the release candidate in a production-like environment before a final production release is made.
+### Manual Pre-Releases
+
+To perform a full, end-to-end test of the release pipeline before a production release, we use manually-tagged pre-releases.
+
+* **Trigger**: This workflow is kicked off by manually pushing a pre-release tag to a commit on `main` (e.g., `v2.0.0-rc.1`). This is typically done 1-2 weeks before a planned production release.
+* **Action**: This tag triggers a workflow that **exactly mimics the production release process**. It will:
+  1. Build all assets.
+  2. Publish packages to npm, PyPI, and our container registry (e.g., Docker Hub) with the appropriate pre-release tag.
+  3. Deploy the final application to the **staging** environment.
+* **Purpose**: To have a high-confidence dress rehearsal of the entire release process, catching any issues in packaging, publishing, or deployment before the final release.
 
 ### Production Releases
 
-* Production releases are created by tagging a specific commit on the `main` branch with a new version number.
-* A new release is typically made at the beginning of each month, or more frequently if needed.
-* A release to production always corresponds to a clean version tag (e.g., `25.06.0`) and is published to public package registries.
+* **Trigger**: Production releases are created by manually pushing a final version tag to a commit on `main` (e.g., `v2.0.0`).
+* **Action**: This tag triggers the finalized release pipeline, which publishes the official packages to public registries and deploys the application to the **production** environment.
 
 ## Breaking Changes
 
 A **breaking change** is any modification that is not backward-compatible.
 
-* When a release includes breaking changes, it will be clearly noted in the release notes.
-* Because we use a date-based system, the version number itself does not signal a breaking change. It is crucial to read the release notes before upgrading.
+* With the `0.x.y` versions, our API is not considered stable, and breaking changes are expected potentially with every **`MINOR`** release.
+* All breaking changes will be thoroughly documented in the release notes. This makes it clear to users that an upgrade to a new major version will require them to make changes.
+
+After 1.0.0, which is expected in mid 2026: 
+
+* In accordance with SemVer, any breaking change will result in a **`MAJOR`** version increase.
+
 
 ## Bug Fixes and Patching
 
-Our approach to bug fixes depends on the severity and scope of the issue.
+Our approach to bug fixes is handled through patch releases.
 
-### Hotfixes for the Latest Version
+### Patch Releases
 
-* If a critical bug is discovered in the latest production release, a hotfix will be prepared.
-* This will result in a new `MICRO` version. For example, if `25.06.0` has a critical bug, a fix will be released as `25.06.1`.
-* The fix will be developed in a separate `hotfix` branch from the release tag, merged back into `main`, and then a new release tag will be created.
+* If a critical bug is discovered in the latest production release that requires an immediate fix, a hotfix will be prepared. This involves:
+  1. Creating a `hotfix` branch from the latest release tag on `main`.
+  2. Applying the fix.
+  3. Tagging a new `PATCH` version (e.g., `v1.2.1`).
+  4. Merging the `hotfix` branch back into `main`.
 
 ### Supporting Older Versions
 
-* We do not provide long-term support (LTS) for every past version.
-* Significant, non-critical bug fixes will be included in the next regular release. For example, a bug found in `25.06.0` would be fixed in the `main` branch and released as part of `25.07.0`.
-* Users are encouraged to stay on the latest version to benefit from all bug fixes and improvements.
+* We primarily provide support for the latest `MINOR` series. Patches are not typically backported to older minor versions. Users are encouraged to stay on the latest version.
 
 ## Summary of Strategy
 
-| Branch | Environment | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| `main` | Staging | `YY.MM.MICRO-dev.BUILD` | Continuous testing & validation of release candidates. |
-| Tag | Production | `YY.MM.MICRO` | Stable, public releases published to registries. |
-| `hotfix/*` | - | - | Urgent bug fixes for a production release. |
+| Trigger | Branch/Tag | Environment(s) | Version Example | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| Commit to `main` | `main` | Staging | (build metadata) | Continuous integration and rapid validation. |
+| Pre-release Tag | Tag (`v2.0.0-rc.1`) | Staging & Registries | `2.0.0-rc.1` | End-to-end test of the full release pipeline. |
+| Production Tag | Tag (`v2.0.0`) | Production & Registries| `2.0.0` | Stable, official public release. |
+
+

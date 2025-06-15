@@ -1,6 +1,6 @@
 {
   "name": "planqtn-cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "CLI tool for PlanQTN",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,10 +14,10 @@
     "config"
   ],
   "scripts": {
-    "build": "tsc && npm run copy-config",
-    "copy-config": "mkdir -p dist/cfg && rsync -a --filter=':- ../../.gitignore' ../supabase/ dist/cfg/supabase/ && rsync -a ../k8s/ dist/cfg/k8s/ && rsync -a ../migrations/ dist/cfg/migrations/ && mkdir -p dist/cfg/planqtn_api && rsync -a ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  && rsync -a ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml",
+    "build": "tsc && npm run copy-config && ../../hack/image_tag > dist/version.txt",
+    "copy-config": "./scripts/copy-config.sh",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "dev": "../../hack/image_tag > ../version.txt && ts-node src/index.ts",
     "prepare": "npm run build"
   },
   "keywords": [

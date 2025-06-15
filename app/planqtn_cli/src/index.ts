@@ -6,11 +6,18 @@ import { setupUiCommand } from "./commands/ui";
 import { setupPurgeCommand } from "./commands/purge";
 import { setupImagesCommand } from "./commands/images";
 import { setupCloudCommand } from "./commands/cloud";
-import { isDev } from "./config";
+import { getCfgDefinitionsDir, isDev } from "./config";
+import { readFileSync } from "fs";
+import * as path from "path";
 
 const program = new Command();
 
-program.command("htn").description("CLI tool for PlanqTN").version("1.0.0");
+const version = readFileSync(path.join(getCfgDefinitionsDir(), "version.txt")).toString().trim();
+program.command("htn").description("CLI tool for PlanqTN").version(version);
+
+program.command("version").description("Show the version of the CLI").action(() => {
+  console.log(version);
+});
 
 // Check if we're in dev mode
 if (isDev) {

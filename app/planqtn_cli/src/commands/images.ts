@@ -1,38 +1,10 @@
 import { Command } from "commander";
-import { runCommand } from "../utils";
+import { runCommand, getGitTag } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as tty from "tty";
 import * as dotenv from "dotenv";
-
-async function getGitTag(): Promise<string> {
-  // First try to get the tag for the current commit
-  try {
-    const tag = (await runCommand(
-      "git",
-      ["describe", "--exact-match", "--tags", "HEAD"],
-      { returnOutput: true }
-    )) as string;
-
-    if (tag.trim()) {
-      return tag.trim();
-    }
-  } catch {
-    // If git describe fails, fall back to commit hash
-  }
-
-  // If no tag exists, fall back to commit hash
-  const commitHash = (await runCommand(
-    "git",
-    ["rev-parse", "--short", "HEAD"],
-    { returnOutput: true }
-  )) as string;
-  const status = (await runCommand("git", ["status", "-s"], {
-    returnOutput: true
-  })) as string;
-  return status.trim() ? `${commitHash.trim()}-dirty` : commitHash.trim();
-}
 
 async function checkK3dRunning(cluster: string): Promise<boolean> {
   try {
