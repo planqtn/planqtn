@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { getImageFromEnv, buildImage, getImageConfig } from "./images";
+import { buildImage, getImageConfig, getImageFromEnv } from "./images";
 import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
@@ -493,8 +493,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-            ? " (leave blank to keep current value)"
-            : " (not set)"
+          ? " (leave blank to keep current value)"
+          : " (not set)"
       }${hintText}: `;
 
       let hint = true;
@@ -1137,6 +1137,7 @@ export function setupCloudCommand(program: Command): void {
     .option("--skip-supabase", "Skip Supabase deployment")
     .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
     .option("--skip-gcp", "Skip GCP deployment")
+    .option("--only <phase>", "Only deploy the specified phase")
     .option(
       "--skip-integration-test-config",
       "Skip integration test config generation"
@@ -1147,6 +1148,7 @@ export function setupCloudCommand(program: Command): void {
       true
     )
     .action(async (options: CloudOptions) => {
+      console.log("options", options);
       try {
         // Create config directory if it doesn't exist
         if (!(await exists(CONFIG_DIR))) {
@@ -1164,6 +1166,23 @@ export function setupCloudCommand(program: Command): void {
           "integration-test-config": options.skipIntegrationTestConfig,
           "github-actions": true
         };
+
+        if (options.only) {
+          console.log("options.only", options.only);
+          if (skipPhases[options.only]) {
+            throw new Error(
+              `Cannot use --only ${options.only} together with --skip-${options.only}.`
+            );
+          }
+          skipPhases[options.only] = false;
+          for (const phase of Object.keys(
+            skipPhases
+          ) as (keyof typeof skipPhases)[]) {
+            if (phase !== options.only) {
+              skipPhases[phase] = true;
+            }
+          }
+        }
 
         // Load GCP outputs if GCP is not skipped
         if (!skipPhases.gcp) {
@@ -1363,7 +1382,9 @@ export function setupCloudCommand(program: Command): void {
 
         console.log("--------------------------------");
         console.log(
-          `We'll be setting up github actions for repo ${repoWithName} in ${options.repoEnv || "no specific environment"}`
+          `We'll be setting up github actions for repo ${repoWithName} in ${
+            options.repoEnv || "no specific environment"
+          }`
         );
         console.log("--------------------------------");
 
@@ -1426,4 +1447,11 @@ interface CloudOptions {
   skipUi: boolean;
   skipIntegrationTestConfig: boolean;
   refuseDirtyBuilds: boolean;
+  only:
+    | "images"
+    | "supabase"
+    | "gcp"
+    | "supabase-secrets"
+    | "integration-test-config"
+    | "github-actions";
 }
