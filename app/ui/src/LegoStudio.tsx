@@ -1976,6 +1976,9 @@ const LegoStudioView: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!userContextSupabase) {
+      return;
+    }
     const {
       data: { subscription }
     } = userContextSupabase.auth.onAuthStateChange((_event, session) => {
@@ -1986,9 +1989,12 @@ const LegoStudioView: React.FC = () => {
 
   // Add Supabase status check on page load
   useEffect(() => {
+    if (!userContextSupabase) {
+      return;
+    }
     const checkStatus = async () => {
       // Use 3 retries to ensure we're not showing errors due to temporary network issues
-      const status = await checkSupabaseStatus(userContextSupabase, 3);
+      const status = await checkSupabaseStatus(userContextSupabase!, 3);
       setSupabaseStatus(status);
 
       if (!status.isHealthy) {
@@ -2020,6 +2026,13 @@ const LegoStudioView: React.FC = () => {
 
   // Update the auth dialog to show Supabase status error if needed
   const handleAuthDialogOpen = async () => {
+    if (!userContextSupabase) {
+      setSupabaseStatus({
+        isHealthy: false,
+        message: "No supabase client available"
+      });
+      return;
+    }
     try {
       let status = supabaseStatus;
       if (!status) {

@@ -74,7 +74,7 @@ After you cloned the repo, you can setup the npm dependencies with:
 hack/htn ui start --dev
 ```
 
-This should give you a http://localhost:5173 URL for the UI.
+This should give you a http://localhost:5173 URL for the UI. The UI 
 
 You can test the containerized setup by: 
 

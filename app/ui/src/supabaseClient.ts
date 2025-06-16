@@ -1,14 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config } from "./config";
 
-// This is the user/auth context + the task store supabase client
-export const userContextSupabase = createClient(
+function getSupabaseClient(name: string, url: string, anonKey: string): SupabaseClient|null {
+  try {
+    return createClient(url, anonKey);
+  } catch (error) {
+    console.error(`Error creating ${name} supabase client with details: url: ${url}, anonKey: ${anonKey}`, error);
+    return null;
+  }
+}
+
+export const userContextSupabase = getSupabaseClient(
+  "userContext",
   config.userContextURL,
   config.userContextAnonKey
 );
 
 // This is the runtime store supabase client
-export const runtimeStoreSupabase = createClient(
+export const runtimeStoreSupabase = getSupabaseClient(
+  "runtimeStore",
   config.runtimeStoreUrl,
   config.runtimeStoreAnonKey
 );
