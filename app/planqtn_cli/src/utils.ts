@@ -197,9 +197,8 @@ export async function updateEnvFile(
 
     if (lastMatch && lastMatch[1] && lastMatch[1] !== value) {
       // Replace only the last occurrence
-      lines[
-        lastMatchIndex
-      ] = `# Previous value for ${key}\n# ${key}=${lastMatch[1]}\n${key}=${value}`;
+      lines[lastMatchIndex] =
+        `# Previous value for ${key}\n# ${key}=${lastMatch[1]}\n${key}=${value}`;
       envContent = lines.join("\n");
       fs.writeFileSync(envPath, envContent);
       return;

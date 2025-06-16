@@ -38,10 +38,10 @@ const localRuntimeConfig = getLocalSupabaseConfig();
 export const config: ApiConfig = {
   userContextURL: import.meta.env.VITE_TASK_STORE_URL,
   userContextAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
-  runtimeStoreUrl: localRuntimeConfig?.API_URL ||
-    import.meta.env.VITE_TASK_STORE_URL,
-  runtimeStoreAnonKey: localRuntimeConfig?.ANON_KEY ||
-    import.meta.env.VITE_TASK_STORE_ANON_KEY,
+  runtimeStoreUrl:
+    localRuntimeConfig?.API_URL || import.meta.env.VITE_TASK_STORE_URL,
+  runtimeStoreAnonKey:
+    localRuntimeConfig?.ANON_KEY || import.meta.env.VITE_TASK_STORE_ANON_KEY,
   env: (import.meta.env.VITE_ENV || "production") as Environment,
   endpoints: {
     tensorNetwork: "/functions/v1/tensornetwork",
@@ -54,8 +54,8 @@ export const config: ApiConfig = {
     cancelJob: localRuntimeConfig
       ? "/functions/v1/cancel_job"
       : "/functions/v1/cancel_job_run",
-    version: "/functions/v1/version",
-  },
+    version: "/functions/v1/version"
+  }
 };
 
 export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
@@ -63,7 +63,7 @@ export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
     "resolved API url for endpoint",
     endpoint,
     config.runtimeStoreUrl,
-    config.endpoints[endpoint],
+    config.endpoints[endpoint]
   );
   return `${config.runtimeStoreUrl}${config.endpoints[endpoint]}`;
 };

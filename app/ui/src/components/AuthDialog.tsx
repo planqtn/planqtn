@@ -220,7 +220,6 @@ export default function AuthDialog({
 
   const handleSignOut = async () => {
     if (!userContextSupabase) {
-    
       return;
     }
     try {

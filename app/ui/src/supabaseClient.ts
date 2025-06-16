@@ -1,11 +1,18 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config } from "./config";
 
-function getSupabaseClient(name: string, url: string, anonKey: string): SupabaseClient|null {
+function getSupabaseClient(
+  name: string,
+  url: string,
+  anonKey: string
+): SupabaseClient | null {
   try {
     return createClient(url, anonKey);
   } catch (error) {
-    console.error(`Error creating ${name} supabase client with details: url: ${url}, anonKey: ${anonKey}`, error);
+    console.error(
+      `Error creating ${name} supabase client with details: url: ${url}, anonKey: ${anonKey}`,
+      error
+    );
     return null;
   }
 }

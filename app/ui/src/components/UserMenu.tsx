@@ -28,7 +28,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
     return (
       <Menu>
         <Tooltip
-          label={!userContextSupabase ? "User Context is unavailable, no Supabase instance is setup" : ""}
+          label={
+            !userContextSupabase
+              ? "User Context is unavailable, no Supabase instance is setup"
+              : ""
+          }
           isDisabled={!!userContextSupabase}
           placement="bottom"
         >
@@ -46,7 +50,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
             <VStack spacing={2}>
               <HStack spacing={1}>
                 <Icon as={FiUser} boxSize={6} />
-                {!userContextSupabase && <Icon as={FiAlertCircle} color="red.500" boxSize={4} />}
+                {!userContextSupabase && (
+                  <Icon as={FiAlertCircle} color="red.500" boxSize={4} />
+                )}
               </HStack>
               <Text
                 fontSize="sm"
