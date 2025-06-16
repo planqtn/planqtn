@@ -74,9 +74,47 @@ After you cloned the repo, you can setup the npm dependencies with:
 hack/htn ui start --dev
 ```
 
-This should give you a http://localhost:5173 URL for the UI. The UI 
+This should give you a http://localhost:5173 URL for the UI. 
+The UI needs a User Context for authentication user content presistence in Supabase, so when it doesn't have it setup you'll see a "User context unavailable" warning next to the User menu.
 
-You can test the containerized setup by: 
+<img src="fig/user_context_unavailable.png"/>
+
+This is okay if you don't want to develop anything related to authentication / tasks / API calls. 
+
+If you have to do any of those, then you'll need a User context. You have two options: 
+
+1. Use the `dev` runtime kernel as your User context
+  - See [Setting up `dev` kernel](#setting-up-dev-kernel)
+  - start your ui with `hack/htn ui start --dev --dev-user-context` or manually create/edit the `app/ui/.env` file 
+```bash
+VITE_TASK_STORE_URL=http://127.0.0.1:54321
+VITE_TASK_STORE_ANON_KEY="<your supabase instance's anon key>"
+VITE_ENV=development
+```
+2. Use your personal cloud 
+  
+If you want to set that up, then you can manually setup the `app/ui/.env` file 
+```bash
+VITE_TASK_STORE_URL=https://yourprojectref.supabase.co
+VITE_TASK_STORE_ANON_KEY="<your supabase instance's anon key>"
+VITE_ENV=development
+```
+
+### Containerization 
+
+As you can see from above, as a typical Vite app, the UI uses env vars during compilation. However, as in production the UI runs in a Docker container, and we need a single image that can run on any environment, we need the ability to change the values in the compiled javascript / CSS code at runtime. This is not 
+
+You can test the scripts used by the containerized setup by: 
+
+```bash
+cd app/ui
+# this will build the ui with .env.runtime file, that contains RUNTIME_VITE_... env var place holder values
+npm run build 
+# this uses the .env file (or the process environment from the Docker runtime when in a container) and replaces RUNTIME_VITE_... values with the actual env var values in the compiled files 
+node serve.js 
+```
+
+To test the actual container: 
 
 ```
 hack/htn images ui --build 
@@ -368,7 +406,7 @@ Then use it:
 htn kernel start
 ```
 
-Warning, this needs roughly $HOME40-50GB disk space and $HOME5-15GB RAM for the Docker runtimes.
+Warning, this needs roughly 10GB disk space and 5GB RAM for the Docker runtimes.
 
 ### Setting up `dev` kernel
 
@@ -378,7 +416,9 @@ Simply run:
 hack/htn kernel start
 ```
 
-Warning, this needs roughly $HOME40-50GB disk space and $HOME5-15GB RAM for the Docker runtimes.
+Warning, this needs roughly 10GB disk space and 5GB RAM for the Docker runtimes.
+
+Now, locally, this will start a Supabase instance. If you want to use this only as a Runtime context, then you have nothing else to do, except be aware of JWT verification (see [dev workflow](#the-dev-workflow) for jobs). If you want to use this instance as a User context, then you might want to look at [your local Supabase dashboard](http://127.0.0.1:54323/project/default) to setup other authentication methods than the default email based, adding test users, etc.
 
 ### Setting up `cloud` kernel
 

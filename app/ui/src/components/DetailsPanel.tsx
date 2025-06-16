@@ -269,7 +269,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
 
     // Create a channel for task updates
-    const channel = runtimeStoreSupabase
+    const channel = runtimeStoreSupabase!
       .channel(`task_${taskId}`)
       .on(
         "postgres_changes",
@@ -335,6 +335,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const readAndUpdateTask = async (taskId: string) => {
+    if (!userContextSupabase) {
+      return;
+    }
     userContextSupabase
       .from("tasks")
       .select("*")

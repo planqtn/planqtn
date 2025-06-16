@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { runCommand } from "../utils";
+import { runCommand, updateEnvFile } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -52,31 +52,6 @@ async function checkSupabaseRunning(): Promise<boolean> {
   }
 }
 
-async function updateEnvFile(
-  envPath: string,
-  key: string,
-  value: string
-): Promise<void> {
-  let envContent = "";
-
-  if (fs.existsSync(envPath)) {
-    envContent = fs.readFileSync(envPath, "utf-8");
-  }
-
-  // Replace or add JOBS_IMAGE line
-  const jobsImageLine = `${key}=${value}`;
-  if (envContent.includes(`${key}=`)) {
-    envContent = envContent.replace(
-      new RegExp(`${key}=.*`, "g"),
-      jobsImageLine
-    );
-  } else {
-    envContent += `\n${jobsImageLine}\n`;
-  }
-
-  fs.writeFileSync(envPath, envContent);
-}
-
 async function restartSupabase(): Promise<void> {
   console.log("Restarting Supabase...");
 
@@ -127,7 +102,7 @@ export async function getImageConfig(image: string): Promise<{
     case "job":
       imageName = `${dockerRepo}/planqtn_jobs:${tag}`;
       dockerfile = "../planqtn_jobs/Dockerfile";
-      envPath = path.join(process.cwd(), "..", "planqtn_jobs", ".env");
+      envPath = path.join(process.cwd(), "..", "supabase", "functions", ".env");
       envVar = "JOBS_IMAGE";
       break;
     case "api":

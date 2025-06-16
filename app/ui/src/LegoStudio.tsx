@@ -3643,8 +3643,17 @@ const LegoStudioView: React.FC = () => {
           onClick={async () => {
             try {
               const apiUrl = getApiUrl("version");
-              const response = await fetch(`${apiUrl}/version`);
-              const versionInfo = await response.json();
+              const response = await axios.post(
+                `${apiUrl}/version`,
+                {},
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${await getAccessToken()}`
+                  }
+                }
+              );
+              const versionInfo = response.data;
               toast({
                 title: "Build Info",
                 description: (

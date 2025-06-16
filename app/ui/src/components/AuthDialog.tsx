@@ -197,6 +197,9 @@ export default function AuthDialog({
     e.preventDefault();
     setResetMessage("");
     try {
+      if (!userContextSupabase) {
+        throw new Error("No supabase client available");
+      }
       const { error } = await userContextSupabase.auth.resetPasswordForEmail(
         resetEmail,
         {

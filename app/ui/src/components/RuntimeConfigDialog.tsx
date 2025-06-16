@@ -83,7 +83,7 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
             <Text>
               {isLocal
                 ? "Clear the configuration below to switch to cloud runtime:"
-                : "Paste the output of 'supabase status -o json' to switch to local runtime:"}
+                : "Paste the output of 'htn kernel status' to switch to local runtime:"}
             </Text>
             <Textarea
               value={configText}

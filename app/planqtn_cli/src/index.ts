@@ -21,16 +21,13 @@ if (isDev) {
   setupCloudCommand(program);
 
   const appDir = getCfgDefinitionsDir();
-  // ensure that node_modules exists in the app folder 
+  // ensure that node_modules exists in the app folder
   // if not, run npm install
   if (!fs.existsSync(path.join(appDir, "node_modules"))) {
     console.log("Installing dependencies...");
     execSync("npm install", { cwd: getCfgDefinitionsDir() });
   }
-
 }
-
-
 
 setupUiCommand(program);
 setupKernelCommand(program);
