@@ -10,3 +10,4 @@ logs
 .env
 *dist*
 .config
+.vscode
