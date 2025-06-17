@@ -96,8 +96,6 @@ jobs:
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
       - name: Install planqtn cli      
-        env:
-          DOCKER_REPO: planqtn
         run: |      
           hack/cli_build.sh --install
       - name: build and load api image
@@ -109,6 +107,8 @@ jobs:
         run: |
           htn kernel start --verbose
       - name: build and load jobs image
+        env:
+          DOCKER_REPO: planqtn
         run: |
           hack/htn images job --build --load-no-restart --k3d-cluster local --quiet
       - name: Run jobs integration tests
