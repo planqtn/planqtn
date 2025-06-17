@@ -32,7 +32,7 @@ export async function k3d(
         K3D_INSTALL_DIR: PLANQTN_BIN_DIR,
         USE_SUDO: "false",
         // hack for k3d install script to not complain about the binary not on path
-        PATH: `${process.env.PATH}:${planqtnDir}`
+        PATH: `${process.env.PATH}:${PLANQTN_BIN_DIR}`
       }
     });
 
