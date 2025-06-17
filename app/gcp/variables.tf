@@ -25,15 +25,28 @@ variable "ui_image" {
 }
 
 variable "supabase_url" {
-  description = "The Supabase project URL"
+  description = "The User ContextSupabase project URL"
   type        = string
 }
 
 variable "supabase_service_key" {
-  description = "The Supabase service role key"
+  description = "The User Context Supabase service role key"
   type        = string
   sensitive   = true
 }
+
+variable "supabase_anon_key" {
+  description = "The User Context Supabase anon key"
+  type        = string
+  sensitive   = true
+}
+
+variable "ui_environment" {
+  description = "The UI environment (e.g., dev, prod, TEASER or DOWN)"
+  type        = string
+  default     = "dev"
+}
+
 
 variable "environment" {
   description = "The environment (e.g., dev, prod)"
