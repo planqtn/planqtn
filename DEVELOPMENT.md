@@ -435,6 +435,12 @@ See above for personal cloud setup.
 
 TODO: this will be filled out after merging the first version of supabase to main and testing on the first change.
 
-```
+# Reference for `.env` files 
 
-```
+It is a bit crazy how many `.env` files are in this project due to all the small tools. Here's a description of each of them.
+
+- `app/supabase/functions/.env` - Supabase Edge Function configuration for local and dev look at `app/supabase/functions/.env.local/dev`, for cloud `app/supabase/functions/.env.cloud` templates for documentation on the variables. 
+- `app/ui/.env` - UI configuration. See [Web UI features](#web-ui-features) for instructions.
+- `app/planqtn_api/.env` - API config, only needs an `API_IMAGE` to report its own version. We might remove this. 
+- `app/planqtn_jobs/.env` - just kidding - no env file here, however `RUNTIME_SUPABASE_URL` and `RUNTIME_SERVICE_KEY` are passed by the K8s job edge function and they are setup as secrets for the Cloud Run version. 
+

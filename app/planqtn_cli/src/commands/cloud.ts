@@ -340,7 +340,6 @@ async function setupSupabaseSecrets(
 
   // Create a temporary .env file for Supabase secrets
   const envContent = [
-    "ENV=development",
     `JOBS_IMAGE=${jobsImage}`,
     `GCP_PROJECT=${gcpProjectId}`,
     `SVC_ACCOUNT=${serviceAccountKey}`,

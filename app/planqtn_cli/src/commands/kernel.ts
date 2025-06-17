@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { spawn } from "child_process";
-import { copyDir, ensureEmptyDir, runCommand } from "../utils";
+import { copyDir, ensureEmptyDir, runCommand, updateEnvFile } from "../utils";
 import { cfgDir, getCfgDefinitionsDir, isDev } from "../config";
 import { k3d } from "../k3d";
 import * as yaml from "yaml";
@@ -10,7 +10,11 @@ import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
 import { Client } from "pg";
-import { buildAndPushImagesAndUpdateEnvFiles, getImageConfig, getImageFromEnv } from "./images";
+import {
+  buildAndPushImagesAndUpdateEnvFiles,
+  getImageConfig,
+  getImageFromEnv
+} from "./images";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -27,17 +31,24 @@ function red(str: string): string {
 export function setupKernelCommand(program: Command) {
   const kernelCommand = program.command("kernel");
 
-  kernelCommand
+  const startCommand = kernelCommand
     .command("start")
     .description("Start the local PlanqTN kernel")
-    .option("--verbose", "Show detailed output")
-
+    .option("--verbose", "Show detailed output");
 
   if (isDev) {
-    kernelCommand.option("--tag <tag>", "Tag to use for the images (dev mode only)");
-    kernelCommand.option("--repo <repo>", "Docker repository to use for the images (dev mode only), default planqtn", "planqtn");
+    startCommand.option(
+      "--tag <tag>",
+      "Tag to use for the images (dev mode only)"
+    );
+    startCommand.option(
+      "--repo <repo>",
+      "Docker repository to use for the images (dev mode only), default planqtn",
+      "planqtn"
+    );
   }
-    kernelCommand.action(async (options: { verbose: boolean, tag?: string, repo: string }) => {
+  startCommand.action(
+    async (options: { verbose: boolean; tag?: string; repo: string }) => {
       try {
         // Step 1: Check Docker installation
         console.log("Checking Docker installation...");
@@ -126,14 +137,16 @@ export function setupKernelCommand(program: Command) {
           );
 
           if (options.tag) {
-              console.log("Using tag:", options.tag, "and repo:", options.repo);
-              const jobConfig = await getImageConfig("job", options.repo, options.tag);
-              const apiConfig = await getImageConfig("api", options.repo, options.tag);
-
-              console.log("Job image:", jobConfig.imageName);
-              console.log("API image:", apiConfig.imageName);
-              
-              await buildAndPushImagesAndUpdateEnvFiles(false, options.repo, "https://localhost:54321", "placeholder", "dev-local", true, options.tag);
+            console.log("Using tag:", options.tag, "and repo:", options.repo);
+            await buildAndPushImagesAndUpdateEnvFiles(
+              false,
+              options.repo,
+              "https://localhost:54321",
+              "placeholder",
+              "dev-local",
+              true,
+              options.tag
+            );
           }
 
           const jobImage = await getImageFromEnv("job");
@@ -142,10 +155,17 @@ export function setupKernelCommand(program: Command) {
           console.log("Job image:", jobImage || "missing");
           console.log("API image:", apiImage || "missing");
 
-          if (!jobImage || !apiImage ) {
-            throw new Error("Some images are missing, please build them first. Run 'hack/htn images <job/api> --build or run this command with --tag <tag> --repo <repo> to deploy from an existing image on DockerHub'.");
+          if (!jobImage || !apiImage) {
+            throw new Error(
+              "Some images are missing, please build them first. Run 'hack/htn images <job/api> --build or run this command with --tag <tag> --repo <repo> to deploy from an existing image on DockerHub'."
+            );
           }
 
+          await updateEnvFile(
+            path.join(supabaseDir, "functions", ".env"),
+            "K8S_TYPE",
+            "local-dev"
+          );
         }
 
         // Step 5: Check Supabase status and start if needed
@@ -356,7 +376,8 @@ export function setupKernelCommand(program: Command) {
         );
         process.exit(1);
       }
-    });
+    }
+  );
 
   kernelCommand
     .command("stop")

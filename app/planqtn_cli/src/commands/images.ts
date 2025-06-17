@@ -271,7 +271,6 @@ export async function buildAndPushImagesAndUpdateEnvFiles(
   await buildAndPushImageAndUpdateEnvFile("ui", actions, uiImageConfig);
 }
 
-
 export function setupImagesCommand(program: Command): void {
   const imagesCommand = program
     .command("images")
