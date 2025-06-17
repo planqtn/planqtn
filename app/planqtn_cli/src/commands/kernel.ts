@@ -25,17 +25,17 @@ function red(str: string): string {
 }
 
 export function setupKernelCommand(program: Command) {
-  let kernelCommand = program.command("kernel");
+  const kernelCommand = program.command("kernel");
 
-  kernelCommand = kernelCommand
+  kernelCommand
     .command("start")
     .description("Start the local PlanqTN kernel")
     .option("--verbose", "Show detailed output")
 
 
   if (isDev) {
-    kernelCommand = kernelCommand.option("--tag <tag>", "Tag to use for the images (dev mode only)");
-    kernelCommand = kernelCommand.option("--repo <repo>", "Docker repository to use for the images (dev mode only), default planqtn", "planqtn");
+    kernelCommand.option("--tag <tag>", "Tag to use for the images (dev mode only)");
+    kernelCommand.option("--repo <repo>", "Docker repository to use for the images (dev mode only), default planqtn", "planqtn");
   }
     kernelCommand.action(async (options: { verbose: boolean, tag?: string, repo: string }) => {
       try {
@@ -129,25 +129,21 @@ export function setupKernelCommand(program: Command) {
               console.log("Using tag:", options.tag, "and repo:", options.repo);
               const jobConfig = await getImageConfig("job", options.repo, options.tag);
               const apiConfig = await getImageConfig("api", options.repo, options.tag);
-              const uiConfig = await getImageConfig("ui", options.repo, options.tag);
 
               console.log("Job image:", jobConfig.imageName);
               console.log("API image:", apiConfig.imageName);
-              console.log("UI image:", uiConfig.imageName);
               
               await buildAndPushImagesAndUpdateEnvFiles(false, options.repo, "https://localhost:54321", "placeholder", "dev-local", true, options.tag);
           }
 
           const jobImage = await getImageFromEnv("job");
           const apiImage = await getImageFromEnv("api");
-          const uiImage = await getImageFromEnv("ui");
 
           console.log("Job image:", jobImage || "missing");
           console.log("API image:", apiImage || "missing");
-          console.log("UI image:", uiImage || "missing");          
 
-          if (!jobImage || !apiImage || !uiImage) {
-            throw new Error("Some images are missing, please build them first. Run 'hack/htn images <job/api/ui> --build or run this command with --tag <tag> --repo <repo> to deploy from an existing image on DockerHub'.");
+          if (!jobImage || !apiImage ) {
+            throw new Error("Some images are missing, please build them first. Run 'hack/htn images <job/api> --build or run this command with --tag <tag> --repo <repo> to deploy from an existing image on DockerHub'.");
           }
 
         }
