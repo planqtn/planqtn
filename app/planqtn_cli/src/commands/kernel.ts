@@ -10,6 +10,7 @@ import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
 import { Client } from "pg";
+import { getImageFromEnv } from "./images";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -117,6 +118,18 @@ export function setupKernelCommand(program: Command) {
           console.log(
             "Running in dev mode, skipping directory/config setup, using existing files in repo"
           );
+          const jobImage = await getImageFromEnv("job");
+          const apiImage = await getImageFromEnv("api");
+          const uiImage = await getImageFromEnv("ui");
+
+          console.log("Job image:", jobImage);
+          console.log("API image:", apiImage);
+          console.log("UI image:", uiImage);          
+
+          if (!jobImage || !apiImage || !uiImage) {
+            throw new Error("Some images are missing, please build them first. Run 'htn images <job/api/ui> --build'.");
+          }
+
         }
 
         // Step 5: Check Supabase status and start if needed
