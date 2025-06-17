@@ -35,7 +35,10 @@ trap restore_env_file EXIT
 pushd app/planqtn_cli
 npm install
 npm run build 
+npm pack
+
 if [ "$INSTALL" = true ]; then
-    npm install -g . --force
+    npm install -g planqtn_cli-*.tgz --force
+    rm -rf planqtn_cli-*.tgz
 fi
 popd
