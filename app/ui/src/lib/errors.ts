@@ -7,7 +7,7 @@ export function getAxiosErrorMessage(
   let hint = "";
   if (localStorage.getItem("runtimeConfigActive") === "true") {
     hint =
-      " (Ensure that the local dev kernel is running with --no-jwt-verify)";
+      " (If this is a dev kernel, ensure that the authorization is relaxed)";
   }
   return `${error.message ? "Message: " + error.message : ""} ${
     error.response

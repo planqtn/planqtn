@@ -100,13 +100,13 @@ jobs:
           hack/cli_build.sh --install
       - name: build and load api image
         run: |
-          hack/htn images api --build
+          hack/htn images api --build --quiet
       - name: Start planqtn
         run: |
           htn kernel start --verbose
       - name: build and load jobs image
         run: |
-          hack/htn images job --build --load-no-restart --k3d-cluster local
+          hack/htn images job --build --load-no-restart --k3d-cluster local --quiet
       - name: Run jobs integration tests
         env:
           KERNEL_ENV: local

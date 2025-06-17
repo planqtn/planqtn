@@ -193,6 +193,13 @@ This is the typical, fastest way to check that things are working, but it's heav
 - Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve --no-verify-jwt` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions. Use `--no-verify-jwt` when the dev kernel is only for runtime context, otherwise if it's for both user/runtime contexts, then JWT verification is fine. This is because runtime context is using the user JWT to authenticate as the user in the task store when storing back the results. However, if the runtime context supabase is separate from the task store instance, then the Supabase JWT verification will fail on the runtime context, as the JWT is valid only in the User Context Supabase instance. 
 - After modifying `planqtn_jobs` or `qlego` or the edge function `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
 
+### Using the `dev` kernel as a local runtime context only - relaxation of authorization 
+
+
+As mentioned above, if the `dev` kernel is used as a runtime context with a cloud user context, the authorization must be relaxed - as the user information is not available in this local instance, given it is in a different supabase instance. This consists of two actions: 
+ - run edge functions with --no-verify-jwt: `npx supabase functions serve --no-verify-jwt`
+ - disable the Row Level Security on the `task_updates` table on the local UI (http://127.0.0.1:54323/project/default) - otherwise progress bars and realtime update for tasks won't work
+
 ### The `local` workflow
 
 This is a workflow tested automatically by Github Actions, and is only required for developers to run if there is an issue with the Github Actions. These steps basically follow the relevant steps from .github/local_integration_tests.yml:

@@ -3,31 +3,16 @@ run-name: ${{ github.actor }} is deploying to staging 🚀
 concurrency:
   group: deploy-to-staging
 on: 
-  push:
-    branches:
-      - main
-    paths:
-      - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
-
-      - "app/supabase/**"
-      - "app/migrations/**"
-      - "app/planqtn_types/**"
-      - "app/planqtn_api/**"
-      - "app/planqtn_jobs/**"
-      - "app/planqtn_cli/**"
-      - "app/planqtn_fixtures/**"
-      - "app/ui/**"
-      - "hack/*build*"
-
-      - ".github/workflows/deploy_to_staging.yml"
-
+  workflow_run:
+    workflows: ["Cloud Integration Tests"]
+    branches: [main]
+    types: 
+      - completed
 jobs:
   Deploy-to-Staging:
     if: github.repository == 'planqtn/planqtn'
     outputs:
-      url: ${{ steps.deploy.outputs.deploy_url }}
+      deploy_url: ${{ steps.deploy.outputs.deploy_url }}
     permissions:
       statuses: write
       checks: write
@@ -90,6 +75,6 @@ jobs:
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
     
         run: |
-          hack/htn cloud deploy -q 
+          hack/htn cloud deploy -q --skip-images
           echo "url=$(~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
      

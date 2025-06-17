@@ -195,7 +195,7 @@ export function setupKernelCommand(program: Command) {
               "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           }
         });
-        // Run migrations for local kernel - this is, similar to jwt-no-verify, a loosening of security for local kernel
+        // Run migrations for local kernel - this is, similar to no-verify-jwt, a loosening of security for local kernel
         if (!isDev) {
           const client = new Client({
             connectionString:
