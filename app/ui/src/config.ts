@@ -1,5 +1,5 @@
 // Environment types
-export type Environment = "local" | "development" | "preview" | "production";
+export type Environment = "local" | "development" | "staging" | "production";
 
 // API configuration
 interface ApiConfig {

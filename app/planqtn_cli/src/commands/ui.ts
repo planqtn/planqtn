@@ -45,7 +45,7 @@ async function runDevUi(options: {
   console.log("Running in dev mode, you can exit by pressing Ctrl+C");
   await runCommand("npm", ["install"], {
     cwd: path.join(cfgDir, "ui"),
-    verbose: options.verbose
+    verbose: true
   });
 
   if (options.devUserContext) {
@@ -53,7 +53,8 @@ async function runDevUi(options: {
   }
 
   await runCommand("npm", ["run", "dev"], {
-    cwd: path.join(cfgDir, "ui")
+    cwd: path.join(cfgDir, "ui"),
+    verbose: true
   });
 }
 
@@ -97,7 +98,7 @@ export function setupUiCommand(program: Command) {
             "-d"
           ],
           {
-            verbose: options.verbose,
+            verbose: true,
             env: {
               ...process.env,
               POSTFIX: postfix

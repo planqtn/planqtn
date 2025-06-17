@@ -7,21 +7,10 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
 import history from "connect-history-api-fallback";
-import e from "express";
-
-// Load environment variables
-dotenv.config();
-
 
 // ES module equivalents for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const app = express();
-const port = process.env.PORT || 5173;
-
-// Support for HTML5 History API
-app.use(history());
 
 // Function to recursively find all JS and CSS files
 function findAssetFiles(dir) {
@@ -83,11 +72,24 @@ if (fs.existsSync(distPath)) {
   }
 }
 
-// Serve static files from the dist directory
-app.use(express.static(path.join(__dirname, "dist")));
+// Load environment variables
+dotenv.config();
+
+
+const app = express();
+const port = process.env.PORT || 5173;
+
+const env = process.env.VITE_ENV;
+const entryPointFile = env === "TEASER" ? "teaser.html" : env === "DOWN" ? "down.html" : "index.html";
+
+app.use(express.static(path.join(__dirname, "dist"), {index: [entryPointFile]}));
+app.use(history());
+
+
+console.log("entryPointFile", entryPointFile);
 
 app.get("*name", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+  res.sendFile(path.join(__dirname, "dist", entryPointFile));
 });
 
 app.listen(port, () => {
