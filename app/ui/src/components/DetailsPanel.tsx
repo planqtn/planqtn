@@ -1291,7 +1291,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       const acessToken = await getAccessToken();
       const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
-      const { data: task, error: taskError } = await userContextSupabase!.from("tasks").select("*").eq("uuid", taskId).single();
+      const { data: task, error: taskError } = await userContextSupabase!
+        .from("tasks")
+        .select("*")
+        .eq("uuid", taskId)
+        .single();
       if (taskError) {
         throw new Error(taskError.message);
       }
