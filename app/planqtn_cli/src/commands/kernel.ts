@@ -9,6 +9,7 @@ import * as yaml from "yaml";
 import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
+import { Client } from "pg";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -194,6 +195,18 @@ export function setupKernelCommand(program: Command) {
               "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           }
         });
+        // Run migrations for local kernel - this is, similar to jwt-no-verify, a loosening of security for local kernel
+        if (!isDev) {
+          const client = new Client({
+            connectionString:
+              "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          });
+          await client.connect();
+          await client.query(
+            "ALTER TABLE task_updates DISABLE ROW LEVEL SECURITY"
+          );
+          await client.end();
+        }
 
         // Step 8: Check Docker network
         console.log("Checking Docker network...");
