@@ -1054,7 +1054,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
     for (const variable of requiredVars) {
       if (!variable.getValue()) {
-         await variable.loadFromSavedOrEnv(this.variables);
+        await variable.loadFromSavedOrEnv(this.variables);
       }
       if (!variable.getValue()) {
         missingVars.push(variable.getConfig().description);
@@ -1212,7 +1212,7 @@ export function setupCloudCommand(program: Command): void {
           gcp: options.skipGcp,
           "supabase-secrets": options.skipSupabaseSecrets,
           "integration-test-config": options.skipIntegrationTestConfig,
-          "github-actions": true,
+          "github-actions": true
         };
 
         if (options.only) {
@@ -1500,7 +1500,13 @@ export function setupCloudCommand(program: Command): void {
     });
 }
 
-type CloudDeploymentPhase = "images" | "supabase" | "gcp" | "supabase-secrets" | "integration-test-config" | "github-actions" ;
+type CloudDeploymentPhase =
+  | "images"
+  | "supabase"
+  | "gcp"
+  | "supabase-secrets"
+  | "integration-test-config"
+  | "github-actions";
 
 interface CloudOptions {
   nonInteractive: boolean;
