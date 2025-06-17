@@ -10,11 +10,7 @@ import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
 import { Client } from "pg";
-import {
-  buildAndPushImagesAndUpdateEnvFiles,
-  getImageConfig,
-  getImageFromEnv
-} from "./images";
+import { buildAndPushImagesAndUpdateEnvFiles, getImageFromEnv } from "./images";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
