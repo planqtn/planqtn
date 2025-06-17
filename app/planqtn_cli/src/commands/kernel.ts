@@ -305,7 +305,7 @@ export function setupKernelCommand(program: Command) {
           );
         }
 
-        if (isDev) {
+        if (isDev && !options.tag) {
           // load jobs image into k3d
           const jobImage = (await getImageFromEnv("job"))!;
           await k3d(["image", "import", jobImage, clusterName], {
