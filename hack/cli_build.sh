@@ -35,10 +35,12 @@ trap restore_env_file EXIT
 pushd app/planqtn_cli
 npm install
 npm run build 
-npm pack
+# Run build and capture only the tarball filename
+tarball=$(npm pack | tail -n 1)
+echo "Tarball: $tarball"
 
 if [ "$INSTALL" = true ]; then
-    npm install -g planqtn_cli-*.tgz --force
-    rm -rf planqtn_cli-*.tgz
+    npm install -g "./$tarball" --force
+    rm -rf "$tarball"
 fi
 popd
