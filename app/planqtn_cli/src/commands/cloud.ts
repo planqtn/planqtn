@@ -13,6 +13,7 @@ import * as https from "https";
 import * as os from "os";
 import { Client } from "pg";
 import { PLANQTN_BIN_DIR } from "../config";
+import { ensureEmptyDir } from "../utils";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -513,8 +514,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-            ? " (leave blank to keep current value)"
-            : " (not set)"
+          ? " (leave blank to keep current value)"
+          : " (not set)"
       }${hintText}: `;
 
       let hint = true;
@@ -542,9 +543,11 @@ abstract class Variable {
 
 class PlainFileVar extends Variable {
   private filePath: string;
+  private configDir: string;
 
   constructor(config: VariableConfig, configDir: string, filename: string) {
     super(config);
+    this.configDir = configDir;
     this.filePath = path.join(configDir, filename);
   }
 
@@ -564,6 +567,7 @@ class PlainFileVar extends Variable {
   async save(): Promise<void> {
     try {
       if (this.value) {
+        ensureEmptyDir(this.configDir);
         await writeFile(this.filePath, this.value);
       }
     } catch (error) {
@@ -922,20 +926,20 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     }
   }
 
-  getRequiredValue(key: string): string {
-    const variable = this.variables.find((v) => v.getName() === key);
+  getVariable(name: string): Variable {
+    const variable = this.variables.find((v) => v.getName() === name);
     if (!variable) {
-      throw new Error(`Variable ${key} not found`);
+      throw new Error(`Variable ${name} not found`);
     }
-    return variable.getRequiredValue();
+    return variable;
+  }
+
+  getRequiredValue(key: string): string {
+    return this.getVariable(key).getRequiredValue();
   }
 
   getValue(key: string): string | undefined {
-    const variable = this.variables.find((v) => v.getName() === key);
-    if (!variable) {
-      throw new Error(`Variable ${key} not found`);
-    }
-    return variable.getValue();
+    return this.getVariable(key).getValue();
   }
 
   async loadGcpOutputs(): Promise<void> {
@@ -1507,17 +1511,12 @@ interface CloudOptions {
 
 export async function getDockerRepo(quiet: boolean = false): Promise<string> {
   const variableManager = new VariableManager(CONFIG_DIR);
-  await variableManager.loadExistingValues();
+  const dockerRepo = variableManager.getVariable("dockerRepo");
+  await dockerRepo.load([]);
+
   if (!quiet) {
-    variableManager.prompt({
-      images: false,
-      supabase: true,
-      gcp: true,
-      "supabase-secrets": true,
-      "integration-test-config": true,
-      "github-actions": true
-    });
+    dockerRepo.prompt(promptSync({ sigint: true }));
+    dockerRepo.save();
   }
-  await variableManager.saveValues();
-  return variableManager.getRequiredValue("dockerRepo");
+  return dockerRepo.getRequiredValue();
 }
