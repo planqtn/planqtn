@@ -6,6 +6,8 @@ import * as tty from "tty";
 import * as dotenv from "dotenv";
 import { k3d } from "../k3d";
 import { getDockerRepo } from "./cloud";
+import { execSync } from "child_process";
+import { writeFile } from "fs/promises";
 
 async function getGitTag(): Promise<string> {
   const commitHash = (await runCommand(
