@@ -4,7 +4,19 @@ import { SupabaseClient } from "@supabase/supabase-js";
 export function getAxiosErrorMessage(
   error: AxiosError<{ message: string; error: string; status: number }>
 ): string {
-  return `${error.message ? "Message: " + error.message : ""} ${error.response ? "Status: " + error.response.status + " Error: " + error.response.data.error : ""}`;
+  let hint = "";
+  if (localStorage.getItem("runtimeConfigActive") === "true") {
+    hint =
+      " (If this is a dev kernel, ensure that the authorization is relaxed)";
+  }
+  return `${error.message ? "Message: " + error.message : ""} ${
+    error.response
+      ? "Status: " +
+        error.response.status +
+        " Error: " +
+        error.response.data.error
+      : ""
+  } ${hint}`;
 }
 
 export async function checkSupabaseStatus(
@@ -18,7 +30,9 @@ export async function checkSupabaseStatus(
     if (error) {
       return {
         isHealthy: false,
-        message: `Upstream service error: ${error.message || error.details || "Unknown error"}`
+        message: `Upstream service error: ${
+          error.message || error.details || "Unknown error"
+        }`
       };
     }
 

@@ -269,7 +269,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
 
     // Create a channel for task updates
-    const channel = runtimeStoreSupabase
+    const channel = runtimeStoreSupabase!
       .channel(`task_${taskId}`)
       .on(
         "postgres_changes",
@@ -335,6 +335,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const readAndUpdateTask = async (taskId: string) => {
+    if (!userContextSupabase) {
+      return;
+    }
     userContextSupabase
       .from("tasks")
       .select("*")
@@ -1288,11 +1291,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       const acessToken = await getAccessToken();
       const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
+      const { data: task, error: taskError } = await userContextSupabase!
+        .from("tasks")
+        .select("*")
+        .eq("uuid", taskId)
+        .single();
+      if (taskError) {
+        throw new Error(taskError.message);
+      }
 
       const response = await axios.post(
         getApiUrl("planqtnJobLogs"),
         {
-          task_uuid: taskId
+          execution_id: task.execution_id
         },
         {
           headers: {
