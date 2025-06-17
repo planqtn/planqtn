@@ -308,7 +308,7 @@ export function setupKernelCommand(program: Command) {
         if (isDev && !options.tag) {
           // load jobs image into k3d
           const jobImage = (await getImageFromEnv("job"))!;
-          await k3d(["image", "import", jobImage, clusterName], {
+          await k3d(["image", "import", jobImage, "-c", clusterName], {
             verbose: options.verbose
           });
         }
