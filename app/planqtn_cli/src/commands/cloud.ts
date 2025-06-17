@@ -8,6 +8,7 @@ import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
 import { Client } from "pg";
+import { PLANQTN_BIN_DIR } from "../config";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -18,7 +19,6 @@ const unlink = promisify(fs.unlink);
 // Get the app directory path (one level up from planqtn_cli)
 const APP_DIR = path.join(process.cwd(), "..");
 const CONFIG_DIR = path.join(process.env.HOME!, ".planqtn", ".config");
-const PLANQTN_BIN_DIR = path.join(process.env.HOME!, ".planqtn", "bin");
 
 interface TerraformVars {
   project_id?: string;
@@ -493,8 +493,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-            ? " (leave blank to keep current value)"
-            : " (not set)"
+          ? " (leave blank to keep current value)"
+          : " (not set)"
       }${hintText}: `;
 
       let hint = true;

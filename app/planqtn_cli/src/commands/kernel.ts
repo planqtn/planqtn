@@ -3,7 +3,12 @@ import * as path from "path";
 import * as os from "os";
 import { spawn } from "child_process";
 import { copyDir, ensureEmptyDir, runCommand } from "../utils";
-import { cfgDir, getCfgDefinitionsDir, isDev } from "../config";
+import {
+  cfgDir,
+  getCfgDefinitionsDir,
+  isDev,
+  PLANQTN_BIN_DIR
+} from "../config";
 import * as yaml from "yaml";
 import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
@@ -25,7 +30,8 @@ async function k3d(
   args: string[],
   options: { verbose: boolean; returnOutput?: boolean }
 ) {
-  const k3dPath = path.join(planqtnDir, "bin", "k3d");
+  ensureEmptyDir(PLANQTN_BIN_DIR);
+  const k3dPath = path.join(PLANQTN_BIN_DIR, "k3d");
 
   if (!fs.existsSync(k3dPath)) {
     const installScriptPath = path.join(planqtnDir, "install-k3d.sh");
@@ -46,7 +52,7 @@ async function k3d(
       verbose: options.verbose,
       env: {
         ...process.env,
-        K3D_INSTALL_DIR: path.join(planqtnDir, "bin"),
+        K3D_INSTALL_DIR: PLANQTN_BIN_DIR,
         USE_SUDO: "false",
         // hack for k3d install script to not complain about the binary not on path
         PATH: `${process.env.PATH}:${planqtnDir}`
