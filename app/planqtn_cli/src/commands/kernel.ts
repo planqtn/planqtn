@@ -305,6 +305,14 @@ export function setupKernelCommand(program: Command) {
           );
         }
 
+        if (isDev) {
+          // load jobs image into k3d
+          const jobImage = (await getImageFromEnv("job"))!;
+          await k3d(["image", "import", jobImage, clusterName], {
+            verbose: options.verbose
+          });
+        }
+
         await createKubeconfig(clusterName, kubeconfigPath, options.verbose);
 
         // Step 13: Setup k8sproxy

@@ -4,6 +4,7 @@ import * as os from "os";
 import { runCommand } from "../utils";
 import { Command } from "commander";
 import { createInterface } from "readline";
+import { PLANQTN_BIN_DIR } from "../config";
 
 export function setupPurgeCommand(program: Command) {
   program
@@ -60,7 +61,7 @@ export function setupPurgeCommand(program: Command) {
         console.log(volumes || "None found");
 
         console.log("\nK3D Clusters:");
-        const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
+        const k3dPath = path.join(PLANQTN_BIN_DIR, "k3d");
         if (fs.existsSync(k3dPath)) {
           const clusters = (await runCommand(
             k3dPath,
