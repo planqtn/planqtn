@@ -168,7 +168,6 @@ export function setupKernelCommand(program: Command) {
             "API_URL",
             "http://planqtn-api:5005"
           );
-
         }
 
         // Step 5: Check Supabase status and start if needed

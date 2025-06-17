@@ -1,26 +1,14 @@
 {
-  
   "dependencies": {
-  
-    
-  "@google-cloud/run": "^2.1.0",
-  
-    
-  "add": "^2.0.6",
-  
-    
-  "dotenv": "^16.5.0",
-  
-    
-  "node-pg-migrate": "^8.0.0",
-  
-    
-  "pg": "^8.16.0",
-  
-    
-  "supabase": "^2.26.9"
-  
+    "@google-cloud/run": "^2.1.0",
+    "add": "^2.0.6",
+    "dotenv": "^16.5.0",
+    "node-pg-migrate": "^8.0.0",
+    "pg": "^8.16.0",
+    "supabase": "^2.26.9"
   },
-  
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "prettier": "3.5.3"
+  }
 }
