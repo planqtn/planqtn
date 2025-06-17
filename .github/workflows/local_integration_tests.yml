@@ -95,10 +95,14 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Install planqtn cli
-        run: |
+      - name: Install planqtn cli      
+        env:
+          DOCKER_REPO: planqtn
+        run: |      
           hack/cli_build.sh --install
       - name: build and load api image
+        env:
+          DOCKER_REPO: planqtn
         run: |
           hack/htn images api --build --quiet
       - name: Start planqtn
