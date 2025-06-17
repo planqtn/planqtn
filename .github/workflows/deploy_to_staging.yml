@@ -4,6 +4,8 @@ concurrency:
   group: deploy-to-staging
 on: 
   push:
+    branches:
+      - main
     paths:
       - "qlego/**"
       - "requirements.txt"
