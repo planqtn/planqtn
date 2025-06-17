@@ -1,10 +1,11 @@
 import { Command } from "commander";
-import { runCommand } from "../utils";
+import { runCommand, updateEnvFile } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
-import * as os from "os";
 import * as tty from "tty";
 import * as dotenv from "dotenv";
+import { k3d } from "../k3d";
+import { getDockerRepo } from "./cloud";
 
 async function getGitTag(): Promise<string> {
   const commitHash = (await runCommand(
@@ -20,13 +21,10 @@ async function getGitTag(): Promise<string> {
 
 async function checkK3dRunning(cluster: string): Promise<boolean> {
   try {
-    await runCommand(
-      "~/.planqtn/k3d",
-      ["cluster", "get", `planqtn-${cluster}`],
-      {
-        returnOutput: true
-      }
-    );
+    await k3d(["cluster", "get", `planqtn-${cluster}`], {
+      verbose: false,
+      returnOutput: true
+    });
     return true;
   } catch {
     return false;
@@ -52,31 +50,6 @@ async function checkSupabaseRunning(): Promise<boolean> {
   }
 }
 
-async function updateEnvFile(
-  envPath: string,
-  key: string,
-  value: string
-): Promise<void> {
-  let envContent = "";
-
-  if (fs.existsSync(envPath)) {
-    envContent = fs.readFileSync(envPath, "utf-8");
-  }
-
-  // Replace or add JOBS_IMAGE line
-  const jobsImageLine = `${key}=${value}`;
-  if (envContent.includes(`${key}=`)) {
-    envContent = envContent.replace(
-      new RegExp(`${key}=.*`, "g"),
-      jobsImageLine
-    );
-  } else {
-    envContent += `\n${jobsImageLine}\n`;
-  }
-
-  fs.writeFileSync(envPath, envContent);
-}
-
 async function restartSupabase(): Promise<void> {
   console.log("Restarting Supabase...");
 
@@ -96,38 +69,29 @@ interface ImageOptions {
   loadNoRestart?: boolean;
   k3dCluster?: string;
   push?: boolean;
-  deployMonitor?: boolean;
-  deployJob?: boolean;
 }
 
-export async function getImageConfig(image: string): Promise<{
+export async function getImageConfig(
+  image: string,
+  dockerRepo: string,
+  tagOverride?: string
+): Promise<{
   imageName: string;
   dockerfile: string;
   envPath: string;
   envVar: string;
 }> {
-  const tag = await getGitTag();
+  const tag = tagOverride || (await getGitTag());
   let imageName = "";
   let dockerfile = "";
   let envPath = "";
   let envVar = "";
 
-  const planqtnDir = path.join(os.homedir(), ".planqtn");
-  const dockerRepoConfigPath = path.join(planqtnDir, ".config", "docker-repo");
-  let dockerRepo = "planqtn";
-  if (fs.existsSync(dockerRepoConfigPath)) {
-    dockerRepo = fs
-      .readFileSync(dockerRepoConfigPath, "utf-8")
-      .split("\n")[0]
-      .trim();
-    console.log("Using user defined docker repo:", dockerRepo);
-  }
-
   switch (image) {
     case "job":
       imageName = `${dockerRepo}/planqtn_jobs:${tag}`;
       dockerfile = "../planqtn_jobs/Dockerfile";
-      envPath = path.join(process.cwd(), "..", "planqtn_jobs", ".env");
+      envPath = path.join(process.cwd(), "..", "supabase", "functions", ".env");
       envVar = "JOBS_IMAGE";
       break;
     case "api":
@@ -154,7 +118,8 @@ export async function getImageConfig(image: string): Promise<{
   };
 }
 
-export async function buildImage(
+// This function builds, pushes and loads images and always updates the right environment file with the current image name
+export async function buildAndPushImageAndUpdateEnvFile(
   image: string,
   options: ImageOptions,
   imageConfig: {
@@ -182,9 +147,10 @@ export async function buildImage(
       verbose: true,
       tty: isTTY
     });
-    // the api image is used as part of deployment to the cloud run service and the local Docker implementation
-    await updateEnvFile(envPath, envVar, imageName);
   }
+
+  // the api image is used as part of deployment to the cloud run service and the local Docker implementation
+  await updateEnvFile(envPath, envVar, imageName);
 
   if (options.load || options.loadNoRestart) {
     if (image !== "job") {
@@ -198,13 +164,18 @@ export async function buildImage(
     }
 
     console.log(`Loading ${imageName} into k3d...`);
-    await runCommand("~/.planqtn/k3d", [
-      "image",
-      "import",
-      imageName,
-      "-c",
-      `planqtn-${options.k3dCluster || "dev"}`
-    ]);
+    await k3d(
+      [
+        "image",
+        "import",
+        imageName,
+        "-c",
+        `planqtn-${options.k3dCluster || "dev"}`
+      ],
+      {
+        verbose: false
+      }
+    );
 
     console.log("Updating Supabase environment...");
 
@@ -226,37 +197,6 @@ export async function buildImage(
       tty: isTTY
     });
   }
-
-  if (options.deployMonitor) {
-    if (image !== "job") {
-      throw new Error(
-        "--deploy-monitor option is only supported for job image"
-      );
-    }
-    console.log("Deploying to Cloud Run monitor service...");
-    await runCommand("gcloud", [
-      "run",
-      "deploy",
-      "planqtn-monitor",
-      "--image",
-      imageName
-    ]);
-  }
-
-  if (options.deployJob) {
-    if (image !== "job") {
-      throw new Error("--deploy-job option is only supported for job image");
-    }
-    console.log("Deploying to Cloud Run jobs service...");
-    await runCommand("gcloud", [
-      "run",
-      "jobs",
-      "deploy",
-      "planqtn-jobs",
-      "--image",
-      imageName
-    ]);
-  }
 }
 
 export function setupImagesCommand(program: Command): void {
@@ -275,15 +215,20 @@ export function setupImagesCommand(program: Command): void {
       "K3d cluster to load the image into (dev or local)",
       "dev"
     )
+    .option("-q, --quiet", "non-interactive mode")
     .option("--push", "Push the image to registry")
-    .option("--deploy-monitor", "Deploy to Cloud Run monitor service")
-    .option("--deploy-job", "Deploy to Cloud Run jobs service")
+    .option(
+      "--tag <tag>",
+      "Tag to use for the image, instead of the current git tag"
+    )
     .action(async (image) => {
       const options = imagesCommand.opts();
       console.log("image", image);
       console.log("options", options);
-      const imageConfig = await getImageConfig(image);
-      await buildImage(image, options, imageConfig);
+
+      const dockerRepo = await getDockerRepo(options.quiet);
+      const imageConfig = await getImageConfig(image, dockerRepo, options.tag);
+      await buildAndPushImageAndUpdateEnvFile(image, options, imageConfig);
       process.exit(0);
     });
 }
@@ -291,7 +236,7 @@ export function setupImagesCommand(program: Command): void {
 export async function getImageFromEnv(
   image: string
 ): Promise<string | undefined> {
-  const imageConfig = await getImageConfig(image);
+  const imageConfig = await getImageConfig(image, "dummy");
   const { envPath, envVar } = imageConfig;
 
   if (!fs.existsSync(envPath)) {

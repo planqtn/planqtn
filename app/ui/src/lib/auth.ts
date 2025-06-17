@@ -1,6 +1,9 @@
 import { userContextSupabase } from "../supabaseClient";
 
 export async function getAccessToken(): Promise<string | null> {
+  if (!userContextSupabase) {
+    return null;
+  }
   const { data, error } = await userContextSupabase.auth.getSession();
 
   if (error) {

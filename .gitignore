@@ -2,7 +2,7 @@
 .out
 .tmp 
 .pytest_cache
-.vscode
+.vscode/** 
 qlego.egg-info
 build
 logs
@@ -10,3 +10,4 @@ logs
 .env
 *dist*
 .config
+.vscode

@@ -95,18 +95,22 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Install planqtn cli
-        run: |
+      - name: Install planqtn cli      
+        run: |      
           hack/cli_build.sh --install
       - name: build and load api image
+        env:
+          DOCKER_REPO: planqtn
         run: |
-          hack/htn images api --build
+          hack/htn images api --build --quiet
       - name: Start planqtn
         run: |
           htn kernel start --verbose
       - name: build and load jobs image
+        env:
+          DOCKER_REPO: planqtn
         run: |
-          hack/htn images job --build --load-no-restart --k3d-cluster local
+          hack/htn images job --build --load-no-restart --k3d-cluster local --quiet
       - name: Run jobs integration tests
         env:
           KERNEL_ENV: local

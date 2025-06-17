@@ -4,10 +4,24 @@ import * as os from "os";
 import { spawn } from "child_process";
 import { copyDir, ensureEmptyDir, runCommand } from "../utils";
 import { cfgDir, getCfgDefinitionsDir, isDev } from "../config";
+import { k3d } from "../k3d";
 import * as yaml from "yaml";
 import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
+import { Client } from "pg";
+
+const GREEN = "\x1b[32m";
+const RED = "\x1b[31m";
+const RESET = "\x1b[0m";
+
+function green(str: string): string {
+  return GREEN + str + RESET;
+}
+
+function red(str: string): string {
+  return RED + str + RESET;
+}
 
 export function setupKernelCommand(program: Command) {
   const kernelCommand = program.command("kernel");
@@ -181,6 +195,18 @@ export function setupKernelCommand(program: Command) {
               "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           }
         });
+        // Run migrations for local kernel - this is, similar to no-verify-jwt, a loosening of security for local kernel
+        if (!isDev) {
+          const client = new Client({
+            connectionString:
+              "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          });
+          await client.connect();
+          await client.query(
+            "ALTER TABLE task_updates DISABLE ROW LEVEL SECURITY"
+          );
+          await client.end();
+        }
 
         // Step 8: Check Docker network
         console.log("Checking Docker network...");
@@ -191,42 +217,6 @@ export function setupKernelCommand(program: Command) {
         );
 
         // Step 9: Install k3d
-        console.log("Installing k3d...");
-        const k3dPath = path.join(planqtnDir, "k3d");
-
-        if (!fs.existsSync(k3dPath)) {
-          const installScriptPath = path.join(planqtnDir, "install-k3d.sh");
-          await runCommand(
-            "curl",
-            [
-              "-s",
-              "https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh",
-              "-o",
-              installScriptPath
-            ],
-            { verbose: options.verbose }
-          );
-
-          // Step 10: Make k3d executable and install
-          fs.chmodSync(installScriptPath, 0o755);
-          await runCommand("bash", [installScriptPath, "--no-sudo"], {
-            verbose: options.verbose,
-            env: {
-              ...process.env,
-              K3D_INSTALL_DIR: planqtnDir,
-              USE_SUDO: "false",
-              // hack for k3d install script to not complain about the binary not on path
-              PATH: `${process.env.PATH}:${planqtnDir}`
-            }
-          });
-
-          // Step 11: Verify k3d installation
-          if (!fs.existsSync(k3dPath)) {
-            throw new Error("k3d installation failed - binary not found");
-          }
-          fs.chmodSync(k3dPath, 0o755);
-          fs.unlinkSync(installScriptPath);
-        }
 
         // Step 12: Setup k3d cluster
         console.log("Setting up k3d cluster...");
@@ -237,26 +227,21 @@ export function setupKernelCommand(program: Command) {
         );
 
         try {
-          const clusterStatus = (await runCommand(
-            k3dPath,
-            ["cluster", "get", clusterName],
-            {
-              verbose: options.verbose,
-              returnOutput: true
-            }
-          )) as string;
+          const clusterStatus = (await k3d(["cluster", "get", clusterName], {
+            verbose: options.verbose,
+            returnOutput: true
+          })) as string;
 
           // Check if servers are running (0/1 means not running)
           if (clusterStatus.includes("0/1")) {
             console.log("Starting k3d cluster...");
-            await runCommand(k3dPath, ["cluster", "start", clusterName], {
+            await k3d(["cluster", "start", clusterName], {
               verbose: options.verbose
             });
           }
         } catch {
           // Cluster doesn't exist, create it
-          await runCommand(
-            k3dPath,
+          await k3d(
             [
               "cluster",
               "create",
@@ -268,12 +253,7 @@ export function setupKernelCommand(program: Command) {
           );
         }
 
-        await createKubeconfig(
-          k3dPath,
-          clusterName,
-          kubeconfigPath,
-          options.verbose
-        );
+        await createKubeconfig(clusterName, kubeconfigPath, options.verbose);
 
         // Step 13: Setup k8sproxy
         console.log("Setting up k8sproxy...");
@@ -407,9 +387,8 @@ export function setupKernelCommand(program: Command) {
 
         // Stop k3d cluster
         console.log("Stopping k3d cluster...");
-        const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
         try {
-          await runCommand(k3dPath, ["cluster", "stop", `planqtn${postfix}`], {
+          await k3d(["cluster", "stop", `planqtn${postfix}`], {
             verbose: options.verbose
           });
         } catch {
@@ -544,15 +523,10 @@ export function setupKernelCommand(program: Command) {
 
         // Stop and delete k3d cluster
         console.log("Stopping and deleting k3d cluster...");
-        const k3dPath = path.join(os.homedir(), ".planqtn", "k3d");
         try {
-          await runCommand(
-            k3dPath,
-            ["cluster", "delete", `planqtn${postfix}`],
-            {
-              verbose: options.verbose
-            }
-          );
+          await k3d(["cluster", "delete", `planqtn${postfix}`], {
+            verbose: options.verbose
+          });
         } catch {
           // Ignore error if cluster doesn't exist
         }
@@ -703,6 +677,143 @@ export function setupKernelCommand(program: Command) {
         process.exit(1);
       }
     });
+
+  kernelCommand
+    .command("status")
+    .description("Check status of all PlanqTN kernel components")
+    .option("--verbose", "Show detailed output")
+    .action(async (options: { verbose: boolean }) => {
+      try {
+        const postfix = isDev ? "-dev" : "-local";
+        const planqtnDir = path.join(os.homedir(), ".planqtn");
+        const cfgDir = isDev ? getCfgDefinitionsDir() : path.join(planqtnDir);
+        const supabaseDir = isDev
+          ? path.join(getCfgDefinitionsDir(), "supabase")
+          : path.join(planqtnDir, "supabase");
+
+        let supabaseStatus = "Not running";
+        let apiUrl = "";
+        let anonKey = "";
+        try {
+          const status = JSON.parse(
+            (await runCommand("npx", ["supabase", "status", "-o", "json"], {
+              cwd: supabaseDir,
+              verbose: options.verbose,
+              returnOutput: true
+            })) as string
+          );
+          if ("API_URL" in status && "ANON_KEY" in status) {
+            supabaseStatus = "Running";
+            apiUrl = status.API_URL;
+            anonKey = status.ANON_KEY;
+          }
+        } catch {
+          // Supabase not running
+        }
+        console.log(
+          `Supabase: ${
+            supabaseStatus === "Running"
+              ? green(supabaseStatus)
+              : red(supabaseStatus)
+          }`
+        );
+
+        // Check k3d cluster
+        let k3dStatus = "Not running";
+        try {
+          const clusterStatus = (await k3d(
+            ["cluster", "get", `planqtn${postfix}`],
+            {
+              verbose: options.verbose,
+              returnOutput: true
+            }
+          )) as string;
+          if (clusterStatus.includes("1/1")) {
+            k3dStatus = "Running";
+          }
+        } catch (err) {
+          if (options.verbose) {
+            console.log("k3d cluster not running");
+            console.log(err);
+          }
+        }
+        console.log(
+          `k3d cluster: ${
+            k3dStatus === "Running" ? green(k3dStatus) : red(k3dStatus)
+          }`
+        );
+
+        // Check k8sproxy
+
+        let proxyStatus = "Not running";
+        try {
+          await runCommand("docker", ["inspect", `k8sproxy${postfix}`], {
+            verbose: options.verbose
+          });
+          proxyStatus = "Running";
+        } catch {
+          // Proxy not running
+        }
+        console.log(
+          `k8sproxy: ${
+            proxyStatus === "Running" ? green(proxyStatus) : red(proxyStatus)
+          }`
+        );
+
+        // Check API service
+        let apiStatus = "Not running";
+        try {
+          const apiComposePath = path.join(
+            cfgDir,
+            "planqtn_api",
+            "compose.yml"
+          );
+          await runCommand(
+            "docker",
+            [
+              "compose",
+              "--env-file",
+              path.join(cfgDir, "planqtn_api", ".env"),
+              "-f",
+              apiComposePath,
+              "ps",
+              "--format",
+              "json"
+            ],
+            {
+              verbose: options.verbose,
+              returnOutput: true,
+              env: {
+                ...process.env,
+                POSTFIX: postfix
+              }
+            }
+          );
+          apiStatus = "Running";
+        } catch {
+          // API not running
+        }
+        console.log(
+          `API service: ${
+            apiStatus === "Running" ? green(apiStatus) : red(apiStatus)
+          }`
+        );
+
+        // Print connection details if Supabase is running
+        if (supabaseStatus === "Running") {
+          console.log("\nConnection details:");
+          console.log(
+            JSON.stringify({ API_URL: apiUrl, ANON_KEY: anonKey }, null, 2)
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Error:",
+          err instanceof Error ? err.message : String(err)
+        );
+        process.exit(1);
+      }
+    });
 }
 
 async function kubectl(
@@ -789,7 +900,6 @@ async function createProxy(
 }
 
 async function createKubeconfig(
-  k3dPath: string,
   clusterName: string,
   kubeconfigPath: string,
   verbose: boolean
@@ -803,11 +913,9 @@ async function createKubeconfig(
     }
   }
 
-  await runCommand(
-    k3dPath,
-    ["kubeconfig", "write", clusterName, "--output", kubeconfigPath],
-    { verbose: verbose }
-  );
+  await k3d(["kubeconfig", "write", clusterName, "--output", kubeconfigPath], {
+    verbose: verbose
+  });
 
   // Verify the kubeconfig was created as a file
   if (

@@ -58,14 +58,14 @@ export async function runCommand(
       proc.stdout?.on("data", (data) => {
         const dataStr = data.toString();
         output += dataStr;
-        if (!options.returnOutput && dataStr.trim()) {
+        if (!options.returnOutput && dataStr.trim() && options.verbose) {
           console.log(dataStr.trim());
         }
       });
       proc.stderr?.on("data", (data) => {
         const dataStr = data.toString();
         errorOutput += dataStr;
-        if (!options.returnOutput && dataStr.trim()) {
+        if (!options.returnOutput && dataStr.trim() && options.verbose) {
           console.error(dataStr.trim());
         }
       });
@@ -165,4 +165,66 @@ export function ensureEmptyDir(
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+export async function updateEnvFile(
+  envPath: string,
+  key: string,
+  value: string,
+  backupOld: boolean = false
+): Promise<void> {
+  let envContent = "";
+
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, "utf-8");
+  }
+
+  // If backup is requested and the key exists with a different value, add it as a comment
+  if (backupOld) {
+    // Find the last non-commented occurrence of the key
+    const lines = envContent.split("\n");
+    let lastMatch = null;
+    let lastMatchIndex = -1;
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const match = lines[i].match(new RegExp(`^(?!\\s*#)${key}=(.*)`));
+      if (match) {
+        lastMatch = match;
+        lastMatchIndex = i;
+        break;
+      }
+    }
+
+    if (lastMatch && lastMatch[1] && lastMatch[1] !== value) {
+      // Replace only the last occurrence
+      lines[lastMatchIndex] =
+        `# Previous value for ${key}\n# ${key}=${lastMatch[1]}\n${key}=${value}`;
+      envContent = lines.join("\n");
+      fs.writeFileSync(envPath, envContent);
+      return;
+    }
+  }
+
+  // Replace or add the key-value pair
+  const newLine = `${key}=${value}`;
+  // Find the last non-commented occurrence of the key
+  const lines = envContent.split("\n");
+  let lastMatchIndex = -1;
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].match(new RegExp(`^(?!\\s*#)${key}=`))) {
+      lastMatchIndex = i;
+      break;
+    }
+  }
+
+  if (lastMatchIndex !== -1) {
+    // Replace only the last occurrence
+    lines[lastMatchIndex] = newLine;
+    envContent = lines.join("\n");
+  } else {
+    envContent += `\n${newLine}\n`;
+  }
+
+  fs.writeFileSync(envPath, envContent);
 }

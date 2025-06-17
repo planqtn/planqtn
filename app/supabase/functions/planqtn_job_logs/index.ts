@@ -19,82 +19,37 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
-
     // Parse the request body
     const jobLogsRequest: JobLogsRequest = await req.json();
 
     // Validate the request
-    if (
-      !jobLogsRequest.task_uuid
-    ) {
+    if (!jobLogsRequest.execution_id) {
       return new Response(
-        JSON.stringify({ error: "Invalid request body" }),
+        JSON.stringify({ error: "Invalid request body, no execution_id" }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
-
-    const { data: task, error: taskError } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("uuid", jobLogsRequest.task_uuid)
-      .single();
-
-    if (taskError) {
-      console.error(taskError);
-      return new Response(
-        JSON.stringify({ error: `Failed to get task: ${taskError.message}` }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
-
-    if (!task) {
-      console.error(`Task ${jobLogsRequest.task_uuid} not found`);
-      return new Response(
-        JSON.stringify({ error: `Task ${jobLogsRequest.task_uuid} not found` }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+        }
       );
     }
 
     const client = new K8sClient();
     await client.connect();
 
-    const logs = await client.getJobLogs(task.execution_id);
+    const logs = await client.getJobLogs(jobLogsRequest.execution_id);
     console.log(`Found logs: ${logs}`);
-    return new Response(
-      JSON.stringify({ logs: logs }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      },
-    );
+    return new Response(JSON.stringify({ logs: logs }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...corsHeaders }
+    });
   } catch (error: unknown) {
     console.error(`Failed to get job logs: ${error}`);
     return new Response(
       JSON.stringify({ error: `Failed to get job logs: ${error}` }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      },
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      }
     );
   }
 });

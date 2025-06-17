@@ -3,11 +3,17 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import { getImageFromEnv, buildImage, getImageConfig } from "./images";
+import {
+  buildAndPushImageAndUpdateEnvFile,
+  getImageConfig,
+  getImageFromEnv
+} from "./images";
 import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
 import { Client } from "pg";
+import { PLANQTN_BIN_DIR } from "../config";
+import { ensureEmptyDir } from "../utils";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -18,7 +24,6 @@ const unlink = promisify(fs.unlink);
 // Get the app directory path (one level up from planqtn_cli)
 const APP_DIR = path.join(process.cwd(), "..");
 const CONFIG_DIR = path.join(process.env.HOME!, ".planqtn", ".config");
-const PLANQTN_BIN_DIR = path.join(process.env.HOME!, ".planqtn", "bin");
 
 interface TerraformVars {
   project_id?: string;
@@ -225,6 +230,7 @@ async function terraform(
 async function setupGCP(
   supabaseProjectId: string,
   supabaseServiceKey: string,
+  supabaseAnonKey: string,
   gcpProjectId: string,
   gcpRegion: string,
   terraformStateBucket: string,
@@ -260,6 +266,7 @@ async function setupGCP(
     ui_image: uiImage,
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
+    supabase_anon_key: supabaseAnonKey,
     environment: "dev"
   });
 
@@ -356,47 +363,61 @@ async function setupSupabaseSecrets(
   await unlink(envPath);
 }
 
-async function buildAndPushImages(
+async function buildAndPushImagesAndUpdateEnvFiles(
   refuseDirtyBuilds: boolean,
+  dockerRepo: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
-  environment: string
+  environment: string,
+  onlyEnvFileUpdate: boolean = false,
+  tagOverride: string | undefined = undefined
 ): Promise<void> {
   if (refuseDirtyBuilds) {
-    console.log("Checking git status...");
-    try {
-      const status = execSync("git status --porcelain", { stdio: "pipe" })
-        .toString()
-        .trim();
-      if (status) {
-        throw new Error(
-          "Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" +
-            status
-        );
+    if (tagOverride && tagOverride.includes("-dirty")) {
+      // while this is not fool proof, it's a good enough sanity check to avoid deploying dirty images and incentivise reproducible builds
+      throw new Error(
+        "Refusing to setup images for deployment with dirty tags. Ensure to use a tag that is from a commit."
+      );
+    }
+    if (!tagOverride) {
+      console.log("Checking git status...");
+      try {
+        const status = execSync("git status --porcelain", { stdio: "pipe" })
+          .toString()
+          .trim();
+        if (status) {
+          throw new Error(
+            "Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" +
+              status
+          );
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error("Failed to check git status: " + error);
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Failed to check git status: " + error);
     }
   }
+  if (onlyEnvFileUpdate) {
+    console.log(
+      "Using existing images from " + (tagOverride || "current tag") + "..."
+    );
+  }
+  const actions = onlyEnvFileUpdate
+    ? { build: false, push: false, load: false }
+    : { build: true, push: true, load: false };
 
-  console.log("Building and pushing JOB image...");
-  await buildImage(
-    "job",
-    { build: true, push: true },
-    await getImageConfig("job")
-  );
+  let config = await getImageConfig("job", dockerRepo, tagOverride);
+  console.log(` - ${config.imageName} ...`);
 
-  console.log("Building and pushing API image...");
-  await buildImage(
-    "api",
-    { build: true, push: true },
-    await getImageConfig("api")
-  );
+  await buildAndPushImageAndUpdateEnvFile("job", actions, config);
 
-  const uiImageConfig = await getImageConfig("ui");
+  config = await getImageConfig("api", dockerRepo, tagOverride);
+  console.log(` - ${config.imageName} ...`);
+  await buildAndPushImageAndUpdateEnvFile("api", actions, config);
+
+  const uiImageConfig = await getImageConfig("ui", dockerRepo, tagOverride);
   const { imageName, envPath, envVar } = uiImageConfig;
 
   const envContent = [
@@ -408,8 +429,8 @@ async function buildAndPushImages(
 
   await writeFile(envPath, envContent);
 
-  console.log("Building and pushing UI image...");
-  await buildImage("ui", { build: true, push: true }, uiImageConfig);
+  console.log(` - ${uiImageConfig.imageName} ...`);
+  await buildAndPushImageAndUpdateEnvFile("ui", actions, uiImageConfig);
 }
 
 interface VariableConfig {
@@ -435,6 +456,13 @@ abstract class Variable {
 
   constructor(config: VariableConfig) {
     this.config = config;
+  }
+
+  async loadFromSavedOrEnv(vars: Variable[]): Promise<void> {
+    await this.load(vars);
+    if (!this.getValue()) {
+      await this.loadFromEnv(vars);
+    }
   }
 
   abstract load(vars: Variable[]): Promise<void>;
@@ -522,9 +550,11 @@ abstract class Variable {
 
 class PlainFileVar extends Variable {
   private filePath: string;
+  private configDir: string;
 
   constructor(config: VariableConfig, configDir: string, filename: string) {
     super(config);
+    this.configDir = configDir;
     this.filePath = path.join(configDir, filename);
   }
 
@@ -544,6 +574,7 @@ class PlainFileVar extends Variable {
   async save(): Promise<void> {
     try {
       if (this.value) {
+        ensureEmptyDir(this.configDir);
         await writeFile(this.filePath, this.value);
       }
     } catch (error) {
@@ -780,6 +811,7 @@ class VariableManager {
         configDir,
         "supabase-service-key"
       ),
+
       new EnvFileVar(
         {
           name: "apiImage",
@@ -796,7 +828,7 @@ class VariableManager {
           description: "Supabase anonymous key",
           hint: `Get it from your supabase Project Settings/API Keys section. It should be under Anon Key input field.`,
           isSecret: true,
-          requiredFor: ["integration-test-config"]
+          requiredFor: ["integration-test-config", "gcp"]
         },
         configDir,
         "supabase-anon-key"
@@ -901,12 +933,20 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     }
   }
 
-  getValue(key: string): string {
-    const variable = this.variables.find((v) => v.getName() === key);
+  getVariable(name: string): Variable {
+    const variable = this.variables.find((v) => v.getName() === name);
     if (!variable) {
-      throw new Error(`Variable ${key} not found`);
+      throw new Error(`Variable ${name} not found`);
     }
-    return variable.getRequiredValue();
+    return variable;
+  }
+
+  getRequiredValue(key: string): string {
+    return this.getVariable(key).getRequiredValue();
+  }
+
+  getValue(key: string): string | undefined {
+    return this.getVariable(key).getValue();
   }
 
   async loadGcpOutputs(): Promise<void> {
@@ -1095,12 +1135,13 @@ async function checkCredentials(
     console.log("Checking GCP credentials...");
     try {
       await setupGCP(
-        variableManager.getValue("supabaseProjectRef"),
-        variableManager.getValue("supabaseServiceKey"),
-        variableManager.getValue("gcpProjectId"),
-        variableManager.getValue("gcpRegion"),
-        variableManager.getValue("terraformStateBucket"),
-        variableManager.getValue("terraformStatePrefix"),
+        variableManager.getRequiredValue("supabaseProjectRef"),
+        variableManager.getRequiredValue("supabaseServiceKey"),
+        variableManager.getRequiredValue("supabaseAnonKey"),
+        variableManager.getRequiredValue("gcpProjectId"),
+        variableManager.getRequiredValue("gcpRegion"),
+        variableManager.getRequiredValue("terraformStateBucket"),
+        variableManager.getRequiredValue("terraformStatePrefix"),
         true
       );
     } catch (error) {
@@ -1134,9 +1175,14 @@ export function setupCloudCommand(program: Command): void {
     .description("Deploy to cloud")
     .option("-q, --non-interactive", "Run in non-interactive mode", false)
     .option("--skip-images", "Skip building and pushing images")
+    .option(
+      "--tag <tag>",
+      "Tag to use for the image, instead of the current git tag"
+    )
     .option("--skip-supabase", "Skip Supabase deployment")
     .option("--skip-supabase-secrets", "Skip Supabase secrets deployment")
     .option("--skip-gcp", "Skip GCP deployment")
+    .option("--only <phase>", "Only deploy the specified phase")
     .option(
       "--skip-integration-test-config",
       "Skip integration test config generation"
@@ -1147,6 +1193,7 @@ export function setupCloudCommand(program: Command): void {
       true
     )
     .action(async (options: CloudOptions) => {
+      console.log("options", options);
       try {
         // Create config directory if it doesn't exist
         if (!(await exists(CONFIG_DIR))) {
@@ -1164,6 +1211,23 @@ export function setupCloudCommand(program: Command): void {
           "integration-test-config": options.skipIntegrationTestConfig,
           "github-actions": true
         };
+
+        if (options.only) {
+          console.log("options.only", options.only);
+          if (skipPhases[options.only]) {
+            throw new Error(
+              `Cannot use --only ${options.only} together with --skip-${options.only}.`
+            );
+          }
+          skipPhases[options.only] = false;
+          for (const phase of Object.keys(
+            skipPhases
+          ) as (keyof typeof skipPhases)[]) {
+            if (phase !== options.only) {
+              skipPhases[phase] = true;
+            }
+          }
+        }
 
         // Load GCP outputs if GCP is not skipped
         if (!skipPhases.gcp) {
@@ -1186,11 +1250,24 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.images) {
           await variableManager.validatePhaseRequirements("images", skipPhases);
           console.log("\nBuilding and pushing images...");
-          await buildAndPushImages(
+          await buildAndPushImagesAndUpdateEnvFiles(
             options.refuseDirtyBuilds,
-            variableManager.getValue("supabaseUrl"),
-            variableManager.getValue("supabaseAnonKey"),
-            variableManager.getValue("environment")
+            variableManager.getRequiredValue("dockerRepo"),
+            variableManager.getRequiredValue("supabaseUrl"),
+            variableManager.getRequiredValue("supabaseAnonKey"),
+            variableManager.getRequiredValue("environment"),
+            false,
+            options.tag
+          );
+        } else {
+          await buildAndPushImagesAndUpdateEnvFiles(
+            options.refuseDirtyBuilds,
+            variableManager.getRequiredValue("dockerRepo"),
+            variableManager.getRequiredValue("supabaseUrl"),
+            variableManager.getRequiredValue("supabaseAnonKey"),
+            variableManager.getRequiredValue("environment"),
+            true,
+            options.tag
           );
         }
 
@@ -1202,9 +1279,9 @@ export function setupCloudCommand(program: Command): void {
           );
           await setupSupabase(
             CONFIG_DIR,
-            variableManager.getValue("supabaseProjectRef"),
-            variableManager.getValue("dbPassword"),
-            variableManager.getValue("supabaseServiceKey"),
+            variableManager.getRequiredValue("supabaseProjectRef"),
+            variableManager.getRequiredValue("dbPassword"),
+            variableManager.getRequiredValue("supabaseServiceKey"),
             options.nonInteractive
           );
         }
@@ -1213,12 +1290,13 @@ export function setupCloudCommand(program: Command): void {
         if (!skipPhases.gcp) {
           await variableManager.validatePhaseRequirements("gcp", skipPhases);
           await setupGCP(
-            variableManager.getValue("supabaseProjectRef"),
-            variableManager.getValue("supabaseServiceKey"),
-            variableManager.getValue("gcpProjectId"),
-            variableManager.getValue("gcpRegion"),
-            variableManager.getValue("terraformStateBucket"),
-            variableManager.getValue("terraformStatePrefix")
+            variableManager.getRequiredValue("supabaseProjectRef"),
+            variableManager.getRequiredValue("supabaseServiceKey"),
+            variableManager.getRequiredValue("supabaseAnonKey"),
+            variableManager.getRequiredValue("gcpProjectId"),
+            variableManager.getRequiredValue("gcpRegion"),
+            variableManager.getRequiredValue("terraformStateBucket"),
+            variableManager.getRequiredValue("terraformStatePrefix")
           );
           // Reload outputs after GCP setup
           await variableManager.loadGcpOutputs();
@@ -1237,9 +1315,9 @@ export function setupCloudCommand(program: Command): void {
           await setupSupabaseSecrets(
             CONFIG_DIR,
             jobsImage,
-            variableManager.getValue("gcpProjectId"),
-            variableManager.getValue("gcpSvcAccountKey"),
-            variableManager.getValue("apiUrl")
+            variableManager.getRequiredValue("gcpProjectId"),
+            variableManager.getRequiredValue("gcpSvcAccountKey"),
+            variableManager.getRequiredValue("apiUrl")
           );
         }
 
@@ -1363,7 +1441,9 @@ export function setupCloudCommand(program: Command): void {
 
         console.log("--------------------------------");
         console.log(
-          `We'll be setting up github actions for repo ${repoWithName} in ${options.repoEnv || "no specific environment"}`
+          `We'll be setting up github actions for repo ${repoWithName} in ${
+            options.repoEnv || "no specific environment"
+          }`
         );
         console.log("--------------------------------");
 
@@ -1426,4 +1506,24 @@ interface CloudOptions {
   skipUi: boolean;
   skipIntegrationTestConfig: boolean;
   refuseDirtyBuilds: boolean;
+  tag: string | undefined;
+  only:
+    | "images"
+    | "supabase"
+    | "gcp"
+    | "supabase-secrets"
+    | "integration-test-config"
+    | "github-actions";
+}
+
+export async function getDockerRepo(quiet: boolean = false): Promise<string> {
+  const variableManager = new VariableManager(CONFIG_DIR);
+  const dockerRepo = variableManager.getVariable("dockerRepo");
+  await dockerRepo.loadFromSavedOrEnv([]);
+
+  if (!quiet) {
+    dockerRepo.prompt(promptSync({ sigint: true }));
+    dockerRepo.save();
+  }
+  return dockerRepo.getRequiredValue();
 }
