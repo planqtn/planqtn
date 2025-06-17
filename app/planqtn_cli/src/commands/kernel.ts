@@ -768,7 +768,7 @@ export function setupKernelCommand(program: Command) {
             "planqtn_api",
             "compose.yml"
           );
-          await runCommand(
+          const result = await runCommand(
             "docker",
             [
               "compose",
@@ -789,7 +789,11 @@ export function setupKernelCommand(program: Command) {
               }
             }
           );
-          apiStatus = "Running";
+          if (options.verbose) {
+            console.log(result);
+          }
+
+          apiStatus = result ? "Running" : "Not running";
         } catch {
           // API not running
         }
