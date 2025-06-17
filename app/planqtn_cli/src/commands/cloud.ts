@@ -458,6 +458,13 @@ abstract class Variable {
     this.config = config;
   }
 
+  async loadFromSavedOrEnv(vars: Variable[]): Promise<void> {
+    await this.load(vars);
+    if (!this.getValue()) {
+      await this.loadFromEnv(vars);
+    }
+  }
+
   abstract load(vars: Variable[]): Promise<void>;
   abstract save(): Promise<void>;
 
@@ -514,8 +521,8 @@ abstract class Variable {
         currentValue && !config.isSecret
           ? ` (leave blank to keep current value: ${currentValue})`
           : currentValue && config.isSecret
-          ? " (leave blank to keep current value)"
-          : " (not set)"
+            ? " (leave blank to keep current value)"
+            : " (not set)"
       }${hintText}: `;
 
       let hint = true;
@@ -1512,7 +1519,7 @@ interface CloudOptions {
 export async function getDockerRepo(quiet: boolean = false): Promise<string> {
   const variableManager = new VariableManager(CONFIG_DIR);
   const dockerRepo = variableManager.getVariable("dockerRepo");
-  await dockerRepo.load([]);
+  await dockerRepo.loadFromSavedOrEnv([]);
 
   if (!quiet) {
     dockerRepo.prompt(promptSync({ sigint: true }));
