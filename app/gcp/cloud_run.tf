@@ -77,7 +77,11 @@ resource "google_cloud_run_v2_service" "planqtn_api" {
     service_account = google_service_account.cloud_run_svc.email
     containers {
       image = var.api_image
-    }
+      env {
+        name  = "API_IMAGE"
+        value = var.api_image
+      }    
+    }  
   }
 
   depends_on = [google_project_service.required_apis]

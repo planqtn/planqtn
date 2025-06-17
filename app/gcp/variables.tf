@@ -47,7 +47,6 @@ variable "ui_environment" {
   default     = "dev"
 }
 
-
 variable "environment" {
   description = "The environment (e.g., dev, prod)"
   type        = string

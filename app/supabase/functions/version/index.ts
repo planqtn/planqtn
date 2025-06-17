@@ -5,6 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -17,7 +18,23 @@ Deno.serve(async (req) => {
       throw new Error("API_URL environment variable not set");
     }
 
-    const response = await fetch(`${backendUrl}/version`);
+    const apiUrl = `${backendUrl}/version`;
+    console.log(`API URL: ${apiUrl}`);
+
+    const headers = backendUrl.includes("run.app")
+      ? {
+          ...(await cloudRunHeaders(backendUrl)),
+          "Content-Type": "application/json"
+        }
+      : {
+          "Content-Type": "application/json"
+        };
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: headers
+    });
+
     const response_json = await response.json();
 
     const data = {

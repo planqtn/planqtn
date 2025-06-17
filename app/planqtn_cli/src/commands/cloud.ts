@@ -225,6 +225,7 @@ async function terraform(
 async function setupGCP(
   supabaseProjectId: string,
   supabaseServiceKey: string,
+  supabaseAnonKey: string,
   gcpProjectId: string,
   gcpRegion: string,
   terraformStateBucket: string,
@@ -260,6 +261,7 @@ async function setupGCP(
     ui_image: uiImage,
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
+    supabase_anon_key: supabaseAnonKey,
     environment: "dev"
   });
 
@@ -780,6 +782,7 @@ class VariableManager {
         configDir,
         "supabase-service-key"
       ),
+
       new EnvFileVar(
         {
           name: "apiImage",
@@ -796,7 +799,7 @@ class VariableManager {
           description: "Supabase anonymous key",
           hint: `Get it from your supabase Project Settings/API Keys section. It should be under Anon Key input field.`,
           isSecret: true,
-          requiredFor: ["integration-test-config"]
+          requiredFor: ["integration-test-config", "gcp"]
         },
         configDir,
         "supabase-anon-key"
@@ -1097,6 +1100,7 @@ async function checkCredentials(
       await setupGCP(
         variableManager.getValue("supabaseProjectRef"),
         variableManager.getValue("supabaseServiceKey"),
+        variableManager.getValue("supabaseAnonKey"),
         variableManager.getValue("gcpProjectId"),
         variableManager.getValue("gcpRegion"),
         variableManager.getValue("terraformStateBucket"),
@@ -1234,6 +1238,7 @@ export function setupCloudCommand(program: Command): void {
           await setupGCP(
             variableManager.getValue("supabaseProjectRef"),
             variableManager.getValue("supabaseServiceKey"),
+            variableManager.getValue("supabaseAnonKey"),
             variableManager.getValue("gcpProjectId"),
             variableManager.getValue("gcpRegion"),
             variableManager.getValue("terraformStateBucket"),

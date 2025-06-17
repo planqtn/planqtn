@@ -5,6 +5,7 @@ import * as path from "path";
 import * as os from "os";
 import * as tty from "tty";
 import * as dotenv from "dotenv";
+import { k3d } from "../k3d";
 
 async function getGitTag(): Promise<string> {
   const commitHash = (await runCommand(
@@ -20,13 +21,10 @@ async function getGitTag(): Promise<string> {
 
 async function checkK3dRunning(cluster: string): Promise<boolean> {
   try {
-    await runCommand(
-      "~/.planqtn/k3d",
-      ["cluster", "get", `planqtn-${cluster}`],
-      {
-        returnOutput: true
-      }
-    );
+    await k3d(["cluster", "get", `planqtn-${cluster}`], {
+      verbose: false,
+      returnOutput: true
+    });
     return true;
   } catch {
     return false;
@@ -173,13 +171,18 @@ export async function buildImage(
     }
 
     console.log(`Loading ${imageName} into k3d...`);
-    await runCommand("~/.planqtn/k3d", [
-      "image",
-      "import",
-      imageName,
-      "-c",
-      `planqtn-${options.k3dCluster || "dev"}`
-    ]);
+    await k3d(
+      [
+        "image",
+        "import",
+        imageName,
+        "-c",
+        `planqtn-${options.k3dCluster || "dev"}`
+      ],
+      {
+        verbose: false
+      }
+    );
 
     console.log("Updating Supabase environment...");
 
