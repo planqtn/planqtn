@@ -23,6 +23,7 @@ on:
 
 jobs:
   Deploy-to-Staging:
+    if: github.repository == 'planqtn/planqtn'
     outputs:
       url: ${{ steps.deploy.outputs.deploy_url }}
     permissions:
