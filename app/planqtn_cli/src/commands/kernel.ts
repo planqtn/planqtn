@@ -162,6 +162,13 @@ export function setupKernelCommand(program: Command) {
             "K8S_TYPE",
             "local-dev"
           );
+
+          await updateEnvFile(
+            path.join(supabaseDir, "functions", ".env"),
+            "API_URL",
+            "http://planqtn-api:5005"
+          );
+
         }
 
         // Step 5: Check Supabase status and start if needed
