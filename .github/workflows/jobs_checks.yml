@@ -43,7 +43,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt -r requirements.txt -r requirements.dev.txt
+          pip install --upgrade uv
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt -r pyproject.toml --all-extras
       - name: Run tests
         run: |
           check/jobs
