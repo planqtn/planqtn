@@ -23,12 +23,26 @@ To spin up a new local kernel
 htn kernel start
 ```
 
-## Publishing
+To get the details of the connection run:
 
-To publish a new version:
+```
+htn kernel status
+```
 
-1. Update the version in `package.json`
-2. Run `npm publish`
+Then you should see something like this:
+
+```
+Supabase: Running
+k3d cluster: Running
+k8sproxy: Running
+API service: Running
+{
+   "API_URL": https://localhost:54321,
+   "ANON_KEY": ...
+}
+```
+
+copy the JSON, and paste it in the planqtn UI to use your local runtime with no restrictions!
 
 ## License
 
