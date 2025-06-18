@@ -15,7 +15,7 @@ def create_supabase_setup():
     if env == "cloud":
         # Load supabase_config.json
         with open(
-            os.path.expanduser("~/.planqtn/.config/supabase_config.json"), "r"
+            os.path.expanduser("~/.planqtn/.config/generated/supabase_config.json"), "r"
         ) as f:
             config = json.load(f)
     else:
