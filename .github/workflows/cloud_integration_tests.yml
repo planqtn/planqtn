@@ -48,7 +48,10 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
-    environment: Continuous Integration
+    environment:
+      name: Continuous Integration
+      url: ${{ steps.deploy.outputs.deploy_url }}
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -79,7 +82,7 @@ jobs:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt      
+          pip install  -r requirements.txt -r requirements.dev.txt
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -89,6 +92,7 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Cloud deploy
+        id: deploy
         env:
           # Secrets:
           # Description: Supabase database password
@@ -121,9 +125,10 @@ jobs:
           TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
           # Description: Terraform state prefix
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
-    
+
         run: |
           hack/htn cloud deploy -q 
+          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
 
       - name: Run jobs integration tests
         env:
