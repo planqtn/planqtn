@@ -3,7 +3,6 @@
 .tmp 
 .pytest_cache
 .vscode/** 
-qlego.egg-info
 build
 logs
 *node_modules*
@@ -11,3 +10,4 @@ logs
 *dist*
 .config
 .vscode
+*.egg-info

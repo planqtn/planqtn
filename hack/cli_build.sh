@@ -2,7 +2,7 @@
 
 set -e
 set +x
-
+PUBLISH=false
 INSTALL=false
 
 # Parse command line arguments
