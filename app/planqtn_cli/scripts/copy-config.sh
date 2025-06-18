@@ -11,4 +11,11 @@ mkdir -p dist/cfg/planqtn_api
 rsync -v ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  
 rsync -v ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml
 
-../../hack/image_tag > dist/cfg/version.txt
+PKG_VERSION=$(cat package.json | grep version | awk '{print $2}' | tr -d '",')
+GIT_VERSION=$(../../hack/image_tag)
+
+if [ "${PKG_VERSION}" != "${GIT_VERSION}" ]; then
+  echo "${PKG_VERSION}-${GIT_VERSION}" > dist/cfg/version.txt
+else
+  echo "${PKG_VERSION}" > dist/cfg/version.txt
+fi

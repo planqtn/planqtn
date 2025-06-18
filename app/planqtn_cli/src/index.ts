@@ -20,9 +20,13 @@ if (!isDev) {
     .toString()
     .trim();
 } else {
-  version = execSync(__dirname + "/../../../hack/image_tag")
+  const packageVersion = JSON.parse(
+    readFileSync(path.join(__dirname, "..", "package.json")).toString()
+  ).version;
+  const git_version = execSync(__dirname + "/../../../hack/image_tag")
     .toString()
     .trim();
+  version = `${packageVersion}-${git_version}`;
 }
 program.command("htn").description("CLI tool for PlanqTN").version(version);
 
