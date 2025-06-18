@@ -127,7 +127,7 @@ jobs:
 
         run: |
           hack/htn cloud deploy -q 
-          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
+          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
 
       - name: Run jobs integration tests
         env:

@@ -81,5 +81,5 @@ jobs:
 
         run: |
           hack/htn cloud deploy -q --skip-images
-          cd app/gcp; GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
+          cd app/gcp; GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
           echo "deploy_url=https://staging.planqtn.com" >> $GITHUB_OUTPUT
