@@ -6,6 +6,8 @@ import * as tty from "tty";
 import * as dotenv from "dotenv";
 import { k3d } from "../k3d";
 import { getDockerRepo } from "./cloud";
+import { execSync } from "child_process";
+import { writeFile } from "fs/promises";
 
 async function getGitTag(): Promise<string> {
   const commitHash = (await runCommand(
@@ -197,6 +199,76 @@ export async function buildAndPushImageAndUpdateEnvFile(
       tty: isTTY
     });
   }
+}
+
+export async function buildAndPushImagesAndUpdateEnvFiles(
+  refuseDirtyBuilds: boolean,
+  dockerRepo: string,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  environment: string,
+  onlyEnvFileUpdate: boolean = false,
+  tagOverride: string | undefined = undefined
+): Promise<void> {
+  if (refuseDirtyBuilds) {
+    if (tagOverride && tagOverride.includes("-dirty")) {
+      // while this is not fool proof, it's a good enough sanity check to avoid deploying dirty images and incentivise reproducible builds
+      throw new Error(
+        "Refusing to setup images for deployment with dirty tags. Ensure to use a tag that is from a commit."
+      );
+    }
+    if (!tagOverride) {
+      console.log("Checking git status...");
+      try {
+        const status = execSync("git status --porcelain", { stdio: "pipe" })
+          .toString()
+          .trim();
+        if (status) {
+          throw new Error(
+            "Git working directory is dirty, refusing to build and push images. Please commit or stash your changes before deploying. Changes:\n" +
+              status
+          );
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error("Failed to check git status: " + error);
+      }
+    }
+  }
+  if (onlyEnvFileUpdate) {
+    console.log(
+      "Using existing images from " + (tagOverride || "current tag") + "..."
+    );
+  }
+  const actions = onlyEnvFileUpdate
+    ? { build: false, push: false, load: false }
+    : { build: true, push: true, load: false };
+
+  let config = await getImageConfig("job", dockerRepo, tagOverride);
+  console.log(` - ${config.imageName} ...`);
+
+  await buildAndPushImageAndUpdateEnvFile("job", actions, config);
+
+  config = await getImageConfig("api", dockerRepo, tagOverride);
+  console.log(` - ${config.imageName} ...`);
+  await buildAndPushImageAndUpdateEnvFile("api", actions, config);
+
+  const uiImageConfig = await getImageConfig("ui", dockerRepo, tagOverride);
+  const { imageName, envPath, envVar } = uiImageConfig;
+
+  const envContent = [
+    `VITE_TASK_STORE_URL=${supabaseUrl}`,
+    `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
+    `VITE_ENV=${environment}`,
+    `${envVar}=${imageName}`
+  ].join("\n");
+
+  await writeFile(envPath, envContent);
+
+  console.log(` - ${uiImageConfig.imageName} ...`);
+  await buildAndPushImageAndUpdateEnvFile("ui", actions, uiImageConfig);
 }
 
 export function setupImagesCommand(program: Command): void {

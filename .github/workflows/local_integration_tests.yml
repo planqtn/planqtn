@@ -82,7 +82,7 @@ jobs:
         run: |
           cat <<EOF >> $GITHUB_STEP_SUMMARY
           ## Disk space changes
-          
+
           Before: 
           \`\`\`
           `df -h /dev/root`
@@ -95,8 +95,8 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Install planqtn cli      
-        run: |      
+      - name: Install planqtn cli
+        run: |
           hack/cli_build.sh --install
       - name: build and load api image
         env:
@@ -129,13 +129,13 @@ jobs:
       - name: Display disk space
         run: |
           cat <<EOF >> $GITHUB_STEP_SUMMARY
-          
+
           After: 
           \`\`\` 
           `df -h /dev/root`
           \`\`\` 
           EOF
-          
+
       - name: cleanup env
         run: |
           htn kernel stop
