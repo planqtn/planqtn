@@ -1,2 +1,0 @@
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/loop0      547M  547M     0 100% /mnt/wsl/docker-desktop/cli-tools
