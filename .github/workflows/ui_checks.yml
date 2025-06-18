@@ -34,7 +34,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           pip install --upgrade uv
-          uv pip install -r pyproject.toml
+          uv --system pip install -r pyproject.toml --system
       - name: Run tests
         run: |
           check/ui

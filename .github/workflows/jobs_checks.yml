@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade uv
-          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt -r pyproject.toml --all-extras
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt -r pyproject.toml --all-extras --system
       - name: Run tests
         run: |
           check/jobs

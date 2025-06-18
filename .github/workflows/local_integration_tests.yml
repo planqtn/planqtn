@@ -117,7 +117,7 @@ jobs:
           KERNEL_ENV: local
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt --system
           check/jobs-integration
 
       - name: Run api integration tests
@@ -125,7 +125,7 @@ jobs:
           KERNEL_ENV: local
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
+          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt --system
           check/api-integration
       - name: Display disk space
         run: |
