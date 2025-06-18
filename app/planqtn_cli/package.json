@@ -14,8 +14,7 @@
     "config"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc && npm run copy-config && chmod +x dist/index.js",
-    "copy-config": "scripts/copy-config.sh",
+    "build": "rm -rf dist && tsc && chmod +x dist/index.js && scripts/copy-config.sh ",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "prepare": "npm run build"
