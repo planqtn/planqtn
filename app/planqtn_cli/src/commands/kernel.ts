@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { spawn } from "child_process";
-import { copyDir, ensureEmptyDir, runCommand } from "../utils";
+import { copyDir, ensureEmptyDir, runCommand, updateEnvFile } from "../utils";
 import { cfgDir, getCfgDefinitionsDir, isDev } from "../config";
 import { k3d } from "../k3d";
 import * as yaml from "yaml";
@@ -10,6 +10,7 @@ import { Cluster, Context } from "@kubernetes/client-node";
 import { Command } from "commander";
 import { postfix, planqtnDir } from "../config";
 import { Client } from "pg";
+import { buildAndPushImagesAndUpdateEnvFiles, getImageFromEnv } from "./images";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
@@ -26,11 +27,24 @@ function red(str: string): string {
 export function setupKernelCommand(program: Command) {
   const kernelCommand = program.command("kernel");
 
-  kernelCommand
+  const startCommand = kernelCommand
     .command("start")
     .description("Start the local PlanqTN kernel")
-    .option("--verbose", "Show detailed output")
-    .action(async (options: { verbose: boolean }) => {
+    .option("--verbose", "Show detailed output");
+
+  if (isDev) {
+    startCommand.option(
+      "--tag <tag>",
+      "Tag to use for the images (dev mode only)"
+    );
+    startCommand.option(
+      "--repo <repo>",
+      "Docker repository to use for the images (dev mode only), default planqtn",
+      "planqtn"
+    );
+  }
+  startCommand.action(
+    async (options: { verbose: boolean; tag?: string; repo: string }) => {
       try {
         // Step 1: Check Docker installation
         console.log("Checking Docker installation...");
@@ -116,6 +130,43 @@ export function setupKernelCommand(program: Command) {
         } else {
           console.log(
             "Running in dev mode, skipping directory/config setup, using existing files in repo"
+          );
+
+          if (options.tag) {
+            console.log("Using tag:", options.tag, "and repo:", options.repo);
+            await buildAndPushImagesAndUpdateEnvFiles(
+              false,
+              options.repo,
+              "https://localhost:54321",
+              "placeholder",
+              "dev-local",
+              true,
+              options.tag
+            );
+          }
+
+          const jobImage = await getImageFromEnv("job");
+          const apiImage = await getImageFromEnv("api");
+
+          console.log("Job image:", jobImage || "missing");
+          console.log("API image:", apiImage || "missing");
+
+          if (!jobImage || !apiImage) {
+            throw new Error(
+              "Some images are missing, please build them first. Run 'hack/htn images <job/api> --build or run this command with --tag <tag> --repo <repo> to deploy from an existing image on DockerHub'."
+            );
+          }
+
+          await updateEnvFile(
+            path.join(supabaseDir, "functions", ".env"),
+            "K8S_TYPE",
+            "local-dev"
+          );
+
+          await updateEnvFile(
+            path.join(supabaseDir, "functions", ".env"),
+            "API_URL",
+            "http://planqtn-api:5005"
           );
         }
 
@@ -253,6 +304,14 @@ export function setupKernelCommand(program: Command) {
           );
         }
 
+        if (isDev && !options.tag) {
+          // load jobs image into k3d
+          const jobImage = (await getImageFromEnv("job"))!;
+          await k3d(["image", "import", jobImage, "-c", clusterName], {
+            verbose: options.verbose
+          });
+        }
+
         await createKubeconfig(clusterName, kubeconfigPath, options.verbose);
 
         // Step 13: Setup k8sproxy
@@ -327,7 +386,8 @@ export function setupKernelCommand(program: Command) {
         );
         process.exit(1);
       }
-    });
+    }
+  );
 
   kernelCommand
     .command("stop")
@@ -768,7 +828,7 @@ export function setupKernelCommand(program: Command) {
             "planqtn_api",
             "compose.yml"
           );
-          await runCommand(
+          const result = await runCommand(
             "docker",
             [
               "compose",
@@ -789,7 +849,11 @@ export function setupKernelCommand(program: Command) {
               }
             }
           );
-          apiStatus = "Running";
+          if (options.verbose) {
+            console.log(result);
+          }
+
+          apiStatus = result ? "Running" : "Not running";
         } catch {
           // API not running
         }

@@ -340,7 +340,6 @@ async function setupSupabaseSecrets(
 
   // Create a temporary .env file for Supabase secrets
   const envContent = [
-    "ENV=development",
     `JOBS_IMAGE=${jobsImage}`,
     `GCP_PROJECT=${gcpProjectId}`,
     `SVC_ACCOUNT=${serviceAccountKey}`,
@@ -1054,6 +1053,9 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
     for (const variable of requiredVars) {
       if (!variable.getValue()) {
+        await variable.loadFromSavedOrEnv(this.variables);
+      }
+      if (!variable.getValue()) {
         missingVars.push(variable.getConfig().description);
       }
     }
@@ -1497,6 +1499,14 @@ export function setupCloudCommand(program: Command): void {
     });
 }
 
+type CloudDeploymentPhase =
+  | "images"
+  | "supabase"
+  | "gcp"
+  | "supabase-secrets"
+  | "integration-test-config"
+  | "github-actions";
+
 interface CloudOptions {
   nonInteractive: boolean;
   skipImages: boolean;
@@ -1507,13 +1517,7 @@ interface CloudOptions {
   skipIntegrationTestConfig: boolean;
   refuseDirtyBuilds: boolean;
   tag: string | undefined;
-  only:
-    | "images"
-    | "supabase"
-    | "gcp"
-    | "supabase-secrets"
-    | "integration-test-config"
-    | "github-actions";
+  only: CloudDeploymentPhase;
 }
 
 export async function getDockerRepo(quiet: boolean = false): Promise<string> {

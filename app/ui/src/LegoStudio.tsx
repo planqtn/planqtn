@@ -3009,17 +3009,15 @@ const LegoStudioView: React.FC = () => {
 
           {/* User Menu (right) */}
           <Box flex={1} display="flex" justifyContent="flex-end" minW={0}>
-            {config.env !== "production" && (
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={handleRuntimeToggle}
-                mr={2}
-                leftIcon={<TbPlugConnected />}
-              >
-                Runtime: {isLocalRuntime ? "local" : "cloud"}
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={handleRuntimeToggle}
+              mr={2}
+              leftIcon={<TbPlugConnected />}
+            >
+              Runtime: {isLocalRuntime ? "local" : "cloud"}
+            </Button>
             <UserMenu user={currentUser} onSignIn={handleAuthDialogOpen} />
           </Box>
         </Flex>
@@ -3686,7 +3684,10 @@ const LegoStudioView: React.FC = () => {
           }}
           _hover={{ color: "gray.700" }}
         >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
+          <Text as="span" color="orange.500">
+            {config.env !== "production" ? config.env : ""}
+          </Text>
         </Link>
       ) : (
         <Text
@@ -3697,7 +3698,11 @@ const LegoStudioView: React.FC = () => {
           color="gray.500"
           zIndex={1}
         >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
+          <Text as="span" color="orange.500">
+            {config.env !== "production" ? config.env : ""}
+          </Text>
+          s
         </Text>
       )}
     </VStack>
