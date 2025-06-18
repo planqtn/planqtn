@@ -14,10 +14,10 @@
     "config"
   ],
   "scripts": {
-    "build": "tsc && npm run copy-config && chmod +x dist/index.js",
+    "build": "rm -rf dist && tsc && npm run copy-config && chmod +x dist/index.js",
     "copy-config": "scripts/copy-config.sh",
     "start": "node dist/index.js",
-    "dev": "../../hack/image_tag > ../version.txt && ts-node src/index.ts",
+    "dev": "ts-node src/index.ts",
     "prepare": "npm run build"
   },
   "keywords": [

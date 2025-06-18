@@ -14,9 +14,16 @@ import fs from "fs";
 
 const program = new Command();
 
-const version = readFileSync(path.join(getCfgDefinitionsDir(), "version.txt"))
-  .toString()
-  .trim();
+let version = "";
+if (!isDev) {
+  version = readFileSync(path.join(getCfgDefinitionsDir(), "version.txt"))
+    .toString()
+    .trim();
+} else {
+  version = execSync(__dirname + "/../../../hack/image_tag")
+    .toString()
+    .trim();
+}
 program.command("htn").description("CLI tool for PlanqTN").version(version);
 
 program

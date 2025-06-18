@@ -39,7 +39,6 @@ on:
 
       - "check/**integration"
       - ".github/workflows/cloud_integration_tests.yml"
-
 jobs:
   Cloud-Integration-Tests:
     permissions:

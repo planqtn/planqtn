@@ -10,3 +10,5 @@ rsync -a ../migrations/ dist/cfg/migrations/
 mkdir -p dist/cfg/planqtn_api 
 rsync -v ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  
 rsync -v ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml
+
+../../hack/image_tag > dist/cfg/version.txt
