@@ -27,9 +27,6 @@ TAG=$(hack/image_tag)
 
 echo "Building planqtn cli with tag: $TAG"
 
-echo "JOBS_IMAGE=planqtn/planqtn_jobs:$TAG" >> app/supabase/functions/.env.local
-echo "API_IMAGE=planqtn/planqtn_api:$TAG" >> app/planqtn_api/.env.local
-
 export tmp_log=$(mktemp)
 
 function restore_env_file() {
@@ -39,18 +36,7 @@ function restore_env_file() {
     fi    
     set +e
     popd > /dev/null 2>&1 || true
-    git checkout app/supabase/functions/.env.local > $tmp_log 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Error restoring env file"
-        cat $tmp_log
-      
-    fi
-    git checkout app/planqtn_api/.env.local > $tmp_log 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Error restoring env file"
-        cat $tmp_log
-      
-    fi
+
 }
 
 trap restore_env_file EXIT KILL TERM INT

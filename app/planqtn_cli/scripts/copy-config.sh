@@ -24,11 +24,16 @@ rsync -q ../k8s/ dist/cfg/k8s/
 rsync -q ../migrations/ dist/cfg/migrations/ 
 
 mkdir -p dist/cfg/planqtn_api 
-rsync -q ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  
-rsync -q ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml
+cp ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  
+cp ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml
+
+
 
 PKG_VERSION=$(cat package.json | grep version | awk '{print $2}' | tr -d '",')
 GIT_VERSION=$(../../hack/image_tag)
+
+echo "JOBS_IMAGE=planqtn/planqtn_jobs:$GIT_VERSION" >> dist/cfg/supabase/functions/.env.local
+echo "API_IMAGE=planqtn/planqtn_api:$GIT_VERSION" >> dist/cfg/planqtn_api/.env.local
 
 if [ "${PKG_VERSION}" != "${GIT_VERSION}" ]; then
   echo "${PKG_VERSION}-${GIT_VERSION}" > dist/cfg/version.txt
