@@ -54,6 +54,8 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
+      - name: Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2.0.0
       - name: Check out repository code
         uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -73,9 +75,19 @@ jobs:
               - "app/migrations/**"
               - "app/planqtn_types/**"
               - "app/planqtn_fixtures/**"
-              - ".github/workflows/integration_tests.yml"
+              - ".github/workflows/local_integration_tests.yml"
               - "app/planqtn_cli/**"
               - "hack/*build*"
+      - name: Display disk space
+        run: |
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          ## Disk space changes
+
+          Before: 
+          \`\`\`
+          `df -h /dev/root`
+          \`\`\` 
+          EOF
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -87,14 +99,18 @@ jobs:
         run: |
           hack/cli_build.sh --install
       - name: build and load api image
+        env:
+          DOCKER_REPO: planqtn
         run: |
-          hack/htn images api --build
+          hack/htn images api --build --quiet
       - name: Start planqtn
         run: |
           htn kernel start --verbose
       - name: build and load jobs image
+        env:
+          DOCKER_REPO: planqtn
         run: |
-          hack/htn images job --build --load-no-restart --k3d-cluster local
+          hack/htn images job --build --load-no-restart --k3d-cluster local --quiet
       - name: Run jobs integration tests
         env:
           KERNEL_ENV: local
@@ -110,6 +126,15 @@ jobs:
         run: |
           pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
           check/api-integration
+      - name: Display disk space
+        run: |
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+
+          After: 
+          \`\`\` 
+          `df -h /dev/root`
+          \`\`\` 
+          EOF
 
       - name: cleanup env
         run: |

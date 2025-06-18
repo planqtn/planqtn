@@ -3,11 +3,9 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-
-
-console.log("Hello from Functions!")
+import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -15,36 +13,46 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const backendUrl = Deno.env.get("API_URL");
+    if (!backendUrl) {
+      throw new Error("API_URL environment variable not set");
+    }
 
-  const backendUrl = Deno.env.get("API_URL");
-  if (!backendUrl) {
-    throw new Error("API_URL environment variable not set");
-  }
+    const apiUrl = `${backendUrl}/version`;
+    console.log(`API URL: ${apiUrl}`);
 
-  const response = await fetch(`${backendUrl}/version`);
-  const response_json = await response.json();
+    const headers = backendUrl.includes("run.app")
+      ? {
+          ...(await cloudRunHeaders(backendUrl)),
+          "Content-Type": "application/json"
+        }
+      : {
+          "Content-Type": "application/json"
+        };
 
-  
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: headers
+    });
 
-  const data = {
-    api_image: response_json.api_image,
-    fn_jobs_image: Deno.env.get("JOBS_IMAGE"),
-  }
+    const response_json = await response.json();
 
+    const data = {
+      api_image: response_json.api_image,
+      fn_jobs_image: Deno.env.get("JOBS_IMAGE")
+    };
 
-
-  return new Response(
-    JSON.stringify(data), 
-    { headers: { "Content-Type": "application/json", ...corsHeaders } },
-    )
+    return new Response(JSON.stringify(data), {
+      headers: { "Content-Type": "application/json", ...corsHeaders }
+    });
   } catch (error) {
     console.error("Error fetching version:", error);
-    return new Response(
-      JSON.stringify({ error: "Failed to fetch version" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
-    );
+    return new Response(JSON.stringify({ error: "Failed to fetch version" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders }
+    });
   }
-})
+});
 
 /* To invoke locally:
 

@@ -77,7 +77,11 @@ resource "google_cloud_run_v2_service" "planqtn_api" {
     service_account = google_service_account.cloud_run_svc.email
     containers {
       image = var.api_image
-    }
+      env {
+        name  = "API_IMAGE"
+        value = var.api_image
+      }    
+    }  
   }
 
   depends_on = [google_project_service.required_apis]
@@ -92,6 +96,27 @@ resource "google_cloud_run_v2_service" "planqtn_ui" {
     service_account = google_service_account.cloud_run_svc.email
     containers {
       image = var.ui_image
+      env {
+        name  = "VITE_ENV"
+        value = var.ui_environment
+      }
+      env {
+        name  = "VITE_TASK_STORE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.supabase_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "VITE_TASK_STORE_ANON_KEY"
+        value = var.supabase_anon_key
+      }
+      env { 
+        name  = "VITE_UI_IMAGE"
+        value = var.ui_image
+      }
     }
   }
 

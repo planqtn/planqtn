@@ -1976,6 +1976,9 @@ const LegoStudioView: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!userContextSupabase) {
+      return;
+    }
     const {
       data: { subscription }
     } = userContextSupabase.auth.onAuthStateChange((_event, session) => {
@@ -1986,9 +1989,12 @@ const LegoStudioView: React.FC = () => {
 
   // Add Supabase status check on page load
   useEffect(() => {
+    if (!userContextSupabase) {
+      return;
+    }
     const checkStatus = async () => {
       // Use 3 retries to ensure we're not showing errors due to temporary network issues
-      const status = await checkSupabaseStatus(userContextSupabase, 3);
+      const status = await checkSupabaseStatus(userContextSupabase!, 3);
       setSupabaseStatus(status);
 
       if (!status.isHealthy) {
@@ -2020,6 +2026,13 @@ const LegoStudioView: React.FC = () => {
 
   // Update the auth dialog to show Supabase status error if needed
   const handleAuthDialogOpen = async () => {
+    if (!userContextSupabase) {
+      setSupabaseStatus({
+        isHealthy: false,
+        message: "No supabase client available"
+      });
+      return;
+    }
     try {
       let status = supabaseStatus;
       if (!status) {
@@ -2996,17 +3009,15 @@ const LegoStudioView: React.FC = () => {
 
           {/* User Menu (right) */}
           <Box flex={1} display="flex" justifyContent="flex-end" minW={0}>
-            {config.env !== "production" && (
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={handleRuntimeToggle}
-                mr={2}
-                leftIcon={<TbPlugConnected />}
-              >
-                Runtime: {isLocalRuntime ? "local" : "cloud"}
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={handleRuntimeToggle}
+              mr={2}
+              leftIcon={<TbPlugConnected />}
+            >
+              Runtime: {isLocalRuntime ? "local" : "cloud"}
+            </Button>
             <UserMenu user={currentUser} onSignIn={handleAuthDialogOpen} />
           </Box>
         </Flex>
@@ -3630,8 +3641,17 @@ const LegoStudioView: React.FC = () => {
           onClick={async () => {
             try {
               const apiUrl = getApiUrl("version");
-              const response = await fetch(`${apiUrl}/version`);
-              const versionInfo = await response.json();
+              const response = await axios.post(
+                `${apiUrl}/version`,
+                {},
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${await getAccessToken()}`
+                  }
+                }
+              );
+              const versionInfo = response.data;
               toast({
                 title: "Build Info",
                 description: (
@@ -3664,7 +3684,10 @@ const LegoStudioView: React.FC = () => {
           }}
           _hover={{ color: "gray.700" }}
         >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
+          <Text as="span" color="orange.500">
+            {config.env !== "production" ? config.env : ""}
+          </Text>
         </Link>
       ) : (
         <Text
@@ -3675,7 +3698,11 @@ const LegoStudioView: React.FC = () => {
           color="gray.500"
           zIndex={1}
         >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}
+          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
+          <Text as="span" color="orange.500">
+            {config.env !== "production" ? config.env : ""}
+          </Text>
+          s
         </Text>
       )}
     </VStack>

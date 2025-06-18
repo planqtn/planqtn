@@ -12,29 +12,29 @@ export class K8sClient {
     private kc?: k8s.KubeConfig;
     private k8sApi?: CoreV1NamespacedApi;
     private batchApi?: BatchV1NamespacedApi;
-    private env: string;
+    private k8sType: ("local" | "local-dev" | "gke");
     private restClient?: k8s.RestClient;
 
     constructor() {
-        const env = Deno.env.get("ENV");
-        if (!env) {
-            throw new Error("ENV is not set on this environment");
+        const k8sType = Deno.env.get("K8S_TYPE");
+        if (!k8sType) {
+            throw new Error("K8S_TYPE is not set on this environment, set to local/local-dev/gke");
         }
-        this.env = env;
+        this.k8sType = k8sType;
     }
 
     async loadConfig(): Promise<void> {
-        if (this.env === "local") {
+        if (this.k8sType === "local") {
             this.kc = k8s.KubeConfig.getSimpleUrlConfig({
                 baseUrl: `http://k8sproxy-local:8001`,
             });
-        } else if (this.env === "local-dev") {
+        } else if (this.k8sType === "local-dev") {
             this.kc = k8s.KubeConfig.getSimpleUrlConfig({
                 baseUrl: `http://k8sproxy-dev:8001`,
             });
         } else {
             // Production GKE setup
-            console.log(`Using GKE ${this.env} configuration`);
+            console.log(`Using GKE  configuration`);
             const clusterEndpoint = Deno.env.get("GKE_CLUSTER_ENDPOINT")!;
             const clusterCaCertB64 = Deno.env.get("GKE_CLUSTER_CA_CERT_B64")!;
             const saKeyJsonB64 = Deno.env.get(

@@ -17,3 +17,5 @@ export const planqtnDir = path.join(os.homedir(), ".planqtn");
 ensureEmptyDir(planqtnDir);
 
 export const cfgDir = isDev ? getCfgDefinitionsDir() : path.join(planqtnDir);
+
+export const PLANQTN_BIN_DIR = path.join(process.env.HOME!, ".planqtn", "bin");

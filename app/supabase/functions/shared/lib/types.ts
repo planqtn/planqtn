@@ -1,5 +1,5 @@
 export interface JobLogsRequest {
-  task_uuid: string;
+  execution_id: string;
 }
 
 export interface JobLogsResponse {

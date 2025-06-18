@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import LegoStudioView from "./LegoStudio";
 import ErrorBoundary from "./components/ErrorBoundary";
 
+// While this is handled in serve.js in production time, for the dev server mode we need to handle it here
+
 if (import.meta.env.VITE_ENV === "TEASER") {
   window.location.href = "/teaser.html";
 } else if (import.meta.env.VITE_ENV === "DOWN") {

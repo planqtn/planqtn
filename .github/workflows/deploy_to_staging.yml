@@ -2,50 +2,19 @@ name: Deploy to Staging
 run-name: ${{ github.actor }} is deploying to staging 🚀
 concurrency:
   group: deploy-to-staging
-on: 
+on:
+  workflow_run:
+    workflows: ["Cloud Integration Tests"]
+    branches: [main, hotfix/*]
+    types:
+      - completed
   push:
-    branches:
-      - "main"
-      - "hotfix/*"
-    paths:
-      - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
-
-      - "app/supabase/**"
-      - "app/migrations/**"
-      - "app/planqtn_types/**"
-      - "app/planqtn_api/**"
-      - "app/planqtn_jobs/**"
-      - "app/planqtn_cli/**"
-      - "app/planqtn_fixtures/**"
-      - "app/ui/**"
-      - "hack/*build*"
-
-      - ".github/workflows/deploy_to_staging.yml"
-    tags:
-      - "*dev*"
-
+    tags: ["v*-alpha.*"]
 jobs:
-  Publish-CLI:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: Get image tag
-        id: image_tag
-        run: |
-          hack/image_tag
-        shell: bash
-      - name: Publish CLI
-        run: |
-          hack/cli_build.sh --install
-          
-     
-
   Deploy-to-Staging:
+    if: github.repository == 'planqtn/planqtn'
     outputs:
-      url: ${{ steps.deploy.outputs.deploy_url }}
+      deploy_url: ${{ steps.deploy.outputs.deploy_url }}
     permissions:
       statuses: write
       checks: write
@@ -56,14 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4     
+        uses: actions/checkout@v4
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt      
+          pip install  -r requirements.txt -r requirements.dev.txt
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -72,7 +41,7 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Cloud deploy  
+      - name: Cloud deploy
         id: deploy
         env:
           # Secrets:
@@ -106,8 +75,8 @@ jobs:
           TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
           # Description: Terraform state prefix
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
-    
+
         run: |
-          hack/htn cloud deploy -q 
-          echo "url=$(~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
-     
+          hack/htn cloud deploy -q --skip-images
+          GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
+          echo "deploy_url=https://staging.planqtn.com" >> $GITHUB_OUTPUT
