@@ -68,6 +68,6 @@ fi
 
 if [ "$PUBLISH" = true ]; then
     echo "Publishing $tarball to npm"
-    npm publish $tarball    
+    # npm publish $tarball    
 fi
 popd

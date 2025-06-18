@@ -19,9 +19,9 @@ done
 mkdir -p dist/cfg 
 
 # copy supabase config
-rsync -q --filter=':- ../../.gitignore' ../supabase/ dist/cfg/supabase/
-rsync -q ../k8s/ dist/cfg/k8s/
-rsync -q ../migrations/ dist/cfg/migrations/ 
+rsync -a -q --filter=':- ../../.gitignore' ../supabase/ dist/cfg/supabase/
+rsync -a -q ../k8s/ dist/cfg/k8s/
+rsync -a -q ../migrations/ dist/cfg/migrations/ 
 
 mkdir -p dist/cfg/planqtn_api 
 cp ../planqtn_api/.env.local dist/cfg/planqtn_api/.env.local  

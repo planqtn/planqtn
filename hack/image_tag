@@ -1,18 +1,15 @@
 #!/bin/bash
 
-# First try to get the tag for the current commit
-TAG=$(git describe --exact-match --tags HEAD 2>/dev/null)
+COMMIT_HASH=$(git rev-parse --short HEAD)
 
-# If no tag exists, fall back to commit hash
-if [ -z "$TAG" ]; then
-    # Get the git commit hash
-    COMMIT_HASH=$(git rev-parse --short HEAD)
-
-    # Check if there are uncommitted changes
-    if [[ -n $(git status -s) ]]; then
-        TAG="${COMMIT_HASH}-dirty"
-    else
-        TAG="${COMMIT_HASH}"
+if [[ -n $(git status -s) ]]; then
+    TAG="${COMMIT_HASH}-dirty"
+else
+    # First try to get the tag for the current commit
+    TAG=$(git describe --exact-match --tags HEAD 2>/dev/null)
+    # If no tag exists, fall back to commit hash
+    if [ -z "$TAG" ]; then        
+        TAG=$COMMIT_HASH
     fi
 fi
 
