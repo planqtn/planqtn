@@ -76,8 +76,8 @@ fi
 
 if [ "$PUBLISH" = true ]; then    
     if [[ "$TAG" =~ ^.*-alpha\.[0-9]+$ ]]; then
-        echo "Publishing PRERELEASE $tarball to npm with --tag $TAG"
-        npm publish $tarball --tag $TAG    
+        echo "Publishing PRERELEASE $tarball to npm with --tag alpha"
+        npm publish $tarball --tag alpha
     else
         echo "Publishing PRODUCTION $tarball to npm with @latest = $TAG"
         npm publish $tarball    

@@ -1,6 +1,6 @@
 {
   "name": "planqtn-cli",
-  "version": "0.1.0-alpha.2.0",
+  "version": "0.1.0-alpha.3",
   "description": "CLI tool for PlanqTN",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

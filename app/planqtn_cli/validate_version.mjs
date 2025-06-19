@@ -35,8 +35,8 @@ function validateVersion() {
       if (prerelease && prerelease.length > 0) {
         // Check if prerelease identifier is valid
         const prereleaseStr = prerelease.join('.');
-        if (!/^alpha\.[0-9]+\.[0-9]+$/.test(prereleaseStr)) {
-          console.error(`❌ Error: Invalid prerelease version: ${version}, must be in the format of alpha.X.Y where X is the major version, and Y is the build number.`);
+        if (!/^alpha\.[0-9]+$/.test(prereleaseStr)) {
+          console.error(`❌ Error: Invalid prerelease version: ${version}, must be in the format of alpha.X where X is the build number.`);
           process.exit(1);
         }
       }
