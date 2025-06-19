@@ -694,7 +694,7 @@ class VariableManager {
           name: "dockerRepo",
           description: "Docker repository (e.g., Docker Hub username or repo)",
           defaultValue: "planqtn",
-          requiredFor: ["images"]
+          requiredFor: ["images", "gcp", "supabase-secrets", "supabase"]
         },
         configDir,
         "docker-repo"
@@ -1162,7 +1162,7 @@ async function checkCredentials(
         variableManager.getRequiredValue("gcpRegion"),
         variableManager.getRequiredValue("terraformStateBucket"),
         variableManager.getRequiredValue("terraformStatePrefix"),
-        variableManager.getRequiredValue("uiMode"),
+        variableManager.getValue("uiMode") || "development",
         true
       );
     } catch (error) {
@@ -1281,7 +1281,11 @@ export function setupCloudCommand(program: Command): void {
             false,
             options.tag
           );
-        } else {
+        } else if (
+          !skipPhases.gcp ||
+          !skipPhases.supabase ||
+          !skipPhases["supabase-secrets"]
+        ) {
           await buildAndPushImagesAndUpdateEnvFiles(
             options.refuseDirtyBuilds,
             variableManager.getRequiredValue("dockerRepo"),
