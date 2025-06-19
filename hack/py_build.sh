@@ -24,6 +24,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ "$PUBLISH" = true ]; then
+    if [ -z "$TWINE_TOKEN" ]; then
+        echo "TWINE_TOKEN is not set, exiting."
+        exit 1
+    fi
+fi
+
+
 pip install --upgrade uv
 
 TAG=$(hack/image_tag)
@@ -53,5 +61,12 @@ if [ "$PUBLISH" = true ]; then
         echo "Refusing to publish, exiting."
         exit 1
     fi
-    twine upload -r testpypi dist/* 
+    if [[ "$TAG" =~ ^v.*-alpha\.[0-9]+$ ]]; then
+        echo "Publishing PRERELEASE to Test PyPI with version $TAG"
+        TWINE_USERNAME=__token__ TWINE_PASSWORD=$TWINE_TOKEN twine upload -r testpypi dist/* 
+    else
+        echo "Publishing PRODUCTION to PyPI with version $TAG"
+        TWINE_USERNAME=__token__ TWINE_PASSWORD=$TWINE_TOKEN twine upload dist/* 
+    fi
+   
 fi

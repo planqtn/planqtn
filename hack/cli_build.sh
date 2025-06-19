@@ -41,15 +41,23 @@ function restore_env_file() {
 
 trap restore_env_file EXIT KILL TERM INT
 
+PROD_FLAG=""
+if [ "$PUBLISH" = true ]; then
+    PROD_FLAG="-- --prod"
+    if [ -z "$NPM_TOKEN" ]; then
+        echo "NPM_TOKEN is not set, exiting."
+        exit 1
+    fi
+fi
+
+
+
 pushd app/planqtn_cli
 
 echo "Installing dependencies"
 npm install --include=dev > $tmp_log 2>&1
 
-PROD_FLAG=""
-if [ "$PUBLISH" = true ]; then
-    PROD_FLAG="-- --prod"
-fi
+
 
 echo "Building cli"
 npm run build $PROD_FLAG > $tmp_log 2>&1
