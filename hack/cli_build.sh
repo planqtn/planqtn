@@ -74,8 +74,7 @@ if [ "$INSTALL" = true ]; then
     npm install -g "./$tarball" --force > $tmp_log 2>&1
 fi
 
-if [ "$PUBLISH" = true ]; then
-    TAG=$(hack/image_tag)
+if [ "$PUBLISH" = true ]; then    
     if [[ "$TAG" =~ ^.*-alpha\.[0-9]+$ ]]; then
         echo "Publishing PRERELEASE $tarball to npm with --tag $TAG"
         npm publish $tarball --tag $TAG    
