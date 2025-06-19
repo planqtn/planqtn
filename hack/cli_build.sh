@@ -76,7 +76,7 @@ fi
 
 if [ "$PUBLISH" = true ]; then
     TAG=$(hack/image_tag)
-    if [[ "$TAG" =~ ^v.*-alpha\.[0-9]+$ ]]; then
+    if [[ "$TAG" =~ ^.*-alpha\.[0-9]+$ ]]; then
         echo "Publishing PRERELEASE $tarball to npm with --tag $TAG"
         npm publish $tarball --tag $TAG    
     else
