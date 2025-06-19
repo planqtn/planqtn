@@ -1,8 +1,8 @@
 name: Publish Packages
 run-name: ${{ github.actor }} is publishing the packages
 on:
-   workflow_dispatch:
-    inputs:      
+  workflow_dispatch:
+    inputs:
       tag:
         description: "Tag to publish"
         required: true
@@ -36,9 +36,11 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          hack/cli_build.sh --publish
+          hack/cli_build.sh --publish -q
       - name: Publish to Docker Hub
+        env:
+          DOCKER_REPO: planqtn
         run: |
-          hack/htn images job --build --push
-          hack/htn images api --build --push
-          hack/htn images ui --build --push
+          hack/htn images job --build --push -q
+          hack/htn images api --build --push -q
+          hack/htn images ui --build --push -q
