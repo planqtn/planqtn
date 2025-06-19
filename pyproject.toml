@@ -1,6 +1,6 @@
 [project]
 name = "planqtn"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 authors = [
   { name="Balint Pato", email="balint@planqtn.com" },
 ]
