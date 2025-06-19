@@ -12,7 +12,7 @@ class CompassCodeTN(SurfaceCodeTN):
         *,
         lego=lambda node: Legos.enconding_tensor_512,
         coset_error: GF2 = None,
-        truncate_length: int = None
+        truncate_length: int = None,
     ):
         """Creates a square compass code based on the coloring.
 

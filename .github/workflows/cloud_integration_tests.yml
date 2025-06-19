@@ -39,7 +39,6 @@ on:
 
       - "check/**integration"
       - ".github/workflows/cloud_integration_tests.yml"
-
 jobs:
   Cloud-Integration-Tests:
     permissions:
@@ -82,7 +81,8 @@ jobs:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt
+          pip install --upgrade uv
+          uv pip install -r pyproject.toml --all-extras --system
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -113,9 +113,8 @@ jobs:
           # Description: Supabase project ID
           # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          # Description: Environment
-          # Default: development
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+
+          UI_MODE: "development"
           # Description: GCP project ID
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           # Description: GCP region
@@ -128,7 +127,7 @@ jobs:
 
         run: |
           hack/htn cloud deploy -q 
-          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
+          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
 
       - name: Run jobs integration tests
         env:
@@ -137,7 +136,7 @@ jobs:
           GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt --system
           check/jobs-integration
 
       - name: Run api integration tests
@@ -147,5 +146,5 @@ jobs:
           GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
+          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt --system
           check/api-integration

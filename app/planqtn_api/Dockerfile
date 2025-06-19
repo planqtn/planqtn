@@ -2,12 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip uv
 
-COPY requirements.txt /app/requirements.txt
+COPY pyproject.toml /app/pyproject.toml
 COPY app/planqtn_api/requirements.txt /app/planqtn_api/requirements.txt   
 
-RUN pip install -r requirements.txt -r /app/planqtn_api/requirements.txt --root-user-action=ignore
+RUN uv pip install -r pyproject.toml -r /app/planqtn_api/requirements.txt --system
 
 COPY ./qlego /app/qlego
 COPY ./app/planqtn_api /app/planqtn_api
