@@ -59,7 +59,7 @@ if [ "$PUBLISH" = true ]; then
         echo "Refusing to publish, exiting."
         exit 1
     fi
-    if [[ "$TAG" =~ ^.*-alpha\.[0-9]+$ ]]; then
+    if [[ "$PKG_VERSION" =~ ^.*-alpha\.[0-9]+$ ]]; then
         echo "Publishing PRERELEASE to Test PyPI with version $TAG"
         TWINE_USERNAME=__token__ TWINE_PASSWORD=$TWINE_TOKEN twine upload -r testpypi dist/* 
     else
