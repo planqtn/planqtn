@@ -506,7 +506,6 @@ abstract class Variable {
   async loadFromEnv(_vars: Variable[]): Promise<void> {
     const envVarName = this.getEnvVarName();
     const envValue = process.env[envVarName];
-    console.log("envValue for", envVarName, envValue);
     if (envValue) {
       this.setValue(envValue);
     }
@@ -913,13 +912,10 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
   async loadExistingValues(): Promise<void> {
     for (const variable of this.variables) {
-      console.log("loading existing values for", variable.getName());
       await variable.load(this.variables);
       if (!variable.getValue()) {
-        console.log("loading from env for", variable.getName());
         await variable.loadFromEnv(this.variables);
       }
-      console.log("loaded value for", variable.getName(), variable.getValue());
     }
     await this.loadGcpOutputs();
   }
