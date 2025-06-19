@@ -369,7 +369,7 @@ async function buildAndPushImagesAndUpdateEnvFiles(
   dockerRepo: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
-  environment: string,
+  ui_mode: string,
   onlyEnvFileUpdate: boolean = false,
   tagOverride: string | undefined = undefined
 ): Promise<void> {
@@ -424,7 +424,7 @@ async function buildAndPushImagesAndUpdateEnvFiles(
   const envContent = [
     `VITE_TASK_STORE_URL=${supabaseUrl}`,
     `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
-    `VITE_ENV=${environment}`,
+    `VITE_ENV=${ui_mode}`,
     `${envVar}=${imageName}`
   ].join("\n");
 
@@ -439,6 +439,7 @@ interface VariableConfig {
   description: string;
   isSecret?: boolean;
   defaultValue?: string;
+  notSetInGithubActions?: boolean;
   requiredFor: (
     | "images"
     | "supabase"
@@ -713,13 +714,15 @@ class VariableManager {
       ),
       new PlainFileVar(
         {
-          name: "environment",
-          description: "Environment",
+          name: "ui-mode",
+          description:
+            "UI mode (development, staging, production, TEASER, DOWN)",
           defaultValue: "development",
-          requiredFor: ["supabase-secrets", "gcp"]
+          requiredFor: ["gcp"],
+          notSetInGithubActions: true
         },
         configDir,
-        "environment"
+        "ui-mode"
       ),
       new EnvFileVar(
         {
@@ -1263,7 +1266,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("environment"),
+            variableManager.getRequiredValue("ui-mode"),
             false,
             options.tag
           );
@@ -1273,7 +1276,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("environment"),
+            variableManager.getRequiredValue("ui-mode"),
             true,
             options.tag
           );
@@ -1462,7 +1465,9 @@ export function setupCloudCommand(program: Command): void {
         );
         const variableManager = new VariableManager(configDir);
         await variableManager.loadExistingValues();
-        const userVars = variableManager.getUserVariables();
+        const userVars = variableManager
+          .getUserVariables()
+          .filter((v) => !v.getConfig().notSetInGithubActions);
         const prompt = promptSync({ sigint: true });
         for (const variable of userVars) {
           await variable.prompt(prompt);

@@ -29,7 +29,7 @@ cp ../planqtn_api/compose.yml dist/cfg/planqtn_api/compose.yml
 
 
 
-PKG_VERSION=$(cat package.json | grep version | awk '{print $2}' | tr -d '",')
+PKG_VERSION=$(cat package.json | grep \"version\" | awk '{print $2}' | tr -d '",\n')
 GIT_VERSION=$(../../hack/image_tag)
 
 echo "JOBS_IMAGE=planqtn/planqtn_jobs:$GIT_VERSION" >> dist/cfg/supabase/functions/.env.local

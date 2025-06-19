@@ -44,7 +44,7 @@ trap restore_env_file EXIT KILL TERM INT
 pushd app/planqtn_cli
 
 echo "Installing dependencies"
-npm install > $tmp_log 2>&1
+npm install --include=dev > $tmp_log 2>&1
 
 PROD_FLAG=""
 if [ "$PUBLISH" = true ]; then
@@ -67,7 +67,13 @@ if [ "$INSTALL" = true ]; then
 fi
 
 if [ "$PUBLISH" = true ]; then
-    echo "Publishing $tarball to npm"
-    npm publish $tarball    
+    TAG=$(hack/image_tag)
+    if [[ "$TAG" =~ ^v.*-alpha\.[0-9]+$ ]]; then
+        echo "Publishing PRERELEASE $tarball to npm with --tag $TAG"
+        npm publish $tarball --tag $TAG    
+    else
+        echo "Publishing PRODUCTION $tarball to npm with @latest = $TAG"
+        npm publish $tarball    
+    fi
 fi
 popd

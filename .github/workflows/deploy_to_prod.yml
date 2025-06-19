@@ -8,9 +8,9 @@ on:
       ui_mode:
         description: "UI mode to deploy to"
         required: true
-        default: "staging"
+        default: "production"
         options:
-          - staging
+          - production
           - TEASER
           - DOWN
         type: choice
@@ -18,13 +18,8 @@ on:
         description: "Tag to deploy"
         required: true
         type: string
-  workflow_run:
-    workflows: ["Cloud Integration Tests"]
-    branches: [main, hotfix/*]
-    types:
-      - completed
 jobs:
-  Deploy-to-Staging:
+  Deploy-to-Prod:
     if: github.repository == 'planqtn/planqtn'
     outputs:
       deploy_url: ${{ steps.deploy.outputs.deploy_url }}
@@ -35,7 +30,7 @@ jobs:
       pull-requests: write
       actions: write
     environment:
-      name: Staging
+      name: Production
       url: ${{ steps.deploy.outputs.deploy_url }}
 
     runs-on: ubuntu-latest
@@ -45,7 +40,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check out tag
-        if: github.event_name == 'workflow_dispatch'
         run: |
           git fetch --tags
           git checkout ${{ inputs.tag }}
@@ -82,7 +76,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
           # Description: Environment
           # Default: development
-          UI_MODE: ${{ inputs.ui_mode || 'staging' }}
+          UI_MODE: ${{ inputs.ui_mode }}
           # Description: GCP project ID
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           # Description: GCP region
@@ -94,6 +88,6 @@ jobs:
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
 
         run: |
-          hack/htn cloud deploy -q --skip-images
+          hack/htn cloud deploy -q --skip-images --ui-mode ${{ inputs.ui_mode }} 
           cd app/gcp; GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
-          echo "deploy_url=https://staging.planqtn.com" >> $GITHUB_OUTPUT
+          echo "deploy_url=https://planqtn.com" >> $GITHUB_OUTPUT

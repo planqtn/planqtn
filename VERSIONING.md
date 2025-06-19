@@ -34,19 +34,22 @@ Our version numbers follow the `MAJOR.MINOR.PATCH` format.
 
 ### Manual Pre-Releases
 
-To perform a full, end-to-end test of the release pipeline before a production release, we use manually-tagged pre-releases.
+To perform a full, end-to-end test of the release pipeline before a production release, we use manually-tagged pre-releases. We only accept pre-release version numbers in the form of `vMAJ.MIN.PATCH-alpha.BUILD`, whre BUILD is an integer starting from 1. This is automatically checked for in the build process.
 
 - **Trigger**: This workflow is kicked off by manually pushing a pre-release tag to a commit on `main` (e.g., `v2.0.0-alpha.1`). This can be any time before a planned production release to test packaging flows.
-- **Action**: This tag triggers a workflow that **exactly mimics the production release process**. It will:
-  1. Build all assets.
-  2. Publish packages to npm, PyPI, and our container registry (e.g., Docker Hub) with the appropriate pre-release tag.
-  3. Deploy the final application to the **staging** environment, triggered by the tag push.
+- **Actions**: This tag triggers a workflow that **exactly mimics the production release process**.
+  - `publish_packages.yml`:
+    1. Build all assets for the given tag.
+    2. Publish pre-release packages to npm repository (with `--tag` flag, which makes it not listed as the `@latest` tag), test PyPI (test.pypi.org), and our container registry (e.g., Docker Hub) with the appropriate pre-release tag.
+  - We manually kick-off `deploy_to_staging.yml` with the pre-release tag:
+    1. Checkout the tag
+    2. Deploy the final application to the **staging** environment.
 - **Purpose**: To have a high-confidence dress rehearsal of the entire release process, catching any issues in packaging, publishing, or deployment before the final release.
 
 ### Production Releases
 
 - **Trigger**: Production releases are created by manually pushing a final version tag to a commit on `main` (e.g., `v2.0.0`).
-- **Action**: This tag triggers the finalized release pipeline, which publishes the official packages to public registries and deploys the application to the **production** environment.
+- **Action**: This tag triggers the finalized release pipeline, which publishes the official packages to public registries. Then, we manually deploy the application first to **staging** with the final tag, and if everything looks good, then we deploy to the **production** environment using the `deploy_to_production.yml` with the given tag. A detailed set of instructions is detailed in [RELEASE.md](RELEASE.md).
 
 ## Breaking Changes
 

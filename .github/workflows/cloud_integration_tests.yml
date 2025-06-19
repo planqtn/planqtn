@@ -113,9 +113,8 @@ jobs:
           # Description: Supabase project ID
           # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          # Description: Environment
-          # Default: development
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+
+          UI_MODE: "development"
           # Description: GCP project ID
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           # Description: GCP region
