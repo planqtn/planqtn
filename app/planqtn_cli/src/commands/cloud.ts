@@ -59,7 +59,7 @@ async function setupSupabase(
     stdio: "inherit",
     env: {
       ...process.env,
-      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
     }
   });
 
@@ -244,6 +244,7 @@ async function setupGCP(
   gcpRegion: string,
   terraformStateBucket: string,
   terraformStatePrefix: string,
+  uiMode: string,
   loginCheck: boolean = false
 ): Promise<void> {
   const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
@@ -276,7 +277,7 @@ async function setupGCP(
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
     supabase_anon_key: supabaseAnonKey,
-    environment: "dev"
+    ui_mode: uiMode
   });
 
   await terraform(
@@ -1126,8 +1127,8 @@ async function checkCredentials(
       // Test database connection using pg client
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
-      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:5432/postgres
-      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`;
+      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
 
       const client = new Client({ connectionString });
       await client.connect();
@@ -1153,6 +1154,7 @@ async function checkCredentials(
         variableManager.getRequiredValue("gcpRegion"),
         variableManager.getRequiredValue("terraformStateBucket"),
         variableManager.getRequiredValue("terraformStatePrefix"),
+        variableManager.getRequiredValue("uiMode"),
         true
       );
     } catch (error) {
@@ -1307,7 +1309,8 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("gcpProjectId"),
             variableManager.getRequiredValue("gcpRegion"),
             variableManager.getRequiredValue("terraformStateBucket"),
-            variableManager.getRequiredValue("terraformStatePrefix")
+            variableManager.getRequiredValue("terraformStatePrefix"),
+            variableManager.getRequiredValue("uiMode")
           );
           // Reload outputs after GCP setup
           await variableManager.loadGcpOutputs();

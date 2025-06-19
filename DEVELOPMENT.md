@@ -4,11 +4,10 @@
 <img src="fig/architecture.png" width="100%"></img>
 </p>
 
-PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features. Key points to understand about the architecture: 
+PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features. Key points to understand about the architecture:
 
 - the UI only talks to the Supabase instance, for 4 reasons: authentication, edge functions (logic), the database for retrieval and realtime messages
-- Supabase functions contain the logic to talk to the API and the Job API of Cloud Run 
-
+- Supabase functions contain the logic to talk to the API and the Job API of Cloud Run
 
 # Developer Setup
 
@@ -40,23 +39,23 @@ check/qlego
 
 Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on qlego, and changes will trigger integration tests on Github Actions.
 
-## PlanqTN Studio 
+## PlanqTN Studio
 
-The PlanqTN Studio involves a couple of components: 
+The PlanqTN Studio involves a couple of components:
 
 - the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud Run Service in the hosted version
-- the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic 
-- the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons 
+- the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic
+- the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons
 
-
-We use GCP Cloud Run for executing workloads and the API and we use Supabase for realtime messaging, database, authentication. 
+We use GCP Cloud Run for executing workloads and the API and we use Supabase for realtime messaging, database, authentication.
 It is important to understand the concepts of User context and Runtime context
+
 - **User context**: authentication, task store, quota function, user content database
-- **Runtime context**: task management functions, api functions, realtime messaging database 
+- **Runtime context**: task management functions, api functions, realtime messaging database
 
-In the hosted version, a single Supabase instance takes care of both the User context and the Runtime context. However, the user can pick from the UI a local Runtime context. This ends up requiring a local kernel with a local Supabase installation. In the codebase we refer to the User context as "Task store" sometimes as it contains the definition for the tasks in the `tasks` table. The Runtime context only uses the `task_updates` table which is then used by the UI to subscribe to the realtime progress bar messages. 
+In the hosted version, a single Supabase instance takes care of both the User context and the Runtime context. However, the user can pick from the UI a local Runtime context. This ends up requiring a local kernel with a local Supabase installation. In the codebase we refer to the User context as "Task store" sometimes as it contains the definition for the tasks in the `tasks` table. The Runtime context only uses the `task_updates` table which is then used by the UI to subscribe to the realtime progress bar messages.
 
-The reason for this complicated separation is to give a transparent way for the user to use local features by offloading the most expensive features of the cloud (edge function calls, realtime messaging, task execution), while keeping the ability to publish results in the public database or to just keep things like the canvas in a single hosted place for the user. 
+The reason for this complicated separation is to give a transparent way for the user to use local features by offloading the most expensive features of the cloud (edge function calls, realtime messaging, task execution), while keeping the ability to publish results in the public database or to just keep things like the canvas in a single hosted place for the user.
 
 ## Web UI features
 
@@ -74,51 +73,55 @@ After you cloned the repo, you can setup the npm dependencies with:
 hack/htn ui start --dev
 ```
 
-This should give you a http://localhost:5173 URL for the UI. 
+This should give you a http://localhost:5173 URL for the UI.
 The UI needs a User Context for authentication user content presistence in Supabase, so when it doesn't have it setup you'll see a "User context unavailable" warning next to the User menu.
 
 <img src="fig/user_context_unavailable.png"/>
 
-This is okay if you don't want to develop anything related to authentication / tasks / API calls. 
+This is okay if you don't want to develop anything related to authentication / tasks / API calls.
 
-If you have to do any of those, then you'll need a User context. You have two options: 
+If you have to do any of those, then you'll need a User context. You have two options:
 
 1. Use the `dev` runtime kernel as your User context
-  - See [Setting up `dev` kernel](#setting-up-dev-kernel)
-  - start your ui with `hack/htn ui start --dev --dev-user-context` or manually create/edit the `app/ui/.env` file 
+
+- See [Setting up `dev` kernel](#setting-up-dev-kernel)
+- start your ui with `hack/htn ui start --dev --dev-user-context` or manually create/edit the `app/ui/.env` file
+
 ```bash
 VITE_TASK_STORE_URL=http://127.0.0.1:54321
 VITE_TASK_STORE_ANON_KEY="<your supabase instance's anon key>"
 VITE_ENV=development
 ```
-2. Use your personal cloud 
-  
-If you want to set that up, then you can manually setup the `app/ui/.env` file 
+
+2. Use your personal cloud
+
+If you want to set that up, then you can manually setup the `app/ui/.env` file
+
 ```bash
 VITE_TASK_STORE_URL=https://yourprojectref.supabase.co
 VITE_TASK_STORE_ANON_KEY="<your supabase instance's anon key>"
 VITE_ENV=development
 ```
 
-### Containerization 
+### Containerization
 
-As you can see from above, as a typical Vite app, the UI uses env vars during compilation. However, as in production the UI runs in a Docker container, and we need a single image that can run on any environment, we need the ability to change the values in the compiled javascript / CSS code at runtime. This is not 
+As you can see from above, as a typical Vite app, the UI uses env vars during compilation. However, as in production the UI runs in a Docker container, and we need a single image that can run on any environment, we need the ability to change the values in the compiled javascript / CSS code at runtime. This is not
 
-You can test the scripts used by the containerized setup by: 
+You can test the scripts used by the containerized setup by:
 
 ```bash
 cd app/ui
 # this will build the ui with .env.runtime file, that contains RUNTIME_VITE_... env var place holder values
-npm run build 
-# this uses the .env file (or the process environment from the Docker runtime when in a container) and replaces RUNTIME_VITE_... values with the actual env var values in the compiled files 
-node serve.js 
+npm run build
+# this uses the .env file (or the process environment from the Docker runtime when in a container) and replaces RUNTIME_VITE_... values with the actual env var values in the compiled files
+node serve.js
 ```
 
-To test the actual container: 
+To test the actual container:
 
 ```
-hack/htn images ui --build 
-hack/htn ui start 
+hack/htn images ui --build
+hack/htn ui start
 ```
 
 This should give you an http://localhost:8080 URL for the UI.
@@ -190,15 +193,15 @@ check/jobs-integration
 This is the typical, fastest way to check that things are working, but it's heavy on local resources.
 
 - run `hack/htn kernel start` to spin up the `dev` kernel.
-- Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve --no-verify-jwt` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions. Use `--no-verify-jwt` when the dev kernel is only for runtime context, otherwise if it's for both user/runtime contexts, then JWT verification is fine. This is because runtime context is using the user JWT to authenticate as the user in the task store when storing back the results. However, if the runtime context supabase is separate from the task store instance, then the Supabase JWT verification will fail on the runtime context, as the JWT is valid only in the User Context Supabase instance. 
+- Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve --no-verify-jwt` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions. Use `--no-verify-jwt` when the dev kernel is only for runtime context, otherwise if it's for both user/runtime contexts, then JWT verification is fine. This is because runtime context is using the user JWT to authenticate as the user in the task store when storing back the results. However, if the runtime context supabase is separate from the task store instance, then the Supabase JWT verification will fail on the runtime context, as the JWT is valid only in the User Context Supabase instance.
 - After modifying `planqtn_jobs` or `qlego` or the edge function `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
 
-### Using the `dev` kernel as a local runtime context only - relaxation of authorization 
+### Using the `dev` kernel as a local runtime context only - relaxation of authorization
 
+As mentioned above, if the `dev` kernel is used as a runtime context with a cloud user context, the authorization must be relaxed - as the user information is not available in this local instance, given it is in a different supabase instance. This consists of two actions:
 
-As mentioned above, if the `dev` kernel is used as a runtime context with a cloud user context, the authorization must be relaxed - as the user information is not available in this local instance, given it is in a different supabase instance. This consists of two actions: 
- - run edge functions with --no-verify-jwt: `npx supabase functions serve --no-verify-jwt`
- - disable the Row Level Security on the `task_updates` table on the local UI (http://127.0.0.1:54323/project/default/auth/policies) - otherwise progress bars and realtime update for tasks won't work
+- run edge functions with --no-verify-jwt: `npx supabase functions serve --no-verify-jwt`
+- disable the Row Level Security on the `task_updates` table on the local UI (http://127.0.0.1:54323/project/default/auth/policies) - otherwise progress bars and realtime update for tasks won't work
 
 ### The `local` workflow
 
@@ -222,7 +225,7 @@ This is a workflow tested automatically by Github Actions, and is only required 
 
 This is a fake/broken setup but provides the fastest development feedback loop with a local Supabase function setup with hot reload against a Cloud Run backend (which won't be able to talk back to the local Supabase instance). For now this is only manually supported, assuming that you just ran `hack/htn cloud deploy` successfully.
 
-1. Setup the UI to think that the "cloud task store" is on the localhost, by setting the content of `app/ui/.env` to: 
+1. Setup the UI to think that the "cloud task store" is on the localhost, by setting the content of `app/ui/.env` to:
 
 ```
 VITE_TASK_STORE_URL=http://127.0.0.1:54321
@@ -325,6 +328,15 @@ Also, you might need to rerun it, we've seen this kind of failure on new project
 │ Details:
 ```
 
+Due to the async nature of terraform/GCP, unfortunately sometimes it thinks that it added the right roles to the service accounts, and it did, but it is not applied yet in time for the next deployment step, and then you'll see failures like this:
+
+```
+Revision 'planqtn-monitor-00001-mp8' is not ready and cannot serve traffic. spec.template.spec.containers[0].env[0].value_from.secret_key_ref.name: Permission denied on secret: projects/.../secrets/supabase_url/versions/latest for Revision service account cloud-run-execution-svc@yourproject.iam.gserviceaccount.com. The service account used must be granted the 'Secret Manager Secret Accessor' role (roles/secretmanager.secretAccessor) at the secret, project or higher level.
+                    spec.template.spec.containers[0].env[1].value_from.secret_key_ref.name: Permission denied on secret: projects/.../secrets/supabase_service_key/versions/latest for Revision service account cloud-run-execution-svc@yourproject.iam.gserviceaccount.com. The service account used must be granted the 'Secret Manager Secret Accessor' role (roles/secretmanager.secretAccessor) at the secret, project or higher level.
+```
+
+Just restart again.
+
 ## Github Actions secrets for your personal integration testing environment
 
 After your setup and deployed your project successfully ensure that the integration tests are passing:
@@ -341,7 +353,7 @@ If everything's good, you're ready to setup Github Actions! As we need to setup 
 hack/htn cloud setup-github-actions
 ```
 
-To test that the service account was setup correctly, you can logout of gcloud by removing or moving the gcloud config dir (e.g. `rm -rf ~/.config/gcloud`) then try to deploy using it the same way we use it in Github Action: 
+To test that the service account was setup correctly, you can logout of gcloud by removing or moving the gcloud config dir (e.g. `rm -rf ~/.config/gcloud`) then try to deploy using it the same way we use it in Github Action:
 
 ```
 GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0) hack/htn cloud deploy -q
@@ -435,12 +447,11 @@ See above for personal cloud setup.
 
 TODO: this will be filled out after merging the first version of supabase to main and testing on the first change.
 
-# Reference for `.env` files 
+# Reference for `.env` files
 
 It is a bit crazy how many `.env` files are in this project due to all the small tools. Here's a description of each of them.
 
-- `app/supabase/functions/.env` - Supabase Edge Function configuration for local and dev look at `app/supabase/functions/.env.local/dev`, for cloud `app/supabase/functions/.env.cloud` templates for documentation on the variables. 
+- `app/supabase/functions/.env` - Supabase Edge Function configuration for local and dev look at `app/supabase/functions/.env.local/dev`, for cloud `app/supabase/functions/.env.cloud` templates for documentation on the variables.
 - `app/ui/.env` - UI configuration. See [Web UI features](#web-ui-features) for instructions.
-- `app/planqtn_api/.env` - API config, only needs an `API_IMAGE` to report its own version. We might remove this. 
-- `app/planqtn_jobs/.env` - just kidding - no env file here, however `RUNTIME_SUPABASE_URL` and `RUNTIME_SERVICE_KEY` are passed by the K8s job edge function and they are setup as secrets for the Cloud Run version. 
-
+- `app/planqtn_api/.env` - API config, only needs an `API_IMAGE` to report its own version. We might remove this.
+- `app/planqtn_jobs/.env` - just kidding - no env file here, however `RUNTIME_SUPABASE_URL` and `RUNTIME_SERVICE_KEY` are passed by the K8s job edge function and they are setup as secrets for the Cloud Run version.

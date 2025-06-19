@@ -41,14 +41,8 @@ variable "supabase_anon_key" {
   sensitive   = true
 }
 
-variable "ui_environment" {
+variable "ui_mode" {
   description = "The UI environment (e.g., dev, prod, TEASER or DOWN)"
-  type        = string
-  default     = "dev"
-}
-
-variable "environment" {
-  description = "The environment (e.g., dev, prod)"
   type        = string
   default     = "dev"
 }

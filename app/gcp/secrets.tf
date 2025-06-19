@@ -1,6 +1,6 @@
 # Create secrets for Supabase credentials
 resource "google_secret_manager_secret" "supabase_service_key" {
-  secret_id = "${var.environment}_svc_key_supa"
+  secret_id = "supabase_service_key"
 
   replication {
     auto {}
@@ -15,7 +15,7 @@ resource "google_secret_manager_secret_version" "supabase_service_key" {
 }
 
 resource "google_secret_manager_secret" "supabase_url" {
-  secret_id = "${var.environment}_url_supa"
+  secret_id = "supabase_url"
 
   replication {
     auto {}

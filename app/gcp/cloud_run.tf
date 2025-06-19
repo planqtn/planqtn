@@ -98,7 +98,7 @@ resource "google_cloud_run_v2_service" "planqtn_ui" {
       image = var.ui_image
       env {
         name  = "VITE_ENV"
-        value = var.ui_environment
+        value = var.ui_mode
       }
       env {
         name  = "VITE_TASK_STORE_URL"
