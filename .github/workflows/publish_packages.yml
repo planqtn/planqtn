@@ -36,7 +36,7 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          hack/cli_build.sh --publish -q
+          hack/cli_build.sh --publish
       - name: Publish to Docker Hub
         env:
           DOCKER_REPO: planqtn
