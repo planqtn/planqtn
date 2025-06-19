@@ -36,7 +36,7 @@ Our version numbers follow the `MAJOR.MINOR.PATCH` format.
 
 To perform a full, end-to-end test of the release pipeline before a production release, we use manually-tagged pre-releases. We only accept pre-release version numbers in the form of `vMAJ.MIN.PATCH-alpha.BUILD`, whre BUILD is an integer starting from 1. This is automatically checked for in the build process.
 
-- **Trigger**: This workflow is kicked off by manually pushing a pre-release tag to a commit on `main` (e.g., `v2.0.0-alpha.1`). This can be any time before a planned production release to test packaging flows.
+- **Trigger**: This workflow is kicked off by manually pushing a pre-release tag to a commit on `main` (e.g., `2.0.0-alpha.1`). This can be any time before a planned production release to test packaging flows.
 - **Actions**: This tag triggers a workflow that **exactly mimics the production release process**.
   - `publish_packages.yml`:
     1. Build all assets for the given tag.
@@ -48,7 +48,7 @@ To perform a full, end-to-end test of the release pipeline before a production r
 
 ### Production Releases
 
-- **Trigger**: Production releases are created by manually pushing a final version tag to a commit on `main` (e.g., `v2.0.0`).
+- **Trigger**: Production releases are created by manually pushing a final version tag to a commit on `main` (e.g., `2.0.0`).
 - **Action**: This tag triggers the finalized release pipeline, which publishes the official packages to public registries. Then, we manually deploy the application first to **staging** with the final tag, and if everything looks good, then we deploy to the **production** environment using the `deploy_to_production.yml` with the given tag. A detailed set of instructions is detailed in [RELEASE.md](RELEASE.md).
 
 ## Breaking Changes
@@ -71,7 +71,7 @@ Our approach to bug fixes is handled through patch releases.
 - If a critical bug is discovered in the latest production release that requires an immediate fix, a hotfix will be prepared. This involves:
   1. Creating a `hotfix` branch from the latest release tag on `main`.
   2. Applying the fix.
-  3. Tagging a new `PATCH` version (e.g., `v1.2.1`).
+  3. Tagging a new `PATCH` version (e.g., `1.2.1`).
   4. Merging the `hotfix` branch back into `main`.
 
 ### Supporting Older Versions
@@ -80,8 +80,8 @@ Our approach to bug fixes is handled through patch releases.
 
 ## Summary of Strategy
 
-| Trigger          | Branch/Tag          | Environment(s)          | Version Example  | Purpose                                       |
-| :--------------- | :------------------ | :---------------------- | :--------------- | :-------------------------------------------- |
-| Commit to `main` | `main`              | Staging                 | (build metadata) | Continuous integration and rapid validation.  |
-| Pre-release Tag  | Tag (`v2.0.0-rc.1`) | Staging & Registries    | `2.0.0-rc.1`     | End-to-end test of the full release pipeline. |
-| Production Tag   | Tag (`v2.0.0`)      | Production & Registries | `2.0.0`          | Stable, official public release.              |
+| Trigger          | Branch/Tag         | Environment(s)          | Version Example  | Purpose                                       |
+| :--------------- | :----------------- | :---------------------- | :--------------- | :-------------------------------------------- |
+| Commit to `main` | `main`             | Staging                 | (build metadata) | Continuous integration and rapid validation.  |
+| Pre-release Tag  | Tag (`2.0.0-rc.1`) | Staging & Registries    | `2.0.0-rc.1`     | End-to-end test of the full release pipeline. |
+| Production Tag   | Tag (`2.0.0`)      | Production & Registries | `2.0.0`          | Stable, official public release.              |
