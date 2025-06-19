@@ -9,7 +9,7 @@ on:
         type: string
 jobs:
   Publish-Packages:
-    if: github.repository == 'planqtn/planqtn' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: github.repository == 'planqtn/planqtn' && startsWith(github.ref, 'refs/tags/')
     environment:
       name: ${{ contains(github.ref, 'alpha') && 'Staging' || 'Production' }}
     runs-on: ubuntu-latest
