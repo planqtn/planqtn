@@ -1,0 +1,93 @@
+name: Deploy to Staging
+run-name: ${{ github.actor }} is deploying to staging 🚀
+concurrency:
+  group: deploy-to-staging
+on:
+  workflow_dispatch:
+    inputs:
+      ui_mode:
+        description: "UI mode to deploy to"
+        required: true
+        default: "production"
+        options:
+          - production
+          - TEASER
+          - DOWN
+        type: choice
+      tag:
+        description: "Tag to deploy"
+        required: true
+        type: string
+jobs:
+  Deploy-to-Prod:
+    if: github.repository == 'planqtn/planqtn'
+    outputs:
+      deploy_url: ${{ steps.deploy.outputs.deploy_url }}
+    permissions:
+      statuses: write
+      checks: write
+      contents: write
+      pull-requests: write
+      actions: write
+    environment:
+      name: Production
+      url: ${{ steps.deploy.outputs.deploy_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out tag
+        run: |
+          git fetch --tags
+          git checkout ${{ inputs.tag }}
+          git pull origin ${{ inputs.tag }}
+      - name: Install planqtn cli
+        run: |
+          hack/cli_build.sh --install
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Cloud deploy
+        id: deploy
+        env:
+          # Secrets:
+          # Description: Supabase database password
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # Description: Supabase service key
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Description: Supabase anonymous key
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # Description: Supabase access token for GitHub Actions
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # Description: GCP service account credentials for GitHub Actions
+          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
+
+          # Vars:
+          # Description: Docker repository (e.g., Docker Hub username or repo)
+          # Default: planqtn
+          DOCKER_REPO: ${{ vars.DOCKER_REPO }}
+          # Description: Supabase project ID
+          # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          # Description: Environment
+          # Default: development
+          UI_MODE: ${{ inputs.ui_mode }}
+          # Description: GCP project ID
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          # Description: GCP region
+          # Default: us-east1
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          # Description: Terraform state bucket
+          TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
+          # Description: Terraform state prefix
+          TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
+
+        run: |
+          hack/htn cloud deploy -q --skip-images --ui-mode ${{ inputs.ui_mode }} 
+          cd app/gcp; GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
+          echo "deploy_url=https://planqtn.com" >> $GITHUB_OUTPUT

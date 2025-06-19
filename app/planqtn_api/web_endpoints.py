@@ -1,3 +1,4 @@
+import os
 import traceback
 from fastapi import APIRouter, HTTPException
 from galois import GF2
@@ -61,3 +62,10 @@ def create_msp_network(request: TannerRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/version")
+async def get_version():
+    return {
+        "api_image": os.getenv("API_IMAGE"),
+    }

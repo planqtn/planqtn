@@ -53,6 +53,10 @@ export default function AuthDialog({
   const [retryingConnection, setRetryingConnection] = useState(false);
 
   useEffect(() => {
+    if (!userContextSupabase) {
+      setLoading(false);
+      return;
+    }
     // Get initial session
     userContextSupabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUser(session?.user ?? null);
@@ -80,6 +84,10 @@ export default function AuthDialog({
   }, []);
 
   const handleEmailPasswordAuth = async (e: React.FormEvent) => {
+    if (!userContextSupabase) {
+      setError("No supabase client available");
+      return;
+    }
     e.preventDefault();
     setError("");
 
@@ -189,6 +197,9 @@ export default function AuthDialog({
     e.preventDefault();
     setResetMessage("");
     try {
+      if (!userContextSupabase) {
+        throw new Error("No supabase client available");
+      }
       const { error } = await userContextSupabase.auth.resetPasswordForEmail(
         resetEmail,
         {
@@ -208,6 +219,9 @@ export default function AuthDialog({
   };
 
   const handleSignOut = async () => {
+    if (!userContextSupabase) {
+      return;
+    }
     try {
       const { error } = await userContextSupabase.auth.signOut();
       if (error) throw error;
@@ -233,6 +247,9 @@ export default function AuthDialog({
   };
 
   const handleRetryConnection = async () => {
+    if (!userContextSupabase) {
+      return;
+    }
     setRetryingConnection(true);
     try {
       const status = await checkSupabaseStatus(userContextSupabase, 2);
@@ -324,7 +341,7 @@ export default function AuthDialog({
             <VStack spacing={6} as="form" onSubmit={handlePasswordReset}>
               <Image
                 src="/planqtn_logo.svg"
-                alt="PlanQTN Logo"
+                alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
                 mb={4}
@@ -369,7 +386,7 @@ export default function AuthDialog({
             >
               <Image
                 src="/planqtn_logo.svg"
-                alt="PlanQTN Logo"
+                alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
                 mb={4}

@@ -8,3 +8,8 @@ output "api_service_account_key" {
   value       = google_service_account_key.api_svc_key.private_key
   sensitive   = true
 }
+
+output "ui_service_url" {
+  description = "The URL of the deployed UI service"
+  value       = google_cloud_run_v2_service.planqtn_ui.uri
+}

@@ -25,4 +25,6 @@ dist-ssr
 
 # Environment variables
 .env 
-.vercel
+.env.staging 
+.env.production
+.env.balint

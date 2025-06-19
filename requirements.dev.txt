@@ -1,5 +1,0 @@
-pytest
-ipython
-pytest-cov
-aiohttp
-black

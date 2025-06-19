@@ -1,6 +1,7 @@
 # PlanqTN CLI
 
-A command-line interface tool for PlanqTN.
+A command-line interface tool for PlanqTN, to control a local kernel for [PlanqTN Tensor Studio](https://planqtn.com).
+See all the details at the [PlanqTN Github repo](https://github.com/planqtn/planqtn).
 
 ## Installation
 
@@ -16,63 +17,45 @@ npx planqtn-cli <command>
 
 ## Usage
 
-### Running Jobs
+To spin up a new local kernel
 
-```bash
-planqtn run <job_type>
+```
+htn kernel start
 ```
 
-Example:
+To get the details of the connection run:
 
-```bash
-planqtn run example
+```
+htn kernel status
 ```
 
-## Development
+Then you should see something like this:
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Build the project:
-   ```bash
-   npm run build
-   ```
-4. Run in development mode:
-   ```bash
-   npm run dev
-   ```
+```
+Supabase: Running
+k3d cluster: Running
+k8sproxy: Running
+API service: Running
+{
+   "API_URL": https://localhost:54321,
+   "ANON_KEY": ...
+}
+```
 
-## Publishing
-
-To publish a new version:
-
-1. Update the version in `package.json`
-2. Run `npm publish`
+copy the JSON, and paste it in the planqtn UI to use your local runtime with no restrictions!
 
 ## License
 
-ISC
+Copyright 2025 Balint Pato
 
-## TODO
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-### create clusters
+    http://www.apache.org/licenses/LICENSE-2.0
 
-Automate this with `planqtn start --full` (full version)
-
-```
-minikube start --network=planqtn-dev
-supabase start --network-id=planqtn-dev
-```
-
-Test out for `planqtn start` (runtime only) whether an edge runtime can be simplified or not.
-
-### create auth
-
-```
-minikube kubectl -- create serviceaccount planqtn-edge -n
-minikube kubectl -- create role planqtn-job-manager --verb=create,get,list,watch,delete --resource=jobs.batch
-minikube kubectl -- create rolebinding planqtn-job-manager-binding --role=planqtn-job-manager --serviceaccount=default:planqtn-edge
-minikube kubectl -- create token planqtn-edge
-```
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

@@ -1,0 +1,13 @@
+services:
+  planqtn-ui:
+    image: ${VITE_UI_IMAGE:-planqtn/planqtn-ui:latest}
+    container_name: planqtn-ui
+    environment:
+      - VITE_TASK_STORE_URL=${VITE_TASK_STORE_URL}
+      - VITE_TASK_STORE_ANON_KEY=${VITE_TASK_STORE_ANON_KEY}
+      - VITE_ENV=${VITE_ENV}
+      - VITE_UI_IMAGE=${VITE_UI_IMAGE}      
+      - PORT=8080
+    ports:
+      - 8080:8080
+    restart: unless-stopped
