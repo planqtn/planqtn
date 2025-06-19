@@ -506,6 +506,7 @@ abstract class Variable {
   async loadFromEnv(_vars: Variable[]): Promise<void> {
     const envVarName = this.getEnvVarName();
     const envValue = process.env[envVarName];
+    console.log("envValue for", envVarName, envValue);
     if (envValue) {
       this.setValue(envValue);
     }
@@ -714,7 +715,7 @@ class VariableManager {
       ),
       new PlainFileVar(
         {
-          name: "ui-mode",
+          name: "uiMode",
           description:
             "UI mode (development, staging, production, TEASER, DOWN)",
           defaultValue: "development",
@@ -912,10 +913,13 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
   async loadExistingValues(): Promise<void> {
     for (const variable of this.variables) {
+      console.log("loading existing values for", variable.getName());
       await variable.load(this.variables);
       if (!variable.getValue()) {
+        console.log("loading from env for", variable.getName());
         await variable.loadFromEnv(this.variables);
       }
+      console.log("loaded value for", variable.getName(), variable.getValue());
     }
     await this.loadGcpOutputs();
   }
@@ -1266,7 +1270,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("ui-mode"),
+            variableManager.getRequiredValue("uiMode"),
             false,
             options.tag
           );
@@ -1276,7 +1280,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("ui-mode"),
+            variableManager.getRequiredValue("uiMode"),
             true,
             options.tag
           );
