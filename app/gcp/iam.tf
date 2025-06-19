@@ -1,6 +1,6 @@
 # Service account for Cloud Run services
 resource "google_service_account" "cloud_run_svc" {
-  account_id   = "${var.environment}-cloud-run-svc"
+  account_id   = "cloud-run-execution-svc"
   display_name = "PlanqTN Cloud Run Service Account"
   project      = var.project_id
 }
@@ -23,10 +23,10 @@ resource "google_project_iam_member" "cloud_run_svc_roles" {
 }
 
 
-# Service account for API access
+# Service account for Client API access
 resource "google_service_account" "api_svc" {
-  account_id   = "${var.environment}-api-svc"
-  display_name = "PlanqTN API Service Account"
+  account_id   = "api-client-svc"
+  display_name = "PlanqTN API Client Service Account"
   project      = var.project_id
 }
 

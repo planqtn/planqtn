@@ -18,3 +18,4 @@
 7. Deploy to staging using the `Deploy to Staging` workflow and the new tag and do some light manual testing, check for the new features.
 8. If everything looks good, deploy to prod using the `Deploy to Production` workflow.
 9. Send out the celebratory message on Social media.
+10. Please bump to the next version using `hack/version_bump.sh`, ideally to the next prerelease, i.e, if the release was `MAJ.MIN.PATCH` then typically to `MAJ.MIN+1.0-alpha.1` (unless there's a major release, then increase to `MAJ+1.0.0-alpha.1`), this makes it easy to start with prerelease testing.

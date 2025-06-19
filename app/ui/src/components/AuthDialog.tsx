@@ -341,7 +341,7 @@ export default function AuthDialog({
             <VStack spacing={6} as="form" onSubmit={handlePasswordReset}>
               <Image
                 src="/planqtn_logo.svg"
-                alt="PlanQTN Logo"
+                alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
                 mb={4}
@@ -386,7 +386,7 @@ export default function AuthDialog({
             >
               <Image
                 src="/planqtn_logo.svg"
-                alt="PlanQTN Logo"
+                alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
                 mb={4}

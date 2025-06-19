@@ -59,7 +59,7 @@ async function setupSupabase(
     stdio: "inherit",
     env: {
       ...process.env,
-      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
     }
   });
 
@@ -236,6 +236,20 @@ async function terraform(
   return null;
 }
 
+async function unlockTerraformState(
+  terraformStateBucket: string,
+  terraformStatePrefix: string
+): Promise<void> {
+  await terraform(
+    `init -reconfigure -backend-config="bucket=${terraformStateBucket}" -backend-config="prefix=${terraformStatePrefix}"`,
+    true
+  );
+
+  const prompt = promptSync({ sigint: true });
+  const lockId = await prompt("Enter the lock ID to unlock: ");
+  await terraform(`force-unlock ${lockId}`, true);
+}
+
 async function setupGCP(
   supabaseProjectId: string,
   supabaseServiceKey: string,
@@ -244,6 +258,7 @@ async function setupGCP(
   gcpRegion: string,
   terraformStateBucket: string,
   terraformStatePrefix: string,
+  uiMode: string,
   loginCheck: boolean = false
 ): Promise<void> {
   const tfvarsPath = path.join(APP_DIR, "gcp", "terraform.tfvars");
@@ -276,7 +291,7 @@ async function setupGCP(
     supabase_url: `https://${supabaseProjectId}.supabase.co`,
     supabase_service_key: supabaseServiceKey,
     supabase_anon_key: supabaseAnonKey,
-    environment: "dev"
+    ui_mode: uiMode
   });
 
   await terraform(
@@ -440,14 +455,7 @@ interface VariableConfig {
   isSecret?: boolean;
   defaultValue?: string;
   notSetInGithubActions?: boolean;
-  requiredFor: (
-    | "images"
-    | "supabase"
-    | "supabase-secrets"
-    | "gcp"
-    | "github-actions"
-    | "integration-test-config"
-  )[];
+  requiredFor: CloudDeploymentPhase[];
   outputBy?: "images" | "supabase" | "gcp";
   hint?: string;
 }
@@ -686,7 +694,7 @@ class VariableManager {
           name: "dockerRepo",
           description: "Docker repository (e.g., Docker Hub username or repo)",
           defaultValue: "planqtn",
-          requiredFor: ["images"]
+          requiredFor: ["images", "gcp", "supabase-secrets", "supabase"]
         },
         configDir,
         "docker-repo"
@@ -780,7 +788,7 @@ class VariableManager {
         {
           name: "terraformStateBucket",
           description: "Terraform state bucket",
-          requiredFor: ["gcp"],
+          requiredFor: ["gcp", "unlock-terraform-state"],
           hint: `This is the name of the bucket that will be used to store the terraform state. It needs to be unique across all GCP projects globally.`
         },
         configDir,
@@ -790,7 +798,7 @@ class VariableManager {
         {
           name: "terraformStatePrefix",
           description: "Terraform state prefix",
-          requiredFor: ["gcp"],
+          requiredFor: ["gcp", "unlock-terraform-state"],
           hint: `This is the prefix that will be used to store the terraform state. Within the same project there could be a dev and a prod setup for example.`
         },
         configDir,
@@ -1025,6 +1033,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     "supabase-secrets": boolean;
     "integration-test-config": boolean;
     "github-actions": boolean;
+    "unlock-terraform-state": boolean;
   }): Promise<void> {
     const prompt = promptSync({ sigint: true });
     console.log("\n=== Collecting Configuration ===");
@@ -1126,8 +1135,8 @@ async function checkCredentials(
       // Test database connection using pg client
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
-      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:5432/postgres
-      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`;
+      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
 
       const client = new Client({ connectionString });
       await client.connect();
@@ -1153,6 +1162,7 @@ async function checkCredentials(
         variableManager.getRequiredValue("gcpRegion"),
         variableManager.getRequiredValue("terraformStateBucket"),
         variableManager.getRequiredValue("terraformStatePrefix"),
+        variableManager.getValue("uiMode") || "development",
         true
       );
     } catch (error) {
@@ -1220,7 +1230,8 @@ export function setupCloudCommand(program: Command): void {
           gcp: options.skipGcp,
           "supabase-secrets": options.skipSupabaseSecrets,
           "integration-test-config": options.skipIntegrationTestConfig,
-          "github-actions": true
+          "github-actions": true,
+          "unlock-terraform-state": true
         };
 
         if (options.only) {
@@ -1270,7 +1281,11 @@ export function setupCloudCommand(program: Command): void {
             false,
             options.tag
           );
-        } else {
+        } else if (
+          !skipPhases.gcp ||
+          !skipPhases.supabase ||
+          !skipPhases["supabase-secrets"]
+        ) {
           await buildAndPushImagesAndUpdateEnvFiles(
             options.refuseDirtyBuilds,
             variableManager.getRequiredValue("dockerRepo"),
@@ -1307,7 +1322,8 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("gcpProjectId"),
             variableManager.getRequiredValue("gcpRegion"),
             variableManager.getRequiredValue("terraformStateBucket"),
-            variableManager.getRequiredValue("terraformStatePrefix")
+            variableManager.getRequiredValue("terraformStatePrefix"),
+            variableManager.getRequiredValue("uiMode")
           );
           // Reload outputs after GCP setup
           await variableManager.loadGcpOutputs();
@@ -1368,7 +1384,8 @@ export function setupCloudCommand(program: Command): void {
           gcp: true,
           "supabase-secrets": true,
           "integration-test-config": false,
-          "github-actions": true
+          "github-actions": true,
+          "unlock-terraform-state": true
         };
 
         await variableManager.prompt(skipPhases);
@@ -1556,6 +1573,32 @@ ${options.repoName ? `on repo ${options.repoName}` : ""}
         process.exit(1);
       }
     });
+
+  cloudCommand
+    .command("unlock-terraform-state")
+    .description("Unlock the terraform state")
+    .action(async () => {
+      const configDir = path.join(
+        process.env.HOME || "",
+        ".planqtn",
+        ".config"
+      );
+      const variableManager = new VariableManager(configDir);
+      await variableManager.loadExistingValues();
+      await variableManager.prompt({
+        images: true,
+        supabase: true,
+        gcp: true,
+        "supabase-secrets": true,
+        "integration-test-config": true,
+        "github-actions": true,
+        "unlock-terraform-state": false
+      });
+      await unlockTerraformState(
+        variableManager.getRequiredValue("terraformStateBucket"),
+        variableManager.getRequiredValue("terraformStatePrefix")
+      );
+    });
 }
 
 type CloudDeploymentPhase =
@@ -1564,7 +1607,8 @@ type CloudDeploymentPhase =
   | "gcp"
   | "supabase-secrets"
   | "integration-test-config"
-  | "github-actions";
+  | "github-actions"
+  | "unlock-terraform-state";
 
 interface CloudOptions {
   nonInteractive: boolean;
