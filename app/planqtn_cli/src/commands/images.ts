@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { runCommand, updateEnvFile } from "../utils";
+import { runCommand, getGitTag, updateEnvFile } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
 import * as tty from "tty";
@@ -8,18 +8,6 @@ import { k3d } from "../k3d";
 import { getDockerRepo } from "./cloud";
 import { execSync } from "child_process";
 import { writeFile } from "fs/promises";
-
-async function getGitTag(): Promise<string> {
-  const commitHash = (await runCommand(
-    "git",
-    ["rev-parse", "--short", "HEAD"],
-    { returnOutput: true }
-  )) as string;
-  const status = (await runCommand("git", ["status", "-s"], {
-    returnOutput: true
-  })) as string;
-  return status.trim() ? `${commitHash.trim()}-dirty` : commitHash.trim();
-}
 
 async function checkK3dRunning(cluster: string): Promise<boolean> {
   try {

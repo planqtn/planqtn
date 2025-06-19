@@ -94,7 +94,8 @@ jobs:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt
+          pip install --upgrade uv
+          uv pip install -r pyproject.toml --all-extras --system
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -116,7 +117,7 @@ jobs:
           KERNEL_ENV: local
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt --system
           check/jobs-integration
 
       - name: Run api integration tests
@@ -124,7 +125,7 @@ jobs:
           KERNEL_ENV: local
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
+          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt --system
           check/api-integration
       - name: Display disk space
         run: |

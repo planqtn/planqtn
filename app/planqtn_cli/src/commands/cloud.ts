@@ -12,8 +12,8 @@ import promptSync from "prompt-sync";
 import * as https from "https";
 import * as os from "os";
 import { Client } from "pg";
-import { PLANQTN_BIN_DIR } from "../config";
 import { ensureEmptyDir } from "../utils";
+import { PLANQTN_BIN_DIR } from "../config";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -24,6 +24,7 @@ const unlink = promisify(fs.unlink);
 // Get the app directory path (one level up from planqtn_cli)
 const APP_DIR = path.join(process.cwd(), "..");
 const CONFIG_DIR = path.join(process.env.HOME!, ".planqtn", ".config");
+const GENERATED_DIR = path.join(CONFIG_DIR, "generated");
 
 interface TerraformVars {
   project_id?: string;
@@ -58,7 +59,7 @@ async function setupSupabase(
     stdio: "inherit",
     env: {
       ...process.env,
-      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
+      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
     }
   });
 
@@ -182,34 +183,42 @@ async function ensureTerraformInstalled(): Promise<string> {
   console.log("Terraform installed successfully.");
   return terraformPath;
 }
-
-async function terraform(
-  args: string,
-  printOutput: boolean = false
-): Promise<string | null> {
-  const terraformPath = await ensureTerraformInstalled();
-
-  let gcpSvcAccountKeyPath: string | undefined;
+async function ensureGcpSvcAccountKeyIsGenerated(): Promise<{
+  gcpSvcAccountKeyPath: string;
+  gcpSvcAccountKey: Record<string, string>;
+} | null> {
   if (process.env.GCP_SVC_CREDENTIALS) {
     const decodedKey = Buffer.from(
       process.env.GCP_SVC_CREDENTIALS,
       "base64"
     ).toString("utf-8");
     const gcpSvcAccountKey = JSON.parse(decodedKey);
-    gcpSvcAccountKeyPath = path.join(
-      CONFIG_DIR,
+    const gcpSvcAccountKeyPath = path.join(
+      GENERATED_DIR,
       "gcp-service-account-key.json"
     );
     await writeFile(
       gcpSvcAccountKeyPath,
       JSON.stringify(gcpSvcAccountKey, null, 2)
     );
+    return {
+      gcpSvcAccountKeyPath,
+      gcpSvcAccountKey
+    };
   }
+  return null;
+}
+async function terraform(
+  args: string,
+  printOutput: boolean = false
+): Promise<string | null> {
+  const terraformPath = await ensureTerraformInstalled();
 
-  const tfEnv = process.env.GCP_SVC_CREDENTIALS
+  const gcpSvcAccountResult = await ensureGcpSvcAccountKeyIsGenerated();
+  const tfEnv = gcpSvcAccountResult
     ? {
         ...process.env,
-        GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountKeyPath
+        GOOGLE_APPLICATION_CREDENTIALS: gcpSvcAccountResult.gcpSvcAccountKeyPath
       }
     : process.env;
 
@@ -280,20 +289,13 @@ async function setupGCP(
   } else {
     await terraform(`state list`, false);
 
-    if (process.env.GCP_SVC_CREDENTIALS) {
-      const decodedKey = Buffer.from(
-        process.env.GCP_SVC_CREDENTIALS,
-        "base64"
-      ).toString("utf-8");
-      const gcpSvcAccountKey = JSON.parse(decodedKey);
-      const tfDeployerEmail = gcpSvcAccountKey.client_email;
+    const gcpSvcAccountResult = await ensureGcpSvcAccountKeyIsGenerated();
+
+    if (gcpSvcAccountResult) {
+      const tfDeployerEmail = gcpSvcAccountResult.gcpSvcAccountKey.client_email;
       // this is a bit hacky, but we rely on the terraform call to have already placed this ...
-      const gcpSvcAccountKeyPath = path.join(
-        CONFIG_DIR,
-        "gcp-service-account-key.json"
-      );
       execSync(
-        `gcloud auth activate-service-account ${tfDeployerEmail} --key-file=${gcpSvcAccountKeyPath} --project=${gcpProjectId}`
+        `gcloud auth activate-service-account ${tfDeployerEmail} --key-file=${gcpSvcAccountResult.gcpSvcAccountKeyPath} --project=${gcpProjectId}`
       );
       const policy = execSync(
         `gcloud projects get-iam-policy ${gcpProjectId} --flatten="bindings[].members" --format='table(bindings.role)' --filter="bindings.members:${tfDeployerEmail}"`
@@ -367,7 +369,7 @@ async function buildAndPushImagesAndUpdateEnvFiles(
   dockerRepo: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
-  environment: string,
+  ui_mode: string,
   onlyEnvFileUpdate: boolean = false,
   tagOverride: string | undefined = undefined
 ): Promise<void> {
@@ -422,7 +424,7 @@ async function buildAndPushImagesAndUpdateEnvFiles(
   const envContent = [
     `VITE_TASK_STORE_URL=${supabaseUrl}`,
     `VITE_TASK_STORE_ANON_KEY=${supabaseAnonKey}`,
-    `VITE_ENV=${environment}`,
+    `VITE_ENV=${ui_mode}`,
     `${envVar}=${imageName}`
   ].join("\n");
 
@@ -437,6 +439,7 @@ interface VariableConfig {
   description: string;
   isSecret?: boolean;
   defaultValue?: string;
+  notSetInGithubActions?: boolean;
   requiredFor: (
     | "images"
     | "supabase"
@@ -474,7 +477,7 @@ abstract class Variable {
   getRequiredValue(): string {
     if (!this.value) {
       throw new Error(
-        `Required variable ${this.config.name} is not set. Hint: ${this.config.hint}`
+        `Required variable ${this.config.name} is not set. ${this.config.hint ? `Hint: ${this.config.hint}` : ""}`
       );
     }
     return this.value;
@@ -503,6 +506,7 @@ abstract class Variable {
   async loadFromEnv(_vars: Variable[]): Promise<void> {
     const envVarName = this.getEnvVarName();
     const envValue = process.env[envVarName];
+    console.log("envValue for", envVarName, envValue);
     if (envValue) {
       this.setValue(envValue);
     }
@@ -670,10 +674,13 @@ function getRequiredTfDeployerRolesCommands(
 
 class VariableManager {
   private configDir: string;
+  private generatedDir: string;
   private variables: Variable[];
 
   constructor(configDir: string) {
     this.configDir = configDir;
+    this.generatedDir = path.join(this.configDir, "generated");
+    ensureEmptyDir(this.generatedDir);
     this.variables = [
       new PlainFileVar(
         {
@@ -708,13 +715,15 @@ class VariableManager {
       ),
       new PlainFileVar(
         {
-          name: "environment",
-          description: "Environment",
+          name: "uiMode",
+          description:
+            "UI mode (development, staging, production, TEASER, DOWN)",
           defaultValue: "development",
-          requiredFor: ["supabase-secrets", "gcp"]
+          requiredFor: ["gcp"],
+          notSetInGithubActions: true
         },
         configDir,
-        "environment"
+        "ui-mode"
       ),
       new EnvFileVar(
         {
@@ -904,10 +913,13 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
   async loadExistingValues(): Promise<void> {
     for (const variable of this.variables) {
+      console.log("loading existing values for", variable.getName());
       await variable.load(this.variables);
       if (!variable.getValue()) {
+        console.log("loading from env for", variable.getName());
         await variable.loadFromEnv(this.variables);
       }
+      console.log("loaded value for", variable.getName(), variable.getValue());
     }
     await this.loadGcpOutputs();
   }
@@ -1072,7 +1084,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       SERVICE_ROLE_KEY: this.getValue("supabaseServiceKey")
     };
 
-    const configPath = path.join(this.configDir, "supabase_config.json");
+    const configPath = path.join(this.generatedDir, "supabase_config.json");
     await writeFile(configPath, JSON.stringify(config, null, 2));
     console.log("Integration test config generated at:", configPath);
   }
@@ -1118,7 +1130,8 @@ async function checkCredentials(
       // Test database connection using pg client
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
-      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
+      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:5432/postgres
+      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`;
 
       const client = new Client({ connectionString });
       await client.connect();
@@ -1126,7 +1139,7 @@ async function checkCredentials(
       await client.end();
     } catch (error) {
       throw new Error(
-        "Failed to verify Supabase credentials. Please ensure you're logged in and have correct database credentials: " +
+        "Failed to verify Supabase credentials. Please ensure that you have the correct database credentials: " +
           error
       );
     }
@@ -1257,7 +1270,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("environment"),
+            variableManager.getRequiredValue("uiMode"),
             false,
             options.tag
           );
@@ -1267,7 +1280,7 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
-            variableManager.getRequiredValue("environment"),
+            variableManager.getRequiredValue("uiMode"),
             true,
             options.tag
           );
@@ -1456,15 +1469,65 @@ export function setupCloudCommand(program: Command): void {
         );
         const variableManager = new VariableManager(configDir);
         await variableManager.loadExistingValues();
-        const userVars = variableManager.getUserVariables();
+        const userVars = variableManager
+          .getUserVariables()
+          .filter((v) => !v.getConfig().notSetInGithubActions);
         const prompt = promptSync({ sigint: true });
         for (const variable of userVars) {
           await variable.prompt(prompt);
+
+          while (variable.getValue() === undefined) {
+            await variable.prompt(prompt);
+            if (variable.getValue() === undefined) {
+              console.log("Please enter a value for the variable");
+            }
+          }
           await variableManager.saveValues();
         }
 
+        let readyToCheckCredentials = "";
+        while (
+          readyToCheckCredentials !== "y" &&
+          readyToCheckCredentials !== "n"
+        ) {
+          readyToCheckCredentials = prompt(
+            `==========================
+Ready to check credentials?
+===========================
+(y/n) `
+          );
+          if (readyToCheckCredentials === "n") {
+            console.log("Aborting...");
+            process.exit(0);
+          }
+        }
+
+        if (!process.env.GCP_SVC_CREDENTIALS) {
+          process.env.GCP_SVC_CREDENTIALS =
+            variableManager.getValue("gcpSvcCredentials");
+        }
+
+        await checkCredentials(
+          {
+            images: false,
+            supabase: false,
+            gcp: false,
+            "supabase-secrets": false,
+            "integration-test-config": false,
+            "github-actions": false
+          },
+          variableManager
+        );
+
         const answer = prompt(
-          `Are you sure you want to set these up in Github Actions on repo ${repoWithName} (y/n)`
+          `================================================================================
+Are you sure you want to set these up in Github Actions on repo ${repoWithName}?
+This will set the following variables:
+${userVars.map((v) => `- ${v.getEnvVarName()}: ${v.getConfig().isSecret ? "***" : v.getValue()}`).join("\n")}
+${options.repoEnv ? `in environment ${options.repoEnv}` : ""}
+${options.repoName ? `on repo ${options.repoName}` : ""}
+=================================================================================
+(y/n)`
         );
         if (answer !== "y") {
           console.log("Aborting...");
@@ -1472,9 +1535,9 @@ export function setupCloudCommand(program: Command): void {
         }
 
         const gh =
-          "gh " +
-          (options.repoName ? `-R ${options.repoName}` : "") +
-          (options.repoEnv ? `-e ${options.repoEnv}` : "");
+          "gh" +
+          (options.repoName ? ` -R ${options.repoName}` : "") +
+          (options.repoEnv ? ` -e ${options.repoEnv}` : "");
 
         for (const variable of userVars) {
           const config = variable.getConfig();
