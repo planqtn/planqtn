@@ -4,8 +4,7 @@ on:
   pull_request:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
@@ -15,8 +14,7 @@ on:
   push:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
