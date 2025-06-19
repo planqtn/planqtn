@@ -359,6 +359,41 @@ To test that the service account was setup correctly, you can logout of gcloud b
 GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0) hack/htn cloud deploy -q
 ```
 
+### Unlocking the terraform deployment
+
+Sometimes, when you cancel a terraform deployment in the middle (on Github Actions as well!) it can leave a stale lock in place. For example:
+
+```
+╷
+│ Error: Error acquiring the state lock
+│
+│ Error message: writing "gs://planqtn-staging-tfstate/stg/default.tflock"
+│ failed: googleapi: Error 412: At least one of the pre-conditions you
+│ specified did not hold., conditionNotMet
+│ Lock Info:
+│   ID:        1750351695430284
+│   Path:      gs://planqtn-staging-tfstate/stg/default.tflock
+│   Operation: OperationTypeApply
+│   Who:       runner@fv-az1938-75
+│   Version:   1.7.4
+│   Created:   2025-06-19 16:48:15.335242296 +0000 UTC
+│   Info:
+│
+│
+│ Terraform acquires a state lock to protect the state from being written
+│ by multiple users at the same time. Please resolve the issue above and try
+│ again. For most commands, you can disable locking with the "-lock=false"
+│ flag, but this is not recommended.
+```
+
+The way to unlock it is by manually:
+
+```
+hack/htn cloud unlock-terraform-state
+```
+
+(of course, if you're prudent, run it as the tf-deployer service account `GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0)`).
+
 ## PlanqTN CLI
 
 The CLI can be run in two modes:
