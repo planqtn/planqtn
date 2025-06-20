@@ -1,3 +1,4 @@
+import datetime
 import json
 from fastapi.testclient import TestClient
 from galois import GF2
@@ -78,20 +79,12 @@ def test_css_tanner_network_bell_state():
     assert np.array_equal(expected_h, response_h)
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize("network_type", ["MSP", "CSS_TANNER", "TANNER"])
-def test_msp_tanner_network_bell_state_integration(supabase_setup, network_type):
-
+def sample_tensornetwork_call(supabase_setup, network_type, matrix):
     supabase_url = supabase_setup["api_url"]
     supabase_user_key = supabase_setup["test_user_token"]
     url = f"{supabase_url}/functions/v1/tensornetwork"
 
-    matrix = [
-        [0, 0, 1, 1],
-        [1, 1, 0, 0],
-    ]
-
-    response = requests.post(
+    return requests.post(
         url,
         json={
             "matrix": matrix,
@@ -103,6 +96,18 @@ def test_msp_tanner_network_bell_state_integration(supabase_setup, network_type)
             "Authorization": f"Bearer {supabase_user_key}",
         },
     )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("network_type", ["MSP", "CSS_TANNER", "TANNER"])
+def test_tensornetwork_call_e2e_integration(supabase_setup, network_type):
+    matrix = [
+        [0, 0, 1, 1],
+        [1, 1, 0, 0],
+    ]
+
+    response = sample_tensornetwork_call(supabase_setup, network_type, matrix)
+
     assert (
         response.status_code == 200
     ), f"Failed to call function, status code: {response.status_code}, response: {response}"
@@ -116,3 +121,110 @@ def test_msp_tanner_network_bell_state_integration(supabase_setup, network_type)
     )
     print(response_h)
     assert np.array_equal(response_h, gauss(GF2(matrix)))
+
+
+@pytest.mark.integration
+@pytest.mark.cloud_only_integration
+def test_tensornetwork_call_quota_exceeded(supabase_setup):
+    service_client: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+
+    res = (
+        service_client.table("quotas")
+        .select("*")
+        .eq("user_id", supabase_setup["test_user_id"])
+        .execute()
+    )
+
+    assert len(res.data) == 1
+    assert res.data[0]["user_id"] == supabase_setup["test_user_id"]
+    assert res.data[0]["quota_type"] == "cloud-run-minutes"
+    assert res.data[0]["monthly_limit"] == 500
+
+    quota_id = res.data[0]["id"]
+
+    res = (
+        service_client.table("quota_usage")
+        .insert(
+            [
+                {
+                    "quota_id": quota_id,
+                    "usage_ts": str(datetime.datetime.now()),
+                    "amount_used": 300,
+                    "explanation": json.dumps({"reason": "test1"}),
+                },
+                {
+                    "quota_id": quota_id,
+                    "usage_ts": str(datetime.datetime.now()),
+                    "amount_used": 200,
+                    "explanation": json.dumps({"reason": "test2"}),
+                },
+            ]
+        )
+        .execute()
+    )
+
+    response = sample_tensornetwork_call(
+        supabase_setup,
+        "CSS_TANNER",
+        [
+            [0, 0, 1, 1],
+            [1, 1, 0, 0],
+        ],
+    )
+    assert response.status_code == 403
+    assert (
+        response.json()["error"]
+        == "Quota cloud-run-minutes exceeded. Current usage: 500, Requested: 0.5, Limit: 500"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.cloud_only_integration
+def test_tensornetwork_call_adds_quota_usage(supabase_setup):
+    service_client: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+
+    # let's set the user's quota to below the threshold
+
+    res = (
+        service_client.table("quotas")
+        .select("*")
+        .eq("user_id", supabase_setup["test_user_id"])
+        .execute()
+    )
+
+    assert len(res.data) == 1
+    assert res.data[0]["user_id"] == supabase_setup["test_user_id"]
+    assert res.data[0]["quota_type"] == "cloud-run-minutes"
+    assert res.data[0]["monthly_limit"] == 500
+
+    quota_id = res.data[0]["id"]
+
+    # let's request a tensornetwork call
+    response = sample_tensornetwork_call(
+        supabase_setup,
+        "CSS_TANNER",
+        [
+            [0, 0, 1, 1],
+            [1, 1, 0, 0],
+        ],
+    )
+    assert (
+        response.status_code == 200
+    ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
+
+    res = (
+        service_client.table("quota_usage")
+        .select("*")
+        .eq("quota_id", quota_id)
+        .execute()
+    )
+    assert len(res.data) == 1
+    # right now 0.5 minutes used for each tensornetwork call
+    assert res.data[0]["amount_used"] == 0.5
+    assert res.data[0]["explanation"] == {
+        "usage_type": "tensornetwork_call",
+    }

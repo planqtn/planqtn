@@ -380,7 +380,7 @@ async function setupSupabaseSecrets(
 }
 
 async function buildAndPushImagesAndUpdateEnvFiles(
-  refuseDirtyBuilds: boolean,
+  acceptDirtyBuilds: boolean,
   dockerRepo: string,
   supabaseUrl: string,
   supabaseAnonKey: string,
@@ -388,7 +388,7 @@ async function buildAndPushImagesAndUpdateEnvFiles(
   onlyEnvFileUpdate: boolean = false,
   tagOverride: string | undefined = undefined
 ): Promise<void> {
-  if (refuseDirtyBuilds) {
+  if (!acceptDirtyBuilds) {
     if (tagOverride && tagOverride.includes("-dirty")) {
       // while this is not fool proof, it's a good enough sanity check to avoid deploying dirty images and incentivise reproducible builds
       throw new Error(
@@ -1208,11 +1208,7 @@ export function setupCloudCommand(program: Command): void {
       "--skip-integration-test-config",
       "Skip integration test config generation"
     )
-    .option(
-      "--refuse-dirty-builds <boolean>",
-      "Fail if git working directory is dirty (default: true)",
-      true
-    )
+    .option("--accept-dirty-builds", "Accept dirty builds (default: false)")
     .action(async (options: CloudOptions) => {
       console.log("options", options);
       try {
@@ -1273,7 +1269,7 @@ export function setupCloudCommand(program: Command): void {
           await variableManager.validatePhaseRequirements("images", skipPhases);
           console.log("\nBuilding and pushing images...");
           await buildAndPushImagesAndUpdateEnvFiles(
-            options.refuseDirtyBuilds,
+            options.acceptDirtyBuilds,
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
@@ -1287,7 +1283,7 @@ export function setupCloudCommand(program: Command): void {
           !skipPhases["supabase-secrets"]
         ) {
           await buildAndPushImagesAndUpdateEnvFiles(
-            options.refuseDirtyBuilds,
+            options.acceptDirtyBuilds,
             variableManager.getRequiredValue("dockerRepo"),
             variableManager.getRequiredValue("supabaseUrl"),
             variableManager.getRequiredValue("supabaseAnonKey"),
@@ -1618,7 +1614,7 @@ interface CloudOptions {
   skipGcp: boolean;
   skipUi: boolean;
   skipIntegrationTestConfig: boolean;
-  refuseDirtyBuilds: boolean;
+  acceptDirtyBuilds: boolean;
   tag: string | undefined;
   only: CloudDeploymentPhase;
 }

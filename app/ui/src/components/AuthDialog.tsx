@@ -101,7 +101,12 @@ export default function AuthDialog({
       if (isSignUp) {
         const { error } = await userContextSupabase.auth.signUp({
           email,
-          password
+          password,
+          options: {
+            data: {
+              emailRedirectTo: `${window.location}`
+            }
+          }
         });
         if (error) throw error;
 

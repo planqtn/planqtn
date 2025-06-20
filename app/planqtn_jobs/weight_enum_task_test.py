@@ -376,20 +376,8 @@ def assert_properties_of_job(
     return True
 
 
-@pytest.mark.integration
-def test_e2e_through_function_call(
-    supabase_setup,
-    k8s_apis,
-    image_tag,
-):
+def request_job(supabase_setup, payload) -> requests.Response:
     # Create Supabase client with test user token
-    user_sb_client: Client = create_client(
-        supabase_setup["api_url"],
-        supabase_setup["anon_key"],
-        options=ClientOptions(
-            headers={"Authorization": f"Bearer {supabase_setup['test_user_token']}"}
-        ),
-    )
 
     supabase_url = supabase_setup["api_url"]
     supabase_anon_key = supabase_setup["anon_key"]
@@ -419,6 +407,17 @@ def test_e2e_through_function_call(
             "Authorization": f"Bearer {supabase_user_key}",
         },
     )
+
+    return response
+
+
+@pytest.mark.integration
+def test_e2e_through_function_call(
+    supabase_setup,
+    k8s_apis,
+    image_tag,
+):
+    response = request_job(supabase_setup, json.loads(TEST_JSON))
     assert (
         response.status_code == 200
     ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
@@ -430,6 +429,14 @@ def test_e2e_through_function_call(
     print(f"Task UUID: {task_uuid}")
 
     try:
+        user_sb_client: Client = create_client(
+            supabase_setup["api_url"],
+            supabase_setup["anon_key"],
+            options=ClientOptions(
+                headers={"Authorization": f"Bearer {supabase_setup['test_user_token']}"}
+            ),
+        )
+
         # Wait for the task to be created
         while True:
             task = (
@@ -483,3 +490,97 @@ def test_e2e_through_function_call(
 
     finally:
         user_sb_client.table("tasks").delete().eq("uuid", task_uuid).execute()
+
+
+@pytest.mark.integration
+@pytest.mark.cloud_only_integration
+def test_job_refused_due_to_quota(supabase_setup):
+    service_client: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+
+    res = (
+        service_client.table("quotas")
+        .select("*")
+        .eq("user_id", supabase_setup["test_user_id"])
+        .execute()
+    )
+
+    assert len(res.data) == 1
+    assert res.data[0]["user_id"] == supabase_setup["test_user_id"]
+    assert res.data[0]["quota_type"] == "cloud-run-minutes"
+    assert res.data[0]["monthly_limit"] == 500
+
+    quota_id = res.data[0]["id"]
+
+    res = (
+        service_client.table("quota_usage")
+        .insert(
+            [
+                {
+                    "quota_id": quota_id,
+                    "usage_ts": str(datetime.datetime.now()),
+                    "amount_used": 300,
+                    "explanation": json.dumps({"reason": "test1"}),
+                },
+                {
+                    "quota_id": quota_id,
+                    "usage_ts": str(datetime.datetime.now()),
+                    "amount_used": 200,
+                    "explanation": json.dumps({"reason": "test2"}),
+                },
+            ]
+        )
+        .execute()
+    )
+    # let's request a job
+    response = request_job(supabase_setup, json.loads(TEST_JSON))
+    assert response.status_code == 403
+    assert (
+        response.json()["error"]
+        == "Quota cloud-run-minutes exceeded. Current usage: 500, Requested: 5, Limit: 500"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.cloud_only_integration
+def test_job_call_adds_quota_usage(supabase_setup):
+    service_client: Client = create_client(
+        supabase_setup["api_url"], supabase_setup["service_role_key"]
+    )
+
+    # let's set the user's quota to below the threshold
+
+    res = (
+        service_client.table("quotas")
+        .select("*")
+        .eq("user_id", supabase_setup["test_user_id"])
+        .execute()
+    )
+
+    assert len(res.data) == 1
+    assert res.data[0]["user_id"] == supabase_setup["test_user_id"]
+    assert res.data[0]["quota_type"] == "cloud-run-minutes"
+    assert res.data[0]["monthly_limit"] == 500
+
+    quota_id = res.data[0]["id"]
+
+    # let's request a job
+    response = request_job(supabase_setup, json.loads(TEST_JSON))
+    assert (
+        response.status_code == 200
+    ), f"Failed to call function, status code: {response.status_code}, response: {response.json()}"
+
+    res = (
+        service_client.table("quota_usage")
+        .select("*")
+        .eq("quota_id", quota_id)
+        .execute()
+    )
+    assert len(res.data) == 1
+    # right now 5 minutes used for each job kickoff
+    assert res.data[0]["amount_used"] == 5
+    assert res.data[0]["explanation"] == {
+        "usage_type": "job_run",
+        "task_id": response.json()["task_id"],
+    }

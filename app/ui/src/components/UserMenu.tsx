@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Menu,
   MenuButton,
@@ -12,15 +12,18 @@ import {
   VStack,
   Tooltip
 } from "@chakra-ui/react";
-import { FiUser, FiAlertCircle } from "react-icons/fi";
+import { FiUser, FiAlertCircle, FiPieChart } from "react-icons/fi";
 import { User } from "@supabase/supabase-js";
 import { userContextSupabase } from "../supabaseClient";
+import { QuotasModal } from "./QuotasModal";
+
 interface UserMenuProps {
   user?: User | null;
   onSignIn?: () => void;
 }
 
 export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
+  const [isQuotasModalOpen, setIsQuotasModalOpen] = useState(false);
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
 
@@ -92,27 +95,45 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
   };
 
   return (
-    <Menu>
-      <MenuButton
-        as={HStack}
-        spacing={2}
-        px={3}
-        py={2}
-        rounded="md"
-        cursor="pointer"
-        alignItems="center"
-        _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-      >
-        <VStack spacing={2}>
-          <Avatar size="sm" name={user.email || undefined} />
-          <Text fontSize="sm" lineHeight={1} display="flex" alignItems="center">
-            {user.email}
-          </Text>
-        </VStack>
-      </MenuButton>
-      <MenuList bg={bgColor} borderColor={borderColor}>
-        <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
-      </MenuList>
-    </Menu>
+    <>
+      <Menu>
+        <MenuButton
+          as={HStack}
+          spacing={2}
+          px={3}
+          py={2}
+          rounded="md"
+          cursor="pointer"
+          alignItems="center"
+          _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
+        >
+          <VStack spacing={2}>
+            <Avatar size="sm" name={user.email || undefined} />
+            <Text
+              fontSize="sm"
+              lineHeight={1}
+              display="flex"
+              alignItems="center"
+            >
+              {user.email}
+            </Text>
+          </VStack>
+        </MenuButton>
+        <MenuList bg={bgColor} borderColor={borderColor}>
+          <MenuItem
+            onClick={() => setIsQuotasModalOpen(true)}
+            icon={<Icon as={FiPieChart} />}
+          >
+            My quotas
+          </MenuItem>
+          <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
+        </MenuList>
+      </Menu>
+
+      <QuotasModal
+        isOpen={isQuotasModalOpen}
+        onClose={() => setIsQuotasModalOpen(false)}
+      />
+    </>
   );
 };

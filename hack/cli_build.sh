@@ -36,6 +36,7 @@ function restore_env_file() {
         cat $tmp_log
     fi    
     set +e
+    rm -rf $tarball
     popd > /dev/null 2>&1 || true
 
 }

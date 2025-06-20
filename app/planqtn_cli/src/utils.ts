@@ -256,3 +256,15 @@ export async function updateEnvFile(
 
   fs.writeFileSync(envPath, envContent);
 }
+
+const GREEN = "\x1b[32m";
+const RED = "\x1b[31m";
+const RESET = "\x1b[0m";
+
+export function green(str: string): string {
+  return GREEN + str + RESET;
+}
+
+export function red(str: string): string {
+  return RED + str + RESET;
+}

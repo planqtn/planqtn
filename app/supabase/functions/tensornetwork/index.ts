@@ -1,7 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
 import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { reserveQuota } from "../shared/lib/quotas.ts";
 
 const URL_CONFIG = {
   MSP: "mspnetwork",
@@ -27,7 +28,9 @@ Deno.serve(async (req) => {
   const apiUrl = `${backendUrl}/${URL_CONFIG[reqJson.networkType]}`;
   console.log(`API URL: ${apiUrl}`);
 
-  const headers = backendUrl.includes("run.app")
+  const isCloudRun = backendUrl.includes("run.app");
+
+  const headers = isCloudRun
     ? {
         ...(await cloudRunHeaders(backendUrl)),
         "Content-Type": "application/json"
@@ -37,6 +40,45 @@ Deno.serve(async (req) => {
       };
 
   try {
+    if (isCloudRun) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        throw new Error("No authorization header");
+      }
+      const callingUserBearerToken = authHeader.split(" ")[1];
+      if (!callingUserBearerToken) {
+        throw new Error("No calling user bearer token");
+      }
+      const taskStore = createClient(
+        Deno.env.get("SUPABASE_URL"),
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      );
+
+      const { data: userData, error: userError } = await taskStore.auth.getUser(
+        callingUserBearerToken
+      );
+      if (userError || !userData) {
+        console.error("Failed to get user", userError);
+        throw new Error(userError.message);
+      }
+
+      const quota_error = await reserveQuota(
+        userData.user.id,
+        "cloud-run-minutes",
+        0.5,
+        taskStore,
+        {
+          usage_type: "tensornetwork_call"
+        }
+      );
+      if (quota_error) {
+        return new Response(JSON.stringify({ error: quota_error }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+    }
+
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: headers,

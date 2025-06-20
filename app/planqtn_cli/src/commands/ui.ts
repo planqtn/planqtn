@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import path from "path";
-import { cfgDir, isDev, postfix } from "../config";
+import { cfgDir, kernelMode, postfix } from "../config";
 import { runCommand, updateEnvFile } from "../utils";
 import { execSync } from "child_process";
 
@@ -66,7 +66,7 @@ export function setupUiCommand(program: Command) {
     .description("Start the local PlanqTN UI")
     .option("--verbose", "Show detailed output");
 
-  if (isDev) {
+  if (kernelMode.isDev) {
     startUiCommand.option("--dev", "Run in dev mode");
     startUiCommand.option(
       "--dev-user-context",
