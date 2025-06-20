@@ -3,7 +3,7 @@ from galois import GF2
 import numpy as np
 
 
-def weight(op: GF2, skip_indices: List[int] = []):
+def weight(op: GF2, skip_indices: List[int] = []) -> int:
     """Calculate the weight of a symplectic operator."""
     n = len(op) // 2
     x_inds = np.array([i for i in range(n) if i not in skip_indices])
@@ -13,7 +13,7 @@ def weight(op: GF2, skip_indices: List[int] = []):
     return np.count_nonzero(op[x_inds] | op[z_inds])
 
 
-def symp_to_str(vec, swapxz=False):
+def symp_to_str(vec: GF2, swapxz: bool = False) -> str:
     p = ["I", "X", "Z", "Y"]
     if swapxz:
         p = ["I", "Z", "X", "Y"]
@@ -22,7 +22,7 @@ def symp_to_str(vec, swapxz=False):
     return "".join([p[2 * int(vec[i + n]) + int(vec[i])] for i in range(n)])
 
 
-def omega(n):
+def omega(n: int) -> GF2:
     return GF2(
         np.block(
             [
@@ -33,7 +33,7 @@ def omega(n):
     )
 
 
-def sslice(op, indices):
+def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
     n = len(op) // 2
 
     if isinstance(indices, list | np.ndarray):
@@ -51,35 +51,7 @@ def sslice(op, indices):
         return GF2(np.concatenate([op[x], op[z]]))
 
 
-def _suboperator_matches_on_support(support, op, subop):
-    if len(support) == 0:
-        return len(subop) == 0
-    m = len(support)
-    n = len(op) // 2
-    support = np.array(support)
-    return (
-        # Xs equal
-        np.array_equal(op[support], subop[:m])
-        and
-        # Zs equal
-        np.array_equal(op[support + n], subop[m:])
-    )
-
-
-def _equal_on_support(support, op1, op2):
-    n1 = len(op1) // 2
-    n2 = len(op2) // 2
-    support = np.array(support)
-    return (
-        # Xs equal
-        np.array_equal(op1[support], op2[support])
-        and
-        # Zs equal
-        np.array_equal(op1[support + n1], op2[support + n2])
-    )
-
-
-def replace_with_op_on_indices(indices, op, target):
+def replace_with_op_on_indices(indices: List[int], op: GF2, target: GF2) -> GF2:
     """replaces target's operations with op
 
     op should have self.m number of qubits, target should have self.n qubits.
@@ -93,12 +65,14 @@ def replace_with_op_on_indices(indices, op, target):
     return res
 
 
-def sconcat(*ops):
+def sconcat(*ops: GF2) -> GF2:
     ns = [len(op) // 2 for op in ops]
-    return np.hstack(
-        [  # X part
-            np.concatenate([op[:n] for n, op in zip(ns, ops)]),
-            # Z part
-            np.concatenate([op[n:] for n, op in zip(ns, ops)]),
-        ]
+    return GF2(
+        np.hstack(
+            [  # X part
+                np.concatenate([op[:n] for n, op in zip(ns, ops)]).astype(np.int8),
+                # Z part
+                np.concatenate([op[n:] for n, op in zip(ns, ops)]).astype(np.int8),
+            ],
+        ).astype(np.int8)
     )
