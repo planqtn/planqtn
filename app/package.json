@@ -1,4 +1,6 @@
 {
+  "name": "planqtn-tensor-studio",
+  "version": "0.1.0-alpha.9",
   "dependencies": {
     "@google-cloud/run": "^2.1.0",
     "add": "^2.0.6",
