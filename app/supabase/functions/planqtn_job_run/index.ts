@@ -80,16 +80,16 @@ Deno.serve(async (req) => {
       taskUpdatesServiceKey
     );
 
-    const taskStoreKey = authHeader.split(" ")[1];
+    const callingUserBearerToken = authHeader.split(" ")[1];
     if (
       !jobRequest.task_store_url ||
-      !taskStoreKey ||
+      !callingUserBearerToken ||
       !jobRequest.task_store_anon_key
     ) {
       console.error(
         "Missing task store URL or service key",
         jobRequest.task_store_url,
-        taskStoreKey
+        callingUserBearerToken
       );
       return new Response(
         JSON.stringify({
@@ -114,18 +114,25 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    const { data: userData, error: userError } =
-      await taskStore.auth.getUser(taskStoreKey);
+    const { data: userData, error: userError } = await taskStore.auth.getUser(
+      callingUserBearerToken
+    );
     if (userError || !userData) {
       console.error("Failed to get user", userError);
       throw new Error(userError.message);
     }
 
+    const taskId = crypto.randomUUID();
+
     const quota_error = await reserveQuota(
       userData.user.id,
       "cloud-run-minutes",
       5,
-      taskStore
+      taskStore,
+      {
+        usage_type: "job_run",
+        task_id: taskId
+      }
     );
     if (quota_error) {
       return new Response(JSON.stringify({ error: quota_error }), {
@@ -140,6 +147,7 @@ Deno.serve(async (req) => {
     const { data: task, error: taskError } = await taskStore
       .from("tasks")
       .insert({
+        uuid: taskId,
         user_id: jobRequest.user_id,
         job_type: jobRequest.job_type,
         sent_at: jobRequest.request_time,
@@ -198,7 +206,7 @@ Deno.serve(async (req) => {
           "--task-store-url",
           taskStoreUrl,
           "--task-store-user-key",
-          taskStoreKey,
+          callingUserBearerToken,
           "--task-store-anon-key",
           jobRequest.task_store_anon_key,
           "--user-id",

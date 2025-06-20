@@ -495,12 +495,9 @@ def test_e2e_through_function_call(
 @pytest.mark.integration
 @pytest.mark.cloud_only_integration
 def test_job_refused_due_to_quota(supabase_setup):
-    user_client = supabase_setup["user_client"]
     service_client: Client = create_client(
         supabase_setup["api_url"], supabase_setup["service_role_key"]
     )
-
-    # let's set the user's quota to below the threshold
 
     res = (
         service_client.table("quotas")
@@ -548,7 +545,6 @@ def test_job_refused_due_to_quota(supabase_setup):
 @pytest.mark.integration
 @pytest.mark.cloud_only_integration
 def test_job_call_adds_quota_usage(supabase_setup):
-    user_client = supabase_setup["user_client"]
     service_client: Client = create_client(
         supabase_setup["api_url"], supabase_setup["service_role_key"]
     )
@@ -584,3 +580,7 @@ def test_job_call_adds_quota_usage(supabase_setup):
     assert len(res.data) == 1
     # right now 5 minutes used for each job kickoff
     assert res.data[0]["amount_used"] == 5
+    assert res.data[0]["explanation"] == {
+        "usage_type": "job_run",
+        "task_id": response.json()["task_id"],
+    }

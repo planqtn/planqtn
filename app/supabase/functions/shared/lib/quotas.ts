@@ -4,7 +4,8 @@ export async function reserveQuota(
   user_id: string,
   quota_type: "cloud-run-minutes",
   amount_used: number,
-  taskStore: SupabaseClient
+  taskStore: SupabaseClient,
+  explanation: Record<string, unknown>
 ): Promise<string | null> {
   // Get the user's quota limit
   const { data: quota, error: quotaError } = await taskStore
@@ -59,7 +60,8 @@ export async function reserveQuota(
   const { error: insertError } = await taskStore.from("quota_usage").insert({
     quota_id: quota.id,
     amount_used: amount_used,
-    usage_ts: new Date().toISOString()
+    usage_ts: new Date().toISOString(),
+    explanation: explanation
   });
 
   if (insertError) {
