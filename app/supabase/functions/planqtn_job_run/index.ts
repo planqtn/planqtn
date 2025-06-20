@@ -17,7 +17,7 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { JobRequest, JobResponse } from "../shared/lib/types.ts";
 
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
@@ -25,6 +25,7 @@ import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { CloudRunClient } from "../shared/lib/cloud-run-client.ts";
 import { validateJobRequest } from "../shared/lib/jobs.ts";
+import { reserveQuota } from "../shared/lib/quotas.ts";
 
 console.log("Current Deno version", Deno.version);
 console.info("Starting planqtn_job for Cloud Run function");
@@ -34,8 +35,6 @@ Deno.serve(async (req) => {
     console.info("OPTIONS...");
     return new Response("ok", { headers: corsHeaders });
   }
-
-  console.info("POST...");
 
   try {
     // Get the authorization header
@@ -111,23 +110,28 @@ Deno.serve(async (req) => {
       : jobRequest.task_store_url;
 
     const taskStore = createClient(
-      taskStoreUrl,
-      jobRequest.task_store_anon_key,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${taskStoreKey}`
-          }
-        }
-      }
+      Deno.env.get("SUPABASE_URL"),
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    const { data: user, error: userError } = await taskStore.auth.getUser(
-      taskStoreKey
-    );
-    if (userError) {
+    const { data: userData, error: userError } =
+      await taskStore.auth.getUser(taskStoreKey);
+    if (userError || !userData) {
       console.error("Failed to get user", userError);
       throw new Error(userError.message);
+    }
+
+    const quota_error = await reserveQuota(
+      userData.user.id,
+      "cloud-run-minutes",
+      5,
+      taskStore
+    );
+    if (quota_error) {
+      return new Response(JSON.stringify({ error: quota_error }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     console.info("Creating task in task store", taskStoreUrl);
@@ -217,7 +221,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await taskStore
         .from("tasks")
         .update({
-          execution_id: job_creation_response          
+          execution_id: job_creation_response
         })
         .eq("uuid", task.uuid)
         .eq("user_id", task.user_id);

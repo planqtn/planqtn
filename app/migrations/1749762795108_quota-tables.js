@@ -55,30 +55,23 @@ export const up = (pgm) => {
       references: 'quotas',
       onDelete: 'CASCADE'
     },
-    usage_date: {
-      type: 'date',
+    usage_ts: {
+      type: 'timestamp with time zone',
       notNull: true
     },
     amount_used: {
-      type: 'integer',
+      type: 'float',
       notNull: true,
       default: 0
+    },    
+    explanation: {
+      type: 'json',
+      notNull: false
     },
-    created_at: {
-      type: 'timestamp with time zone',
-      notNull: true,
-      default: pgm.func('now()')
-    },
-    updated_at: {
-      type: 'timestamp with time zone',
-      notNull: true,
-      default: pgm.func('now()')
-    }
   });
 
   // Add indexes for better query performance
   pgm.createIndex('quotas', ['user_id', 'quota_type'], { unique: true });
-  pgm.createIndex('quota_usage', ['quota_id', 'usage_date']);
 
   // Enable Row Level Security
   pgm.sql('ALTER TABLE quotas ENABLE ROW LEVEL SECURITY');
@@ -102,6 +95,18 @@ export const up = (pgm) => {
     USING (auth.jwt() ->> 'role' = 'service_role')
     WITH CHECK (auth.jwt() ->> 'role' = 'service_role')
   `);
+
+  pgm.createPolicy({ name: "quotas" }, "SELECT user's own rows only", {
+    command: "SELECT",
+    role: "public",
+    using: "((SELECT auth.uid()) = user_id)",
+  });
+  pgm.createPolicy({ name: "quota_usage" }, "SELECT user's own rows only", {
+    command: "SELECT",
+    role: "public",
+    using: "(EXISTS (SELECT 1 FROM quotas WHERE quotas.id = quota_usage.quota_id AND quotas.user_id = (SELECT auth.uid())))",
+  });
+  
 };
 
 /**

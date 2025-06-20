@@ -26,15 +26,3 @@ def test_quota_creation(supabase_setup):
     assert res.data[0]["user_id"] == supabase_setup["test_user_id"]
     assert res.data[0]["quota_type"] == "cloud-run-minutes"
     assert res.data[0]["monthly_limit"] == 500
-
-    res = (
-        service_client.table("quota_usage")
-        .select("*")
-        .eq("quota_id", res.data[0]["id"])
-        .execute()
-    )
-
-    assert len(res.data) == 1
-    assert res.data[0]["quota_id"] == res.data[0]["id"], res.data[0]
-    assert res.data[0]["usage_date"] == datetime.now().strftime("%Y-%m-%d")
-    assert res.data[0]["amount_used"] == 0

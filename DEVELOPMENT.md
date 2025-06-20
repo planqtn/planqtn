@@ -263,6 +263,35 @@ Then run `hack/htn kernel start` to spin up the `dev` kernel or, if you want no 
 
 You can use the `app/planqtn_fixtures/manual_testing/main.py` to get started with call manually the API / Job functions and inspect the results. You can use Google Cloud Console in parallel to inspect the kicked off jobs / API call logs.
 
+## PlanqTN Edge Functions
+
+Edge functions come in two flavor: one for the local kernel that manages jobs on Kubernetes, and one for the Cloud Run environment. Under [app/supabase/functions](app/supabase/functions/) you'll find each of these functions in a separate folder:
+
+```
+planqtn_job <- kicks off a job on k8s
+cancel_job  <- cancels a job on k8s
+planqtn_job_logs <- gets logs of a failed job on k8s
+
+planqtn_job_run <- kicks off a job on Cloud Run
+cancel_job_run  <- cancels a job on Cloud Run
+planqtn_job_logs_run <- gets logs of a failed job on Cloud Run
+```
+
+The same duality is true for the API wrapper edge functions, but it's kept currently in a single function, because the only difference between a Cloud Run Service call and a local service call, is that Cloud Run needs some extra headers for authentication.
+Currently we only have a single API function:
+
+```
+tensornetwork
+```
+
+And finally there is a special version function that returns the `JOB_IMAGE` env var and calls into the API endpoint for a version and returns those.
+
+To develop with these functions, locally it is recommended to use the reload functionality. For the cloud one, recommended is to do test driven development through integration tests and auto-deploy to a cloud instance the function with something like this from the app folder:
+
+```
+find supabase -name '*.ts' | entr -r npx supabase functions deploy planqtn_job_run
+```
+
 # Reference for developer tools
 
 ## Personal cloud setup
@@ -480,7 +509,27 @@ See above for personal cloud setup.
 
 ## Database migrations
 
-TODO: this will be filled out after merging the first version of supabase to main and testing on the first change.
+Modifying the Supabase database is exclusively done through the `app/migrations` folder, we are using `node-pg-migrate`, because it's lightweight, much faster than Supabase's own migration feature and supports down/redo of migrations, which is very useful during development and for production rollbacks.
+
+To setup for using `node-pg-migrate` with your personal cloud supabase, ensure that in `app/.env` you have
+
+```
+DATABASE_URL=postgresql://postgres.[YOUR-SUPABASE-PROJECT-ref]:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+```
+
+for local dev use
+
+```
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+```
+
+And now you can use from the `app` directory:
+
+```
+npx node-pg-migrate up
+```
+
+or other commands. Please refer to the [node-pg-migrate docs](https://salsita.github.io/node-pg-migrate/getting-started) for getting started with migrations, and always create a rollback script for your migrations!
 
 # Reference for `.env` files
 

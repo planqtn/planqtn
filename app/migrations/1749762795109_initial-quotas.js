@@ -12,9 +12,6 @@ export const up = async (pgm) => {
   // Get all existing users from auth.users
   const { rows: users } = await pgm.db.query('SELECT id FROM auth.users');
   
-  // Current date for usage tracking
-  const currentDate = new Date();
-  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   
   // Insert quotas and initial usage for each user
   for (const user of users) {
@@ -25,13 +22,7 @@ export const up = async (pgm) => {
        RETURNING id`,
       [user.id]
     );
-
-    // Insert initial usage for current month
-    await pgm.db.query(
-      `INSERT INTO quota_usage (id, quota_id, usage_date, amount_used)
-       VALUES (gen_random_uuid(), $1, $2, 0)`,
-      [quota.id, firstDayOfMonth]
-    );
+    
   }
 };
 

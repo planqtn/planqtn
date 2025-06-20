@@ -19,20 +19,12 @@ export const up = (pgm) => {
     AS $$
     DECLARE
       new_quota_id uuid;
-      first_day_of_month date;
     BEGIN
-      -- Set first day of current month
-      first_day_of_month := date_trunc('month', current_date)::date;
-      
       -- Create quota for new user
       INSERT INTO quotas (id, user_id, quota_type, monthly_limit)
       VALUES (gen_random_uuid(), NEW.id, 'cloud-run-minutes', 500)
       RETURNING id INTO new_quota_id;
-      
-      -- Create initial usage record
-      INSERT INTO quota_usage (id, quota_id, usage_date, amount_used)
-      VALUES (gen_random_uuid(), new_quota_id, first_day_of_month, 0);
-      
+
       RETURN NEW;
     END;
     $$;

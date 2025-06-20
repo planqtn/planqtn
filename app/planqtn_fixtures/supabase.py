@@ -87,9 +87,7 @@ def create_supabase_setup():
 def supabase_setup():
     """Set up Supabase test environment and create test user."""
     setup = create_supabase_setup()
-    yield create_supabase_setup()
+    yield setup
 
-    # Create Supabase client with service role again
     service_client: Client = create_client(setup["api_url"], setup["service_role_key"])
-    # Cleanup: Delete test user using service role client
     service_client.auth.admin.delete_user(setup["test_user_id"])
