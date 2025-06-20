@@ -13,16 +13,9 @@ import {
   Checkbox,
   Link,
   UseToastOptions,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  useDisclosure,
-  Spinner
+  useDisclosure
 } from "@chakra-ui/react";
-import { FaTable, FaCube, FaCode, FaCopy, FaFileAlt } from "react-icons/fa";
-import { CloseIcon } from "@chakra-ui/icons";
+import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
 import {
   DroppedLego,
   LegoServerPayload,
@@ -60,7 +53,6 @@ import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards
 } from "../transformations/CompleteGraphViaHadamards.ts";
-import ProgressBars from "./ProgressBars.tsx";
 import {
   User,
   RealtimePostgresChangesPayload,
@@ -77,8 +69,9 @@ import { GF2 } from "../lib/GF2.ts";
 import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
 import { useEffect } from "react";
-import TaskStateLabel from "./TaskStateLabel.tsx";
-import { formatDuration, intervalToDuration } from "date-fns";
+import TaskDetailsDisplay from "./TaskDetailsDisplay.tsx";
+import TaskLogsModal from "./TaskLogsModal.tsx";
+import { getAxiosErrorMessage } from "../lib/errors.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
@@ -176,23 +169,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     onOpen: onLogsModalOpen,
     onClose: onLogsModalClose
   } = useDisclosure();
-
-  // Helper to format seconds using date-fns
-  function formatSecondsToDuration(seconds: number) {
-    const duration = intervalToDuration({
-      start: 0,
-      end: Math.round(seconds * 1000)
-    });
-
-    // Use a more explicit format that always includes seconds
-    return (
-      formatDuration(duration, {
-        format: ["hours", "minutes", "seconds"],
-        zero: true,
-        delimiter: " "
-      }) || `${seconds.toFixed(2)}s`
-    ); // Fallback to simple format
-  }
 
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
@@ -293,7 +269,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
 
     // Create a channel for task updates
-    const channel = runtimeStoreSupabase
+    const channel = runtimeStoreSupabase!
       .channel(`task_${taskId}`)
       .on(
         "postgres_changes",
@@ -359,6 +335,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const readAndUpdateTask = async (taskId: string) => {
+    if (!userContextSupabase) {
+      return;
+    }
     userContextSupabase
       .from("tasks")
       .select("*")
@@ -414,7 +393,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     if (!tensorNetwork) return;
 
     // Clear any existing progress bars
-    // setIterationStatus([]);
+    setIterationStatus([]);
+    setWaitingForTaskUpdate(false);
 
     const signature = tensorNetwork.signature!;
     const cachedEnumerator = weightEnumeratorCache.get(signature);
@@ -502,6 +482,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           : null
       );
 
+      weightEnumeratorCache.set(signature, {
+        taskId: taskId,
+        polynomial: "",
+        normalizerPolynomial: "",
+        truncateLength: null
+      });
+
       // Show success toast with status URL
       toast({
         title: "Success starting the task!",
@@ -517,20 +504,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         duration: 5000,
         isClosable: true
       });
-
-      // Cache the result
-      weightEnumeratorCache.set(signature, {
-        taskId: taskId,
-        polynomial: "",
-        normalizerPolynomial: "",
-        truncateLength: null
-      });
-    } catch (error) {
+    } catch (err) {
+      const error = err as AxiosError<{
+        message: string;
+        error: string;
+        status: number;
+      }>;
       console.error("Error calculating weight enumerator:", error);
-      if (error instanceof AxiosError) {
-        console.error(error.response?.data);
-      }
-      setError("Failed to calculate weight enumerator");
+      setError(
+        `Failed to calculate weight enumerator: ${getAxiosErrorMessage(error)}`
+      );
+
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
           ? TensorNetwork.fromObj({
@@ -1287,9 +1271,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setIterationStatus([]);
       setWaitingForTaskUpdate(false);
       setTask((prev) => (prev ? { ...prev, state: 4 } : null));
-    } catch (error) {
+    } catch (err) {
+      const error = err as AxiosError<{
+        message: string;
+        error: string;
+        status: number;
+      }>;
       console.error("Error cancelling task:", error);
-      setError(`Failed to cancel task: ${error}`);
+      setError(
+        `Failed to cancel task: Status: ${error.response?.status} ${error.response?.data.error} `
+      );
     }
   };
 
@@ -1300,11 +1291,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       const acessToken = await getAccessToken();
       const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
+      const { data: task, error: taskError } = await userContextSupabase!
+        .from("tasks")
+        .select("*")
+        .eq("uuid", taskId)
+        .single();
+      if (taskError) {
+        throw new Error(taskError.message);
+      }
 
       const response = await axios.post(
         getApiUrl("planqtnJobLogs"),
         {
-          task_uuid: taskId
+          execution_id: task.execution_id
         },
         {
           headers: {
@@ -1319,10 +1318,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }
 
       setTaskLogs(response.data.logs || "No logs available");
-    } catch (error) {
+    } catch (err) {
+      const error = err as AxiosError<{
+        message: string;
+        error: string;
+        status: number;
+      }>;
       console.error("Error fetching task logs:", error);
-      setError("Failed to fetch task logs");
-      setTaskLogs("Error fetching logs. Please try again.");
+      setError(`Failed to fetch task logs: ${getAxiosErrorMessage(error)}`);
+      setTaskLogs(
+        "Error fetching logs. Please try again.\nError details: " +
+          getAxiosErrorMessage(error)
+      );
     } finally {
       setIsLoadingLogs(false);
     }
@@ -1496,137 +1503,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 (tensorNetwork.signature &&
                   weightEnumeratorCache.get(tensorNetwork.signature)
                     ?.polynomial === "") ? (
-                  <Box>
-                    <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-                      <VStack spacing={2} align="stretch">
-                        <Heading size="sm">Task Details</Heading>
-                        <HStack>
-                          <Text>
-                            Task ID:{" "}
-                            {tensorNetwork.taskId ||
-                              weightEnumeratorCache.get(
-                                tensorNetwork.signature!
-                              )?.taskId}
-                          </Text>
-                          {task && (task.state === 0 || task.state === 1) && (
-                            <IconButton
-                              aria-label="Cancel task"
-                              icon={<CloseIcon />}
-                              size="xs"
-                              colorScheme="red"
-                              onClick={() => {
-                                const taskId =
-                                  tensorNetwork.taskId ||
-                                  weightEnumeratorCache.get(
-                                    tensorNetwork.signature!
-                                  )?.taskId;
-                                if (taskId) {
-                                  handleCancelTask(taskId);
-                                }
-                              }}
-                            />
-                          )}
-                        </HStack>
-                        {task && (
-                          <VStack align="left" spacing={2}>
-                            <HStack>
-                              <Text>Task state:</Text>
-                              <TaskStateLabel state={task.state} />
-                            </HStack>
-                            <Text>Job type: {task.job_type}</Text>
-                            {task.state === 2 && task.result && (
-                              <Text>
-                                Execution time:{" "}
-                                {(() => {
-                                  const time = JSON.parse(task.result!).time;
-                                  return formatSecondsToDuration(time);
-                                })()}
-                              </Text>
-                            )}
-                          </VStack>
-                        )}
-
-                        {task && (task.state === 0 || task.state === 1) && (
-                          <ProgressBars
-                            iterationStatus={iterationStatus}
-                            waiting={waitingForTaskUpdate}
-                          />
-                        )}
-                        {task &&
-                          task.state === 2 &&
-                          task.result &&
-                          task.job_type === "weightenumerator" && (
-                            <VStack align="stretch" spacing={2}>
-                              <Heading size="sm">
-                                Stabilizer Weight Enumerator Polynomial
-                              </Heading>
-                              <Box>
-                                {(() => {
-                                  const truncLength =
-                                    tensorNetwork.truncateLength ??
-                                    weightEnumeratorCache.get(
-                                      tensorNetwork.signature!
-                                    )?.truncateLength;
-                                  return truncLength !== null &&
-                                    truncLength !== undefined &&
-                                    !isNaN(Number(truncLength)) ? (
-                                    <Text>
-                                      Truncation length: {truncLength}
-                                    </Text>
-                                  ) : null;
-                                })()}
-                              </Box>
-                              <Box
-                                p={3}
-                                borderWidth={1}
-                                borderRadius="md"
-                                bg="gray.50"
-                              >
-                                <Text fontFamily="mono">
-                                  {(() => {
-                                    const parsedResult = JSON.parse(
-                                      task.result!
-                                    );
-                                    return (
-                                      parsedResult.stabilizer_polynomial ||
-                                      "No polynomial available"
-                                    );
-                                  })()}
-                                </Text>
-                              </Box>
-                              <Heading size="sm">
-                                Normalizer Weight Enumerator Polynomial
-                              </Heading>
-                              <Box
-                                p={3}
-                                borderWidth={1}
-                                borderRadius="md"
-                                bg="gray.50"
-                              >
-                                <Text fontFamily="mono">
-                                  {JSON.parse(task.result!)
-                                    .normalizer_polynomial ||
-                                    "No polynomial available"}
-                                </Text>
-                              </Box>
-                            </VStack>
-                          )}
-                        {task && task.state === 3 && (
-                          <VStack align="stretch" spacing={3}>
-                            <Text>Task failed: {task.result}</Text>
-                            <Button
-                              leftIcon={<Icon as={FaFileAlt} />}
-                              size="sm"
-                              colorScheme="blue"
-                              onClick={() => fetchTaskLogs(task.uuid)}
-                            >
-                              View Logs
-                            </Button>
-                          </VStack>
-                        )}
-                      </VStack>
-                    </Box>
-                  </Box>
+                  <TaskDetailsDisplay
+                    task={task}
+                    taskId={
+                      tensorNetwork.taskId ||
+                      weightEnumeratorCache.get(tensorNetwork.signature!)
+                        ?.taskId
+                    }
+                    iterationStatus={iterationStatus}
+                    waitingForTaskUpdate={waitingForTaskUpdate}
+                    taskUpdatesChannel={taskUpdatesChannel}
+                    onCancelTask={handleCancelTask}
+                    onViewLogs={fetchTaskLogs}
+                  />
                 ) : null}
                 {tensorNetwork.constructionCode && (
                   <VStack align="stretch" spacing={2}>
@@ -1826,63 +1715,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           calculateWeightEnumerator(truncateLength, openLegs);
         }}
       />
-      <Modal
+      <TaskLogsModal
         isOpen={isLogsModalOpen}
         onClose={onLogsModalClose}
-        size="xl"
-        motionPreset="none"
-      >
-        <ModalOverlay />
-        <ModalContent
-          position="relative"
-          maxW="90vw"
-          maxH="85vh"
-          h="95vh"
-          bg="white"
-          borderRadius="lg"
-          boxShadow="xl"
-          display="flex"
-          flexDirection="column"
-        >
-          <ModalHeader borderBottomWidth={1} pb={4}>
-            Task Logs
-          </ModalHeader>
-          <ModalCloseButton />
-          <Box
-            p={4}
-            flex={1}
-            minHeight={0}
-            display="flex"
-            flexDirection="column"
-          >
-            <Box
-              as="pre"
-              p={4}
-              bg="gray.50"
-              borderRadius="md"
-              overflowX="auto"
-              overflowY="auto"
-              h="100%"
-              w="100%"
-              whiteSpace="pre-wrap"
-              fontFamily="mono"
-              fontSize="sm"
-              border="1px solid"
-              borderColor="gray.200"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              wordBreak="break-all"
-            >
-              {isLoadingLogs ? (
-                <Spinner size="xl" color="blue.500" thickness="4px" />
-              ) : (
-                taskLogs
-              )}
-            </Box>
-          </Box>
-        </ModalContent>
-      </Modal>
+        isLoading={isLoadingLogs}
+        logs={taskLogs}
+      />
     </Box>
   );
 };

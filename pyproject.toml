@@ -1,0 +1,57 @@
+[project]
+name = "planqtn"
+version = "0.1.0-alpha.10"
+authors = [
+  { name="Balint Pato", email="balint@planqtn.com" },
+]
+maintainers = [
+  { name="PlanqTN Contributors", email="planqtn@planqtn.com" },
+]
+description = "PlanqTN is a tensor network quantum error correction library implementation of the quantum LEGO framework."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "quimb",
+    "numpy",
+    "galois",
+    "matplotlib",
+    "networkx",
+    "scipy",
+    "sympy",
+    "pyzx",
+    "kahypar",
+    "cotengra",
+    "optuna",
+    "attrs",
+    "celery",
+    "redis",
+    "python-socketio>=5.10.0",
+    "supabase",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ipython",
+    "pytest-cov",
+    "aiohttp",
+    # Want to pin to avoid surprise pull request changes
+    "black==25.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/planqtn/planqtn"
+Issues = "https://github.com/planqtn/planqtn/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qlego"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

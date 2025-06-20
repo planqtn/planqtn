@@ -2,13 +2,12 @@ name: Cloud Integration Tests
 run-name: ${{ github.actor }} is running cloud integration tests 🚀
 concurrency:
   group: cloud-integration-tests
-  cancel-in-progress: true
 on:
   pull_request:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
+
       - "app/conftest.py"
 
       - "app/supabase/**"
@@ -25,8 +24,8 @@ on:
   push:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
+
       - "app/conftest.py"
 
       - "app/supabase/**"
@@ -40,24 +39,49 @@ on:
 
       - "check/**integration"
       - ".github/workflows/cloud_integration_tests.yml"
-
 jobs:
   Cloud-Integration-Tests:
-    environment: Continuous Integration
+    permissions:
+      statuses: write
+      checks: write
+      contents: write
+      pull-requests: write
+      actions: write
+    environment:
+      name: Continuous Integration
+      url: ${{ steps.deploy.outputs.deploy_url }}
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            jobs: 
+              - "app/planqtn_jobs/**"
+            api:
+              - "app/planqtn_api/**"                    
+            common: 
+              - "qlego/**"
+              - "pyproject.toml"
+              - "app/conftest.py"
+              - "app/supabase/**"
+              - "app/migrations/**"
+              - "app/planqtn_types/**"
+              - "app/planqtn_fixtures/**"
+              - ".github/workflows/cloud_integration_tests.yml"
+              - "app/planqtn_cli/**"
+              - "hack/*build*"
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
       - name: Install shared dependencies
         run: |
-          pip install  -r requirements.txt -r requirements.dev.txt
-      - name: Install vercel cli
-        run: |
-          npm install -g vercel
+          pip install --upgrade uv
+          uv pip install -r pyproject.toml --all-extras --system
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install
@@ -67,6 +91,7 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Cloud deploy
+        id: deploy
         env:
           # Secrets:
           # Description: Supabase database password
@@ -75,9 +100,6 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           # Description: Supabase anonymous key
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-
-          # Description: Vercel access token for GitHub Actions
-          VERCEL_ACCESS_TOKEN: ${{ secrets.VERCEL_ACCESS_TOKEN }}
           # Description: Supabase access token for GitHub Actions
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           # Description: GCP service account credentials for GitHub Actions
@@ -90,9 +112,8 @@ jobs:
           # Description: Supabase project ID
           # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          # Description: Environment
-          # Default: development
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+
+          UI_MODE: "development"
           # Description: GCP project ID
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           # Description: GCP region
@@ -102,46 +123,27 @@ jobs:
           TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
           # Description: Terraform state prefix
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
-          # Description: Vercel project ID
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-          # Description: Vercel organization ID
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
 
         run: |
-          hack/htn cloud deploy -q --refuse-dirty-builds
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            jobs: 
-              - "app/planqtn_jobs/**"
-            api:
-              - "app/planqtn_api/**"                    
-            common: 
-              - "qlego/**"
-              - "requirements.txt"
-              - "requirements.dev.txt"
-              - "conftest.py"
-              - "app/supabase/**"
-              - "app/migrations/**"
-              - "app/planqtn_types/**"
-              - "app/planqtn_fixtures/**"
-              - ".github/workflows/integration_tests.yml"
-              - "app/planqtn_cli/**"
-              - "hack/*build*"
+          hack/htn cloud deploy -q 
+          cd app/gcp; echo "deploy_url=$(GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url)" >> $GITHUB_OUTPUT
 
       - name: Run jobs integration tests
         env:
           KERNEL_ENV: cloud
+          # Description: GCP service account credentials for GitHub Actions
+          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
         if: steps.changes.outputs.jobs == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt
+          uv pip install -r app/planqtn_jobs/requirements.txt -r app/planqtn_jobs/requirements.dev.txt --system
           check/jobs-integration
 
       - name: Run api integration tests
         env:
           KERNEL_ENV: cloud
+          # Description: GCP service account credentials for GitHub Actions
+          GCP_SVC_CREDENTIALS: ${{ secrets.GCP_SVC_CREDENTIALS }}
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.common == 'true'
         run: |
-          pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt
+          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt --system
           check/api-integration

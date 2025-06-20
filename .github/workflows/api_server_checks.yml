@@ -4,8 +4,7 @@ on:
   pull_request:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
@@ -15,8 +14,7 @@ on:
   push:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
@@ -43,7 +41,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r app/planqtn_api/requirements.txt -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt
+          pip install --upgrade uv
+          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt -r pyproject.toml --all-extras --system
       - name: Run tests & checks
         run: |
           check/api

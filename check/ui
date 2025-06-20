@@ -17,7 +17,7 @@ cd app/ui
 npx prettier --check src --config ../.prettierrc
 if [ $? -ne 0 ]; then
     echo "Formatting check failed"
-    echo "Run 'cd app/ui && npx prettier --write src' to fix"
+    echo "Run 'cd app/ui && npx prettier --write src --config ../.prettierrc && cd -' to fix"
     exit 1
 fi
 
@@ -26,7 +26,7 @@ echo "ESLint..."
 npx eslint src
 if [ $? -ne 0 ]; then
     echo "Linting check failed"
-    echo "Run 'cd app/ui && npx eslint --fix src' to fix"
+    echo "Run 'cd app/ui && npx eslint --fix src && cd -' to fix"
     exit 1
 fi
 echo "Passed."
@@ -34,8 +34,7 @@ echo "Passed."
 echo "Check build"
 npm run build
 if [ $? -ne 0 ]; then
-    echo "Build check failed"
-    echo "Run 'cd app/ui && npm run build' to fix"
+    echo "Build check failed"    
     exit 1
 fi
 echo "Passed."

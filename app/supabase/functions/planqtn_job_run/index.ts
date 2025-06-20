@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "No authorization header" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -60,49 +60,51 @@ Deno.serve(async (req) => {
 
     const taskUpdatesUrl = Deno.env.get("SUPABASE_URL") ?? "";
     // TODO: make this narrower, i.e. only the key for the task updates table
-    const taskUpdatesServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      "";
+    const taskUpdatesServiceKey =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     if (!taskUpdatesUrl || !taskUpdatesServiceKey) {
       return new Response(
         JSON.stringify({
           error:
-            "Missing task updates (SUPABASE_URL) or service key (SUPABASE_SERVICE_ROLE_KEY)",
+            "Missing task updates (SUPABASE_URL) or service key (SUPABASE_SERVICE_ROLE_KEY)"
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
     const taskUpdatesStore = createClient(
       taskUpdatesUrl,
-      taskUpdatesServiceKey,
+      taskUpdatesServiceKey
     );
 
     const taskStoreKey = authHeader.split(" ")[1];
     if (
-      !jobRequest.task_store_url || !taskStoreKey ||
+      !jobRequest.task_store_url ||
+      !taskStoreKey ||
       !jobRequest.task_store_anon_key
     ) {
       console.error(
         "Missing task store URL or service key",
         jobRequest.task_store_url,
-        taskStoreKey,
+        taskStoreKey
       );
       return new Response(
         JSON.stringify({
-          error: "Missing task store URL or service key",
+          error: "Missing task store URL or service key"
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
-    const localRuntime = jobRequest.task_store_url.includes("localhost") ||
+    const localRuntime =
+      jobRequest.task_store_url.includes("localhost") ||
       jobRequest.task_store_url.includes("127.0.0.1");
     const taskStoreUrl = localRuntime
       ? taskUpdatesUrl
@@ -114,21 +116,21 @@ Deno.serve(async (req) => {
       {
         global: {
           headers: {
-            "Authorization": `Bearer ${taskStoreKey}`,
-          },
-        },
-      },
+            Authorization: `Bearer ${taskStoreKey}`
+          }
+        }
+      }
     );
 
     const { data: user, error: userError } = await taskStore.auth.getUser(
-      taskStoreKey,
+      taskStoreKey
     );
     if (userError) {
       console.error("Failed to get user", userError);
       throw new Error(userError.message);
     }
 
-    console.info("Creating task in task store", taskStoreUrl, taskStoreKey);
+    console.info("Creating task in task store", taskStoreUrl);
 
     // Insert the task into the database
     const { data: task, error: taskError } = await taskStore
@@ -138,7 +140,7 @@ Deno.serve(async (req) => {
         job_type: jobRequest.job_type,
         sent_at: jobRequest.request_time,
         args: jobRequest.payload,
-        state: 0, // pending
+        state: 0 // pending
       })
       .select()
       .single();
@@ -148,8 +150,8 @@ Deno.serve(async (req) => {
       throw new Error(
         `Failed to create task in task store: ${taskError.message}`,
         {
-          cause: taskError,
-        },
+          cause: taskError
+        }
       );
     }
 
@@ -159,19 +161,18 @@ Deno.serve(async (req) => {
       .insert({
         uuid: task.uuid,
         user_id: task.user_id,
-        updates: { state: 0 },
+        updates: { state: 0 }
       });
 
     if (taskUpdateInsertError) {
       return new Response(
         JSON.stringify({
-          error:
-            `Failed to send realtime task update about pending task: ${taskUpdateInsertError.message}`,
+          error: `Failed to send realtime task update about pending task: ${taskUpdateInsertError.message}`
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -200,15 +201,15 @@ Deno.serve(async (req) => {
           task.user_id,
           "--debug",
           "--realtime",
-          "--local-progress-bar",
+          "--local-progress-bar"
         ],
         JOBS_CONFIG[jobRequest.job_type],
         undefined,
         task.uuid,
         {
           RUNTIME_SUPABASE_URL: taskUpdatesUrl,
-          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
-        },
+          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey
+        }
       );
 
       console.log("Job creation response", job_creation_response);
@@ -216,8 +217,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await taskStore
         .from("tasks")
         .update({
-          execution_id: job_creation_response,
-          state: 1, // running
+          execution_id: job_creation_response          
         })
         .eq("uuid", task.uuid)
         .eq("user_id", task.user_id);
@@ -227,26 +227,22 @@ Deno.serve(async (req) => {
       }
 
       const response: JobResponse = {
-        task_id: task.uuid,
+        task_id: task.uuid
       };
 
-      return new Response(
-        JSON.stringify(response),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     } catch (error: unknown) {
       // Update task with error
-      const errorMessage = error instanceof Error
-        ? error.message
-        : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       const { error: updateError } = await taskUpdatesStore
         .from("tasks")
         .update({
           state: 3, // failed
-          result: { error: errorMessage },
+          result: { error: errorMessage }
         })
         .eq("uuid", task.uuid);
 
@@ -257,15 +253,11 @@ Deno.serve(async (req) => {
       throw new Error(errorMessage);
     }
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error
-      ? error.message
-      : "Unknown error occurred";
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
   }
 });

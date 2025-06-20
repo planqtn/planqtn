@@ -9,9 +9,10 @@ import {
   Avatar,
   useColorModeValue,
   Icon,
-  VStack
+  VStack,
+  Tooltip
 } from "@chakra-ui/react";
-import { FiUser } from "react-icons/fi";
+import { FiUser, FiAlertCircle } from "react-icons/fi";
 import { User } from "@supabase/supabase-js";
 import { userContextSupabase } from "../supabaseClient";
 interface UserMenuProps {
@@ -26,32 +27,69 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
   if (!user) {
     return (
       <Menu>
-        <MenuButton
-          as={HStack}
-          spacing={2}
-          px={3}
-          py={2}
-          rounded="md"
-          cursor="pointer"
-          alignItems="center"
-          _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-          onClick={onSignIn}
+        <Tooltip
+          label={
+            !userContextSupabase
+              ? "User Context is unavailable, no Supabase instance is setup"
+              : ""
+          }
+          isDisabled={!!userContextSupabase}
+          placement="bottom"
         >
-          <VStack spacing={2}>
-            <Icon as={FiUser} boxSize={6} />
-            <Text
-              fontSize="sm"
-              lineHeight={1}
-              display="flex"
-              alignItems="center"
-            >
-              Not signed in
-            </Text>
-          </VStack>
-        </MenuButton>
+          <MenuButton
+            as={HStack}
+            spacing={2}
+            px={3}
+            py={2}
+            rounded="md"
+            cursor="pointer"
+            alignItems="center"
+            _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
+            onClick={onSignIn}
+          >
+            <VStack spacing={2}>
+              <HStack spacing={1}>
+                <Icon as={FiUser} boxSize={6} />
+                {!userContextSupabase && (
+                  <Icon as={FiAlertCircle} color="red.500" boxSize={4} />
+                )}
+              </HStack>
+              <Text
+                fontSize="sm"
+                lineHeight={1}
+                display="flex"
+                alignItems="center"
+              >
+                Not signed in
+              </Text>
+            </VStack>
+          </MenuButton>
+        </Tooltip>
       </Menu>
     );
   }
+
+  const handleSignOut = async () => {
+    console.log("Signing out...");
+    if (!userContextSupabase) {
+      return;
+    }
+    userContextSupabase.auth
+      .signOut()
+      .then(() => {
+        userContextSupabase!.auth
+          .getUser()
+          .then((user) => {
+            console.log("Signed out..." + user);
+          })
+          .catch((error) => {
+            console.error("Error getting user:", error);
+          });
+      })
+      .catch((error) => {
+        console.error("Error signing out:", error);
+      });
+  };
 
   return (
     <Menu>
@@ -73,9 +111,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
         </VStack>
       </MenuButton>
       <MenuList bg={bgColor} borderColor={borderColor}>
-        <MenuItem onClick={() => userContextSupabase.auth.signOut()}>
-          Sign Out
-        </MenuItem>
+        <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
       </MenuList>
     </Menu>
   );

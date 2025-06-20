@@ -8,16 +8,14 @@ from supabase import Client, create_client
 from planqtn_fixtures.env import getEnvironment
 
 
-@pytest.fixture
-def supabase_setup():
-    """Set up Supabase test environment and create test user."""
+def create_supabase_setup():
     # Get local Supabase status
     env = getEnvironment()
 
     if env == "cloud":
         # Load supabase_config.json
         with open(
-            os.path.expanduser("~/.planqtn/.config/supabase_config.json"), "r"
+            os.path.expanduser("~/.planqtn/.config/generated/supabase_config.json"), "r"
         ) as f:
             config = json.load(f)
     else:
@@ -73,17 +71,25 @@ def supabase_setup():
     )
 
     test_user_token = auth_response.session.access_token
-
-    yield {
+    setup = {
         "api_url": api_url,
         "service_role_key": service_role_key,
         "anon_key": anon_key,
         "test_user_id": test_user_id,
         "test_user_token": test_user_token,
-        "service_client": service_client,
+        "user_client": service_client,
     }
 
+    return setup
+
+
+@pytest.fixture
+def supabase_setup():
+    """Set up Supabase test environment and create test user."""
+    setup = create_supabase_setup()
+    yield create_supabase_setup()
+
     # Create Supabase client with service role again
-    service_client: Client = create_client(api_url, service_role_key)
+    service_client: Client = create_client(setup["api_url"], setup["service_role_key"])
     # Cleanup: Delete test user using service role client
-    service_client.auth.admin.delete_user(test_user_id)
+    service_client.auth.admin.delete_user(setup["test_user_id"])

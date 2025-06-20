@@ -6,6 +6,7 @@ services:
       - supabase_network_planqtn${POSTFIX:-}
     environment:
       - PORT=5005
+      - API_IMAGE=${API_IMAGE:-unset}
     restart: unless-stopped
 
 networks:

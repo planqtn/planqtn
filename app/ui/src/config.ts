@@ -1,5 +1,5 @@
 // Environment types
-export type Environment = "local" | "development" | "preview" | "production";
+export type Environment = "local" | "development" | "staging" | "production";
 
 // API configuration
 interface ApiConfig {
@@ -13,6 +13,7 @@ interface ApiConfig {
     planqtnJob: string;
     planqtnJobLogs: string;
     cancelJob: string;
+    version: string;
   };
 }
 
@@ -38,13 +39,9 @@ export const config: ApiConfig = {
   userContextURL: import.meta.env.VITE_TASK_STORE_URL,
   userContextAnonKey: import.meta.env.VITE_TASK_STORE_ANON_KEY,
   runtimeStoreUrl:
-    localRuntimeConfig?.API_URL ||
-    import.meta.env.VITE_RUNTIME_STORE_URL ||
-    import.meta.env.VITE_TASK_STORE_URL,
+    localRuntimeConfig?.API_URL || import.meta.env.VITE_TASK_STORE_URL,
   runtimeStoreAnonKey:
-    localRuntimeConfig?.SERVICE_ROLE_KEY ||
-    import.meta.env.VITE_RUNTIME_STORE_ANON_KEY ||
-    import.meta.env.VITE_TASK_STORE_ANON_KEY,
+    localRuntimeConfig?.ANON_KEY || import.meta.env.VITE_TASK_STORE_ANON_KEY,
   env: (import.meta.env.VITE_ENV || "production") as Environment,
   endpoints: {
     tensorNetwork: "/functions/v1/tensornetwork",
@@ -56,7 +53,8 @@ export const config: ApiConfig = {
       : "/functions/v1/planqtn_job_logs_run",
     cancelJob: localRuntimeConfig
       ? "/functions/v1/cancel_job"
-      : "/functions/v1/cancel_job_run"
+      : "/functions/v1/cancel_job_run",
+    version: "/functions/v1/version"
   }
 };
 

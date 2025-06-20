@@ -2,12 +2,12 @@
 .out
 .tmp 
 .pytest_cache
-.vscode
-qlego.egg-info
+.vscode/** 
 build
 logs
 *node_modules*
 .env
-.vercel
 *dist*
 .config
+.vscode
+*.egg-info

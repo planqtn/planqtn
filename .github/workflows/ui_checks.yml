@@ -33,7 +33,8 @@ jobs:
       - name: install python dependencies
         working-directory: ${{ github.workspace }}
         run: |
-          pip install -r requirements.txt
+          pip install --upgrade uv
+          uv pip install -r pyproject.toml --system
       - name: Run tests
         run: |
           check/ui

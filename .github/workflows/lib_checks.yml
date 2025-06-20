@@ -4,14 +4,12 @@ on:
   pull_request:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
 
   push:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
 
 jobs:
   qLEGO-Lib-Checks:
@@ -32,7 +30,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt -r requirements.dev.txt
+          pip install --upgrade uv
+          uv pip install -r pyproject.toml --all-extras --system
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
