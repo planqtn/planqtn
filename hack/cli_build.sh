@@ -24,8 +24,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 TAG=$(hack/image_tag)
+PKG_VERSION=$(cat app/planqtn_cli/package.json | grep \"version\" | awk '{print $2}' | tr -d '",\n')
 
-echo "Building planqtn cli with tag: $TAG"
+echo "Building planqtn cli with tag: $TAG, package version: $PKG_VERSION"
 
 export tmp_log=$(mktemp)
 
@@ -74,11 +75,10 @@ if [ "$INSTALL" = true ]; then
     npm install -g "./$tarball" --force > $tmp_log 2>&1
 fi
 
-if [ "$PUBLISH" = true ]; then
-    TAG=$(hack/image_tag)
-    if [[ "$TAG" =~ ^v.*-alpha\.[0-9]+$ ]]; then
-        echo "Publishing PRERELEASE $tarball to npm with --tag $TAG"
-        npm publish $tarball --tag $TAG    
+if [ "$PUBLISH" = true ]; then    
+    if [[ "$PKG_VERSION" =~ ^.*-alpha\.[0-9]+$ ]]; then
+        echo "Publishing PRERELEASE $tarball to npm with --tag alpha"
+        npm publish $tarball --tag alpha
     else
         echo "Publishing PRODUCTION $tarball to npm with @latest = $TAG"
         npm publish $tarball    

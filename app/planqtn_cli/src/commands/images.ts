@@ -108,6 +108,18 @@ export async function getImageConfig(
   };
 }
 
+export async function checkIfTagExistsInRemote(
+  imageName: string
+): Promise<boolean> {
+  const [repo, imageWithTag] = imageName.split("/");
+  const [image, tag] = imageWithTag.split(":");
+
+  const tagExists = await fetch(
+    `https://hub.docker.com/v2/repositories/${repo}/${image}/tags/${tag}`
+  );
+  return tagExists.status === 200;
+}
+
 // This function builds, pushes and loads images and always updates the right environment file with the current image name
 export async function buildAndPushImageAndUpdateEnvFile(
   image: string,
@@ -175,6 +187,17 @@ export async function buildAndPushImageAndUpdateEnvFile(
   }
 
   if (options.push) {
+    if (imageName.startsWith("planqtn/")) {
+      console.log("Checking if tag already exists in planqtn/ registry...");
+      const tagExists = await checkIfTagExistsInRemote(imageName);
+      if (tagExists) {
+        console.log("Tag already exists in remote registry, skipping push");
+        return;
+      } else {
+        console.log("Tag does not exist in remote registry, pushing...");
+      }
+    }
+
     console.log(`Pushing ${imageName}...`);
     const isTTY =
       process.stdout instanceof tty.WriteStream && process.stdout.isTTY;
@@ -267,6 +290,10 @@ export function setupImagesCommand(program: Command): void {
     .option("--build", "Build the image")
     .option("--load", "Load the image into k3d and update Supabase")
     .option(
+      "--check-remote-tag-exists",
+      "Check if the tag exists in the remote registry - returns 0 if it does, 1 if it doesn't"
+    )
+    .option(
       "--load-no-restart",
       "Load the image into k3d and update Supabase without restarting Supabase"
     )
@@ -281,13 +308,23 @@ export function setupImagesCommand(program: Command): void {
       "--tag <tag>",
       "Tag to use for the image, instead of the current git tag"
     )
+
     .action(async (image) => {
       const options = imagesCommand.opts();
-      console.log("image", image);
-      console.log("options", options);
 
       const dockerRepo = await getDockerRepo(options.quiet);
       const imageConfig = await getImageConfig(image, dockerRepo, options.tag);
+
+      if (options.checkRemoteTag) {
+        const tagExists = await checkIfTagExistsInRemote(imageConfig.imageName);
+        console.log(
+          `Tag ${imageConfig.imageName} ${
+            tagExists ? "exists" : "does not exist"
+          } in remote registry`
+        );
+        process.exit(tagExists ? 0 : 1);
+      }
+
       await buildAndPushImageAndUpdateEnvFile(image, options, imageConfig);
       process.exit(0);
     });

@@ -32,15 +32,13 @@ if [ "$PUBLISH" = true ]; then
 fi
 
 
-pip install --upgrade uv
-
 TAG=$(hack/image_tag)
 PKG_VERSION=$(cat pyproject.toml | grep version | cut -d'"' -f2)
 echo "Package version: $PKG_VERSION"
 
 echo "Building planqtn with tag: $TAG"
 
-uv pip install --upgrade build twine
+pip install --upgrade build twine
 python -m build
 
 if [ "$INSTALL" = true ]; then
@@ -50,7 +48,7 @@ if [ "$INSTALL" = true ]; then
         echo "---------------------------------------------------------------------------------------------"
         echo "Still going ahead with installation of planqtn-$PKG_VERSION"
     fi
-    uv pip install dist/*.whl
+    pip install dist/*.whl
 fi
 
 if [ "$PUBLISH" = true ]; then
@@ -61,7 +59,7 @@ if [ "$PUBLISH" = true ]; then
         echo "Refusing to publish, exiting."
         exit 1
     fi
-    if [[ "$TAG" =~ ^v.*-alpha\.[0-9]+$ ]]; then
+    if [[ "$PKG_VERSION" =~ ^.*-alpha\.[0-9]+$ ]]; then
         echo "Publishing PRERELEASE to Test PyPI with version $TAG"
         TWINE_USERNAME=__token__ TWINE_PASSWORD=$TWINE_TOKEN twine upload -r testpypi dist/* 
     else

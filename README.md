@@ -84,7 +84,7 @@ To get started with contributions, check out [good first issues](https://github.
 
 # Private preview notice
 
-You are looking at a private preview of PlanqTN. We are before the v2025.1 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
+You are looking at a private preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
 
 The project has the following main parts:
 

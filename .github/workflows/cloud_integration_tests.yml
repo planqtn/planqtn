@@ -6,8 +6,8 @@ on:
   pull_request:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
+
       - "app/conftest.py"
 
       - "app/supabase/**"
@@ -24,8 +24,8 @@ on:
   push:
     paths:
       - "qlego/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
+
       - "app/conftest.py"
 
       - "app/supabase/**"
@@ -65,9 +65,8 @@ jobs:
               - "app/planqtn_api/**"                    
             common: 
               - "qlego/**"
-              - "requirements.txt"
-              - "requirements.dev.txt"
-              - "conftest.py"
+              - "pyproject.toml"
+              - "app/conftest.py"
               - "app/supabase/**"
               - "app/migrations/**"
               - "app/planqtn_types/**"
