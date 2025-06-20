@@ -24,6 +24,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "local_only_integration: mark test as local-only integration test"
     )
+    config.addinivalue_line(
+        "markers", "cloud_only_integration: mark test as cloud-only integration test"
+    )
 
 
 def pytest_collection_modifyitems(config, items):
@@ -35,7 +38,12 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "integration" not in item.keywords:
                 item.add_marker(skip_integration)
-            elif "local_only_integration" in item.keywords and env != "local":
+            elif "local_only_integration" in item.keywords and env not in [
+                "local",
+                "dev",
+            ]:
+                item.add_marker(skip_integration)
+            elif "cloud_only_integration" in item.keywords and env != "cloud":
                 item.add_marker(skip_integration)
         return
     for item in items:
