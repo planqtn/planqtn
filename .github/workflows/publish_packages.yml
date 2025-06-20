@@ -32,15 +32,17 @@ jobs:
           TWINE_TOKEN: ${{ secrets.TWINE_TOKEN }}
         run: |
           hack/py_build.sh --publish
+        continue-on-error: true
       - name: Build and publish PlanqTN CLI npm package
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           hack/cli_build.sh --publish
+        continue-on-error: true
       - name: Publish to Docker Hub
         env:
           DOCKER_REPO: planqtn
         run: |
-          hack/htn images job --build --push -q
-          hack/htn images api --build --push -q
-          hack/htn images ui --build --push -q
+          hack/htn images job --check-remote-tag-exists -q || hack/htn images job --build --push -q
+          hack/htn images api --check-remote-tag-exists -q || hack/htn images api --build --push -q
+          hack/htn images ui --check-remote-tag-exists -q || hack/htn images ui --build --push -q

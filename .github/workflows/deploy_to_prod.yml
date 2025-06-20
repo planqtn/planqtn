@@ -1,7 +1,7 @@
-name: Deploy to Staging
-run-name: ${{ github.actor }} is deploying to staging 🚀
+name: Deploy to Production
+run-name: ${{ github.actor }} is deploying to production 🚀
 concurrency:
-  group: deploy-to-staging
+  group: deploy-to-production
 on:
   workflow_dispatch:
     inputs:
@@ -88,6 +88,6 @@ jobs:
           TERRAFORM_STATE_PREFIX: ${{ vars.TERRAFORM_STATE_PREFIX }}
 
         run: |
-          hack/htn cloud deploy -q --skip-images --ui-mode ${{ inputs.ui_mode }} 
+          hack/htn cloud deploy -q --skip-images
           cd app/gcp; GOOGLE_APPLICATION_CREDENTIALS=~/.planqtn/.config/generated/gcp-service-account-key.json ~/.planqtn/bin/terraform output -raw ui_service_url
           echo "deploy_url=https://planqtn.com" >> $GITHUB_OUTPUT
