@@ -41,7 +41,7 @@ if [ "${PKG_VERSION}" != "${GIT_VERSION}" ]; then
   if [ "$PROD" = true ]; then
     
     echo "ERROR: Refusing to build in prod mode, because package.json version (${PKG_VERSION}) != git version (${GIT_VERSION})"
-    # exit 1
+    exit 1
     
   fi
 else
