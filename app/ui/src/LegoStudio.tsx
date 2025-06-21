@@ -3087,6 +3087,7 @@ const LegoStudioView: React.FC = () => {
                 id="lego-panel"
                 defaultSize={legoPanelSizes.defaultSize}
                 minSize={legoPanelSizes.minSize}
+                maxSize={legoPanelSizes.defaultSize}
                 order={1}
                 collapsible={true}
                 onCollapse={() => setIsLegoPanelCollapsed(true)}
