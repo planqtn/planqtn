@@ -23,7 +23,7 @@ import { Panel, PanelGroup } from "react-resizable-panels";
 import axios from "axios";
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
-import LegoPanel from "./components/LegoPanel";
+import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
 import {
   CanvasDragState,
   Connection,
@@ -2934,7 +2934,7 @@ const LegoStudioView: React.FC = () => {
                 onCollapse={() => setIsLegoPanelCollapsed(true)}
                 onExpand={() => setIsLegoPanelCollapsed(false)}
               >
-                <LegoPanel
+                <BuildingBlocksPanel
                   legos={legos}
                   onDragStart={handleDragStart}
                   onLegoSelect={() => {
@@ -3025,7 +3025,7 @@ const LegoStudioView: React.FC = () => {
                           setIsLegoPanelCollapsed(!isLegoPanelCollapsed)
                         }
                       >
-                        Hide lego list
+                        Hide Building Blocks Panel
                       </MenuItemOption>
                       <MenuItem
                         onClick={() => {
