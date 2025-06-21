@@ -38,3 +38,6 @@ jobs:
       - name: Run tests
         run: |
           check/ui
+      - name: Publish new UI image
+        run: |
+          hack/htn images ui --build --push
