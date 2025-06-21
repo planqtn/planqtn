@@ -1440,6 +1440,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         width="full"
                         leftIcon={<Icon as={FaCube} />}
                         disabled={!user}
+                        title={!user ? "Needs signing in" : ""}
                       >
                         Calculate Weight Enumerator
                       </Button>

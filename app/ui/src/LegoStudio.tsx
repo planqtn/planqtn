@@ -1993,13 +1993,13 @@ const LegoStudioView: React.FC = () => {
 
   useEffect(() => {
     const calculatePanelSizes = (containerWidth: number) => {
-      // Let's define some pixel values we want.
-      // Say, default is 250px, min is 130px.
-      const defaultWidthInPx = 250;
-      const minWidthInPx = 130;
+      // With accordion structure, we need more space for the headers
+      // Default is 280px, min is 150px to accommodate accordion headers
+      const defaultWidthInPx = 280;
+      const minWidthInPx = 150;
 
       if (containerWidth > 0) {
-        const defaultSize = (defaultWidthInPx / containerWidth) * 100;
+        const defaultSize = (defaultWidthInPx / containerWidth) * 100 * 1.5;
         const minSize = (minWidthInPx / containerWidth) * 100;
 
         // Add some sanity checks to not exceed 100% or go below 0
@@ -2940,6 +2940,10 @@ const LegoStudioView: React.FC = () => {
                   onLegoSelect={() => {
                     // Handle lego selection if needed
                   }}
+                  onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
+                  onCreateTanner={() => setIsTannerDialogOpen(true)}
+                  onCreateMsp={() => setIsMspDialogOpen(true)}
+                  isUserLoggedIn={!!currentUser}
                 />
               </Panel>
               <ResizeHandle id="lego-panel-resize-handle" />
@@ -3000,25 +3004,6 @@ const LegoStudioView: React.FC = () => {
                     <MenuList>
                       <MenuItem onClick={handleExportSvg}>
                         Export canvas as SVG...
-                      </MenuItem>
-                      <MenuDivider />
-                      <MenuItem
-                        onClick={() => setIsCssTannerDialogOpen(true)}
-                        isDisabled={!currentUser}
-                      >
-                        CSS Tanner Network
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => setIsTannerDialogOpen(true)}
-                        isDisabled={!currentUser}
-                      >
-                        Tanner Network
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => setIsMspDialogOpen(true)}
-                        isDisabled={!currentUser}
-                      >
-                        Measurement State Prep Network
                       </MenuItem>
                       <MenuDivider />
                       <MenuItemOption
