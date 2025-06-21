@@ -11,10 +11,12 @@ import {
   Text,
   VStack,
   useToast,
-  Alert,
-  AlertIcon
+  Code,
+  HStack,
+  Icon
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
+import { FiCopy } from "react-icons/fi";
 
 interface RuntimeConfigDialogProps {
   isOpen: boolean;
@@ -62,6 +64,27 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
     }
   };
 
+  const handleCopyCommand = async () => {
+    try {
+      await navigator.clipboard.writeText("htn kernel status");
+      toast({
+        title: "Copied!",
+        description: "Command copied to clipboard",
+        status: "success",
+        duration: 2000,
+        isClosable: true
+      });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy command to clipboard",
+        status: "error",
+        duration: 2000,
+        isClosable: true
+      });
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
@@ -72,19 +95,22 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4}>
-            <Alert status="warning">
-              <AlertIcon />
-              <Text>
-                Warning: Changing runtime configuration will sign you out and
-                may cause you to lose unsaved work. Are you sure you want to
-                continue?
-              </Text>
-            </Alert>
             <Text>
               {isLocal
                 ? "Clear the configuration below to switch to cloud runtime:"
-                : "Paste the output of 'htn kernel status' to switch to local runtime:"}
+                : "Paste the output of the following command to switch to local runtime:"}
             </Text>
+            <HStack spacing={2}>
+              <Code>htn kernel status</Code>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCopyCommand}
+                leftIcon={<Icon as={FiCopy} />}
+              >
+                Copy
+              </Button>
+            </HStack>
             <Textarea
               value={configText}
               onChange={(e) => {

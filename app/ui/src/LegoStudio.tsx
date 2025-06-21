@@ -55,7 +55,6 @@ import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
 import AuthDialog from "./components/AuthDialog";
-import { FiEdit } from "react-icons/fi";
 import { userContextSupabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
@@ -3099,7 +3098,8 @@ const LegoStudioView: React.FC = () => {
                         <HStack spacing={2}>
                           <Icon as={TbPlugConnected} />
                           <Text>
-                            Runtime: {isLocalRuntime ? "local" : "cloud"}
+                            Switch runtime to{" "}
+                            {isLocalRuntime ? "cloud" : "local"}
                           </Text>
                         </HStack>
                       </MenuItem>
