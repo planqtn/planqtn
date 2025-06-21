@@ -66,6 +66,7 @@ import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
+import { FiChevronRight } from "react-icons/fi";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -3079,6 +3080,36 @@ const LegoStudioView: React.FC = () => {
         position="relative"
         overflow="hidden"
       >
+        {/* Collapsed Panel Handle */}
+        {isLegoPanelCollapsed && (
+          <Box
+            position="absolute"
+            left={0}
+            top={0}
+            bottom={0}
+            width="8px"
+            bg={useColorModeValue("gray.200", "gray.600")}
+            cursor="col-resize"
+            zIndex={10}
+            transition="background-color 0.2s"
+            _hover={{ bg: "blue.500" }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsLegoPanelCollapsed(false);
+            }}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Icon
+              as={FiChevronRight}
+              boxSize={3}
+              color={useColorModeValue("gray.600", "gray.300")}
+              _hover={{ color: "white" }}
+            />
+          </Box>
+        )}
+
         <PanelGroup direction="horizontal">
           {/* Left Panel */}
           {!isLegoPanelCollapsed && (
