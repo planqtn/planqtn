@@ -234,6 +234,12 @@ const LegoStudioView: React.FC = () => {
   );
   const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
+  const panelGroupContainerRef = useRef<HTMLDivElement>(null);
+  const [legoPanelSizes, setLegoPanelSizes] = useState({
+    defaultSize: 15,
+    minSize: 8
+  });
+
   const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
   const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -1987,6 +1993,46 @@ const LegoStudioView: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const calculatePanelSizes = (containerWidth: number) => {
+      // Let's define some pixel values we want.
+      // Say, default is 250px, min is 130px.
+      const defaultWidthInPx = 250;
+      const minWidthInPx = 130;
+
+      if (containerWidth > 0) {
+        const defaultSize = (defaultWidthInPx / containerWidth) * 100;
+        const minSize = (minWidthInPx / containerWidth) * 100;
+
+        // Add some sanity checks to not exceed 100% or go below 0
+        setLegoPanelSizes({
+          defaultSize: Math.min(100, Math.max(0, defaultSize)),
+          minSize: Math.min(100, Math.max(0, minSize))
+        });
+      }
+    };
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        calculatePanelSizes(entry.contentRect.width);
+      }
+    });
+
+    const currentContainerRef = panelGroupContainerRef.current;
+    if (currentContainerRef) {
+      observer.observe(currentContainerRef);
+      // Initial calculation
+      calculatePanelSizes(currentContainerRef.offsetWidth);
+    }
+
+    return () => {
+      if (currentContainerRef) {
+        observer.unobserve(currentContainerRef);
+      }
+    };
+  }, []);
+
   // Add Supabase status check on page load
   useEffect(() => {
     if (!userContextSupabase) {
@@ -3027,15 +3073,20 @@ const LegoStudioView: React.FC = () => {
           throw fatalError;
         })()}
       {/* Main Content */}
-      <Box flex={1} position="relative" overflow="hidden">
+      <Box
+        ref={panelGroupContainerRef}
+        flex={1}
+        position="relative"
+        overflow="hidden"
+      >
         <PanelGroup direction="horizontal">
           {/* Left Panel */}
           {!isLegoPanelCollapsed && (
             <>
               <Panel
                 id="lego-panel"
-                defaultSize={15}
-                minSize={2}
+                defaultSize={legoPanelSizes.defaultSize}
+                minSize={legoPanelSizes.minSize}
                 order={1}
                 collapsible={true}
                 onCollapse={() => setIsLegoPanelCollapsed(true)}
