@@ -15,4 +15,6 @@ export PYTHONPATH="."
 black qlego --check
 pytest qlego
 
+mypy qlego
+
 echo "All checks passed"

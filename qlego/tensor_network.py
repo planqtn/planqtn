@@ -960,7 +960,7 @@ class _PartiallyTracedEnumerator:
             total_size=len(list(self.tensor.keys())),
         ):
             for k2 in other.tensor.keys():
-                k = tuple(sconcat(k1, k2))
+                k = tuple(sconcat(k1, k2).tolist())
                 new_tensor[k] = self.tensor[k1] * other.tensor[k2]
                 self.truncate_if_needed(k, new_tensor)
 

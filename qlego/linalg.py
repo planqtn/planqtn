@@ -1,11 +1,14 @@
 from copy import deepcopy
 from galois import GF2
 import numpy as np
+from typing import Iterable, Optional, List
 
 
-def gauss(mx, noswaps=False, col_subset=None):
+def gauss(
+    mx: GF2, noswaps: bool = False, col_subset: Optional[Iterable[int]] = None
+) -> GF2:
     """GF2 matrix Gauss elimination."""
-    res: np.ndarray = deepcopy(mx)
+    res: GF2 = deepcopy(mx)
     if not isinstance(mx, GF2):
         raise ValueError(f"Matrix is not of GF2 type, but instead {type(mx)}")
     if len(mx.shape) == 1:
@@ -55,16 +58,16 @@ def gauss(mx, noswaps=False, col_subset=None):
     return res
 
 
-def gauss_row_augmented(mx):
+def gauss_row_augmented(mx: GF2) -> GF2:
     (rows, cols) = mx.shape
-    res: np.ndarray = deepcopy(mx)
+    res: GF2 = deepcopy(mx)
     n = rows
-    aug = np.hstack([res, GF2.Identity(n)])
+    aug = GF2(np.hstack([res, GF2.Identity(n)]))
     a = gauss(aug)
     return a
 
 
-def right_kernel(mx):
+def right_kernel(mx: GF2) -> GF2:
     (rows, cols) = mx.shape
     a = gauss_row_augmented(mx.T)
 
@@ -76,7 +79,7 @@ def right_kernel(mx):
         return GF2(a[zero_rows, rows:])
 
 
-def invert(mx):
+def invert(mx: GF2) -> GF2:
     if not isinstance(mx, GF2):
         raise ValueError(f"Matrix is not of GF2 type, but instead {type(mx)}")
 
@@ -92,4 +95,4 @@ def invert(mx):
             f"Matrix is singular, has rank: {np.linalg.matrix_rank(a[:,:n])}"
         )
 
-    return a[:, n:]
+    return GF2(a[:, n:])
