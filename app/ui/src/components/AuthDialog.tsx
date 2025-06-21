@@ -345,7 +345,7 @@ export default function AuthDialog({
           ) : showReset ? (
             <VStack spacing={6} as="form" onSubmit={handlePasswordReset}>
               <Image
-                src="/planqtn_logo.svg"
+                src="/planqtn_logo.png"
                 alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
@@ -390,7 +390,7 @@ export default function AuthDialog({
               onSubmit={handleEmailPasswordAuth}
             >
               <Image
-                src="/planqtn_logo.svg"
+                src="/planqtn_logo.png"
                 alt="PlanqTN Logo"
                 maxW="200px"
                 mx="auto"
