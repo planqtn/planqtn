@@ -4,8 +4,6 @@ import {
   Editable,
   EditableInput,
   EditablePreview,
-  Flex,
-  HStack,
   Icon,
   Menu,
   MenuButton,
@@ -16,7 +14,9 @@ import {
   useToast,
   Text,
   VStack,
-  Link
+  Link,
+  MenuDivider,
+  HStack
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
@@ -66,7 +66,7 @@ import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
-import { FiChevronRight } from "react-icons/fi";
+import { FiChevronRight, FiMoreVertical } from "react-icons/fi";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -227,8 +227,6 @@ const LegoStudioView: React.FC = () => {
   const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false);
   const [isMspDialogOpen, setIsMspDialogOpen] = useState(false);
   const [hideConnectedLegs, setHideConnectedLegs] = useState(true);
-  const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
   const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
   const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(
     null
@@ -2882,193 +2880,6 @@ const LegoStudioView: React.FC = () => {
 
   return (
     <VStack spacing={0} align="stretch" h="100vh">
-      {/* Header Bar: Menu strip (left) + User menu (right) */}
-      <Box
-        as="header"
-        w="100%"
-        h="56px"
-        px={6}
-        py={2}
-        bg={bgColor}
-        borderBottom="1px"
-        borderColor={borderColor}
-        position="relative"
-        zIndex={2}
-      >
-        <Flex align="center" justify="space-between" h="100%">
-          {/* Menu Strip (left) */}
-          <HStack flex={1} spacing={2}>
-            <Menu>
-              <MenuButton as={Button} variant="ghost" size="sm">
-                Export
-              </MenuButton>
-              <MenuList>
-                <MenuItem onClick={handleExportSvg}>
-                  Export canvas as SVG...
-                </MenuItem>
-              </MenuList>
-            </Menu>
-
-            <Menu>
-              <MenuButton as={Button} variant="ghost" size="sm">
-                Tensor Networks
-              </MenuButton>
-              <MenuList>
-                <MenuItem
-                  onClick={() => setIsCssTannerDialogOpen(true)}
-                  isDisabled={!currentUser}
-                >
-                  CSS Tanner Network
-                </MenuItem>
-                <MenuItem
-                  onClick={() => setIsTannerDialogOpen(true)}
-                  isDisabled={!currentUser}
-                >
-                  Tanner Network
-                </MenuItem>
-                <MenuItem
-                  onClick={() => setIsMspDialogOpen(true)}
-                  isDisabled={!currentUser}
-                >
-                  Measurement State Prep Network
-                </MenuItem>
-              </MenuList>
-            </Menu>
-            <Menu>
-              <MenuButton as={Button} variant="ghost" size="sm">
-                View
-              </MenuButton>
-              <MenuList>
-                <MenuItemOption
-                  onClick={() => {
-                    setHideConnectedLegs(!hideConnectedLegs);
-                    encodeCanvasState(
-                      droppedLegos,
-                      connections,
-                      !hideConnectedLegs
-                    );
-                  }}
-                  isChecked={hideConnectedLegs}
-                >
-                  Hide connected legs
-                </MenuItemOption>
-                <MenuItemOption
-                  isChecked={isLegoPanelCollapsed}
-                  onClick={() => setIsLegoPanelCollapsed(!isLegoPanelCollapsed)}
-                >
-                  Hide lego list
-                </MenuItemOption>
-                <MenuItem
-                  onClick={() => {
-                    const rect = canvasRef.current?.getBoundingClientRect();
-                    if (!rect) return;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const scale = 1 / zoomLevel;
-                    const rescaledLegos = droppedLegos.map((lego) => ({
-                      ...lego,
-                      x: (lego.x - centerX) * scale + centerX,
-                      y: (lego.y - centerY) * scale + centerY
-                    }));
-                    setDroppedLegos(rescaledLegos);
-                    setZoomLevel(1);
-                    encodeCanvasState(
-                      rescaledLegos,
-                      connections,
-                      hideConnectedLegs
-                    );
-                  }}
-                  isDisabled={zoomLevel === 1}
-                >
-                  Reset zoom
-                </MenuItem>
-              </MenuList>
-            </Menu>
-            <Button variant="ghost" size="sm" onClick={handleClearAll}>
-              Remove all
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const clearedLegos = droppedLegos.map((lego) => ({
-                  ...lego,
-                  selectedMatrixRows: []
-                }));
-                setDroppedLegos(clearedLegos);
-                setSelectedLego(null);
-                encodeCanvasState(clearedLegos, connections, hideConnectedLegs);
-              }}
-              isDisabled={
-                !droppedLegos.some(
-                  (lego) =>
-                    lego.selectedMatrixRows &&
-                    lego.selectedMatrixRows.length > 0
-                )
-              }
-            >
-              Clear highlights
-            </Button>
-          </HStack>
-          {/* Title */}
-          <Box flexShrink={1}>
-            <VStack align="center" justify="center" spacing={0}>
-              <Editable
-                value={currentTitle}
-                onChange={handleTitleChange}
-                onKeyDown={handleTitleKeyDown}
-              >
-                <HStack
-                  as="span"
-                  spacing={1}
-                  className="editable-title-group"
-                  _groupHover={{}}
-                  position="relative"
-                  role="group"
-                >
-                  <EditablePreview
-                    px={2}
-                    _hover={{
-                      bg: useColorModeValue("gray.100", "gray.700"),
-                      cursor: "pointer"
-                    }}
-                    as="p"
-                    fontSize="large"
-                  />
-                  <Icon
-                    as={FiEdit}
-                    boxSize={4}
-                    color="gray.400"
-                    ml={1}
-                    display="none"
-                    _groupHover={{ display: "inline-block" }}
-                    position="absolute"
-                    right={0}
-                    top="50%"
-                    transform="translateX(100%) translateY(-50%)"
-                    pointerEvents="none"
-                  />
-                </HStack>
-                <EditableInput px={2} fontSize="large" />
-              </Editable>
-            </VStack>
-          </Box>
-
-          {/* User Menu (right) */}
-          <Box flex={1} display="flex" justifyContent="flex-end" minW={0}>
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={handleRuntimeToggle}
-              mr={2}
-              leftIcon={<TbPlugConnected />}
-            >
-              Runtime: {isLocalRuntime ? "local" : "cloud"}
-            </Button>
-            <UserMenu user={currentUser} onSignIn={handleAuthDialogOpen} />
-          </Box>
-        </Flex>
-      </Box>
       {fatalError &&
         (() => {
           throw fatalError;
@@ -3139,7 +2950,7 @@ const LegoStudioView: React.FC = () => {
           {/* Main Content */}
           <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
             <Box h="100%" display="flex" flexDirection="column" p={4}>
-              {/* Gray Panel */}
+              {/* Canvas with overlay controls */}
               <Box
                 ref={canvasRef}
                 flex={1}
@@ -3166,6 +2977,187 @@ const LegoStudioView: React.FC = () => {
                     : "default"
                 }}
               >
+                {/* Top-left three-dots menu */}
+                <Box
+                  position="absolute"
+                  top={2}
+                  left={2}
+                  zIndex={20}
+                  bg={useColorModeValue("white", "gray.800")}
+                  borderRadius="md"
+                  boxShadow="md"
+                  p={1}
+                >
+                  <Menu>
+                    <MenuButton
+                      as={Button}
+                      variant="ghost"
+                      size="sm"
+                      minW="auto"
+                      p={2}
+                    >
+                      <Icon as={FiMoreVertical} boxSize={4} />
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem onClick={handleExportSvg}>
+                        Export canvas as SVG...
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem
+                        onClick={() => setIsCssTannerDialogOpen(true)}
+                        isDisabled={!currentUser}
+                      >
+                        CSS Tanner Network
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => setIsTannerDialogOpen(true)}
+                        isDisabled={!currentUser}
+                      >
+                        Tanner Network
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => setIsMspDialogOpen(true)}
+                        isDisabled={!currentUser}
+                      >
+                        Measurement State Prep Network
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItemOption
+                        onClick={() => {
+                          setHideConnectedLegs(!hideConnectedLegs);
+                          encodeCanvasState(
+                            droppedLegos,
+                            connections,
+                            !hideConnectedLegs
+                          );
+                        }}
+                        isChecked={hideConnectedLegs}
+                      >
+                        Hide connected legs
+                      </MenuItemOption>
+                      <MenuItemOption
+                        isChecked={isLegoPanelCollapsed}
+                        onClick={() =>
+                          setIsLegoPanelCollapsed(!isLegoPanelCollapsed)
+                        }
+                      >
+                        Hide lego list
+                      </MenuItemOption>
+                      <MenuItem
+                        onClick={() => {
+                          const rect =
+                            canvasRef.current?.getBoundingClientRect();
+                          if (!rect) return;
+                          const centerX = rect.width / 2;
+                          const centerY = rect.height / 2;
+                          const scale = 1 / zoomLevel;
+                          const rescaledLegos = droppedLegos.map((lego) => ({
+                            ...lego,
+                            x: (lego.x - centerX) * scale + centerX,
+                            y: (lego.y - centerY) * scale + centerY
+                          }));
+                          setDroppedLegos(rescaledLegos);
+                          setZoomLevel(1);
+                          encodeCanvasState(
+                            rescaledLegos,
+                            connections,
+                            hideConnectedLegs
+                          );
+                        }}
+                        isDisabled={zoomLevel === 1}
+                      >
+                        Reset zoom
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem onClick={handleClearAll}>Remove all</MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          const clearedLegos = droppedLegos.map((lego) => ({
+                            ...lego,
+                            selectedMatrixRows: []
+                          }));
+                          setDroppedLegos(clearedLegos);
+                          setSelectedLego(null);
+                          encodeCanvasState(
+                            clearedLegos,
+                            connections,
+                            hideConnectedLegs
+                          );
+                        }}
+                        isDisabled={
+                          !droppedLegos.some(
+                            (lego) =>
+                              lego.selectedMatrixRows &&
+                              lego.selectedMatrixRows.length > 0
+                          )
+                        }
+                      >
+                        Clear highlights
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem onClick={handleRuntimeToggle}>
+                        <HStack spacing={2}>
+                          <Icon as={TbPlugConnected} />
+                          <Text>
+                            Runtime: {isLocalRuntime ? "local" : "cloud"}
+                          </Text>
+                        </HStack>
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                </Box>
+
+                {/* Top-center title (contextual) */}
+                <Box
+                  position="absolute"
+                  top={2}
+                  left="50%"
+                  transform="translateX(-50%)"
+                  zIndex={15}
+                  opacity={0}
+                  _hover={{ opacity: 1 }}
+                  transition="opacity 0.2s"
+                  bg={useColorModeValue("white", "gray.800")}
+                  borderRadius="md"
+                  boxShadow="md"
+                  px={3}
+                  py={1}
+                >
+                  <Editable
+                    value={currentTitle}
+                    onChange={handleTitleChange}
+                    onKeyDown={handleTitleKeyDown}
+                  >
+                    <EditablePreview fontSize="sm" />
+                    <EditableInput fontSize="sm" />
+                  </Editable>
+                </Box>
+
+                {/* Top-right controls */}
+                <Box
+                  position="absolute"
+                  top={2}
+                  right={2}
+                  zIndex={20}
+                  display="flex"
+                  gap={2}
+                >
+                  {/* User menu */}
+                  <Box
+                    bg="transparent"
+                    borderRadius="md"
+                    p={1}
+                    opacity={0.8}
+                    _hover={{ opacity: 1 }}
+                    transition="opacity 0.2s"
+                  >
+                    <UserMenu
+                      user={currentUser}
+                      onSignIn={handleAuthDialogOpen}
+                    />
+                  </Box>
+                </Box>
+
                 {/* Connection Lines */}
                 <svg
                   id="connections-svg"
