@@ -42,5 +42,10 @@ echo "Passed."
 
 # Run tests
 npm run test
+if [ $? -ne 0 ]; then
+    echo "Build check failed"    
+    exit 1
+fi
+echo "Passed."
 
 echo "All checks passed"

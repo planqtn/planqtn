@@ -5,11 +5,9 @@ import {
   MenuList,
   MenuItem,
   HStack,
-  Text,
   Avatar,
   useColorModeValue,
   Icon,
-  VStack,
   Tooltip
 } from "@chakra-ui/react";
 import { FiUser, FiAlertCircle, FiPieChart } from "react-icons/fi";
@@ -34,38 +32,27 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
           label={
             !userContextSupabase
               ? "User Context is unavailable, no Supabase instance is setup"
-              : ""
+              : "Not signed in"
           }
-          isDisabled={!!userContextSupabase}
           placement="bottom"
         >
           <MenuButton
             as={HStack}
             spacing={2}
-            px={3}
+            px={2}
             py={2}
             rounded="md"
             cursor="pointer"
             alignItems="center"
             _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
             onClick={onSignIn}
+            border="none"
+            bg="transparent"
           >
-            <VStack spacing={2}>
-              <HStack spacing={1}>
-                <Icon as={FiUser} boxSize={6} />
-                {!userContextSupabase && (
-                  <Icon as={FiAlertCircle} color="red.500" boxSize={4} />
-                )}
-              </HStack>
-              <Text
-                fontSize="sm"
-                lineHeight={1}
-                display="flex"
-                alignItems="center"
-              >
-                Not signed in
-              </Text>
-            </VStack>
+            <Icon as={FiUser} boxSize={5} />
+            {!userContextSupabase && (
+              <Icon as={FiAlertCircle} color="red.500" boxSize={4} />
+            )}
           </MenuButton>
         </Tooltip>
       </Menu>
@@ -97,28 +84,22 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
   return (
     <>
       <Menu>
-        <MenuButton
-          as={HStack}
-          spacing={2}
-          px={3}
-          py={2}
-          rounded="md"
-          cursor="pointer"
-          alignItems="center"
-          _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-        >
-          <VStack spacing={2}>
+        <Tooltip label={user.email} placement="bottom">
+          <MenuButton
+            as={HStack}
+            spacing={2}
+            px={2}
+            py={2}
+            rounded="md"
+            cursor="pointer"
+            alignItems="center"
+            _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
+            border="none"
+            bg="transparent"
+          >
             <Avatar size="sm" name={user.email || undefined} />
-            <Text
-              fontSize="sm"
-              lineHeight={1}
-              display="flex"
-              alignItems="center"
-            >
-              {user.email}
-            </Text>
-          </VStack>
-        </MenuButton>
+          </MenuButton>
+        </Tooltip>
         <MenuList bg={bgColor} borderColor={borderColor}>
           <MenuItem
             onClick={() => setIsQuotasModalOpen(true)}

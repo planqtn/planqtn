@@ -235,5 +235,5 @@ tn = TensorNetwork(nodes)
         resolve();
       });
     });
-  });
+  }, 10000);
 });

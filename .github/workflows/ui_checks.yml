@@ -23,9 +23,7 @@ jobs:
           node-version: 22
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
+
       - name: Install dependencies
         working-directory: app/ui
         run: |
