@@ -552,7 +552,8 @@ const LegoStudioView: React.FC = () => {
       y: e.clientY - e.currentTarget.getBoundingClientRect().top
     };
 
-    if (draggedLego.id === "custom_lego") {
+    console.log("draggedLego", draggedLego);
+    if (draggedLego.id === "custom") {
       setCustomLegoPosition(dropPosition);
       setShowCustomLegoDialog(true);
       return;
