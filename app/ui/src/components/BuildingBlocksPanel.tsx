@@ -26,7 +26,7 @@ import {
 } from "./DroppedLegoDisplay.tsx";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { Legos } from "../lib/Legos.ts";
-import { FiPackage } from "react-icons/fi";
+import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 
 interface BuildingBlocksPanelProps {
   legos: LegoPiece[];
@@ -191,6 +191,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
         display="flex"
         alignItems="center"
         flexShrink={0}
+        userSelect="none"
       >
         <Icon as={FiPackage} boxSize={5} mr={2} />
         Building Blocks
@@ -224,6 +225,8 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                   fontWeight="bold"
                   fontSize="md"
                   transition="background 0.2s"
+                  userSelect="none"
+                  _focus={{ boxShadow: "none" }}
                 >
                   <Box flex="1" textAlign="left" color="teal.700">
                     Tensors
@@ -331,6 +334,8 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                   fontWeight="bold"
                   fontSize="md"
                   transition="background 0.2s"
+                  userSelect="none"
+                  _focus={{ boxShadow: "none" }}
                 >
                   <Box flex="1" textAlign="left" color="blue.700">
                     Networks
@@ -346,11 +351,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                     >
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
+                        colorScheme="blue"
                         onClick={onCreateCssTanner}
                         isDisabled={!isUserLoggedIn}
                         justifyContent="flex-start"
                         title={!isUserLoggedIn ? "Needs signing in" : ""}
+                        leftIcon={<Icon as={FiCpu} />}
                       >
                         {isPanelSmall ? "CSS" : "CSS Tanner Network"}
                       </Button>
@@ -362,11 +369,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                     >
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
+                        colorScheme="blue"
                         onClick={onCreateTanner}
                         isDisabled={!isUserLoggedIn}
                         justifyContent="flex-start"
                         title={!isUserLoggedIn ? "Needs signing in" : ""}
+                        leftIcon={<Icon as={FiGrid} />}
                       >
                         {isPanelSmall ? "Tanner" : "Tanner Network"}
                       </Button>
@@ -378,11 +387,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                     >
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
+                        colorScheme="blue"
                         onClick={onCreateMsp}
                         isDisabled={!isUserLoggedIn}
                         justifyContent="flex-start"
                         title={!isUserLoggedIn ? "Needs signing in" : ""}
+                        leftIcon={<Icon as={FiTarget} />}
                       >
                         {isPanelSmall
                           ? "MSP"
