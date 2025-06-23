@@ -181,7 +181,7 @@ export class Legos {
       },
       {
         id: "832",
-        name: "[[8,3,2]] encoding tensor",
+        name: "[[8,3,2]] code",
         shortName: "[[8,3,2]]",
         description: "[[8,3,2]] encoding tensor with all 3 logical legs",
 
@@ -205,7 +205,7 @@ export class Legos {
       },
       {
         id: "15qrm",
-        name: "[[15,1,3]] QRM encoding tensor",
+        name: "[[15,1,3]] QRM",
         shortName: "QRM15",
         description: "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
         // prettier-ignore

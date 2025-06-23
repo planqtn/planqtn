@@ -47,7 +47,7 @@ const chakraToHexColors: { [key: string]: string } = {
   "gray.700": "#374151"
 };
 
-interface LegStyle {
+export interface LegStyle {
   angle: number;
   length: number;
   width: string;
@@ -222,7 +222,7 @@ export abstract class LegoStyle {
           length: 40,
           width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
           style: "solid",
-          from: "edge",
+          from: "center",
           startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)

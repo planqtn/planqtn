@@ -65,7 +65,7 @@ import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
-import { FiChevronRight, FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical } from "react-icons/fi";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -104,13 +104,6 @@ const pointToLineDistance = (
   const dx = x - xx;
   const dy = y - yy;
   return Math.sqrt(dx * dx + dy * dy);
-};
-
-const isScalarLego = (lego: DroppedLego) => {
-  return (
-    lego.parity_check_matrix.length === 1 &&
-    lego.parity_check_matrix[0].length === 1
-  );
 };
 
 // Add this before the App component
@@ -559,7 +552,8 @@ const LegoStudioView: React.FC = () => {
       y: e.clientY - e.currentTarget.getBoundingClientRect().top
     };
 
-    if (draggedLego.id === "custom_lego") {
+    console.log("draggedLego", draggedLego);
+    if (draggedLego.id === "custom") {
       setCustomLegoPosition(dropPosition);
       setShowCustomLegoDialog(true);
       return;
@@ -2890,7 +2884,7 @@ const LegoStudioView: React.FC = () => {
         position="relative"
         overflow="hidden"
       >
-        {/* Collapsed Panel Handle */}
+        {/* Collapsed Panel Handle
         {isLegoPanelCollapsed && (
           <Box
             position="absolute"
@@ -2918,37 +2912,34 @@ const LegoStudioView: React.FC = () => {
               _hover={{ color: "white" }}
             />
           </Box>
-        )}
-
+        )} */}
         <PanelGroup direction="horizontal">
           {/* Left Panel */}
-          {!isLegoPanelCollapsed && (
-            <>
-              <Panel
-                id="lego-panel"
-                defaultSize={legoPanelSizes.defaultSize}
-                minSize={legoPanelSizes.minSize}
-                maxSize={legoPanelSizes.defaultSize}
-                order={1}
-                collapsible={true}
-                onCollapse={() => setIsLegoPanelCollapsed(true)}
-                onExpand={() => setIsLegoPanelCollapsed(false)}
-              >
-                <BuildingBlocksPanel
-                  legos={legos}
-                  onDragStart={handleDragStart}
-                  onLegoSelect={() => {
-                    // Handle lego selection if needed
-                  }}
-                  onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
-                  onCreateTanner={() => setIsTannerDialogOpen(true)}
-                  onCreateMsp={() => setIsMspDialogOpen(true)}
-                  isUserLoggedIn={!!currentUser}
-                />
-              </Panel>
-              <ResizeHandle id="lego-panel-resize-handle" />
-            </>
-          )}
+          <Panel
+            id="lego-panel"
+            defaultSize={legoPanelSizes.defaultSize}
+            minSize={legoPanelSizes.minSize}
+            maxSize={legoPanelSizes.defaultSize}
+            order={1}
+            collapsible={true}
+            onCollapse={() => setIsLegoPanelCollapsed(true)}
+            onExpand={() => setIsLegoPanelCollapsed(false)}
+          >
+            <Box visibility={isLegoPanelCollapsed ? "hidden" : "visible"}>
+              <BuildingBlocksPanel
+                legos={legos}
+                onDragStart={handleDragStart}
+                onLegoSelect={() => {
+                  // Handle lego selection if needed
+                }}
+                onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
+                onCreateTanner={() => setIsTannerDialogOpen(true)}
+                onCreateMsp={() => setIsMspDialogOpen(true)}
+                isUserLoggedIn={!!currentUser}
+              />
+            </Box>
+          </Panel>
+          <ResizeHandle id="lego-panel-resize-handle" />
 
           {/* Main Content */}
           <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
@@ -3154,6 +3145,7 @@ const LegoStudioView: React.FC = () => {
                     height: "100%",
                     pointerEvents: "none",
                     userSelect: "none"
+                    // border: "1px solid red"
                   }}
                 >
                   {/* Existing connections */}
@@ -3428,120 +3420,25 @@ const LegoStudioView: React.FC = () => {
                       const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
 
                       return (
-                        <path
-                          d={pathString}
-                          stroke="#3182CE"
-                          strokeWidth="2"
-                          strokeDasharray="4"
-                          fill="none"
-                          opacity={0.5}
-                          style={{ pointerEvents: "none" }}
-                        />
+                        <>
+                          <circle
+                            cx={fromLego.x}
+                            cy={fromLego.y}
+                            r={5}
+                            fill="red"
+                          />
+                          <path
+                            d={pathString}
+                            stroke="#3182CE"
+                            strokeWidth="2"
+                            strokeDasharray="4"
+                            fill="none"
+                            opacity={0.5}
+                            style={{ pointerEvents: "none" }}
+                          />
+                        </>
                       );
                     })()}
-
-                  {/* Leg Labels */}
-                  {droppedLegos.map((lego) =>
-                    isScalarLego(lego)
-                      ? null
-                      : Array(lego.parity_check_matrix[0].length / 2)
-                          .fill(0)
-                          .map((_, legIndex) => {
-                            // Check if leg is connected
-                            const isLegConnected = connections.some(
-                              (c) =>
-                                (c.from.legoId === lego.instanceId &&
-                                  c.from.legIndex === legIndex) ||
-                                (c.to.legoId === lego.instanceId &&
-                                  c.to.legIndex === legIndex)
-                            );
-
-                            // If leg is not connected, always show the label
-                            if (!isLegConnected) {
-                              const pos = calculateLegPosition(lego, legIndex);
-                              return (
-                                <text
-                                  key={`${lego.instanceId}-label-${legIndex}`}
-                                  x={lego.x + pos.labelX}
-                                  y={lego.y + pos.labelY}
-                                  fontSize="12"
-                                  fill="#666666"
-                                  textAnchor="middle"
-                                  dominantBaseline="middle"
-                                  style={{ pointerEvents: "none" }}
-                                >
-                                  {legIndex}
-                                </text>
-                              );
-                            }
-
-                            const thisLegStyle = lego.style.getLegStyle(
-                              legIndex,
-                              lego
-                            );
-                            const isThisHighlighted =
-                              thisLegStyle.is_highlighted;
-
-                            // Find the connected leg's style
-                            const connection = connections.find(
-                              (c) =>
-                                (c.from.legoId === lego.instanceId &&
-                                  c.from.legIndex === legIndex) ||
-                                (c.to.legoId === lego.instanceId &&
-                                  c.to.legIndex === legIndex)
-                            );
-
-                            if (!connection) return null;
-
-                            const connectedLegInfo =
-                              connection.from.legoId === lego.instanceId
-                                ? connection.to
-                                : connection.from;
-
-                            const connectedLego = droppedLegos.find(
-                              (l) => l.instanceId === connectedLegInfo.legoId
-                            );
-                            if (!connectedLego) return null;
-
-                            const connectedStyle =
-                              connectedLego.style.getLegStyle(
-                                connectedLegInfo.legIndex,
-                                connectedLego
-                              );
-
-                            // Hide label if:
-                            // 1. hideConnectedLegs is true AND
-                            // 2. lego doesn't have alwaysShowLegs AND
-                            // 3. Either:
-                            //    - This leg is not highlighted and connected leg is not highlighted
-                            //    - Both legs are highlighted with the same color
-                            const shouldHideLabel =
-                              hideConnectedLegs &&
-                              !lego.alwaysShowLegs &&
-                              (!isThisHighlighted
-                                ? !connectedStyle.is_highlighted
-                                : connectedStyle.is_highlighted &&
-                                  connectedStyle.color === thisLegStyle.color);
-
-                            if (shouldHideLabel) return null;
-
-                            const pos = calculateLegPosition(lego, legIndex);
-                            return (
-                              <text
-                                key={`${lego.instanceId}-label-${legIndex}`}
-                                x={lego.x + pos.labelX}
-                                y={lego.y + pos.labelY}
-                                fontSize="12"
-                                fill="#666666"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                style={{ pointerEvents: "none" }}
-                              >
-                                {legIndex}
-                              </text>
-                            );
-                          })
-                  )}
                 </svg>
 
                 {/* Selection Box */}
@@ -3623,7 +3520,6 @@ const LegoStudioView: React.FC = () => {
             />
           </Panel>
         </PanelGroup>
-
         {/* Error Panel */}
         <ErrorPanel error={error} onDismiss={() => setError("")} />
       </Box>
