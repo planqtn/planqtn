@@ -17,10 +17,13 @@ import {
   AccordionIcon,
   Button
 } from "@chakra-ui/react";
-import { LegoPiece } from "../lib/types.ts";
+import { DroppedLego, LegoPiece } from "../lib/types.ts";
 import { DynamicLegoDialog } from "./DynamicLegoDialog.tsx";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { DroppedLegoDisplay } from "./DroppedLegoDisplay.tsx";
+import {
+  DroppedLegoDisplay,
+  getLegoBoundingBox
+} from "./DroppedLegoDisplay.tsx";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { Legos } from "../lib/Legos.ts";
 
@@ -51,10 +54,9 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const checkPanelSize = useCallback(() => {
+    // const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
     if (panelRef.current) {
-      // With accordion structure, we need a slightly higher threshold
-      // since accordion headers take up additional space
-      setIsPanelSmall(panelRef.current.offsetWidth < 300);
+      setIsPanelSmall(panelRef.current.offsetWidth < 200);
     }
   }, []);
 
@@ -130,6 +132,35 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
     gauge_legs: []
   };
 
+  const getDemoLego = (
+    lego: LegoPiece
+  ): {
+    demoLego: DroppedLego;
+    boundingBox: { left: number; top: number; width: number; height: number };
+  } => {
+    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const originLego = {
+      ...lego,
+      x: 0,
+      y: 0,
+      instanceId: lego.id,
+      style: getLegoStyle(lego.id, numLegs),
+      selectedMatrixRows: []
+    } as DroppedLego;
+
+    const boundingBox = getLegoBoundingBox(originLego, true);
+    const demoLego = {
+      ...originLego,
+      x: -boundingBox.left / 2,
+      y: -boundingBox.top / 2
+    };
+
+    return {
+      demoLego,
+      boundingBox: getLegoBoundingBox(demoLego, true)
+    };
+  };
+
   return (
     <Box
       ref={panelRef}
@@ -156,34 +187,49 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
               <List spacing={3}>
                 {/* Existing Legos */}
                 {[...legos, customLego].map((lego) => {
-                  const numLegs = lego.parity_check_matrix[0].length / 2;
+                  const { demoLego, boundingBox } = getDemoLego(lego);
                   return (
                     <ListItem
                       key={lego.id}
                       p={2}
-                      borderWidth="1px"
+                      // borderWidth="1px"
                       borderRadius="md"
+                      height="auto"
+                      width="auto"
                       _hover={{ bg: "gray.50" }}
                       cursor="move"
                       draggable
                       onDragStart={(e) => handleDragStart(e, lego)}
                     >
-                      <HStack p={0.5} spacing={0.5}>
-                        <Tooltip
-                          label={lego.name}
-                          placement="right"
-                          isDisabled={!isPanelSmall}
-                        >
-                          <Box position="relative" w={50} h={50}>
+                      <Tooltip
+                        label={lego.name}
+                        placement="right"
+                        isDisabled={!isPanelSmall}
+                      >
+                        <HStack p={1} spacing={3}>
+                          <Box
+                            position={"relative"}
+                            left={isPanelSmall ? "0" : "0"}
+                            top={isPanelSmall ? "0" : "0"}
+                            // transform={isPanelSmall ? "scale(0.5)" : ""}
+                            style={{
+                              // border: "1px solid orange",
+                              marginLeft: isPanelSmall
+                                ? panelRef.current!.offsetWidth / 4 -
+                                  boundingBox.width / 4 +
+                                  "px"
+                                : "0"
+                            }}
+                            display="block"
+                            height={boundingBox.height / 2 + "px"}
+                            width={
+                              isPanelSmall
+                                ? "100%"
+                                : boundingBox.width / 2 + "px"
+                            }
+                          >
                             <DroppedLegoDisplay
-                              lego={{
-                                ...lego,
-                                x: numLegs <= 3 ? 13 : 5,
-                                y: numLegs <= 3 ? 20 : 13,
-                                instanceId: lego.id,
-                                style: getLegoStyle(lego.id, numLegs),
-                                selectedMatrixRows: []
-                              }}
+                              lego={demoLego}
                               connections={[]}
                               index={0}
                               legDragState={null}
@@ -198,23 +244,23 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                               demoMode={true}
                             />
                           </Box>
-                        </Tooltip>
-                        {!isPanelSmall && (
-                          <VStack align="start" spacing={0.5}>
-                            {lego.is_dynamic && (
-                              <Badge colorScheme="green">Dynamic</Badge>
-                            )}
-                            <Text
-                              display="block"
-                              fontWeight="bold"
-                              fontSize="sm"
-                              whiteSpace="nowrap"
-                            >
-                              {lego.name}
-                            </Text>
-                          </VStack>
-                        )}
-                      </HStack>
+                          {!isPanelSmall && (
+                            <VStack align="start" spacing={0.5}>
+                              {lego.is_dynamic && (
+                                <Badge colorScheme="green">Dynamic</Badge>
+                              )}
+                              <Text
+                                display="block"
+                                fontWeight="bold"
+                                fontSize="1rem"
+                                whiteSpace="nowrap"
+                              >
+                                {lego.name}
+                              </Text>
+                            </VStack>
+                          )}
+                        </HStack>
+                      </Tooltip>
                     </ListItem>
                   );
                 })}
