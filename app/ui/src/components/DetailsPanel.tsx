@@ -5,17 +5,14 @@ import {
   Text,
   Button,
   Icon,
-  HStack,
-  IconButton,
   useColorModeValue,
-  useClipboard,
   Input,
   Checkbox,
   Link,
   UseToastOptions,
   useDisclosure
 } from "@chakra-ui/react";
-import { FaTable, FaCube, FaCode, FaCopy } from "react-icons/fa";
+import { FaTable, FaCube } from "react-icons/fa";
 import {
   DroppedLego,
   LegoServerPayload,
@@ -129,9 +126,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const { onCopy: onCopyCode, hasCopied: hasCopiedCode } = useClipboard(
-    tensorNetwork?.constructionCode || ""
-  );
   const [parityCheckMatrixCache] = useState<Map<string, StabilizerCodeTensor>>(
     new Map()
   );
@@ -523,26 +517,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             })
           : null
       );
-    }
-  };
-
-  const handleGenerateConstructionCode = () => {
-    if (!tensorNetwork) return;
-
-    try {
-      console.log("tensorNetwork", tensorNetwork);
-      const code = tensorNetwork.generateConstructionCode();
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              constructionCode: code
-            })
-          : null
-      );
-    } catch (error) {
-      console.error("Error generating Python code:", error);
-      setError("Failed to generate Python code");
     }
   };
 
@@ -1428,137 +1402,73 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         Calculate Parity Check Matrix
                       </Button>
                     )}
-                  {!tensorNetwork.weightEnumerator &&
-                    !weightEnumeratorCache.get(tensorNetwork.signature!) &&
-                    !tensorNetwork.isCalculatingWeightEnumerator && (
-                      <Button
-                        onClick={() =>
-                          setShowWeightEnumeratorCalculationDialog(true)
-                        }
-                        colorScheme="teal"
-                        size="sm"
-                        width="full"
-                        leftIcon={<Icon as={FaCube} />}
-                        disabled={!user}
-                        title={!user ? "Needs signing in" : ""}
-                      >
-                        Calculate Weight Enumerator
-                      </Button>
-                    )}
-                  <Button
-                    onClick={handleGenerateConstructionCode}
-                    colorScheme="purple"
-                    size="sm"
-                    width="full"
-                    leftIcon={<Icon as={FaCode} />}
-                  >
-                    Python Code
-                  </Button>
-                </VStack>
-                {(tensorNetwork.parityCheckMatrix ||
-                  (tensorNetwork &&
-                    parityCheckMatrixCache.get(tensorNetwork.signature!))) && (
-                  <ParityCheckMatrixDisplay
-                    matrix={
-                      tensorNetwork.parityCheckMatrix ||
-                      parityCheckMatrixCache
-                        .get(tensorNetwork.signature!)!
-                        .h.getMatrix()
-                    }
-                    title="Pauli stabilizers"
-                    legOrdering={
-                      tensorNetwork.legOrdering ||
-                      parityCheckMatrixCache.get(tensorNetwork.signature!)!.legs
-                    }
-                    onMatrixChange={(newMatrix) => {
-                      // Update the tensor network state
-                      setTensorNetwork((prev: TensorNetwork | null) =>
-                        prev
-                          ? TensorNetwork.fromObj({
-                              ...prev,
-                              parityCheckMatrix: newMatrix
-                            })
-                          : null
-                      );
-
-                      // Update the cache
-                      const signature = tensorNetwork.signature!;
-                      const cachedResponse =
-                        parityCheckMatrixCache.get(signature);
-                      if (cachedResponse) {
-                        parityCheckMatrixCache.set(
-                          signature,
-                          new StabilizerCodeTensor(
-                            new GF2(newMatrix),
-                            cachedResponse.idx,
-                            cachedResponse.legs
-                          )
-                        );
+                  {(tensorNetwork.parityCheckMatrix ||
+                    (tensorNetwork &&
+                      parityCheckMatrixCache.get(
+                        tensorNetwork.signature!
+                      ))) && (
+                    <ParityCheckMatrixDisplay
+                      matrix={
+                        tensorNetwork.parityCheckMatrix ||
+                        parityCheckMatrixCache
+                          .get(tensorNetwork.signature!)!
+                          .h.getMatrix()
                       }
-                    }}
-                    onLegOrderingChange={handleLegOrderingChange}
-                    onRecalculate={calculateParityCheckMatrix}
-                  />
-                )}
-                {tensorNetwork.isCalculatingWeightEnumerator ||
-                (tensorNetwork.signature &&
-                  weightEnumeratorCache.get(tensorNetwork.signature)
-                    ?.polynomial === "") ? (
-                  <TaskDetailsDisplay
-                    task={task}
-                    taskId={
-                      tensorNetwork.taskId ||
-                      weightEnumeratorCache.get(tensorNetwork.signature!)
-                        ?.taskId
-                    }
-                    iterationStatus={iterationStatus}
-                    waitingForTaskUpdate={waitingForTaskUpdate}
-                    taskUpdatesChannel={taskUpdatesChannel}
-                    onCancelTask={handleCancelTask}
-                    onViewLogs={fetchTaskLogs}
-                  />
-                ) : null}
-                {tensorNetwork.constructionCode && (
-                  <VStack align="stretch" spacing={2}>
-                    <HStack justify="space-between">
-                      <Heading size="sm">Construction Code</Heading>
-                      <IconButton
-                        aria-label="Copy code"
-                        icon={<Icon as={FaCopy} />}
-                        size="sm"
-                        onClick={onCopyCode}
-                        variant="ghost"
-                      />
-                    </HStack>
-                    <Box
-                      p={3}
-                      borderWidth={1}
-                      borderRadius="md"
-                      bg="gray.50"
-                      position="relative"
-                      fontFamily="mono"
-                      whiteSpace="pre"
-                      overflowX="auto"
-                    >
-                      <Text>{tensorNetwork.constructionCode}</Text>
-                      {hasCopiedCode && (
-                        <Box
-                          position="absolute"
-                          top={2}
-                          right={2}
-                          px={2}
-                          py={1}
-                          bg="green.500"
-                          color="white"
-                          borderRadius="md"
-                          fontSize="sm"
-                        >
-                          Copied!
-                        </Box>
-                      )}
-                    </Box>
-                  </VStack>
-                )}
+                      title="Pauli stabilizers"
+                      legOrdering={
+                        tensorNetwork.legOrdering ||
+                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
+                          .legs
+                      }
+                      onMatrixChange={(newMatrix) => {
+                        // Update the tensor network state
+                        setTensorNetwork((prev: TensorNetwork | null) =>
+                          prev
+                            ? TensorNetwork.fromObj({
+                                ...prev,
+                                parityCheckMatrix: newMatrix
+                              })
+                            : null
+                        );
+
+                        // Update the cache
+                        const signature = tensorNetwork.signature!;
+                        const cachedResponse =
+                          parityCheckMatrixCache.get(signature);
+                        if (cachedResponse) {
+                          parityCheckMatrixCache.set(
+                            signature,
+                            new StabilizerCodeTensor(
+                              new GF2(newMatrix),
+                              cachedResponse.idx,
+                              cachedResponse.legs
+                            )
+                          );
+                        }
+                      }}
+                      onLegOrderingChange={handleLegOrderingChange}
+                      onRecalculate={calculateParityCheckMatrix}
+                    />
+                  )}
+                  {tensorNetwork.isCalculatingWeightEnumerator ||
+                  (tensorNetwork.signature &&
+                    weightEnumeratorCache.get(tensorNetwork.signature)
+                      ?.polynomial === "") ? (
+                    <TaskDetailsDisplay
+                      task={task}
+                      taskId={
+                        tensorNetwork.taskId ||
+                        weightEnumeratorCache.get(tensorNetwork.signature!)
+                          ?.taskId
+                      }
+                      iterationStatus={iterationStatus}
+                      waitingForTaskUpdate={waitingForTaskUpdate}
+                      taskUpdatesChannel={taskUpdatesChannel}
+                      onCancelTask={handleCancelTask}
+                      onViewLogs={fetchTaskLogs}
+                    />
+                  ) : null}
+                </VStack>
               </VStack>
             </Box>
           </>

@@ -14,7 +14,6 @@ import {
   useToast,
   Text,
   VStack,
-  Link,
   MenuDivider,
   HStack
 } from "@chakra-ui/react";
@@ -24,7 +23,7 @@ import {
   PanelGroup,
   ImperativePanelHandle
 } from "react-resizable-panels";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
@@ -70,6 +69,10 @@ import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
+import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
+import { TensorNetworkLeg } from "./lib/TensorNetwork";
+import { LegoServerPayload } from "./lib/types";
+import TaskPanel from "./components/TaskPanel";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -211,7 +214,17 @@ const LegoStudioView: React.FC = () => {
     justFinished: false
   });
   const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
-  const [weightEnumeratorCache] = useState<Map<string, string>>(new Map());
+  const [weightEnumeratorCache] = useState<
+    Map<
+      string,
+      {
+        taskId: string;
+        polynomial: string;
+        normalizerPolynomial: string;
+        truncateLength: number | null;
+      }
+    >
+  >(new Map());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDynamicLego, setSelectedDynamicLego] =
     useState<LegoPiece | null>(null);
@@ -251,9 +264,12 @@ const LegoStudioView: React.FC = () => {
     isHealthy: boolean;
     message: string;
   } | null>(null);
+  const [showWeightEnumeratorDialog, setShowWeightEnumeratorDialog] =
+    useState(false);
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
+  const borderColor = useColorModeValue("gray.200", "gray.600");
 
   // Add title effect at the top
   useEffect(() => {
@@ -2876,804 +2892,918 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
+  // Helper to get external and dangling legs for the current tensor network
+  const getExternalAndDanglingLegs = () => {
+    if (!tensorNetwork) return { externalLegs: [], danglingLegs: [] };
+    const externalLegs = [];
+    const danglingLegs = [];
+    for (const lego of tensorNetwork.legos) {
+      const numLegs = lego.parity_check_matrix[0].length / 2;
+      for (let i = 0; i < numLegs; i++) {
+        const isConnected = connections.some(
+          (conn) =>
+            (conn.from.legoId === lego.instanceId &&
+              conn.from.legIndex === i) ||
+            (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
+        );
+        const leg = { instanceId: lego.instanceId, legIndex: i };
+        if (isConnected) externalLegs.push(leg);
+        else danglingLegs.push(leg);
+      }
+    }
+    return { externalLegs, danglingLegs };
+  };
+
+  const handleExportPythonCode = () => {
+    if (!tensorNetwork) return;
+    const code = tensorNetwork.generateConstructionCode();
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Copied to clipboard",
+      description: "Python code for the network has been copied.",
+      status: "success",
+      duration: 2000,
+      isClosable: true
+    });
+  };
+
+  const calculateWeightEnumerator = async (
+    truncateLength: number | null,
+    openLegs?: TensorNetworkLeg[]
+  ) => {
+    if (!tensorNetwork) return;
+
+    const signature = tensorNetwork.signature!;
+    const cachedEnumerator = weightEnumeratorCache.get(signature);
+    if (cachedEnumerator) {
+      setTensorNetwork(
+        TensorNetwork.fromObj({
+          ...tensorNetwork,
+          taskId: cachedEnumerator.taskId,
+          weightEnumerator: cachedEnumerator.polynomial,
+          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
+          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
+        })
+      );
+      return;
+    }
+
+    try {
+      setTensorNetwork((prev: TensorNetwork | null) =>
+        prev
+          ? TensorNetwork.fromObj({
+              ...prev,
+              isCalculatingWeightEnumerator: true,
+              weightEnumerator: undefined,
+              taskId: undefined
+            })
+          : null
+      );
+
+      const acessToken = await getAccessToken();
+
+      const response = await axios.post(
+        getApiUrl("planqtnJob"),
+        {
+          user_id: currentUser?.id,
+          request_time: new Date().toISOString(),
+          job_type: "weightenumerator",
+          task_store_url: config.userContextURL,
+          task_store_anon_key: config.userContextAnonKey,
+          payload: {
+            legos: tensorNetwork.legos.reduce(
+              (acc, lego) => {
+                acc[lego.instanceId] = {
+                  instanceId: lego.instanceId,
+                  shortName: lego.shortName || "Generic Lego",
+                  name: lego.shortName || "Generic Lego",
+                  id: lego.id,
+                  parity_check_matrix: lego.parity_check_matrix,
+                  logical_legs: lego.logical_legs,
+                  gauge_legs: lego.gauge_legs
+                } as LegoServerPayload;
+                return acc;
+              },
+              {} as Record<string, LegoServerPayload>
+            ),
+            connections: tensorNetwork.connections,
+            truncate_length: truncateLength,
+            open_legs: openLegs || []
+          }
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${acessToken}`
+          }
+        }
+      );
+
+      if (response.data.status === "error") {
+        throw new Error(response.data.message);
+      }
+
+      const taskId = response.data.task_id;
+
+      setTensorNetwork((prev: TensorNetwork | null) =>
+        prev
+          ? TensorNetwork.fromObj({
+              ...prev,
+              taskId: taskId
+            })
+          : null
+      );
+
+      weightEnumeratorCache.set(signature, {
+        taskId: taskId,
+        polynomial: "",
+        normalizerPolynomial: "",
+        truncateLength: null
+      });
+
+      toast({
+        title: "Success starting the task!",
+        description: "Weight enumerator calculation has been started.",
+        status: "success",
+        duration: 5000,
+        isClosable: true
+      });
+    } catch (err) {
+      const error = err as AxiosError<{
+        message: string;
+        error: string;
+        status: number;
+      }>;
+      console.error("Error calculating weight enumerator:", error);
+      setError(
+        `Failed to calculate weight enumerator: ${getAxiosErrorMessage(error)}`
+      );
+
+      setTensorNetwork((prev: TensorNetwork | null) =>
+        prev
+          ? TensorNetwork.fromObj({
+              ...prev,
+              isCalculatingWeightEnumerator: false
+            })
+          : null
+      );
+    }
+  };
+
   return (
-    <VStack spacing={0} align="stretch" h="100vh">
-      {fatalError &&
-        (() => {
-          throw fatalError;
-        })()}
-      {/* Main Content */}
-      <Box
-        ref={panelGroupContainerRef}
-        flex={1}
-        position="relative"
-        overflow="hidden"
-      >
-        {/* Collapsed Panel Handle
-        {isLegoPanelCollapsed && (
-          <Box
-            position="absolute"
-            left={0}
-            top={0}
-            bottom={0}
-            width="8px"
-            bg={useColorModeValue("gray.200", "gray.600")}
-            cursor="col-resize"
-            zIndex={10}
-            transition="background-color 0.2s"
-            _hover={{ bg: "blue.500" }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsLegoPanelCollapsed(false);
-            }}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Icon
-              as={FiChevronRight}
-              boxSize={3}
-              color={useColorModeValue("gray.600", "gray.300")}
-              _hover={{ color: "white" }}
-            />
-          </Box>
-        )} */}
-        <PanelGroup direction="horizontal">
-          {/* Left Panel */}
-          <Panel
-            ref={leftPanelRef}
-            id="lego-panel"
-            defaultSize={legoPanelSizes.defaultSize}
-            minSize={legoPanelSizes.minSize}
-            maxSize={legoPanelSizes.defaultSize}
-            order={1}
-            collapsible={true}
-            onCollapse={() => setIsLegoPanelCollapsed(true)}
-            onExpand={() => setIsLegoPanelCollapsed(false)}
-          >
-            <Box visibility={isLegoPanelCollapsed ? "hidden" : "visible"}>
-              <BuildingBlocksPanel
-                legos={legos}
-                onDragStart={handleDragStart}
-                onLegoSelect={() => {
-                  // Handle lego selection if needed
-                }}
-                onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
-                onCreateTanner={() => setIsTannerDialogOpen(true)}
-                onCreateMsp={() => setIsMspDialogOpen(true)}
-                isUserLoggedIn={!!currentUser}
+    <>
+      <VStack spacing={0} align="stretch" h="100vh">
+        {fatalError &&
+          (() => {
+            throw fatalError;
+          })()}
+        {/* Main Content */}
+        <Box
+          ref={panelGroupContainerRef}
+          flex={1}
+          position="relative"
+          overflow="hidden"
+        >
+          {/* Collapsed Panel Handle
+          {isLegoPanelCollapsed && (
+            <Box
+              position="absolute"
+              left={0}
+              top={0}
+              bottom={0}
+              width="8px"
+              bg={useColorModeValue("gray.200", "gray.600")}
+              cursor="col-resize"
+              zIndex={10}
+              transition="background-color 0.2s"
+              _hover={{ bg: "blue.500" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsLegoPanelCollapsed(false);
+              }}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Icon
+                as={FiChevronRight}
+                boxSize={3}
+                color={useColorModeValue("gray.600", "gray.300")}
+                _hover={{ color: "white" }}
               />
             </Box>
-          </Panel>
-          <ResizeHandle id="lego-panel-resize-handle" />
+          )} */}
+          <PanelGroup direction="horizontal">
+            {/* Left Panel */}
+            <Panel
+              ref={leftPanelRef}
+              id="lego-panel"
+              defaultSize={legoPanelSizes.defaultSize}
+              minSize={legoPanelSizes.minSize}
+              maxSize={legoPanelSizes.defaultSize}
+              order={1}
+              collapsible={true}
+              onCollapse={() => setIsLegoPanelCollapsed(true)}
+              onExpand={() => setIsLegoPanelCollapsed(false)}
+            >
+              <Box visibility={isLegoPanelCollapsed ? "hidden" : "visible"}>
+                <BuildingBlocksPanel
+                  legos={legos}
+                  onDragStart={handleDragStart}
+                  onLegoSelect={() => {
+                    // Handle lego selection if needed
+                  }}
+                  onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
+                  onCreateTanner={() => setIsTannerDialogOpen(true)}
+                  onCreateMsp={() => setIsMspDialogOpen(true)}
+                  isUserLoggedIn={!!currentUser}
+                />
+              </Box>
+            </Panel>
+            <ResizeHandle id="lego-panel-resize-handle" />
 
-          {/* Main Content */}
-          <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
-            <Box h="100%" display="flex" flexDirection="column" p={4}>
-              {/* Canvas with overlay controls */}
-              <Box
-                ref={canvasRef}
-                flex={1}
-                bg="gray.100"
-                borderRadius="lg"
-                boxShadow="inner"
-                position="relative"
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragEnd={handleDragEnd}
-                onMouseMove={handleCanvasMouseMove}
-                onWheel={handleCanvasMouseWheel}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseLeave}
-                onClick={handleCanvasClick}
-                onMouseDown={handleCanvasMouseDown}
-                style={{
-                  userSelect: "none",
-                  overflow: "hidden",
-                  cursor: altKeyPressed
-                    ? canvasDragState.isDragging
-                      ? "grabbing"
-                      : "grab"
-                    : "default"
-                }}
-              >
-                {/* Top-left three-dots menu */}
+            {/* Main Content */}
+            <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
+              <Box h="100%" display="flex" flexDirection="column" p={4}>
+                {/* Canvas with overlay controls */}
                 <Box
-                  position="absolute"
-                  top={2}
-                  left={2}
-                  zIndex={20}
-                  bg={useColorModeValue("white", "gray.800")}
-                  borderRadius="md"
-                  boxShadow="md"
-                  p={1}
-                >
-                  <Menu>
-                    <MenuButton
-                      as={Button}
-                      variant="ghost"
-                      size="sm"
-                      minW="auto"
-                      p={2}
-                    >
-                      <Icon as={FiMoreVertical} boxSize={4} />
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem onClick={handleExportSvg}>
-                        Export canvas as SVG...
-                      </MenuItem>
-                      <MenuDivider />
-                      <MenuItemOption
-                        onClick={() => {
-                          setHideConnectedLegs(!hideConnectedLegs);
-                          encodeCanvasState(
-                            droppedLegos,
-                            connections,
-                            !hideConnectedLegs
-                          );
-                        }}
-                        isChecked={hideConnectedLegs}
-                      >
-                        Hide connected legs
-                      </MenuItemOption>
-                      <MenuItemOption
-                        isChecked={isLegoPanelCollapsed}
-                        onClick={() => {
-                          if (leftPanelRef.current) {
-                            if (isLegoPanelCollapsed) {
-                              leftPanelRef.current.expand();
-                            } else {
-                              leftPanelRef.current.collapse();
-                            }
-                          }
-                        }}
-                      >
-                        Hide Building Blocks Panel
-                      </MenuItemOption>
-                      <MenuItem
-                        onClick={() => {
-                          const rect =
-                            canvasRef.current?.getBoundingClientRect();
-                          if (!rect) return;
-                          const centerX = rect.width / 2;
-                          const centerY = rect.height / 2;
-                          const scale = 1 / zoomLevel;
-                          const rescaledLegos = droppedLegos.map((lego) => ({
-                            ...lego,
-                            x: (lego.x - centerX) * scale + centerX,
-                            y: (lego.y - centerY) * scale + centerY
-                          }));
-                          setDroppedLegos(rescaledLegos);
-                          setZoomLevel(1);
-                          encodeCanvasState(
-                            rescaledLegos,
-                            connections,
-                            hideConnectedLegs
-                          );
-                        }}
-                        isDisabled={zoomLevel === 1}
-                      >
-                        Reset zoom
-                      </MenuItem>
-                      <MenuDivider />
-                      <MenuItem onClick={handleClearAll}>Remove all</MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          const clearedLegos = droppedLegos.map((lego) => ({
-                            ...lego,
-                            selectedMatrixRows: []
-                          }));
-                          setDroppedLegos(clearedLegos);
-                          setSelectedLego(null);
-                          encodeCanvasState(
-                            clearedLegos,
-                            connections,
-                            hideConnectedLegs
-                          );
-                        }}
-                        isDisabled={
-                          !droppedLegos.some(
-                            (lego) =>
-                              lego.selectedMatrixRows &&
-                              lego.selectedMatrixRows.length > 0
-                          )
-                        }
-                      >
-                        Clear highlights
-                      </MenuItem>
-                      <MenuDivider />
-                      <MenuItem onClick={handleRuntimeToggle}>
-                        <HStack spacing={2}>
-                          <Icon as={TbPlugConnected} />
-                          <Text>
-                            Switch runtime to{" "}
-                            {isLocalRuntime ? "cloud" : "local"}
-                          </Text>
-                        </HStack>
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
-                </Box>
-
-                {/* Top-center title (contextual) */}
-                <Box
-                  position="absolute"
-                  top={2}
-                  left="50%"
-                  transform="translateX(-50%)"
-                  zIndex={15}
-                  opacity={0}
-                  _hover={{ opacity: 1 }}
-                  transition="opacity 0.2s"
-                  bg={useColorModeValue("white", "gray.800")}
-                  borderRadius="md"
-                  boxShadow="md"
-                  px={3}
-                  py={1}
-                >
-                  <Editable
-                    value={currentTitle}
-                    onChange={handleTitleChange}
-                    onKeyDown={handleTitleKeyDown}
-                  >
-                    <EditablePreview fontSize="sm" />
-                    <EditableInput fontSize="sm" />
-                  </Editable>
-                </Box>
-
-                {/* Top-right controls */}
-                <Box
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  zIndex={20}
-                  display="flex"
-                  gap={2}
-                >
-                  {/* User menu */}
-                  <Box
-                    bg="transparent"
-                    borderRadius="md"
-                    p={1}
-                    opacity={0.8}
-                    _hover={{ opacity: 1 }}
-                    transition="opacity 0.2s"
-                  >
-                    <UserMenu
-                      user={currentUser}
-                      onSignIn={handleAuthDialogOpen}
-                    />
-                  </Box>
-                </Box>
-
-                {/* Connection Lines */}
-                <svg
-                  id="connections-svg"
+                  ref={canvasRef}
+                  flex={1}
+                  bg="gray.100"
+                  borderRadius="lg"
+                  boxShadow="inner"
+                  position="relative"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
+                  onMouseMove={handleCanvasMouseMove}
+                  onWheel={handleCanvasMouseWheel}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseLeave}
+                  onClick={handleCanvasClick}
+                  onMouseDown={handleCanvasMouseDown}
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    pointerEvents: "none",
-                    userSelect: "none"
-                    // border: "1px solid red"
+                    userSelect: "none",
+                    overflow: "hidden",
+                    cursor: altKeyPressed
+                      ? canvasDragState.isDragging
+                        ? "grabbing"
+                        : "grab"
+                      : "default"
                   }}
                 >
-                  {/* Existing connections */}
-                  <g style={{ pointerEvents: "all" }}>
-                    {connections.map((conn) => {
-                      const fromLego = droppedLegos.find(
-                        (l) => l.instanceId === conn.from.legoId
-                      );
-                      const toLego = droppedLegos.find(
-                        (l) => l.instanceId === conn.to.legoId
-                      );
-                      if (!fromLego || !toLego) return null;
-
-                      // Create a stable key based on the connection's properties
-                      const [firstId, firstLeg, secondId, secondLeg] =
-                        conn.from.legoId < conn.to.legoId
-                          ? [
-                              conn.from.legoId,
-                              conn.from.legIndex,
-                              conn.to.legoId,
-                              conn.to.legIndex
-                            ]
-                          : [
-                              conn.to.legoId,
-                              conn.to.legIndex,
-                              conn.from.legoId,
-                              conn.from.legIndex
-                            ];
-                      const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
-
-                      // Calculate positions using shared function
-                      const fromPos = calculateLegPosition(
-                        fromLego,
-                        conn.from.legIndex
-                      );
-                      const toPos = calculateLegPosition(
-                        toLego,
-                        conn.to.legIndex
-                      );
-
-                      // Check if legs are connected and should be hidden
-                      const fromLegConnected = connections.some(
-                        (c) =>
-                          (c.from.legoId === fromLego.instanceId &&
-                            c.from.legIndex === conn.from.legIndex) ||
-                          (c.to.legoId === fromLego.instanceId &&
-                            c.to.legIndex === conn.from.legIndex)
-                      );
-                      const toLegConnected = connections.some(
-                        (c) =>
-                          (c.from.legoId === toLego.instanceId &&
-                            c.from.legIndex === conn.to.legIndex) ||
-                          (c.to.legoId === toLego.instanceId &&
-                            c.to.legIndex === conn.to.legIndex)
-                      );
-
-                      // Check if legs are highlighted
-                      const fromLegStyle = fromLego.style.getLegStyle(
-                        conn.from.legIndex,
-                        fromLego
-                      );
-                      const toLegStyle = toLego.style.getLegStyle(
-                        conn.to.legIndex,
-                        toLego
-                      );
-                      const fromLegHighlighted = fromLegStyle.is_highlighted;
-                      const toLegHighlighted = toLegStyle.is_highlighted;
-
-                      // Determine if legs should be hidden
-                      const hideFromLeg =
-                        hideConnectedLegs &&
-                        fromLegConnected &&
-                        !fromLego.alwaysShowLegs &&
-                        (!fromLegHighlighted
-                          ? !toLegHighlighted
-                          : toLegHighlighted &&
-                            fromLegStyle.color === toLegStyle.color);
-                      const hideToLeg =
-                        hideConnectedLegs &&
-                        toLegConnected &&
-                        !toLego.alwaysShowLegs &&
-                        (!toLegHighlighted
-                          ? !fromLegHighlighted
-                          : fromLegHighlighted &&
-                            fromLegStyle.color === toLegStyle.color);
-
-                      // Final points with lego positions
-                      const fromPoint = hideFromLeg
-                        ? { x: fromLego.x, y: fromLego.y }
-                        : {
-                            x: fromLego.x + fromPos.endX,
-                            y: fromLego.y + fromPos.endY
-                          };
-                      const toPoint = hideToLeg
-                        ? { x: toLego.x, y: toLego.y }
-                        : {
-                            x: toLego.x + toPos.endX,
-                            y: toLego.y + toPos.endY
-                          };
-
-                      // Get the colors of the connected legs
-                      const fromLegColor = fromLego.style.getLegColor(
-                        conn.from.legIndex,
-                        fromLego
-                      );
-                      const toLegColor = toLego.style.getLegColor(
-                        conn.to.legIndex,
-                        toLego
-                      );
-                      const colorsMatch = fromLegColor === toLegColor;
-
-                      // Calculate control points for the curve
-                      const controlPointDistance = 30;
-                      const cp1 = {
-                        x:
-                          fromPoint.x +
-                          Math.cos(fromPos.angle) * controlPointDistance,
-                        y:
-                          fromPoint.y +
-                          Math.sin(fromPos.angle) * controlPointDistance
-                      };
-                      const cp2 = {
-                        x:
-                          toPoint.x +
-                          Math.cos(toPos.angle) * controlPointDistance,
-                        y:
-                          toPoint.y +
-                          Math.sin(toPos.angle) * controlPointDistance
-                      };
-
-                      // Create the path string for the cubic Bezier curve
-                      const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
-
-                      // Calculate midpoint for warning sign
-                      const midPoint = {
-                        x: (fromPoint.x + toPoint.x) / 2,
-                        y: (fromPoint.y + toPoint.y) / 2
-                      };
-
-                      function fromChakraColorToHex(color: string): string {
-                        if (color.startsWith("blue")) {
-                          return "#0000FF";
-                        } else if (color.startsWith("red")) {
-                          return "#FF0000";
-                        } else if (color.startsWith("purple")) {
-                          return "#800080";
-                        } else {
-                          return "darkgray";
-                        }
-                      }
-                      const sharedColor = colorsMatch
-                        ? fromChakraColorToHex(fromLegColor)
-                        : "yellow";
-                      const connectorColor = colorsMatch
-                        ? sharedColor
-                        : "yellow";
-
-                      // Check if this connection is being hovered
-                      const isHovered =
-                        hoveredConnection &&
-                        hoveredConnection.from.legoId === conn.from.legoId &&
-                        hoveredConnection.from.legIndex ===
-                          conn.from.legIndex &&
-                        hoveredConnection.to.legoId === conn.to.legoId &&
-                        hoveredConnection.to.legIndex === conn.to.legIndex;
-
-                      return (
-                        <g key={connKey}>
-                          {/* Invisible wider path for easier clicking */}
-                          <path
-                            d={pathString}
-                            stroke="transparent"
-                            strokeWidth="10"
-                            fill="none"
-                            style={{
-                              cursor: "pointer"
-                            }}
-                            onDoubleClick={(e) =>
-                              handleConnectionDoubleClick(e, conn)
-                            }
-                            onMouseEnter={(e) => {
-                              // Find and update the visible path
-                              const visiblePath = e.currentTarget
-                                .nextSibling as SVGPathElement;
-                              if (visiblePath) {
-                                visiblePath.style.stroke = connectorColor;
-                                visiblePath.style.strokeWidth = "3";
-                                visiblePath.style.filter =
-                                  "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              // Reset the visible path
-                              const visiblePath = e.currentTarget
-                                .nextSibling as SVGPathElement;
-                              if (visiblePath) {
-                                visiblePath.style.stroke = connectorColor;
-                                visiblePath.style.strokeWidth = "2";
-                                visiblePath.style.filter = "none";
-                              }
-                            }}
-                          />
-                          {/* Visible path */}
-                          <path
-                            d={pathString}
-                            stroke={connectorColor}
-                            strokeWidth={isHovered ? "4" : "2"}
-                            fill="none"
-                            style={{
-                              pointerEvents: "none",
-                              stroke: connectorColor,
-                              filter: isHovered
-                                ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
-                                : "none"
-                            }}
-                          />
-                          {/* Warning sign if operators don't match */}
-                          {!colorsMatch && (
-                            <text
-                              x={midPoint.x}
-                              y={midPoint.y}
-                              fontSize="16"
-                              fill="#FF0000"
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              style={{ pointerEvents: "none" }}
-                            >
-                              ⚠
-                            </text>
-                          )}
-                        </g>
-                      );
-                    })}
-                  </g>
-
-                  {/* Temporary line while dragging */}
-                  {legDragState?.isDragging &&
-                    (() => {
-                      const fromLego = droppedLegos.find(
-                        (l) => l.instanceId === legDragState.legoId
-                      );
-                      if (!fromLego) return null;
-
-                      // Calculate position using shared function
-                      const fromPos = calculateLegPosition(
-                        fromLego,
-                        legDragState.legIndex
-                      );
-                      const fromPoint = {
-                        x: fromLego.x + fromPos.endX,
-                        y: fromLego.y + fromPos.endY
-                      };
-
-                      const legStyle = fromLego.style.getLegStyle(
-                        legDragState.legIndex,
-                        fromLego
-                      );
-                      const controlPointDistance = 30;
-                      const cp1 = {
-                        x:
-                          fromPoint.x +
-                          Math.cos(legStyle.angle) * controlPointDistance,
-                        y:
-                          fromPoint.y +
-                          Math.sin(legStyle.angle) * controlPointDistance
-                      };
-                      const cp2 = {
-                        x: legDragState.currentX,
-                        y: legDragState.currentY
-                      };
-
-                      const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
-
-                      return (
-                        <>
-                          <circle
-                            cx={fromLego.x}
-                            cy={fromLego.y}
-                            r={5}
-                            fill="red"
-                          />
-                          <path
-                            d={pathString}
-                            stroke="#3182CE"
-                            strokeWidth="2"
-                            strokeDasharray="4"
-                            fill="none"
-                            opacity={0.5}
-                            style={{ pointerEvents: "none" }}
-                          />
-                        </>
-                      );
-                    })()}
-                </svg>
-
-                {/* Selection Box */}
-                {selectionBox.isSelecting && (
+                  {/* Top-left three-dots menu */}
                   <Box
                     position="absolute"
-                    left={`${Math.min(
-                      selectionBox.startX,
-                      selectionBox.currentX
-                    )}px`}
-                    top={`${Math.min(
-                      selectionBox.startY,
-                      selectionBox.currentY
-                    )}px`}
-                    width={`${Math.abs(
-                      selectionBox.currentX - selectionBox.startX
-                    )}px`}
-                    height={`${Math.abs(
-                      selectionBox.currentY - selectionBox.startY
-                    )}px`}
-                    border="2px"
-                    borderColor="blue.500"
-                    bg="blue.50"
-                    opacity={0.3}
-                    pointerEvents="none"
-                  />
-                )}
+                    top={2}
+                    left={2}
+                    zIndex={20}
+                    bg={useColorModeValue("white", "gray.800")}
+                    borderRadius="md"
+                    boxShadow="md"
+                    p={1}
+                  >
+                    <Menu>
+                      <MenuButton
+                        as={Button}
+                        variant="ghost"
+                        size="sm"
+                        minW="auto"
+                        p={2}
+                      >
+                        <Icon as={FiMoreVertical} boxSize={4} />
+                      </MenuButton>
+                      <MenuList>
+                        <MenuItem onClick={handleExportSvg}>
+                          Export canvas as SVG...
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => setShowWeightEnumeratorDialog(true)}
+                          isDisabled={!tensorNetwork}
+                        >
+                          Calculate Weight Enumerator
+                        </MenuItem>
+                        <MenuItem
+                          onClick={handleExportPythonCode}
+                          isDisabled={!tensorNetwork}
+                        >
+                          Export network as Python code
+                        </MenuItem>
+                        <MenuDivider />
+                        <MenuItemOption
+                          onClick={() => {
+                            setHideConnectedLegs(!hideConnectedLegs);
+                            encodeCanvasState(
+                              droppedLegos,
+                              connections,
+                              !hideConnectedLegs
+                            );
+                          }}
+                          isChecked={hideConnectedLegs}
+                        >
+                          Hide connected legs
+                        </MenuItemOption>
+                        <MenuItemOption
+                          isChecked={isLegoPanelCollapsed}
+                          onClick={() => {
+                            if (leftPanelRef.current) {
+                              if (isLegoPanelCollapsed) {
+                                leftPanelRef.current.expand();
+                              } else {
+                                leftPanelRef.current.collapse();
+                              }
+                            }
+                          }}
+                        >
+                          Hide Building Blocks Panel
+                        </MenuItemOption>
+                        <MenuItem
+                          onClick={() => {
+                            const rect =
+                              canvasRef.current?.getBoundingClientRect();
+                            if (!rect) return;
+                            const centerX = rect.width / 2;
+                            const centerY = rect.height / 2;
+                            const scale = 1 / zoomLevel;
+                            const rescaledLegos = droppedLegos.map((lego) => ({
+                              ...lego,
+                              x: (lego.x - centerX) * scale + centerX,
+                              y: (lego.y - centerY) * scale + centerY
+                            }));
+                            setDroppedLegos(rescaledLegos);
+                            setZoomLevel(1);
+                            encodeCanvasState(
+                              rescaledLegos,
+                              connections,
+                              hideConnectedLegs
+                            );
+                          }}
+                          isDisabled={zoomLevel === 1}
+                        >
+                          Reset zoom
+                        </MenuItem>
+                        <MenuDivider />
+                        <MenuItem onClick={handleClearAll}>Remove all</MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            const clearedLegos = droppedLegos.map((lego) => ({
+                              ...lego,
+                              selectedMatrixRows: []
+                            }));
+                            setDroppedLegos(clearedLegos);
+                            setSelectedLego(null);
+                            encodeCanvasState(
+                              clearedLegos,
+                              connections,
+                              hideConnectedLegs
+                            );
+                          }}
+                          isDisabled={
+                            !droppedLegos.some(
+                              (lego) =>
+                                lego.selectedMatrixRows &&
+                                lego.selectedMatrixRows.length > 0
+                            )
+                          }
+                        >
+                          Clear highlights
+                        </MenuItem>
+                        <MenuDivider />
+                        <MenuItem onClick={handleRuntimeToggle}>
+                          <HStack spacing={2}>
+                            <Icon as={TbPlugConnected} />
+                            <Text>
+                              Switch runtime to{" "}
+                              {isLocalRuntime ? "cloud" : "local"}
+                            </Text>
+                          </HStack>
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
+                  </Box>
 
-                {droppedLegos.map((lego, index) => (
-                  <DroppedLegoDisplay
-                    key={lego.instanceId}
-                    lego={lego}
-                    index={index}
-                    legDragState={legDragState}
-                    handleLegMouseDown={handleLegMouseDown}
-                    handleLegoMouseDown={handleLegoMouseDown}
-                    handleLegoClick={handleLegoClick}
-                    tensorNetwork={tensorNetwork}
-                    selectedLego={selectedLego}
-                    dragState={dragState}
-                    onLegClick={handleLegClick}
-                    hideConnectedLegs={hideConnectedLegs}
-                    connections={connections}
-                    droppedLegos={droppedLegos}
-                    demoMode={false}
-                  />
-                ))}
+                  {/* Top-center title (contextual) */}
+                  <Box
+                    position="absolute"
+                    top={2}
+                    left="50%"
+                    transform="translateX(-50%)"
+                    zIndex={15}
+                    opacity={0}
+                    _hover={{ opacity: 1 }}
+                    transition="opacity 0.2s"
+                    bg={useColorModeValue("white", "gray.800")}
+                    borderRadius="md"
+                    boxShadow="md"
+                    px={3}
+                    py={1}
+                  >
+                    <Editable
+                      value={currentTitle}
+                      onChange={handleTitleChange}
+                      onKeyDown={handleTitleKeyDown}
+                    >
+                      <EditablePreview fontSize="sm" />
+                      <EditableInput fontSize="sm" />
+                    </Editable>
+                  </Box>
+
+                  {/* Top-right controls */}
+                  <Box
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    zIndex={20}
+                    display="flex"
+                    gap={2}
+                  >
+                    {/* User menu */}
+                    <Box
+                      bg="transparent"
+                      borderRadius="md"
+                      p={1}
+                      opacity={0.8}
+                      _hover={{ opacity: 1 }}
+                      transition="opacity 0.2s"
+                    >
+                      <UserMenu
+                        user={currentUser}
+                        onSignIn={handleAuthDialogOpen}
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Connection Lines */}
+                  <svg
+                    id="connections-svg"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "none",
+                      userSelect: "none"
+                      // border: "1px solid red"
+                    }}
+                  >
+                    {/* Existing connections */}
+                    <g style={{ pointerEvents: "all" }}>
+                      {connections.map((conn) => {
+                        const fromLego = droppedLegos.find(
+                          (l) => l.instanceId === conn.from.legoId
+                        );
+                        const toLego = droppedLegos.find(
+                          (l) => l.instanceId === conn.to.legoId
+                        );
+                        if (!fromLego || !toLego) return null;
+
+                        // Create a stable key based on the connection's properties
+                        const [firstId, firstLeg, secondId, secondLeg] =
+                          conn.from.legoId < conn.to.legoId
+                            ? [
+                                conn.from.legoId,
+                                conn.from.legIndex,
+                                conn.to.legoId,
+                                conn.to.legIndex
+                              ]
+                            : [
+                                conn.to.legoId,
+                                conn.to.legIndex,
+                                conn.from.legoId,
+                                conn.from.legIndex
+                              ];
+                        const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
+
+                        // Calculate positions using shared function
+                        const fromPos = calculateLegPosition(
+                          fromLego,
+                          conn.from.legIndex
+                        );
+                        const toPos = calculateLegPosition(
+                          toLego,
+                          conn.to.legIndex
+                        );
+
+                        // Check if legs are connected and should be hidden
+                        const fromLegConnected = connections.some(
+                          (c) =>
+                            (c.from.legoId === fromLego.instanceId &&
+                              c.from.legIndex === conn.from.legIndex) ||
+                            (c.to.legoId === fromLego.instanceId &&
+                              c.to.legIndex === conn.from.legIndex)
+                        );
+                        const toLegConnected = connections.some(
+                          (c) =>
+                            (c.from.legoId === toLego.instanceId &&
+                              c.from.legIndex === conn.to.legIndex) ||
+                            (c.to.legoId === toLego.instanceId &&
+                              c.to.legIndex === conn.to.legIndex)
+                        );
+
+                        // Check if legs are highlighted
+                        const fromLegStyle = fromLego.style.getLegStyle(
+                          conn.from.legIndex,
+                          fromLego
+                        );
+                        const toLegStyle = toLego.style.getLegStyle(
+                          conn.to.legIndex,
+                          toLego
+                        );
+                        const fromLegHighlighted = fromLegStyle.is_highlighted;
+                        const toLegHighlighted = toLegStyle.is_highlighted;
+
+                        // Determine if legs should be hidden
+                        const hideFromLeg =
+                          hideConnectedLegs &&
+                          fromLegConnected &&
+                          !fromLego.alwaysShowLegs &&
+                          (!fromLegHighlighted
+                            ? !toLegHighlighted
+                            : toLegHighlighted &&
+                              fromLegStyle.color === toLegStyle.color);
+                        const hideToLeg =
+                          hideConnectedLegs &&
+                          toLegConnected &&
+                          !toLego.alwaysShowLegs &&
+                          (!toLegHighlighted
+                            ? !fromLegHighlighted
+                            : fromLegHighlighted &&
+                              fromLegStyle.color === toLegStyle.color);
+
+                        // Final points with lego positions
+                        const fromPoint = hideFromLeg
+                          ? { x: fromLego.x, y: fromLego.y }
+                          : {
+                              x: fromLego.x + fromPos.endX,
+                              y: fromLego.y + fromPos.endY
+                            };
+                        const toPoint = hideToLeg
+                          ? { x: toLego.x, y: toLego.y }
+                          : {
+                              x: toLego.x + toPos.endX,
+                              y: toLego.y + toPos.endY
+                            };
+
+                        // Get the colors of the connected legs
+                        const fromLegColor = fromLego.style.getLegColor(
+                          conn.from.legIndex,
+                          fromLego
+                        );
+                        const toLegColor = toLego.style.getLegColor(
+                          conn.to.legIndex,
+                          toLego
+                        );
+                        const colorsMatch = fromLegColor === toLegColor;
+
+                        // Calculate control points for the curve
+                        const controlPointDistance = 30;
+                        const cp1 = {
+                          x:
+                            fromPoint.x +
+                            Math.cos(fromPos.angle) * controlPointDistance,
+                          y:
+                            fromPoint.y +
+                            Math.sin(fromPos.angle) * controlPointDistance
+                        };
+                        const cp2 = {
+                          x:
+                            toPoint.x +
+                            Math.cos(toPos.angle) * controlPointDistance,
+                          y:
+                            toPoint.y +
+                            Math.sin(toPos.angle) * controlPointDistance
+                        };
+
+                        // Create the path string for the cubic Bezier curve
+                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
+
+                        // Calculate midpoint for warning sign
+                        const midPoint = {
+                          x: (fromPoint.x + toPoint.x) / 2,
+                          y: (fromPoint.y + toPoint.y) / 2
+                        };
+
+                        function fromChakraColorToHex(color: string): string {
+                          if (color.startsWith("blue")) {
+                            return "#0000FF";
+                          } else if (color.startsWith("red")) {
+                            return "#FF0000";
+                          } else if (color.startsWith("purple")) {
+                            return "#800080";
+                          } else {
+                            return "darkgray";
+                          }
+                        }
+                        const sharedColor = colorsMatch
+                          ? fromChakraColorToHex(fromLegColor)
+                          : "yellow";
+                        const connectorColor = colorsMatch
+                          ? sharedColor
+                          : "yellow";
+
+                        // Check if this connection is being hovered
+                        const isHovered =
+                          hoveredConnection &&
+                          hoveredConnection.from.legoId === conn.from.legoId &&
+                          hoveredConnection.from.legIndex ===
+                            conn.from.legIndex &&
+                          hoveredConnection.to.legoId === conn.to.legoId &&
+                          hoveredConnection.to.legIndex === conn.to.legIndex;
+
+                        return (
+                          <g key={connKey}>
+                            {/* Invisible wider path for easier clicking */}
+                            <path
+                              d={pathString}
+                              stroke="transparent"
+                              strokeWidth="10"
+                              fill="none"
+                              style={{
+                                cursor: "pointer"
+                              }}
+                              onDoubleClick={(e) =>
+                                handleConnectionDoubleClick(e, conn)
+                              }
+                              onMouseEnter={(e) => {
+                                // Find and update the visible path
+                                const visiblePath = e.currentTarget
+                                  .nextSibling as SVGPathElement;
+                                if (visiblePath) {
+                                  visiblePath.style.stroke = connectorColor;
+                                  visiblePath.style.strokeWidth = "3";
+                                  visiblePath.style.filter =
+                                    "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                // Reset the visible path
+                                const visiblePath = e.currentTarget
+                                  .nextSibling as SVGPathElement;
+                                if (visiblePath) {
+                                  visiblePath.style.stroke = connectorColor;
+                                  visiblePath.style.strokeWidth = "2";
+                                  visiblePath.style.filter = "none";
+                                }
+                              }}
+                            />
+                            {/* Visible path */}
+                            <path
+                              d={pathString}
+                              stroke={connectorColor}
+                              strokeWidth={isHovered ? "4" : "2"}
+                              fill="none"
+                              style={{
+                                pointerEvents: "none",
+                                stroke: connectorColor,
+                                filter: isHovered
+                                  ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
+                                  : "none"
+                              }}
+                            />
+                            {/* Warning sign if operators don't match */}
+                            {!colorsMatch && (
+                              <text
+                                x={midPoint.x}
+                                y={midPoint.y}
+                                fontSize="16"
+                                fill="#FF0000"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                style={{ pointerEvents: "none" }}
+                              >
+                                ⚠
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </g>
+
+                    {/* Temporary line while dragging */}
+                    {legDragState?.isDragging &&
+                      (() => {
+                        const fromLego = droppedLegos.find(
+                          (l) => l.instanceId === legDragState.legoId
+                        );
+                        if (!fromLego) return null;
+
+                        // Calculate position using shared function
+                        const fromPos = calculateLegPosition(
+                          fromLego,
+                          legDragState.legIndex
+                        );
+                        const fromPoint = {
+                          x: fromLego.x + fromPos.endX,
+                          y: fromLego.y + fromPos.endY
+                        };
+
+                        const legStyle = fromLego.style.getLegStyle(
+                          legDragState.legIndex,
+                          fromLego
+                        );
+                        const controlPointDistance = 30;
+                        const cp1 = {
+                          x:
+                            fromPoint.x +
+                            Math.cos(legStyle.angle) * controlPointDistance,
+                          y:
+                            fromPoint.y +
+                            Math.sin(legStyle.angle) * controlPointDistance
+                        };
+                        const cp2 = {
+                          x: legDragState.currentX,
+                          y: legDragState.currentY
+                        };
+
+                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
+
+                        return (
+                          <>
+                            <circle
+                              cx={fromLego.x}
+                              cy={fromLego.y}
+                              r={5}
+                              fill="red"
+                            />
+                            <path
+                              d={pathString}
+                              stroke="#3182CE"
+                              strokeWidth="2"
+                              strokeDasharray="4"
+                              fill="none"
+                              opacity={0.5}
+                              style={{ pointerEvents: "none" }}
+                            />
+                          </>
+                        );
+                      })()}
+                  </svg>
+
+                  {/* Selection Box */}
+                  {selectionBox.isSelecting && (
+                    <Box
+                      position="absolute"
+                      left={`${Math.min(
+                        selectionBox.startX,
+                        selectionBox.currentX
+                      )}px`}
+                      top={`${Math.min(
+                        selectionBox.startY,
+                        selectionBox.currentY
+                      )}px`}
+                      width={`${Math.abs(
+                        selectionBox.currentX - selectionBox.startX
+                      )}px`}
+                      height={`${Math.abs(
+                        selectionBox.currentY - selectionBox.startY
+                      )}px`}
+                      border="2px"
+                      borderColor="blue.500"
+                      bg="blue.50"
+                      opacity={0.3}
+                      pointerEvents="none"
+                    />
+                  )}
+
+                  {droppedLegos.map((lego, index) => (
+                    <DroppedLegoDisplay
+                      key={lego.instanceId}
+                      lego={lego}
+                      index={index}
+                      legDragState={legDragState}
+                      handleLegMouseDown={handleLegMouseDown}
+                      handleLegoMouseDown={handleLegoMouseDown}
+                      handleLegoClick={handleLegoClick}
+                      tensorNetwork={tensorNetwork}
+                      selectedLego={selectedLego}
+                      dragState={dragState}
+                      onLegClick={handleLegClick}
+                      hideConnectedLegs={hideConnectedLegs}
+                      connections={connections}
+                      droppedLegos={droppedLegos}
+                      demoMode={false}
+                    />
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          </Panel>
+            </Panel>
 
-          <ResizeHandle id="details-panel-resize-handle" />
+            <ResizeHandle id="details-panel-resize-handle" />
 
-          {/* Right Panel */}
-          <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
-            <DetailsPanel
-              handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-              tensorNetwork={tensorNetwork}
-              selectedLego={selectedLego}
-              droppedLegos={droppedLegos}
-              connections={connections}
-              setTensorNetwork={setTensorNetwork}
-              setError={setError}
-              setDroppedLegos={setDroppedLegos}
-              setSelectedLego={setSelectedLego}
-              fuseLegos={fuseLegos}
-              setConnections={setConnections}
-              operationHistory={operationHistory}
-              encodeCanvasState={encodeCanvasState}
-              hideConnectedLegs={hideConnectedLegs}
-              makeSpace={(
-                center: { x: number; y: number },
-                radius: number,
-                skipLegos: DroppedLego[],
-                legosToCheck: DroppedLego[]
-              ) => makeSpace(center, radius, skipLegos, legosToCheck)}
-              toast={toast}
-              user={currentUser}
-            />
-          </Panel>
-        </PanelGroup>
-        {/* Error Panel */}
-        <ErrorPanel error={error} onDismiss={() => setError("")} />
-      </Box>
-      <DynamicLegoDialog
-        isOpen={isDialogOpen}
-        onClose={() => {
-          setIsDialogOpen(false);
-          setSelectedDynamicLego(null);
-          setPendingDropPosition(null);
-        }}
-        onSubmit={handleDynamicLegoSubmit}
-        legoId={selectedDynamicLego?.id || ""}
-        parameters={selectedDynamicLego?.parameters || {}}
-      />
-      <TannerDialog
-        isOpen={isCssTannerDialogOpen}
-        onClose={() => setIsCssTannerDialogOpen(false)}
-        onSubmit={handleCssTannerSubmit}
-        title="Create CSS Tanner Network"
-        cssOnly={true}
-      />
-      <TannerDialog
-        isOpen={isTannerDialogOpen}
-        onClose={() => setIsTannerDialogOpen(false)}
-        onSubmit={handleTannerSubmit}
-        title="Create Tanner Network"
-      />
-      <TannerDialog
-        isOpen={isMspDialogOpen}
-        onClose={() => setIsMspDialogOpen(false)}
-        onSubmit={handleMspSubmit}
-        title="Measurement State Prep Network"
-      />
-      {showCustomLegoDialog && (
+            {/* Right Panel */}
+            <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
+              <DetailsPanel
+                handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
+                tensorNetwork={tensorNetwork}
+                selectedLego={selectedLego}
+                droppedLegos={droppedLegos}
+                connections={connections}
+                setTensorNetwork={setTensorNetwork}
+                setError={setError}
+                setDroppedLegos={setDroppedLegos}
+                setSelectedLego={setSelectedLego}
+                fuseLegos={fuseLegos}
+                setConnections={setConnections}
+                operationHistory={operationHistory}
+                encodeCanvasState={encodeCanvasState}
+                hideConnectedLegs={hideConnectedLegs}
+                makeSpace={(
+                  center: { x: number; y: number },
+                  radius: number,
+                  skipLegos: DroppedLego[],
+                  legosToCheck: DroppedLego[]
+                ) => makeSpace(center, radius, skipLegos, legosToCheck)}
+                toast={toast}
+                user={currentUser}
+              />
+            </Panel>
+          </PanelGroup>
+          {/* Error Panel */}
+          <ErrorPanel error={error} onDismiss={() => setError("")} />
+        </Box>
+
+        {/* Task Panel - Bottom Panel */}
+        <Box borderTopWidth={1} borderColor={borderColor}>
+          <TaskPanel user={currentUser} onError={setError} />
+        </Box>
+
+        <DynamicLegoDialog
+          isOpen={isDialogOpen}
+          onClose={() => {
+            setIsDialogOpen(false);
+            setSelectedDynamicLego(null);
+            setPendingDropPosition(null);
+          }}
+          onSubmit={handleDynamicLegoSubmit}
+          legoId={selectedDynamicLego?.id || ""}
+          parameters={selectedDynamicLego?.parameters || {}}
+        />
         <TannerDialog
-          isOpen={showCustomLegoDialog}
-          onClose={() => setShowCustomLegoDialog(false)}
-          onSubmit={handleCustomLegoSubmit}
-          title="Create Custom Lego"
+          isOpen={isCssTannerDialogOpen}
+          onClose={() => setIsCssTannerDialogOpen(false)}
+          onSubmit={handleCssTannerSubmit}
+          title="Create CSS Tanner Network"
+          cssOnly={true}
+        />
+        <TannerDialog
+          isOpen={isTannerDialogOpen}
+          onClose={() => setIsTannerDialogOpen(false)}
+          onSubmit={handleTannerSubmit}
+          title="Create Tanner Network"
+        />
+        <TannerDialog
+          isOpen={isMspDialogOpen}
+          onClose={() => setIsMspDialogOpen(false)}
+          onSubmit={handleMspSubmit}
+          title="Measurement State Prep Network"
+        />
+        {showCustomLegoDialog && (
+          <TannerDialog
+            isOpen={showCustomLegoDialog}
+            onClose={() => setShowCustomLegoDialog(false)}
+            onSubmit={handleCustomLegoSubmit}
+            title="Create Custom Lego"
+          />
+        )}
+        <AuthDialog
+          isOpen={authDialogOpen}
+          onClose={() => setAuthDialogOpen(false)}
+          connectionError={
+            supabaseStatus && !supabaseStatus.isHealthy
+              ? supabaseStatus.message
+              : undefined
+          }
+        />
+        <RuntimeConfigDialog
+          isOpen={isRuntimeConfigOpen}
+          onClose={() => setIsRuntimeConfigOpen(false)}
+          onSubmit={handleRuntimeConfigSubmit}
+          isLocal={isLocalRuntime}
+          initialConfig={(() => {
+            try {
+              const storedConfig = localStorage.getItem("runtimeConfig");
+              return storedConfig ? JSON.parse(storedConfig) : undefined;
+            } catch {
+              return undefined;
+            }
+          })()}
+        />
+        <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
+      </VStack>
+      {tensorNetwork && (
+        <WeightEnumeratorCalculationDialog
+          open={showWeightEnumeratorDialog}
+          onClose={() => setShowWeightEnumeratorDialog(false)}
+          onSubmit={(truncateLength, openLegs) => {
+            setShowWeightEnumeratorDialog(false);
+            calculateWeightEnumerator(truncateLength, openLegs);
+          }}
+          externalLegs={getExternalAndDanglingLegs().externalLegs}
+          danglingLegs={getExternalAndDanglingLegs().danglingLegs}
         />
       )}
-      <AuthDialog
-        isOpen={authDialogOpen}
-        onClose={() => setAuthDialogOpen(false)}
-        connectionError={
-          supabaseStatus && !supabaseStatus.isHealthy
-            ? supabaseStatus.message
-            : undefined
-        }
-      />
-      <RuntimeConfigDialog
-        isOpen={isRuntimeConfigOpen}
-        onClose={() => setIsRuntimeConfigOpen(false)}
-        onSubmit={handleRuntimeConfigSubmit}
-        isLocal={isLocalRuntime}
-        initialConfig={(() => {
-          try {
-            const storedConfig = localStorage.getItem("runtimeConfig");
-            return storedConfig ? JSON.parse(storedConfig) : undefined;
-          } catch {
-            return undefined;
-          }
-        })()}
-      />
-      <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
-      {/* Build info in bottom right */}
-      {currentUser ? (
-        <Link
-          position="absolute"
-          bottom={2}
-          right={2}
-          fontSize="xs"
-          color="gray.500"
-          zIndex={1}
-          onClick={async () => {
-            try {
-              const apiUrl = getApiUrl("version");
-              const response = await axios.post(
-                `${apiUrl}/version`,
-                {},
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${await getAccessToken()}`
-                  }
-                }
-              );
-              const versionInfo = response.data;
-              toast({
-                title: "Build Info",
-                description: (
-                  <VStack align="start" spacing={1}>
-                    <Text>
-                      UI Image: {import.meta.env.VITE_UI_IMAGE || "dev"}
-                    </Text>
-                    <Text>API Image: {versionInfo.api_image || "unknown"}</Text>
-                    <Text>
-                      Function Job Image ref:{" "}
-                      {versionInfo.fn_jobs_image || "unknown"}
-                    </Text>
-                  </VStack>
-                ),
-                status: "info",
-                duration: 5000,
-                isClosable: true
-              });
-            } catch (err) {
-              console.error("Error fetching version info:", err);
-              toast({
-                title: "Error fetching version info",
-                description:
-                  "Could not retrieve version information from the backend",
-                status: "error",
-                duration: 3000,
-                isClosable: true
-              });
-            }
-          }}
-          _hover={{ color: "gray.700" }}
-        >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
-          <Text as="span" color="orange.500">
-            {config.env !== "production" ? config.env : ""}
-          </Text>
-        </Link>
-      ) : (
-        <Text
-          position="absolute"
-          bottom={2}
-          right={2}
-          fontSize="xs"
-          color="gray.500"
-          zIndex={1}
-        >
-          {import.meta.env.VITE_UI_IMAGE || "dev"}{" "}
-          <Text as="span" color="orange.500">
-            {config.env !== "production" ? config.env : ""}
-          </Text>
-          s
-        </Text>
-      )}
-    </VStack>
+    </>
   );
 };
 
