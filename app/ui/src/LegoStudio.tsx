@@ -19,7 +19,11 @@ import {
   HStack
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Panel, PanelGroup } from "react-resizable-panels";
+import {
+  Panel,
+  PanelGroup,
+  ImperativePanelHandle
+} from "react-resizable-panels";
 import axios from "axios";
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
@@ -226,6 +230,7 @@ const LegoStudioView: React.FC = () => {
   const [draggedLego, setDraggedLego] = useState<LegoPiece | null>(null);
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
   const [legoPanelSizes, setLegoPanelSizes] = useState({
     defaultSize: 15,
     minSize: 8
@@ -2916,6 +2921,7 @@ const LegoStudioView: React.FC = () => {
         <PanelGroup direction="horizontal">
           {/* Left Panel */}
           <Panel
+            ref={leftPanelRef}
             id="lego-panel"
             defaultSize={legoPanelSizes.defaultSize}
             minSize={legoPanelSizes.minSize}
@@ -3012,9 +3018,15 @@ const LegoStudioView: React.FC = () => {
                       </MenuItemOption>
                       <MenuItemOption
                         isChecked={isLegoPanelCollapsed}
-                        onClick={() =>
-                          setIsLegoPanelCollapsed(!isLegoPanelCollapsed)
-                        }
+                        onClick={() => {
+                          if (leftPanelRef.current) {
+                            if (isLegoPanelCollapsed) {
+                              leftPanelRef.current.expand();
+                            } else {
+                              leftPanelRef.current.collapse();
+                            }
+                          }
+                        }}
                       >
                         Hide Building Blocks Panel
                       </MenuItemOption>
