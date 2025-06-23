@@ -1673,7 +1673,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
               <ParityCheckMatrixDisplay
                 matrix={selectedLego.parity_check_matrix}
-                lego={selectedLego}
+                legOrdering={selectedLego.parity_check_matrix.map((row, i) => ({
+                  instanceId: selectedLego.instanceId,
+                  legIndex: i
+                }))}
                 selectedRows={selectedLego.selectedMatrixRows || []}
                 onRowSelectionChange={handleMatrixRowSelection}
               />

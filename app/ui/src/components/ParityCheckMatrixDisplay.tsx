@@ -1,43 +1,28 @@
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Text,
   Heading,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Td,
   Button,
   HStack,
   VStack,
-  Grid,
   useToast
 } from "@chakra-ui/react";
-import { LegoPiece } from "../lib/types.ts";
-import { useState, useEffect, useRef } from "react";
-import { FaUndo, FaRedo, FaSync } from "react-icons/fa";
-import { StabilizerGraphView } from "./StabilizerGraphView.tsx";
-import {
-  X_COLOR,
-  Z_COLOR,
-  X_COLOR_LIGHT,
-  Z_COLOR_LIGHT,
-  X_COLOR_DARK,
-  Z_COLOR_DARK,
-  Y_COLOR
-} from "../lib/PauliColors.ts";
+import { FaUndo, FaRedo, FaSync, FaArrowsAlt } from "react-icons/fa";
 import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
+import { LegReorderDialog } from "./LegReorderDialog.tsx";
+import { SVG_COLORS } from "../lib/PauliColors.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
   title?: string;
-  lego?: LegoPiece;
   legOrdering?: TensorNetworkLeg[];
   onMatrixChange?: (newMatrix: number[][]) => void;
   onLegOrderingChange?: (newLegOrdering: TensorNetworkLeg[]) => void;
   onRecalculate?: () => void;
   selectedRows?: number[];
   onRowSelectionChange?: (selectedRows: number[]) => void;
+  onLegHover?: (leg: TensorNetworkLeg | null) => void;
 }
 
 export const ParityCheckMatrixDisplay: React.FC<
@@ -45,23 +30,26 @@ export const ParityCheckMatrixDisplay: React.FC<
 > = ({
   matrix,
   title,
-  lego,
   legOrdering,
   onMatrixChange,
   onLegOrderingChange,
   onRecalculate,
   selectedRows = [],
-  onRowSelectionChange
+  onRowSelectionChange,
+  onLegHover
 }) => {
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
-  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
-    null
-  );
-  const [highlightedRowIndex] = useState<number | null>(null);
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
+  const [isLegReorderDialogOpen, setIsLegReorderDialogOpen] = useState(false);
+  const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const hasInitialized = useRef(false);
   const toast = useToast();
+  const charMeasureRef = useRef<HTMLSpanElement>(null);
+  const [charWidth, setCharWidth] = useState<number>(8);
 
   // Initialize history only once when component mounts
   useEffect(() => {
@@ -72,35 +60,19 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   }, []); // Empty dependency array means this only runs on mount
 
+  useEffect(() => {
+    if (charMeasureRef.current) {
+      setCharWidth(charMeasureRef.current.getBoundingClientRect().width);
+    }
+  }, [matrix]);
+
   if (!matrix || matrix.length === 0) return null;
-
-  const getColumnStyle = (index: number) => {
-    const legIndex = index % (matrix[0].length / 2);
-    if (lego?.logical_legs.includes(legIndex)) {
-      return { fontWeight: "bold", color: "blue.600" };
-    }
-    if (lego?.gauge_legs.includes(legIndex)) {
-      return { fontWeight: "bold", color: "gray.700" };
-    }
-    return { color: "gray.600" };
-  };
-
-  const getLegIndices = () => {
-    return Array(matrix[0].length / 2)
-      .fill(0)
-      .map((_, i) => i);
-  };
 
   const numLegs = matrix[0].length / 2;
   const n_stabilizers = matrix.length;
 
   const handleDragStart = (e: React.DragEvent, rowIndex: number) => {
     setDraggedRowIndex(rowIndex);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleColumnDragStart = (e: React.DragEvent, columnIndex: number) => {
-    setDraggedColumnIndex(columnIndex);
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -140,117 +112,8 @@ export const ParityCheckMatrixDisplay: React.FC<
     setDraggedRowIndex(null);
   };
 
-  const handleColumnDrop = (e: React.DragEvent, targetColumnIndex: number) => {
-    e.preventDefault();
-    if (draggedColumnIndex === null || draggedColumnIndex === targetColumnIndex)
-      return;
-
-    // Check if we're trying to move between X and Z sections
-    const isDraggedX = draggedColumnIndex < matrix[0].length / 2;
-    const isTargetX = targetColumnIndex < matrix[0].length / 2;
-    if (isDraggedX !== isTargetX) return;
-
-    // Create a new matrix with the columns reordered
-    const newMatrix = matrix.map((row) => {
-      const newRow = [...row];
-      const halfLength = matrix[0].length / 2;
-
-      // Get the actual indices for both sections
-      const xDraggedIndex = isDraggedX
-        ? draggedColumnIndex
-        : draggedColumnIndex - halfLength;
-      const xTargetIndex = isDraggedX
-        ? targetColumnIndex
-        : targetColumnIndex - halfLength;
-      const zDraggedIndex = isDraggedX
-        ? draggedColumnIndex + halfLength
-        : draggedColumnIndex;
-      const zTargetIndex = isDraggedX
-        ? targetColumnIndex + halfLength
-        : targetColumnIndex;
-
-      // Perform the swap in the X section
-      const tempX = newRow[xDraggedIndex];
-      if (xDraggedIndex < xTargetIndex) {
-        // Moving right
-        for (let i = xDraggedIndex; i < xTargetIndex; i++) {
-          newRow[i] = newRow[i + 1];
-        }
-      } else {
-        // Moving left
-        for (let i = xDraggedIndex; i > xTargetIndex; i--) {
-          newRow[i] = newRow[i - 1];
-        }
-      }
-      newRow[xTargetIndex] = tempX;
-
-      // Perform the swap in the Z section
-      const tempZ = newRow[zDraggedIndex];
-      if (zDraggedIndex < zTargetIndex) {
-        // Moving right
-        for (let i = zDraggedIndex; i < zTargetIndex; i++) {
-          newRow[i] = newRow[i + 1];
-        }
-      } else {
-        // Moving left
-        for (let i = zDraggedIndex; i > zTargetIndex; i--) {
-          newRow[i] = newRow[i - 1];
-        }
-      }
-      newRow[zTargetIndex] = tempZ;
-
-      return newRow;
-    });
-
-    // Update leg ordering if it exists
-    let newLegOrdering: TensorNetworkLeg[] | undefined;
-    if (legOrdering) {
-      newLegOrdering = [...legOrdering];
-      const legIndex = isDraggedX
-        ? draggedColumnIndex
-        : draggedColumnIndex - matrix[0].length / 2;
-      const targetLegIndex = isDraggedX
-        ? targetColumnIndex
-        : targetColumnIndex - matrix[0].length / 2;
-      const temp = newLegOrdering[legIndex];
-      if (legIndex < targetLegIndex) {
-        // Moving right
-        for (let i = legIndex; i < targetLegIndex; i++) {
-          newLegOrdering[i] = newLegOrdering[i + 1];
-        }
-      } else {
-        // Moving left
-        for (let i = legIndex; i > targetLegIndex; i--) {
-          newLegOrdering[i] = newLegOrdering[i - 1];
-        }
-      }
-      newLegOrdering[targetLegIndex] = temp;
-    }
-
-    // Update history
-    const newHistory = [
-      ...matrixHistory.slice(0, currentHistoryIndex + 1),
-      newMatrix
-    ];
-    setMatrixHistory(newHistory);
-    setCurrentHistoryIndex(newHistory.length - 1);
-
-    // Update the matrix through the callback first
-    if (onMatrixChange) {
-      onMatrixChange(newMatrix);
-    }
-
-    // Then update leg ordering through the callback
-    if (newLegOrdering && onLegOrderingChange) {
-      onLegOrderingChange(newLegOrdering);
-    }
-
-    setDraggedColumnIndex(null);
-  };
-
   const handleDragEnd = () => {
     setDraggedRowIndex(null);
-    setDraggedColumnIndex(null);
   };
 
   const handleUndo = () => {
@@ -296,17 +159,16 @@ export const ParityCheckMatrixDisplay: React.FC<
     return weight;
   };
 
+  const pauli_colors = {
+    X: SVG_COLORS.X,
+    Z: SVG_COLORS.Z,
+    Y: SVG_COLORS.Y
+  };
+
   const getPauliColor = (pauli: string): string => {
-    switch (pauli) {
-      case "X":
-        return X_COLOR;
-      case "Z":
-        return Z_COLOR;
-      case "Y":
-        return Y_COLOR;
-      default:
-        return "black";
-    }
+    return (
+      pauli_colors[pauli.toUpperCase() as keyof typeof pauli_colors] || "black"
+    );
   };
 
   const isCSS = (row: number[]): boolean => {
@@ -364,6 +226,12 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   };
 
+  const handleLegReorder = (newLegOrdering: TensorNetworkLeg[]) => {
+    if (onLegOrderingChange) {
+      onLegOrderingChange(newLegOrdering);
+    }
+  };
+
   const isScalar = matrix.length === 1 && matrix[0].length === 1;
 
   const copyMatrixAsNumpy = () => {
@@ -414,88 +282,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     );
   }
 
-  // Check if matrix is too large for table display
-  if (numLegs > 50) {
-    return (
-      <Box>
-        <HStack justify="space-between" mb={2}>
-          <Box>
-            {title && <Heading size="sm">{title}</Heading>}
-            <Text>
-              [[{numLegs}, {numLegs - n_stabilizers}]] (
-              {matrix.every(isCSS) ? "CSS" : "non-CSS"})
-            </Text>
-          </Box>
-          <HStack>
-            {matrix.every(isCSS) && numLegs <= 150 && (
-              <Button size="sm" onClick={handleCSSSort} colorScheme="orange">
-                CSS-sort
-              </Button>
-            )}
-            <Button size="sm" onClick={copyMatrixAsNumpy} colorScheme="purple">
-              Copy as numpy
-            </Button>
-            <Button
-              size="sm"
-              onClick={copyMatrixAsQdistrnd}
-              colorScheme="purple"
-            >
-              Copy as qdistrnd
-            </Button>
-          </HStack>
-        </HStack>
-        <Text color="red.500" fontWeight="bold" mb={4}>
-          Matrix is too big ({numLegs} legs &gt; 50) for interactive matrix
-          display
-        </Text>
-        {numLegs <= 150 && (
-          <Box>
-            <Heading size="sm" mb={2}>
-              Stabilizer View
-            </Heading>
-            <VStack align="stretch" spacing={1}>
-              {matrix.map((row, index) => (
-                <HStack
-                  key={index}
-                  spacing={2}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  cursor="pointer"
-                  bg={draggedRowIndex === index ? "blue.50" : "transparent"}
-                  p={1}
-                  borderRadius="md"
-                >
-                  <Text fontWeight="bold" width="30px">
-                    {index}.
-                  </Text>
-                  <HStack spacing={1}>
-                    {getPauliString(row)
-                      .split("")
-                      .map((pauli, i) => (
-                        <Text
-                          key={i}
-                          color={getPauliColor(pauli)}
-                          fontWeight="bold"
-                          fontFamily="monospace"
-                          fontSize="14px"
-                        >
-                          {pauli}
-                        </Text>
-                      ))}
-                    <Text fontSize="14px"> | {getPauliWeight(row)} </Text>
-                  </HStack>
-                </HStack>
-              ))}
-            </VStack>
-          </Box>
-        )}
-      </Box>
-    );
-  }
-
   return (
     <Box>
       <HStack justify="space-between" mb={2}>
@@ -538,6 +324,16 @@ export const ParityCheckMatrixDisplay: React.FC<
               CSS-sort
             </Button>
           )}
+          {legOrdering && onLegOrderingChange && (
+            <Button
+              size="sm"
+              leftIcon={<FaArrowsAlt />}
+              onClick={() => setIsLegReorderDialogOpen(true)}
+              colorScheme="teal"
+            >
+              Reorder Legs
+            </Button>
+          )}
           <Button size="sm" onClick={copyMatrixAsNumpy} colorScheme="purple">
             Copy as numpy
           </Button>
@@ -546,269 +342,143 @@ export const ParityCheckMatrixDisplay: React.FC<
           </Button>
         </HStack>
       </HStack>
-      <Box overflowX="auto">
-        <Table size="sm" variant="simple">
-          <Thead>
-            <Tr>
-              <>
-                <Td
-                  p={2}
-                  textAlign="center"
-                  borderWidth={0}
-                  colSpan={matrix[0].length / 2}
-                  fontWeight="bold"
-                  color={X_COLOR_DARK}
-                >
-                  X
-                </Td>
-                <Td
-                  p={2}
-                  textAlign="center"
-                  borderWidth={0}
-                  colSpan={matrix[0].length / 2}
-                  fontWeight="bold"
-                  color={Z_COLOR_DARK}
-                >
-                  Z
-                </Td>
-              </>
-            </Tr>
-            {(legOrdering && (
-              <Tr>
-                <>
-                  {/* X lego indices */}
-                  {legOrdering?.map((leg, index) => (
-                    <Td
-                      key={`x-legoidx-${leg.instanceId}-${leg.legIndex}`}
-                      p={2}
-                      textAlign="center"
-                      borderWidth={0}
-                      colSpan={1}
-                      fontSize="sm"
-                      color={X_COLOR_DARK}
-                      draggable
-                      onDragStart={(e) => handleColumnDragStart(e, index)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleColumnDrop(e, index)}
-                      onDragEnd={handleDragEnd}
-                      cursor="move"
-                      bg={
-                        draggedColumnIndex === index ? "blue.50" : "transparent"
-                      }
-                    >
-                      {leg.instanceId}-{leg.legIndex}
-                    </Td>
-                  ))}
-                  {/* Z lego indices */}
-                  {legOrdering?.map((leg, index) => (
-                    <Td
-                      key={`z-legoidx-${leg.instanceId}-${leg.legIndex}`}
-                      p={2}
-                      textAlign="center"
-                      borderWidth={0}
-                      colSpan={1}
-                      fontSize="sm"
-                      color={Z_COLOR_DARK}
-                      draggable
-                      onDragStart={(e) =>
-                        handleColumnDragStart(e, index + matrix[0].length / 2)
-                      }
-                      onDragOver={handleDragOver}
-                      onDrop={(e) =>
-                        handleColumnDrop(e, index + matrix[0].length / 2)
-                      }
-                      onDragEnd={handleDragEnd}
-                      cursor="move"
-                      bg={
-                        draggedColumnIndex === index + matrix[0].length / 2
-                          ? "blue.50"
-                          : "transparent"
-                      }
-                    >
-                      {leg.instanceId}-{leg.legIndex}
-                    </Td>
-                  ))}
-                </>
-              </Tr>
-            )) || (
-              <Tr>
-                {getLegIndices().map((leg, index) => (
-                  <Td
-                    key={`x-idx-${leg}`}
-                    p={2}
-                    textAlign="center"
-                    borderWidth={0}
-                    colSpan={1}
-                    fontSize="sm"
-                    {...getColumnStyle(leg)}
-                    draggable
-                    onDragStart={(e) => handleColumnDragStart(e, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleColumnDrop(e, index)}
-                    onDragEnd={handleDragEnd}
-                    cursor="move"
-                    bg={
-                      draggedColumnIndex === index ? "blue.50" : "transparent"
-                    }
-                  >
-                    {leg}
-                  </Td>
-                ))}
-                {getLegIndices().map((leg, index) => (
-                  <Td
-                    key={`z-idx-${leg}`}
-                    p={2}
-                    textAlign="center"
-                    borderWidth={0}
-                    colSpan={1}
-                    fontSize="sm"
-                    {...getColumnStyle(leg)}
-                    draggable
-                    onDragStart={(e) =>
-                      handleColumnDragStart(e, index + matrix[0].length / 2)
-                    }
-                    onDragOver={handleDragOver}
-                    onDrop={(e) =>
-                      handleColumnDrop(e, index + matrix[0].length / 2)
-                    }
-                    onDragEnd={handleDragEnd}
-                    cursor="move"
-                    bg={
-                      draggedColumnIndex === index + matrix[0].length / 2
-                        ? "blue.50"
-                        : "transparent"
-                    }
-                  >
-                    {leg}
-                  </Td>
-                ))}
-              </Tr>
-            )}
-          </Thead>
-          <Tbody>
-            {matrix.map((row, rowIndex) => (
-              <Tr
-                key={rowIndex}
-                draggable
-                onDragStart={(e) => handleDragStart(e, rowIndex)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, rowIndex)}
-                onDragEnd={handleDragEnd}
-                cursor="pointer"
-                bg={
-                  draggedRowIndex === rowIndex
-                    ? "blue.50"
-                    : highlightedRowIndex === rowIndex
-                      ? "gray.100"
-                      : "transparent"
-                }
-                onClick={(e) => handleRowClick(e, rowIndex)}
-              >
-                {row.map((cell, cellIndex) => {
-                  const isMiddle = cellIndex === row.length / 2 - 1;
-                  const isSelected = selectedRows.includes(rowIndex);
-                  return (
-                    <Td
-                      key={cellIndex}
-                      p={2}
-                      textAlign="center"
-                      bg={
-                        cell === 1
-                          ? cellIndex < row.length / 2
-                            ? X_COLOR_LIGHT
-                            : Z_COLOR_LIGHT
-                          : "transparent"
-                      }
-                      borderWidth={isSelected ? 2 : 1}
-                      borderColor={isSelected ? "blue.500" : "gray.200"}
-                      borderRightWidth={
-                        isMiddle ? (isSelected ? 3 : 2) : isSelected ? 2 : 1
-                      }
-                      borderRightColor={
-                        isMiddle
-                          ? isSelected
-                            ? "blue.500"
-                            : "gray.400"
-                          : isSelected
-                            ? "blue.500"
-                            : "gray.200"
-                      }
-                    >
-                      {cell}
-                    </Td>
-                  );
-                })}
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
-      <Box mt={4}>
-        <Grid
-          templateColumns={matrix.every(isCSS) ? "repeat(2, 1fr)" : "1fr"}
-          gap={4}
-        >
-          <Box>
-            <Heading size="sm" mb={2}>
-              Stabilizer View
-            </Heading>
-            <VStack align="stretch" spacing={1}>
-              {matrix.map((row, index) => (
-                <HStack
-                  key={index}
-                  spacing={2}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  cursor="pointer"
-                  bg={draggedRowIndex === index ? "blue.50" : "transparent"}
-                  p={1}
-                  borderRadius="md"
-                >
-                  <Text fontWeight="bold" width="30px">
-                    {index}.
-                  </Text>
-                  <HStack spacing={1}>
-                    {getPauliString(row)
-                      .split("")
-                      .map((pauli, i) => (
-                        <Text
-                          key={i}
-                          color={getPauliColor(pauli)}
-                          fontWeight="bold"
-                          fontFamily="monospace"
-                          fontSize="14px"
-                        >
-                          {pauli}
-                        </Text>
-                      ))}
-                    <Text fontSize="14px"> | {getPauliWeight(row)} </Text>
-                  </HStack>
-                </HStack>
-              ))}
-            </VStack>
-          </Box>
-          {matrix.every(isCSS) && legOrdering && (
-            <Box>
-              <HStack justify="space-between" mb={2}>
-                <Heading size="sm">Tanner Graph</Heading>
-              </HStack>
-              <Text size="sm">
-                Circles are the legs (qubits), squares are the stabilizers.
+
+      <Box position="relative" width="fit-content" mx={0} mt={6}>
+        {/* Pauli stabilizer rows */}
+        <VStack align="stretch" spacing={1}>
+          {/* Hidden span for measuring monospace char width */}
+          <span
+            ref={charMeasureRef}
+            style={{
+              fontFamily: "monospace",
+              fontSize: "16px",
+              visibility: "hidden",
+              position: "absolute"
+            }}
+          >
+            X
+          </span>
+          {matrix.map((row, rowIndex) => (
+            <HStack
+              key={rowIndex}
+              spacing={2}
+              draggable
+              onDragStart={(e) => handleDragStart(e, rowIndex)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, rowIndex)}
+              onDragEnd={handleDragEnd}
+              cursor="pointer"
+              bg={
+                draggedRowIndex === rowIndex
+                  ? "blue.50"
+                  : selectedRows.includes(rowIndex)
+                    ? "blue.100"
+                    : "transparent"
+              }
+              p={1}
+              borderRadius="md"
+              onClick={(e) => handleRowClick(e, rowIndex)}
+              _hover={{
+                bg: selectedRows.includes(rowIndex) ? "blue.100" : "gray.50"
+              }}
+              border={
+                selectedRows.includes(rowIndex) ? "1px solid" : "1px solid"
+              }
+              borderColor={
+                selectedRows.includes(rowIndex) ? "blue.500" : "transparent"
+              }
+            >
+              <Text fontWeight="bold" width="30px">
+                {rowIndex}.
               </Text>
-              <StabilizerGraphView
-                legs={legOrdering}
-                matrix={matrix}
-                width={600}
-                height={500}
-                highlightedStabilizer={highlightedRowIndex}
-              />
-            </Box>
-          )}
-        </Grid>
+              <Box position="relative" width={numLegs * charWidth}>
+                <Text
+                  as="span"
+                  fontFamily="monospace"
+                  fontSize="16px"
+                  whiteSpace="pre"
+                  letterSpacing={0}
+                  lineHeight={1}
+                  p={0}
+                  m={0}
+                >
+                  {getPauliString(row)
+                    .split("")
+                    .map((pauli, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          color: getPauliColor(pauli),
+                          background:
+                            hoveredLegIndex === i ? "#E6FFFA" : undefined,
+                          borderRadius: hoveredLegIndex === i ? 3 : undefined,
+                          cursor: "pointer"
+                        }}
+                        onMouseEnter={(e) => {
+                          setHoveredLegIndex(i);
+                          setMousePos({ x: e.clientX, y: e.clientY });
+                          if (onLegHover && legOrdering)
+                            onLegHover(legOrdering[i]);
+                        }}
+                        onMouseMove={(e) => {
+                          setMousePos({ x: e.clientX, y: e.clientY });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredLegIndex(null);
+                          setMousePos(null);
+                          if (onLegHover) onLegHover(null);
+                        }}
+                      >
+                        {pauli}
+                      </span>
+                    ))}
+                </Text>
+              </Box>
+              <Text
+                fontSize="14px"
+                color="gray.500"
+                whiteSpace="nowrap"
+                flexShrink={0}
+              >
+                | {getPauliWeight(row)}
+              </Text>
+            </HStack>
+          ))}
+        </VStack>
+        {/* Floating Tooltip for hovered column */}
+        {hoveredLegIndex !== null && mousePos && legOrdering && (
+          <Box
+            position="fixed"
+            left={mousePos.x + 12}
+            top={mousePos.y - 32}
+            bg="gray.700"
+            color="white"
+            px={3}
+            py={1}
+            borderRadius="md"
+            fontSize="sm"
+            opacity={0.92}
+            pointerEvents="none"
+            zIndex={9999}
+            boxShadow="md"
+            style={{
+              transform: "translate(-50%, -100%)"
+            }}
+          >
+            Tensor: <b>{legOrdering[hoveredLegIndex].instanceId}</b> &nbsp; Leg:{" "}
+            <b>{legOrdering[hoveredLegIndex].legIndex}</b>
+          </Box>
+        )}
       </Box>
+
+      {legOrdering && onLegOrderingChange && (
+        <LegReorderDialog
+          isOpen={isLegReorderDialogOpen}
+          onClose={() => setIsLegReorderDialogOpen(false)}
+          onSubmit={handleLegReorder}
+          legOrdering={legOrdering}
+        />
+      )}
     </Box>
   );
 };
