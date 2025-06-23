@@ -1465,7 +1465,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         .get(tensorNetwork.signature!)!
                         .h.getMatrix()
                     }
-                    title="Parity Check Matrix"
+                    title="Pauli stabilizers"
                     legOrdering={
                       tensorNetwork.legOrdering ||
                       parityCheckMatrixCache.get(tensorNetwork.signature!)!.legs

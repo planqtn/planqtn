@@ -3,12 +3,16 @@ import {
   Box,
   Text,
   Heading,
-  Button,
   HStack,
   VStack,
-  useToast
+  useToast,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton
 } from "@chakra-ui/react";
-import { FaUndo, FaRedo, FaSync, FaArrowsAlt } from "react-icons/fa";
+import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 import { LegReorderDialog } from "./LegReorderDialog.tsx";
 import { SVG_COLORS } from "../lib/PauliColors.ts";
@@ -292,55 +296,42 @@ export const ParityCheckMatrixDisplay: React.FC<
             {matrix.every(isCSS) ? "CSS" : "non-CSS"})
           </Text>
         </Box>
-        <HStack>
-          <Button
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            icon={<FaEllipsisV />}
+            variant="outline"
             size="sm"
-            leftIcon={<FaUndo />}
-            onClick={handleUndo}
-            isDisabled={currentHistoryIndex <= 0}
-          >
-            Undo
-          </Button>
-          <Button
-            size="sm"
-            leftIcon={<FaRedo />}
-            onClick={handleRedo}
-            isDisabled={currentHistoryIndex >= matrixHistory.length - 1}
-          >
-            Redo
-          </Button>
-          {onRecalculate && (
-            <Button
-              size="sm"
-              leftIcon={<FaSync />}
-              onClick={onRecalculate}
-              colorScheme="blue"
+            aria-label="Matrix actions"
+          />
+          <MenuList>
+            <MenuItem
+              onClick={handleUndo}
+              isDisabled={currentHistoryIndex <= 0}
             >
-              Recalculate
-            </Button>
-          )}
-          {matrix.every(isCSS) && (
-            <Button size="sm" onClick={handleCSSSort} colorScheme="orange">
-              CSS-sort
-            </Button>
-          )}
-          {legOrdering && onLegOrderingChange && (
-            <Button
-              size="sm"
-              leftIcon={<FaArrowsAlt />}
-              onClick={() => setIsLegReorderDialogOpen(true)}
-              colorScheme="teal"
+              Undo
+            </MenuItem>
+            <MenuItem
+              onClick={handleRedo}
+              isDisabled={currentHistoryIndex >= matrixHistory.length - 1}
             >
-              Reorder Legs
-            </Button>
-          )}
-          <Button size="sm" onClick={copyMatrixAsNumpy} colorScheme="purple">
-            Copy as numpy
-          </Button>
-          <Button size="sm" onClick={copyMatrixAsQdistrnd} colorScheme="purple">
-            Copy as qdistrnd
-          </Button>
-        </HStack>
+              Redo
+            </MenuItem>
+            {onRecalculate && (
+              <MenuItem onClick={onRecalculate}>Recalculate</MenuItem>
+            )}
+            {matrix.every(isCSS) && (
+              <MenuItem onClick={handleCSSSort}>CSS-sort</MenuItem>
+            )}
+            {legOrdering && onLegOrderingChange && (
+              <MenuItem onClick={() => setIsLegReorderDialogOpen(true)}>
+                Reorder Legs
+              </MenuItem>
+            )}
+            <MenuItem onClick={copyMatrixAsNumpy}>Copy as numpy</MenuItem>
+            <MenuItem onClick={copyMatrixAsQdistrnd}>Copy as qdistrnd</MenuItem>
+          </MenuList>
+        </Menu>
       </HStack>
 
       <Box position="relative" width="fit-content" mx={0} mt={6}>
