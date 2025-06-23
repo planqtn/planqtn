@@ -167,227 +167,235 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
   return (
     <Box
       ref={panelRef}
-      h="100%"
+      height="100vh"
+      minHeight={0}
       borderRight="1px"
       borderColor={borderColor}
       bg={bgColor}
       overflowY="auto"
       minW={0}
       maxW="100vw"
+      display="flex"
+      flexDirection="column"
     >
-      <VStack align="stretch" spacing={2} p={0} h="100%">
-        {/* Modern Title Bar */}
-        <Box
-          px={4}
-          py={3}
-          bgGradient="linear(to-r, teal.500, blue.500)"
-          color="white"
-          fontWeight="bold"
-          fontSize="lg"
-          boxShadow="sm"
-          letterSpacing="wide"
-          display="flex"
-          alignItems="center"
-          flexShrink={0}
+      {/* Modern Title Bar - Fixed at top */}
+      <Box
+        px={4}
+        py={3}
+        bgGradient="linear(to-r, teal.500, blue.500)"
+        color="white"
+        fontWeight="bold"
+        fontSize="lg"
+        boxShadow="sm"
+        letterSpacing="wide"
+        display="flex"
+        alignItems="center"
+        flexShrink={0}
+      >
+        <Icon as={FiPackage} boxSize={5} mr={2} />
+        Building Blocks
+      </Box>
+
+      {/* Scrollable Content Area */}
+      <Box
+        flex="1 1 0%"
+        height={0}
+        minHeight={0}
+        overflowY="auto"
+        px={2}
+        pb={2}
+      >
+        <Accordion
+          allowMultiple
+          defaultIndex={[0]}
+          borderRadius="md"
+          bg="white"
         >
-          <Icon as={FiPackage} boxSize={5} mr={2} />
-          Building Blocks
-        </Box>
-
-        {/* Modern Accordion */}
-        <Box overflowY="auto" flex="1 1 auto" px={2} pb={2}>
-          <Accordion
-            allowMultiple
-            defaultIndex={[0]}
-            borderRadius="md"
-            bg="white"
-          >
-            {/* Tensors Section */}
-            <AccordionItem border="none" mb={2}>
-              {({ isExpanded }) => (
-                <>
-                  <AccordionButton
-                    bg={isExpanded ? "teal.100" : "gray.50"}
-                    _hover={{ bg: "teal.50" }}
-                    borderRadius="md"
-                    px={4}
-                    py={2}
-                    fontWeight="bold"
-                    fontSize="md"
-                    transition="background 0.2s"
-                  >
-                    <Box flex="1" textAlign="left" color="teal.700">
-                      Tensors
-                    </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                  <AccordionPanel pb={4} pl={0}>
-                    <List spacing={3}>
-                      {/* Existing Legos */}
-                      {[...legos, customLego].map((lego) => {
-                        const { demoLego, boundingBox } = getDemoLego(lego);
-                        return (
-                          <ListItem
-                            key={lego.id}
-                            p={2}
-                            borderRadius="md"
-                            height="auto"
-                            width="auto"
-                            _hover={{ bg: "gray.50" }}
-                            cursor="move"
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, lego)}
+          {/* Tensors Section */}
+          <AccordionItem border="none" mb={2}>
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton
+                  bg={isExpanded ? "teal.100" : "gray.50"}
+                  _hover={{ bg: "teal.50" }}
+                  borderRadius="md"
+                  px={4}
+                  py={2}
+                  fontWeight="bold"
+                  fontSize="md"
+                  transition="background 0.2s"
+                >
+                  <Box flex="1" textAlign="left" color="teal.700">
+                    Tensors
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4} pl={0}>
+                  <List spacing={3}>
+                    {/* Existing Legos */}
+                    {[...legos, customLego].map((lego) => {
+                      const { demoLego, boundingBox } = getDemoLego(lego);
+                      return (
+                        <ListItem
+                          key={lego.id}
+                          p={2}
+                          borderRadius="md"
+                          height="auto"
+                          width="auto"
+                          _hover={{ bg: "gray.50" }}
+                          cursor="move"
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, lego)}
+                        >
+                          <Tooltip
+                            label={lego.name}
+                            placement="right"
+                            isDisabled={!isPanelSmall}
                           >
-                            <Tooltip
-                              label={lego.name}
-                              placement="right"
-                              isDisabled={!isPanelSmall}
+                            <HStack
+                              p={1}
+                              spacing={3}
+                              justify={isPanelSmall ? "center" : "flex-start"}
                             >
-                              <HStack
-                                p={1}
-                                spacing={3}
-                                justify={isPanelSmall ? "center" : "flex-start"}
+                              <Box
+                                position={"relative"}
+                                left={isPanelSmall ? "0" : "0"}
+                                top={isPanelSmall ? "0" : "0"}
+                                style={{
+                                  marginLeft: isPanelSmall
+                                    ? panelWidth / 4 -
+                                      boundingBox.width / 4 +
+                                      "px"
+                                    : "0"
+                                }}
+                                display="block"
+                                height={boundingBox.height / 2 + "px"}
+                                width={
+                                  isPanelSmall
+                                    ? "100%"
+                                    : boundingBox.width / 2 + "px"
+                                }
                               >
-                                <Box
-                                  position={"relative"}
-                                  left={isPanelSmall ? "0" : "0"}
-                                  top={isPanelSmall ? "0" : "0"}
-                                  style={{
-                                    marginLeft: isPanelSmall
-                                      ? panelWidth / 4 -
-                                        boundingBox.width / 4 +
-                                        "px"
-                                      : "0"
-                                  }}
-                                  display="block"
-                                  height={boundingBox.height / 2 + "px"}
-                                  width={
-                                    isPanelSmall
-                                      ? "100%"
-                                      : boundingBox.width / 2 + "px"
-                                  }
-                                >
-                                  <DroppedLegoDisplay
-                                    lego={demoLego}
-                                    connections={[]}
-                                    index={0}
-                                    legDragState={null}
-                                    handleLegMouseDown={() => {}}
-                                    handleLegoMouseDown={() => {}}
-                                    handleLegoClick={() => {}}
-                                    tensorNetwork={null}
-                                    selectedLego={null}
-                                    dragState={null}
-                                    hideConnectedLegs={false}
-                                    droppedLegos={[]}
-                                    demoMode={true}
-                                  />
-                                </Box>
-                                {!isPanelSmall && (
-                                  <VStack align="start" spacing={0.5}>
-                                    {lego.is_dynamic && (
-                                      <Badge colorScheme="green">Dynamic</Badge>
-                                    )}
-                                    <Text
-                                      display="block"
-                                      fontWeight="bold"
-                                      fontSize="1rem"
-                                      whiteSpace="nowrap"
-                                    >
-                                      {lego.name}
-                                    </Text>
-                                  </VStack>
-                                )}
-                              </HStack>
-                            </Tooltip>
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  </AccordionPanel>
-                </>
-              )}
-            </AccordionItem>
+                                <DroppedLegoDisplay
+                                  lego={demoLego}
+                                  connections={[]}
+                                  index={0}
+                                  legDragState={null}
+                                  handleLegMouseDown={() => {}}
+                                  handleLegoMouseDown={() => {}}
+                                  handleLegoClick={() => {}}
+                                  tensorNetwork={null}
+                                  selectedLego={null}
+                                  dragState={null}
+                                  hideConnectedLegs={false}
+                                  droppedLegos={[]}
+                                  demoMode={true}
+                                />
+                              </Box>
+                              {!isPanelSmall && (
+                                <VStack align="start" spacing={0.5}>
+                                  {lego.is_dynamic && (
+                                    <Badge colorScheme="green">Dynamic</Badge>
+                                  )}
+                                  <Text
+                                    display="block"
+                                    fontWeight="bold"
+                                    fontSize="1rem"
+                                    whiteSpace="nowrap"
+                                  >
+                                    {lego.name}
+                                  </Text>
+                                </VStack>
+                              )}
+                            </HStack>
+                          </Tooltip>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </AccordionPanel>
+              </>
+            )}
+          </AccordionItem>
 
-            {/* Networks Section */}
-            <AccordionItem border="none" borderRadius="md">
-              {({ isExpanded }) => (
-                <>
-                  <AccordionButton
-                    bg={isExpanded ? "blue.100" : "gray.50"}
-                    _hover={{ bg: "blue.50" }}
-                    borderRadius="md"
-                    px={4}
-                    py={2}
-                    fontWeight="bold"
-                    fontSize="md"
-                    transition="background 0.2s"
-                  >
-                    <Box flex="1" textAlign="left" color="blue.700">
-                      Networks
-                    </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                  <AccordionPanel pb={4} pl={0}>
-                    <VStack spacing={3} align="stretch">
-                      <Tooltip
-                        label={"CSS Tanner Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
+          {/* Networks Section */}
+          <AccordionItem border="none" borderRadius="md">
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton
+                  bg={isExpanded ? "blue.100" : "gray.50"}
+                  _hover={{ bg: "blue.50" }}
+                  borderRadius="md"
+                  px={4}
+                  py={2}
+                  fontWeight="bold"
+                  fontSize="md"
+                  transition="background 0.2s"
+                >
+                  <Box flex="1" textAlign="left" color="blue.700">
+                    Networks
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4} pl={0}>
+                  <VStack spacing={3} align="stretch">
+                    <Tooltip
+                      label={"CSS Tanner Network"}
+                      placement="right"
+                      isDisabled={!isPanelSmall}
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onCreateCssTanner}
+                        isDisabled={!isUserLoggedIn}
+                        justifyContent="flex-start"
+                        title={!isUserLoggedIn ? "Needs signing in" : ""}
                       >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={onCreateCssTanner}
-                          isDisabled={!isUserLoggedIn}
-                          justifyContent="flex-start"
-                          title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        >
-                          {isPanelSmall ? "CSS" : "CSS Tanner Network"}
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={"Tanner Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
+                        {isPanelSmall ? "CSS" : "CSS Tanner Network"}
+                      </Button>
+                    </Tooltip>
+                    <Tooltip
+                      label={"Tanner Network"}
+                      placement="right"
+                      isDisabled={!isPanelSmall}
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onCreateTanner}
+                        isDisabled={!isUserLoggedIn}
+                        justifyContent="flex-start"
+                        title={!isUserLoggedIn ? "Needs signing in" : ""}
                       >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={onCreateTanner}
-                          isDisabled={!isUserLoggedIn}
-                          justifyContent="flex-start"
-                          title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        >
-                          {isPanelSmall ? "Tanner" : "Tanner Network"}
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={"Measurement State Prep Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
+                        {isPanelSmall ? "Tanner" : "Tanner Network"}
+                      </Button>
+                    </Tooltip>
+                    <Tooltip
+                      label={"Measurement State Prep Network"}
+                      placement="right"
+                      isDisabled={!isPanelSmall}
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onCreateMsp}
+                        isDisabled={!isUserLoggedIn}
+                        justifyContent="flex-start"
+                        title={!isUserLoggedIn ? "Needs signing in" : ""}
                       >
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={onCreateMsp}
-                          isDisabled={!isUserLoggedIn}
-                          justifyContent="flex-start"
-                          title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        >
-                          {isPanelSmall
-                            ? "MSP"
-                            : "Measurement State Prep Network"}
-                        </Button>
-                      </Tooltip>
-                    </VStack>
-                  </AccordionPanel>
-                </>
-              )}
-            </AccordionItem>
-          </Accordion>
-        </Box>
-      </VStack>
+                        {isPanelSmall
+                          ? "MSP"
+                          : "Measurement State Prep Network"}
+                      </Button>
+                    </Tooltip>
+                  </VStack>
+                </AccordionPanel>
+              </>
+            )}
+          </AccordionItem>
+        </Accordion>
+      </Box>
 
       <DynamicLegoDialog
         isOpen={isDialogOpen}
