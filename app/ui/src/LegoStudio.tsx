@@ -65,7 +65,7 @@ import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
-import { FiChevronRight, FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical } from "react-icons/fi";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -2883,7 +2883,7 @@ const LegoStudioView: React.FC = () => {
         position="relative"
         overflow="hidden"
       >
-        {/* Collapsed Panel Handle */}
+        {/* Collapsed Panel Handle
         {isLegoPanelCollapsed && (
           <Box
             position="absolute"
@@ -2911,37 +2911,34 @@ const LegoStudioView: React.FC = () => {
               _hover={{ color: "white" }}
             />
           </Box>
-        )}
-
+        )} */}
         <PanelGroup direction="horizontal">
           {/* Left Panel */}
-          {!isLegoPanelCollapsed && (
-            <>
-              <Panel
-                id="lego-panel"
-                defaultSize={legoPanelSizes.defaultSize}
-                minSize={legoPanelSizes.minSize}
-                maxSize={legoPanelSizes.defaultSize}
-                order={1}
-                collapsible={true}
-                onCollapse={() => setIsLegoPanelCollapsed(true)}
-                onExpand={() => setIsLegoPanelCollapsed(false)}
-              >
-                <BuildingBlocksPanel
-                  legos={legos}
-                  onDragStart={handleDragStart}
-                  onLegoSelect={() => {
-                    // Handle lego selection if needed
-                  }}
-                  onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
-                  onCreateTanner={() => setIsTannerDialogOpen(true)}
-                  onCreateMsp={() => setIsMspDialogOpen(true)}
-                  isUserLoggedIn={!!currentUser}
-                />
-              </Panel>
-              <ResizeHandle id="lego-panel-resize-handle" />
-            </>
-          )}
+          <Panel
+            id="lego-panel"
+            defaultSize={legoPanelSizes.defaultSize}
+            minSize={legoPanelSizes.minSize}
+            maxSize={legoPanelSizes.defaultSize}
+            order={1}
+            collapsible={true}
+            onCollapse={() => setIsLegoPanelCollapsed(true)}
+            onExpand={() => setIsLegoPanelCollapsed(false)}
+          >
+            <Box visibility={isLegoPanelCollapsed ? "hidden" : "visible"}>
+              <BuildingBlocksPanel
+                legos={legos}
+                onDragStart={handleDragStart}
+                onLegoSelect={() => {
+                  // Handle lego selection if needed
+                }}
+                onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
+                onCreateTanner={() => setIsTannerDialogOpen(true)}
+                onCreateMsp={() => setIsMspDialogOpen(true)}
+                isUserLoggedIn={!!currentUser}
+              />
+            </Box>
+          </Panel>
+          <ResizeHandle id="lego-panel-resize-handle" />
 
           {/* Main Content */}
           <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
@@ -3146,8 +3143,8 @@ const LegoStudioView: React.FC = () => {
                     width: "100%",
                     height: "100%",
                     pointerEvents: "none",
-                    userSelect: "none",
-                    border: "1px solid red"
+                    userSelect: "none"
+                    // border: "1px solid red"
                   }}
                 >
                   {/* Existing connections */}
@@ -3522,7 +3519,6 @@ const LegoStudioView: React.FC = () => {
             />
           </Panel>
         </PanelGroup>
-
         {/* Error Panel */}
         <ErrorPanel error={error} onDismiss={() => setError("")} />
       </Box>

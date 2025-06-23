@@ -51,12 +51,14 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
   const [selectedDynamicLego, setSelectedDynamicLego] =
     useState<LegoPiece | null>(null);
   const [isPanelSmall, setIsPanelSmall] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const checkPanelSize = useCallback(() => {
     // const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
     if (panelRef.current) {
       setIsPanelSmall(panelRef.current.offsetWidth < 200);
+      setPanelWidth(panelRef.current.offsetWidth);
     }
   }, []);
 
@@ -206,7 +208,11 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                         placement="right"
                         isDisabled={!isPanelSmall}
                       >
-                        <HStack p={1} spacing={3}>
+                        <HStack
+                          p={1}
+                          spacing={3}
+                          justify={isPanelSmall ? "center" : "flex-start"}
+                        >
                           <Box
                             position={"relative"}
                             left={isPanelSmall ? "0" : "0"}
@@ -215,9 +221,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = ({
                             style={{
                               // border: "1px solid orange",
                               marginLeft: isPanelSmall
-                                ? panelRef.current!.offsetWidth / 4 -
-                                  boundingBox.width / 4 +
-                                  "px"
+                                ? panelWidth / 4 - boundingBox.width / 4 + "px"
                                 : "0"
                             }}
                             display="block"
