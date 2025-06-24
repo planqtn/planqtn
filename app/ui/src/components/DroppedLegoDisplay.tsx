@@ -124,7 +124,6 @@ interface DroppedLegoDisplayProps {
   handleLegoMouseDown: (e: React.MouseEvent, index: number) => void;
   handleLegoClick: (e: React.MouseEvent, lego: DroppedLego) => void;
   tensorNetwork: TensorNetwork | null;
-  selectedLego: DroppedLego | null;
   dragState: DragState | null;
   onLegClick?: (legoId: string, legIndex: number) => void;
   hideConnectedLegs: boolean;
@@ -141,7 +140,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
   handleLegoMouseDown,
   handleLegoClick,
   tensorNetwork,
-  selectedLego,
   dragState,
   onLegClick,
   hideConnectedLegs,
@@ -174,8 +172,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
   });
 
   const isSelected =
-    tensorNetwork?.legos.some((l) => l.instanceId === lego.instanceId) ||
-    selectedLego?.instanceId === lego.instanceId;
+    tensorNetwork &&
+    tensorNetwork.legos.some((l) => l.instanceId === lego.instanceId);
 
   // Calculate leg positions once for both rendering and labels
   const legPositions = isScalar
@@ -527,31 +525,56 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = ({
           </g>
         ) : (
           <g>
-            <path
-              d={
-                vertices.reduce((path, _, i) => {
-                  const command = i === 0 ? "M" : "L";
-                  const x =
-                    (size / 2) *
-                    Math.cos(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);
-                  const y =
-                    (size / 2) *
-                    Math.sin(-Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs);
-                  return `${path} ${command} ${x} ${y}`;
-                }, "") + " Z"
-              }
-              fill={
-                isSelected
-                  ? lego.style.getSelectedBackgroundColorForSvg()
-                  : lego.style.getBackgroundColorForSvg()
-              }
-              stroke={
-                isSelected
-                  ? lego.style.getSelectedBorderColorForSvg()
-                  : lego.style.getBorderColorForSvg()
-              }
-              strokeWidth="2"
-            />
+            {numRegularLegs > 8 ? (
+              // Create a circle for many vertices
+              <circle
+                cx="0"
+                cy="0"
+                r={size / 2}
+                fill={
+                  isSelected
+                    ? lego.style.getSelectedBackgroundColorForSvg()
+                    : lego.style.getBackgroundColorForSvg()
+                }
+                stroke={
+                  isSelected
+                    ? lego.style.getSelectedBorderColorForSvg()
+                    : lego.style.getBorderColorForSvg()
+                }
+                strokeWidth="2"
+              />
+            ) : (
+              // Create a polygon for 3-8 vertices
+              <path
+                d={
+                  vertices.reduce((path, _, i) => {
+                    const command = i === 0 ? "M" : "L";
+                    const x =
+                      (size / 2) *
+                      Math.cos(
+                        -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs
+                      );
+                    const y =
+                      (size / 2) *
+                      Math.sin(
+                        -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs
+                      );
+                    return `${path} ${command} ${x} ${y}`;
+                  }, "") + " Z"
+                }
+                fill={
+                  isSelected
+                    ? lego.style.getSelectedBackgroundColorForSvg()
+                    : lego.style.getBackgroundColorForSvg()
+                }
+                stroke={
+                  isSelected
+                    ? lego.style.getSelectedBorderColorForSvg()
+                    : lego.style.getBorderColorForSvg()
+                }
+                strokeWidth="2"
+              />
+            )}
             {!demoMode && (
               <text
                 x="0"

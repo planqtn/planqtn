@@ -72,7 +72,6 @@ import { getAxiosErrorMessage } from "../lib/errors.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
-  selectedLego: DroppedLego | null;
   droppedLegos: DroppedLego[];
   connections: Connection[];
   setTensorNetwork: (
@@ -84,7 +83,6 @@ interface DetailsPanelProps {
 
   setError: (error: string) => void;
   setDroppedLegos: (value: DroppedLego[]) => void;
-  setSelectedLego: (value: DroppedLego | null) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
   setConnections: (value: Connection[]) => void;
   operationHistory: OperationHistory;
@@ -107,13 +105,11 @@ interface DetailsPanelProps {
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
   tensorNetwork: tensorNetwork,
-  selectedLego,
   droppedLegos,
   connections,
   setTensorNetwork: setTensorNetwork,
   setError,
   setDroppedLegos,
-  setSelectedLego,
   fuseLegos,
   setConnections,
   operationHistory,
@@ -175,7 +171,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const result = network.conjoin_nodes();
 
       if (!result) {
-        throw new Error("Cannot compute tensor network");
+        throw new Error("Cannot compute tensor network parity check matrix");
       }
 
       const legOrdering = result.legs.map((leg) => ({
@@ -522,17 +518,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const handleMatrixRowSelection = (selectedRows: number[]) => {
     setSelectedMatrixRows(selectedRows);
-    if (selectedLego) {
+    if (tensorNetwork?.legos.length == 1) {
+      const lego = tensorNetwork.legos[0];
       const updatedLego = {
-        ...selectedLego,
+        ...lego,
         selectedMatrixRows: selectedRows
       };
       // Update the lego in the droppedLegos array
       const updatedDroppedLegos = droppedLegos.map((l) =>
-        l.instanceId === selectedLego.instanceId ? updatedLego : l
+        l.instanceId === lego.instanceId ? updatedLego : l
       );
-      setSelectedLego(updatedLego);
       setDroppedLegos(updatedDroppedLegos);
+      setTensorNetwork(new TensorNetwork([updatedLego], connections));
       encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
 
       const selectedNetwork = findConnectedComponent(
@@ -712,7 +709,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }
     };
     operationHistory.addOperation(operation);
-    setSelectedLego(null);
 
     // Update URL state
     encodeCanvasState(finalLegos, updatedConnections, hideConnectedLegs);
@@ -914,7 +910,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
     setShowLegPartitionDialog(false);
     setUnfuseLego(null);
-    setSelectedLego(null);
   };
 
   const handleUnfuseToLegs = (lego: DroppedLego) => {
@@ -1320,7 +1315,138 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       overflowY="auto"
     >
       <VStack align="stretch" spacing={4} p={4}>
-        {tensorNetwork ? (
+        {tensorNetwork && tensorNetwork.legos.length == 1 ? (
+          <>
+            <Heading size="md">Lego Instance Details</Heading>
+            <VStack align="stretch" spacing={3}>
+              <Text fontWeight="bold">
+                {tensorNetwork.legos[0].name ||
+                  tensorNetwork.legos[0].shortName}
+              </Text>
+              <Text fontSize="sm" color="gray.600">
+                {tensorNetwork.legos[0].description}, instaceId:{" "}
+                {tensorNetwork.legos[0].instanceId}, x:{" "}
+                {tensorNetwork.legos[0].x}, y: {tensorNetwork.legos[0].y}
+              </Text>
+              <Box>
+                <Text fontSize="sm" mb={1}>
+                  Short Name:
+                </Text>
+                <Input
+                  size="sm"
+                  value={tensorNetwork.legos[0].shortName}
+                  onChange={(e) => {
+                    const newShortName = e.target.value;
+                    const updatedLego = {
+                      ...tensorNetwork.legos[0],
+                      shortName: newShortName
+                    };
+                    const updatedDroppedLegos = droppedLegos.map((l) =>
+                      l.instanceId === tensorNetwork.legos[0].instanceId
+                        ? updatedLego
+                        : l
+                    );
+                    setDroppedLegos(updatedDroppedLegos);
+                    setDroppedLegos(
+                      droppedLegos.map((l) =>
+                        l.instanceId === tensorNetwork.legos[0].instanceId
+                          ? updatedLego
+                          : l
+                      )
+                    );
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </Box>
+              <Box>
+                <Checkbox
+                  isChecked={tensorNetwork.legos[0].alwaysShowLegs || false}
+                  onChange={(e) => {
+                    const updatedLego = {
+                      ...tensorNetwork.legos[0],
+                      alwaysShowLegs: e.target.checked
+                    };
+                    setDroppedLegos(
+                      droppedLegos.map((l) =>
+                        l.instanceId === tensorNetwork.legos[0].instanceId
+                          ? updatedLego
+                          : l
+                      )
+                    );
+                    encodeCanvasState(
+                      droppedLegos.map((l) =>
+                        l.instanceId === tensorNetwork.legos[0].instanceId
+                          ? updatedLego
+                          : l
+                      ),
+                      connections,
+                      hideConnectedLegs
+                    );
+                  }}
+                >
+                  Always show legs
+                </Checkbox>
+              </Box>
+              {(tensorNetwork.legos[0].id === "x_rep_code" ||
+                tensorNetwork.legos[0].id === "z_rep_code") && (
+                <>
+                  <Button
+                    leftIcon={<Icon as={FaCube} />}
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={() => handleUnfuseToLegs(tensorNetwork.legos[0])}
+                  >
+                    Unfuse to legs
+                  </Button>
+
+                  <Button
+                    leftIcon={<Icon as={FaCube} />}
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={() =>
+                      handleUnfuseInto2Legos(tensorNetwork.legos[0])
+                    }
+                  >
+                    Unfuse into 2 legos
+                  </Button>
+
+                  <Button
+                    leftIcon={<Icon as={FaCube} />}
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={() => handleChangeColor(tensorNetwork.legos[0])}
+                  >
+                    Change color
+                  </Button>
+
+                  <Button
+                    leftIcon={<Icon as={FaCube} />}
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={() =>
+                      handlePullOutSameColoredLeg(tensorNetwork.legos[0])
+                    }
+                  >
+                    Pull out a leg of same color (p)
+                  </Button>
+                </>
+              )}
+              <ParityCheckMatrixDisplay
+                matrix={tensorNetwork.legos[0].parity_check_matrix}
+                legOrdering={tensorNetwork.legos[0].parity_check_matrix.map(
+                  (row, i) => ({
+                    instanceId: tensorNetwork.legos[0].instanceId,
+                    legIndex: i
+                  })
+                )}
+                selectedRows={tensorNetwork.legos[0].selectedMatrixRows || []}
+                onRowSelectionChange={handleMatrixRowSelection}
+              />
+            </VStack>
+          </>
+        ) : tensorNetwork && tensorNetwork.legos.length > 1 ? (
           <>
             <Heading size="md">Tensor Network</Heading>
             <Text>Selected components: {tensorNetwork.legos.length} Legos</Text>
@@ -1472,127 +1598,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               </VStack>
             </Box>
           </>
-        ) : selectedLego ? (
-          <>
-            <Heading size="md">Lego Instance Details</Heading>
-            <VStack align="stretch" spacing={3}>
-              <Text fontWeight="bold">
-                {selectedLego.name || selectedLego.shortName}
-              </Text>
-              <Text fontSize="sm" color="gray.600">
-                {selectedLego.description}, instaceId: {selectedLego.instanceId}
-                , x: {selectedLego.x}, y: {selectedLego.y}
-              </Text>
-              <Box>
-                <Text fontSize="sm" mb={1}>
-                  Short Name:
-                </Text>
-                <Input
-                  size="sm"
-                  value={selectedLego.shortName}
-                  onChange={(e) => {
-                    const newShortName = e.target.value;
-                    const updatedLego = {
-                      ...selectedLego,
-                      shortName: newShortName
-                    };
-                    setSelectedLego(updatedLego);
-                    setDroppedLegos(
-                      droppedLegos.map((l) =>
-                        l.instanceId === selectedLego.instanceId
-                          ? updatedLego
-                          : l
-                      )
-                    );
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                  }}
-                />
-              </Box>
-              <Box>
-                <Checkbox
-                  isChecked={selectedLego.alwaysShowLegs || false}
-                  onChange={(e) => {
-                    const updatedLego = {
-                      ...selectedLego,
-                      alwaysShowLegs: e.target.checked
-                    };
-                    setSelectedLego(updatedLego);
-                    setDroppedLegos(
-                      droppedLegos.map((l) =>
-                        l.instanceId === selectedLego.instanceId
-                          ? updatedLego
-                          : l
-                      )
-                    );
-                    encodeCanvasState(
-                      droppedLegos.map((l) =>
-                        l.instanceId === selectedLego.instanceId
-                          ? updatedLego
-                          : l
-                      ),
-                      connections,
-                      hideConnectedLegs
-                    );
-                  }}
-                >
-                  Always show legs
-                </Checkbox>
-              </Box>
-              {(selectedLego.id === "x_rep_code" ||
-                selectedLego.id === "z_rep_code") && (
-                <>
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handleUnfuseToLegs(selectedLego)}
-                  >
-                    Unfuse to legs
-                  </Button>
-
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handleUnfuseInto2Legos(selectedLego)}
-                  >
-                    Unfuse into 2 legos
-                  </Button>
-
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handleChangeColor(selectedLego)}
-                  >
-                    Change color
-                  </Button>
-
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handlePullOutSameColoredLeg(selectedLego)}
-                  >
-                    Pull out a leg of same color (p)
-                  </Button>
-                </>
-              )}
-
-              <ParityCheckMatrixDisplay
-                matrix={selectedLego.parity_check_matrix}
-                legOrdering={selectedLego.parity_check_matrix.map((row, i) => ({
-                  instanceId: selectedLego.instanceId,
-                  legIndex: i
-                }))}
-                selectedRows={selectedLego.selectedMatrixRows || []}
-                onRowSelectionChange={handleMatrixRowSelection}
-              />
-            </VStack>
-          </>
         ) : (
+          // ) :
+          //
+          //     </VStack>
+          //   </>
           <>
             <Heading size="md">Canvas Overview</Heading>
             <Text color="gray.600">

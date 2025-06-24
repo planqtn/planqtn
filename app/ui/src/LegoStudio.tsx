@@ -17,7 +17,7 @@ import {
   MenuDivider,
   HStack
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import {
   Panel,
   PanelGroup,
@@ -156,6 +156,63 @@ function findClosestDanglingLeg(
     : null;
 }
 
+// Memoized Left Panel Component
+const LeftPanel = memo<{
+  leftPanelRef: React.RefObject<ImperativePanelHandle>;
+  legoPanelSizes: { defaultSize: number; minSize: number };
+  isLegoPanelCollapsed: boolean;
+  setIsLegoPanelCollapsed: (collapsed: boolean) => void;
+  legos: LegoPiece[];
+  handleDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void;
+  setIsCssTannerDialogOpen: (open: boolean) => void;
+  setIsTannerDialogOpen: (open: boolean) => void;
+  setIsMspDialogOpen: (open: boolean) => void;
+  currentUser: User | null;
+}>(
+  ({
+    leftPanelRef,
+    legoPanelSizes,
+    isLegoPanelCollapsed,
+    setIsLegoPanelCollapsed,
+    legos,
+    handleDragStart,
+    setIsCssTannerDialogOpen,
+    setIsTannerDialogOpen,
+    setIsMspDialogOpen,
+    currentUser
+  }) => {
+    return (
+      <Panel
+        ref={leftPanelRef}
+        id="lego-panel"
+        defaultSize={legoPanelSizes.defaultSize}
+        minSize={legoPanelSizes.minSize}
+        maxSize={legoPanelSizes.defaultSize}
+        order={1}
+        collapsible={true}
+        onCollapse={() => setIsLegoPanelCollapsed(true)}
+        onExpand={() => setIsLegoPanelCollapsed(false)}
+      >
+        {!isLegoPanelCollapsed && (
+          <BuildingBlocksPanel
+            legos={legos}
+            onDragStart={handleDragStart}
+            onLegoSelect={() => {
+              // Handle lego selection if needed
+            }}
+            onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
+            onCreateTanner={() => setIsTannerDialogOpen(true)}
+            onCreateMsp={() => setIsMspDialogOpen(true)}
+            isUserLoggedIn={!!currentUser}
+          />
+        )}
+      </Panel>
+    );
+  }
+);
+
+LeftPanel.displayName = "LeftPanel";
+
 const LegoStudioView: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -168,7 +225,6 @@ const LegoStudioView: React.FC = () => {
   const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [error, setError] = useState<string>("");
-  const [selectedLego, setSelectedLego] = useState<DroppedLego | null>(null);
   const [legDragState, setLegDragState] = useState<LegDragState | null>(null);
   const [canvasDragState, setCanvasDragState] = useState<CanvasDragState>({
     isDragging: false,
@@ -248,6 +304,7 @@ const LegoStudioView: React.FC = () => {
     defaultSize: 15,
     minSize: 8
   });
+  const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
 
   const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
   const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
@@ -871,14 +928,6 @@ const LegoStudioView: React.FC = () => {
             newNetwork.signature = createNetworkSignature(newNetwork);
             setTensorNetwork(newNetwork);
           }
-        } else if (selectedLego) {
-          const newNetwork = new TensorNetwork(
-            [lego, selectedLego],
-            connections
-          );
-          newNetwork.signature = createNetworkSignature(newNetwork);
-          setTensorNetwork(newNetwork);
-          setSelectedLego(null);
         } else {
           // If no tensor network exists, create one with just this lego
           const newNetwork = new TensorNetwork([lego], []);
@@ -886,15 +935,12 @@ const LegoStudioView: React.FC = () => {
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
-        setSelectedLego(null);
       } else {
         // Regular click behavior
         if (
-          tensorNetwork?.legos.some((l) => l.instanceId === lego.instanceId)
+          tensorNetwork?.legos.length === 1 &&
+          tensorNetwork.legos[0].instanceId === lego.instanceId
         ) {
-          setTensorNetwork(null);
-          setSelectedLego(lego);
-        } else if (selectedLego?.instanceId === lego.instanceId) {
           const network = findConnectedComponent(
             lego,
             droppedLegos,
@@ -902,10 +948,8 @@ const LegoStudioView: React.FC = () => {
           );
           network.signature = createNetworkSignature(network);
           setTensorNetwork(network);
-          setSelectedLego(null);
         } else {
-          setSelectedLego(lego);
-          setTensorNetwork(null);
+          setTensorNetwork(new TensorNetwork([lego], []));
         }
       }
     }
@@ -920,7 +964,6 @@ const LegoStudioView: React.FC = () => {
       !dragState.isDragging &&
       !selectionBox.justFinished
     ) {
-      setSelectedLego(null);
       setTensorNetwork(null);
     }
     // Reset the justFinished flag after handling the click
@@ -1017,10 +1060,8 @@ const LegoStudioView: React.FC = () => {
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
-        setSelectedLego(null);
       } else {
-        setSelectedLego(selectedLegos[0]);
-        setTensorNetwork(null);
+        setTensorNetwork(new TensorNetwork(selectedLegos, []));
       }
     } else if (selectedLegos.length > 1) {
       if (e.ctrlKey || e.metaKey) {
@@ -1051,7 +1092,6 @@ const LegoStudioView: React.FC = () => {
           newNetwork.signature = createNetworkSignature(newNetwork);
           setTensorNetwork(newNetwork);
         }
-        setSelectedLego(null);
       } else {
         // Create a tensor network from the selected legos
         const selectedLegoIds = new Set(
@@ -1067,12 +1107,10 @@ const LegoStudioView: React.FC = () => {
           internalConnections
         );
         newNetwork.signature = createNetworkSignature(newNetwork);
-        setSelectedLego(null);
         setTensorNetwork(newNetwork);
       }
     } else {
       if (!(e.ctrlKey || e.metaKey)) {
-        setSelectedLego(null);
         setTensorNetwork(null);
       }
     }
@@ -1175,18 +1213,9 @@ const LegoStudioView: React.FC = () => {
 
       setDroppedLegos(updatedLegos);
       if (groupDragState) {
-        if (tensorNetwork) {
-          tensorNetwork.legos = updatedLegos.filter((lego) =>
-            groupDragState.legoInstanceIds.includes(lego.instanceId)
-          );
-        }
-      } else if (
-        selectedLego &&
-        droppedLegos[dragState.draggedLegoIndex]?.instanceId ===
-          selectedLego.instanceId
-      ) {
-        selectedLego.x = newX;
-        selectedLego.y = newY;
+        tensorNetwork!.legos = updatedLegos.filter((lego) =>
+          groupDragState.legoInstanceIds.includes(lego.instanceId)
+        );
       }
 
       // Check if we're hovering over a connection (for two-legged legos) or a dangling leg (for stoppers)
@@ -1680,15 +1709,9 @@ const LegoStudioView: React.FC = () => {
   // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key === "c" &&
-        (tensorNetwork || selectedLego)
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "c" && tensorNetwork) {
         e.preventDefault();
-        const networkToCopy = tensorNetwork || {
-          legos: [selectedLego]
-        };
+        const networkToCopy = tensorNetwork;
 
         const jsonStr = JSON.stringify(networkToCopy);
         navigator.clipboard
@@ -1850,8 +1873,6 @@ const LegoStudioView: React.FC = () => {
 
           tensorNetwork.signature = createNetworkSignature(tensorNetwork);
 
-          setSelectedLego(null);
-
           setTensorNetwork(tensorNetwork);
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
@@ -1860,8 +1881,6 @@ const LegoStudioView: React.FC = () => {
 
         if (tensorNetwork) {
           legosToRemove = tensorNetwork.legos;
-        } else if (selectedLego) {
-          legosToRemove = [selectedLego];
         }
 
         if (legosToRemove.length > 0) {
@@ -1902,7 +1921,6 @@ const LegoStudioView: React.FC = () => {
           );
 
           // Clear selection states
-          setSelectedLego(null);
           setTensorNetwork(null);
 
           // Update URL state
@@ -1936,10 +1954,11 @@ const LegoStudioView: React.FC = () => {
       } else if (e.key === "p") {
         e.preventDefault();
         if (
-          selectedLego &&
-          (selectedLego.id === "x_rep_code" || selectedLego.id === "z_rep_code")
+          tensorNetwork &&
+          (tensorNetwork.legos[0].id === "x_rep_code" ||
+            tensorNetwork.legos[0].id === "z_rep_code")
         ) {
-          handlePullOutSameColoredLeg(selectedLego);
+          handlePullOutSameColoredLeg(tensorNetwork.legos[0]);
         }
       }
     };
@@ -1950,7 +1969,6 @@ const LegoStudioView: React.FC = () => {
     handleUndo,
     handleRedo,
     tensorNetwork,
-    selectedLego,
     connections,
     droppedLegos,
     operationHistory.addOperation,
@@ -2186,7 +2204,6 @@ const LegoStudioView: React.FC = () => {
     // Clear all state
     setDroppedLegos([]);
     setConnections([]);
-    setSelectedLego(null);
     setTensorNetwork(null);
 
     // Update URL state
@@ -2533,8 +2550,8 @@ const LegoStudioView: React.FC = () => {
       selectedMatrixRows: selectedRows
     };
 
-    // Update the selectedLego state
-    setSelectedLego(updatedLego);
+    // Update the selected tensornetwork state
+    setTensorNetwork(new TensorNetwork([updatedLego], []));
 
     // Update droppedLegos by replacing the old lego with the new one
     const newDroppedLegos = droppedLegos.map((lego) =>
@@ -2568,7 +2585,6 @@ const LegoStudioView: React.FC = () => {
       operationHistory.addOperation(operation);
       setDroppedLegos(newDroppedLegos);
       setConnections(newConnections);
-      setSelectedLego(null);
       setTensorNetwork(null);
       encodeCanvasState(newDroppedLegos, newConnections, hideConnectedLegs);
     } catch (error) {
@@ -2737,9 +2753,6 @@ const LegoStudioView: React.FC = () => {
         }
       });
 
-      // Update the selected lego
-      setSelectedLego(null);
-
       // Update URL state
       encodeCanvasState(newLegos, newConnections, hideConnectedLegs);
     } catch (error) {
@@ -2748,9 +2761,6 @@ const LegoStudioView: React.FC = () => {
   };
 
   const handleExportSvg = () => {
-    // Clear any selections to have a clean view
-    setSelectedLego(null);
-
     // Get the canvas panel element
     const canvasPanel = document.querySelector("#main-panel");
     if (!canvasPanel) {
@@ -3095,31 +3105,18 @@ const LegoStudioView: React.FC = () => {
           )} */}
           <PanelGroup direction="horizontal">
             {/* Left Panel */}
-            <Panel
-              ref={leftPanelRef}
-              id="lego-panel"
-              defaultSize={legoPanelSizes.defaultSize}
-              minSize={legoPanelSizes.minSize}
-              maxSize={legoPanelSizes.defaultSize}
-              order={1}
-              collapsible={true}
-              onCollapse={() => setIsLegoPanelCollapsed(true)}
-              onExpand={() => setIsLegoPanelCollapsed(false)}
-            >
-              <Box visibility={isLegoPanelCollapsed ? "hidden" : "visible"}>
-                <BuildingBlocksPanel
-                  legos={legos}
-                  onDragStart={handleDragStart}
-                  onLegoSelect={() => {
-                    // Handle lego selection if needed
-                  }}
-                  onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
-                  onCreateTanner={() => setIsTannerDialogOpen(true)}
-                  onCreateMsp={() => setIsMspDialogOpen(true)}
-                  isUserLoggedIn={!!currentUser}
-                />
-              </Box>
-            </Panel>
+            <LeftPanel
+              leftPanelRef={leftPanelRef}
+              legoPanelSizes={legoPanelSizes}
+              isLegoPanelCollapsed={isLegoPanelCollapsed}
+              setIsLegoPanelCollapsed={setIsLegoPanelCollapsed}
+              legos={legos}
+              handleDragStart={handleDragStart}
+              setIsCssTannerDialogOpen={setIsCssTannerDialogOpen}
+              setIsTannerDialogOpen={setIsTannerDialogOpen}
+              setIsMspDialogOpen={setIsMspDialogOpen}
+              currentUser={currentUser}
+            />
             <ResizeHandle id="lego-panel-resize-handle" />
 
             {/* Main Content */}
@@ -3217,6 +3214,14 @@ const LegoStudioView: React.FC = () => {
                         >
                           Hide Building Blocks Panel
                         </MenuItemOption>
+                        <MenuItemOption
+                          isChecked={isTaskPanelCollapsed}
+                          onClick={() => {
+                            setIsTaskPanelCollapsed(!isTaskPanelCollapsed);
+                          }}
+                        >
+                          Hide Task Panel
+                        </MenuItemOption>
                         <MenuItem
                           onClick={() => {
                             const rect =
@@ -3251,7 +3256,6 @@ const LegoStudioView: React.FC = () => {
                               selectedMatrixRows: []
                             }));
                             setDroppedLegos(clearedLegos);
-                            setSelectedLego(null);
                             encodeCanvasState(
                               clearedLegos,
                               connections,
@@ -3676,7 +3680,6 @@ const LegoStudioView: React.FC = () => {
                       handleLegoMouseDown={handleLegoMouseDown}
                       handleLegoClick={handleLegoClick}
                       tensorNetwork={tensorNetwork}
-                      selectedLego={selectedLego}
                       dragState={dragState}
                       onLegClick={handleLegClick}
                       hideConnectedLegs={hideConnectedLegs}
@@ -3696,13 +3699,11 @@ const LegoStudioView: React.FC = () => {
               <DetailsPanel
                 handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
                 tensorNetwork={tensorNetwork}
-                selectedLego={selectedLego}
                 droppedLegos={droppedLegos}
                 connections={connections}
                 setTensorNetwork={setTensorNetwork}
                 setError={setError}
                 setDroppedLegos={setDroppedLegos}
-                setSelectedLego={setSelectedLego}
                 fuseLegos={fuseLegos}
                 setConnections={setConnections}
                 operationHistory={operationHistory}
@@ -3723,10 +3724,11 @@ const LegoStudioView: React.FC = () => {
           <ErrorPanel error={error} onDismiss={() => setError("")} />
         </Box>
 
-        {/* Task Panel - Bottom Panel */}
-        <Box borderTopWidth={1} borderColor={borderColor}>
-          <TaskPanel user={currentUser} onError={setError} />
-        </Box>
+        {!isTaskPanelCollapsed && (
+          <Box borderTopWidth={1} borderColor={borderColor}>
+            <TaskPanel user={currentUser} onError={setError} />
+          </Box>
+        )}
 
         <DynamicLegoDialog
           isOpen={isDialogOpen}
