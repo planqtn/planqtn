@@ -3,7 +3,24 @@ import { GenericStyle, getLegoStyle } from "../LegoStyles";
 import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {
-  constructor(private legos: LegoPiece[]) {}
+  private canvasId: string;
+
+  constructor(private legos: LegoPiece[]) {
+    // Generate a unique canvas ID if not already set
+    this.canvasId = this.generateCanvasId();
+  }
+
+  private generateCanvasId(): string {
+    // Generate a UUID v4
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  }
 
   public encode(
     pieces: DroppedLego[],
@@ -11,6 +28,7 @@ export class CanvasStateSerializer {
     hideConnectedLegs: boolean
   ): void {
     const state: CanvasState = {
+      canvasId: this.canvasId,
       pieces: pieces.map((piece) => ({
         id: piece.id,
         instanceId: piece.instanceId,
@@ -37,12 +55,24 @@ export class CanvasStateSerializer {
     pieces: DroppedLego[];
     connections: Connection[];
     hideConnectedLegs: boolean;
+    canvasId: string;
   }> {
     try {
       const decoded = JSON.parse(atob(encoded));
       if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
-        return { pieces: [], connections: [], hideConnectedLegs: false };
+        return {
+          pieces: [],
+          connections: [],
+          hideConnectedLegs: false,
+          canvasId: this.canvasId
+        };
       }
+
+      // Preserve the canvas ID from the decoded state if it exists
+      if (decoded.canvasId) {
+        this.canvasId = decoded.canvasId;
+      }
+
       // Fetch legos if not already loaded
       let legosList = this.legos;
       if (this.legos.length === 0) {
@@ -141,12 +171,17 @@ export class CanvasStateSerializer {
         connections: decoded.connections.map(
           (conn: Connection) => new Connection(conn.from, conn.to)
         ),
-        hideConnectedLegs: decoded.hideConnectedLegs || false
+        hideConnectedLegs: decoded.hideConnectedLegs || false,
+        canvasId: this.canvasId
       };
     } catch (error) {
       console.error("Error decoding canvas state:", error);
       throw error; // Re-throw the error instead of returning empty state
     }
+  }
+
+  public getCanvasId(): string {
+    return this.canvasId;
   }
 
   public updateLegos(newLegos: LegoPiece[]): void {

@@ -269,8 +269,11 @@ const LegoStudioView: React.FC = () => {
     currentY: 0,
     justFinished: false
   });
-  const [parityCheckMatrixCache] = useState<Map<string, number[][]>>(new Map());
-  const [weightEnumeratorCache] = useState<
+  const [canvasId, setCanvasId] = useState<string>("");
+  const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
+    Map<string, number[][]>
+  >(new Map());
+  const [weightEnumeratorCache, setWeightEnumeratorCache] = useState<
     Map<
       string,
       {
@@ -388,16 +391,102 @@ const LegoStudioView: React.FC = () => {
     []
   );
 
-  const decodeCanvasState = useCallback(async (encoded: string) => {
-    try {
-      return await stateSerializerRef.current.decode(encoded);
-    } catch (error) {
-      console.error("Failed to decode canvas state:", error);
-      if (error instanceof Error) console.log(error.stack);
-      // Create a new error with a user-friendly message
-      throw error;
-    }
+  // Helper functions for localStorage cache management
+  const getCacheKey = useCallback((canvasId: string, cacheType: string) => {
+    return `planqtn_cache_${cacheType}_${canvasId}`;
   }, []);
+
+  const loadCachesFromLocalStorage = useCallback(
+    (canvasId: string) => {
+      try {
+        // Load parity check matrix cache
+        const parityCacheKey = getCacheKey(canvasId, "parity");
+        const parityCacheData = localStorage.getItem(parityCacheKey);
+        if (parityCacheData) {
+          const parityCache = new Map<string, number[][]>(
+            JSON.parse(parityCacheData)
+          );
+          setParityCheckMatrixCache(parityCache);
+          console.log(
+            "Loaded parity check matrix cache for canvasId:",
+            canvasId,
+            "key",
+            parityCacheKey,
+            "value",
+            parityCacheData
+          );
+          console.log("parityCheckMatrixCache", parityCheckMatrixCache);
+        } else {
+          console.log(
+            "No parity check matrix cache found for canvasId:",
+            canvasId
+          );
+        }
+
+        // Load weight enumerator cache
+        const weightCacheKey = getCacheKey(canvasId, "weight");
+        const weightCacheData = localStorage.getItem(weightCacheKey);
+        if (weightCacheData) {
+          const weightCache = new Map<
+            string,
+            {
+              taskId: string;
+              polynomial: string;
+              normalizerPolynomial: string;
+              truncateLength: number | null;
+            }
+          >(JSON.parse(weightCacheData));
+          setWeightEnumeratorCache(weightCache);
+        }
+      } catch (error) {
+        console.error("Failed to load caches from localStorage:", error);
+      }
+    },
+    [getCacheKey]
+  );
+
+  const decodeCanvasState = useCallback(
+    async (encoded: string) => {
+      try {
+        const result = await stateSerializerRef.current.decode(encoded);
+        // Set the canvas ID from the decoded state
+        setCanvasId(result.canvasId);
+        console.log("Decoded canvas state for canvasId:", result.canvasId);
+        console.log(new Error().stack);
+        loadCachesFromLocalStorage(result.canvasId);
+        return result;
+      } catch (error) {
+        console.error("Failed to decode canvas state:", error);
+        if (error instanceof Error) console.log(error.stack);
+        // Create a new error with a user-friendly message
+        throw error;
+      }
+    },
+    [loadCachesFromLocalStorage]
+  );
+
+  const saveCachesToLocalStorage = useCallback(
+    (canvasId: string) => {
+      try {
+        // Save parity check matrix cache
+        const parityCacheKey = getCacheKey(canvasId, "parity");
+        const parityCacheData = JSON.stringify(
+          Array.from(parityCheckMatrixCache.entries())
+        );
+        localStorage.setItem(parityCacheKey, parityCacheData);
+
+        // Save weight enumerator cache
+        const weightCacheKey = getCacheKey(canvasId, "weight");
+        const weightCacheData = JSON.stringify(
+          Array.from(weightEnumeratorCache.entries())
+        );
+        localStorage.setItem(weightCacheKey, weightCacheData);
+      } catch (error) {
+        console.error("Failed to save caches to localStorage:", error);
+      }
+    },
+    [getCacheKey, parityCheckMatrixCache, weightEnumeratorCache]
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -431,6 +520,11 @@ const LegoStudioView: React.FC = () => {
             error instanceof Error ? error : new Error(String(error))
           );
         }
+      } else {
+        // No state in URL, generate a new canvas ID and load empty caches
+        const newCanvasId = stateSerializerRef.current.getCanvasId();
+        setCanvasId(newCanvasId);
+        loadCachesFromLocalStorage(newCanvasId);
       }
     };
 
@@ -442,7 +536,20 @@ const LegoStudioView: React.FC = () => {
 
     // Cleanup
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [decodeCanvasState]);
+  }, [decodeCanvasState, loadCachesFromLocalStorage]);
+
+  // Save caches to localStorage when they change
+  useEffect(() => {
+    if (canvasId) {
+      console.log("Saving caches to localStorage for canvasId:", canvasId);
+      saveCachesToLocalStorage(canvasId);
+    }
+  }, [
+    canvasId,
+    parityCheckMatrixCache,
+    weightEnumeratorCache,
+    saveCachesToLocalStorage
+  ]);
 
   // Add mouse position tracking
   useEffect(() => {
@@ -2210,18 +2317,8 @@ const LegoStudioView: React.FC = () => {
     encodeCanvasState([], [], hideConnectedLegs);
   };
 
-  // Modify the existing useEffect to clear both caches
-  useEffect(() => {
-    // Clear caches when connections change
-    parityCheckMatrixCache.clear();
-    weightEnumeratorCache.clear();
-  }, [connections]);
-
-  useEffect(() => {
-    // Clear caches when legos are added/removed
-    parityCheckMatrixCache.clear();
-    weightEnumeratorCache.clear();
-  }, [droppedLegos.length]);
+  // Cache clearing is now handled by localStorage-based caching system
+  // Caches persist across page refreshes and are managed per canvas ID
 
   const requestTensorNetwork = async (
     matrix: number[][],
@@ -3717,6 +3814,10 @@ const LegoStudioView: React.FC = () => {
                 ) => makeSpace(center, radius, skipLegos, legosToCheck)}
                 toast={toast}
                 user={currentUser}
+                parityCheckMatrixCache={parityCheckMatrixCache}
+                setParityCheckMatrixCache={setParityCheckMatrixCache}
+                weightEnumeratorCache={weightEnumeratorCache}
+                setWeightEnumeratorCache={setWeightEnumeratorCache}
               />
             </Panel>
           </PanelGroup>

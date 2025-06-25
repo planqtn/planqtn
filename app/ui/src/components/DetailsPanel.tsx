@@ -26,7 +26,7 @@ import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
-import { useState } from "react";
+import { useState, memo } from "react";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
 import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
@@ -61,8 +61,6 @@ import {
 } from "../supabaseClient.ts";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
-import { StabilizerCodeTensor } from "../lib/StabilizerCodeTensor.ts";
-import { GF2 } from "../lib/GF2.ts";
 import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
 import { useEffect } from "react";
@@ -101,6 +99,32 @@ interface DetailsPanelProps {
   handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>;
   toast: (props: UseToastOptions) => void;
   user?: User | null;
+  parityCheckMatrixCache: Map<string, number[][]>;
+  setParityCheckMatrixCache: React.Dispatch<
+    React.SetStateAction<Map<string, number[][]>>
+  >;
+  weightEnumeratorCache: Map<
+    string,
+    {
+      taskId: string;
+      polynomial: string;
+      normalizerPolynomial: string;
+      truncateLength: number | null;
+    }
+  >;
+  setWeightEnumeratorCache: React.Dispatch<
+    React.SetStateAction<
+      Map<
+        string,
+        {
+          taskId: string;
+          polynomial: string;
+          normalizerPolynomial: string;
+          truncateLength: number | null;
+        }
+      >
+    >
+  >;
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
@@ -118,24 +142,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   makeSpace,
   handlePullOutSameColoredLeg,
   toast,
-  user
+  user,
+  parityCheckMatrixCache,
+  setParityCheckMatrixCache,
+  weightEnumeratorCache,
+  setWeightEnumeratorCache
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const [parityCheckMatrixCache] = useState<Map<string, StabilizerCodeTensor>>(
-    new Map()
-  );
-  const [weightEnumeratorCache] = useState<
-    Map<
-      string,
-      {
-        taskId: string;
-        polynomial: string;
-        normalizerPolynomial: string;
-        truncateLength: number | null;
-      }
-    >
-  >(new Map());
   const [, setSelectedMatrixRows] = useState<number[]>([]);
   const [task, setTask] = useState<Task | null>(null);
   const [taskUpdatesChannel, setTaskUpdatesChannel] =
@@ -196,7 +210,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         )
       );
 
-      parityCheckMatrixCache.set(tensorNetwork.signature!, result);
+      setParityCheckMatrixCache((prev) => {
+        const newCache = new Map(prev);
+        newCache.set(tensorNetwork.signature!, result.h.getMatrix());
+        return newCache;
+      });
     } catch (error) {
       console.error("Error calculating parity check matrix:", error);
       setError("Failed to calculate parity check matrix");
@@ -472,11 +490,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           : null
       );
 
-      weightEnumeratorCache.set(signature, {
-        taskId: taskId,
-        polynomial: "",
-        normalizerPolynomial: "",
-        truncateLength: null
+      setWeightEnumeratorCache((prev) => {
+        const newCache = new Map(prev);
+        newCache.set(signature, {
+          taskId: taskId,
+          polynomial: "",
+          normalizerPolynomial: "",
+          truncateLength: null
+        });
+        return newCache;
       });
 
       // Show success toast with status URL
@@ -559,19 +581,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           : null
       );
 
-      // Update the cache
-      const signature = tensorNetwork.signature!;
-      const cachedResponse = parityCheckMatrixCache.get(signature);
-      if (cachedResponse) {
-        parityCheckMatrixCache.set(
-          signature,
-          new StabilizerCodeTensor(
-            cachedResponse.h,
-            cachedResponse.idx,
-            newLegOrdering
-          )
-        );
-      }
+      // Note: We don't update the cache here since we only store the matrix,
+      // not the leg ordering. The leg ordering is stored in the tensor network.
     }
   };
 
@@ -1436,7 +1447,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               <ParityCheckMatrixDisplay
                 matrix={tensorNetwork.legos[0].parity_check_matrix}
                 legOrdering={tensorNetwork.legos[0].parity_check_matrix.map(
-                  (row, i) => ({
+                  (_, i) => ({
                     instanceId: tensorNetwork.legos[0].instanceId,
                     legIndex: i
                   })
@@ -1536,16 +1547,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     <ParityCheckMatrixDisplay
                       matrix={
                         tensorNetwork.parityCheckMatrix ||
-                        parityCheckMatrixCache
-                          .get(tensorNetwork.signature!)!
-                          .h.getMatrix()
+                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
                       }
                       title="Pauli stabilizers"
-                      legOrdering={
-                        tensorNetwork.legOrdering ||
-                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
-                          .legs
-                      }
+                      legOrdering={tensorNetwork.legOrdering}
                       onMatrixChange={(newMatrix) => {
                         // Update the tensor network state
                         setTensorNetwork((prev: TensorNetwork | null) =>
@@ -1559,27 +1564,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
                         // Update the cache
                         const signature = tensorNetwork.signature!;
-                        const cachedResponse =
-                          parityCheckMatrixCache.get(signature);
-                        if (cachedResponse) {
-                          parityCheckMatrixCache.set(
-                            signature,
-                            new StabilizerCodeTensor(
-                              new GF2(newMatrix),
-                              cachedResponse.idx,
-                              cachedResponse.legs
-                            )
-                          );
-                        }
+                        setParityCheckMatrixCache((prev) => {
+                          const newCache = new Map(prev);
+                          newCache.set(signature, newMatrix);
+                          return newCache;
+                        });
                       }}
                       onLegOrderingChange={handleLegOrderingChange}
                       onRecalculate={calculateParityCheckMatrix}
                     />
                   )}
-                  {tensorNetwork.isCalculatingWeightEnumerator ||
-                  (tensorNetwork.signature &&
-                    weightEnumeratorCache.get(tensorNetwork.signature)
-                      ?.polynomial === "") ? (
+                  {tensorNetwork.signature &&
+                  weightEnumeratorCache.get(tensorNetwork.signature) ? (
                     <TaskDetailsDisplay
                       task={task}
                       taskId={
@@ -1599,10 +1595,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             </Box>
           </>
         ) : (
-          // ) :
-          //
-          //     </VStack>
-          //   </>
           <>
             <Heading size="md">Canvas Overview</Heading>
             <Text color="gray.600">
@@ -1649,4 +1641,4 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   );
 };
 
-export default DetailsPanel;
+export default memo(DetailsPanel);

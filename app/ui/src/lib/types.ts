@@ -147,6 +147,7 @@ export interface SelectionBoxState {
 }
 
 export interface CanvasState {
+  canvasId: string;
   pieces: Array<{
     id: string;
     instanceId: string;

@@ -289,7 +289,6 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                                     handleLegoMouseDown={() => {}}
                                     handleLegoClick={() => {}}
                                     tensorNetwork={null}
-                                    selectedLego={null}
                                     dragState={null}
                                     hideConnectedLegs={false}
                                     droppedLegos={[]}
