@@ -1,4 +1,5 @@
 import { LegoStyle } from "../LegoStyles";
+import { TensorNetworkLeg } from "./TensorNetwork";
 
 export interface LegoPiece {
   id: string;
@@ -205,4 +206,9 @@ export interface Task {
   result: string | null;
   execution_id: string;
   job_type: string;
+}
+
+export interface ParityCheckMatrix {
+  matrix: number[][];
+  legOrdering: TensorNetworkLeg[];
 }

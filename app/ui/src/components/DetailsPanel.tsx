@@ -20,7 +20,8 @@ import {
   Operation,
   TaskUpdate,
   TaskUpdateIterationStatus,
-  Task
+  Task,
+  ParityCheckMatrix
 } from "../lib/types.ts";
 import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
@@ -99,9 +100,9 @@ interface DetailsPanelProps {
   handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>;
   toast: (props: UseToastOptions) => void;
   user?: User | null;
-  parityCheckMatrixCache: Map<string, number[][]>;
+  parityCheckMatrixCache: Map<string, ParityCheckMatrix>;
   setParityCheckMatrixCache: React.Dispatch<
-    React.SetStateAction<Map<string, number[][]>>
+    React.SetStateAction<Map<string, ParityCheckMatrix>>
   >;
   weightEnumeratorCache: Map<
     string,
@@ -209,10 +210,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           tensorNetwork.signature
         )
       );
+      console.log("legordergin", legOrdering);
 
       setParityCheckMatrixCache((prev) => {
         const newCache = new Map(prev);
-        newCache.set(tensorNetwork.signature!, result.h.getMatrix());
+        newCache.set(tensorNetwork.signature!, {
+          matrix: result.h.getMatrix(),
+          legOrdering: legOrdering
+        });
         return newCache;
       });
     } catch (error) {
@@ -1446,7 +1451,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               )}
               <ParityCheckMatrixDisplay
                 matrix={tensorNetwork.legos[0].parity_check_matrix}
-                legOrdering={tensorNetwork.legos[0].parity_check_matrix.map(
+                legOrdering={Array.from(
+                  {
+                    length:
+                      tensorNetwork.legos[0].parity_check_matrix[0].length / 2
+                  },
                   (_, i) => ({
                     instanceId: tensorNetwork.legos[0].instanceId,
                     legIndex: i
@@ -1548,9 +1557,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       matrix={
                         tensorNetwork.parityCheckMatrix ||
                         parityCheckMatrixCache.get(tensorNetwork.signature!)!
+                          .matrix
                       }
                       title="Pauli stabilizers"
-                      legOrdering={tensorNetwork.legOrdering}
+                      legOrdering={
+                        tensorNetwork.legOrdering ||
+                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
+                          .legOrdering
+                      }
                       onMatrixChange={(newMatrix) => {
                         // Update the tensor network state
                         setTensorNetwork((prev: TensorNetwork | null) =>
@@ -1566,7 +1580,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         const signature = tensorNetwork.signature!;
                         setParityCheckMatrixCache((prev) => {
                           const newCache = new Map(prev);
-                          newCache.set(signature, newMatrix);
+                          newCache.set(signature, {
+                            matrix: newMatrix,
+                            legOrdering: tensorNetwork.legOrdering || []
+                          });
                           return newCache;
                         });
                       }}

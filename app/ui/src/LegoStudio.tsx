@@ -35,6 +35,7 @@ import {
   GroupDragState,
   LegDragState,
   LegoPiece,
+  ParityCheckMatrix,
   PauliOperator,
   SelectionBoxState
 } from "./lib/types";
@@ -73,6 +74,7 @@ import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalc
 import { TensorNetworkLeg } from "./lib/TensorNetwork";
 import { LegoServerPayload } from "./lib/types";
 import TaskPanel from "./components/TaskPanel";
+import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -271,7 +273,7 @@ const LegoStudioView: React.FC = () => {
   });
   const [canvasId, setCanvasId] = useState<string>("");
   const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
-    Map<string, number[][]>
+    Map<string, ParityCheckMatrix>
   >(new Map());
   const [weightEnumeratorCache, setWeightEnumeratorCache] = useState<
     Map<
@@ -326,6 +328,8 @@ const LegoStudioView: React.FC = () => {
   } | null>(null);
   const [showWeightEnumeratorDialog, setShowWeightEnumeratorDialog] =
     useState(false);
+  const [showPythonCodeModal, setShowPythonCodeModal] = useState(false);
+  const [pythonCode, setPythonCode] = useState("");
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
@@ -403,7 +407,7 @@ const LegoStudioView: React.FC = () => {
         const parityCacheKey = getCacheKey(canvasId, "parity");
         const parityCacheData = localStorage.getItem(parityCacheKey);
         if (parityCacheData) {
-          const parityCache = new Map<string, number[][]>(
+          const parityCache = new Map<string, ParityCheckMatrix>(
             JSON.parse(parityCacheData)
           );
           setParityCheckMatrixCache(parityCache);
@@ -3024,14 +3028,8 @@ const LegoStudioView: React.FC = () => {
   const handleExportPythonCode = () => {
     if (!tensorNetwork) return;
     const code = tensorNetwork.generateConstructionCode();
-    navigator.clipboard.writeText(code);
-    toast({
-      title: "Copied to clipboard",
-      description: "Python code for the network has been copied.",
-      status: "success",
-      duration: 2000,
-      isClosable: true
-    });
+    setPythonCode(code);
+    setShowPythonCodeModal(true);
   };
 
   const calculateWeightEnumerator = async (
@@ -3268,12 +3266,16 @@ const LegoStudioView: React.FC = () => {
                         <Icon as={FiMoreVertical} boxSize={4} />
                       </MenuButton>
                       <MenuList>
-                        <MenuItem onClick={handleExportSvg}>
-                          Export canvas as SVG...
-                        </MenuItem>
                         <MenuItem
                           onClick={() => setShowWeightEnumeratorDialog(true)}
-                          isDisabled={!tensorNetwork}
+                          isDisabled={!tensorNetwork || !currentUser}
+                          title={
+                            !tensorNetwork
+                              ? "No network to calculate weight enumerator"
+                              : !currentUser
+                                ? "Please sign in to calculate weight enumerator"
+                                : ""
+                          }
                         >
                           Calculate Weight Enumerator
                         </MenuItem>
@@ -3378,6 +3380,10 @@ const LegoStudioView: React.FC = () => {
                               {isLocalRuntime ? "cloud" : "local"}
                             </Text>
                           </HStack>
+                        </MenuItem>
+                        <MenuDivider />
+                        <MenuItem onClick={handleExportSvg}>
+                          Export canvas as SVG...
                         </MenuItem>
                       </MenuList>
                     </Menu>
@@ -3906,6 +3912,12 @@ const LegoStudioView: React.FC = () => {
           danglingLegs={getExternalAndDanglingLegs().danglingLegs}
         />
       )}
+      <PythonCodeModal
+        isOpen={showPythonCodeModal}
+        onClose={() => setShowPythonCodeModal(false)}
+        code={pythonCode}
+        title="Python Network Construction Code"
+      />
     </>
   );
 };
