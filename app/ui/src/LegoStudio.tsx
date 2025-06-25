@@ -73,7 +73,7 @@ import { FiMoreVertical } from "react-icons/fi";
 import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 import { TensorNetworkLeg } from "./lib/TensorNetwork";
 import { LegoServerPayload } from "./lib/types";
-import TaskPanel from "./components/TaskPanel";
+import FloatingTaskPanel from "./components/FloatingTaskPanel";
 import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
@@ -333,7 +333,6 @@ const LegoStudioView: React.FC = () => {
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
-  const borderColor = useColorModeValue("gray.200", "gray.600");
 
   // Add title effect at the top
   useEffect(() => {
@@ -3831,11 +3830,12 @@ const LegoStudioView: React.FC = () => {
           <ErrorPanel error={error} onDismiss={() => setError("")} />
         </Box>
 
-        {!isTaskPanelCollapsed && (
-          <Box borderTopWidth={1} borderColor={borderColor}>
-            <TaskPanel user={currentUser} onError={setError} />
-          </Box>
-        )}
+        <FloatingTaskPanel
+          user={currentUser}
+          onError={setError}
+          onClose={() => setIsTaskPanelCollapsed(true)}
+          isOpen={!isTaskPanelCollapsed}
+        />
 
         <DynamicLegoDialog
           isOpen={isDialogOpen}

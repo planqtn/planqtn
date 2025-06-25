@@ -35,6 +35,7 @@ import axios, { AxiosError } from "axios";
 interface TaskPanelProps {
   user?: { id: string } | null;
   onError: (error: string) => void;
+  floatingMode?: boolean;
 }
 
 // Helper to format seconds using date-fns
@@ -53,7 +54,11 @@ function formatSecondsToDuration(seconds: number) {
   );
 }
 
-const TaskPanel: React.FC<TaskPanelProps> = ({ user, onError }) => {
+const TaskPanel: React.FC<TaskPanelProps> = ({
+  user,
+  onError,
+  floatingMode = false
+}) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
 
@@ -348,12 +353,13 @@ const TaskPanel: React.FC<TaskPanelProps> = ({ user, onError }) => {
   return (
     <Box
       p={4}
-      borderWidth={1}
-      borderRadius="lg"
-      bg={bgColor}
+      borderWidth={floatingMode ? 0 : 1}
+      borderRadius={floatingMode ? 0 : "lg"}
+      bg={floatingMode ? "transparent" : bgColor}
       borderColor={borderColor}
-      maxH="400px"
-      overflowY="auto"
+      maxH={floatingMode ? "none" : "400px"}
+      overflowY={floatingMode ? "visible" : "auto"}
+      h={floatingMode ? "100%" : "auto"}
     >
       <VStack spacing={4} align="stretch">
         <HStack justify="space-between">
