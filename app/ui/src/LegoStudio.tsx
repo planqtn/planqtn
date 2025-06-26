@@ -69,7 +69,7 @@ import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
 import { config, getApiUrl } from "./config";
 import { getAccessToken } from "./lib/auth";
-import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
+
 import { TbPlugConnected } from "react-icons/tb";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
@@ -81,6 +81,7 @@ import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalc
 import PythonCodeModal from "./components/PythonCodeModal.tsx";
 import { useConnectionStore } from "./stores/connectionStore.ts";
 import { useModalStore } from "./stores/modalStore";
+import { RuntimeConfigService } from "./lib/runtimeConfigService";
 import { ModalRoot } from "./components/ModalRoot";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
@@ -297,7 +298,8 @@ const LegoStudioView: React.FC = () => {
     openCustomLegoDialog,
     openLoadingModal,
     closeLoadingModal,
-    openAuthDialog
+    openAuthDialog,
+    openRuntimeConfigDialog
   } = useModalStore();
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
@@ -323,11 +325,6 @@ const LegoStudioView: React.FC = () => {
 
   // Memoize isUserLoggedIn to prevent BuildingBlocksPanel re-renders
   const isUserLoggedIn = useMemo(() => !!currentUser, [currentUser]);
-  const [isRuntimeConfigOpen, setIsRuntimeConfigOpen] = useState(false);
-  const [isLocalRuntime] = useState(() => {
-    const isActive = localStorage.getItem("runtimeConfigActive");
-    return isActive === "true";
-  });
 
   const [supabaseStatus, setSupabaseStatus] = useState<{
     isHealthy: boolean;
@@ -2248,24 +2245,13 @@ const LegoStudioView: React.FC = () => {
     event.stopPropagation();
   }
 
-  const handleRuntimeConfigSubmit = (config: Record<string, string>) => {
-    // Store the config in localStorage
-    localStorage.setItem("runtimeConfig", JSON.stringify(config));
-    // Set the active flag
-    localStorage.setItem("runtimeConfigActive", "true");
-
-    // Reload the page
-    window.location.reload();
-  };
-
   const handleRuntimeToggle = () => {
+    const isLocalRuntime = RuntimeConfigService.isLocalRuntime();
     if (isLocalRuntime) {
-      localStorage.setItem("runtimeConfigActive", "false");
-
-      // Reload the page
-      window.location.reload();
+      RuntimeConfigService.switchToCloud();
     } else {
-      setIsRuntimeConfigOpen(true);
+      const currentConfig = RuntimeConfigService.getCurrentConfig();
+      openRuntimeConfigDialog(isLocalRuntime, currentConfig || undefined);
     }
   };
 
@@ -2662,7 +2648,9 @@ const LegoStudioView: React.FC = () => {
                                   <Icon as={TbPlugConnected} />
                                   <Text>
                                     Switch runtime to{" "}
-                                    {isLocalRuntime ? "cloud" : "local"}
+                                    {RuntimeConfigService.isLocalRuntime()
+                                      ? "cloud"
+                                      : "local"}
                                   </Text>
                                 </HStack>
                               </MenuItem>
@@ -2818,23 +2806,6 @@ const LegoStudioView: React.FC = () => {
           hideConnectedLegs={hideConnectedLegs}
           newInstanceId={newInstanceId}
         />
-
-        {isRuntimeConfigOpen && (
-          <RuntimeConfigDialog
-            isOpen={isRuntimeConfigOpen}
-            onClose={() => setIsRuntimeConfigOpen(false)}
-            onSubmit={handleRuntimeConfigSubmit}
-            isLocal={isLocalRuntime}
-            initialConfig={(() => {
-              try {
-                const storedConfig = localStorage.getItem("runtimeConfig");
-                return storedConfig ? JSON.parse(storedConfig) : undefined;
-              } catch {
-                return undefined;
-              }
-            })()}
-          />
-        )}
       </VStack>
       {showWeightEnumeratorDialog && tensorNetwork && (
         <WeightEnumeratorCalculationDialog

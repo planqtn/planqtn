@@ -15,9 +15,11 @@ export interface ModalState {
   // Auth dialog
   authDialog: boolean;
 
+  // Runtime config dialog
+  runtimeConfigDialog: boolean;
+
   // Other modals can be added here later
   dynamicLegoDialog: boolean;
-  runtimeConfigDialog: boolean;
   weightEnumeratorDialog: boolean;
   pythonCodeModal: boolean;
 }
@@ -34,6 +36,11 @@ export interface AuthState {
   connectionError?: string;
 }
 
+export interface RuntimeConfigState {
+  isLocal: boolean;
+  initialConfig?: Record<string, string>;
+}
+
 interface ModalStore extends ModalState {
   // Loading state
   loadingState: LoadingState;
@@ -43,6 +50,9 @@ interface ModalStore extends ModalState {
 
   // Auth state
   authState: AuthState;
+
+  // Runtime config state
+  runtimeConfigState: RuntimeConfigState;
 
   // Network dialog actions
   openCssTannerDialog: () => void;
@@ -63,6 +73,13 @@ interface ModalStore extends ModalState {
   // Auth dialog actions
   openAuthDialog: (connectionError?: string) => void;
   closeAuthDialog: () => void;
+
+  // Runtime config dialog actions
+  openRuntimeConfigDialog: (
+    isLocal: boolean,
+    initialConfig?: Record<string, string>
+  ) => void;
+  closeRuntimeConfigDialog: () => void;
 
   // Generic actions for future modals
   openModal: (modalName: keyof ModalState) => void;
@@ -95,11 +112,17 @@ const initialAuthState: AuthState = {
   connectionError: undefined
 };
 
+const initialRuntimeConfigState: RuntimeConfigState = {
+  isLocal: false,
+  initialConfig: undefined
+};
+
 export const useModalStore = create<ModalStore>((set) => ({
   ...initialState,
   loadingState: initialLoadingState,
   customLegoState: initialCustomLegoState,
   authState: initialAuthState,
+  runtimeConfigState: initialRuntimeConfigState,
 
   // Network dialog actions
   openCssTannerDialog: () => set({ cssTannerDialog: true }),
@@ -145,6 +168,21 @@ export const useModalStore = create<ModalStore>((set) => ({
       authState: { connectionError: undefined }
     }),
 
+  // Runtime config dialog actions
+  openRuntimeConfigDialog: (
+    isLocal: boolean,
+    initialConfig?: Record<string, string>
+  ) =>
+    set({
+      runtimeConfigDialog: true,
+      runtimeConfigState: { isLocal, initialConfig }
+    }),
+  closeRuntimeConfigDialog: () =>
+    set({
+      runtimeConfigDialog: false,
+      runtimeConfigState: { isLocal: false, initialConfig: undefined }
+    }),
+
   // Generic actions
   openModal: (modalName: keyof ModalState) =>
     set((state) => ({ ...state, [modalName]: true })),
@@ -155,6 +193,7 @@ export const useModalStore = create<ModalStore>((set) => ({
       ...initialState,
       loadingState: initialLoadingState,
       customLegoState: initialCustomLegoState,
-      authState: initialAuthState
+      authState: initialAuthState,
+      runtimeConfigState: initialRuntimeConfigState
     })
 }));

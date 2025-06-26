@@ -4,11 +4,13 @@ import { useModalStore } from "../stores/modalStore";
 import { TannerDialog } from "./TannerDialog";
 import LoadingModal from "./LoadingModal";
 import AuthDialog from "./AuthDialog";
+import { RuntimeConfigDialog } from "./RuntimeConfigDialog";
 import { NetworkService, NetworkCreationOptions } from "../lib/networkService";
 import {
   CustomLegoService,
   CustomLegoCreationOptions
 } from "../lib/customLegoService";
+import { RuntimeConfigService } from "../lib/runtimeConfigService";
 import { OperationHistory } from "../lib/OperationHistory";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 import { useToast } from "@chakra-ui/react";
@@ -33,14 +35,17 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     loadingModal,
     customLegoDialog,
     authDialog,
+    runtimeConfigDialog,
     loadingState,
     customLegoState,
     authState,
+    runtimeConfigState,
     closeCssTannerDialog,
     closeTannerDialog,
     closeMspDialog,
     closeCustomLegoDialog,
-    closeAuthDialog
+    closeAuthDialog,
+    closeRuntimeConfigDialog
   } = useModalStore();
 
   const toast = useToast();
@@ -160,6 +165,10 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     }
   };
 
+  const handleRuntimeConfigSubmit = (config: Record<string, string>) => {
+    RuntimeConfigService.applyConfig(config);
+  };
+
   return ReactDOM.createPortal(
     <>
       {/* CSS Tanner Dialog */}
@@ -203,6 +212,15 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
         isOpen={authDialog}
         onClose={closeAuthDialog}
         connectionError={authState.connectionError}
+      />
+
+      {/* Runtime Config Dialog */}
+      <RuntimeConfigDialog
+        isOpen={runtimeConfigDialog}
+        onClose={closeRuntimeConfigDialog}
+        onSubmit={handleRuntimeConfigSubmit}
+        isLocal={runtimeConfigState.isLocal}
+        initialConfig={runtimeConfigState.initialConfig}
       />
 
       {/* Additional modals will be added here as we refactor them */}
