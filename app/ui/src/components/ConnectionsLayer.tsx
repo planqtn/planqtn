@@ -1,5 +1,6 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useCallback } from "react";
 import { Connection, DroppedLego, LegDragState } from "../lib/types";
+import { LegStyle } from "../LegoStyles";
 import { calculateLegPosition } from "./DroppedLegoDisplay";
 import { useLegoStore } from "../stores/legoStore";
 import { useConnectionStore } from "../stores/connectionStore";
@@ -14,6 +15,19 @@ interface ConnectionsLayerProps {
   ) => void;
 }
 
+// Move this outside to avoid recreation
+const fromChakraColorToHex = (color: string): string => {
+  if (color.startsWith("blue")) {
+    return "#0000FF";
+  } else if (color.startsWith("red")) {
+    return "#FF0000";
+  } else if (color.startsWith("purple")) {
+    return "#800080";
+  } else {
+    return "darkgray";
+  }
+};
+
 export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
   ({
     hideConnectedLegs,
@@ -23,6 +37,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
   }) => {
     const { connections } = useConnectionStore();
     const { droppedLegos } = useLegoStore();
+
     // Memoize lego lookup map for performance
     const legoMap = useMemo(() => {
       const map = new Map<string, DroppedLego>();
@@ -30,7 +45,52 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
       return map;
     }, [droppedLegos]);
 
-    // Memoize rendered connections to avoid recalculating on every render
+    // Pre-compute connected legs map for O(1) lookup instead of O(n) per connection
+    const connectedLegsMap = useMemo(() => {
+      const map = new Map<string, boolean>();
+      connections.forEach((conn) => {
+        map.set(`${conn.from.legoId}-${conn.from.legIndex}`, true);
+        map.set(`${conn.to.legoId}-${conn.to.legIndex}`, true);
+      });
+      return map;
+    }, [connections]);
+
+    // Pre-compute leg styles to avoid repeated calculations
+    const legStylesMap = useMemo(() => {
+      const map = new Map<
+        string,
+        { style: LegStyle; color: string; isHighlighted: boolean }
+      >();
+      droppedLegos.forEach((lego) => {
+        const numLegs = lego.parity_check_matrix[0].length / 2;
+        for (let i = 0; i < numLegs; i++) {
+          const legStyle = lego.style.getLegStyle(i, lego);
+          const legColor = lego.style.getLegColor(i, lego);
+          map.set(`${lego.instanceId}-${i}`, {
+            style: legStyle,
+            color: legColor,
+            isHighlighted: legStyle.is_highlighted
+          });
+        }
+      });
+      return map;
+    }, [droppedLegos]);
+
+    // Memoize connection hover check
+    const isConnectionHovered = useCallback(
+      (conn: Connection): boolean => {
+        return !!(
+          hoveredConnection &&
+          hoveredConnection.from.legoId === conn.from.legoId &&
+          hoveredConnection.from.legIndex === conn.from.legIndex &&
+          hoveredConnection.to.legoId === conn.to.legoId &&
+          hoveredConnection.to.legIndex === conn.to.legIndex
+        );
+      },
+      [hoveredConnection]
+    );
+
+    // Memoize rendered connections with optimized calculations
     const renderedConnections = useMemo(() => {
       return connections
         .map((conn) => {
@@ -59,30 +119,28 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
           const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
           const toPos = calculateLegPosition(toLego, conn.to.legIndex);
 
-          // Check if legs are connected and should be hidden
-          const fromLegConnected = connections.some(
-            (c) =>
-              (c.from.legoId === fromLego.instanceId &&
-                c.from.legIndex === conn.from.legIndex) ||
-              (c.to.legoId === fromLego.instanceId &&
-                c.to.legIndex === conn.from.legIndex)
+          // Use pre-computed maps for O(1) lookup
+          const fromLegConnected = connectedLegsMap.has(
+            `${fromLego.instanceId}-${conn.from.legIndex}`
           );
-          const toLegConnected = connections.some(
-            (c) =>
-              (c.from.legoId === toLego.instanceId &&
-                c.from.legIndex === conn.to.legIndex) ||
-              (c.to.legoId === toLego.instanceId &&
-                c.to.legIndex === conn.to.legIndex)
+          const toLegConnected = connectedLegsMap.has(
+            `${toLego.instanceId}-${conn.to.legIndex}`
           );
 
-          // Check if legs are highlighted
-          const fromLegStyle = fromLego.style.getLegStyle(
-            conn.from.legIndex,
-            fromLego
+          // Get pre-computed leg styles
+          const fromLegData = legStylesMap.get(
+            `${fromLego.instanceId}-${conn.from.legIndex}`
           );
-          const toLegStyle = toLego.style.getLegStyle(conn.to.legIndex, toLego);
-          const fromLegHighlighted = fromLegStyle.is_highlighted;
-          const toLegHighlighted = toLegStyle.is_highlighted;
+          const toLegData = legStylesMap.get(
+            `${toLego.instanceId}-${conn.to.legIndex}`
+          );
+
+          if (!fromLegData || !toLegData) return null;
+
+          const { color: fromLegColor, isHighlighted: fromLegHighlighted } =
+            fromLegData;
+          const { color: toLegColor, isHighlighted: toLegHighlighted } =
+            toLegData;
 
           // Determine if legs should be hidden
           const hideFromLeg =
@@ -91,7 +149,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
             !fromLego.alwaysShowLegs &&
             (!fromLegHighlighted
               ? !toLegHighlighted
-              : toLegHighlighted && fromLegStyle.color === toLegStyle.color);
+              : toLegHighlighted && fromLegColor === toLegColor);
 
           const hideToLeg =
             hideConnectedLegs &&
@@ -99,7 +157,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
             !toLego.alwaysShowLegs &&
             (!toLegHighlighted
               ? !fromLegHighlighted
-              : fromLegHighlighted && fromLegStyle.color === toLegStyle.color);
+              : fromLegHighlighted && fromLegColor === toLegColor);
 
           // Final points with lego positions
           const fromPoint = hideFromLeg
@@ -115,12 +173,6 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
                 y: toLego.y + toPos.endY
               };
 
-          // Get the colors of the connected legs
-          const fromLegColor = fromLego.style.getLegColor(
-            conn.from.legIndex,
-            fromLego
-          );
-          const toLegColor = toLego.style.getLegColor(conn.to.legIndex, toLego);
           const colorsMatch = fromLegColor === toLegColor;
 
           // Calculate control points for the curve
@@ -145,30 +197,13 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
             y: (fromPoint.y + toPoint.y) / 2
           };
 
-          function fromChakraColorToHex(color: string): string {
-            if (color.startsWith("blue")) {
-              return "#0000FF";
-            } else if (color.startsWith("red")) {
-              return "#FF0000";
-            } else if (color.startsWith("purple")) {
-              return "#800080";
-            } else {
-              return "darkgray";
-            }
-          }
-
           const sharedColor = colorsMatch
             ? fromChakraColorToHex(fromLegColor)
             : "yellow";
           const connectorColor = colorsMatch ? sharedColor : "yellow";
 
           // Check if this connection is being hovered
-          const isHovered =
-            hoveredConnection &&
-            hoveredConnection.from.legoId === conn.from.legoId &&
-            hoveredConnection.from.legIndex === conn.from.legIndex &&
-            hoveredConnection.to.legoId === conn.to.legoId &&
-            hoveredConnection.to.legIndex === conn.to.legIndex;
+          const isHovered = isConnectionHovered(conn);
 
           return (
             <g key={connKey}>
@@ -239,9 +274,10 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
     }, [
       connections,
       legoMap,
+      connectedLegsMap,
+      legStylesMap,
       hideConnectedLegs,
-      hoveredConnection,
-      onConnectionDoubleClick
+      isConnectionHovered
     ]);
 
     // Memoize temporary drag line
