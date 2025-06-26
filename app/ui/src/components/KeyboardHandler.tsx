@@ -245,13 +245,12 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
 
           // Remove the connections and legos
           removeConnections(
-            connections.filter(
-              (conn) =>
-                !legosToRemove.some(
-                  (lego) =>
-                    conn.from.legoId === lego.instanceId ||
-                    conn.to.legoId === lego.instanceId
-                )
+            connections.filter((conn) =>
+              legosToRemove.some(
+                (lego) =>
+                  conn.from.legoId === lego.instanceId ||
+                  conn.to.legoId === lego.instanceId
+              )
             )
           );
           removeDroppedLegos(legosToRemove.map((l) => l.instanceId));

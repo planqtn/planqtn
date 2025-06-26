@@ -54,7 +54,6 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { CanvasStateSerializer } from "./lib/CanvasStateSerializer";
 import { calculateLegPosition } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
-import { TannerDialog } from "./components/TannerDialog";
 import { OperationHistory } from "./lib/OperationHistory";
 import { FuseLegos } from "./transformations/FuseLegos";
 import { InjectTwoLegged } from "./transformations/InjectTwoLegged";
@@ -72,7 +71,6 @@ import { config, getApiUrl } from "./config";
 import { getAccessToken } from "./lib/auth";
 import { RuntimeConfigDialog } from "./components/RuntimeConfigDialog";
 import { TbPlugConnected } from "react-icons/tb";
-import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
 // import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
@@ -82,6 +80,8 @@ import FloatingTaskPanel from "./components/FloatingTaskPanel";
 import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog.tsx";
 import PythonCodeModal from "./components/PythonCodeModal.tsx";
 import { useConnectionStore } from "./stores/connectionStore.ts";
+import { useModalStore } from "./stores/modalStore";
+import { ModalRoot } from "./components/ModalRoot";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
@@ -173,9 +173,6 @@ const LeftPanel = memo<{
   isLegoPanelCollapsed: boolean;
   setIsLegoPanelCollapsed: (collapsed: boolean) => void;
   handleDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
-  handleSetCssTannerDialogOpen: () => void;
-  handleSetTannerDialogOpen: () => void;
-  handleSetMspDialogOpen: () => void;
   isUserLoggedIn: boolean;
 }>(
   ({
@@ -184,9 +181,6 @@ const LeftPanel = memo<{
     isLegoPanelCollapsed,
     setIsLegoPanelCollapsed,
     handleDragStart,
-    handleSetCssTannerDialogOpen,
-    handleSetTannerDialogOpen,
-    handleSetMspDialogOpen,
     isUserLoggedIn
   }) => {
     return (
@@ -204,9 +198,6 @@ const LeftPanel = memo<{
         {!isLegoPanelCollapsed && (
           <BuildingBlocksPanel
             onDragStart={handleDragStart}
-            onCreateCssTanner={handleSetCssTannerDialogOpen}
-            onCreateTanner={handleSetTannerDialogOpen}
-            onCreateMsp={handleSetMspDialogOpen}
             isUserLoggedIn={isUserLoggedIn}
           />
         )}
@@ -301,22 +292,9 @@ const LegoStudioView: React.FC = () => {
     x: number;
     y: number;
   } | null>(null);
-  const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false);
-  const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false);
-  const [isMspDialogOpen, setIsMspDialogOpen] = useState(false);
-
-  // Memoize dialog setters to prevent LeftPanel re-renders
-  const handleSetCssTannerDialogOpen = useCallback(() => {
-    setIsCssTannerDialogOpen(true);
-  }, []);
-
-  const handleSetTannerDialogOpen = useCallback(() => {
-    setIsTannerDialogOpen(true);
-  }, []);
-
-  const handleSetMspDialogOpen = useCallback(() => {
-    setIsMspDialogOpen(true);
-  }, []);
+  // Use modal store for network dialogs
+  const { openCustomLegoDialog, openLoadingModal, closeLoadingModal } =
+    useModalStore();
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
     setIsLegoPanelCollapsed(collapsed);
@@ -337,8 +315,6 @@ const LegoStudioView: React.FC = () => {
   });
   const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
 
-  const [showCustomLegoDialog, setShowCustomLegoDialog] = useState(false);
-  const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
@@ -349,8 +325,7 @@ const LegoStudioView: React.FC = () => {
     const isActive = localStorage.getItem("runtimeConfigActive");
     return isActive === "true";
   });
-  const [isNetworkLoading, setIsNetworkLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
+
   const [supabaseStatus, setSupabaseStatus] = useState<{
     isHealthy: boolean;
     message: string;
@@ -612,10 +587,7 @@ const LegoStudioView: React.FC = () => {
       if (lego.id === "custom") {
         // Store the drop position for the custom lego
         const rect = e.currentTarget.getBoundingClientRect();
-        setCustomLegoPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
-        });
+        // Note: position will be set when the custom lego is dropped, not during drag start
         // Set the draggedLego state for custom legos
         const draggedLego: DroppedLego = {
           ...lego,
@@ -768,8 +740,7 @@ const LegoStudioView: React.FC = () => {
 
     console.log("draggedLego", draggedLego);
     if (draggedLego.id === "custom") {
-      setCustomLegoPosition(dropPosition);
-      setShowCustomLegoDialog(true);
+      openCustomLegoDialog(dropPosition);
       return;
     }
 
@@ -829,8 +800,7 @@ const LegoStudioView: React.FC = () => {
       console.log("Dropped lego", newLego);
       // If it's a custom lego, show the dialog after dropping
       if (draggedLego.id === "custom") {
-        setCustomLegoPosition({ x, y });
-        setShowCustomLegoDialog(true);
+        openCustomLegoDialog({ x, y });
       } else {
         addDroppedLego(newLego);
         operationHistory.addOperation({
@@ -1828,8 +1798,7 @@ const LegoStudioView: React.FC = () => {
     try {
       let status = supabaseStatus;
       if (!status) {
-        setIsNetworkLoading(true);
-        setLoadingMessage(
+        openLoadingModal(
           "⚠️There seems to be an issue wtih the backend, checking..."
         );
         const timeoutPromise = new Promise<{
@@ -1871,7 +1840,7 @@ const LegoStudioView: React.FC = () => {
       // If no connection issues, open the auth dialog normally
       setAuthDialogOpen(true);
     } finally {
-      setIsNetworkLoading(false);
+      closeLoadingModal();
     }
   };
 
@@ -1916,265 +1885,6 @@ const LegoStudioView: React.FC = () => {
 
   // Cache clearing is now handled by localStorage-based caching system
   // Caches persist across page refreshes and are managed per canvas ID
-
-  const requestTensorNetwork = async (
-    matrix: number[][],
-    networkType: string
-  ) => {
-    setIsNetworkLoading(true);
-    setLoadingMessage(`Generating network...`);
-
-    try {
-      const acessToken = await getAccessToken();
-      const key = !acessToken ? config.runtimeStoreAnonKey : acessToken;
-      const response = await axios.post(
-        getApiUrl("tensorNetwork"),
-        {
-          matrix,
-          networkType: networkType,
-          start_node_index: newInstanceId()
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`
-          }
-        }
-      );
-      return response;
-    } finally {
-      setIsNetworkLoading(false);
-    }
-  };
-
-  const handleCssTannerSubmit = async (matrix: number[][]) => {
-    try {
-      const response = await requestTensorNetwork(matrix, "CSS_TANNER");
-      const { legos, connections } = response.data;
-      const newConnections = connections.map((conn: Connection) => {
-        return new Connection(conn.from, conn.to);
-      });
-
-      // Calculate positions for each type of node
-      const canvasWidth = 800; // Approximate canvas width
-      const nodeSpacing = 100; // Space between nodes
-
-      // Group legos by type
-      const zNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("z")
-      );
-      const qNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("q")
-      );
-      const xNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("x")
-      );
-
-      // Calculate positions for each row
-      const newLegos = legos.map((lego: DroppedLego) => {
-        let nodesInRow: DroppedLego[];
-        let y: number;
-
-        if (lego.shortName.startsWith("z")) {
-          nodesInRow = zNodes;
-          y = 100; // Top row
-        } else if (lego.shortName.startsWith("q")) {
-          nodesInRow = qNodes;
-          y = 250; // Middle row
-        } else {
-          nodesInRow = xNodes;
-          y = 400; // Bottom row
-        }
-
-        // Calculate x position based on index in row
-        const indexInRow = nodesInRow.findIndex(
-          (l) => l.instanceId === lego.instanceId
-        );
-        const x =
-          (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
-          indexInRow * nodeSpacing;
-
-        return {
-          ...lego,
-          x,
-          y,
-          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: []
-        };
-      });
-
-      // Add to state
-      addDroppedLegos(newLegos);
-      addConnections(newConnections);
-
-      // Add to history
-      operationHistory.addOperation({
-        type: "add",
-        data: {
-          legosToAdd: newLegos,
-          connectionsToAdd: newConnections
-        }
-      });
-
-      const updatedLegos = [...droppedLegos, ...newLegos];
-      encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setError(
-          `Failed to create CSS Tanner network: ${getAxiosErrorMessage(error)}`
-        );
-      } else {
-        setError("Failed to create CSS Tanner network");
-      }
-      console.error("Error:", error);
-    }
-  };
-
-  const handleTannerSubmit = async (matrix: number[][]) => {
-    try {
-      const response = await requestTensorNetwork(matrix, "TANNER");
-      const { legos, connections } = response.data;
-      const newConnections = connections.map((conn: Connection) => {
-        return new Connection(conn.from, conn.to);
-      });
-
-      // Calculate positions for each type of node
-      const canvasWidth = 800; // Approximate canvas width
-      const nodeSpacing = 100; // Space between nodes
-
-      // Group legos by type
-      const checkNodes = legos.filter(
-        (lego: DroppedLego) => !lego.shortName.startsWith("q")
-      );
-      const qNodes = legos.filter((lego: DroppedLego) =>
-        lego.shortName.startsWith("q")
-      );
-
-      // Calculate positions for each row
-      const newLegos = legos.map((lego: DroppedLego) => {
-        let nodesInRow: DroppedLego[];
-        let y: number;
-
-        if (lego.shortName.startsWith("q")) {
-          nodesInRow = qNodes;
-          y = 300; // Bottom row
-        } else {
-          nodesInRow = checkNodes;
-          y = 150; // Top row
-        }
-
-        // Calculate x position based on index in row
-        const indexInRow = nodesInRow.findIndex(
-          (l) => l.instanceId === lego.instanceId
-        );
-        const x =
-          (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
-          indexInRow * nodeSpacing;
-
-        return {
-          ...lego,
-          x,
-          y,
-          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: []
-        };
-      });
-
-      // Add to state
-      addDroppedLegos(newLegos);
-      addConnections(newConnections);
-
-      // Add to history
-      operationHistory.addOperation({
-        type: "add",
-        data: {
-          legosToAdd: newLegos,
-          connectionsToAdd: newConnections
-        }
-      });
-
-      const updatedLegos = [...droppedLegos, ...newLegos];
-      encodeCanvasState(updatedLegos, newConnections, hideConnectedLegs);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message ||
-          error.response?.data?.detail ||
-          error.message;
-        setError(`Failed to create Tanner network: ${message}`);
-      } else {
-        setError("Failed to create Tanner network");
-      }
-      console.error("Error:", error);
-    }
-  };
-
-  const handleMspSubmit = async (matrix: number[][]) => {
-    try {
-      const response = await requestTensorNetwork(matrix, "MSP");
-      const { legos, connections } = response.data;
-      const newMspConnections = connections.map((conn: Connection) => {
-        return new Connection(conn.from, conn.to);
-      });
-      // Calculate positions using lego coordinates
-      const canvasWidth = 800; // Approximate canvas width
-      const margin = 50; // Margin from edges
-
-      // Find min/max x and y to determine scale
-      const xValues = legos.map((lego: DroppedLego) => lego.x);
-      const yValues = legos.map((lego: DroppedLego) => lego.y);
-      const minX = Math.min(...xValues);
-      const maxX = Math.max(...xValues);
-      const minY = Math.min(...yValues);
-
-      // Calculate scale to fit width with margins
-      const xScale = ((canvasWidth - 2 * margin) / (maxX - minX || 1)) * 1.2;
-
-      // Position legos using their coordinates scaled to fit
-      const newLegos = legos.map((lego: DroppedLego) => {
-        const x = margin + (lego.x - minX) * xScale;
-        const y = margin + (lego.y - minY) * xScale; // Use same scale for y to maintain proportions
-
-        return {
-          ...lego,
-          x,
-          y,
-          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          pushedLegs: [],
-          selectedMatrixRows: []
-        };
-      });
-
-      // Add to state
-      addDroppedLegos(newLegos);
-      addConnections(newMspConnections);
-
-      // Add to history
-      operationHistory.addOperation({
-        type: "add",
-        data: {
-          legosToAdd: newLegos,
-          connectionsToAdd: newMspConnections
-        }
-      });
-
-      const updatedLegos = [...droppedLegos, ...newLegos];
-      encodeCanvasState(updatedLegos, newMspConnections, hideConnectedLegs);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message ||
-          error.response?.data?.detail ||
-          error.message;
-        setError(
-          `Failed to create measurement state preparation network: ${message}`
-        );
-      } else {
-        setError("Failed to create measurement state preparation network");
-      }
-      console.error("Error:", error);
-    }
-  };
 
   const handleLegClick = (legoId: string, legIndex: number) => {
     // Find the lego that was clicked
@@ -2316,45 +2026,6 @@ const LegoStudioView: React.FC = () => {
 
       return lego;
     });
-  };
-
-  const handleCustomLegoSubmit = (
-    matrix: number[][],
-    logicalLegs: number[]
-  ) => {
-    const instanceId = newInstanceId();
-    const newLego: DroppedLego = {
-      // to avoid caching collisions
-      id:
-        "custom-" +
-        instanceId +
-        "-" +
-        Math.random().toString(36).substring(2, 15),
-      name: "Custom Lego",
-      shortName: "Custom",
-      description: "Custom lego with user-defined parity check matrix",
-      instanceId: newInstanceId(),
-      x: customLegoPosition.x,
-      y: customLegoPosition.y,
-      parity_check_matrix: matrix,
-      logical_legs: logicalLegs,
-      gauge_legs: [],
-      style: getLegoStyle("custom", matrix[0].length / 2),
-      selectedMatrixRows: []
-    };
-
-    addDroppedLego(newLego);
-    operationHistory.addOperation({
-      type: "add",
-      data: {
-        legosToAdd: [newLego]
-      }
-    });
-    encodeCanvasState(
-      [...droppedLegos, newLego],
-      connections,
-      hideConnectedLegs
-    );
   };
 
   const handlePullOutSameColoredLeg = async (lego: DroppedLego) => {
@@ -2809,9 +2480,6 @@ const LegoStudioView: React.FC = () => {
               isLegoPanelCollapsed={isLegoPanelCollapsed}
               setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
               handleDragStart={handleDragStart}
-              handleSetCssTannerDialogOpen={handleSetCssTannerDialogOpen}
-              handleSetTannerDialogOpen={handleSetTannerDialogOpen}
-              handleSetMspDialogOpen={handleSetMspDialogOpen}
               isUserLoggedIn={isUserLoggedIn}
             />
             <ResizeHandle id="lego-panel-resize-handle" />
@@ -3141,39 +2809,14 @@ const LegoStudioView: React.FC = () => {
             parameters={selectedDynamicLego?.parameters || {}}
           />
         )}
-        {isCssTannerDialogOpen && (
-          <TannerDialog
-            isOpen={isCssTannerDialogOpen}
-            onClose={() => setIsCssTannerDialogOpen(false)}
-            onSubmit={handleCssTannerSubmit}
-            title="Create CSS Tanner Network"
-            cssOnly={true}
-          />
-        )}
-        {isTannerDialogOpen && (
-          <TannerDialog
-            isOpen={isTannerDialogOpen}
-            onClose={() => setIsTannerDialogOpen(false)}
-            onSubmit={handleTannerSubmit}
-            title="Create Tanner Network"
-          />
-        )}
-        {isMspDialogOpen && (
-          <TannerDialog
-            isOpen={isMspDialogOpen}
-            onClose={() => setIsMspDialogOpen(false)}
-            onSubmit={handleMspSubmit}
-            title="Measurement State Prep Network"
-          />
-        )}
-        {showCustomLegoDialog && (
-          <TannerDialog
-            isOpen={showCustomLegoDialog}
-            onClose={() => setShowCustomLegoDialog(false)}
-            onSubmit={handleCustomLegoSubmit}
-            title="Create Custom Lego"
-          />
-        )}
+        {/* Network dialogs managed by ModalRoot */}
+        <ModalRoot
+          operationHistory={operationHistory}
+          stateSerializer={stateSerializerRef.current}
+          hideConnectedLegs={hideConnectedLegs}
+          newInstanceId={newInstanceId}
+        />
+
         {authDialogOpen && (
           <AuthDialog
             isOpen={authDialogOpen}
@@ -3200,9 +2843,6 @@ const LegoStudioView: React.FC = () => {
               }
             })()}
           />
-        )}
-        {isNetworkLoading && (
-          <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
         )}
       </VStack>
       {showWeightEnumeratorDialog && tensorNetwork && (

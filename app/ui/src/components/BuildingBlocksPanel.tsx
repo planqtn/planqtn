@@ -21,26 +21,19 @@ import { getLegoStyle } from "../LegoStyles.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lib/Legos.ts";
 import { LegoSvgRenderer } from "../lib/LegoSvgRenderer.ts";
+import { useModalStore } from "../stores/modalStore.ts";
 
 interface BuildingBlocksPanelProps {
   onDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
-  onCreateCssTanner?: () => void;
-  onCreateTanner?: () => void;
-  onCreateMsp?: () => void;
   isUserLoggedIn?: boolean;
 }
 
 export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
-  ({
-    onDragStart,
-    onCreateCssTanner,
-    onCreateTanner,
-    onCreateMsp,
-    isUserLoggedIn
-  }) => {
+  ({ onDragStart, isUserLoggedIn }) => {
     const [isPanelSmall, setIsPanelSmall] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
-
+    const { openCssTannerDialog, openTannerDialog, openMspDialog } =
+      useModalStore.getState();
     const [legos, setLegos] = useState<LegoPiece[]>([]);
 
     useEffect(() => {
@@ -400,7 +393,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                           size="sm"
                           variant="outline"
                           colorScheme="blue"
-                          onClick={onCreateCssTanner}
+                          onClick={() => openCssTannerDialog()}
                           isDisabled={!isUserLoggedIn}
                           justifyContent="flex-start"
                           title={!isUserLoggedIn ? "Needs signing in" : ""}
@@ -418,7 +411,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                           size="sm"
                           variant="outline"
                           colorScheme="blue"
-                          onClick={onCreateTanner}
+                          onClick={() => openTannerDialog()}
                           isDisabled={!isUserLoggedIn}
                           justifyContent="flex-start"
                           title={!isUserLoggedIn ? "Needs signing in" : ""}
@@ -436,7 +429,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                           size="sm"
                           variant="outline"
                           colorScheme="blue"
-                          onClick={onCreateMsp}
+                          onClick={() => openMspDialog()}
                           isDisabled={!isUserLoggedIn}
                           justifyContent="flex-start"
                           title={!isUserLoggedIn ? "Needs signing in" : ""}
