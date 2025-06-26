@@ -1,10 +1,10 @@
 import React, { memo, useMemo } from "react";
 import { Connection, DroppedLego, LegDragState } from "../lib/types";
 import { calculateLegPosition } from "./DroppedLegoDisplay";
+import { useLegoStore } from "../stores/legoStore";
+import { useConnectionStore } from "../stores/connectionStore";
 
 interface ConnectionsLayerProps {
-  connections: Connection[];
-  droppedLegos: DroppedLego[];
   hideConnectedLegs: boolean;
   legDragState: LegDragState | null;
   hoveredConnection: Connection | null;
@@ -16,13 +16,13 @@ interface ConnectionsLayerProps {
 
 export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
   ({
-    connections,
-    droppedLegos,
     hideConnectedLegs,
     legDragState,
     hoveredConnection,
     onConnectionDoubleClick
   }) => {
+    const { connections } = useConnectionStore();
+    const { droppedLegos } = useLegoStore();
     // Memoize lego lookup map for performance
     const legoMap = useMemo(() => {
       const map = new Map<string, DroppedLego>();

@@ -65,11 +65,11 @@ import { useEffect } from "react";
 import TaskDetailsDisplay from "./TaskDetailsDisplay.tsx";
 import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
+import { useLegoStore } from "../stores/legoStore.ts";
+import { useConnectionStore } from "../stores/connectionStore.ts";
 
 interface DetailsPanelProps {
   tensorNetwork: TensorNetwork | null;
-  droppedLegos: DroppedLego[];
-  connections: Connection[];
   setTensorNetwork: (
     value:
       | TensorNetwork
@@ -78,9 +78,7 @@ interface DetailsPanelProps {
   ) => void;
 
   setError: (error: string) => void;
-  setDroppedLegos: (value: DroppedLego[]) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
-  setConnections: (value: Connection[]) => void;
   operationHistory: OperationHistory;
   encodeCanvasState: (
     pieces: DroppedLego[],
@@ -127,13 +125,9 @@ interface DetailsPanelProps {
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
   tensorNetwork: tensorNetwork,
-  droppedLegos,
-  connections,
   setTensorNetwork: setTensorNetwork,
   setError,
-  setDroppedLegos,
   fuseLegos,
-  setConnections,
   operationHistory,
   encodeCanvasState,
   hideConnectedLegs,
@@ -144,6 +138,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   setParityCheckMatrixCache,
   weightEnumeratorCache
 }) => {
+  const { connections, setConnections } = useConnectionStore();
+  const { droppedLegos, setDroppedLegos } = useLegoStore();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [, setSelectedMatrixRows] = useState<number[]>([]);

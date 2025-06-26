@@ -32,7 +32,8 @@
     "react-icons": "^5.0.1",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^7.5.3",
-    "socket.io-client": "^4.7.4"
+    "socket.io-client": "^4.7.4",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

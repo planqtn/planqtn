@@ -34,6 +34,7 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./components/SelectionManager";
+import { useLegoStore } from "./stores/legoStore";
 import {
   CanvasDragState,
   Connection,
@@ -80,6 +81,7 @@ import { LegoServerPayload } from "./lib/types";
 import FloatingTaskPanel from "./components/FloatingTaskPanel";
 import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog.tsx";
 import PythonCodeModal from "./components/PythonCodeModal.tsx";
+import { useConnectionStore } from "./stores/connectionStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
@@ -223,8 +225,18 @@ const LegoStudioView: React.FC = () => {
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
-  const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const {
+    droppedLegos,
+    setDroppedLegos,
+    addDroppedLego,
+    addDroppedLegos,
+    // removeDroppedLego,
+    // updateDroppedLego,
+    // updateDroppedLegos,
+    clearDroppedLegos
+  } = useLegoStore();
+  const { connections, setConnections, addConnections, removeConnections } =
+    useConnectionStore();
   const [error, setError] = useState<string>("");
   const [legDragState, setLegDragState] = useState<LegDragState | null>(null);
   const [canvasDragState, setCanvasDragState] = useState<CanvasDragState>({
@@ -409,8 +421,11 @@ const LegoStudioView: React.FC = () => {
     ) => {
       // console.log("Encoding droppedLegos", pieces, "connections", conns);
       // console.log(new Error().stack);
-      // Print call stack for debugging
-      // console.log('Canvas state encoding call stack:', new Error("just debugging").stack);
+      // // Print call stack for debugging
+      // console.log(
+      //   "Canvas state encoding call stack:",
+      //   new Error("just debugging").stack
+      // );
       stateSerializerRef.current.encode(pieces, conns, hideConnectedLegs);
     },
     []
@@ -817,7 +832,7 @@ const LegoStudioView: React.FC = () => {
         setCustomLegoPosition({ x, y });
         setShowCustomLegoDialog(true);
       } else {
-        setDroppedLegos((prev) => [...prev, newLego]);
+        addDroppedLego(newLego);
         operationHistory.addOperation({
           type: "add",
           data: { legosToAdd: [newLego] }
@@ -861,7 +876,7 @@ const LegoStudioView: React.FC = () => {
         style: getLegoStyle(dynamicLego.id, numLegs),
         selectedMatrixRows: []
       };
-      setDroppedLegos((prev) => [...prev, newLego]);
+      addDroppedLego(newLego);
       operationHistory.addOperation({
         type: "add",
         data: { legosToAdd: [newLego] }
@@ -923,8 +938,8 @@ const LegoStudioView: React.FC = () => {
       );
 
     // Add new legos and connections
-    setDroppedLegos((prev) => [...prev, ...newLegos]);
-    setConnections((prev) => [...prev, ...newConnections]);
+    addDroppedLegos(newLegos);
+    addConnections(newConnections);
 
     // Set up drag state for the group
     const positions: { [instanceId: string]: { x: number; y: number } } = {};
@@ -1222,9 +1237,11 @@ const LegoStudioView: React.FC = () => {
 
       setDroppedLegos(updatedLegos);
       if (groupDragState) {
-        tensorNetwork!.legos = updatedLegos.filter((lego) =>
-          groupDragState.legoInstanceIds.includes(lego.instanceId)
-        );
+        if (tensorNetwork) {
+          tensorNetwork.legos = updatedLegos.filter((lego) =>
+            groupDragState.legoInstanceIds.includes(lego.instanceId)
+          );
+        }
       }
 
       // Check if we're hovering over a connection (for two-legged legos) or a dangling leg (for stoppers)
@@ -1609,15 +1626,18 @@ const LegoStudioView: React.FC = () => {
                 }
               );
 
-              setConnections((prev) => {
-                const newConnections = [...prev, newConnection];
-                encodeCanvasState(
-                  droppedLegos,
-                  newConnections,
-                  hideConnectedLegs
-                );
-                return newConnections;
-              });
+              addConnections([newConnection]);
+              console.log("adding new connection", newConnection);
+              console.log(
+                "connections",
+                useConnectionStore.getState().getConnections()
+              );
+
+              encodeCanvasState(
+                droppedLegos,
+                useConnectionStore.getState().getConnections(),
+                hideConnectedLegs
+              );
 
               operationHistory.addOperation({
                 type: "connect",
@@ -1869,19 +1889,8 @@ const LegoStudioView: React.FC = () => {
     });
 
     // Remove the connection and update URL state with the new connections
-    setConnections((prev) => {
-      const newConnections = prev.filter(
-        (conn) =>
-          !(
-            conn.from.legoId === connection.from.legoId &&
-            conn.from.legIndex === connection.from.legIndex &&
-            conn.to.legoId === connection.to.legoId &&
-            conn.to.legIndex === connection.to.legIndex
-          )
-      );
-      encodeCanvasState(droppedLegos, newConnections, hideConnectedLegs);
-      return newConnections;
-    });
+    removeConnections([connection]);
+    encodeCanvasState(droppedLegos, connections, hideConnectedLegs);
   };
 
   const handleClearAll = () => {
@@ -1897,7 +1906,7 @@ const LegoStudioView: React.FC = () => {
     });
 
     // Clear all state
-    setDroppedLegos([]);
+    clearDroppedLegos();
     setConnections([]);
     setTensorNetwork(null);
 
@@ -1995,8 +2004,8 @@ const LegoStudioView: React.FC = () => {
       });
 
       // Add to state
-      setDroppedLegos((prev) => [...prev, ...newLegos]);
-      setConnections((prev) => [...prev, ...newConnections]);
+      addDroppedLegos(newLegos);
+      addConnections(newConnections);
 
       // Add to history
       operationHistory.addOperation({
@@ -2072,8 +2081,8 @@ const LegoStudioView: React.FC = () => {
       });
 
       // Add to state
-      setDroppedLegos((prev) => [...prev, ...newLegos]);
-      setConnections((prev) => [...prev, ...newConnections]);
+      addDroppedLegos(newLegos);
+      addConnections(newConnections);
 
       // Add to history
       operationHistory.addOperation({
@@ -2137,8 +2146,8 @@ const LegoStudioView: React.FC = () => {
       });
 
       // Add to state
-      setDroppedLegos((prev) => [...prev, ...newLegos]);
-      setConnections((prev) => [...prev, ...newMspConnections]);
+      addDroppedLegos(newLegos);
+      addConnections(newMspConnections);
 
       // Add to history
       operationHistory.addOperation({
@@ -2334,7 +2343,7 @@ const LegoStudioView: React.FC = () => {
       selectedMatrixRows: []
     };
 
-    setDroppedLegos([...droppedLegos, newLego]);
+    addDroppedLego(newLego);
     operationHistory.addOperation({
       type: "add",
       data: {
@@ -2720,14 +2729,10 @@ const LegoStudioView: React.FC = () => {
   return (
     <>
       <KeyboardHandler
-        droppedLegos={droppedLegos}
-        connections={connections}
         hideConnectedLegs={hideConnectedLegs}
         tensorNetwork={tensorNetwork}
         operationHistory={operationHistory}
         newInstanceId={newInstanceId}
-        onSetDroppedLegos={setDroppedLegos}
-        onSetConnections={setConnections}
         onSetTensorNetwork={(network) =>
           setTensorNetwork(network as TensorNetwork | null)
         }
@@ -3001,7 +3006,6 @@ const LegoStudioView: React.FC = () => {
                       )}
                     </Menu>
                   </Box>
-
                   {/* Top-center title (contextual) */}
                   <Box
                     position="absolute"
@@ -3027,7 +3031,6 @@ const LegoStudioView: React.FC = () => {
                       <EditableInput fontSize="sm" />
                     </Editable>
                   </Box>
-
                   {/* Top-right controls */}
                   <Box
                     position="absolute"
@@ -3052,324 +3055,12 @@ const LegoStudioView: React.FC = () => {
                       />
                     </Box>
                   </Box>
-
-                  {/* Connection Lines */}
                   <ConnectionsLayer
-                    connections={connections}
-                    droppedLegos={droppedLegos}
                     hideConnectedLegs={hideConnectedLegs}
                     legDragState={legDragState}
                     hoveredConnection={hoveredConnection}
                     onConnectionDoubleClick={handleConnectionDoubleClick}
                   />
-
-                  {/* Selection Box (keeping this here as it's not part of connections) */}
-                  <svg
-                    id="connections-svg"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      pointerEvents: "none",
-                      userSelect: "none"
-                      // border: "1px solid red"
-                    }}
-                  >
-                    {/* Existing connections */}
-                    <g style={{ pointerEvents: "all" }}>
-                      {connections.map((conn) => {
-                        const fromLego = droppedLegos.find(
-                          (l) => l.instanceId === conn.from.legoId
-                        );
-                        const toLego = droppedLegos.find(
-                          (l) => l.instanceId === conn.to.legoId
-                        );
-                        if (!fromLego || !toLego) return null;
-
-                        // Create a stable key based on the connection's properties
-                        const [firstId, firstLeg, secondId, secondLeg] =
-                          conn.from.legoId < conn.to.legoId
-                            ? [
-                                conn.from.legoId,
-                                conn.from.legIndex,
-                                conn.to.legoId,
-                                conn.to.legIndex
-                              ]
-                            : [
-                                conn.to.legoId,
-                                conn.to.legIndex,
-                                conn.from.legoId,
-                                conn.from.legIndex
-                              ];
-                        const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
-
-                        // Calculate positions using shared function
-                        const fromPos = calculateLegPosition(
-                          fromLego,
-                          conn.from.legIndex
-                        );
-                        const toPos = calculateLegPosition(
-                          toLego,
-                          conn.to.legIndex
-                        );
-
-                        // Check if legs are connected and should be hidden
-                        const fromLegConnected = connections.some(
-                          (c) =>
-                            (c.from.legoId === fromLego.instanceId &&
-                              c.from.legIndex === conn.from.legIndex) ||
-                            (c.to.legoId === fromLego.instanceId &&
-                              c.to.legIndex === conn.from.legIndex)
-                        );
-                        const toLegConnected = connections.some(
-                          (c) =>
-                            (c.from.legoId === toLego.instanceId &&
-                              c.from.legIndex === conn.to.legIndex) ||
-                            (c.to.legoId === toLego.instanceId &&
-                              c.to.legIndex === conn.to.legIndex)
-                        );
-
-                        // Check if legs are highlighted
-                        const fromLegStyle = fromLego.style.getLegStyle(
-                          conn.from.legIndex,
-                          fromLego
-                        );
-                        const toLegStyle = toLego.style.getLegStyle(
-                          conn.to.legIndex,
-                          toLego
-                        );
-                        const fromLegHighlighted = fromLegStyle.is_highlighted;
-                        const toLegHighlighted = toLegStyle.is_highlighted;
-
-                        // Determine if legs should be hidden
-                        const hideFromLeg =
-                          hideConnectedLegs &&
-                          fromLegConnected &&
-                          !fromLego.alwaysShowLegs &&
-                          (!fromLegHighlighted
-                            ? !toLegHighlighted
-                            : toLegHighlighted &&
-                              fromLegStyle.color === toLegStyle.color);
-                        const hideToLeg =
-                          hideConnectedLegs &&
-                          toLegConnected &&
-                          !toLego.alwaysShowLegs &&
-                          (!toLegHighlighted
-                            ? !fromLegHighlighted
-                            : fromLegHighlighted &&
-                              fromLegStyle.color === toLegStyle.color);
-
-                        // Final points with lego positions
-                        const fromPoint = hideFromLeg
-                          ? { x: fromLego.x, y: fromLego.y }
-                          : {
-                              x: fromLego.x + fromPos.endX,
-                              y: fromLego.y + fromPos.endY
-                            };
-                        const toPoint = hideToLeg
-                          ? { x: toLego.x, y: toLego.y }
-                          : {
-                              x: toLego.x + toPos.endX,
-                              y: toLego.y + toPos.endY
-                            };
-
-                        // Get the colors of the connected legs
-                        const fromLegColor = fromLego.style.getLegColor(
-                          conn.from.legIndex,
-                          fromLego
-                        );
-                        const toLegColor = toLego.style.getLegColor(
-                          conn.to.legIndex,
-                          toLego
-                        );
-                        const colorsMatch = fromLegColor === toLegColor;
-
-                        // Calculate control points for the curve
-                        const controlPointDistance = 30;
-                        const cp1 = {
-                          x:
-                            fromPoint.x +
-                            Math.cos(fromPos.angle) * controlPointDistance,
-                          y:
-                            fromPoint.y +
-                            Math.sin(fromPos.angle) * controlPointDistance
-                        };
-                        const cp2 = {
-                          x:
-                            toPoint.x +
-                            Math.cos(toPos.angle) * controlPointDistance,
-                          y:
-                            toPoint.y +
-                            Math.sin(toPos.angle) * controlPointDistance
-                        };
-
-                        // Create the path string for the cubic Bezier curve
-                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
-
-                        // Calculate midpoint for warning sign
-                        const midPoint = {
-                          x: (fromPoint.x + toPoint.x) / 2,
-                          y: (fromPoint.y + toPoint.y) / 2
-                        };
-
-                        function fromChakraColorToHex(color: string): string {
-                          if (color.startsWith("blue")) {
-                            return "#0000FF";
-                          } else if (color.startsWith("red")) {
-                            return "#FF0000";
-                          } else if (color.startsWith("purple")) {
-                            return "#800080";
-                          } else {
-                            return "darkgray";
-                          }
-                        }
-                        const sharedColor = colorsMatch
-                          ? fromChakraColorToHex(fromLegColor)
-                          : "yellow";
-                        const connectorColor = colorsMatch
-                          ? sharedColor
-                          : "yellow";
-
-                        // Check if this connection is being hovered
-                        const isHovered =
-                          hoveredConnection &&
-                          hoveredConnection.from.legoId === conn.from.legoId &&
-                          hoveredConnection.from.legIndex ===
-                            conn.from.legIndex &&
-                          hoveredConnection.to.legoId === conn.to.legoId &&
-                          hoveredConnection.to.legIndex === conn.to.legIndex;
-
-                        return (
-                          <g key={connKey}>
-                            {/* Invisible wider path for easier clicking */}
-                            <path
-                              d={pathString}
-                              stroke="transparent"
-                              strokeWidth="10"
-                              fill="none"
-                              style={{
-                                cursor: "pointer"
-                              }}
-                              onDoubleClick={(e) =>
-                                handleConnectionDoubleClick(e, conn)
-                              }
-                              onMouseEnter={(e) => {
-                                // Find and update the visible path
-                                const visiblePath = e.currentTarget
-                                  .nextSibling as SVGPathElement;
-                                if (visiblePath) {
-                                  visiblePath.style.stroke = connectorColor;
-                                  visiblePath.style.strokeWidth = "3";
-                                  visiblePath.style.filter =
-                                    "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                // Reset the visible path
-                                const visiblePath = e.currentTarget
-                                  .nextSibling as SVGPathElement;
-                                if (visiblePath) {
-                                  visiblePath.style.stroke = connectorColor;
-                                  visiblePath.style.strokeWidth = "2";
-                                  visiblePath.style.filter = "none";
-                                }
-                              }}
-                            />
-                            {/* Visible path */}
-                            <path
-                              d={pathString}
-                              stroke={connectorColor}
-                              strokeWidth={isHovered ? "4" : "2"}
-                              fill="none"
-                              style={{
-                                pointerEvents: "none",
-                                stroke: connectorColor,
-                                filter: isHovered
-                                  ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
-                                  : "none"
-                              }}
-                            />
-                            {/* Warning sign if operators don't match */}
-                            {!colorsMatch && (
-                              <text
-                                x={midPoint.x}
-                                y={midPoint.y}
-                                fontSize="16"
-                                fill="#FF0000"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                style={{ pointerEvents: "none" }}
-                              >
-                                ⚠
-                              </text>
-                            )}
-                          </g>
-                        );
-                      })}
-                    </g>
-
-                    {/* Temporary line while dragging */}
-                    {legDragState?.isDragging &&
-                      (() => {
-                        const fromLego = droppedLegos.find(
-                          (l) => l.instanceId === legDragState.legoId
-                        );
-                        if (!fromLego) return null;
-
-                        // Calculate position using shared function
-                        const fromPos = calculateLegPosition(
-                          fromLego,
-                          legDragState.legIndex
-                        );
-                        const fromPoint = {
-                          x: fromLego.x + fromPos.endX,
-                          y: fromLego.y + fromPos.endY
-                        };
-
-                        const legStyle = fromLego.style.getLegStyle(
-                          legDragState.legIndex,
-                          fromLego
-                        );
-                        const controlPointDistance = 30;
-                        const cp1 = {
-                          x:
-                            fromPoint.x +
-                            Math.cos(legStyle.angle) * controlPointDistance,
-                          y:
-                            fromPoint.y +
-                            Math.sin(legStyle.angle) * controlPointDistance
-                        };
-                        const cp2 = {
-                          x: legDragState.currentX,
-                          y: legDragState.currentY
-                        };
-
-                        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
-
-                        return (
-                          <>
-                            <circle
-                              cx={fromLego.x}
-                              cy={fromLego.y}
-                              r={5}
-                              fill="red"
-                            />
-                            <path
-                              d={pathString}
-                              stroke="#3182CE"
-                              strokeWidth="2"
-                              strokeDasharray="4"
-                              fill="none"
-                              opacity={0.5}
-                              style={{ pointerEvents: "none" }}
-                            />
-                          </>
-                        );
-                      })()}
-                  </svg>
-
                   {/* Selection Manager */}
                   <SelectionManager
                     ref={selectionManagerRef}
@@ -3382,7 +3073,6 @@ const LegoStudioView: React.FC = () => {
                     onCreateNetworkSignature={createNetworkSignature}
                     canvasRef={canvasRef}
                   />
-
                   <LegosLayer
                     droppedLegos={droppedLegos}
                     legDragState={legDragState}
@@ -3406,13 +3096,9 @@ const LegoStudioView: React.FC = () => {
               <DetailsPanel
                 handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
                 tensorNetwork={tensorNetwork}
-                droppedLegos={droppedLegos}
-                connections={connections}
                 setTensorNetwork={setTensorNetwork}
                 setError={setError}
-                setDroppedLegos={setDroppedLegos}
                 fuseLegos={fuseLegos}
-                setConnections={setConnections}
                 operationHistory={operationHistory}
                 encodeCanvasState={encodeCanvasState}
                 hideConnectedLegs={hideConnectedLegs}

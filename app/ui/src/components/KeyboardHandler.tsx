@@ -3,16 +3,14 @@ import { DroppedLego, Connection } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { OperationHistory } from "../lib/OperationHistory";
+import { useLegoStore } from "../stores/legoStore";
+import { useConnectionStore } from "../stores/connectionStore";
 
 interface KeyboardHandlerProps {
-  droppedLegos: DroppedLego[];
-  connections: Connection[];
   hideConnectedLegs: boolean;
   tensorNetwork: TensorNetwork | null;
   operationHistory: OperationHistory;
   newInstanceId: () => string;
-  onSetDroppedLegos: (legos: DroppedLego[]) => void;
-  onSetConnections: (connections: Connection[]) => void;
   onSetTensorNetwork: (network: unknown) => void;
   onSetAltKeyPressed: (pressed: boolean) => void;
   onEncodeCanvasState: (
@@ -37,14 +35,10 @@ interface KeyboardHandlerProps {
 }
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
-  droppedLegos,
-  connections,
   hideConnectedLegs,
   tensorNetwork,
   operationHistory,
   newInstanceId,
-  onSetDroppedLegos,
-  onSetConnections,
   onSetTensorNetwork,
   onSetAltKeyPressed,
   onEncodeCanvasState,
@@ -58,6 +52,9 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   onToast
 }) => {
   const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const { droppedLegos, addDroppedLegos, removeDroppedLegos } = useLegoStore();
+  const { connections, addConnections, removeConnections } =
+    useConnectionStore();
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -181,8 +178,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             );
 
             // Update state
-            onSetDroppedLegos([...droppedLegos, ...newLegos]);
-            onSetConnections([...connections, ...newConnections]);
+            addDroppedLegos(newLegos);
+            addConnections(newConnections);
 
             // Add to history
             operationHistory.addOperation({
@@ -194,11 +191,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             });
 
             // Update URL state
-            onEncodeCanvasState(
-              [...droppedLegos, ...newLegos],
-              [...connections, ...newConnections],
-              hideConnectedLegs
-            );
+            onEncodeCanvasState(droppedLegos, connections, hideConnectedLegs);
 
             onToast({
               title: "Paste successful",
@@ -225,7 +218,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         let legosToRemove: DroppedLego[] = [];
 
         if (tensorNetwork) {
-          legosToRemove = tensorNetwork.legos;
+          legosToRemove = tensorNetwork.legos.map((l) => ({
+            ...l,
+            instanceId: l.instanceId
+          }));
         }
 
         if (legosToRemove.length > 0) {
@@ -248,7 +244,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           });
 
           // Remove the connections and legos
-          onSetConnections(
+          removeConnections(
             connections.filter(
               (conn) =>
                 !legosToRemove.some(
@@ -258,12 +254,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
                 )
             )
           );
-          onSetDroppedLegos(
-            droppedLegos.filter(
-              (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
-            )
-          );
+          removeDroppedLegos(legosToRemove.map((l) => l.instanceId));
 
           // Clear selection states
           onSetTensorNetwork(null);
@@ -363,14 +354,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       window.removeEventListener("focus", handleFocus);
     };
   }, [
-    droppedLegos,
-    connections,
     hideConnectedLegs,
     tensorNetwork,
     operationHistory,
     newInstanceId,
-    onSetDroppedLegos,
-    onSetConnections,
     onSetTensorNetwork,
     onSetAltKeyPressed,
     onEncodeCanvasState,
