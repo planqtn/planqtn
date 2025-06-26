@@ -23,7 +23,7 @@ import {
   PanelGroup,
   ImperativePanelHandle
 } from "react-resizable-panels";
-import axios, { AxiosError } from "axios";
+
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
@@ -67,17 +67,13 @@ import { userContextSupabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
-import { config, getApiUrl } from "./config";
-import { getAccessToken } from "./lib/auth";
-
 import { TbPlugConnected } from "react-icons/tb";
-import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
+import { checkSupabaseStatus } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
 // import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
-import { TensorNetworkLeg } from "./lib/TensorNetwork";
-import { LegoServerPayload } from "./lib/types";
+
 import FloatingTaskPanel from "./components/FloatingTaskPanel";
-import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog.tsx";
+
 import PythonCodeModal from "./components/PythonCodeModal.tsx";
 import { useConnectionStore } from "./stores/connectionStore.ts";
 import { useModalStore } from "./stores/modalStore";
@@ -299,7 +295,8 @@ const LegoStudioView: React.FC = () => {
     openLoadingModal,
     closeLoadingModal,
     openAuthDialog,
-    openRuntimeConfigDialog
+    openRuntimeConfigDialog,
+    openWeightEnumeratorDialog
   } = useModalStore();
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
@@ -330,8 +327,7 @@ const LegoStudioView: React.FC = () => {
     isHealthy: boolean;
     message: string;
   } | null>(null);
-  const [showWeightEnumeratorDialog, setShowWeightEnumeratorDialog] =
-    useState(false);
+
   const [showPythonCodeModal, setShowPythonCodeModal] = useState(false);
   const [pythonCode, setPythonCode] = useState("");
 
@@ -2262,129 +2258,6 @@ const LegoStudioView: React.FC = () => {
     setShowPythonCodeModal(true);
   };
 
-  const calculateWeightEnumerator = async (
-    truncateLength: number | null,
-    openLegs?: TensorNetworkLeg[]
-  ) => {
-    if (!tensorNetwork) return;
-
-    const signature = tensorNetwork.signature!;
-    const cachedEnumerator = weightEnumeratorCache.get(signature);
-    if (cachedEnumerator) {
-      setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
-          taskId: cachedEnumerator.taskId,
-          weightEnumerator: cachedEnumerator.polynomial,
-          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
-        })
-      );
-      return;
-    }
-
-    try {
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              isCalculatingWeightEnumerator: true,
-              weightEnumerator: undefined,
-              taskId: undefined
-            })
-          : null
-      );
-
-      const acessToken = await getAccessToken();
-
-      const response = await axios.post(
-        getApiUrl("planqtnJob"),
-        {
-          user_id: currentUser?.id,
-          request_time: new Date().toISOString(),
-          job_type: "weightenumerator",
-          task_store_url: config.userContextURL,
-          task_store_anon_key: config.userContextAnonKey,
-          payload: {
-            legos: tensorNetwork.legos.reduce(
-              (acc, lego) => {
-                acc[lego.instanceId] = {
-                  instanceId: lego.instanceId,
-                  shortName: lego.shortName || "Generic Lego",
-                  name: lego.shortName || "Generic Lego",
-                  id: lego.id,
-                  parity_check_matrix: lego.parity_check_matrix,
-                  logical_legs: lego.logical_legs,
-                  gauge_legs: lego.gauge_legs
-                } as LegoServerPayload;
-                return acc;
-              },
-              {} as Record<string, LegoServerPayload>
-            ),
-            connections: tensorNetwork.connections,
-            truncate_length: truncateLength,
-            open_legs: openLegs || []
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${acessToken}`
-          }
-        }
-      );
-
-      if (response.data.status === "error") {
-        throw new Error(response.data.message);
-      }
-
-      const taskId = response.data.task_id;
-
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              taskId: taskId
-            })
-          : null
-      );
-
-      weightEnumeratorCache.set(signature, {
-        taskId: taskId,
-        polynomial: "",
-        normalizerPolynomial: "",
-        truncateLength: null
-      });
-
-      toast({
-        title: "Success starting the task!",
-        description: "Weight enumerator calculation has been started.",
-        status: "success",
-        duration: 5000,
-        isClosable: true
-      });
-    } catch (err) {
-      const error = err as AxiosError<{
-        message: string;
-        error: string;
-        status: number;
-      }>;
-      console.error("Error calculating weight enumerator:", error);
-      setError(
-        `Failed to calculate weight enumerator: ${getAxiosErrorMessage(error)}`
-      );
-
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              isCalculatingWeightEnumerator: false
-            })
-          : null
-      );
-    }
-  };
-
   return (
     <>
       <KeyboardHandler
@@ -2528,9 +2401,14 @@ const LegoStudioView: React.FC = () => {
                           {isOpen && (
                             <MenuList>
                               <MenuItem
-                                onClick={() =>
-                                  setShowWeightEnumeratorDialog(true)
-                                }
+                                onClick={() => {
+                                  if (tensorNetwork) {
+                                    openWeightEnumeratorDialog(
+                                      tensorNetwork,
+                                      connections
+                                    );
+                                  }
+                                }}
                                 isDisabled={!tensorNetwork || !currentUser}
                                 title={
                                   !tensorNetwork
@@ -2805,20 +2683,13 @@ const LegoStudioView: React.FC = () => {
           stateSerializer={stateSerializerRef.current}
           hideConnectedLegs={hideConnectedLegs}
           newInstanceId={newInstanceId}
+          currentUser={currentUser}
+          setTensorNetwork={setTensorNetwork}
+          setError={setError}
+          weightEnumeratorCache={weightEnumeratorCache}
         />
       </VStack>
-      {showWeightEnumeratorDialog && tensorNetwork && (
-        <WeightEnumeratorCalculationDialog
-          open={showWeightEnumeratorDialog}
-          onClose={() => setShowWeightEnumeratorDialog(false)}
-          onSubmit={(truncateLength, openLegs) => {
-            setShowWeightEnumeratorDialog(false);
-            calculateWeightEnumerator(truncateLength, openLegs);
-          }}
-          subNetwork={tensorNetwork}
-          mainNetworkConnections={connections}
-        />
-      )}
+
       {showPythonCodeModal && (
         <PythonCodeModal
           isOpen={showPythonCodeModal}

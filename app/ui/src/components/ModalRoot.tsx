@@ -5,28 +5,49 @@ import { TannerDialog } from "./TannerDialog";
 import LoadingModal from "./LoadingModal";
 import AuthDialog from "./AuthDialog";
 import { RuntimeConfigDialog } from "./RuntimeConfigDialog";
+import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog";
 import { NetworkService, NetworkCreationOptions } from "../lib/networkService";
 import {
   CustomLegoService,
   CustomLegoCreationOptions
 } from "../lib/customLegoService";
 import { RuntimeConfigService } from "../lib/runtimeConfigService";
+import { WeightEnumeratorService } from "../lib/weightEnumeratorService";
 import { OperationHistory } from "../lib/OperationHistory";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 import { useToast } from "@chakra-ui/react";
+import { User } from "@supabase/supabase-js";
+import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork";
 
 interface ModalRootProps {
   operationHistory: OperationHistory;
   stateSerializer: CanvasStateSerializer;
   hideConnectedLegs: boolean;
   newInstanceId: () => string;
+  // Weight enumerator dependencies
+  currentUser: User | null;
+  setTensorNetwork?: (network: TensorNetwork | null) => void;
+  setError?: (error: string) => void;
+  weightEnumeratorCache?: Map<
+    string,
+    {
+      taskId: string;
+      polynomial: string;
+      normalizerPolynomial: string;
+      truncateLength: number | null;
+    }
+  >;
 }
 
 export const ModalRoot: React.FC<ModalRootProps> = ({
   operationHistory,
   stateSerializer,
   hideConnectedLegs,
-  newInstanceId
+  newInstanceId,
+  currentUser,
+  setTensorNetwork,
+  setError,
+  weightEnumeratorCache
 }) => {
   const {
     cssTannerDialog,
@@ -36,16 +57,19 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     customLegoDialog,
     authDialog,
     runtimeConfigDialog,
+    weightEnumeratorDialog,
     loadingState,
     customLegoState,
     authState,
     runtimeConfigState,
+    weightEnumeratorState,
     closeCssTannerDialog,
     closeTannerDialog,
     closeMspDialog,
     closeCustomLegoDialog,
     closeAuthDialog,
-    closeRuntimeConfigDialog
+    closeRuntimeConfigDialog,
+    closeWeightEnumeratorDialog
   } = useModalStore();
 
   const toast = useToast();
@@ -169,6 +193,33 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     RuntimeConfigService.applyConfig(config);
   };
 
+  const handleWeightEnumeratorSubmit = async (
+    truncateLength: number | null,
+    openLegs: TensorNetworkLeg[]
+  ) => {
+    if (
+      !weightEnumeratorState.subNetwork ||
+      !setTensorNetwork ||
+      !setError ||
+      !weightEnumeratorCache
+    ) {
+      return;
+    }
+
+    await WeightEnumeratorService.calculateWeightEnumerator(
+      weightEnumeratorState.subNetwork,
+      truncateLength,
+      openLegs,
+      {
+        currentUser: currentUser!,
+        setTensorNetwork: setTensorNetwork,
+        setError,
+        toast,
+        weightEnumeratorCache
+      }
+    );
+  };
+
   return ReactDOM.createPortal(
     <>
       {/* CSS Tanner Dialog */}
@@ -222,6 +273,17 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
         isLocal={runtimeConfigState.isLocal}
         initialConfig={runtimeConfigState.initialConfig}
       />
+
+      {/* Weight Enumerator Dialog */}
+      {weightEnumeratorDialog && weightEnumeratorState.subNetwork && (
+        <WeightEnumeratorCalculationDialog
+          open={weightEnumeratorDialog}
+          onClose={closeWeightEnumeratorDialog}
+          onSubmit={handleWeightEnumeratorSubmit}
+          subNetwork={weightEnumeratorState.subNetwork}
+          mainNetworkConnections={weightEnumeratorState.mainNetworkConnections}
+        />
+      )}
 
       {/* Additional modals will be added here as we refactor them */}
     </>,

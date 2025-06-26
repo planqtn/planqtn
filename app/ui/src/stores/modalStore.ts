@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { TensorNetwork } from "../lib/TensorNetwork";
+import { Connection } from "../lib/types";
 
 export interface ModalState {
   // Network dialogs
@@ -41,6 +43,11 @@ export interface RuntimeConfigState {
   initialConfig?: Record<string, string>;
 }
 
+export interface WeightEnumeratorState {
+  subNetwork: TensorNetwork | null;
+  mainNetworkConnections: Connection[];
+}
+
 interface ModalStore extends ModalState {
   // Loading state
   loadingState: LoadingState;
@@ -53,6 +60,9 @@ interface ModalStore extends ModalState {
 
   // Runtime config state
   runtimeConfigState: RuntimeConfigState;
+
+  // Weight enumerator state
+  weightEnumeratorState: WeightEnumeratorState;
 
   // Network dialog actions
   openCssTannerDialog: () => void;
@@ -80,6 +90,13 @@ interface ModalStore extends ModalState {
     initialConfig?: Record<string, string>
   ) => void;
   closeRuntimeConfigDialog: () => void;
+
+  // Weight enumerator dialog actions
+  openWeightEnumeratorDialog: (
+    subNetwork: TensorNetwork,
+    mainNetworkConnections: Connection[]
+  ) => void;
+  closeWeightEnumeratorDialog: () => void;
 
   // Generic actions for future modals
   openModal: (modalName: keyof ModalState) => void;
@@ -117,12 +134,18 @@ const initialRuntimeConfigState: RuntimeConfigState = {
   initialConfig: undefined
 };
 
+const initialWeightEnumeratorState: WeightEnumeratorState = {
+  subNetwork: null,
+  mainNetworkConnections: []
+};
+
 export const useModalStore = create<ModalStore>((set) => ({
   ...initialState,
   loadingState: initialLoadingState,
   customLegoState: initialCustomLegoState,
   authState: initialAuthState,
   runtimeConfigState: initialRuntimeConfigState,
+  weightEnumeratorState: initialWeightEnumeratorState,
 
   // Network dialog actions
   openCssTannerDialog: () => set({ cssTannerDialog: true }),
@@ -183,6 +206,21 @@ export const useModalStore = create<ModalStore>((set) => ({
       runtimeConfigState: { isLocal: false, initialConfig: undefined }
     }),
 
+  // Weight enumerator dialog actions
+  openWeightEnumeratorDialog: (
+    subNetwork: TensorNetwork,
+    mainNetworkConnections: Connection[]
+  ) =>
+    set({
+      weightEnumeratorDialog: true,
+      weightEnumeratorState: { subNetwork, mainNetworkConnections }
+    }),
+  closeWeightEnumeratorDialog: () =>
+    set({
+      weightEnumeratorDialog: false,
+      weightEnumeratorState: { subNetwork: null, mainNetworkConnections: [] }
+    }),
+
   // Generic actions
   openModal: (modalName: keyof ModalState) =>
     set((state) => ({ ...state, [modalName]: true })),
@@ -194,6 +232,7 @@ export const useModalStore = create<ModalStore>((set) => ({
       loadingState: initialLoadingState,
       customLegoState: initialCustomLegoState,
       authState: initialAuthState,
-      runtimeConfigState: initialRuntimeConfigState
+      runtimeConfigState: initialRuntimeConfigState,
+      weightEnumeratorState: initialWeightEnumeratorState
     })
 }));
