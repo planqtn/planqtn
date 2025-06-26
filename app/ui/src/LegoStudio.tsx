@@ -17,7 +17,7 @@ import {
   MenuDivider,
   HStack
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
 import {
   Panel,
   PanelGroup,
@@ -167,10 +167,10 @@ const LeftPanel = memo<{
   isLegoPanelCollapsed: boolean;
   setIsLegoPanelCollapsed: (collapsed: boolean) => void;
   handleDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
-  setIsCssTannerDialogOpen: (open: boolean) => void;
-  setIsTannerDialogOpen: (open: boolean) => void;
-  setIsMspDialogOpen: (open: boolean) => void;
-  currentUser: User | null;
+  handleSetCssTannerDialogOpen: () => void;
+  handleSetTannerDialogOpen: () => void;
+  handleSetMspDialogOpen: () => void;
+  isUserLoggedIn: boolean;
 }>(
   ({
     leftPanelRef,
@@ -178,10 +178,10 @@ const LeftPanel = memo<{
     isLegoPanelCollapsed,
     setIsLegoPanelCollapsed,
     handleDragStart,
-    setIsCssTannerDialogOpen,
-    setIsTannerDialogOpen,
-    setIsMspDialogOpen,
-    currentUser
+    handleSetCssTannerDialogOpen,
+    handleSetTannerDialogOpen,
+    handleSetMspDialogOpen,
+    isUserLoggedIn
   }) => {
     return (
       <Panel
@@ -198,10 +198,10 @@ const LeftPanel = memo<{
         {!isLegoPanelCollapsed && (
           <BuildingBlocksPanel
             onDragStart={handleDragStart}
-            onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
-            onCreateTanner={() => setIsTannerDialogOpen(true)}
-            onCreateMsp={() => setIsMspDialogOpen(true)}
-            isUserLoggedIn={!!currentUser}
+            onCreateCssTanner={handleSetCssTannerDialogOpen}
+            onCreateTanner={handleSetTannerDialogOpen}
+            onCreateMsp={handleSetMspDialogOpen}
+            isUserLoggedIn={isUserLoggedIn}
           />
         )}
       </Panel>
@@ -289,16 +289,16 @@ const LegoStudioView: React.FC = () => {
   const [isMspDialogOpen, setIsMspDialogOpen] = useState(false);
 
   // Memoize dialog setters to prevent LeftPanel re-renders
-  const handleSetCssTannerDialogOpen = useCallback((open: boolean) => {
-    setIsCssTannerDialogOpen(open);
+  const handleSetCssTannerDialogOpen = useCallback(() => {
+    setIsCssTannerDialogOpen(true);
   }, []);
 
-  const handleSetTannerDialogOpen = useCallback((open: boolean) => {
-    setIsTannerDialogOpen(open);
+  const handleSetTannerDialogOpen = useCallback(() => {
+    setIsTannerDialogOpen(true);
   }, []);
 
-  const handleSetMspDialogOpen = useCallback((open: boolean) => {
-    setIsMspDialogOpen(open);
+  const handleSetMspDialogOpen = useCallback(() => {
+    setIsMspDialogOpen(true);
   }, []);
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
@@ -324,6 +324,9 @@ const LegoStudioView: React.FC = () => {
   const [customLegoPosition, setCustomLegoPosition] = useState({ x: 0, y: 0 });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+
+  // Memoize isUserLoggedIn to prevent BuildingBlocksPanel re-renders
+  const isUserLoggedIn = useMemo(() => !!currentUser, [currentUser]);
   const [isRuntimeConfigOpen, setIsRuntimeConfigOpen] = useState(false);
   const [isLocalRuntime] = useState(() => {
     const isActive = localStorage.getItem("runtimeConfigActive");
@@ -375,13 +378,23 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  const newInstanceId = (currentLegos: DroppedLego[]): string => {
-    const maxInstanceId =
-      currentLegos.length > 0
-        ? Math.max(...currentLegos.map((lego) => parseInt(lego.instanceId)))
-        : 0;
-    return String(maxInstanceId + 1);
-  };
+  // Use a ref to track max instance ID instead of recalculating from droppedLegos
+  const maxInstanceIdRef = useRef(0);
+
+  // Update max instance ID when droppedLegos changes
+  useEffect(() => {
+    if (droppedLegos.length > 0) {
+      const currentMax = Math.max(
+        ...droppedLegos.map((lego) => parseInt(lego.instanceId))
+      );
+      maxInstanceIdRef.current = Math.max(maxInstanceIdRef.current, currentMax);
+    }
+  }, [droppedLegos.length]); // Only depend on length, not content
+
+  const newInstanceId = useCallback((): string => {
+    maxInstanceIdRef.current += 1;
+    return String(maxInstanceIdRef.current);
+  }, []);
 
   const encodeCanvasState = useCallback(
     (
@@ -586,7 +599,7 @@ const LegoStudioView: React.FC = () => {
         // Set the draggedLego state for custom legos
         const draggedLego: DroppedLego = {
           ...lego,
-          instanceId: newInstanceId(droppedLegos),
+          instanceId: newInstanceId(),
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2,
           style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
@@ -598,7 +611,7 @@ const LegoStudioView: React.FC = () => {
         const rect = e.currentTarget.getBoundingClientRect();
         const draggedLego: DroppedLego = {
           ...lego,
-          instanceId: newInstanceId(droppedLegos),
+          instanceId: newInstanceId(),
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2,
           style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
@@ -607,7 +620,7 @@ const LegoStudioView: React.FC = () => {
         setDraggedLego(draggedLego);
       }
     },
-    [droppedLegos]
+    [newInstanceId]
   );
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -762,7 +775,7 @@ const LegoStudioView: React.FC = () => {
       ...draggedLego,
       x,
       y,
-      instanceId: newInstanceId(droppedLegos),
+      instanceId: newInstanceId(),
       style: getLegoStyle(draggedLego.id, numLegs),
       selectedMatrixRows: []
     };
@@ -833,7 +846,7 @@ const LegoStudioView: React.FC = () => {
         parameters
       });
 
-      const instanceId = newInstanceId(droppedLegos);
+      const instanceId = newInstanceId();
       const numLegs = dynamicLego.parity_check_matrix[0].length / 2;
       const newLego = {
         ...dynamicLego,
@@ -868,7 +881,7 @@ const LegoStudioView: React.FC = () => {
     const legosToClone = tensorNetwork?.legos || [lego];
 
     // Get a single starting ID for all new legos
-    const startingId = parseInt(newInstanceId(droppedLegos));
+    const startingId = parseInt(newInstanceId());
 
     // Create a mapping from old instance IDs to new ones
     const instanceIdMap = new Map<string, string>();
@@ -1873,7 +1886,7 @@ const LegoStudioView: React.FC = () => {
             }
 
             // Create a mapping from old instance IDs to new ones
-            const startingId = parseInt(newInstanceId(droppedLegos));
+            const startingId = parseInt(newInstanceId());
             const instanceIdMap = new Map<string, string>();
 
             // Create new legos with new instance IDs
@@ -2331,7 +2344,7 @@ const LegoStudioView: React.FC = () => {
         {
           matrix,
           networkType: networkType,
-          start_node_index: newInstanceId(droppedLegos)
+          start_node_index: newInstanceId()
         },
         {
           headers: {
@@ -2721,7 +2734,7 @@ const LegoStudioView: React.FC = () => {
     matrix: number[][],
     logicalLegs: number[]
   ) => {
-    const instanceId = newInstanceId(droppedLegos);
+    const instanceId = newInstanceId();
     const newLego: DroppedLego = {
       // to avoid caching collisions
       id:
@@ -2732,7 +2745,7 @@ const LegoStudioView: React.FC = () => {
       name: "Custom Lego",
       shortName: "Custom",
       description: "Custom lego with user-defined parity check matrix",
-      instanceId: newInstanceId(droppedLegos),
+      instanceId: newInstanceId(),
       x: customLegoPosition.x,
       y: customLegoPosition.y,
       parity_check_matrix: matrix,
@@ -3178,10 +3191,10 @@ const LegoStudioView: React.FC = () => {
               isLegoPanelCollapsed={isLegoPanelCollapsed}
               setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
               handleDragStart={handleDragStart}
-              setIsCssTannerDialogOpen={handleSetCssTannerDialogOpen}
-              setIsTannerDialogOpen={handleSetTannerDialogOpen}
-              setIsMspDialogOpen={handleSetMspDialogOpen}
-              currentUser={currentUser}
+              handleSetCssTannerDialogOpen={handleSetCssTannerDialogOpen}
+              handleSetTannerDialogOpen={handleSetTannerDialogOpen}
+              handleSetMspDialogOpen={handleSetMspDialogOpen}
+              isUserLoggedIn={isUserLoggedIn}
             />
             <ResizeHandle id="lego-panel-resize-handle" />
 

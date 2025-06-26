@@ -132,26 +132,11 @@ interface DroppedLegoDisplayProps {
   demoMode: boolean;
 }
 
-// Memoized component for static SVG content
-const StaticLegoSVG = memo<{
-  lego: DroppedLego;
-  size: number;
-  numRegularLegs: number;
+// Memoized component for static leg lines only
+const StaticLegsLayer = memo<{
   legPositions: LegPosition[];
   shouldHideLeg: (legIndex: number) => boolean;
-}>(({ lego, size, numRegularLegs, legPositions, shouldHideLeg }) => {
-  // Calculate polygon vertices - only for regular legs
-  const vertices = useMemo(() => {
-    return Array.from({ length: numRegularLegs }, (_, i) => {
-      // Start from the top (- Math.PI / 2) and go clockwise
-      const angle = -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs;
-      return {
-        x: (size / 2) * Math.cos(angle),
-        y: (size / 2) * Math.sin(angle)
-      };
-    });
-  }, [numRegularLegs, size]);
-
+}>(({ legPositions, shouldHideLeg }) => {
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
@@ -170,7 +155,33 @@ const StaticLegoSVG = memo<{
           />
         )
       )}
+    </>
+  );
+});
 
+StaticLegsLayer.displayName = "StaticLegsLayer";
+
+// Memoized component for lego body
+const LegoBodyLayer = memo<{
+  lego: DroppedLego;
+  size: number;
+  numRegularLegs: number;
+  isSelected: boolean;
+}>(({ lego, size, numRegularLegs, isSelected }) => {
+  // Calculate polygon vertices - only for regular legs
+  const vertices = useMemo(() => {
+    return Array.from({ length: numRegularLegs }, (_, i) => {
+      // Start from the top (- Math.PI / 2) and go clockwise
+      const angle = -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs;
+      return {
+        x: (size / 2) * Math.cos(angle),
+        y: (size / 2) * Math.sin(angle)
+      };
+    });
+  }, [numRegularLegs, size]);
+
+  return (
+    <>
       {/* Lego Body */}
       {numRegularLegs <= 2 ? (
         <g transform={`translate(-${size / 2}, -${size / 2})`}>
@@ -195,8 +206,16 @@ const StaticLegoSVG = memo<{
                   ? lego.style.borderRadius
                   : 0
             }
-            fill={lego.style.getBackgroundColorForSvg()}
-            stroke={lego.style.getBorderColorForSvg()}
+            fill={
+              isSelected
+                ? lego.style.getSelectedBackgroundColorForSvg()
+                : lego.style.getBackgroundColorForSvg()
+            }
+            stroke={
+              isSelected
+                ? lego.style.getSelectedBorderColorForSvg()
+                : lego.style.getBorderColorForSvg()
+            }
             strokeWidth="2"
           />
         </g>
@@ -208,8 +227,16 @@ const StaticLegoSVG = memo<{
               cx="0"
               cy="0"
               r={size / 2}
-              fill={lego.style.getBackgroundColorForSvg()}
-              stroke={lego.style.getBorderColorForSvg()}
+              fill={
+                isSelected
+                  ? lego.style.getSelectedBackgroundColorForSvg()
+                  : lego.style.getBackgroundColorForSvg()
+              }
+              stroke={
+                isSelected
+                  ? lego.style.getSelectedBorderColorForSvg()
+                  : lego.style.getBorderColorForSvg()
+              }
               strokeWidth="2"
             />
           ) : (
@@ -227,8 +254,16 @@ const StaticLegoSVG = memo<{
                   return `${path} ${command} ${x} ${y}`;
                 }, "") + " Z"
               }
-              fill={lego.style.getBackgroundColorForSvg()}
-              stroke={lego.style.getBorderColorForSvg()}
+              fill={
+                isSelected
+                  ? lego.style.getSelectedBackgroundColorForSvg()
+                  : lego.style.getBackgroundColorForSvg()
+              }
+              stroke={
+                isSelected
+                  ? lego.style.getSelectedBorderColorForSvg()
+                  : lego.style.getBorderColorForSvg()
+              }
               strokeWidth="2"
             />
           )}
@@ -238,7 +273,7 @@ const StaticLegoSVG = memo<{
   );
 });
 
-StaticLegoSVG.displayName = "StaticLegoSVG";
+LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
   ({
@@ -283,7 +318,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             .map((_, legIndex) =>
               calculateLegPosition(lego, legIndex, LEG_LABEL_DISTANCE, true)
             );
-    }, [lego.parity_check_matrix, lego.style, isScalar, numAllLegs]);
+    }, [
+      lego.parity_check_matrix,
+      lego.style,
+      lego.selectedMatrixRows,
+      isScalar,
+      numAllLegs
+    ]);
 
     // Calculate drag offset for performance during dragging
     const dragOffset = useMemo(() => {
@@ -474,88 +515,48 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           className="lego-svg"
           transform={demoMode ? "" : `translate(${size / 2}, ${size / 2})`}
         >
-          {/* Static content - memoized */}
-          <StaticLegoSVG
-            lego={lego}
-            size={size}
-            numRegularLegs={numRegularLegs}
+          {/* Layer 1: Static leg lines (gray background) */}
+          <StaticLegsLayer
             legPositions={legPositions}
             shouldHideLeg={shouldHideLeg}
           />
 
-          {/* Dynamic content - selection state and highlighting */}
-          {isSelected && (
-            <g>
-              {/* Selection highlight overlay on lego body */}
-              {numRegularLegs <= 2 ? (
-                <g transform={`translate(-${size / 2}, -${size / 2})`}>
-                  <rect
-                    x="0"
-                    y="0"
-                    width={size}
-                    height={size}
-                    rx={
-                      typeof lego.style.borderRadius === "string" &&
-                      lego.style.borderRadius === "full"
-                        ? size / 2
-                        : typeof lego.style.borderRadius === "number"
-                          ? lego.style.borderRadius
-                          : 0
-                    }
-                    ry={
-                      typeof lego.style.borderRadius === "string" &&
-                      lego.style.borderRadius === "full"
-                        ? size / 2
-                        : typeof lego.style.borderRadius === "number"
-                          ? lego.style.borderRadius
-                          : 0
-                    }
-                    fill={lego.style.getSelectedBackgroundColorForSvg()}
-                    stroke={lego.style.getSelectedBorderColorForSvg()}
-                    strokeWidth="2"
-                  />
-                </g>
-              ) : (
-                <g>
-                  {numRegularLegs > 8 ? (
-                    <circle
-                      cx="0"
-                      cy="0"
-                      r={size / 2}
-                      fill={lego.style.getSelectedBackgroundColorForSvg()}
-                      stroke={lego.style.getSelectedBorderColorForSvg()}
-                      strokeWidth="2"
-                    />
-                  ) : (
-                    <path
-                      d={
-                        Array.from({ length: numRegularLegs }, (_, i) => {
-                          const command = i === 0 ? "M" : "L";
-                          const x =
-                            (size / 2) *
-                            Math.cos(
-                              -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs
-                            );
-                          const y =
-                            (size / 2) *
-                            Math.sin(
-                              -Math.PI / 2 + (2 * Math.PI * i) / numRegularLegs
-                            );
-                          return `${command} ${x} ${y}`;
-                        }).reduce((pathAcc, vertex) => pathAcc + vertex, "") +
-                        " Z"
-                      }
-                      fill={lego.style.getSelectedBackgroundColorForSvg()}
-                      stroke={lego.style.getSelectedBorderColorForSvg()}
-                      strokeWidth="2"
-                    />
-                  )}
-                </g>
-              )}
-            </g>
-          )}
+          {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
+          {legPositions.map((pos, legIndex) => {
+            const legColor = pos.style.color;
+            const shouldHide = shouldHideLeg(legIndex);
 
-          {/* Dynamic leg content - colors, highlights, interactions */}
+            if (legColor === "#A0AEC0" || shouldHide) {
+              return null;
+            }
+
+            return (
+              <g key={`highlight-leg-${legIndex}`}>
+                <line
+                  x1={pos.startX}
+                  y1={pos.startY}
+                  x2={pos.endX}
+                  y2={pos.endY}
+                  stroke={legColor}
+                  strokeWidth={4}
+                  strokeDasharray={
+                    pos.style.style === "dashed" ? "5,5" : undefined
+                  }
+                  style={{ pointerEvents: "none" }}
+                />
+              </g>
+            );
+          })}
+
+          {/* Layer 3: Lego body */}
+          <LegoBodyLayer
+            lego={lego}
+            size={size}
+            numRegularLegs={numRegularLegs}
+            isSelected={isSelected}
+          />
+
+          {/* Layer 4: Interactive leg endpoints and logical leg interactions */}
           {legPositions.map((pos, legIndex) => {
             const isLogical = lego.logical_legs.includes(legIndex);
             const legColor = pos.style.color;
@@ -564,28 +565,29 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               legDragState.legoId === lego.instanceId &&
               legDragState.legIndex === legIndex;
 
-            const legVisibility = getLegVisibility(legIndex);
+            const shouldHide = shouldHideLeg(legIndex);
+
+            if (shouldHide) {
+              return null;
+            }
 
             return (
-              <g key={`dynamic-leg-${legIndex}`} style={legVisibility}>
-                {/* Dynamic colored leg line - only if different from default */}
-                {legColor !== "#A0AEC0" && (
+              <g key={`interactive-leg-${legIndex}`}>
+                {/* Logical leg interactive line - rendered on top for clicks */}
+                {isLogical && (
                   <line
                     x1={pos.startX}
                     y1={pos.startY}
                     x2={pos.endX}
                     y2={pos.endY}
-                    stroke={legColor}
-                    strokeWidth={4}
-                    strokeDasharray={
-                      pos.style.style === "dashed" ? "5,5" : undefined
-                    }
+                    stroke="transparent"
+                    strokeWidth={8}
                     style={{
-                      cursor: isLogical ? "pointer" : "default",
-                      pointerEvents: isLogical ? "all" : "none"
+                      cursor: "pointer",
+                      pointerEvents: "all"
                     }}
                     onClick={(e) => {
-                      if (isLogical && onLegClick) {
+                      if (onLegClick) {
                         e.stopPropagation();
                         onLegClick(lego.instanceId, legIndex);
                       }

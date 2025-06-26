@@ -474,4 +474,47 @@ export const ParityCheckMatrixDisplay: React.FC<
   );
 };
 
-export default memo(ParityCheckMatrixDisplay);
+// Custom comparison function that ignores position changes
+const arePropsEqual = (
+  prevProps: ParityCheckMatrixDisplayProps,
+  nextProps: ParityCheckMatrixDisplayProps
+) => {
+  // Compare matrix deeply
+  if (prevProps.matrix.length !== nextProps.matrix.length) return false;
+  for (let i = 0; i < prevProps.matrix.length; i++) {
+    if (prevProps.matrix[i].length !== nextProps.matrix[i].length) return false;
+    for (let j = 0; j < prevProps.matrix[i].length; j++) {
+      if (prevProps.matrix[i][j] !== nextProps.matrix[i][j]) return false;
+    }
+  }
+
+  // Compare other props (excluding functions which should be stable)
+  if (prevProps.title !== nextProps.title) return false;
+
+  // Compare legOrdering deeply
+  if (prevProps.legOrdering?.length !== nextProps.legOrdering?.length)
+    return false;
+  if (prevProps.legOrdering && nextProps.legOrdering) {
+    for (let i = 0; i < prevProps.legOrdering.length; i++) {
+      if (
+        prevProps.legOrdering[i].instanceId !==
+          nextProps.legOrdering[i].instanceId ||
+        prevProps.legOrdering[i].legIndex !== nextProps.legOrdering[i].legIndex
+      )
+        return false;
+    }
+  }
+
+  // Compare selectedRows
+  if (prevProps.selectedRows?.length !== nextProps.selectedRows?.length)
+    return false;
+  if (prevProps.selectedRows && nextProps.selectedRows) {
+    for (let i = 0; i < prevProps.selectedRows.length; i++) {
+      if (prevProps.selectedRows[i] !== nextProps.selectedRows[i]) return false;
+    }
+  }
+
+  return true;
+};
+
+export default memo(ParityCheckMatrixDisplay, arePropsEqual);

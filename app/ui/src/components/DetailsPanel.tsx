@@ -25,7 +25,7 @@ import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
-import { useState, memo } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
 import * as _ from "lodash";
@@ -344,53 +344,114 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   }, [tensorNetwork, tensorNetwork?.taskId]);
 
-  const handleMatrixRowSelection = (selectedRows: number[]) => {
-    setSelectedMatrixRows(selectedRows);
-    if (tensorNetwork?.legos.length == 1) {
-      const lego = tensorNetwork.legos[0];
-      const updatedLego = {
-        ...lego,
-        selectedMatrixRows: selectedRows
-      };
-      // Update the lego in the droppedLegos array
-      const updatedDroppedLegos = droppedLegos.map((l) =>
-        l.instanceId === lego.instanceId ? updatedLego : l
-      );
-      setDroppedLegos(updatedDroppedLegos);
-      setTensorNetwork(new TensorNetwork([updatedLego], connections));
-      encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
+  const handleMatrixRowSelection = useCallback(
+    (selectedRows: number[]) => {
+      setSelectedMatrixRows(selectedRows);
+      if (tensorNetwork?.legos.length == 1) {
+        const lego = tensorNetwork.legos[0];
+        const updatedLego = {
+          ...lego,
+          selectedMatrixRows: selectedRows
+        };
+        // Update the lego in the droppedLegos array
+        const updatedDroppedLegos = droppedLegos.map((l) =>
+          l.instanceId === lego.instanceId ? updatedLego : l
+        );
+        setDroppedLegos(updatedDroppedLegos);
+        setTensorNetwork(new TensorNetwork([updatedLego], connections));
+        encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
 
-      const selectedNetwork = findConnectedComponent(
-        updatedLego,
-        updatedDroppedLegos,
-        connections
-      );
-      simpleAutoFlow(
-        updatedLego,
-        selectedNetwork,
-        connections,
-        (updateFn) => setDroppedLegos(updateFn(updatedDroppedLegos)),
-        setTensorNetwork
-      );
-    }
-  };
+        const selectedNetwork = findConnectedComponent(
+          updatedLego,
+          updatedDroppedLegos,
+          connections
+        );
+        simpleAutoFlow(
+          updatedLego,
+          selectedNetwork,
+          connections,
+          (updateFn) => setDroppedLegos(updateFn(updatedDroppedLegos)),
+          setTensorNetwork
+        );
+      }
+    },
+    [
+      tensorNetwork,
+      droppedLegos,
+      connections,
+      hideConnectedLegs,
+      setDroppedLegos,
+      setTensorNetwork,
+      encodeCanvasState
+    ]
+  );
 
-  const handleLegOrderingChange = (newLegOrdering: TensorNetworkLeg[]) => {
-    if (tensorNetwork) {
+  const handleLegOrderingChange = useCallback(
+    (newLegOrdering: TensorNetworkLeg[]) => {
+      if (tensorNetwork) {
+        // Update the tensor network state
+        setTensorNetwork((prev: TensorNetwork | null) =>
+          prev
+            ? TensorNetwork.fromObj({
+                ...prev,
+                legOrdering: newLegOrdering
+              })
+            : null
+        );
+
+        // Note: We don't update the cache here since we only store the matrix,
+        // not the leg ordering. The leg ordering is stored in the tensor network.
+      }
+    },
+    [tensorNetwork, setTensorNetwork]
+  );
+
+  // Memoized callbacks for ParityCheckMatrixDisplay
+  const handleMultiLegoMatrixChange = useCallback(
+    (newMatrix: number[][]) => {
+      if (!tensorNetwork) return;
+
       // Update the tensor network state
       setTensorNetwork((prev: TensorNetwork | null) =>
         prev
           ? TensorNetwork.fromObj({
               ...prev,
-              legOrdering: newLegOrdering
+              parityCheckMatrix: newMatrix
             })
           : null
       );
 
-      // Note: We don't update the cache here since we only store the matrix,
-      // not the leg ordering. The leg ordering is stored in the tensor network.
-    }
-  };
+      // Update the cache
+      const signature = tensorNetwork.signature!;
+      setParityCheckMatrixCache((prev) => {
+        const newCache = new Map(prev);
+        newCache.set(signature, {
+          matrix: newMatrix,
+          legOrdering: tensorNetwork.legOrdering || []
+        });
+        return newCache;
+      });
+    },
+    [tensorNetwork, setTensorNetwork, setParityCheckMatrixCache]
+  );
+
+  // Memoized leg ordering for single lego
+  const singleLegoLegOrdering = useMemo(() => {
+    if (!tensorNetwork || tensorNetwork.legos.length !== 1) return [];
+
+    return Array.from(
+      {
+        length: tensorNetwork.legos[0].parity_check_matrix[0].length / 2
+      },
+      (_, i) => ({
+        instanceId: tensorNetwork.legos[0].instanceId,
+        legIndex: i
+      })
+    );
+  }, [
+    tensorNetwork?.legos?.[0]?.instanceId,
+    tensorNetwork?.legos?.[0]?.parity_check_matrix?.length
+  ]);
 
   const handleChangeColor = (lego: DroppedLego) => {
     // Get max instance ID
@@ -1250,16 +1311,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               )}
               <ParityCheckMatrixDisplay
                 matrix={tensorNetwork.legos[0].parity_check_matrix}
-                legOrdering={Array.from(
-                  {
-                    length:
-                      tensorNetwork.legos[0].parity_check_matrix[0].length / 2
-                  },
-                  (_, i) => ({
-                    instanceId: tensorNetwork.legos[0].instanceId,
-                    legIndex: i
-                  })
-                )}
+                legOrdering={singleLegoLegOrdering}
                 selectedRows={tensorNetwork.legos[0].selectedMatrixRows || []}
                 onRowSelectionChange={handleMatrixRowSelection}
               />
@@ -1364,28 +1416,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                         parityCheckMatrixCache.get(tensorNetwork.signature!)!
                           .legOrdering
                       }
-                      onMatrixChange={(newMatrix) => {
-                        // Update the tensor network state
-                        setTensorNetwork((prev: TensorNetwork | null) =>
-                          prev
-                            ? TensorNetwork.fromObj({
-                                ...prev,
-                                parityCheckMatrix: newMatrix
-                              })
-                            : null
-                        );
-
-                        // Update the cache
-                        const signature = tensorNetwork.signature!;
-                        setParityCheckMatrixCache((prev) => {
-                          const newCache = new Map(prev);
-                          newCache.set(signature, {
-                            matrix: newMatrix,
-                            legOrdering: tensorNetwork.legOrdering || []
-                          });
-                          return newCache;
-                        });
-                      }}
+                      onMatrixChange={handleMultiLegoMatrixChange}
                       onLegOrderingChange={handleLegOrderingChange}
                       onRecalculate={calculateParityCheckMatrix}
                     />
