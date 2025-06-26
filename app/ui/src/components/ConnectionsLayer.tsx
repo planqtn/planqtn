@@ -139,27 +139,99 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
 
           const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
 
-          const strokeColor = colorsMatch
-            ? fromLegColor !== "#A0AEC0"
-              ? fromLegColor
-              : "black"
-            : "red";
+          // Calculate midpoint for warning icon
+          const midPoint = {
+            x: (fromPoint.x + toPoint.x) / 2,
+            y: (fromPoint.y + toPoint.y) / 2
+          };
 
-          const isHovered = hoveredConnection?.equals(conn);
+          function fromChakraColorToHex(color: string): string {
+            if (color.startsWith("blue")) {
+              return "#0000FF";
+            } else if (color.startsWith("red")) {
+              return "#FF0000";
+            } else if (color.startsWith("purple")) {
+              return "#800080";
+            } else {
+              return "darkgray";
+            }
+          }
+
+          const sharedColor = colorsMatch
+            ? fromChakraColorToHex(fromLegColor)
+            : "yellow";
+          const connectorColor = colorsMatch ? sharedColor : "yellow";
+
+          // Check if this connection is being hovered
+          const isHovered =
+            hoveredConnection &&
+            hoveredConnection.from.legoId === conn.from.legoId &&
+            hoveredConnection.from.legIndex === conn.from.legIndex &&
+            hoveredConnection.to.legoId === conn.to.legoId &&
+            hoveredConnection.to.legIndex === conn.to.legIndex;
 
           return (
             <g key={connKey}>
+              {/* Invisible wider path for easier clicking */}
               <path
                 d={pathString}
-                stroke={strokeColor}
-                strokeWidth={isHovered ? 4 : 2}
+                stroke="transparent"
+                strokeWidth="10"
                 fill="none"
                 style={{
-                  pointerEvents: "all",
                   cursor: "pointer"
                 }}
                 onDoubleClick={(e) => onConnectionDoubleClick(e, conn)}
+                onMouseEnter={(e) => {
+                  // Find and update the visible path
+                  const visiblePath = e.currentTarget
+                    .nextSibling as SVGPathElement;
+                  if (visiblePath) {
+                    visiblePath.style.stroke = connectorColor;
+                    visiblePath.style.strokeWidth = "3";
+                    visiblePath.style.filter =
+                      "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  // Reset the visible path
+                  const visiblePath = e.currentTarget
+                    .nextSibling as SVGPathElement;
+                  if (visiblePath) {
+                    visiblePath.style.stroke = connectorColor;
+                    visiblePath.style.strokeWidth = "2";
+                    visiblePath.style.filter = "none";
+                  }
+                }}
               />
+              {/* Visible path */}
+              <path
+                d={pathString}
+                stroke={connectorColor}
+                strokeWidth={isHovered ? "4" : "2"}
+                fill="none"
+                style={{
+                  pointerEvents: "none",
+                  stroke: connectorColor,
+                  filter: isHovered
+                    ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
+                    : "none"
+                }}
+              />
+              {/* Warning sign if operators don't match */}
+              {!colorsMatch && (
+                <text
+                  x={midPoint.x}
+                  y={midPoint.y}
+                  fontSize="16"
+                  fill="#FF0000"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  style={{ pointerEvents: "none" }}
+                >
+                  ⚠
+                </text>
+              )}
             </g>
           );
         })
@@ -203,15 +275,18 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
       const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${legDragState.currentX} ${legDragState.currentY}`;
 
       return (
-        <path
-          key="temp-drag-line"
-          d={pathString}
-          stroke="blue"
-          strokeWidth={2}
-          fill="none"
-          strokeDasharray="5,5"
-          style={{ pointerEvents: "none" }}
-        />
+        <g key="temp-drag-line">
+          <circle cx={fromLego.x} cy={fromLego.y} r={5} fill="red" />
+          <path
+            d={pathString}
+            stroke="#3182CE"
+            strokeWidth="2"
+            strokeDasharray="4"
+            fill="none"
+            opacity={0.5}
+            style={{ pointerEvents: "none" }}
+          />
+        </g>
       );
     }, [legDragState, legoMap]);
 

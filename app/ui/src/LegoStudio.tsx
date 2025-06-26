@@ -28,6 +28,12 @@ import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
 import { KeyboardHandler } from "./components/KeyboardHandler";
+import { ConnectionsLayer } from "./components/ConnectionsLayer";
+import { LegosLayer } from "./components/LegosLayer";
+import {
+  SelectionManager,
+  SelectionManagerRef
+} from "./components/SelectionManager";
 import {
   CanvasDragState,
   Connection,
@@ -45,10 +51,7 @@ import { TensorNetwork } from "./lib/TensorNetwork";
 import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { CanvasStateSerializer } from "./lib/CanvasStateSerializer";
-import {
-  calculateLegPosition,
-  DroppedLegoDisplay
-} from "./components/DroppedLegoDisplay";
+import { calculateLegPosition } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
 import { TannerDialog } from "./components/TannerDialog";
 import { OperationHistory } from "./lib/OperationHistory";
@@ -242,6 +245,7 @@ const LegoStudioView: React.FC = () => {
   });
   const [zoomLevel, setZoomLevel] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const selectionManagerRef = useRef<SelectionManagerRef>(null);
   const stateSerializerRef = useRef<CanvasStateSerializer>(
     new CanvasStateSerializer()
   );
@@ -1099,14 +1103,8 @@ const LegoStudioView: React.FC = () => {
       const y = e.clientY - rect.top;
 
       if (!e.altKey) {
-        setSelectionBox({
-          isSelecting: true,
-          startX: x,
-          startY: y,
-          currentX: x,
-          currentY: y,
-          justFinished: false
-        });
+        // Use SelectionManager for selection logic
+        selectionManagerRef.current?.handleMouseDown(e);
       } else {
         setCanvasDragState({
           isDragging: true,
@@ -1143,120 +1141,14 @@ const LegoStudioView: React.FC = () => {
     });
   };
 
-  // Helper function to handle selection box logic
-  const handleSelectionBoxUpdate = (
-    left: number,
-    right: number,
-    top: number,
-    bottom: number,
-    e: React.MouseEvent,
-    isFinalized: boolean = false
-  ) => {
-    // Find Legos within the selection box
-    const selectedLegos = droppedLegos.filter((lego) => {
-      return (
-        lego.x >= left && lego.x <= right && lego.y >= top && lego.y <= bottom
-      );
-    });
-
-    // Only update tensorNetwork when selection is finalized (mouseup)
-    if (!isFinalized) {
-      return; // Don't update tensorNetwork during dragging
-    }
-
-    // Update selection state based on the selected Legos
-    if (selectedLegos.length === 1) {
-      if (e.ctrlKey || e.metaKey) {
-        // If Ctrl is pressed, add to existing selection
-        if (tensorNetwork) {
-          const newLegos = [...tensorNetwork.legos, ...selectedLegos];
-          const newConnections = connections.filter(
-            (conn) =>
-              newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-              newLegos.some((l) => l.instanceId === conn.to.legoId)
-          );
-          const newNetwork = new TensorNetwork(newLegos, newConnections);
-          newNetwork.signature = createNetworkSignature(newNetwork);
-          setTensorNetwork(newNetwork);
-        } else {
-          const newNetwork = new TensorNetwork(selectedLegos, []);
-          newNetwork.signature = createNetworkSignature(newNetwork);
-          setTensorNetwork(newNetwork);
-        }
-      } else {
-        setTensorNetwork(new TensorNetwork(selectedLegos, []));
-      }
-    } else if (selectedLegos.length > 1) {
-      if (e.ctrlKey || e.metaKey) {
-        // If Ctrl is pressed, add to existing selection
-        if (tensorNetwork) {
-          const newLegos = [...tensorNetwork.legos, ...selectedLegos];
-          const newConnections = connections.filter(
-            (conn) =>
-              newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-              newLegos.some((l) => l.instanceId === conn.to.legoId)
-          );
-          const newNetwork = new TensorNetwork(newLegos, newConnections);
-          newNetwork.signature = createNetworkSignature(newNetwork);
-          setTensorNetwork(newNetwork);
-        } else {
-          const selectedLegoIds = new Set(
-            selectedLegos.map((lego) => lego.instanceId)
-          );
-          const internalConnections = connections.filter(
-            (conn) =>
-              selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId)
-          );
-          const newNetwork = new TensorNetwork(
-            selectedLegos,
-            internalConnections
-          );
-          newNetwork.signature = createNetworkSignature(newNetwork);
-          setTensorNetwork(newNetwork);
-        }
-      } else {
-        // Create a tensor network from the selected legos
-        const selectedLegoIds = new Set(
-          selectedLegos.map((lego) => lego.instanceId)
-        );
-        const internalConnections = connections.filter(
-          (conn) =>
-            selectedLegoIds.has(conn.from.legoId) &&
-            selectedLegoIds.has(conn.to.legoId)
-        );
-        const newNetwork = new TensorNetwork(
-          selectedLegos,
-          internalConnections
-        );
-        newNetwork.signature = createNetworkSignature(newNetwork);
-        setTensorNetwork(newNetwork);
-      }
-    } else {
-      if (!(e.ctrlKey || e.metaKey)) {
-        setTensorNetwork(null);
-      }
-    }
-  };
-
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     e.preventDefault();
     const rect = canvasRef.current?.getBoundingClientRect();
 
     if (!rect) return;
 
-    // Handle selection box dragging
+    // Selection box dragging is now handled by SelectionManager
     if (selectionBox.isSelecting) {
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      setSelectionBox((prev) => ({
-        ...prev,
-        currentX: x,
-        currentY: y
-      }));
-
-      // Don't update tensorNetwork during dragging - just visual feedback
       return;
     }
 
@@ -1470,21 +1362,8 @@ const LegoStudioView: React.FC = () => {
       return;
     }
 
-    // Handle selection box end
+    // Selection box end is now handled by SelectionManager
     if (selectionBox.isSelecting) {
-      const left = Math.min(selectionBox.startX, selectionBox.currentX);
-      const right = Math.max(selectionBox.startX, selectionBox.currentX);
-      const top = Math.min(selectionBox.startY, selectionBox.currentY);
-      const bottom = Math.max(selectionBox.startY, selectionBox.currentY);
-
-      // Finalize selection - this will update tensorNetwork
-      handleSelectionBoxUpdate(left, right, top, bottom, e, true);
-
-      setSelectionBox((prev) => ({
-        ...prev,
-        isSelecting: false,
-        justFinished: true
-      }));
       return;
     }
 
@@ -3175,6 +3054,16 @@ const LegoStudioView: React.FC = () => {
                   </Box>
 
                   {/* Connection Lines */}
+                  <ConnectionsLayer
+                    connections={connections}
+                    droppedLegos={droppedLegos}
+                    hideConnectedLegs={hideConnectedLegs}
+                    legDragState={legDragState}
+                    hoveredConnection={hoveredConnection}
+                    onConnectionDoubleClick={handleConnectionDoubleClick}
+                  />
+
+                  {/* Selection Box (keeping this here as it's not part of connections) */}
                   <svg
                     id="connections-svg"
                     style={{
@@ -3481,50 +3370,31 @@ const LegoStudioView: React.FC = () => {
                       })()}
                   </svg>
 
-                  {/* Selection Box */}
-                  {selectionBox.isSelecting && (
-                    <Box
-                      position="absolute"
-                      left={`${Math.min(
-                        selectionBox.startX,
-                        selectionBox.currentX
-                      )}px`}
-                      top={`${Math.min(
-                        selectionBox.startY,
-                        selectionBox.currentY
-                      )}px`}
-                      width={`${Math.abs(
-                        selectionBox.currentX - selectionBox.startX
-                      )}px`}
-                      height={`${Math.abs(
-                        selectionBox.currentY - selectionBox.startY
-                      )}px`}
-                      border="2px"
-                      borderColor="blue.500"
-                      bg="blue.50"
-                      opacity={0.3}
-                      pointerEvents="none"
-                    />
-                  )}
+                  {/* Selection Manager */}
+                  <SelectionManager
+                    ref={selectionManagerRef}
+                    droppedLegos={droppedLegos}
+                    connections={connections}
+                    tensorNetwork={tensorNetwork}
+                    selectionBox={selectionBox}
+                    onSelectionBoxChange={setSelectionBox}
+                    onTensorNetworkChange={setTensorNetwork}
+                    onCreateNetworkSignature={createNetworkSignature}
+                    canvasRef={canvasRef}
+                  />
 
-                  {droppedLegos.map((lego, index) => (
-                    <DroppedLegoDisplay
-                      key={lego.instanceId}
-                      lego={lego}
-                      index={index}
-                      legDragState={legDragState}
-                      handleLegMouseDown={handleLegMouseDown}
-                      handleLegoMouseDown={handleLegoMouseDown}
-                      handleLegoClick={handleLegoClick}
-                      tensorNetwork={tensorNetwork}
-                      dragState={dragState}
-                      onLegClick={handleLegClick}
-                      hideConnectedLegs={hideConnectedLegs}
-                      connections={connections}
-                      droppedLegos={droppedLegos}
-                      demoMode={false}
-                    />
-                  ))}
+                  <LegosLayer
+                    droppedLegos={droppedLegos}
+                    legDragState={legDragState}
+                    dragState={dragState}
+                    connections={connections}
+                    tensorNetwork={tensorNetwork}
+                    hideConnectedLegs={hideConnectedLegs}
+                    onLegMouseDown={handleLegMouseDown}
+                    onLegoMouseDown={handleLegoMouseDown}
+                    onLegoClick={handleLegoClick}
+                    onLegClick={handleLegClick}
+                  />
                 </Box>
               </Box>
             </Panel>

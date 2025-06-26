@@ -461,16 +461,16 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       });
     };
 
-    // Function to get leg visibility style
-    const getLegVisibility = (legIndex: number) => {
-      if (shouldHideLeg(legIndex)) {
-        return {
-          visibility: "hidden" as const,
-          pointerEvents: "none" as const
-        };
-      }
-      return { visibility: "visible" as const, pointerEvents: "all" as const };
-    };
+    // // Function to get leg visibility style
+    // const getLegVisibility = (legIndex: number) => {
+    //   if (shouldHideLeg(legIndex)) {
+    //     return {
+    //       visibility: "hidden" as const,
+    //       pointerEvents: "none" as const
+    //     };
+    //   }
+    //   return { visibility: "visible" as const, pointerEvents: "all" as const };
+    // };
 
     const isScalarLego = (lego: DroppedLego) => {
       return (
@@ -553,7 +553,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             lego={lego}
             size={size}
             numRegularLegs={numRegularLegs}
-            isSelected={isSelected}
+            isSelected={isSelected || false}
           />
 
           {/* Layer 4: Interactive leg endpoints and logical leg interactions */}
