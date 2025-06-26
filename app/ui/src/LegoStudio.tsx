@@ -60,7 +60,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
 import AuthDialog from "./components/AuthDialog";
 import { userContextSupabase } from "./supabaseClient";
-import { isAuthApiError, User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
 import { config, getApiUrl } from "./config";
@@ -166,7 +166,7 @@ const LeftPanel = memo<{
   legoPanelSizes: { defaultSize: number; minSize: number };
   isLegoPanelCollapsed: boolean;
   setIsLegoPanelCollapsed: (collapsed: boolean) => void;
-  handleDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void;
+  handleDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
   setIsCssTannerDialogOpen: (open: boolean) => void;
   setIsTannerDialogOpen: (open: boolean) => void;
   setIsMspDialogOpen: (open: boolean) => void;
@@ -575,7 +575,7 @@ const LegoStudioView: React.FC = () => {
   }, []);
 
   const handleDragStart = useCallback(
-    (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => {
+    (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
       if (lego.id === "custom") {
         // Store the drop position for the custom lego
         const rect = e.currentTarget.getBoundingClientRect();
@@ -1135,7 +1135,8 @@ const LegoStudioView: React.FC = () => {
     right: number,
     top: number,
     bottom: number,
-    e: React.MouseEvent
+    e: React.MouseEvent,
+    isFinalized: boolean = false
   ) => {
     // Find Legos within the selection box
     const selectedLegos = droppedLegos.filter((lego) => {
@@ -1143,6 +1144,11 @@ const LegoStudioView: React.FC = () => {
         lego.x >= left && lego.x <= right && lego.y >= top && lego.y <= bottom
       );
     });
+
+    // Only update tensorNetwork when selection is finalized (mouseup)
+    if (!isFinalized) {
+      return; // Don't update tensorNetwork during dragging
+    }
 
     // Update selection state based on the selected Legos
     if (selectedLegos.length === 1) {
@@ -1236,13 +1242,7 @@ const LegoStudioView: React.FC = () => {
         currentY: y
       }));
 
-      // Calculate selection box bounds
-      const left = Math.min(selectionBox.startX, x);
-      const right = Math.max(selectionBox.startX, x);
-      const top = Math.min(selectionBox.startY, y);
-      const bottom = Math.max(selectionBox.startY, y);
-
-      handleSelectionBoxUpdate(left, right, top, bottom, e);
+      // Don't update tensorNetwork during dragging - just visual feedback
       return;
     }
 
@@ -1463,7 +1463,8 @@ const LegoStudioView: React.FC = () => {
       const top = Math.min(selectionBox.startY, selectionBox.currentY);
       const bottom = Math.max(selectionBox.startY, selectionBox.currentY);
 
-      handleSelectionBoxUpdate(left, right, top, bottom, e);
+      // Finalize selection - this will update tensorNetwork
+      handleSelectionBoxUpdate(left, right, top, bottom, e, true);
 
       setSelectionBox((prev) => ({
         ...prev,
@@ -3382,7 +3383,7 @@ const LegoStudioView: React.FC = () => {
                     left="50%"
                     transform="translateX(-50%)"
                     zIndex={15}
-                    opacity={0}
+                    opacity={0.2}
                     _hover={{ opacity: 1 }}
                     transition="opacity 0.2s"
                     bg={useColorModeValue("white", "gray.800")}

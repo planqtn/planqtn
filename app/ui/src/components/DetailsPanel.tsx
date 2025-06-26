@@ -8,14 +8,12 @@ import {
   useColorModeValue,
   Input,
   Checkbox,
-  Link,
   UseToastOptions,
   useDisclosure
 } from "@chakra-ui/react";
 import { FaTable, FaCube } from "react-icons/fa";
 import {
   DroppedLego,
-  LegoServerPayload,
   Connection,
   Operation,
   TaskUpdate,
@@ -30,7 +28,6 @@ import axios, { AxiosError } from "axios";
 import { useState, memo } from "react";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
-import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog.tsx";
 import * as _ from "lodash";
 import { OperationHistory } from "../lib/OperationHistory.ts";
 import {
@@ -142,12 +139,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   hideConnectedLegs,
   makeSpace,
   handlePullOutSameColoredLeg,
-  toast,
   user,
   parityCheckMatrixCache,
   setParityCheckMatrixCache,
-  weightEnumeratorCache,
-  setWeightEnumeratorCache
+  weightEnumeratorCache
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -348,150 +343,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       readAndUpdateTask(taskId);
     }
   }, [tensorNetwork, tensorNetwork?.taskId]);
-
-  const calculateWeightEnumerator = async (
-    truncateLength: number | null,
-    openLegs?: TensorNetworkLeg[]
-  ) => {
-    if (!tensorNetwork) return;
-
-    // Clear any existing progress bars
-    setIterationStatus([]);
-    setWaitingForTaskUpdate(false);
-
-    const signature = tensorNetwork.signature!;
-    const cachedEnumerator = weightEnumeratorCache.get(signature);
-    if (cachedEnumerator) {
-      setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
-          taskId: cachedEnumerator.taskId,
-          weightEnumerator: cachedEnumerator.polynomial,
-          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
-        })
-      );
-
-      return;
-    }
-
-    try {
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              isCalculatingWeightEnumerator: true,
-              weightEnumerator: undefined,
-              taskId: undefined
-            })
-          : null
-      );
-      // we kick off the job with the task store key
-      const acessToken = await getAccessToken();
-
-      const response = await axios.post(
-        getApiUrl("planqtnJob"),
-        {
-          user_id: user?.id,
-          request_time: new Date().toISOString(),
-          job_type: "weightenumerator",
-          task_store_url: config.userContextURL,
-          task_store_anon_key: config.userContextAnonKey,
-          payload: {
-            legos: tensorNetwork.legos.reduce(
-              (acc, lego) => {
-                acc[lego.instanceId] = {
-                  instanceId: lego.instanceId,
-                  shortName: lego.shortName || "Generic Lego",
-                  name: lego.shortName || "Generic Lego",
-                  id: lego.id,
-                  parity_check_matrix: lego.parity_check_matrix,
-                  logical_legs: lego.logical_legs,
-                  gauge_legs: lego.gauge_legs
-                } as LegoServerPayload;
-                return acc;
-              },
-              {} as Record<string, LegoServerPayload>
-            ),
-            connections: tensorNetwork.connections,
-            truncate_length: truncateLength,
-            open_legs: openLegs || []
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${acessToken}`
-          }
-        }
-      );
-
-      console.log("Response", response);
-
-      if (response.data.status === "error") {
-        throw new Error(response.data.message);
-      }
-
-      const taskId = response.data.task_id;
-
-      console.log("Setting task ID", taskId);
-
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              taskId: taskId
-            })
-          : null
-      );
-
-      setWeightEnumeratorCache((prev) => {
-        const newCache = new Map(prev);
-        newCache.set(signature, {
-          taskId: taskId,
-          polynomial: "",
-          normalizerPolynomial: "",
-          truncateLength: null
-        });
-        return newCache;
-      });
-
-      // Show success toast with status URL
-      toast({
-        title: "Success starting the task!",
-        description: (
-          <Box>
-            Check status at{" "}
-            <Link href={`/tasks`} color="gray.100" isExternal>
-              /tasks
-            </Link>
-          </Box>
-        ),
-        status: "success",
-        duration: 5000,
-        isClosable: true
-      });
-    } catch (err) {
-      const error = err as AxiosError<{
-        message: string;
-        error: string;
-        status: number;
-      }>;
-      console.error("Error calculating weight enumerator:", error);
-      setError(
-        `Failed to calculate weight enumerator: ${getAxiosErrorMessage(error)}`
-      );
-
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              isCalculatingWeightEnumerator: false
-            })
-          : null
-      );
-    }
-  };
 
   const handleMatrixRowSelection = (selectedRows: number[]) => {
     setSelectedMatrixRows(selectedRows);

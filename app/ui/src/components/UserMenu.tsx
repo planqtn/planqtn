@@ -110,11 +110,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
           <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
         </MenuList>
       </Menu>
-
-      <QuotasModal
-        isOpen={isQuotasModalOpen}
-        onClose={() => setIsQuotasModalOpen(false)}
-      />
+      {isQuotasModalOpen && (
+        <QuotasModal
+          isOpen={isQuotasModalOpen}
+          onClose={() => setIsQuotasModalOpen(false)}
+        />
+      )}
     </>
   );
 };
