@@ -26,6 +26,10 @@ const FloatingTaskPanel: React.FC<FloatingTaskPanelProps> = ({
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const shadowColor = useColorModeValue("lg", "dark-lg");
+  const headerBgColor = useColorModeValue("gray.50", "gray.700");
+  const closeButtonHoverBg = useColorModeValue("gray.200", "gray.600");
+  const resizeHandleColor = useColorModeValue("gray.400", "gray.500");
+  const resizeHandleHoverColor = useColorModeValue("gray.600", "gray.300");
 
   // Panel position and size state
   const [position, setPosition] = useState({ x: 100, y: 100 });
@@ -175,7 +179,7 @@ const FloatingTaskPanel: React.FC<FloatingTaskPanelProps> = ({
         p={3}
         borderBottom="1px"
         borderColor={borderColor}
-        bg={useColorModeValue("gray.50", "gray.700")}
+        bg={headerBgColor}
         borderTopRadius="lg"
         cursor="grab"
         _active={{ cursor: "grabbing" }}
@@ -192,7 +196,7 @@ const FloatingTaskPanel: React.FC<FloatingTaskPanelProps> = ({
           size="sm"
           variant="ghost"
           onClick={onClose}
-          _hover={{ bg: useColorModeValue("gray.200", "gray.600") }}
+          _hover={{ bg: closeButtonHoverBg }}
         />
       </HStack>
 
@@ -214,8 +218,8 @@ const FloatingTaskPanel: React.FC<FloatingTaskPanelProps> = ({
         display="flex"
         alignItems="center"
         justifyContent="center"
-        color={useColorModeValue("gray.400", "gray.500")}
-        _hover={{ color: useColorModeValue("gray.600", "gray.300") }}
+        color={resizeHandleColor}
+        _hover={{ color: resizeHandleHoverColor }}
       >
         <RiDragMove2Fill size={14} />
       </Box>

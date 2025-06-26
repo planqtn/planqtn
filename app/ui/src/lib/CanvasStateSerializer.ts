@@ -1,11 +1,11 @@
-import { DroppedLego, LegoPiece, Connection, CanvasState } from "./types";
+import { DroppedLego, Connection, CanvasState } from "./types";
 import { GenericStyle, getLegoStyle } from "../LegoStyles";
 import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {
   private canvasId: string;
 
-  constructor(private legos: LegoPiece[]) {
+  constructor() {
     // Generate a unique canvas ID if not already set
     this.canvasId = this.generateCanvasId();
   }
@@ -74,10 +74,7 @@ export class CanvasStateSerializer {
       }
 
       // Fetch legos if not already loaded
-      let legosList = this.legos;
-      if (this.legos.length === 0) {
-        legosList = Legos.listAvailableLegos();
-      }
+      const legosList = Legos.listAvailableLegos();
 
       // Reconstruct dropped legos with full lego information
       const reconstructedPieces = decoded.pieces.map(
@@ -182,9 +179,5 @@ export class CanvasStateSerializer {
 
   public getCanvasId(): string {
     return this.canvasId;
-  }
-
-  public updateLegos(newLegos: LegoPiece[]): void {
-    this.legos = newLegos;
   }
 }

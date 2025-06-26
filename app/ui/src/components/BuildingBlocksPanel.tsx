@@ -7,7 +7,6 @@ import {
   Text,
   Badge,
   useColorModeValue,
-  useToast,
   Tooltip,
   Accordion,
   AccordionItem,
@@ -25,12 +24,10 @@ import {
   getLegoBoundingBox
 } from "./DroppedLegoDisplay.tsx";
 import { getLegoStyle } from "../LegoStyles.ts";
-import { Legos } from "../lib/Legos.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
+import { Legos } from "../lib/Legos.ts";
 
 interface BuildingBlocksPanelProps {
-  legos: LegoPiece[];
-  onLegoSelect: (lego: LegoPiece) => void;
   onDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void;
   onCreateCssTanner?: () => void;
   onCreateTanner?: () => void;
@@ -40,21 +37,28 @@ interface BuildingBlocksPanelProps {
 
 export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
   ({
-    legos,
-    onLegoSelect,
     onDragStart,
     onCreateCssTanner,
     onCreateTanner,
     onCreateMsp,
     isUserLoggedIn
   }) => {
-    const toast = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedDynamicLego, setSelectedDynamicLego] =
       useState<LegoPiece | null>(null);
     const [isPanelSmall, setIsPanelSmall] = useState(false);
     const [panelWidth, setPanelWidth] = useState(0);
     const panelRef = useRef<HTMLDivElement>(null);
+
+    const [legos, setLegos] = useState<LegoPiece[]>([]);
+
+    useEffect(() => {
+      const fetchData = async () => {
+        setLegos(Legos.listAvailableLegos());
+      };
+
+      fetchData();
+    }, []);
 
     const checkPanelSize = useCallback(() => {
       // const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
@@ -93,28 +97,6 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       lego: LegoPiece
     ) => {
       onDragStart(e, lego);
-    };
-
-    const handleDynamicLegoSubmit = async (
-      parameters: Record<string, unknown>
-    ) => {
-      if (!selectedDynamicLego) return;
-
-      try {
-        const dynamicLego = Legos.getDynamicLego({
-          lego_id: selectedDynamicLego.id,
-          parameters
-        });
-        onLegoSelect(dynamicLego);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to create dynamic lego (" + error + ")",
-          status: "error",
-          duration: 3000,
-          isClosable: true
-        });
-      }
     };
 
     const bgColor = useColorModeValue("white", "gray.800");
@@ -414,7 +396,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
             setIsDialogOpen(false);
             setSelectedDynamicLego(null);
           }}
-          onSubmit={handleDynamicLegoSubmit}
+          onSubmit={() => {}}
           legoId={selectedDynamicLego?.id || ""}
           parameters={selectedDynamicLego?.parameters || {}}
         />

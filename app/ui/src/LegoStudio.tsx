@@ -60,7 +60,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
 import AuthDialog from "./components/AuthDialog";
 import { userContextSupabase } from "./supabaseClient";
-import { User } from "@supabase/supabase-js";
+import { isAuthApiError, User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
 import { Legos } from "./lib/Legos";
 import { config, getApiUrl } from "./config";
@@ -70,11 +70,13 @@ import { TbPlugConnected } from "react-icons/tb";
 import LoadingModal from "./components/LoadingModal.tsx";
 import { checkSupabaseStatus, getAxiosErrorMessage } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
-import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
+// import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 import { TensorNetworkLeg } from "./lib/TensorNetwork";
 import { LegoServerPayload } from "./lib/types";
 import FloatingTaskPanel from "./components/FloatingTaskPanel";
-import PythonCodeModal from "./components/PythonCodeModal";
+import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog.tsx";
+import PythonCodeModal from "./components/PythonCodeModal.tsx";
+// import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
 const pointToLineDistance = (
@@ -164,7 +166,6 @@ const LeftPanel = memo<{
   legoPanelSizes: { defaultSize: number; minSize: number };
   isLegoPanelCollapsed: boolean;
   setIsLegoPanelCollapsed: (collapsed: boolean) => void;
-  legos: LegoPiece[];
   handleDragStart: (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => void;
   setIsCssTannerDialogOpen: (open: boolean) => void;
   setIsTannerDialogOpen: (open: boolean) => void;
@@ -176,7 +177,6 @@ const LeftPanel = memo<{
     legoPanelSizes,
     isLegoPanelCollapsed,
     setIsLegoPanelCollapsed,
-    legos,
     handleDragStart,
     setIsCssTannerDialogOpen,
     setIsTannerDialogOpen,
@@ -185,7 +185,7 @@ const LeftPanel = memo<{
   }) => {
     return (
       <Panel
-        ref={leftPanelRef}
+        ref={leftPanelRef as React.RefObject<ImperativePanelHandle>}
         id="lego-panel"
         defaultSize={legoPanelSizes.defaultSize}
         minSize={legoPanelSizes.minSize}
@@ -197,11 +197,7 @@ const LeftPanel = memo<{
       >
         {!isLegoPanelCollapsed && (
           <BuildingBlocksPanel
-            legos={legos}
             onDragStart={handleDragStart}
-            onLegoSelect={() => {
-              // Handle lego selection if needed
-            }}
             onCreateCssTanner={() => setIsCssTannerDialogOpen(true)}
             onCreateTanner={() => setIsTannerDialogOpen(true)}
             onCreateMsp={() => setIsMspDialogOpen(true)}
@@ -223,7 +219,6 @@ const LegoStudioView: React.FC = () => {
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
-  const [legos, setLegos] = useState<LegoPiece[]>([]);
   const [droppedLegos, setDroppedLegos] = useState<DroppedLego[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [error, setError] = useState<string>("");
@@ -247,7 +242,7 @@ const LegoStudioView: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const stateSerializerRef = useRef<CanvasStateSerializer>(
-    new CanvasStateSerializer([])
+    new CanvasStateSerializer()
   );
   const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(
     null
@@ -255,10 +250,6 @@ const LegoStudioView: React.FC = () => {
   const [operationHistory] = useState<OperationHistory>(
     new OperationHistory([])
   );
-  const [mousePosition, setMousePosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
 
   const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(
     null
@@ -286,7 +277,7 @@ const LegoStudioView: React.FC = () => {
       }
     >
   >(new Map());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDynamicLegoDialogOpen, setIsDynamicLegoDialogOpen] = useState(false);
   const [selectedDynamicLego, setSelectedDynamicLego] =
     useState<LegoPiece | null>(null);
   const [pendingDropPosition, setPendingDropPosition] = useState<{
@@ -296,6 +287,24 @@ const LegoStudioView: React.FC = () => {
   const [isCssTannerDialogOpen, setIsCssTannerDialogOpen] = useState(false);
   const [isTannerDialogOpen, setIsTannerDialogOpen] = useState(false);
   const [isMspDialogOpen, setIsMspDialogOpen] = useState(false);
+
+  // Memoize dialog setters to prevent LeftPanel re-renders
+  const handleSetCssTannerDialogOpen = useCallback((open: boolean) => {
+    setIsCssTannerDialogOpen(open);
+  }, []);
+
+  const handleSetTannerDialogOpen = useCallback((open: boolean) => {
+    setIsTannerDialogOpen(open);
+  }, []);
+
+  const handleSetMspDialogOpen = useCallback((open: boolean) => {
+    setIsMspDialogOpen(open);
+  }, []);
+
+  const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
+    setIsLegoPanelCollapsed(collapsed);
+  }, []);
+
   const [hideConnectedLegs, setHideConnectedLegs] = useState(true);
   const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
   const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(
@@ -373,11 +382,6 @@ const LegoStudioView: React.FC = () => {
         : 0;
     return String(maxInstanceId + 1);
   };
-
-  // Update the serializer when legos change
-  useEffect(() => {
-    stateSerializerRef.current.updateLegos(legos);
-  }, [legos]);
 
   const encodeCanvasState = useCallback(
     (
@@ -491,19 +495,6 @@ const LegoStudioView: React.FC = () => {
     [getCacheKey, parityCheckMatrixCache, weightEnumeratorCache]
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLegos(Legos.listAvailableLegos());
-      } catch (error) {
-        setError("Failed to load legos");
-        console.error("Error:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   // Add a new effect to handle initial URL state
   useEffect(() => {
     const handleHashChange = async () => {
@@ -554,7 +545,9 @@ const LegoStudioView: React.FC = () => {
     saveCachesToLocalStorage
   ]);
 
-  // Add mouse position tracking
+  // Add mouse position tracking with useRef to avoid re-renders
+  const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const canvasPanel = document.querySelector("#main-panel");
@@ -568,12 +561,12 @@ const LegoStudioView: React.FC = () => {
         e.clientY <= canvasRect.bottom;
 
       if (isOverCanvas) {
-        setMousePosition({
+        mousePositionRef.current = {
           x: e.clientX - canvasRect.left,
           y: e.clientY - canvasRect.top
-        });
+        };
       } else {
-        setMousePosition(null);
+        mousePositionRef.current = null;
       }
     };
 
@@ -581,41 +574,41 @@ const LegoStudioView: React.FC = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const handleDragStart = (
-    e: React.DragEvent<HTMLLIElement>,
-    lego: LegoPiece
-  ) => {
-    if (lego.id === "custom") {
-      // Store the drop position for the custom lego
-      const rect = e.currentTarget.getBoundingClientRect();
-      setCustomLegoPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
-      });
-      // Set the draggedLego state for custom legos
-      const draggedLego: DroppedLego = {
-        ...lego,
-        instanceId: newInstanceId(droppedLegos),
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-        style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-        selectedMatrixRows: []
-      };
-      setDraggedLego(draggedLego);
-    } else {
-      // Handle regular lego drag
-      const rect = e.currentTarget.getBoundingClientRect();
-      const draggedLego: DroppedLego = {
-        ...lego,
-        instanceId: newInstanceId(droppedLegos),
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-        style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-        selectedMatrixRows: []
-      };
-      setDraggedLego(draggedLego);
-    }
-  };
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLLIElement>, lego: LegoPiece) => {
+      if (lego.id === "custom") {
+        // Store the drop position for the custom lego
+        const rect = e.currentTarget.getBoundingClientRect();
+        setCustomLegoPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+        // Set the draggedLego state for custom legos
+        const draggedLego: DroppedLego = {
+          ...lego,
+          instanceId: newInstanceId(droppedLegos),
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
+          selectedMatrixRows: []
+        };
+        setDraggedLego(draggedLego);
+      } else {
+        // Handle regular lego drag
+        const rect = e.currentTarget.getBoundingClientRect();
+        const draggedLego: DroppedLego = {
+          ...lego,
+          instanceId: newInstanceId(droppedLegos),
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
+          selectedMatrixRows: []
+        };
+        setDraggedLego(draggedLego);
+      }
+    },
+    [droppedLegos]
+  );
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -756,7 +749,7 @@ const LegoStudioView: React.FC = () => {
     if (draggedLego.is_dynamic) {
       setSelectedDynamicLego(draggedLego);
       setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
-      setIsDialogOpen(true);
+      setIsDynamicLegoDialogOpen(true);
       setDraggedLego(null);
       return;
     }
@@ -865,7 +858,7 @@ const LegoStudioView: React.FC = () => {
         error instanceof Error ? error.message : "Failed to create dynamic lego"
       );
     } finally {
-      setIsDialogOpen(false);
+      setIsDynamicLegoDialogOpen(false);
       setSelectedDynamicLego(null);
       setPendingDropPosition(null);
     }
@@ -1864,10 +1857,10 @@ const LegoStudioView: React.FC = () => {
             // Determine drop position
             let dropX: number, dropY: number;
 
-            if (mousePosition) {
+            if (mousePositionRef.current) {
               // Use current mouse position
-              dropX = mousePosition.x;
-              dropY = mousePosition.y;
+              dropX = mousePositionRef.current.x;
+              dropY = mousePositionRef.current.y;
             } else {
               // Use random position around canvas center
               const centerX = canvasRect.width / 2;
@@ -2083,8 +2076,7 @@ const LegoStudioView: React.FC = () => {
     droppedLegos,
     operationHistory.addOperation,
     encodeCanvasState,
-    hideConnectedLegs,
-    mousePosition
+    hideConnectedLegs
   ]);
 
   useEffect(() => {
@@ -3002,28 +2994,6 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  // Helper to get external and dangling legs for the current tensor network
-  const getExternalAndDanglingLegs = () => {
-    if (!tensorNetwork) return { externalLegs: [], danglingLegs: [] };
-    const externalLegs = [];
-    const danglingLegs = [];
-    for (const lego of tensorNetwork.legos) {
-      const numLegs = lego.parity_check_matrix[0].length / 2;
-      for (let i = 0; i < numLegs; i++) {
-        const isConnected = connections.some(
-          (conn) =>
-            (conn.from.legoId === lego.instanceId &&
-              conn.from.legIndex === i) ||
-            (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
-        );
-        const leg = { instanceId: lego.instanceId, legIndex: i };
-        if (isConnected) externalLegs.push(leg);
-        else danglingLegs.push(leg);
-      }
-    }
-    return { externalLegs, danglingLegs };
-  };
-
   const handleExportPythonCode = () => {
     if (!tensorNetwork) return;
     const code = tensorNetwork.generateConstructionCode();
@@ -3200,15 +3170,16 @@ const LegoStudioView: React.FC = () => {
           <PanelGroup direction="horizontal">
             {/* Left Panel */}
             <LeftPanel
-              leftPanelRef={leftPanelRef}
+              leftPanelRef={
+                leftPanelRef as React.RefObject<ImperativePanelHandle>
+              }
               legoPanelSizes={legoPanelSizes}
               isLegoPanelCollapsed={isLegoPanelCollapsed}
-              setIsLegoPanelCollapsed={setIsLegoPanelCollapsed}
-              legos={legos}
+              setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
               handleDragStart={handleDragStart}
-              setIsCssTannerDialogOpen={setIsCssTannerDialogOpen}
-              setIsTannerDialogOpen={setIsTannerDialogOpen}
-              setIsMspDialogOpen={setIsMspDialogOpen}
+              setIsCssTannerDialogOpen={handleSetCssTannerDialogOpen}
+              setIsTannerDialogOpen={handleSetTannerDialogOpen}
+              setIsMspDialogOpen={handleSetMspDialogOpen}
               currentUser={currentUser}
             />
             <ResizeHandle id="lego-panel-resize-handle" />
@@ -3255,136 +3226,152 @@ const LegoStudioView: React.FC = () => {
                     p={1}
                   >
                     <Menu>
-                      <MenuButton
-                        as={Button}
-                        variant="ghost"
-                        size="sm"
-                        minW="auto"
-                        p={2}
-                      >
-                        <Icon as={FiMoreVertical} boxSize={4} />
-                      </MenuButton>
-                      <MenuList>
-                        <MenuItem
-                          onClick={() => setShowWeightEnumeratorDialog(true)}
-                          isDisabled={!tensorNetwork || !currentUser}
-                          title={
-                            !tensorNetwork
-                              ? "No network to calculate weight enumerator"
-                              : !currentUser
-                                ? "Please sign in to calculate weight enumerator"
-                                : ""
-                          }
-                        >
-                          Calculate Weight Enumerator
-                        </MenuItem>
-                        <MenuItem
-                          onClick={handleExportPythonCode}
-                          isDisabled={!tensorNetwork}
-                        >
-                          Export network as Python code
-                        </MenuItem>
-                        <MenuDivider />
-                        <MenuItemOption
-                          onClick={() => {
-                            setHideConnectedLegs(!hideConnectedLegs);
-                            encodeCanvasState(
-                              droppedLegos,
-                              connections,
-                              !hideConnectedLegs
-                            );
-                          }}
-                          isChecked={hideConnectedLegs}
-                        >
-                          Hide connected legs
-                        </MenuItemOption>
-                        <MenuItemOption
-                          isChecked={isLegoPanelCollapsed}
-                          onClick={() => {
-                            if (leftPanelRef.current) {
-                              if (isLegoPanelCollapsed) {
-                                leftPanelRef.current.expand();
-                              } else {
-                                leftPanelRef.current.collapse();
-                              }
-                            }
-                          }}
-                        >
-                          Hide Building Blocks Panel
-                        </MenuItemOption>
-                        <MenuItemOption
-                          isChecked={isTaskPanelCollapsed}
-                          onClick={() => {
-                            setIsTaskPanelCollapsed(!isTaskPanelCollapsed);
-                          }}
-                        >
-                          Hide Task Panel
-                        </MenuItemOption>
-                        <MenuItem
-                          onClick={() => {
-                            const rect =
-                              canvasRef.current?.getBoundingClientRect();
-                            if (!rect) return;
-                            const centerX = rect.width / 2;
-                            const centerY = rect.height / 2;
-                            const scale = 1 / zoomLevel;
-                            const rescaledLegos = droppedLegos.map((lego) => ({
-                              ...lego,
-                              x: (lego.x - centerX) * scale + centerX,
-                              y: (lego.y - centerY) * scale + centerY
-                            }));
-                            setDroppedLegos(rescaledLegos);
-                            setZoomLevel(1);
-                            encodeCanvasState(
-                              rescaledLegos,
-                              connections,
-                              hideConnectedLegs
-                            );
-                          }}
-                          isDisabled={zoomLevel === 1}
-                        >
-                          Reset zoom
-                        </MenuItem>
-                        <MenuDivider />
-                        <MenuItem onClick={handleClearAll}>Remove all</MenuItem>
-                        <MenuItem
-                          onClick={() => {
-                            const clearedLegos = droppedLegos.map((lego) => ({
-                              ...lego,
-                              selectedMatrixRows: []
-                            }));
-                            setDroppedLegos(clearedLegos);
-                            encodeCanvasState(
-                              clearedLegos,
-                              connections,
-                              hideConnectedLegs
-                            );
-                          }}
-                          isDisabled={
-                            !droppedLegos.some(
-                              (lego) =>
-                                lego.selectedMatrixRows &&
-                                lego.selectedMatrixRows.length > 0
-                            )
-                          }
-                        >
-                          Clear highlights
-                        </MenuItem>
-                        <MenuDivider />
-                        <MenuItem onClick={handleRuntimeToggle}>
-                          <HStack spacing={2}>
-                            <Icon as={TbPlugConnected} />
-                            <Text>
-                              Switch runtime to{" "}
-                              {isLocalRuntime ? "cloud" : "local"}
-                            </Text>
-                          </HStack>
-                        </MenuItem>
-                        <MenuDivider />
-                        <MenuItem onClick={handleExportSvg}>
-                          Export canvas as SVG...
-                        </MenuItem>
-                      </MenuList>
+                      {({ isOpen }) => (
+                        <>
+                          <MenuButton
+                            as={Button}
+                            variant="ghost"
+                            size="sm"
+                            minW="auto"
+                            p={2}
+                          >
+                            <Icon as={FiMoreVertical} boxSize={4} />
+                          </MenuButton>
+                          {isOpen && (
+                            <MenuList>
+                              <MenuItem
+                                onClick={() =>
+                                  setShowWeightEnumeratorDialog(true)
+                                }
+                                isDisabled={!tensorNetwork || !currentUser}
+                                title={
+                                  !tensorNetwork
+                                    ? "No network to calculate weight enumerator"
+                                    : !currentUser
+                                      ? "Please sign in to calculate weight enumerator"
+                                      : ""
+                                }
+                              >
+                                Calculate Weight Enumerator
+                              </MenuItem>
+                              <MenuItem
+                                onClick={handleExportPythonCode}
+                                isDisabled={!tensorNetwork}
+                              >
+                                Export network as Python code
+                              </MenuItem>
+                              <MenuDivider />
+                              <MenuItemOption
+                                onClick={() => {
+                                  setHideConnectedLegs(!hideConnectedLegs);
+                                  encodeCanvasState(
+                                    droppedLegos,
+                                    connections,
+                                    !hideConnectedLegs
+                                  );
+                                }}
+                                isChecked={hideConnectedLegs}
+                              >
+                                Hide connected legs
+                              </MenuItemOption>
+                              <MenuItemOption
+                                isChecked={isLegoPanelCollapsed}
+                                onClick={() => {
+                                  if (leftPanelRef.current) {
+                                    if (isLegoPanelCollapsed) {
+                                      leftPanelRef.current.expand();
+                                    } else {
+                                      leftPanelRef.current.collapse();
+                                    }
+                                  }
+                                }}
+                              >
+                                Hide Building Blocks Panel
+                              </MenuItemOption>
+                              <MenuItemOption
+                                isChecked={isTaskPanelCollapsed}
+                                onClick={() => {
+                                  setIsTaskPanelCollapsed(
+                                    !isTaskPanelCollapsed
+                                  );
+                                }}
+                              >
+                                Hide Task Panel
+                              </MenuItemOption>
+                              <MenuItem
+                                onClick={() => {
+                                  const rect =
+                                    canvasRef.current?.getBoundingClientRect();
+                                  if (!rect) return;
+                                  const centerX = rect.width / 2;
+                                  const centerY = rect.height / 2;
+                                  const scale = 1 / zoomLevel;
+                                  const rescaledLegos = droppedLegos.map(
+                                    (lego) => ({
+                                      ...lego,
+                                      x: (lego.x - centerX) * scale + centerX,
+                                      y: (lego.y - centerY) * scale + centerY
+                                    })
+                                  );
+                                  setDroppedLegos(rescaledLegos);
+                                  setZoomLevel(1);
+                                  encodeCanvasState(
+                                    rescaledLegos,
+                                    connections,
+                                    hideConnectedLegs
+                                  );
+                                }}
+                                isDisabled={zoomLevel === 1}
+                              >
+                                Reset zoom
+                              </MenuItem>
+                              <MenuDivider />
+                              <MenuItem onClick={handleClearAll}>
+                                Remove all
+                              </MenuItem>
+                              <MenuItem
+                                onClick={() => {
+                                  const clearedLegos = droppedLegos.map(
+                                    (lego) => ({
+                                      ...lego,
+                                      selectedMatrixRows: []
+                                    })
+                                  );
+                                  setDroppedLegos(clearedLegos);
+                                  encodeCanvasState(
+                                    clearedLegos,
+                                    connections,
+                                    hideConnectedLegs
+                                  );
+                                }}
+                                isDisabled={
+                                  !droppedLegos.some(
+                                    (lego) =>
+                                      lego.selectedMatrixRows &&
+                                      lego.selectedMatrixRows.length > 0
+                                  )
+                                }
+                              >
+                                Clear highlights
+                              </MenuItem>
+                              <MenuDivider />
+                              <MenuItem onClick={handleRuntimeToggle}>
+                                <HStack spacing={2}>
+                                  <Icon as={TbPlugConnected} />
+                                  <Text>
+                                    Switch runtime to{" "}
+                                    {isLocalRuntime ? "cloud" : "local"}
+                                  </Text>
+                                </HStack>
+                              </MenuItem>
+                              <MenuDivider />
+                              <MenuItem onClick={handleExportSvg}>
+                                Export canvas as SVG...
+                              </MenuItem>
+                            </MenuList>
+                          )}
+                        </>
+                      )}
                     </Menu>
                   </Box>
 
@@ -3837,36 +3824,44 @@ const LegoStudioView: React.FC = () => {
           isOpen={!isTaskPanelCollapsed}
         />
 
-        <DynamicLegoDialog
-          isOpen={isDialogOpen}
-          onClose={() => {
-            setIsDialogOpen(false);
-            setSelectedDynamicLego(null);
-            setPendingDropPosition(null);
-          }}
-          onSubmit={handleDynamicLegoSubmit}
-          legoId={selectedDynamicLego?.id || ""}
-          parameters={selectedDynamicLego?.parameters || {}}
-        />
-        <TannerDialog
-          isOpen={isCssTannerDialogOpen}
-          onClose={() => setIsCssTannerDialogOpen(false)}
-          onSubmit={handleCssTannerSubmit}
-          title="Create CSS Tanner Network"
-          cssOnly={true}
-        />
-        <TannerDialog
-          isOpen={isTannerDialogOpen}
-          onClose={() => setIsTannerDialogOpen(false)}
-          onSubmit={handleTannerSubmit}
-          title="Create Tanner Network"
-        />
-        <TannerDialog
-          isOpen={isMspDialogOpen}
-          onClose={() => setIsMspDialogOpen(false)}
-          onSubmit={handleMspSubmit}
-          title="Measurement State Prep Network"
-        />
+        {isDynamicLegoDialogOpen && (
+          <DynamicLegoDialog
+            isOpen={isDynamicLegoDialogOpen}
+            onClose={() => {
+              setIsDynamicLegoDialogOpen(false);
+              setSelectedDynamicLego(null);
+              setPendingDropPosition(null);
+            }}
+            onSubmit={handleDynamicLegoSubmit}
+            legoId={selectedDynamicLego?.id || ""}
+            parameters={selectedDynamicLego?.parameters || {}}
+          />
+        )}
+        {isCssTannerDialogOpen && (
+          <TannerDialog
+            isOpen={isCssTannerDialogOpen}
+            onClose={() => setIsCssTannerDialogOpen(false)}
+            onSubmit={handleCssTannerSubmit}
+            title="Create CSS Tanner Network"
+            cssOnly={true}
+          />
+        )}
+        {isTannerDialogOpen && (
+          <TannerDialog
+            isOpen={isTannerDialogOpen}
+            onClose={() => setIsTannerDialogOpen(false)}
+            onSubmit={handleTannerSubmit}
+            title="Create Tanner Network"
+          />
+        )}
+        {isMspDialogOpen && (
+          <TannerDialog
+            isOpen={isMspDialogOpen}
+            onClose={() => setIsMspDialogOpen(false)}
+            onSubmit={handleMspSubmit}
+            title="Measurement State Prep Network"
+          />
+        )}
         {showCustomLegoDialog && (
           <TannerDialog
             isOpen={showCustomLegoDialog}
@@ -3875,32 +3870,38 @@ const LegoStudioView: React.FC = () => {
             title="Create Custom Lego"
           />
         )}
-        <AuthDialog
-          isOpen={authDialogOpen}
-          onClose={() => setAuthDialogOpen(false)}
-          connectionError={
-            supabaseStatus && !supabaseStatus.isHealthy
-              ? supabaseStatus.message
-              : undefined
-          }
-        />
-        <RuntimeConfigDialog
-          isOpen={isRuntimeConfigOpen}
-          onClose={() => setIsRuntimeConfigOpen(false)}
-          onSubmit={handleRuntimeConfigSubmit}
-          isLocal={isLocalRuntime}
-          initialConfig={(() => {
-            try {
-              const storedConfig = localStorage.getItem("runtimeConfig");
-              return storedConfig ? JSON.parse(storedConfig) : undefined;
-            } catch {
-              return undefined;
+        {authDialogOpen && (
+          <AuthDialog
+            isOpen={authDialogOpen}
+            onClose={() => setAuthDialogOpen(false)}
+            connectionError={
+              supabaseStatus && !supabaseStatus.isHealthy
+                ? supabaseStatus.message
+                : undefined
             }
-          })()}
-        />
-        <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
+          />
+        )}
+        {isRuntimeConfigOpen && (
+          <RuntimeConfigDialog
+            isOpen={isRuntimeConfigOpen}
+            onClose={() => setIsRuntimeConfigOpen(false)}
+            onSubmit={handleRuntimeConfigSubmit}
+            isLocal={isLocalRuntime}
+            initialConfig={(() => {
+              try {
+                const storedConfig = localStorage.getItem("runtimeConfig");
+                return storedConfig ? JSON.parse(storedConfig) : undefined;
+              } catch {
+                return undefined;
+              }
+            })()}
+          />
+        )}
+        {isNetworkLoading && (
+          <LoadingModal isOpen={isNetworkLoading} message={loadingMessage} />
+        )}
       </VStack>
-      {tensorNetwork && (
+      {showWeightEnumeratorDialog && tensorNetwork && (
         <WeightEnumeratorCalculationDialog
           open={showWeightEnumeratorDialog}
           onClose={() => setShowWeightEnumeratorDialog(false)}
@@ -3908,16 +3909,18 @@ const LegoStudioView: React.FC = () => {
             setShowWeightEnumeratorDialog(false);
             calculateWeightEnumerator(truncateLength, openLegs);
           }}
-          externalLegs={getExternalAndDanglingLegs().externalLegs}
-          danglingLegs={getExternalAndDanglingLegs().danglingLegs}
+          subNetwork={tensorNetwork}
+          mainNetworkConnections={connections}
         />
       )}
-      <PythonCodeModal
-        isOpen={showPythonCodeModal}
-        onClose={() => setShowPythonCodeModal(false)}
-        code={pythonCode}
-        title="Python Network Construction Code"
-      />
+      {showPythonCodeModal && (
+        <PythonCodeModal
+          isOpen={showPythonCodeModal}
+          onClose={() => setShowPythonCodeModal(false)}
+          code={pythonCode}
+          title="Python Network Construction Code"
+        />
+      )}
     </>
   );
 };

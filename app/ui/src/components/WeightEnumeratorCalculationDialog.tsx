@@ -15,7 +15,8 @@ import {
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
 import { QuestionOutlineIcon } from "@chakra-ui/icons";
-import { TensorNetworkLeg } from "../lib/TensorNetwork";
+import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork";
+import { Connection } from "../lib/types";
 
 interface WeightEnumeratorCalculationDialogProps {
   open: boolean;
@@ -24,13 +25,16 @@ interface WeightEnumeratorCalculationDialogProps {
     truncateLength: number | null,
     openLegs: TensorNetworkLeg[]
   ) => void;
-  externalLegs: TensorNetworkLeg[];
-  danglingLegs: TensorNetworkLeg[];
+  subNetwork: TensorNetwork;
+  mainNetworkConnections: Connection[];
 }
 
 const WeightEnumeratorCalculationDialog: React.FC<
   WeightEnumeratorCalculationDialogProps
-> = ({ open, onClose, onSubmit, externalLegs, danglingLegs }) => {
+> = ({ open, onClose, onSubmit, subNetwork, mainNetworkConnections }) => {
+  const { externalLegs, danglingLegs } = subNetwork.getExternalAndDanglingLegs(
+    mainNetworkConnections
+  );
   const [truncateLength, setTruncateLength] = useState<string>("");
   // Use string keys for easy lookup: "instanceId-legIndex"
   const externalKeys = useMemo(

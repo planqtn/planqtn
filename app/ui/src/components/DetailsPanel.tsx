@@ -162,11 +162,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     Array<TaskUpdateIterationStatus>
   >([]);
 
-  const [
-    showWeightEnumeratorCalculationDialog,
-    setShowWeightEnumeratorCalculationDialog
-  ] = useState(false);
-
   const [taskLogs, setTaskLogs] = useState<string>("");
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const {
@@ -224,51 +219,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       console.error("Error calculating parity check matrix:", error);
       setError("Failed to calculate parity check matrix");
     }
-  };
-
-  const getExternalAndDanglingLegs = () => {
-    if (!tensorNetwork) return { externalLegs: [], danglingLegs: [] };
-    const allLegs: TensorNetworkLeg[] = tensorNetwork.legos.flatMap((lego) => {
-      const numLegs = lego.parity_check_matrix[0].length / 2;
-      return Array.from({ length: numLegs }, (_, i) => ({
-        instanceId: lego.instanceId,
-        legIndex: i
-      }));
-    });
-    const connectedLegs = new Set<string>();
-    connections.forEach((conn) => {
-      connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
-      connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
-    });
-    // Legs in tensorNetwork but connected to something outside
-    const networkInstanceIds = new Set(
-      tensorNetwork.legos.map((l) => l.instanceId)
-    );
-    const externalLegs: TensorNetworkLeg[] = [];
-    const danglingLegs: TensorNetworkLeg[] = [];
-    allLegs.forEach((leg) => {
-      // Find if this leg is connected
-      const conn = connections.find(
-        (conn) =>
-          (conn.from.legoId === leg.instanceId &&
-            conn.from.legIndex === leg.legIndex) ||
-          (conn.to.legoId === leg.instanceId &&
-            conn.to.legIndex === leg.legIndex)
-      );
-      if (!conn) {
-        danglingLegs.push(leg);
-      } else {
-        // If the other side is not in the network, it's external
-        const other =
-          conn.from.legoId === leg.instanceId
-            ? conn.to.legoId
-            : conn.from.legoId;
-        if (!networkInstanceIds.has(other)) {
-          externalLegs.push(leg);
-        }
-      }
-    });
-    return { externalLegs, danglingLegs };
   };
 
   const subscribeToTaskUpdates = (taskId: string) => {
@@ -1320,8 +1270,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     }
   };
 
-  const { externalLegs, danglingLegs } = getExternalAndDanglingLegs();
-
   return (
     <Box
       h="100%"
@@ -1622,38 +1570,35 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           </>
         )}
       </VStack>
-      <LegPartitionDialog
-        open={showLegPartitionDialog}
-        onClose={() => {
-          setShowLegPartitionDialog(false);
-          handleLegPartitionDialogClose();
-        }}
-        onSubmit={(legPartition: number[]) => {
-          setShowLegPartitionDialog(false);
-          handleLegPartitionDialogClose();
-          handleUnfuseTo2LegosPartitionConfirm(
-            legPartition,
-            _.cloneDeep(connections)
-          );
-        }}
-        numLegs={unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0}
-      />
-      <WeightEnumeratorCalculationDialog
-        open={showWeightEnumeratorCalculationDialog}
-        onClose={() => setShowWeightEnumeratorCalculationDialog(false)}
-        externalLegs={externalLegs}
-        danglingLegs={danglingLegs}
-        onSubmit={(truncateLength, openLegs) => {
-          setShowWeightEnumeratorCalculationDialog(false);
-          calculateWeightEnumerator(truncateLength, openLegs);
-        }}
-      />
-      <TaskLogsModal
-        isOpen={isLogsModalOpen}
-        onClose={onLogsModalClose}
-        isLoading={isLoadingLogs}
-        logs={taskLogs}
-      />
+      {showLegPartitionDialog && (
+        <LegPartitionDialog
+          open={showLegPartitionDialog}
+          onClose={() => {
+            setShowLegPartitionDialog(false);
+            handleLegPartitionDialogClose();
+          }}
+          onSubmit={(legPartition: number[]) => {
+            setShowLegPartitionDialog(false);
+            handleLegPartitionDialogClose();
+            handleUnfuseTo2LegosPartitionConfirm(
+              legPartition,
+              _.cloneDeep(connections)
+            );
+          }}
+          numLegs={
+            unfuseLego ? unfuseLego.parity_check_matrix[0].length / 2 : 0
+          }
+        />
+      )}
+
+      {isLogsModalOpen && (
+        <TaskLogsModal
+          isOpen={isLogsModalOpen}
+          onClose={onLogsModalClose}
+          isLoading={isLoadingLogs}
+          logs={taskLogs}
+        />
+      )}
     </Box>
   );
 };

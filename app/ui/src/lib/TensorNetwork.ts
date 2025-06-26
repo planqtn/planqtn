@@ -143,6 +143,52 @@ export class TensorNetwork {
     return code.join("\n");
   }
 
+  public getExternalAndDanglingLegs(mainNetworkConnections: Connection[]): {
+    externalLegs: TensorNetworkLeg[];
+    danglingLegs: TensorNetworkLeg[];
+  } {
+    if (!this.legos) return { externalLegs: [], danglingLegs: [] };
+    const allLegs: TensorNetworkLeg[] = this.legos.flatMap((lego) => {
+      const numLegs = lego.parity_check_matrix[0].length / 2;
+      return Array.from({ length: numLegs }, (_, i) => ({
+        instanceId: lego.instanceId,
+        legIndex: i
+      }));
+    });
+    const connectedLegs = new Set<string>();
+    mainNetworkConnections.forEach((conn) => {
+      connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
+      connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
+    });
+    // Legs in tensorNetwork but connected to something outside
+    const networkInstanceIds = new Set(this.legos.map((l) => l.instanceId));
+    const externalLegs: TensorNetworkLeg[] = [];
+    const danglingLegs: TensorNetworkLeg[] = [];
+    allLegs.forEach((leg) => {
+      // Find if this leg is connected
+      const conn = mainNetworkConnections.find(
+        (conn) =>
+          (conn.from.legoId === leg.instanceId &&
+            conn.from.legIndex === leg.legIndex) ||
+          (conn.to.legoId === leg.instanceId &&
+            conn.to.legIndex === leg.legIndex)
+      );
+      if (!conn) {
+        danglingLegs.push(leg);
+      } else {
+        // If the other side is not in the network, it's external
+        const other =
+          conn.from.legoId === leg.instanceId
+            ? conn.to.legoId
+            : conn.from.legoId;
+        if (!networkInstanceIds.has(other)) {
+          externalLegs.push(leg);
+        }
+      }
+    });
+    return { externalLegs, danglingLegs };
+  }
+
   public conjoin_nodes(): StabilizerCodeTensor {
     // If there's only one lego and no connections, return its parity check matrix
     if (this.legos.length === 1 && this.connections.length === 0) {
