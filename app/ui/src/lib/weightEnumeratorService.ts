@@ -4,10 +4,10 @@ import { getAccessToken } from "./auth";
 import { config } from "../config";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@chakra-ui/react";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 
 export interface WeightEnumeratorServiceOptions {
   currentUser: User;
-  setTensorNetwork: (network: TensorNetwork | null) => void;
   setError: (error: string) => void;
   toast: ReturnType<typeof useToast>;
   weightEnumeratorCache: Map<
@@ -28,13 +28,9 @@ export class WeightEnumeratorService {
     openLegs: TensorNetworkLeg[],
     options: WeightEnumeratorServiceOptions
   ): Promise<void> {
-    const {
-      currentUser,
-      setTensorNetwork,
-      setError,
-      toast,
-      weightEnumeratorCache
-    } = options;
+    const { currentUser, setError, toast, weightEnumeratorCache } = options;
+
+    const { setTensorNetwork } = useTensorNetworkStore.getState();
 
     if (!tensorNetwork) return;
 

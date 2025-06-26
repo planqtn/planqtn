@@ -79,6 +79,7 @@ import { useConnectionStore } from "./stores/connectionStore.ts";
 import { useModalStore } from "./stores/modalStore";
 import { RuntimeConfigService } from "./lib/runtimeConfigService";
 import { ModalRoot } from "./components/ModalRoot";
+import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
@@ -249,9 +250,8 @@ const LegoStudioView: React.FC = () => {
   const stateSerializerRef = useRef<CanvasStateSerializer>(
     new CanvasStateSerializer()
   );
-  const [tensorNetwork, setTensorNetwork] = useState<TensorNetwork | null>(
-    null
-  );
+  // Use centralized TensorNetwork store
+  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const [operationHistory] = useState<OperationHistory>(
     new OperationHistory([])
   );
@@ -1959,14 +1959,9 @@ const LegoStudioView: React.FC = () => {
     setDroppedLegos(newDroppedLegos);
     encodeCanvasState(newDroppedLegos, connections, hideConnectedLegs);
 
-    const selectedNetwork = findConnectedComponent(
-      clickedLego,
-      newDroppedLegos,
-      connections
-    );
     simpleAutoFlow(
       updatedLego,
-      selectedNetwork,
+      newDroppedLegos,
       connections,
       setDroppedLegos,
       setTensorNetwork
@@ -2262,12 +2257,8 @@ const LegoStudioView: React.FC = () => {
     <>
       <KeyboardHandler
         hideConnectedLegs={hideConnectedLegs}
-        tensorNetwork={tensorNetwork}
         operationHistory={operationHistory}
         newInstanceId={newInstanceId}
-        onSetTensorNetwork={(network) =>
-          setTensorNetwork(network as TensorNetwork | null)
-        }
         onSetAltKeyPressed={setAltKeyPressed}
         onEncodeCanvasState={encodeCanvasState}
         onUndo={handleUndo}
@@ -2602,10 +2593,8 @@ const LegoStudioView: React.FC = () => {
                     ref={selectionManagerRef}
                     droppedLegos={droppedLegos}
                     connections={connections}
-                    tensorNetwork={tensorNetwork}
                     selectionBox={selectionBox}
                     onSelectionBoxChange={setSelectionBox}
-                    onTensorNetworkChange={setTensorNetwork}
                     onCreateNetworkSignature={createNetworkSignature}
                     canvasRef={canvasRef}
                   />
@@ -2614,7 +2603,6 @@ const LegoStudioView: React.FC = () => {
                     legDragState={legDragState}
                     dragState={dragState}
                     connections={connections}
-                    tensorNetwork={tensorNetwork}
                     hideConnectedLegs={hideConnectedLegs}
                     onLegMouseDown={handleLegMouseDown}
                     onLegoMouseDown={handleLegoMouseDown}
@@ -2631,8 +2619,6 @@ const LegoStudioView: React.FC = () => {
             <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
               <DetailsPanel
                 handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-                tensorNetwork={tensorNetwork}
-                setTensorNetwork={setTensorNetwork}
                 setError={setError}
                 fuseLegos={fuseLegos}
                 operationHistory={operationHistory}
@@ -2684,7 +2670,6 @@ const LegoStudioView: React.FC = () => {
           hideConnectedLegs={hideConnectedLegs}
           newInstanceId={newInstanceId}
           currentUser={currentUser}
-          setTensorNetwork={setTensorNetwork}
           setError={setError}
           weightEnumeratorCache={weightEnumeratorCache}
         />

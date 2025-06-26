@@ -7,14 +7,13 @@ import React, {
 import { Box } from "@chakra-ui/react";
 import { DroppedLego, Connection, SelectionBoxState } from "../lib/types";
 import { TensorNetwork } from "../lib/TensorNetwork";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 
 interface SelectionManagerProps {
   droppedLegos: DroppedLego[];
   connections: Connection[];
-  tensorNetwork: TensorNetwork | null;
   selectionBox: SelectionBoxState;
   onSelectionBoxChange: (selectionBox: SelectionBoxState) => void;
-  onTensorNetworkChange: (network: TensorNetwork | null) => void;
   onCreateNetworkSignature: (network: TensorNetwork) => string;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -29,15 +28,15 @@ export const SelectionManager = memo(
       {
         droppedLegos,
         connections,
-        tensorNetwork,
         selectionBox,
         onSelectionBoxChange,
-        onTensorNetworkChange,
         onCreateNetworkSignature,
         canvasRef
       },
       ref
     ) => {
+      const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
+
       // Helper function to handle selection box logic
       const handleSelectionBoxUpdate = useCallback(
         (
@@ -76,14 +75,14 @@ export const SelectionManager = memo(
                 );
                 const newNetwork = new TensorNetwork(newLegos, newConnections);
                 newNetwork.signature = onCreateNetworkSignature(newNetwork);
-                onTensorNetworkChange(newNetwork);
+                setTensorNetwork(newNetwork);
               } else {
                 const newNetwork = new TensorNetwork(selectedLegos, []);
                 newNetwork.signature = onCreateNetworkSignature(newNetwork);
-                onTensorNetworkChange(newNetwork);
+                setTensorNetwork(newNetwork);
               }
             } else {
-              onTensorNetworkChange(new TensorNetwork(selectedLegos, []));
+              setTensorNetwork(new TensorNetwork(selectedLegos, []));
             }
           } else if (selectedLegos.length > 1) {
             if (e.ctrlKey || e.metaKey) {
@@ -97,7 +96,7 @@ export const SelectionManager = memo(
                 );
                 const newNetwork = new TensorNetwork(newLegos, newConnections);
                 newNetwork.signature = onCreateNetworkSignature(newNetwork);
-                onTensorNetworkChange(newNetwork);
+                setTensorNetwork(newNetwork);
               } else {
                 const selectedLegoIds = new Set(
                   selectedLegos.map((lego) => lego.instanceId)
@@ -112,7 +111,7 @@ export const SelectionManager = memo(
                   internalConnections
                 );
                 newNetwork.signature = onCreateNetworkSignature(newNetwork);
-                onTensorNetworkChange(newNetwork);
+                setTensorNetwork(newNetwork);
               }
             } else {
               // Create a tensor network from the selected legos
@@ -129,11 +128,11 @@ export const SelectionManager = memo(
                 internalConnections
               );
               newNetwork.signature = onCreateNetworkSignature(newNetwork);
-              onTensorNetworkChange(newNetwork);
+              setTensorNetwork(newNetwork);
             }
           } else {
             if (!(e.ctrlKey || e.metaKey)) {
-              onTensorNetworkChange(null);
+              setTensorNetwork(null);
             }
           }
         },
@@ -141,7 +140,7 @@ export const SelectionManager = memo(
           droppedLegos,
           connections,
           tensorNetwork,
-          onTensorNetworkChange,
+          setTensorNetwork,
           onCreateNetworkSignature
         ]
       );

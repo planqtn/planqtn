@@ -17,7 +17,7 @@ import { OperationHistory } from "../lib/OperationHistory";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 import { useToast } from "@chakra-ui/react";
 import { User } from "@supabase/supabase-js";
-import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork";
+import { TensorNetworkLeg } from "../lib/TensorNetwork";
 
 interface ModalRootProps {
   operationHistory: OperationHistory;
@@ -26,7 +26,6 @@ interface ModalRootProps {
   newInstanceId: () => string;
   // Weight enumerator dependencies
   currentUser: User | null;
-  setTensorNetwork?: (network: TensorNetwork | null) => void;
   setError?: (error: string) => void;
   weightEnumeratorCache?: Map<
     string,
@@ -45,7 +44,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
   hideConnectedLegs,
   newInstanceId,
   currentUser,
-  setTensorNetwork,
   setError,
   weightEnumeratorCache
 }) => {
@@ -199,7 +197,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
   ) => {
     if (
       !weightEnumeratorState.subNetwork ||
-      !setTensorNetwork ||
       !setError ||
       !weightEnumeratorCache
     ) {
@@ -212,7 +209,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
       openLegs,
       {
         currentUser: currentUser!,
-        setTensorNetwork: setTensorNetwork,
         setError,
         toast,
         weightEnumeratorCache

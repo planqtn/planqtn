@@ -1,14 +1,13 @@
 import React, { memo, useMemo } from "react";
 import { DroppedLego, LegDragState, DragState, Connection } from "../lib/types";
-import { TensorNetwork } from "../lib/TensorNetwork";
 import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 
 interface LegosLayerProps {
   droppedLegos: DroppedLego[];
   legDragState: LegDragState | null;
   dragState: DragState;
   connections: Connection[];
-  tensorNetwork: TensorNetwork | null;
   hideConnectedLegs: boolean;
   onLegMouseDown: (
     e: React.MouseEvent,
@@ -26,13 +25,14 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(
     legDragState,
     dragState,
     connections,
-    tensorNetwork,
     hideConnectedLegs,
     onLegMouseDown,
     onLegoMouseDown,
     onLegoClick,
     onLegClick
   }) => {
+    const { tensorNetwork } = useTensorNetworkStore();
+
     // Memoize the rendered legos to prevent unnecessary re-renders
     const renderedLegos = useMemo(() => {
       return droppedLegos.map((lego, index) => (

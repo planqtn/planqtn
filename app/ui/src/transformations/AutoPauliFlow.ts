@@ -1,29 +1,38 @@
 import { cloneDeep } from "lodash";
-import { Connection, DroppedLego } from "../lib/types.ts";
-import { TensorNetwork } from "../lib/TensorNetwork.ts";
+import { DroppedLego, Connection } from "../lib/types.ts";
+import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork.ts";
 
 /**
+ * Core function that can be called directly with parameters (for tests)
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.
- * @param tensorNetwork
- * @param connections
- * @param setDroppedLegos
- * @param setTensorNetwork
+ * @param changedLego - The lego that was changed
+ * @param droppedLegos - All dropped legos
+ * @param connections - All connections
+ * @param setDroppedLegos - Function to update dropped legos
+ * @param setTensorNetwork - Function to update tensor network
  */
 export function simpleAutoFlow(
-  changedLego: DroppedLego | null,
-  tensorNetwork: TensorNetwork | null,
+  changedLego: DroppedLego,
+  droppedLegos: DroppedLego[],
   connections: Connection[],
-  setDroppedLegos: (updateFn: (prev: DroppedLego[]) => DroppedLego[]) => void,
+  setDroppedLegos: (updater: (prev: DroppedLego[]) => DroppedLego[]) => void,
   setTensorNetwork: (
-    updateFn: (prev: TensorNetwork | null) => TensorNetwork | null
+    updater: (prev: TensorNetwork | null) => TensorNetwork | null
   ) => void
 ): void {
-  if (!tensorNetwork) {
+  if (!changedLego) {
     return;
   }
+
+  const selectedTensorNetwork = findConnectedComponent(
+    changedLego,
+    droppedLegos,
+    connections
+  );
+
   let count = 0;
   let changed = true;
-  let tnLegos = cloneDeep(tensorNetwork.legos);
+  let tnLegos = cloneDeep(selectedTensorNetwork.legos);
   const seenLegos = new Set<string>();
   const updatedLegosMap: Map<string, number[]> = new Map();
 

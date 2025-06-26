@@ -67,16 +67,9 @@ import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
 import { useLegoStore } from "../stores/legoStore.ts";
 import { useConnectionStore } from "../stores/connectionStore.ts";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore.ts";
 
 interface DetailsPanelProps {
-  tensorNetwork: TensorNetwork | null;
-  setTensorNetwork: (
-    value:
-      | TensorNetwork
-      | null
-      | ((prev: TensorNetwork | null) => TensorNetwork | null)
-  ) => void;
-
   setError: (error: string) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
   operationHistory: OperationHistory;
@@ -124,8 +117,6 @@ interface DetailsPanelProps {
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
-  tensorNetwork: tensorNetwork,
-  setTensorNetwork: setTensorNetwork,
   setError,
   fuseLegos,
   operationHistory,
@@ -140,6 +131,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 }) => {
   const { connections, setConnections } = useConnectionStore();
   const { droppedLegos, setDroppedLegos } = useLegoStore();
+  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [, setSelectedMatrixRows] = useState<number[]>([]);
@@ -357,16 +349,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         setTensorNetwork(new TensorNetwork([updatedLego], connections));
         encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
 
-        const selectedNetwork = findConnectedComponent(
-          updatedLego,
-          updatedDroppedLegos,
-          connections
-        );
         simpleAutoFlow(
           updatedLego,
-          selectedNetwork,
+          updatedDroppedLegos,
           connections,
-          (updateFn) => setDroppedLegos(updateFn(updatedDroppedLegos)),
+          setDroppedLegos,
           setTensorNetwork
         );
       }

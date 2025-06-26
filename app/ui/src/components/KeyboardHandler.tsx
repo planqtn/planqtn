@@ -5,13 +5,12 @@ import { TensorNetwork } from "../lib/TensorNetwork";
 import { OperationHistory } from "../lib/OperationHistory";
 import { useLegoStore } from "../stores/legoStore";
 import { useConnectionStore } from "../stores/connectionStore";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 
 interface KeyboardHandlerProps {
   hideConnectedLegs: boolean;
-  tensorNetwork: TensorNetwork | null;
   operationHistory: OperationHistory;
   newInstanceId: () => string;
-  onSetTensorNetwork: (network: unknown) => void;
   onSetAltKeyPressed: (pressed: boolean) => void;
   onEncodeCanvasState: (
     legos: DroppedLego[],
@@ -36,10 +35,8 @@ interface KeyboardHandlerProps {
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   hideConnectedLegs,
-  tensorNetwork,
   operationHistory,
   newInstanceId,
-  onSetTensorNetwork,
   onSetAltKeyPressed,
   onEncodeCanvasState,
   onUndo,
@@ -55,6 +52,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   const { droppedLegos, addDroppedLegos, removeDroppedLegos } = useLegoStore();
   const { connections, addConnections, removeConnections } =
     useConnectionStore();
+  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -256,7 +254,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           removeDroppedLegos(legosToRemove.map((l) => l.instanceId));
 
           // Clear selection states
-          onSetTensorNetwork(null);
+          setTensorNetwork(null);
 
           // Update URL state
           onEncodeCanvasState(
@@ -297,7 +295,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
 
           tensorNetwork.signature = onCreateNetworkSignature(tensorNetwork);
 
-          onSetTensorNetwork(tensorNetwork);
+          setTensorNetwork(tensorNetwork);
         }
       } else if (e.key === "Escape") {
         // Dismiss error message when Escape is pressed
@@ -357,7 +355,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     tensorNetwork,
     operationHistory,
     newInstanceId,
-    onSetTensorNetwork,
+    setTensorNetwork,
     onSetAltKeyPressed,
     onEncodeCanvasState,
     onUndo,
