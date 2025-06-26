@@ -12,9 +12,11 @@ export interface ModalState {
   // Custom lego dialog
   customLegoDialog: boolean;
 
+  // Auth dialog
+  authDialog: boolean;
+
   // Other modals can be added here later
   dynamicLegoDialog: boolean;
-  authDialog: boolean;
   runtimeConfigDialog: boolean;
   weightEnumeratorDialog: boolean;
   pythonCodeModal: boolean;
@@ -28,12 +30,19 @@ export interface CustomLegoState {
   position: { x: number; y: number };
 }
 
+export interface AuthState {
+  connectionError?: string;
+}
+
 interface ModalStore extends ModalState {
   // Loading state
   loadingState: LoadingState;
 
   // Custom lego state
   customLegoState: CustomLegoState;
+
+  // Auth state
+  authState: AuthState;
 
   // Network dialog actions
   openCssTannerDialog: () => void;
@@ -50,6 +59,10 @@ interface ModalStore extends ModalState {
   // Custom lego dialog actions
   openCustomLegoDialog: (position: { x: number; y: number }) => void;
   closeCustomLegoDialog: () => void;
+
+  // Auth dialog actions
+  openAuthDialog: (connectionError?: string) => void;
+  closeAuthDialog: () => void;
 
   // Generic actions for future modals
   openModal: (modalName: keyof ModalState) => void;
@@ -78,10 +91,15 @@ const initialCustomLegoState: CustomLegoState = {
   position: { x: 0, y: 0 }
 };
 
+const initialAuthState: AuthState = {
+  connectionError: undefined
+};
+
 export const useModalStore = create<ModalStore>((set) => ({
   ...initialState,
   loadingState: initialLoadingState,
   customLegoState: initialCustomLegoState,
+  authState: initialAuthState,
 
   // Network dialog actions
   openCssTannerDialog: () => set({ cssTannerDialog: true }),
@@ -115,6 +133,18 @@ export const useModalStore = create<ModalStore>((set) => ({
       customLegoState: { position: { x: 0, y: 0 } }
     }),
 
+  // Auth dialog actions
+  openAuthDialog: (connectionError?: string) =>
+    set({
+      authDialog: true,
+      authState: { connectionError }
+    }),
+  closeAuthDialog: () =>
+    set({
+      authDialog: false,
+      authState: { connectionError: undefined }
+    }),
+
   // Generic actions
   openModal: (modalName: keyof ModalState) =>
     set((state) => ({ ...state, [modalName]: true })),
@@ -124,6 +154,7 @@ export const useModalStore = create<ModalStore>((set) => ({
     set({
       ...initialState,
       loadingState: initialLoadingState,
-      customLegoState: initialCustomLegoState
+      customLegoState: initialCustomLegoState,
+      authState: initialAuthState
     })
 }));

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { useModalStore } from "../stores/modalStore";
 import { TannerDialog } from "./TannerDialog";
 import LoadingModal from "./LoadingModal";
+import AuthDialog from "./AuthDialog";
 import { NetworkService, NetworkCreationOptions } from "../lib/networkService";
 import {
   CustomLegoService,
@@ -31,12 +32,15 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     mspDialog,
     loadingModal,
     customLegoDialog,
+    authDialog,
     loadingState,
     customLegoState,
+    authState,
     closeCssTannerDialog,
     closeTannerDialog,
     closeMspDialog,
-    closeCustomLegoDialog
+    closeCustomLegoDialog,
+    closeAuthDialog
   } = useModalStore();
 
   const toast = useToast();
@@ -192,6 +196,13 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
         onClose={closeCustomLegoDialog}
         onSubmit={handleCustomLegoSubmit}
         title="Create Custom Lego"
+      />
+
+      {/* Auth Dialog */}
+      <AuthDialog
+        isOpen={authDialog}
+        onClose={closeAuthDialog}
+        connectionError={authState.connectionError}
       />
 
       {/* Additional modals will be added here as we refactor them */}

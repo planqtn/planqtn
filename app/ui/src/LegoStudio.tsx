@@ -62,7 +62,7 @@ import { findConnectedComponent } from "./lib/TensorNetwork";
 import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
-import AuthDialog from "./components/AuthDialog";
+
 import { userContextSupabase } from "./supabaseClient";
 import { User } from "@supabase/supabase-js";
 import { simpleAutoFlow } from "./transformations/AutoPauliFlow";
@@ -293,8 +293,12 @@ const LegoStudioView: React.FC = () => {
     y: number;
   } | null>(null);
   // Use modal store for network dialogs
-  const { openCustomLegoDialog, openLoadingModal, closeLoadingModal } =
-    useModalStore();
+  const {
+    openCustomLegoDialog,
+    openLoadingModal,
+    closeLoadingModal,
+    openAuthDialog
+  } = useModalStore();
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
     setIsLegoPanelCollapsed(collapsed);
@@ -316,7 +320,6 @@ const LegoStudioView: React.FC = () => {
   const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   // Memoize isUserLoggedIn to prevent BuildingBlocksPanel re-renders
   const isUserLoggedIn = useMemo(() => !!currentUser, [currentUser]);
@@ -738,7 +741,6 @@ const LegoStudioView: React.FC = () => {
       y: e.clientY - e.currentTarget.getBoundingClientRect().top
     };
 
-    console.log("draggedLego", draggedLego);
     if (draggedLego.id === "custom") {
       openCustomLegoDialog(dropPosition);
       return;
@@ -1833,12 +1835,12 @@ const LegoStudioView: React.FC = () => {
         });
 
         // Still open the dialog to show the connection error message
-        setAuthDialogOpen(true);
+        openAuthDialog(status.message);
         return;
       }
 
       // If no connection issues, open the auth dialog normally
-      setAuthDialogOpen(true);
+      openAuthDialog();
     } finally {
       closeLoadingModal();
     }
@@ -2817,17 +2819,6 @@ const LegoStudioView: React.FC = () => {
           newInstanceId={newInstanceId}
         />
 
-        {authDialogOpen && (
-          <AuthDialog
-            isOpen={authDialogOpen}
-            onClose={() => setAuthDialogOpen(false)}
-            connectionError={
-              supabaseStatus && !supabaseStatus.isHealthy
-                ? supabaseStatus.message
-                : undefined
-            }
-          />
-        )}
         {isRuntimeConfigOpen && (
           <RuntimeConfigDialog
             isOpen={isRuntimeConfigOpen}
