@@ -1,9 +1,10 @@
 import React, { memo, useMemo, useCallback } from "react";
-import { Connection, DroppedLego, LegDragState } from "../lib/types";
+import { Connection, DroppedLego, LegDragState, DragState } from "../lib/types";
 import { LegStyle } from "../LegoStyles";
 import { calculateLegPosition } from "./DroppedLegoDisplay";
 import { useLegoStore } from "../stores/legoStore";
 import { useConnectionStore } from "../stores/connectionStore";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 
 interface ConnectionsLayerProps {
   hideConnectedLegs: boolean;
@@ -13,6 +14,7 @@ interface ConnectionsLayerProps {
     e: React.MouseEvent,
     connection: Connection
   ) => void;
+  dragState?: DragState;
 }
 
 // Move this outside to avoid recreation
@@ -33,10 +35,34 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
     hideConnectedLegs,
     legDragState,
     hoveredConnection,
-    onConnectionDoubleClick
+    onConnectionDoubleClick,
+    dragState
   }) => {
     const { connections } = useConnectionStore();
     const { droppedLegos } = useLegoStore();
+    const { tensorNetwork } = useTensorNetworkStore();
+
+    // Determine which legos are being dragged to hide their connections
+    const draggedLegoIds = useMemo(() => {
+      const draggedIds = new Set<string>();
+
+      // Add individually dragged lego
+      if (dragState?.isDragging && dragState.draggedLegoIndex >= 0) {
+        const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+        if (draggedLego) {
+          draggedIds.add(draggedLego.instanceId);
+        }
+      }
+
+      // Add group dragged legos (selected legos)
+      if (dragState?.isDragging && tensorNetwork?.legos) {
+        tensorNetwork.legos.forEach((lego) => {
+          draggedIds.add(lego.instanceId);
+        });
+      }
+
+      return draggedIds;
+    }, [dragState, droppedLegos, tensorNetwork]);
 
     // Memoize lego lookup map for performance
     const legoMap = useMemo(() => {
@@ -93,6 +119,13 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
     // Memoize rendered connections with optimized calculations
     const renderedConnections = useMemo(() => {
       return connections
+        .filter((conn) => {
+          // Hide connections involving dragged legos
+          return (
+            !draggedLegoIds.has(conn.from.legoId) &&
+            !draggedLegoIds.has(conn.to.legoId)
+          );
+        })
         .map((conn) => {
           const fromLego = legoMap.get(conn.from.legoId);
           const toLego = legoMap.get(conn.to.legoId);
@@ -277,7 +310,8 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
       connectedLegsMap,
       legStylesMap,
       hideConnectedLegs,
-      isConnectionHovered
+      isConnectionHovered,
+      draggedLegoIds
     ]);
 
     // Memoize temporary drag line

@@ -219,56 +219,70 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
   return ReactDOM.createPortal(
     <>
       {/* CSS Tanner Dialog */}
-      <TannerDialog
-        isOpen={cssTannerDialog}
-        onClose={closeCssTannerDialog}
-        onSubmit={handleCssTannerSubmit}
-        title="Create CSS Tanner Network"
-        cssOnly={true}
-      />
+      {cssTannerDialog && (
+        <TannerDialog
+          isOpen={cssTannerDialog}
+          onClose={closeCssTannerDialog}
+          onSubmit={handleCssTannerSubmit}
+          title="Create CSS Tanner Network"
+          cssOnly={true}
+        />
+      )}
 
       {/* Tanner Dialog */}
-      <TannerDialog
-        isOpen={tannerDialog}
-        onClose={closeTannerDialog}
-        onSubmit={handleTannerSubmit}
-        title="Create Tanner Network"
-      />
+      {tannerDialog && (
+        <TannerDialog
+          isOpen={tannerDialog}
+          onClose={closeTannerDialog}
+          onSubmit={handleTannerSubmit}
+          title="Create Tanner Network"
+        />
+      )}
 
       {/* MSP Dialog */}
-      <TannerDialog
-        isOpen={mspDialog}
-        onClose={closeMspDialog}
-        onSubmit={handleMspSubmit}
-        title="Measurement State Prep Network"
-      />
+      {mspDialog && (
+        <TannerDialog
+          isOpen={mspDialog}
+          onClose={closeMspDialog}
+          onSubmit={handleMspSubmit}
+          title="Measurement State Prep Network"
+        />
+      )}
 
       {/* Loading Modal */}
-      <LoadingModal isOpen={loadingModal} message={loadingState.message} />
+      {loadingModal && (
+        <LoadingModal isOpen={loadingModal} message={loadingState.message} />
+      )}
 
       {/* Custom Lego Dialog */}
-      <TannerDialog
-        isOpen={customLegoDialog}
-        onClose={closeCustomLegoDialog}
-        onSubmit={handleCustomLegoSubmit}
-        title="Create Custom Lego"
-      />
+      {customLegoDialog && (
+        <TannerDialog
+          isOpen={customLegoDialog}
+          onClose={closeCustomLegoDialog}
+          onSubmit={handleCustomLegoSubmit}
+          title="Create Custom Lego"
+        />
+      )}
 
       {/* Auth Dialog */}
-      <AuthDialog
-        isOpen={authDialog}
-        onClose={closeAuthDialog}
-        connectionError={authState.connectionError}
-      />
+      {authDialog && (
+        <AuthDialog
+          isOpen={authDialog}
+          onClose={closeAuthDialog}
+          connectionError={authState.connectionError}
+        />
+      )}
 
       {/* Runtime Config Dialog */}
-      <RuntimeConfigDialog
-        isOpen={runtimeConfigDialog}
-        onClose={closeRuntimeConfigDialog}
-        onSubmit={handleRuntimeConfigSubmit}
-        isLocal={runtimeConfigState.isLocal}
-        initialConfig={runtimeConfigState.initialConfig}
-      />
+      {runtimeConfigDialog && (
+        <RuntimeConfigDialog
+          isOpen={runtimeConfigDialog}
+          onClose={closeRuntimeConfigDialog}
+          onSubmit={handleRuntimeConfigSubmit}
+          isLocal={runtimeConfigState.isLocal}
+          initialConfig={runtimeConfigState.initialConfig}
+        />
+      )}
 
       {/* Weight Enumerator Dialog */}
       {weightEnumeratorDialog && weightEnumeratorState.subNetwork && (

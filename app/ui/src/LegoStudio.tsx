@@ -80,6 +80,7 @@ import { useModalStore } from "./stores/modalStore";
 import { RuntimeConfigService } from "./lib/runtimeConfigService";
 import { ModalRoot } from "./components/ModalRoot";
 import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
+import { DragProxy } from "./components/DragProxy";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Add these helper functions near the top of the file
@@ -267,6 +268,7 @@ const LegoStudioView: React.FC = () => {
     currentY: 0,
     justFinished: false
   });
+  const [currentMousePos, setCurrentMousePos] = useState({ x: 0, y: 0 });
   const [canvasId, setCanvasId] = useState<string>("");
   const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
     Map<string, ParityCheckMatrix>
@@ -957,6 +959,7 @@ const LegoStudioView: React.FC = () => {
       );
 
       if (isPartOfSelection) {
+        // Dragging a selected lego - move the whole group
         const selectedLegos = tensorNetwork?.legos || [];
         const currentPositions: {
           [instanceId: string]: { x: number; y: number };
@@ -969,6 +972,14 @@ const LegoStudioView: React.FC = () => {
           legoInstanceIds: selectedLegos.map((l) => l.instanceId),
           originalPositions: currentPositions
         });
+      } else {
+        // Dragging a non-selected lego - clear old selection and select this lego
+        const newNetwork = new TensorNetwork([lego], []);
+        newNetwork.signature = createNetworkSignature(newNetwork);
+        setTensorNetwork(newNetwork);
+
+        // Clear any existing group drag state
+        setGroupDragState(null);
       }
 
       setDragState({
@@ -1121,57 +1132,17 @@ const LegoStudioView: React.FC = () => {
     });
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const rect = canvasRef.current?.getBoundingClientRect();
+  // Simple throttled state updates
+  const lastDragUpdate = useRef<number>(0);
+  const performDragUpdate = useCallback(
+    (e: React.MouseEvent) => {
+      const now = Date.now();
+      if (now - lastDragUpdate.current < 16) return; // ~60fps throttling
+      lastDragUpdate.current = now;
 
-    if (!rect) return;
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
 
-    // Selection box dragging is now handled by SelectionManager
-    if (selectionBox.isSelecting) {
-      return;
-    }
-
-    if (canvasDragState.isDragging) {
-      const newX = e.clientX - rect.left;
-      const newY = e.clientY - rect.top;
-      const deltaX = newX - canvasDragState.startX;
-      const deltaY = newY - canvasDragState.startY;
-
-      setCanvasDragState((prev) => ({
-        ...prev,
-        startX: newX,
-        startY: newY,
-        currentX: newX,
-        currentY: newY
-      }));
-
-      const movedLegos = droppedLegos.map((lego) => ({
-        ...lego,
-        x: lego.x + deltaX,
-        y: lego.y + deltaY
-      }));
-      setDroppedLegos(movedLegos);
-      encodeCanvasState(movedLegos, connections, hideConnectedLegs);
-    }
-
-    // Check if we should start dragging
-    if (!dragState.isDragging && dragState.draggedLegoIndex !== -1) {
-      const deltaX = e.clientX - dragState.startX;
-      const deltaY = e.clientY - dragState.startY;
-
-      // Only start dragging if the mouse has moved more than 3 pixels
-      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
-        setDragState((prev) => ({
-          ...prev,
-          isDragging: true
-        }));
-      }
-      return;
-    }
-
-    // Handle Lego dragging
-    if (dragState.isDragging) {
       const deltaX = e.clientX - dragState.startX;
       const deltaY = e.clientY - dragState.startY;
       const newX = dragState.originalX + deltaX;
@@ -1209,7 +1180,7 @@ const LegoStudioView: React.FC = () => {
         }
       }
 
-      // Check if we're hovering over a connection (for two-legged legos) or a dangling leg (for stoppers)
+      // Handle connection hover detection
       const draggedLego = updatedLegos[dragState.draggedLegoIndex];
       if (draggedLego) {
         const draggedLegoHasConnections = connections.some((conn) =>
@@ -1302,6 +1273,72 @@ const LegoStudioView: React.FC = () => {
           }
         }
       }
+    },
+    [dragState, groupDragState, droppedLegos, connections, tensorNetwork]
+  );
+
+  // Lightweight mouse position tracking (runs every frame)
+  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const rect = canvasRef.current?.getBoundingClientRect();
+
+    if (!rect) return;
+
+    // Always update mouse position for drag proxy
+    setCurrentMousePos({ x: e.clientX, y: e.clientY });
+
+    // Selection box dragging is now handled by SelectionManager
+    if (selectionBox.isSelecting) {
+      return;
+    }
+
+    if (canvasDragState.isDragging) {
+      const newX = e.clientX - rect.left;
+      const newY = e.clientY - rect.top;
+      const deltaX = newX - canvasDragState.startX;
+      const deltaY = newY - canvasDragState.startY;
+
+      setCanvasDragState((prev) => ({
+        ...prev,
+        startX: newX,
+        startY: newY,
+        currentX: newX,
+        currentY: newY
+      }));
+
+      const movedLegos = droppedLegos.map((lego) => ({
+        ...lego,
+        x: lego.x + deltaX,
+        y: lego.y + deltaY
+      }));
+      setDroppedLegos(movedLegos);
+      encodeCanvasState(movedLegos, connections, hideConnectedLegs);
+    }
+
+    // Check if we should start dragging
+    if (!dragState.isDragging && dragState.draggedLegoIndex !== -1) {
+      const deltaX = e.clientX - dragState.startX;
+      const deltaY = e.clientY - dragState.startY;
+
+      // Only start dragging if the mouse has moved more than 3 pixels
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+        setDragState((prev) => ({
+          ...prev,
+          isDragging: true
+        }));
+      }
+      return;
+    }
+
+    // Handle Lego dragging - use original logic but throttled
+    if (dragState.isDragging) {
+      // Only update state at 60fps for performance
+      const now = Date.now();
+      if (now - lastDragUpdate.current >= 16) {
+        lastDragUpdate.current = now;
+        performDragUpdate(e);
+      }
+      return;
     }
 
     // Handle leg dragging
@@ -1366,7 +1403,42 @@ const LegoStudioView: React.FC = () => {
       const deltaY = e.clientY - dragState.startY;
       const newX = dragState.originalX + deltaX;
       const newY = dragState.originalY + deltaY;
-      let updatedLegos = droppedLegos;
+
+      // Apply final positions immediately (bypass throttling)
+      const finalLegos = droppedLegos.map((lego, index) => {
+        if (
+          groupDragState &&
+          groupDragState.legoInstanceIds.includes(lego.instanceId)
+        ) {
+          // Move all selected legos together
+          const originalPos = groupDragState.originalPositions[lego.instanceId];
+          return {
+            ...lego,
+            x: originalPos.x + deltaX,
+            y: originalPos.y + deltaY
+          };
+        } else if (index === dragState.draggedLegoIndex) {
+          return {
+            ...lego,
+            x: newX,
+            y: newY
+          };
+        }
+        return lego;
+      });
+
+      // Update state with final positions
+      setDroppedLegos(finalLegos);
+
+      // Update tensor network if group drag
+      if (groupDragState && tensorNetwork) {
+        const updatedNetworkLegos = finalLegos.filter((lego) =>
+          groupDragState.legoInstanceIds.includes(lego.instanceId)
+        );
+        tensorNetwork.legos = updatedNetworkLegos;
+      }
+
+      let updatedLegos = finalLegos;
       let updatedConnections = connections;
 
       // Check if we're dropping on a connection (for two-legged legos) or a dangling leg (for stoppers)
@@ -1452,14 +1524,14 @@ const LegoStudioView: React.FC = () => {
           const groupMoves = groupDragState.legoInstanceIds.map(
             (instanceId) => ({
               oldLego: {
-                ...(droppedLegos.find(
+                ...(finalLegos.find(
                   (lego) => lego.instanceId === instanceId
                 )! as DroppedLego),
                 x: groupDragState.originalPositions[instanceId].x,
                 y: groupDragState.originalPositions[instanceId].y
               },
               newLego: {
-                ...(droppedLegos.find(
+                ...(finalLegos.find(
                   (lego) => lego.instanceId === instanceId
                 )! as DroppedLego),
                 x: groupDragState.originalPositions[instanceId].x + deltaX,
@@ -1497,16 +1569,12 @@ const LegoStudioView: React.FC = () => {
               legosToUpdate: [
                 {
                   oldLego: {
-                    ...(droppedLegos[
-                      dragState.draggedLegoIndex
-                    ] as DroppedLego),
+                    ...(finalLegos[dragState.draggedLegoIndex] as DroppedLego),
                     x: dragState.originalX,
                     y: dragState.originalY
                   },
                   newLego: {
-                    ...(droppedLegos[
-                      dragState.draggedLegoIndex
-                    ] as DroppedLego),
+                    ...(finalLegos[dragState.draggedLegoIndex] as DroppedLego),
                     x: newX,
                     y: newY
                   }
@@ -2587,6 +2655,7 @@ const LegoStudioView: React.FC = () => {
                     legDragState={legDragState}
                     hoveredConnection={hoveredConnection}
                     onConnectionDoubleClick={handleConnectionDoubleClick}
+                    dragState={dragState}
                   />
                   {/* Selection Manager */}
                   <SelectionManager
@@ -2608,6 +2677,14 @@ const LegoStudioView: React.FC = () => {
                     onLegoMouseDown={handleLegoMouseDown}
                     onLegoClick={handleLegoClick}
                     onLegClick={handleLegClick}
+                  />
+                  {/* Drag Proxy for smooth dragging */}
+                  <DragProxy
+                    dragState={dragState}
+                    groupDragState={groupDragState}
+                    droppedLegos={droppedLegos}
+                    mouseX={currentMousePos.x}
+                    mouseY={currentMousePos.y}
                   />
                 </Box>
               </Box>
