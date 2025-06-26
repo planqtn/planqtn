@@ -27,6 +27,7 @@ import axios, { AxiosError } from "axios";
 import { getLegoStyle } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
+import { KeyboardHandler } from "./components/KeyboardHandler";
 import {
   CanvasDragState,
   Connection,
@@ -1823,310 +1824,9 @@ const LegoStudioView: React.FC = () => {
     return sig;
   };
 
-  // Update keyboard event listener for both Ctrl+Z, Ctrl+Y and Delete
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "c" && tensorNetwork) {
-        e.preventDefault();
-        const networkToCopy = tensorNetwork;
+  // Keyboard handling moved to KeyboardHandler component
 
-        const jsonStr = JSON.stringify(networkToCopy);
-        navigator.clipboard
-          .writeText(jsonStr)
-          .then(() => {
-            toast({
-              title: "Copied to clipboard",
-              description: "Network data has been copied",
-              status: "success",
-              duration: 2000,
-              isClosable: true
-            });
-          })
-          .catch((error) => {
-            toast({
-              title: "Copy failed",
-              description: "Failed to copy network data (" + error + ")",
-              status: "error",
-              duration: 2000,
-              isClosable: true
-            });
-          });
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
-        e.preventDefault();
-        try {
-          const clipText = await navigator.clipboard.readText();
-          const pastedData = JSON.parse(clipText);
-
-          if (
-            pastedData.legos &&
-            Array.isArray(pastedData.legos) &&
-            pastedData.legos.length > 0
-          ) {
-            // Get canvas element and its dimensions
-            const canvasPanel = document.querySelector("#main-panel");
-            if (!canvasPanel) return;
-
-            const canvasRect = canvasPanel.getBoundingClientRect();
-
-            // Determine drop position
-            let dropX: number, dropY: number;
-
-            if (mousePositionRef.current) {
-              // Use current mouse position
-              dropX = mousePositionRef.current.x;
-              dropY = mousePositionRef.current.y;
-            } else {
-              // Use random position around canvas center
-              const centerX = canvasRect.width / 2;
-              const centerY = canvasRect.height / 2;
-              const randomOffset = 50; // pixels
-
-              dropX = centerX + (Math.random() * 2 - 1) * randomOffset;
-              dropY = centerY + (Math.random() * 2 - 1) * randomOffset;
-            }
-
-            // Create a mapping from old instance IDs to new ones
-            const startingId = parseInt(newInstanceId());
-            const instanceIdMap = new Map<string, string>();
-
-            // Create new legos with new instance IDs
-            const newLegos = pastedData.legos.map(
-              (l: DroppedLego, idx: number) => {
-                const newId = String(startingId + idx);
-                instanceIdMap.set(l.instanceId, newId);
-                return {
-                  ...l,
-                  instanceId: newId,
-                  x: l.x + dropX - pastedData.legos[0].x, // Maintain relative positions
-                  y: l.y + dropY - pastedData.legos[0].y,
-                  style: getLegoStyle(l.id, l.parity_check_matrix[0].length / 2)
-                };
-              }
-            );
-
-            // Create new connections with updated instance IDs
-            const newConnections = (pastedData.connections || []).map(
-              (conn: Connection) => {
-                return new Connection(
-                  {
-                    legoId: instanceIdMap.get(conn.from.legoId)!,
-                    legIndex: conn.from.legIndex
-                  },
-                  {
-                    legoId: instanceIdMap.get(conn.to.legoId)!,
-                    legIndex: conn.to.legIndex
-                  }
-                );
-              }
-            );
-
-            // Update state
-            setDroppedLegos((prev) => [...prev, ...newLegos]);
-            setConnections((prev) => [...prev, ...newConnections]);
-
-            // Add to history
-            operationHistory.addOperation({
-              type: "add",
-              data: {
-                legosToAdd: newLegos,
-                connectionsToAdd: newConnections
-              }
-            });
-
-            // Update URL state
-            encodeCanvasState(
-              [...droppedLegos, ...newLegos],
-              [...connections, ...newConnections],
-              hideConnectedLegs
-            );
-
-            toast({
-              title: "Paste successful",
-              description: `Pasted ${newLegos.length} lego${
-                newLegos.length > 1 ? "s" : ""
-              }`,
-              status: "success",
-              duration: 2000,
-              isClosable: true
-            });
-          }
-        } catch (err) {
-          toast({
-            title: "Paste failed",
-            description: "Invalid network data in clipboard (" + err + ")",
-            status: "error",
-            duration: 2000,
-            isClosable: true
-          });
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-        e.preventDefault();
-        handleUndo();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === "y" || (e.shiftKey && e.key === "Z"))
-      ) {
-        e.preventDefault();
-        handleRedo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
-        e.preventDefault();
-        if (droppedLegos.length > 0) {
-          // Create a tensor network from all legos
-          const selectedLegoIds = new Set(
-            droppedLegos.map((lego) => lego.instanceId)
-          );
-
-          // Collect only internal connections between selected legos
-          const internalConnections = connections.filter(
-            (conn) =>
-              selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId)
-          );
-
-          const tensorNetwork = new TensorNetwork(
-            droppedLegos,
-            internalConnections
-          );
-
-          tensorNetwork.signature = createNetworkSignature(tensorNetwork);
-
-          setTensorNetwork(tensorNetwork);
-        }
-      } else if (e.key === "Delete" || e.key === "Backspace") {
-        // Handle deletion of selected legos
-        let legosToRemove: DroppedLego[] = [];
-
-        if (tensorNetwork) {
-          legosToRemove = tensorNetwork.legos;
-        }
-
-        if (legosToRemove.length > 0) {
-          // Get all connections involving the legos to be removed
-          const connectionsToRemove = connections.filter((conn) =>
-            legosToRemove.some(
-              (lego) =>
-                conn.from.legoId === lego.instanceId ||
-                conn.to.legoId === lego.instanceId
-            )
-          );
-
-          // Add to history
-          operationHistory.addOperation({
-            type: "remove",
-            data: {
-              legosToRemove: legosToRemove,
-              connectionsToRemove: connectionsToRemove
-            }
-          });
-
-          // Remove the connections and legos
-          setConnections((prev) =>
-            prev.filter(
-              (conn) =>
-                !legosToRemove.some(
-                  (lego) =>
-                    conn.from.legoId === lego.instanceId ||
-                    conn.to.legoId === lego.instanceId
-                )
-            )
-          );
-          setDroppedLegos((prev) =>
-            prev.filter(
-              (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
-            )
-          );
-
-          // Clear selection states
-          setTensorNetwork(null);
-
-          // Update URL state
-          encodeCanvasState(
-            droppedLegos.filter(
-              (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
-            ),
-            connections.filter(
-              (conn) =>
-                !legosToRemove.some(
-                  (l) =>
-                    conn.from.legoId === l.instanceId ||
-                    conn.to.legoId === l.instanceId
-                )
-            ),
-            hideConnectedLegs
-          );
-        }
-      } else if (e.key === "Escape") {
-        // Dismiss error message when Escape is pressed
-        setError("");
-      } else if (e.key === "Alt") {
-        e.preventDefault();
-        setAltKeyPressed(true);
-      } else if (e.key === "f") {
-        e.preventDefault();
-        if (tensorNetwork) {
-          fuseLegos(tensorNetwork.legos);
-        }
-      } else if (e.key === "p") {
-        e.preventDefault();
-        if (
-          tensorNetwork &&
-          (tensorNetwork.legos[0].id === "x_rep_code" ||
-            tensorNetwork.legos[0].id === "z_rep_code")
-        ) {
-          handlePullOutSameColoredLeg(tensorNetwork.legos[0]);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    handleUndo,
-    handleRedo,
-    tensorNetwork,
-    connections,
-    droppedLegos,
-    operationHistory.addOperation,
-    encodeCanvasState,
-    hideConnectedLegs
-  ]);
-
-  useEffect(() => {
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "Alt") {
-        setAltKeyPressed(false);
-      }
-    };
-    window.addEventListener("keyup", handleKeyUp);
-    return () => window.removeEventListener("keyup", handleKeyUp);
-  }, []);
-
-  useEffect(() => {
-    const handleBlur = () => {
-      setCanvasDragState((prev) => ({
-        ...prev,
-        isDragging: false
-      }));
-      setAltKeyPressed(false);
-    };
-    window.addEventListener("blur", handleBlur);
-    return () => window.removeEventListener("blur", handleBlur);
-  }, []);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      setCanvasDragState((prev) => ({
-        ...prev,
-        isDragging: false
-      }));
-      setAltKeyPressed(false);
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, []);
+  // KeyUp, Blur, and Focus handling moved to KeyboardHandler component
 
   useEffect(() => {
     if (!userContextSupabase) {
@@ -3140,6 +2840,40 @@ const LegoStudioView: React.FC = () => {
 
   return (
     <>
+      <KeyboardHandler
+        droppedLegos={droppedLegos}
+        connections={connections}
+        hideConnectedLegs={hideConnectedLegs}
+        tensorNetwork={tensorNetwork}
+        operationHistory={operationHistory}
+        newInstanceId={newInstanceId}
+        onSetDroppedLegos={setDroppedLegos}
+        onSetConnections={setConnections}
+        onSetTensorNetwork={(network) =>
+          setTensorNetwork(network as TensorNetwork | null)
+        }
+        onSetAltKeyPressed={setAltKeyPressed}
+        onEncodeCanvasState={encodeCanvasState}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onSetError={setError}
+        onFuseLegos={fuseLegos}
+        onPullOutSameColoredLeg={handlePullOutSameColoredLeg}
+        onCreateNetworkSignature={createNetworkSignature}
+        onSetCanvasDragState={(state) =>
+          setCanvasDragState((prev) => ({
+            ...prev,
+            ...(state as Partial<typeof prev>)
+          }))
+        }
+        onToast={(props) =>
+          toast({
+            ...props,
+            status: props.status as "success" | "error" | "warning" | "info"
+          })
+        }
+      />
+
       <VStack spacing={0} align="stretch" h="100vh">
         {fatalError &&
           (() => {
