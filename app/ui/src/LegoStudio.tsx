@@ -18,7 +18,6 @@ import {
   HStack
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
-import { useCanvasMouseHandler } from "./hooks/useCanvasMouseHandler";
 import {
   Panel,
   PanelGroup,
@@ -36,7 +35,6 @@ import {
   SelectionManagerRef
 } from "./components/SelectionManager";
 import {
-  CanvasDragState,
   Connection,
   DraggingStage,
   DragState,
@@ -83,6 +81,8 @@ import {
   findClosestDanglingLeg,
   pointToLineDistance
 } from "./lib/canvasCalculations.ts";
+import { CanvasMouseHandler } from "./components/CanvasMouseHandler.tsx";
+import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Memoized Left Panel Component
@@ -143,7 +143,6 @@ const LegoStudioView: React.FC = () => {
     decodeCanvasState,
     canvasId,
     connections,
-    setConnections,
     removeConnections,
     setLegosAndConnections,
     hideConnectedLegs,
@@ -151,15 +150,11 @@ const LegoStudioView: React.FC = () => {
   } = useCanvasStore();
 
   const [error, setError] = useState<string>("");
-  const { legDragState, setLegDragState } = useLegDragStateStore();
-  const [canvasDragState, setCanvasDragState] = useState<CanvasDragState>({
-    isDragging: false,
-    startX: 0,
-    startY: 0,
-    currentX: 0,
-    currentY: 0
-  });
-  const [dragState, setDragState] = useState<DragState>({
+  const { legDragState } = useLegDragStateStore();
+
+  const { canvasDragState } = useCanvasDragStateStore();
+
+  const [dragState] = useState<DragState>({
     draggingStage: DraggingStage.NOT_DRAGGING,
     draggedLegoIndex: -1,
     startX: 0,
@@ -176,9 +171,7 @@ const LegoStudioView: React.FC = () => {
     new OperationHistory([])
   );
 
-  const [groupDragState, setGroupDragState] = useState<GroupDragState | null>(
-    null
-  );
+  const [groupDragState] = useState<GroupDragState | null>(null);
   const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
     isSelecting: false,
     startX: 0,
@@ -261,32 +254,6 @@ const LegoStudioView: React.FC = () => {
 
   const [showPythonCodeModal, setShowPythonCodeModal] = useState(false);
   const [pythonCode, setPythonCode] = useState("");
-
-  // Use the canvas mouse handler hook
-  const { handlers: canvasMouseHandlers } = useCanvasMouseHandler({
-    canvasRef: canvasRef as React.RefObject<HTMLDivElement>,
-    droppedLegos,
-    connections,
-    tensorNetwork,
-    selectionBox,
-    dragState,
-    groupDragState,
-    legDragState,
-    canvasDragState,
-    selectionManagerRef,
-    setDragState,
-    setGroupDragState,
-    setLegDragState,
-    setCanvasDragState,
-    setDroppedLegos,
-    setConnections,
-    setHoveredConnection,
-    setTensorNetwork,
-    hideConnectedLegs,
-    zoomLevel,
-    setZoomLevel,
-    altKeyPressed
-  });
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
@@ -1327,6 +1294,15 @@ const LegoStudioView: React.FC = () => {
         }
       />
 
+      <CanvasMouseHandler
+        canvasRef={canvasRef}
+        setHoveredConnection={setHoveredConnection}
+        selectionManagerRef={selectionManagerRef}
+        selectionBox={selectionBox}
+        zoomLevel={zoomLevel}
+        altKeyPressed={altKeyPressed}
+      />
+
       <VStack spacing={0} align="stretch" h="100vh">
         {fatalError &&
           (() => {
@@ -1398,18 +1374,13 @@ const LegoStudioView: React.FC = () => {
                   onDragLeave={handleCanvasDragLeave}
                   onDrop={handleDrop}
                   onDragEnd={handleDragEnd}
-                  onMouseMove={canvasMouseHandlers.onMouseMove}
-                  onWheel={canvasMouseHandlers.onMouseWheel}
-                  onMouseUp={canvasMouseHandlers.onMouseUp}
-                  onMouseLeave={canvasMouseHandlers.onMouseLeave}
                   onClick={handleCanvasClick}
-                  onMouseDown={canvasMouseHandlers.onMouseDown}
                   data-canvas="true"
                   style={{
                     userSelect: "none",
                     overflow: "hidden",
                     cursor: altKeyPressed
-                      ? canvasDragState.isDragging
+                      ? canvasDragState?.isDragging
                         ? "grabbing"
                         : "grab"
                       : "default"

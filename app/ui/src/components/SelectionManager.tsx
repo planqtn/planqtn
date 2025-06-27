@@ -17,7 +17,7 @@ interface SelectionManagerProps {
 }
 
 export interface SelectionManagerRef {
-  handleMouseDown: (e: React.MouseEvent) => void;
+  handleMouseDown: (e: MouseEvent) => void;
 }
 
 export const SelectionManager = memo(
@@ -138,7 +138,7 @@ export const SelectionManager = memo(
 
       // Mouse event handlers
       const handleMouseDown = useCallback(
-        (e: React.MouseEvent) => {
+        (e: MouseEvent) => {
           const rect = canvasRef.current?.getBoundingClientRect();
           if (!rect) return;
 
