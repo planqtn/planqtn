@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { DroppedLego } from "../lib/types";
+import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
 
 export interface DroppedLegosSlice {
   droppedLegos: DroppedLego[];
@@ -20,13 +21,16 @@ export interface DroppedLegosSlice {
 }
 
 export const createLegoSlice: StateCreator<
-  DroppedLegosSlice,
+  DroppedLegosSlice & EncodedCanvasStateSlice,
   [],
   [],
   DroppedLegosSlice
 > = (set, get) => ({
   droppedLegos: [],
   newInstanceId: () => {
+    if (get().droppedLegos.length === 0) {
+      return "1";
+    }
     return String(
       Math.max(...get().droppedLegos.map((lego) => parseInt(lego.instanceId))) +
         1
@@ -40,38 +44,52 @@ export const createLegoSlice: StateCreator<
       droppedLegos:
         typeof legos === "function" ? legos(state.droppedLegos) : legos
     }));
+    get().updateEncodedCanvasState();
   },
 
-  addDroppedLego: (lego: DroppedLego) =>
+  addDroppedLego: (lego: DroppedLego) => {
     set((state: DroppedLegosSlice) => ({
       droppedLegos: [...state.droppedLegos, lego]
-    })),
+    }));
+    get().updateEncodedCanvasState();
+  },
 
-  addDroppedLegos: (legos: DroppedLego[]) =>
+  addDroppedLegos: (legos: DroppedLego[]) => {
     set((state: DroppedLegosSlice) => ({
       droppedLegos: [...state.droppedLegos, ...legos]
-    })),
+    }));
+    get().updateEncodedCanvasState();
+  },
 
-  removeDroppedLego: (instanceId: string) =>
+  removeDroppedLego: (instanceId: string) => {
     set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.filter(
         (lego: DroppedLego) => lego.instanceId !== instanceId
       )
-    })),
+    }));
+    get().updateEncodedCanvasState();
+  },
 
-  removeDroppedLegos: (instanceIds: string[]) =>
+  removeDroppedLegos: (instanceIds: string[]) => {
     set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.filter(
         (lego: DroppedLego) => !instanceIds.includes(lego.instanceId)
       )
-    })),
+    }));
+    get().updateEncodedCanvasState();
+  },
 
-  updateDroppedLego: (instanceId: string, updates: Partial<DroppedLego>) =>
+  updateDroppedLego: (instanceId: string, updates: Partial<DroppedLego>) => {
     set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.map((lego: DroppedLego) =>
         lego.instanceId === instanceId ? { ...lego, ...updates } : lego
       )
-    })),
+    }));
+    get().updateEncodedCanvasState();
+  },
 
-  clearDroppedLegos: () => set({ droppedLegos: [] })
+  clearDroppedLegos: () => {
+    set({ droppedLegos: [] });
+    get().updateEncodedCanvasState();
+  }
 });

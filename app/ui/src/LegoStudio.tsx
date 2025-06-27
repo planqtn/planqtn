@@ -36,10 +36,7 @@ import {
 } from "./components/SelectionManager";
 import {
   Connection,
-  DraggingStage,
-  DragState,
   DroppedLego,
-  GroupDragState,
   LegoPiece,
   ParityCheckMatrix,
   SelectionBoxState
@@ -76,7 +73,6 @@ import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
 import { DragProxy } from "./components/DragProxy";
 import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
-import { useLegDragStateStore } from "./stores/legDragState.ts";
 import {
   findClosestDanglingLeg,
   pointToLineDistance
@@ -141,7 +137,7 @@ const LegoStudioView: React.FC = () => {
     addDroppedLego,
     newInstanceId,
     decodeCanvasState,
-    canvasId,
+    getCanvasId,
     connections,
     removeConnections,
     setLegosAndConnections,
@@ -150,18 +146,9 @@ const LegoStudioView: React.FC = () => {
   } = useCanvasStore();
 
   const [error, setError] = useState<string>("");
-  const { legDragState } = useLegDragStateStore();
 
   const { canvasDragState } = useCanvasDragStateStore();
 
-  const [dragState] = useState<DragState>({
-    draggingStage: DraggingStage.NOT_DRAGGING,
-    draggedLegoIndex: -1,
-    startX: 0,
-    startY: 0,
-    originalX: 0,
-    originalY: 0
-  });
   const [zoomLevel, setZoomLevel] = useState(1);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
@@ -171,7 +158,6 @@ const LegoStudioView: React.FC = () => {
     new OperationHistory([])
   );
 
-  const [groupDragState] = useState<GroupDragState | null>(null);
   const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
     isSelecting: false,
     startX: 0,
@@ -397,7 +383,7 @@ const LegoStudioView: React.FC = () => {
       if (stateParam) {
         try {
           await decodeCanvasState(stateParam);
-          loadCachesFromLocalStorage(canvasId);
+          loadCachesFromLocalStorage(getCanvasId());
         } catch (error) {
           // Clear the invalid state from the URL
           // window.history.replaceState(null, '', window.location.pathname + window.location.search)
@@ -408,7 +394,7 @@ const LegoStudioView: React.FC = () => {
         }
       } else {
         // No state in URL, generate a new canvas ID and load empty caches
-        loadCachesFromLocalStorage(canvasId);
+        loadCachesFromLocalStorage(getCanvasId());
       }
     };
 
@@ -424,12 +410,12 @@ const LegoStudioView: React.FC = () => {
 
   // Save caches to localStorage when they change
   useEffect(() => {
-    if (canvasId) {
-      console.log("Saving caches to localStorage for canvasId:", canvasId);
-      saveCachesToLocalStorage(canvasId);
+    if (getCanvasId()) {
+      console.log("Saving caches to localStorage for canvasId:", getCanvasId());
+      saveCachesToLocalStorage(getCanvasId());
     }
   }, [
-    canvasId,
+    getCanvasId,
     parityCheckMatrixCache,
     weightEnumeratorCache,
     saveCachesToLocalStorage
@@ -1589,10 +1575,8 @@ const LegoStudioView: React.FC = () => {
                   </Box>
                   <ConnectionsLayer
                     hideConnectedLegs={hideConnectedLegs}
-                    legDragState={legDragState}
                     hoveredConnection={hoveredConnection}
                     onConnectionDoubleClick={handleConnectionDoubleClick}
-                    dragState={dragState}
                   />
                   {/* Selection Manager */}
                   <SelectionManager
@@ -1604,8 +1588,6 @@ const LegoStudioView: React.FC = () => {
                   <LegosLayer canvasRef={canvasRef} />
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy
-                    dragState={dragState}
-                    groupDragState={groupDragState}
                     canvasRef={canvasRef}
                     buildingBlockDragState={buildingBlockDragState}
                   />

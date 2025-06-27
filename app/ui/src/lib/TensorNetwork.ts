@@ -82,6 +82,8 @@ export class TensorNetwork {
     legOrdering?: TensorNetworkLeg[];
     signature?: string;
   }) {
+    console.assert(data.legos, "legos is required");
+    console.assert(data.connections, "connections is required");
     this._legos = data.legos;
     this._connections = data.connections;
     this.parityCheckMatrix = data.parityCheckMatrix;
@@ -117,6 +119,9 @@ export class TensorNetwork {
   public with(overrides: Partial<TensorNetwork>): TensorNetwork {
     return new TensorNetwork({
       ...this,
+      legos: this._legos,
+      connections: this._connections,
+      signature: this._signature,
       ...overrides
     });
   }

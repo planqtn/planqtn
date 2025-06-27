@@ -1,25 +1,19 @@
 import React, { memo, useMemo, useCallback } from "react";
-import {
-  Connection,
-  DroppedLego,
-  LegDragState,
-  DragState,
-  DraggingStage
-} from "../lib/types";
+import { Connection, DroppedLego, DraggingStage } from "../lib/types";
 import { LegStyle } from "../LegoStyles";
 import { calculateLegPosition } from "./DroppedLegoDisplay";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
+import { useDragStateStore } from "../stores/dragState";
+import { useLegDragStateStore } from "../stores/legDragState";
 
 interface ConnectionsLayerProps {
   hideConnectedLegs: boolean;
-  legDragState: LegDragState | null;
   hoveredConnection: Connection | null;
   onConnectionDoubleClick: (
     e: React.MouseEvent,
     connection: Connection
   ) => void;
-  dragState?: DragState;
 }
 
 // Move this outside to avoid recreation
@@ -36,15 +30,11 @@ const fromChakraColorToHex = (color: string): string => {
 };
 
 export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
-  ({
-    hideConnectedLegs,
-    legDragState,
-    hoveredConnection,
-    onConnectionDoubleClick,
-    dragState
-  }) => {
+  ({ hideConnectedLegs, hoveredConnection, onConnectionDoubleClick }) => {
     const { connections, droppedLegos } = useCanvasStore();
     const { tensorNetwork } = useTensorNetworkStore();
+    const { dragState } = useDragStateStore();
+    const { legDragState } = useLegDragStateStore();
 
     // Determine which legos are being dragged to hide their connections
     const draggedLegoIds = useMemo(() => {

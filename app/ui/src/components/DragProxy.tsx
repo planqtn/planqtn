@@ -1,17 +1,11 @@
 import React, { memo, useRef, useEffect, useState } from "react";
-import {
-  DraggingStage,
-  DragState,
-  DroppedLego,
-  GroupDragState,
-  LegoPiece
-} from "../lib/types";
+import { DraggingStage, DroppedLego, LegoPiece } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
 import { useCanvasStore } from "../stores/canvasStateStore";
+import { useDragStateStore } from "../stores/dragState";
+import { useGroupDragStateStore } from "../stores/groupDragState";
 
 interface DragProxyProps {
-  dragState: DragState;
-  groupDragState: GroupDragState | null;
   canvasRef?: React.RefObject<HTMLDivElement | null>;
   buildingBlockDragState?: {
     isDragging: boolean;
@@ -22,18 +16,20 @@ interface DragProxyProps {
 }
 
 export const DragProxy: React.FC<DragProxyProps> = memo(
-  ({ dragState, groupDragState, canvasRef, buildingBlockDragState }) => {
+  ({ canvasRef, buildingBlockDragState }) => {
     // Track mouse position internally to avoid re-rendering parent components
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const animationFrameRef = useRef<number | null>(null);
     const { droppedLegos } = useCanvasStore();
+    const { dragState } = useDragStateStore();
+    const { groupDragState } = useGroupDragStateStore();
 
     // Update mouse position on mouse move
     useEffect(() => {
       const handleMouseMove = (e: MouseEvent) => {
         // Only update state when dragging to avoid unnecessary re-renders
         if (
-          dragState.draggingStage === DraggingStage.DRAGGING ||
+          dragState?.draggingStage === DraggingStage.DRAGGING ||
           buildingBlockDragState?.isDragging
         ) {
           if (animationFrameRef.current) {
@@ -53,7 +49,7 @@ export const DragProxy: React.FC<DragProxyProps> = memo(
           cancelAnimationFrame(animationFrameRef.current);
         }
       };
-    }, [dragState.draggingStage, buildingBlockDragState?.isDragging]);
+    }, [dragState, buildingBlockDragState]);
 
     const mouseX = mousePos.x;
     const mouseY = mousePos.y;
@@ -141,11 +137,12 @@ export const DragProxy: React.FC<DragProxyProps> = memo(
         </div>
       );
     }
+    if (!dragState) return null;
 
     if (dragState.draggingStage !== DraggingStage.DRAGGING) return null;
 
     const deltaX = mouseX - dragState.startX;
-    const deltaY = mouseY - dragState.startY;
+    const deltaY = mouseY - dragState?.startY;
 
     // Get the legos being dragged
     const draggedLegos = groupDragState

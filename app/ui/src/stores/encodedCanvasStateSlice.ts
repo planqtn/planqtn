@@ -3,10 +3,9 @@ import { ConnectionSlice } from "./connectionStore";
 import { DroppedLegosSlice } from "./droppedLegoStore";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 
-const canvasStateSerializer = new CanvasStateSerializer();
-
 export interface EncodedCanvasStateSlice {
-  canvasId: string;
+  canvasStateSerializer: CanvasStateSerializer;
+  getCanvasId: () => string;
   encodedCanvasState: string;
   hideConnectedLegs: boolean;
   decodeCanvasState: (encoded: string) => Promise<void>;
@@ -21,15 +20,15 @@ export const createEncodedCanvasStateSlice: StateCreator<
   [],
   EncodedCanvasStateSlice
 > = (set, get) => ({
-  canvasId: canvasStateSerializer.getCanvasId(),
+  canvasStateSerializer: new CanvasStateSerializer(),
+  getCanvasId: () => get().canvasStateSerializer.getCanvasId(),
   encodedCanvasState: "",
-  hideConnectedLegs: false,
+  hideConnectedLegs: true,
 
   decodeCanvasState: async (encoded: string) => {
     try {
-      const result = await canvasStateSerializer.decode(encoded);
+      const result = await get().canvasStateSerializer.decode(encoded);
       set({
-        canvasId: result.canvasId,
         droppedLegos: result.pieces,
         connections: result.connections
       });
@@ -45,7 +44,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
 
   updateEncodedCanvasState: () => {
     const { droppedLegos, connections } = get();
-    canvasStateSerializer.encode(
+    get().canvasStateSerializer.encode(
       droppedLegos,
       connections,
       get().hideConnectedLegs

@@ -253,7 +253,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         return;
       }
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
-        performDragUpdate(e);
+        // performDragUpdate(e);
         return;
       }
       if (legDragState?.isDragging) {
@@ -267,8 +267,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
+      performDragUpdate(e);
       if (!rect) {
         setLegDragState(null);
         return;

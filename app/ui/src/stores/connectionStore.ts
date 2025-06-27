@@ -18,7 +18,10 @@ export const createConnectionsSlice: StateCreator<
 > = (set, get) => ({
   connections: [],
   getConnections: () => get().connections,
-  setConnections: (connections: Connection[]) => set({ connections }),
+  setConnections: (connections: Connection[]) => {
+    set({ connections });
+    get().updateEncodedCanvasState();
+  },
   addConnections: (newConnections: Connection[]) => {
     set((state: ConnectionSlice) => {
       return {
