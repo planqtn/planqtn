@@ -14,15 +14,12 @@ import {
 import { RuntimeConfigService } from "../lib/runtimeConfigService";
 import { WeightEnumeratorService } from "../lib/weightEnumeratorService";
 import { OperationHistory } from "../lib/OperationHistory";
-import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 import { useToast } from "@chakra-ui/react";
 import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
 
 interface ModalRootProps {
   operationHistory: OperationHistory;
-  stateSerializer: CanvasStateSerializer;
-  hideConnectedLegs: boolean;
   newInstanceId: () => string;
   // Weight enumerator dependencies
   currentUser: User | null;
@@ -40,8 +37,6 @@ interface ModalRootProps {
 
 export const ModalRoot: React.FC<ModalRootProps> = ({
   operationHistory,
-  stateSerializer,
-  hideConnectedLegs,
   newInstanceId,
   currentUser,
   setError,
@@ -74,8 +69,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const createNetworkOptions = (): NetworkCreationOptions => ({
     operationHistory,
-    stateSerializer,
-    hideConnectedLegs,
     newInstanceId
   });
 
@@ -150,8 +143,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const createCustomLegoOptions = (): CustomLegoCreationOptions => ({
     operationHistory,
-    stateSerializer,
-    hideConnectedLegs,
     newInstanceId
   });
 

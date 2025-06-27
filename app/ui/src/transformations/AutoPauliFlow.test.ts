@@ -80,8 +80,8 @@ describe("simple auto flow", () => {
 
   it("do nothing if no highlights", () => {
     const connections: Connection[] = [makeConn("lego1", 0, "lego2", 3)];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -100,8 +100,8 @@ describe("simple auto flow", () => {
           selectedRows: []
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[0],
@@ -121,8 +121,8 @@ describe("simple auto flow", () => {
 
   it("highlight single connected stopper", () => {
     const connections: Connection[] = [makeConn("lego1", 0, "lego2", 3)];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -141,8 +141,8 @@ describe("simple auto flow", () => {
           selectedRows: [0]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -164,8 +164,8 @@ describe("simple auto flow", () => {
 
   it("highlight single connected hadamard", () => {
     const connections: Connection[] = [makeConn("lego1", 1, "lego2", 0)];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "hadmard",
@@ -187,8 +187,8 @@ describe("simple auto flow", () => {
           selectedRows: [0]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos: firstResult } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -229,8 +229,8 @@ describe("simple auto flow", () => {
 
   it("do not highlight single connected complex lego", () => {
     const connections: Connection[] = [makeConn("lego1", 0, "lego2", 3)];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -249,8 +249,8 @@ describe("simple auto flow", () => {
           selectedRows: []
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[0],
@@ -271,8 +271,8 @@ describe("simple auto flow", () => {
 
   it("remove highlight from simple lego that does not match", () => {
     const connections: Connection[] = [makeConn("lego1", 0, "lego2", 3)];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -291,8 +291,8 @@ describe("simple auto flow", () => {
           selectedRows: [1]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -317,8 +317,8 @@ describe("simple auto flow", () => {
       makeConn("lego2", 0, "lego3", 1),
       makeConn("lego3", 0, "lego4", 0)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -352,8 +352,8 @@ describe("simple auto flow", () => {
           selectedRows: []
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -389,8 +389,8 @@ describe("simple auto flow", () => {
       makeConn("lego2", 0, "lego3", 1),
       makeConn("lego3", 0, "lego4", 0)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -424,8 +424,8 @@ describe("simple auto flow", () => {
           selectedRows: [0]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -462,8 +462,8 @@ describe("simple auto flow", () => {
       makeConn("lego2", 1, "lego4", 7),
       makeConn("lego2", 2, "lego5", 0)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "x stopper",
@@ -519,8 +519,8 @@ describe("simple auto flow", () => {
           selectedRows: []
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -559,8 +559,8 @@ describe("simple auto flow", () => {
       makeConn("lego1", 0, "lego3", 1),
       makeConn("lego2", 2, "lego3", 0)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "tensor 512",
@@ -593,8 +593,8 @@ describe("simple auto flow", () => {
           selectedRows: [0]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -625,8 +625,8 @@ describe("simple auto flow", () => {
       makeConn("lego1", 0, "lego3", 1),
       makeConn("lego2", 2, "lego3", 0)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "tensor 512",
@@ -659,8 +659,8 @@ describe("simple auto flow", () => {
           selectedRows: [1]
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
@@ -692,8 +692,8 @@ describe("simple auto flow", () => {
       makeConn("lego1", 0, "lego2", 0),
       makeConn("lego2", 1, "lego3", 1)
     ];
-    const tensorNetwork: TensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork: TensorNetwork = new TensorNetwork({
+      legos: [
         makeLego({
           id: "lego1",
           name: "tensor 512",
@@ -724,8 +724,8 @@ describe("simple auto flow", () => {
           selectedRows: []
         })
       ],
-      connections
-    );
+      connections: connections
+    });
 
     const { updatedLegos } = testSimpleAutoFlow(
       tensorNetwork.legos[0],

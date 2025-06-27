@@ -1,7 +1,6 @@
 import { DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
-import { useLegoStore } from "../stores/legoStore";
-import { useConnectionStore } from "../stores/connectionStore";
+import { useCanvasStore } from "../stores/canvasStateStore";
 import { OperationHistory } from "./OperationHistory";
 import { CanvasStateSerializer } from "./CanvasStateSerializer";
 
@@ -19,8 +18,7 @@ export class CustomLegoService {
     position: { x: number; y: number },
     options: CustomLegoCreationOptions
   ): void {
-    const { addDroppedLego } = useLegoStore.getState();
-    const { getConnections } = useConnectionStore.getState();
+    const { addDroppedLego } = useCanvasStore.getState();
 
     const instanceId = options.newInstanceId ? options.newInstanceId() : "1";
     const newLego: DroppedLego = {
@@ -54,17 +52,6 @@ export class CustomLegoService {
           legosToAdd: [newLego]
         }
       });
-    }
-
-    // Update canvas state if serializer provided
-    if (options.stateSerializer) {
-      const { droppedLegos } = useLegoStore.getState();
-      const currentConnections = getConnections();
-      options.stateSerializer.encode(
-        droppedLegos,
-        currentConnections,
-        options.hideConnectedLegs || true
-      );
     }
   }
 }

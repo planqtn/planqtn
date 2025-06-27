@@ -71,7 +71,10 @@ describe("TensorNetwork", () => {
     ];
 
     // Create the tensor network
-    const tn = new TensorNetwork(nodes, connections);
+    const tn = new TensorNetwork({
+      legos: nodes,
+      connections: connections
+    });
 
     // Get the conjoined tensor
     const conjoined = tn.conjoin_nodes();
@@ -90,7 +93,7 @@ describe("TensorNetwork", () => {
     // console.log(
     //   "=================6 lego TN parity check matrix=====================",
     // );
-    const tn = TensorNetwork.fromObj({
+    const tn = new TensorNetwork({
       legos: [
         {
           id: "t5",

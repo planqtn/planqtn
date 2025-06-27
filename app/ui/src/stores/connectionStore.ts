@@ -1,7 +1,8 @@
 import { Connection } from "../lib/types";
-import { create } from "zustand";
+import { StateCreator } from "zustand";
+import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
 
-interface ConnectionStore {
+export interface ConnectionSlice {
   connections: Connection[];
   getConnections: () => Connection[];
   setConnections: (connections: Connection[]) => void;
@@ -9,22 +10,29 @@ interface ConnectionStore {
   removeConnections: (connections: Connection[]) => void;
 }
 
-export const useConnectionStore = create<ConnectionStore>()((set, get) => ({
+export const createConnectionsSlice: StateCreator<
+  ConnectionSlice & EncodedCanvasStateSlice,
+  [],
+  [],
+  ConnectionSlice
+> = (set, get) => ({
   connections: [],
   getConnections: () => get().connections,
   setConnections: (connections: Connection[]) => set({ connections }),
-  addConnections: (newConnections: Connection[]) =>
-    set((state: ConnectionStore) => {
-      console.log("adding connections", newConnections);
-      console.log("existing connections", state.connections);
+  addConnections: (newConnections: Connection[]) => {
+    set((state: ConnectionSlice) => {
       return {
         connections: [...state.connections, ...newConnections]
       };
-    }),
-  removeConnections: (connections: Connection[]) =>
-    set((state: ConnectionStore) => ({
+    });
+    get().updateEncodedCanvasState();
+  },
+  removeConnections: (connections: Connection[]) => {
+    set((state: ConnectionSlice) => ({
       connections: state.connections.filter(
         (connection) => !connections.includes(connection)
       )
-    }))
-}));
+    }));
+    get().updateEncodedCanvasState();
+  }
+});

@@ -3,27 +3,17 @@ import { DroppedLego, Connection } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { OperationHistory } from "../lib/OperationHistory";
-import { useLegoStore } from "../stores/legoStore";
-import { useConnectionStore } from "../stores/connectionStore";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 interface KeyboardHandlerProps {
-  hideConnectedLegs: boolean;
   operationHistory: OperationHistory;
-  newInstanceId: () => string;
   onSetAltKeyPressed: (pressed: boolean) => void;
-  onEncodeCanvasState: (
-    legos: DroppedLego[],
-    connections: Connection[],
-    hideLegs: boolean
-  ) => void;
   onUndo: () => void;
   onRedo: () => void;
   onSetError: (error: string) => void;
   onFuseLegos: (legos: DroppedLego[]) => void;
   onPullOutSameColoredLeg: (lego: DroppedLego) => void;
-  onCreateNetworkSignature: (network: TensorNetwork) => string;
-  onSetCanvasDragState: (state: unknown) => void;
   onToast: (props: {
     title: string;
     description: string;
@@ -34,24 +24,25 @@ interface KeyboardHandlerProps {
 }
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
-  hideConnectedLegs,
   operationHistory,
-  newInstanceId,
   onSetAltKeyPressed,
-  onEncodeCanvasState,
   onUndo,
   onRedo,
   onSetError,
   onFuseLegos,
   onPullOutSameColoredLeg,
-  onCreateNetworkSignature,
-  onSetCanvasDragState,
   onToast
 }) => {
   const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
-  const { droppedLegos, addDroppedLegos, removeDroppedLegos } = useLegoStore();
-  const { connections, addConnections, removeConnections } =
-    useConnectionStore();
+  const {
+    droppedLegos,
+    addDroppedLegos,
+    removeDroppedLegos,
+    connections,
+    addConnections,
+    removeConnections,
+    newInstanceId
+  } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
   useEffect(() => {
@@ -188,9 +179,6 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               }
             });
 
-            // Update URL state
-            onEncodeCanvasState(droppedLegos, connections, hideConnectedLegs);
-
             onToast({
               title: "Paste successful",
               description: `Pasted ${newLegos.length} lego${
@@ -255,23 +243,6 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
 
           // Clear selection states
           setTensorNetwork(null);
-
-          // Update URL state
-          onEncodeCanvasState(
-            droppedLegos.filter(
-              (lego) =>
-                !legosToRemove.some((l) => l.instanceId === lego.instanceId)
-            ),
-            connections.filter(
-              (conn) =>
-                !legosToRemove.some(
-                  (l) =>
-                    conn.from.legoId === l.instanceId ||
-                    conn.to.legoId === l.instanceId
-                )
-            ),
-            hideConnectedLegs
-          );
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
@@ -288,12 +259,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               selectedLegoIds.has(conn.to.legoId)
           );
 
-          const tensorNetwork = new TensorNetwork(
-            droppedLegos,
-            internalConnections
-          );
-
-          tensorNetwork.signature = onCreateNetworkSignature(tensorNetwork);
+          const tensorNetwork = new TensorNetwork({
+            legos: droppedLegos,
+            connections: internalConnections
+          });
 
           setTensorNetwork(tensorNetwork);
         }
@@ -324,17 +293,17 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     };
 
     const handleBlur = () => {
-      onSetCanvasDragState({
-        isDragging: false
-      });
-      onSetAltKeyPressed(false);
+      // onSetCanvasDragState({
+      //   isDragging: false
+      // });
+      // onSetAltKeyPressed(false);
     };
 
     const handleFocus = () => {
-      onSetCanvasDragState({
-        isDragging: false
-      });
-      onSetAltKeyPressed(false);
+      // onSetCanvasDragState({
+      //   isDragging: false
+      // });
+      // onSetAltKeyPressed(false);
     };
 
     // Add event listeners
@@ -351,13 +320,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       window.removeEventListener("focus", handleFocus);
     };
   }, [
-    hideConnectedLegs,
     tensorNetwork,
     operationHistory,
-    newInstanceId,
     setTensorNetwork,
     onSetAltKeyPressed,
-    onEncodeCanvasState,
     onUndo,
     onRedo
   ]);

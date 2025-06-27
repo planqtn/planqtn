@@ -38,12 +38,10 @@ export class WeightEnumeratorService {
     const cachedEnumerator = weightEnumeratorCache.get(signature);
     if (cachedEnumerator) {
       setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
+        tensorNetwork.with({
           taskId: cachedEnumerator.taskId,
           weightEnumerator: cachedEnumerator.polynomial,
-          normalizerPolynomial: cachedEnumerator.normalizerPolynomial,
-          isCalculatingWeightEnumerator: cachedEnumerator.polynomial === ""
+          normalizerPolynomial: cachedEnumerator.normalizerPolynomial
         })
       );
       return;
@@ -51,11 +49,12 @@ export class WeightEnumeratorService {
 
     try {
       setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
+        tensorNetwork.with({
           isCalculatingWeightEnumerator: true,
           weightEnumerator: undefined,
-          taskId: undefined
+          taskId: undefined,
+          legos: tensorNetwork.legos,
+          connections: tensorNetwork.connections
         })
       );
 
@@ -108,8 +107,7 @@ export class WeightEnumeratorService {
       const taskId = data.task_id;
 
       setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
+        tensorNetwork.with({
           taskId: taskId
         })
       );
@@ -135,8 +133,7 @@ export class WeightEnumeratorService {
       setError(`Failed to calculate weight enumerator: ${errorMessage}`);
 
       setTensorNetwork(
-        TensorNetwork.fromObj({
-          ...tensorNetwork,
+        tensorNetwork.with({
           isCalculatingWeightEnumerator: false
         })
       );

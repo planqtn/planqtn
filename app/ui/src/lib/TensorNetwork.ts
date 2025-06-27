@@ -45,7 +45,10 @@ export function findConnectedComponent(
     }
   });
 
-  return new TensorNetwork(component, componentConnections);
+  return new TensorNetwork({
+    legos: component,
+    connections: componentConnections
+  });
 }
 
 export interface TensorNetworkLeg {
@@ -54,21 +57,19 @@ export interface TensorNetworkLeg {
 }
 
 export class TensorNetwork {
-  constructor(
-    public legos: DroppedLego[],
-    public connections: Connection[],
-    public parityCheckMatrix?: number[][],
-    public weightEnumerator?: string,
-    public normalizerPolynomial?: string,
-    public truncateLength?: number,
-    public isCalculatingWeightEnumerator?: boolean,
-    public taskId?: string,
-    public constructionCode?: string,
-    public legOrdering?: TensorNetworkLeg[],
-    public signature?: string
-  ) {}
+  private _legos: DroppedLego[];
+  private _connections: Connection[];
+  public parityCheckMatrix?: number[][];
+  public weightEnumerator?: string;
+  public normalizerPolynomial?: string;
+  public truncateLength?: number;
+  public isCalculatingWeightEnumerator?: boolean;
+  public taskId?: string;
+  public constructionCode?: string;
+  public legOrdering?: TensorNetworkLeg[];
+  private _signature?: string;
 
-  public static fromObj(tn: {
+  constructor(data: {
     legos: DroppedLego[];
     connections: Connection[];
     parityCheckMatrix?: number[][];
@@ -81,20 +82,71 @@ export class TensorNetwork {
     legOrdering?: TensorNetworkLeg[];
     signature?: string;
   }) {
-    return new TensorNetwork(
-      tn.legos,
-      tn.connections,
-      tn.parityCheckMatrix,
-      tn.weightEnumerator,
-      tn.normalizerPolynomial,
-      tn.truncateLength,
-      tn.isCalculatingWeightEnumerator,
-      tn.taskId,
-      tn.constructionCode,
-      tn.legOrdering,
-      tn.signature
-    );
+    this._legos = data.legos;
+    this._connections = data.connections;
+    this.parityCheckMatrix = data.parityCheckMatrix;
+    this.weightEnumerator = data.weightEnumerator;
+    this.normalizerPolynomial = data.normalizerPolynomial;
+    this.truncateLength = data.truncateLength;
+    this.isCalculatingWeightEnumerator = data.isCalculatingWeightEnumerator;
+    this.taskId = data.taskId;
+    this.constructionCode = data.constructionCode;
+    this.legOrdering = data.legOrdering;
+    this._signature =
+      data.signature ||
+      this.createNetworkSignature(data.legos, data.connections);
   }
+
+  public get legos() {
+    return this._legos;
+  }
+  public get connections() {
+    return this._connections;
+  }
+  public get signature() {
+    return this._signature;
+  }
+  public set legos(legos: DroppedLego[]) {
+    this._legos = legos;
+    this._signature = this.createNetworkSignature(legos, this._connections);
+  }
+  public set connections(connections: Connection[]) {
+    this._connections = connections;
+    this._signature = this.createNetworkSignature(this._legos, connections);
+  }
+  public with(overrides: Partial<TensorNetwork>): TensorNetwork {
+    return new TensorNetwork({
+      ...this,
+      ...overrides
+    });
+  }
+
+  // Helper function to generate network signature for caching
+  private createNetworkSignature = (
+    legos: DroppedLego[],
+    connections: Connection[]
+  ) => {
+    const sortedLegos = [...legos]
+      .sort((a, b) => a.instanceId.localeCompare(b.instanceId))
+      .map(
+        (lego) =>
+          lego.id +
+          "-" +
+          lego.instanceId +
+          "-" +
+          lego.parity_check_matrix[0].length / 2
+      );
+    const sortedConnections = [...connections].sort((a, b) => {
+      const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
+      const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
+      return aStr.localeCompare(bStr);
+    });
+    const sig = JSON.stringify({
+      legos: sortedLegos,
+      connections: sortedConnections
+    });
+    return sig;
+  };
 
   public generateConstructionCode(): string {
     const code: string[] = [];

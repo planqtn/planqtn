@@ -5,16 +5,14 @@ import React, {
   useImperativeHandle
 } from "react";
 import { Box } from "@chakra-ui/react";
-import { DroppedLego, Connection, SelectionBoxState } from "../lib/types";
+import { DroppedLego, SelectionBoxState } from "../lib/types";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 interface SelectionManagerProps {
-  droppedLegos: DroppedLego[];
-  connections: Connection[];
   selectionBox: SelectionBoxState;
   onSelectionBoxChange: (selectionBox: SelectionBoxState) => void;
-  onCreateNetworkSignature: (network: TensorNetwork) => string;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -24,17 +22,8 @@ export interface SelectionManagerRef {
 
 export const SelectionManager = memo(
   forwardRef<SelectionManagerRef, SelectionManagerProps>(
-    (
-      {
-        droppedLegos,
-        connections,
-        selectionBox,
-        onSelectionBoxChange,
-        onCreateNetworkSignature,
-        canvasRef
-      },
-      ref
-    ) => {
+    ({ selectionBox, onSelectionBoxChange, canvasRef }, ref) => {
+      const { droppedLegos, connections } = useCanvasStore();
       const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
       // Helper function to handle selection box logic
@@ -48,7 +37,7 @@ export const SelectionManager = memo(
           isFinalized: boolean = false
         ) => {
           // Find Legos within the selection box
-          const selectedLegos = droppedLegos.filter((lego) => {
+          const selectedLegos = droppedLegos.filter((lego: DroppedLego) => {
             return (
               lego.x >= left &&
               lego.x <= right &&
@@ -73,16 +62,22 @@ export const SelectionManager = memo(
                     newLegos.some((l) => l.instanceId === conn.from.legoId) &&
                     newLegos.some((l) => l.instanceId === conn.to.legoId)
                 );
-                const newNetwork = new TensorNetwork(newLegos, newConnections);
-                newNetwork.signature = onCreateNetworkSignature(newNetwork);
+                const newNetwork = new TensorNetwork({
+                  legos: newLegos,
+                  connections: newConnections
+                });
                 setTensorNetwork(newNetwork);
               } else {
-                const newNetwork = new TensorNetwork(selectedLegos, []);
-                newNetwork.signature = onCreateNetworkSignature(newNetwork);
+                const newNetwork = new TensorNetwork({
+                  legos: selectedLegos,
+                  connections: []
+                });
                 setTensorNetwork(newNetwork);
               }
             } else {
-              setTensorNetwork(new TensorNetwork(selectedLegos, []));
+              setTensorNetwork(
+                new TensorNetwork({ legos: selectedLegos, connections: [] })
+              );
             }
           } else if (selectedLegos.length > 1) {
             if (e.ctrlKey || e.metaKey) {
@@ -94,55 +89,51 @@ export const SelectionManager = memo(
                     newLegos.some((l) => l.instanceId === conn.from.legoId) &&
                     newLegos.some((l) => l.instanceId === conn.to.legoId)
                 );
-                const newNetwork = new TensorNetwork(newLegos, newConnections);
-                newNetwork.signature = onCreateNetworkSignature(newNetwork);
+                const newNetwork = new TensorNetwork({
+                  legos: newLegos,
+                  connections: newConnections
+                });
                 setTensorNetwork(newNetwork);
               } else {
                 const selectedLegoIds = new Set(
-                  selectedLegos.map((lego) => lego.instanceId)
+                  selectedLegos.map((lego: DroppedLego) => lego.instanceId)
                 );
                 const internalConnections = connections.filter(
                   (conn) =>
                     selectedLegoIds.has(conn.from.legoId) &&
                     selectedLegoIds.has(conn.to.legoId)
                 );
-                const newNetwork = new TensorNetwork(
-                  selectedLegos,
-                  internalConnections
-                );
-                newNetwork.signature = onCreateNetworkSignature(newNetwork);
+                const newNetwork = new TensorNetwork({
+                  legos: selectedLegos,
+                  connections: internalConnections
+                });
                 setTensorNetwork(newNetwork);
               }
             } else {
               // Create a tensor network from the selected legos
               const selectedLegoIds = new Set(
-                selectedLegos.map((lego) => lego.instanceId)
+                selectedLegos.map((lego: DroppedLego) => lego.instanceId)
               );
               const internalConnections = connections.filter(
                 (conn) =>
                   selectedLegoIds.has(conn.from.legoId) &&
                   selectedLegoIds.has(conn.to.legoId)
               );
-              const newNetwork = new TensorNetwork(
-                selectedLegos,
-                internalConnections
-              );
-              newNetwork.signature = onCreateNetworkSignature(newNetwork);
+              const newNetwork = new TensorNetwork({
+                legos: selectedLegos,
+                connections: internalConnections
+              });
               setTensorNetwork(newNetwork);
             }
           } else {
             if (!(e.ctrlKey || e.metaKey)) {
-              setTensorNetwork(null);
+              if (tensorNetwork) {
+                setTensorNetwork(null);
+              }
             }
           }
         },
-        [
-          droppedLegos,
-          connections,
-          tensorNetwork,
-          setTensorNetwork,
-          onCreateNetworkSignature
-        ]
+        [droppedLegos, connections, tensorNetwork]
       );
 
       // Mouse event handlers

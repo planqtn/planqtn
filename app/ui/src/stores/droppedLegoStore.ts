@@ -1,8 +1,9 @@
-import { create } from "zustand";
+import { StateCreator } from "zustand";
 import { DroppedLego } from "../lib/types";
 
-interface LegoStore {
+export interface DroppedLegosSlice {
   droppedLegos: DroppedLego[];
+
   setDroppedLegos: (
     legos: DroppedLego[] | ((prev: DroppedLego[]) => DroppedLego[])
   ) => void;
@@ -14,54 +15,63 @@ interface LegoStore {
     updates: Partial<DroppedLego>
   ) => void;
   removeDroppedLegos: (instanceIds: string[]) => void;
-  updateDroppedLegos: (updates: DroppedLego[]) => void;
   clearDroppedLegos: () => void;
+  newInstanceId: () => string;
 }
 
-export const useLegoStore = create<LegoStore>((set) => ({
+export const createLegoSlice: StateCreator<
+  DroppedLegosSlice,
+  [],
+  [],
+  DroppedLegosSlice
+> = (set, get) => ({
   droppedLegos: [],
+  newInstanceId: () => {
+    return String(
+      Math.max(...get().droppedLegos.map((lego) => parseInt(lego.instanceId))) +
+        1
+    );
+  },
 
   setDroppedLegos: (
     legos: DroppedLego[] | ((prev: DroppedLego[]) => DroppedLego[])
-  ) =>
-    set((state: LegoStore) => ({
+  ) => {
+    set((state: DroppedLegosSlice) => ({
       droppedLegos:
         typeof legos === "function" ? legos(state.droppedLegos) : legos
-    })),
+    }));
+  },
 
   addDroppedLego: (lego: DroppedLego) =>
-    set((state: LegoStore) => ({
+    set((state: DroppedLegosSlice) => ({
       droppedLegos: [...state.droppedLegos, lego]
     })),
 
   addDroppedLegos: (legos: DroppedLego[]) =>
-    set((state: LegoStore) => ({
+    set((state: DroppedLegosSlice) => ({
       droppedLegos: [...state.droppedLegos, ...legos]
     })),
 
   removeDroppedLego: (instanceId: string) =>
-    set((state: LegoStore) => ({
+    set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.filter(
         (lego: DroppedLego) => lego.instanceId !== instanceId
       )
     })),
 
   removeDroppedLegos: (instanceIds: string[]) =>
-    set((state: LegoStore) => ({
+    set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.filter(
         (lego: DroppedLego) => !instanceIds.includes(lego.instanceId)
       )
     })),
 
   updateDroppedLego: (instanceId: string, updates: Partial<DroppedLego>) =>
-    set((state: LegoStore) => ({
+    set((state: DroppedLegosSlice) => ({
       droppedLegos: state.droppedLegos.map((lego: DroppedLego) =>
         lego.instanceId === instanceId ? { ...lego, ...updates } : lego
       )
     })),
 
-  updateDroppedLegos: (updates: DroppedLego[]) =>
-    set({ droppedLegos: updates }),
-
   clearDroppedLegos: () => set({ droppedLegos: [] })
-}));
+});

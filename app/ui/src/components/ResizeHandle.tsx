@@ -20,7 +20,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
         bg={bgColor}
         cursor="col-resize"
         transition="background-color 0.2s"
-        _hover={{ bg: "blue.500" }}
+        // _hover={{ bg: "blue.500" }}
         style={{
           position: "absolute",
           [position]: "-2px",

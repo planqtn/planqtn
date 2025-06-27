@@ -1,10 +1,8 @@
 import axios from "axios";
 import { Connection, DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
-import { useLegoStore } from "../stores/legoStore";
-import { useConnectionStore } from "../stores/connectionStore";
+import { useCanvasStore } from "../stores/canvasStateStore";
 import { OperationHistory } from "./OperationHistory";
-import { CanvasStateSerializer } from "./CanvasStateSerializer";
 import { config, getApiUrl } from "../config";
 import { getAccessToken } from "./auth";
 import { getAxiosErrorMessage } from "./errors";
@@ -12,8 +10,6 @@ import { useModalStore } from "../stores/modalStore";
 
 export interface NetworkCreationOptions {
   operationHistory?: OperationHistory;
-  stateSerializer?: CanvasStateSerializer;
-  hideConnectedLegs?: boolean;
   newInstanceId?: () => string;
 }
 
@@ -113,8 +109,7 @@ export class NetworkService {
     networkType: string,
     options: NetworkCreationOptions
   ): Promise<void> {
-    const { addDroppedLegos } = useLegoStore.getState();
-    const { addConnections, getConnections } = useConnectionStore.getState();
+    const { addDroppedLegos, addConnections } = useCanvasStore.getState();
 
     // Convert connections to proper Connection instances
     const newConnections = connections.map((conn: Connection) => {
@@ -144,17 +139,6 @@ export class NetworkService {
           connectionsToAdd: newConnections
         }
       });
-    }
-
-    // Update canvas state if serializer provided
-    if (options.stateSerializer) {
-      const { droppedLegos } = useLegoStore.getState();
-      const currentConnections = getConnections();
-      options.stateSerializer.encode(
-        droppedLegos,
-        currentConnections,
-        options.hideConnectedLegs || true
-      );
     }
   }
 

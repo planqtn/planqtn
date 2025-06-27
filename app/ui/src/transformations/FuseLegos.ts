@@ -61,7 +61,10 @@ export class FuseLegos {
       });
 
       // Create a TensorNetwork and perform the fusion
-      const network = new TensorNetwork(legosToFuse, internalConnections);
+      const network = new TensorNetwork({
+        legos: legosToFuse,
+        connections: internalConnections
+      });
       const result = network.conjoin_nodes();
 
       if (!result) {

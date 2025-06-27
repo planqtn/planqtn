@@ -65,20 +65,14 @@ import { useEffect } from "react";
 import TaskDetailsDisplay from "./TaskDetailsDisplay.tsx";
 import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
-import { useLegoStore } from "../stores/legoStore.ts";
-import { useConnectionStore } from "../stores/connectionStore.ts";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore.ts";
+import { useCanvasStore } from "../stores/canvasStateStore.ts";
 
 interface DetailsPanelProps {
   setError: (error: string) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
   operationHistory: OperationHistory;
-  encodeCanvasState: (
-    pieces: DroppedLego[],
-    conns: Connection[],
-    hideConnectedLegs: boolean
-  ) => void;
-  hideConnectedLegs: boolean;
+
   makeSpace: (
     center: { x: number; y: number },
     radius: number,
@@ -120,8 +114,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   setError,
   fuseLegos,
   operationHistory,
-  encodeCanvasState,
-  hideConnectedLegs,
   makeSpace,
   handlePullOutSameColoredLeg,
   user,
@@ -129,8 +121,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   setParityCheckMatrixCache,
   weightEnumeratorCache
 }) => {
-  const { connections, setConnections } = useConnectionStore();
-  const { droppedLegos, setDroppedLegos } = useLegoStore();
+  const {
+    connections,
+    droppedLegos,
+    setDroppedLegos,
+    setLegosAndConnections,
+    updateDroppedLego
+  } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -157,10 +154,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     if (!tensorNetwork) return;
     try {
       // Create a TensorNetwork and perform the fusion
-      const network = new TensorNetwork(
-        tensorNetwork.legos,
-        tensorNetwork.connections
-      );
+      const network = new TensorNetwork({
+        legos: tensorNetwork.legos,
+        connections: tensorNetwork.connections
+      });
       const result = network.conjoin_nodes();
 
       if (!result) {
@@ -174,19 +171,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       // Update the tensor network with the new matrix and leg ordering
       setTensorNetwork(
-        new TensorNetwork(
-          tensorNetwork.legos,
-          tensorNetwork.connections,
-          result.h.getMatrix(),
-          tensorNetwork.weightEnumerator,
-          tensorNetwork.normalizerPolynomial,
-          tensorNetwork.truncateLength,
-          tensorNetwork.isCalculatingWeightEnumerator,
-          tensorNetwork.taskId,
-          tensorNetwork.constructionCode,
-          legOrdering,
-          tensorNetwork.signature
-        )
+        tensorNetwork.with({
+          parityCheckMatrix: result.h.getMatrix(),
+          legOrdering: legOrdering
+        })
       );
       console.log("legordergin", legOrdering);
 
@@ -345,9 +333,14 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         const updatedDroppedLegos = droppedLegos.map((l) =>
           l.instanceId === lego.instanceId ? updatedLego : l
         );
-        setDroppedLegos(updatedDroppedLegos);
-        setTensorNetwork(new TensorNetwork([updatedLego], connections));
-        encodeCanvasState(updatedDroppedLegos, connections, hideConnectedLegs);
+
+        updateDroppedLego(updatedLego.instanceId, {
+          selectedMatrixRows: selectedRows
+        });
+
+        setTensorNetwork(
+          new TensorNetwork({ legos: [updatedLego], connections: connections })
+        );
 
         simpleAutoFlow(
           updatedLego,
@@ -362,10 +355,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       tensorNetwork,
       droppedLegos,
       connections,
-      hideConnectedLegs,
       setDroppedLegos,
-      setTensorNetwork,
-      encodeCanvasState
+      setTensorNetwork
     ]
   );
 
@@ -374,12 +365,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       if (tensorNetwork) {
         // Update the tensor network state
         setTensorNetwork((prev: TensorNetwork | null) =>
-          prev
-            ? TensorNetwork.fromObj({
-                ...prev,
-                legOrdering: newLegOrdering
-              })
-            : null
+          prev ? prev.with({ legOrdering: newLegOrdering }) : null
         );
 
         // Note: We don't update the cache here since we only store the matrix,
@@ -396,12 +382,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       // Update the tensor network state
       setTensorNetwork((prev: TensorNetwork | null) =>
-        prev
-          ? TensorNetwork.fromObj({
-              ...prev,
-              parityCheckMatrix: newMatrix
-            })
-          : null
+        prev ? prev.with({ parityCheckMatrix: newMatrix }) : null
       );
 
       // Update the cache
@@ -556,8 +537,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       ),
       ...newConnections
     ];
-    setDroppedLegos(finalLegos);
-    setConnections(updatedConnections);
+    setLegosAndConnections(finalLegos, updatedConnections);
 
     // Add to history
     const operation: Operation = {
@@ -570,9 +550,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }
     };
     operationHistory.addOperation(operation);
-
-    // Update URL state
-    encodeCanvasState(finalLegos, updatedConnections, hideConnectedLegs);
   };
 
   const handleUnfuseInto2Legos = (lego: DroppedLego) => {
@@ -749,8 +726,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
       // console.log("Connections involving lego", connectionsInvolvingLego);
 
-      setDroppedLegos(newLegos);
-      setConnections(updatedConnections);
+      setLegosAndConnections(newLegos, updatedConnections);
 
       // Add to operation history
       operationHistory.addOperation({
@@ -762,9 +738,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           connectionsToAdd: [...newConnections, connectionBetweenLegos]
         }
       });
-
-      // Update URL state
-      encodeCanvasState(newLegos, updatedConnections, hideConnectedLegs);
     } catch (error) {
       setError(`Error unfusing lego: ${error}`);
     }
@@ -959,9 +932,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       ),
       ...newConnections
     ];
-    setDroppedLegos(updatedLegos);
-    setConnections(updatedConnections);
-    encodeCanvasState(updatedLegos, updatedConnections, hideConnectedLegs);
+    setLegosAndConnections(updatedLegos, updatedConnections);
 
     // Add to history
     const operation: Operation = {
@@ -982,14 +953,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       droppedLegos,
       connections
     );
-    setDroppedLegos(result.droppedLegos);
-    setConnections(result.connections);
+    setLegosAndConnections(result.droppedLegos, result.connections);
     operationHistory.addOperation(result.operation);
-    encodeCanvasState(
-      result.droppedLegos,
-      result.connections,
-      hideConnectedLegs
-    );
   };
 
   const handleInverseBialgebra = async () => {
@@ -998,14 +963,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       droppedLegos,
       connections
     );
-    setDroppedLegos(result.droppedLegos);
-    setConnections(result.connections);
+    setLegosAndConnections(result.droppedLegos, result.connections);
     operationHistory.addOperation(result.operation);
-    encodeCanvasState(
-      result.droppedLegos,
-      result.connections,
-      hideConnectedLegs
-    );
   };
 
   const handleHopfRule = async () => {
@@ -1014,14 +973,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       droppedLegos,
       connections
     );
-    setDroppedLegos(result.droppedLegos);
-    setConnections(result.connections);
+    setLegosAndConnections(result.droppedLegos, result.connections);
     operationHistory.addOperation(result.operation);
-    encodeCanvasState(
-      result.droppedLegos,
-      result.connections,
-      hideConnectedLegs
-    );
   };
 
   const handleConnectGraphNodes = async () => {
@@ -1030,14 +983,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       droppedLegos,
       connections
     );
-    setDroppedLegos(result.droppedLegos);
-    setConnections(result.connections);
+    setLegosAndConnections(result.droppedLegos, result.connections);
     operationHistory.addOperation(result.operation);
-    encodeCanvasState(
-      result.droppedLegos,
-      result.connections,
-      hideConnectedLegs
-    );
 
     const newTensorNetwork = findConnectedComponent(
       result.operation.data.legosToAdd![0],
@@ -1053,14 +1000,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       droppedLegos,
       connections
     );
-    setDroppedLegos(result.droppedLegos);
-    setConnections(result.connections);
+    setLegosAndConnections(result.droppedLegos, result.connections);
     operationHistory.addOperation(result.operation);
-    encodeCanvasState(
-      result.droppedLegos,
-      result.connections,
-      hideConnectedLegs
-    );
   };
 
   const handleLegPartitionDialogClose = () => {
@@ -1227,22 +1168,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       ...tensorNetwork.legos[0],
                       alwaysShowLegs: e.target.checked
                     };
-                    setDroppedLegos(
-                      droppedLegos.map((l) =>
-                        l.instanceId === tensorNetwork.legos[0].instanceId
-                          ? updatedLego
-                          : l
-                      )
-                    );
-                    encodeCanvasState(
-                      droppedLegos.map((l) =>
-                        l.instanceId === tensorNetwork.legos[0].instanceId
-                          ? updatedLego
-                          : l
-                      ),
-                      connections,
-                      hideConnectedLegs
-                    );
+                    updateDroppedLego(updatedLego.instanceId, updatedLego);
                   }}
                 >
                   Always show legs

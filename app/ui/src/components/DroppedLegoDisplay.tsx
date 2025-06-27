@@ -1,7 +1,19 @@
-import { DroppedLego, LegDragState, DragState, Connection } from "../lib/types";
-import { TensorNetwork } from "../lib/TensorNetwork";
+import {
+  DroppedLego,
+  DragState,
+  Connection,
+  PauliOperator,
+  DraggingStage
+} from "../lib/types";
+import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
 import { LegStyle } from "../LegoStyles";
 import { useMemo, memo } from "react";
+import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
+import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
+import { useDragStateStore } from "../stores/dragState";
+import { useLegDragStateStore } from "../stores/legDragState";
+import { useGroupDragStateStore } from "../stores/groupDragState";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 const LEG_LABEL_DISTANCE = 15;
 const LEG_ENDPOINT_RADIUS = 5;
@@ -115,21 +127,8 @@ export function calculateLegPosition(
 interface DroppedLegoDisplayProps {
   lego: DroppedLego;
   index: number;
-  legDragState: LegDragState | null;
-  handleLegMouseDown: (
-    e: React.MouseEvent,
-    legoId: string,
-    legIndex: number
-  ) => void;
-  handleLegoMouseDown: (e: React.MouseEvent, index: number) => void;
-  handleLegoClick: (e: React.MouseEvent, lego: DroppedLego) => void;
-  tensorNetwork: TensorNetwork | null;
-  dragState: DragState | null;
-  onLegClick?: (legoId: string, legIndex: number) => void;
-  hideConnectedLegs: boolean;
-  connections: Connection[];
-  droppedLegos?: DroppedLego[];
   demoMode: boolean;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 // Memoized component for static leg lines only
@@ -276,21 +275,7 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({
-    lego,
-    index,
-    legDragState,
-    handleLegMouseDown,
-    handleLegoMouseDown,
-    handleLegoClick,
-    tensorNetwork,
-    dragState,
-    onLegClick,
-    hideConnectedLegs,
-    connections,
-    droppedLegos = [],
-    demoMode = false
-  }) => {
+  ({ lego, index, demoMode = false, canvasRef }) => {
     const size = lego.style.size;
     const numAllLegs = lego.parity_check_matrix[0].length / 2;
     const isScalar =
@@ -299,6 +284,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const numLogicalLegs = lego.logical_legs.length;
     const numGaugeLegs = lego.gauge_legs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
+    const {
+      droppedLegos,
+      connections,
+      addDroppedLegos,
+      setDroppedLegos,
+      newInstanceId,
+      addConnections,
+      hideConnectedLegs
+    } = useCanvasStore();
+    const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
+    const { dragState, setDragState } = useDragStateStore();
+    const { setLegDragState } = useLegDragStateStore();
+    const { setGroupDragState } = useGroupDragStateStore();
+    const { legDragState } = useLegDragStateStore();
 
     // Initialize selectedMatrixRows if not present
     if (!lego.selectedMatrixRows) {
@@ -318,17 +317,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             .map((_, legIndex) =>
               calculateLegPosition(lego, legIndex, LEG_LABEL_DISTANCE, true)
             );
-    }, [
-      lego.parity_check_matrix,
-      lego.style,
-      lego.selectedMatrixRows,
-      isScalar,
-      numAllLegs
-    ]);
+    }, [numAllLegs]);
 
     // Calculate drag offset for performance during dragging
     const dragOffset = useMemo(() => {
-      if (!dragState?.isDragging) return { x: 0, y: 0 };
+      if (dragState?.draggingStage !== DraggingStage.DRAGGING)
+        return { x: 0, y: 0 };
 
       // Check if this lego is being dragged individually
       if (dragState.draggedLegoIndex === index) {
@@ -351,7 +345,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Check if this specific lego is being dragged
     const isThisLegoDragged = useMemo(() => {
-      if (!dragState?.isDragging) return false;
+      if (dragState?.draggingStage !== DraggingStage.DRAGGING) return false;
 
       // Check if this lego is being dragged individually
       if (dragState.draggedLegoIndex === index) return true;
@@ -459,6 +453,359 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         }
         return false;
       });
+    };
+
+    const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const lego = droppedLegos[index];
+
+      if (e.shiftKey) {
+        handleClone(lego, e.clientX, e.clientY);
+      } else {
+        const isPartOfSelection = tensorNetwork?.legos.some(
+          (l) => l.instanceId === lego.instanceId
+        );
+
+        if (isPartOfSelection) {
+          // Dragging a selected lego - move the whole group
+          const selectedLegos = tensorNetwork?.legos || [];
+          const currentPositions: {
+            [instanceId: string]: { x: number; y: number };
+          } = {};
+          selectedLegos.forEach((l) => {
+            currentPositions[l.instanceId] = { x: l.x, y: l.y };
+          });
+
+          setGroupDragState({
+            legoInstanceIds: selectedLegos.map((l) => l.instanceId),
+            originalPositions: currentPositions
+          });
+        } else {
+          // For non-selected legos, don't set tensor network yet
+          // It will be set when we actually start dragging (in mouse move)
+          // Clear any existing group drag state
+          setGroupDragState(null);
+        }
+
+        // not dragging yet but the index is set, so we can start dragging when the mouse moves
+        setDragState({
+          draggingStage: DraggingStage.MAYBE_DRAGGING,
+          draggedLegoIndex: index,
+          startX: e.clientX,
+          startY: e.clientY,
+          originalX: lego.x,
+          originalY: lego.y
+        });
+      }
+    };
+
+    const handleLegMouseDown = (
+      e: React.MouseEvent,
+      legoId: string,
+      legIndex: number
+    ) => {
+      if (!canvasRef) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      setLegDragState({
+        isDragging: true,
+        legoId,
+        legIndex,
+        startX: x,
+        startY: y,
+        currentX: x,
+        currentY: y
+      });
+    };
+
+    const handleLegClick = (legoId: string, legIndex: number) => {
+      // Find the lego that was clicked
+      const clickedLego = droppedLegos.find(
+        (lego) => lego.instanceId === legoId
+      );
+      if (!clickedLego) return;
+      const numQubits = clickedLego.parity_check_matrix[0].length / 2;
+      const h = clickedLego.parity_check_matrix;
+      const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
+        (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1
+      );
+      const currentOperator = existingPushedLeg
+        ? h[existingPushedLeg][legIndex] == 1
+          ? PauliOperator.X
+          : PauliOperator.Z
+        : PauliOperator.I;
+
+      // Find available operators in parity check matrix for this leg
+      const hasX = clickedLego.parity_check_matrix.some(
+        (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0
+      );
+      const hasZ = clickedLego.parity_check_matrix.some(
+        (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1
+      );
+
+      // Cycle through operators only if they exist in matrix
+      let nextOperator: PauliOperator;
+      switch (currentOperator) {
+        case PauliOperator.I:
+          nextOperator = hasX
+            ? PauliOperator.X
+            : hasZ
+              ? PauliOperator.Z
+              : PauliOperator.I;
+          break;
+        case PauliOperator.X:
+          nextOperator = hasZ ? PauliOperator.Z : PauliOperator.I;
+          break;
+        case PauliOperator.Z:
+          nextOperator = PauliOperator.I;
+          break;
+        default:
+          nextOperator = PauliOperator.I;
+      }
+
+      // Find the first row in parity check matrix that matches currentOperator on legIndex
+      const baseRepresentative =
+        clickedLego.parity_check_matrix.find((row) => {
+          if (nextOperator === PauliOperator.X) {
+            return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
+          } else if (nextOperator === PauliOperator.Z) {
+            return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
+          }
+          return false;
+        }) || new Array(2 * numQubits).fill(0);
+
+      // Find the row index that corresponds to the baseRepresentative
+      const rowIndex = clickedLego.parity_check_matrix.findIndex((row) =>
+        row.every((val, idx) => val === baseRepresentative[idx])
+      );
+
+      // Update the selected rows based on the pushed legs
+      const selectedRows = [rowIndex].filter((row) => row !== -1);
+
+      // Create a new lego instance with updated properties
+      const updatedLego = {
+        ...clickedLego,
+        selectedMatrixRows: selectedRows
+      };
+
+      // Update the selected tensornetwork state
+      setTensorNetwork(
+        new TensorNetwork({ legos: [updatedLego], connections: [] })
+      );
+
+      // Update droppedLegos by replacing the old lego with the new one
+      const newDroppedLegos = droppedLegos.map((lego) =>
+        lego.instanceId === legoId ? updatedLego : lego
+      );
+      setDroppedLegos(newDroppedLegos);
+
+      simpleAutoFlow(
+        updatedLego,
+        newDroppedLegos,
+        connections,
+        setDroppedLegos,
+        setTensorNetwork
+      );
+    };
+
+    const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
+      if (
+        dragState &&
+        dragState.draggingStage === DraggingStage.JUST_FINISHED
+      ) {
+        setDragState({
+          draggingStage: DraggingStage.NOT_DRAGGING,
+          draggedLegoIndex: -1,
+          startX: 0,
+          startY: 0,
+          originalX: 0,
+          originalY: 0
+        });
+        return;
+      }
+
+      if (dragState?.draggingStage !== DraggingStage.DRAGGING) {
+        // Only handle click if not dragging
+        e.stopPropagation();
+
+        // Clear the drag state since this is a click, not a drag
+        setDragState(
+          (prev) =>
+            ({
+              ...prev,
+              draggedLegoIndex: -1,
+              startX: 0,
+              startY: 0,
+              originalX: 0,
+              originalY: 0
+            }) as DragState
+        );
+
+        if (e.ctrlKey || e.metaKey) {
+          // Handle Ctrl+click for toggling selection
+          if (tensorNetwork) {
+            const isSelected = tensorNetwork.legos.some(
+              (l) => l.instanceId === lego.instanceId
+            );
+            if (isSelected) {
+              // Remove lego from tensor network
+              const newLegos = tensorNetwork.legos.filter(
+                (l) => l.instanceId !== lego.instanceId
+              );
+
+              if (newLegos.length === 0) {
+                setTensorNetwork(null);
+              } else {
+                const newConnections = tensorNetwork.connections.filter(
+                  (conn) =>
+                    conn.from.legoId !== lego.instanceId &&
+                    conn.to.legoId !== lego.instanceId
+                );
+                setTensorNetwork(
+                  new TensorNetwork({
+                    legos: newLegos,
+                    connections: newConnections
+                  })
+                );
+              }
+            } else {
+              // Add lego to tensor network
+              const newLegos = [...tensorNetwork.legos, lego];
+              const newConnections = connections.filter(
+                (conn) =>
+                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
+                  newLegos.some((l) => l.instanceId === conn.to.legoId)
+              );
+
+              setTensorNetwork(
+                new TensorNetwork({
+                  legos: newLegos,
+                  connections: newConnections
+                })
+              );
+            }
+          } else {
+            // If no tensor network exists, create one with just this lego
+            setTensorNetwork(
+              new TensorNetwork({ legos: [lego], connections: [] })
+            );
+          }
+        } else {
+          // Regular click behavior
+          const isCurrentlySelected = tensorNetwork?.legos.some(
+            (l) => l.instanceId === lego.instanceId
+          );
+
+          if (isCurrentlySelected && tensorNetwork?.legos.length === 1) {
+            // Second click on same already selected lego - expand to connected component
+            const network = findConnectedComponent(
+              lego,
+              droppedLegos,
+              connections
+            );
+            // only set tensor network if there are more than 1 legos in the network
+            if (network.legos.length > 1) {
+              setTensorNetwork(network);
+            } else {
+              console.log("same isolated lego clicked");
+            }
+          } else {
+            // First click on unselected lego or clicking different lego - select just this lego
+            setTensorNetwork(
+              new TensorNetwork({ legos: [lego], connections: [] })
+            );
+          }
+        }
+      }
+    };
+
+    const handleClone = (
+      lego: DroppedLego,
+      clientX: number,
+      clientY: number
+    ) => {
+      // Check if we're cloning multiple legos
+      const legosToClone = tensorNetwork?.legos || [lego];
+
+      // Get a single starting ID for all new legos
+      const startingId = parseInt(newInstanceId());
+
+      // Create a mapping from old instance IDs to new ones
+      const instanceIdMap = new Map<string, string>();
+      const newLegos = legosToClone.map((l, idx) => {
+        const newId = String(startingId + idx);
+        instanceIdMap.set(l.instanceId, newId);
+        return {
+          ...l,
+          instanceId: newId,
+          x: l.x + 20,
+          y: l.y + 20
+        };
+      });
+
+      // Clone connections between the selected legos
+      const newConnections = connections
+        .filter(
+          (conn) =>
+            legosToClone.some((l) => l.instanceId === conn.from.legoId) &&
+            legosToClone.some((l) => l.instanceId === conn.to.legoId)
+        )
+        .map(
+          (conn) =>
+            new Connection(
+              {
+                legoId: instanceIdMap.get(conn.from.legoId)!,
+                legIndex: conn.from.legIndex
+              },
+              {
+                legoId: instanceIdMap.get(conn.to.legoId)!,
+                legIndex: conn.to.legIndex
+              }
+            )
+        );
+
+      // Add new legos and connections
+      addDroppedLegos(newLegos);
+      addConnections(newConnections);
+
+      // Set up drag state for the group
+      const positions: { [instanceId: string]: { x: number; y: number } } = {};
+      newLegos.forEach((l) => {
+        positions[l.instanceId] = { x: l.x, y: l.y };
+      });
+
+      setGroupDragState({
+        legoInstanceIds: newLegos.map((l) => l.instanceId),
+        originalPositions: positions
+      });
+
+      // Set up initial drag state for the first lego
+      setDragState({
+        draggingStage: DraggingStage.MAYBE_DRAGGING,
+        draggedLegoIndex: droppedLegos.length,
+        startX: clientX,
+        startY: clientY,
+        originalX: lego.x + 20,
+        originalY: lego.y + 20
+      });
+
+      // Add to history
+      // TODO: OPERATION HISTORY needs to be wired up here
+      // operationHistory.addOperation({
+      //   type: "add",
+      //   data: {
+      //     legosToAdd: newLegos,
+      //     connectionsToAdd: newConnections
+      //   }
+      // });
     };
 
     // // Function to get leg visibility style
@@ -587,10 +934,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                       pointerEvents: "all"
                     }}
                     onClick={(e) => {
-                      if (onLegClick) {
-                        e.stopPropagation();
-                        onLegClick(lego.instanceId, legIndex);
-                      }
+                      e.stopPropagation();
+                      handleLegClick(lego.instanceId, legIndex);
                     }}
                   />
                 )}

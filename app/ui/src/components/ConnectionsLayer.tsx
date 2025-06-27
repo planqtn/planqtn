@@ -1,10 +1,15 @@
 import React, { memo, useMemo, useCallback } from "react";
-import { Connection, DroppedLego, LegDragState, DragState } from "../lib/types";
+import {
+  Connection,
+  DroppedLego,
+  LegDragState,
+  DragState,
+  DraggingStage
+} from "../lib/types";
 import { LegStyle } from "../LegoStyles";
 import { calculateLegPosition } from "./DroppedLegoDisplay";
-import { useLegoStore } from "../stores/legoStore";
-import { useConnectionStore } from "../stores/connectionStore";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 interface ConnectionsLayerProps {
   hideConnectedLegs: boolean;
@@ -38,8 +43,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
     onConnectionDoubleClick,
     dragState
   }) => {
-    const { connections } = useConnectionStore();
-    const { droppedLegos } = useLegoStore();
+    const { connections, droppedLegos } = useCanvasStore();
     const { tensorNetwork } = useTensorNetworkStore();
 
     // Determine which legos are being dragged to hide their connections
@@ -47,7 +51,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
       const draggedIds = new Set<string>();
 
       // Add individually dragged lego
-      if (dragState?.isDragging && dragState.draggedLegoIndex >= 0) {
+      if (dragState?.draggingStage === DraggingStage.DRAGGING) {
         const draggedLego = droppedLegos[dragState.draggedLegoIndex];
         if (draggedLego) {
           draggedIds.add(draggedLego.instanceId);
@@ -55,7 +59,10 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = memo(
       }
 
       // Add group dragged legos (selected legos)
-      if (dragState?.isDragging && tensorNetwork?.legos) {
+      if (
+        dragState?.draggingStage === DraggingStage.DRAGGING &&
+        tensorNetwork?.legos
+      ) {
         tensorNetwork.legos.forEach((lego) => {
           draggedIds.add(lego.instanceId);
         });

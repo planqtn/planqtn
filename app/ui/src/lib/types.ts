@@ -75,14 +75,20 @@ export interface LegDragState {
   currentY: number;
 }
 
+export enum DraggingStage {
+  NOT_DRAGGING,
+  MAYBE_DRAGGING,
+  DRAGGING,
+  JUST_FINISHED
+}
+
 export interface DragState {
-  isDragging: boolean;
+  draggingStage: DraggingStage;
   draggedLegoIndex: number;
   startX: number;
   startY: number;
   originalX: number;
   originalY: number;
-  justFinished: boolean;
 }
 
 export interface CanvasDragState {

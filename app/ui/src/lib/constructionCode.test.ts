@@ -4,7 +4,7 @@ import { exec } from "child_process";
 import { TensorNetwork } from "./TensorNetwork";
 describe("constructionCode", () => {
   it("should generate empty network for empty tensor network", () => {
-    const tensorNetwork = new TensorNetwork([], []);
+    const tensorNetwork = new TensorNetwork({ legos: [], connections: [] });
     const code = tensorNetwork.generateConstructionCode();
     expect(code)
       .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
@@ -22,8 +22,8 @@ tn = TensorNetwork(nodes)
   });
 
   it("should generate construction code for a tensor network with one lego", () => {
-    const tensorNetwork = new TensorNetwork(
-      [
+    const tensorNetwork = new TensorNetwork({
+      legos: [
         {
           id: "x_rep_code",
           name: "X-Repetition Code",
@@ -45,8 +45,8 @@ tn = TensorNetwork(nodes)
           selectedMatrixRows: []
         }
       ],
-      []
-    );
+      connections: []
+    });
     const code = tensorNetwork.generateConstructionCode();
     expect(code)
       .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
@@ -70,8 +70,8 @@ tn = TensorNetwork(nodes)
   });
 
   it("should generate python runnable code with the right parity check matrix", async () => {
-    const code = new TensorNetwork(
-      [
+    const tensorNetwork = new TensorNetwork({
+      legos: [
         {
           id: "x_rep_code",
           name: "X-Repetition Code",
@@ -172,7 +172,7 @@ tn = TensorNetwork(nodes)
           selectedMatrixRows: []
         }
       ],
-      [
+      connections: [
         new Connection(
           { legoId: "1", legIndex: 0 },
           { legoId: "3", legIndex: 7 }
@@ -190,7 +190,8 @@ tn = TensorNetwork(nodes)
           { legoId: "5", legIndex: 0 }
         )
       ]
-    ).generateConstructionCode();
+    });
+    const code = tensorNetwork.generateConstructionCode();
     expect(code).toBeDefined();
 
     const python_script = code + "\n\n" + "print(tn.conjoin_nodes().h)";

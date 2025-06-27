@@ -1,17 +1,148 @@
-import React, { memo } from "react";
-import { DroppedLego, DragState, GroupDragState } from "../lib/types";
+import React, { memo, useRef, useEffect, useState } from "react";
+import {
+  DraggingStage,
+  DragState,
+  DroppedLego,
+  GroupDragState,
+  LegoPiece
+} from "../lib/types";
+import { getLegoStyle } from "../LegoStyles";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 interface DragProxyProps {
   dragState: DragState;
   groupDragState: GroupDragState | null;
-  droppedLegos: DroppedLego[];
-  mouseX: number;
-  mouseY: number;
+  canvasRef?: React.RefObject<HTMLDivElement | null>;
+  buildingBlockDragState?: {
+    isDragging: boolean;
+    draggedLego: LegoPiece | null;
+    mouseX: number;
+    mouseY: number;
+  };
 }
 
 export const DragProxy: React.FC<DragProxyProps> = memo(
-  ({ dragState, groupDragState, droppedLegos, mouseX, mouseY }) => {
-    if (!dragState.isDragging) return null;
+  ({ dragState, groupDragState, canvasRef, buildingBlockDragState }) => {
+    // Track mouse position internally to avoid re-rendering parent components
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const animationFrameRef = useRef<number | null>(null);
+    const { droppedLegos } = useCanvasStore();
+
+    // Update mouse position on mouse move
+    useEffect(() => {
+      const handleMouseMove = (e: MouseEvent) => {
+        // Only update state when dragging to avoid unnecessary re-renders
+        if (
+          dragState.draggingStage === DraggingStage.DRAGGING ||
+          buildingBlockDragState?.isDragging
+        ) {
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+          }
+          animationFrameRef.current = requestAnimationFrame(() => {
+            setMousePos({ x: e.clientX, y: e.clientY });
+          });
+        }
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+      };
+    }, [dragState.draggingStage, buildingBlockDragState?.isDragging]);
+
+    const mouseX = mousePos.x;
+    const mouseY = mousePos.y;
+
+    // Handle building blocks drag - only show when mouse is over canvas
+    if (
+      buildingBlockDragState?.isDragging &&
+      buildingBlockDragState.draggedLego &&
+      canvasRef?.current
+    ) {
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const isMouseOverCanvas =
+        mouseX >= canvasRect.left &&
+        mouseX <= canvasRect.right &&
+        mouseY >= canvasRect.top &&
+        mouseY <= canvasRect.bottom;
+
+      if (!isMouseOverCanvas) return null;
+
+      const lego = buildingBlockDragState.draggedLego;
+      const numLegs = lego.parity_check_matrix[0].length / 2;
+      const style = getLegoStyle(lego.id, numLegs);
+
+      // Convert global mouse coordinates to canvas-relative coordinates
+      const canvasX = mouseX - canvasRect.left;
+      const canvasY = mouseY - canvasRect.top;
+
+      return (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+            zIndex: 1000
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: `${canvasX - style.size / 2}px`,
+              top: `${canvasY - style.size / 2}px`,
+              width: `${style.size}px`,
+              height: `${style.size}px`,
+              opacity: 0.7,
+              transform: "scale(1.1)",
+              filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
+              transition: "none"
+            }}
+          >
+            {/* Simplified visual representation */}
+            <svg
+              width={style.size}
+              height={style.size}
+              style={{ overflow: "visible" }}
+            >
+              {/* Simple circle or rectangle based on lego type - no labels for cleaner look */}
+              {style.borderRadius === "full" ? (
+                <circle
+                  cx={style.size / 2}
+                  cy={style.size / 2}
+                  r={style.size / 2}
+                  fill={style.getBackgroundColorForSvg()}
+                  stroke={style.getBorderColorForSvg()}
+                  strokeWidth="2"
+                />
+              ) : (
+                <rect
+                  x="2"
+                  y="2"
+                  width={style.size - 4}
+                  height={style.size - 4}
+                  rx={
+                    typeof style.borderRadius === "number"
+                      ? style.borderRadius
+                      : 0
+                  }
+                  fill={style.getBackgroundColorForSvg()}
+                  stroke={style.getBorderColorForSvg()}
+                  strokeWidth="2"
+                />
+              )}
+            </svg>
+          </div>
+        </div>
+      );
+    }
+
+    if (dragState.draggingStage !== DraggingStage.DRAGGING) return null;
 
     const deltaX = mouseX - dragState.startX;
     const deltaY = mouseY - dragState.startY;
@@ -37,7 +168,7 @@ export const DragProxy: React.FC<DragProxyProps> = memo(
           zIndex: 1000
         }}
       >
-        {draggedLegos.map((lego) => {
+        {draggedLegos.map((lego: DroppedLego) => {
           const originalPos = groupDragState
             ? groupDragState.originalPositions[lego.instanceId]
             : { x: dragState.originalX, y: dragState.originalY };

@@ -159,7 +159,7 @@ export function simpleAutoFlow(
         ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
         : l
     );
-    return TensorNetwork.fromObj({ ...prev, legos: updatedLegos });
+    return prev.with({ legos: updatedLegos });
   });
 }
 
