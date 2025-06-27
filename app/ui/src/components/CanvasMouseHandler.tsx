@@ -40,7 +40,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   const { dragState, setDragState } = useDragStateStore();
   const { groupDragState, setGroupDragState } = useGroupDragStateStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
-  const { connections } = useCanvasStore();
+  const { connections, addConnections } = useCanvasStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -284,10 +284,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         });
         return;
       }
-      if (legDragState?.isDragging) {
-        setLegDragState(null);
-        return;
-      }
+
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
         setDragState({
           draggingStage: DraggingStage.NOT_DRAGGING,
@@ -308,6 +305,98 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           originalY: 0
         });
         setGroupDragState(null);
+      }
+      // Handle leg connection
+      if (legDragState?.isDragging) {
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        droppedLegos.find((lego) => {
+          const legCount = lego.parity_check_matrix[0].length / 2;
+          for (let i = 0; i < legCount; i++) {
+            const pos = calculateLegPosition(lego, i);
+            const targetPoint = {
+              x: lego.x + pos.endX,
+              y: lego.y + pos.endY
+            };
+
+            const distance = Math.sqrt(
+              Math.pow(mouseX - targetPoint.x, 2) +
+                Math.pow(mouseY - targetPoint.y, 2)
+            );
+
+            if (distance < 10) {
+              // Check if either leg is already participating in a connection
+              const isSourceLegConnected = connections.some(
+                (conn) =>
+                  (conn.from.legoId === legDragState.legoId &&
+                    conn.from.legIndex === legDragState.legIndex) ||
+                  (conn.to.legoId === legDragState.legoId &&
+                    conn.to.legIndex === legDragState.legIndex)
+              );
+              const isTargetLegConnected = connections.some(
+                (conn) =>
+                  (conn.from.legoId === lego.instanceId &&
+                    conn.from.legIndex === i) ||
+                  (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
+              );
+
+              if (
+                lego.instanceId === legDragState.legoId &&
+                i === legDragState.legIndex
+              ) {
+                return true;
+              }
+
+              if (isSourceLegConnected || isTargetLegConnected) {
+                //TODO: set error message
+                // setError("Cannot connect to a leg that is already connected");
+                console.error(
+                  "Cannot connect to a leg that is already connected"
+                );
+                return true;
+              }
+
+              const connectionExists = connections.some(
+                (conn) =>
+                  (conn.from.legoId === legDragState.legoId &&
+                    conn.from.legIndex === legDragState.legIndex &&
+                    conn.to.legoId === lego.instanceId &&
+                    conn.to.legIndex === i) ||
+                  (conn.from.legoId === lego.instanceId &&
+                    conn.from.legIndex === i &&
+                    conn.to.legoId === legDragState.legoId &&
+                    conn.to.legIndex === legDragState.legIndex)
+              );
+
+              if (!connectionExists) {
+                const newConnection = new Connection(
+                  {
+                    legoId: legDragState.legoId,
+                    legIndex: legDragState.legIndex
+                  },
+                  {
+                    legoId: lego.instanceId,
+                    legIndex: i
+                  }
+                );
+
+                addConnections([newConnection]);
+                // TODO: OPERATION HISTORY needs to be wired up here
+                // operationHistory.addOperation({
+                //   type: "connect",
+                //   data: { connectionsToAdd: [newConnection] }
+                // });
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+      }
+      if (legDragState?.isDragging) {
+        setLegDragState(null);
+        return;
       }
     };
 
