@@ -18,20 +18,18 @@ interface DragProxyProps {
 export const DragProxy: React.FC<DragProxyProps> = memo(
   ({ canvasRef, buildingBlockDragState }) => {
     // Track mouse position internally to avoid re-rendering parent components
+    // This is only used for canvas lego dragging, not building block dragging
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const animationFrameRef = useRef<number | null>(null);
     const { droppedLegos } = useCanvasStore();
     const { dragState } = useDragStateStore();
     const { groupDragState } = useGroupDragStateStore();
 
-    // Update mouse position on mouse move
+    // Update mouse position on mouse move - only for canvas lego dragging
     useEffect(() => {
       const handleMouseMove = (e: MouseEvent) => {
-        // Only update state when dragging to avoid unnecessary re-renders
-        if (
-          dragState?.draggingStage === DraggingStage.DRAGGING ||
-          buildingBlockDragState?.isDragging
-        ) {
+        // Only update state when dragging canvas legos to avoid unnecessary re-renders
+        if (dragState?.draggingStage === DraggingStage.DRAGGING) {
           if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
           }
@@ -49,10 +47,15 @@ export const DragProxy: React.FC<DragProxyProps> = memo(
           cancelAnimationFrame(animationFrameRef.current);
         }
       };
-    }, [dragState, buildingBlockDragState]);
+    }, [dragState]);
 
-    const mouseX = mousePos.x;
-    const mouseY = mousePos.y;
+    // Use buildingBlockDragState coordinates for building block drags, mousePos for canvas drags
+    const mouseX = buildingBlockDragState?.isDragging
+      ? buildingBlockDragState.mouseX
+      : mousePos.x;
+    const mouseY = buildingBlockDragState?.isDragging
+      ? buildingBlockDragState.mouseY
+      : mousePos.y;
 
     // Handle building blocks drag - only show when mouse is over canvas
     if (

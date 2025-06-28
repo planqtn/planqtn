@@ -759,26 +759,6 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  // Lightweight mouse position tracking (runs every frame)
-
-  // Handle undo
-  const handleUndo = () => {
-    console.log("before undo", connections, droppedLegos);
-    const { connections: newConnections, droppedLegos: newDroppedLegos } =
-      operationHistory.undo(connections, droppedLegos);
-    console.log("undo result", newConnections, newDroppedLegos);
-    setLegosAndConnections(newDroppedLegos, newConnections);
-  };
-
-  // Handle redo
-  const handleRedo = () => {
-    console.log("before redo", connections, droppedLegos);
-    const { connections: newConnections, droppedLegos: newDroppedLegos } =
-      operationHistory.redo(connections, droppedLegos);
-    console.log("redo result", newConnections, newDroppedLegos);
-    setLegosAndConnections(newDroppedLegos, newConnections);
-  };
-
   // Keyboard handling moved to KeyboardHandler component
 
   // KeyUp, Blur, and Focus handling moved to KeyboardHandler component
@@ -1264,8 +1244,6 @@ const LegoStudioView: React.FC = () => {
     <>
       <KeyboardHandler
         onSetAltKeyPressed={setAltKeyPressed}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
         onSetError={setError}
         onFuseLegos={fuseLegos}
         onPullOutSameColoredLeg={handlePullOutSameColoredLeg}
@@ -1641,7 +1619,6 @@ const LegoStudioView: React.FC = () => {
         )}
         {/* Network dialogs managed by ModalRoot */}
         <ModalRoot
-          newInstanceId={newInstanceId}
           currentUser={currentUser}
           setError={setError}
           weightEnumeratorCache={weightEnumeratorCache}

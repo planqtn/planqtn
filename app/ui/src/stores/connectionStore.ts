@@ -1,5 +1,6 @@
-import { Connection } from "../lib/types";
 import { StateCreator } from "zustand";
+import { produce } from "immer";
+import { Connection } from "../lib/types";
 import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
 
 export interface ConnectionSlice {
@@ -18,24 +19,33 @@ export const createConnectionsSlice: StateCreator<
 > = (set, get) => ({
   connections: [],
   getConnections: () => get().connections,
-  setConnections: (connections: Connection[]) => {
-    set({ connections });
+
+  setConnections: (connections) => {
+    set(
+      produce((state: ConnectionSlice) => {
+        state.connections = connections;
+      })
+    );
     get().updateEncodedCanvasState();
   },
-  addConnections: (newConnections: Connection[]) => {
-    set((state: ConnectionSlice) => {
-      return {
-        connections: [...state.connections, ...newConnections]
-      };
-    });
+
+  addConnections: (newConnections) => {
+    set(
+      produce((state: ConnectionSlice) => {
+        state.connections.push(...newConnections);
+      })
+    );
     get().updateEncodedCanvasState();
   },
-  removeConnections: (connections: Connection[]) => {
-    set((state: ConnectionSlice) => ({
-      connections: state.connections.filter(
-        (connection) => !connections.includes(connection)
-      )
-    }));
+
+  removeConnections: (connectionsToRemove) => {
+    set(
+      produce((state: ConnectionSlice) => {
+        state.connections = state.connections.filter(
+          (connection) => !connectionsToRemove.includes(connection)
+        );
+      })
+    );
     get().updateEncodedCanvasState();
   }
 });
