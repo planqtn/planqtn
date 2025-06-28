@@ -2,15 +2,12 @@ import { useEffect, useRef } from "react";
 import { DroppedLego, Connection } from "../lib/types";
 import { getLegoStyle } from "../LegoStyles";
 import { TensorNetwork } from "../lib/TensorNetwork";
-import { OperationHistory } from "../lib/OperationHistory";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
+import * as _ from "lodash";
 
 interface KeyboardHandlerProps {
-  operationHistory: OperationHistory;
   onSetAltKeyPressed: (pressed: boolean) => void;
-  onUndo: () => void;
-  onRedo: () => void;
   onSetError: (error: string) => void;
   onFuseLegos: (legos: DroppedLego[]) => void;
   onPullOutSameColoredLeg: (lego: DroppedLego) => void;
@@ -24,10 +21,7 @@ interface KeyboardHandlerProps {
 }
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
-  operationHistory,
   onSetAltKeyPressed,
-  onUndo,
-  onRedo,
   onSetError,
   onFuseLegos,
   onPullOutSameColoredLeg,
@@ -41,7 +35,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     connections,
     addConnections,
     removeConnections,
-    newInstanceId
+    newInstanceId,
+    addOperation,
+    undo,
+    redo
   } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
@@ -51,13 +48,13 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         onSetAltKeyPressed(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        onUndo();
+        undo();
       } else if (
         ((e.ctrlKey || e.metaKey) && e.key === "y") ||
         ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey)
       ) {
         e.preventDefault();
-        onRedo();
+        redo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
         e.preventDefault();
         if (tensorNetwork && tensorNetwork.legos.length > 0) {
@@ -171,7 +168,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             addConnections(newConnections);
 
             // Add to history
-            operationHistory.addOperation({
+            addOperation({
               type: "add",
               data: {
                 legosToAdd: newLegos,
@@ -221,7 +218,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           );
 
           // Add to history
-          operationHistory.addOperation({
+          addOperation({
             type: "remove",
             data: {
               legosToRemove: legosToRemove,
@@ -245,26 +242,18 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           setTensorNetwork(null);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        console.log("select all");
         e.preventDefault();
         if (droppedLegos.length > 0) {
-          // Create a tensor network from all legos
-          const selectedLegoIds = new Set(
-            droppedLegos.map((lego) => lego.instanceId)
-          );
-
-          // Collect only internal connections between selected legos
-          const internalConnections = connections.filter(
-            (conn) =>
-              selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId)
-          );
-
           const tensorNetwork = new TensorNetwork({
-            legos: droppedLegos,
-            connections: internalConnections
+            legos: _.cloneDeep(droppedLegos),
+            connections: _.cloneDeep(connections)
           });
 
+          console.log("tensorNetwork", tensorNetwork);
           setTensorNetwork(tensorNetwork);
+        } else {
+          console.log("no droppedLegos");
         }
       } else if (e.key === "Escape") {
         // Dismiss error message when Escape is pressed
@@ -319,14 +308,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [
-    tensorNetwork,
-    operationHistory,
-    setTensorNetwork,
-    onSetAltKeyPressed,
-    onUndo,
-    onRedo
-  ]);
+  }, [tensorNetwork, setTensorNetwork, onSetAltKeyPressed]);
 
   // Track mouse position for paste operations
   useEffect(() => {

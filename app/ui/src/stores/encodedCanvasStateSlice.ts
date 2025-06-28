@@ -30,7 +30,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
       const result = await get().canvasStateSerializer.decode(encoded);
       set({
         droppedLegos: result.pieces,
-        connections: result.connections
+        connections: result.connections,
+        hideConnectedLegs: result.hideConnectedLegs
       });
       console.log("Decoded canvas state for canvasId:", result.canvasId);
       console.log(new Error().stack);

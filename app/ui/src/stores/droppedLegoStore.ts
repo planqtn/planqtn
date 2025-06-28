@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand";
+import { produce } from "immer";
 import { DroppedLego } from "../lib/types";
 import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
 
@@ -15,6 +16,7 @@ export interface DroppedLegosSlice {
     instanceId: string,
     updates: Partial<DroppedLego>
   ) => void;
+  updateDroppedLegos: (legos: DroppedLego[]) => void;
   removeDroppedLegos: (instanceIds: string[]) => void;
   clearDroppedLegos: () => void;
   newInstanceId: () => string;
@@ -40,56 +42,94 @@ export const createLegoSlice: StateCreator<
   setDroppedLegos: (
     legos: DroppedLego[] | ((prev: DroppedLego[]) => DroppedLego[])
   ) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos:
-        typeof legos === "function" ? legos(state.droppedLegos) : legos
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos =
+          typeof legos === "function" ? legos(state.droppedLegos) : legos;
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   addDroppedLego: (lego: DroppedLego) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos: [...state.droppedLegos, lego]
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos.push(lego);
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos: [...state.droppedLegos, ...legos]
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos.push(...legos);
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   removeDroppedLego: (instanceId: string) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos: state.droppedLegos.filter(
-        (lego: DroppedLego) => lego.instanceId !== instanceId
-      )
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos = state.droppedLegos.filter(
+          (lego: DroppedLego) => lego.instanceId !== instanceId
+        );
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   removeDroppedLegos: (instanceIds: string[]) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos: state.droppedLegos.filter(
-        (lego: DroppedLego) => !instanceIds.includes(lego.instanceId)
-      )
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos = state.droppedLegos.filter(
+          (lego: DroppedLego) => !instanceIds.includes(lego.instanceId)
+        );
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   updateDroppedLego: (instanceId: string, updates: Partial<DroppedLego>) => {
-    set((state: DroppedLegosSlice) => ({
-      droppedLegos: state.droppedLegos.map((lego: DroppedLego) =>
-        lego.instanceId === instanceId ? { ...lego, ...updates } : lego
-      )
-    }));
+    set(
+      produce((state: DroppedLegosSlice) => {
+        const lego = state.droppedLegos.find(
+          (l) => l.instanceId === instanceId
+        );
+        if (lego) Object.assign(lego, updates);
+      })
+    );
+    get().updateEncodedCanvasState();
+  },
+
+  updateDroppedLegos: (legos: DroppedLego[]) => {
+    set(
+      produce((state: DroppedLegosSlice) => {
+        // Create a Map for quick lookups of existing legos by instanceId
+        const existingLegosMap = new Map<string, DroppedLego>();
+        state.droppedLegos.forEach((lego) => {
+          existingLegosMap.set(lego.instanceId, lego);
+        });
+
+        // Iterate over the updates and apply them
+        for (const update of legos) {
+          const lego = existingLegosMap.get(update.instanceId);
+          if (lego) {
+            Object.assign(lego, update);
+          }
+        }
+      })
+    );
     get().updateEncodedCanvasState();
   },
 
   clearDroppedLegos: () => {
-    set({ droppedLegos: [] });
+    set(
+      produce((state: DroppedLegosSlice) => {
+        state.droppedLegos = [];
+      })
+    );
     get().updateEncodedCanvasState();
   }
 });

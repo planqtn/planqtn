@@ -1,26 +1,23 @@
 import { DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
 import { useCanvasStore } from "../stores/canvasStateStore";
-import { OperationHistory } from "./OperationHistory";
 import { CanvasStateSerializer } from "./CanvasStateSerializer";
 
 export interface CustomLegoCreationOptions {
-  operationHistory?: OperationHistory;
   stateSerializer?: CanvasStateSerializer;
   hideConnectedLegs?: boolean;
-  newInstanceId?: () => string;
 }
 
 export class CustomLegoService {
   static createCustomLego(
     matrix: number[][],
     logicalLegs: number[],
-    position: { x: number; y: number },
-    options: CustomLegoCreationOptions
+    position: { x: number; y: number }
   ): void {
-    const { addDroppedLego } = useCanvasStore.getState();
+    const { addDroppedLego, addOperation, newInstanceId } =
+      useCanvasStore.getState();
 
-    const instanceId = options.newInstanceId ? options.newInstanceId() : "1";
+    const instanceId = newInstanceId();
     const newLego: DroppedLego = {
       // Generate unique ID to avoid caching collisions
       id:
@@ -44,14 +41,11 @@ export class CustomLegoService {
     // Add to store
     addDroppedLego(newLego);
 
-    // Add to operation history if provided
-    if (options.operationHistory) {
-      options.operationHistory.addOperation({
-        type: "add",
-        data: {
-          legosToAdd: [newLego]
-        }
-      });
-    }
+    addOperation({
+      type: "add",
+      data: {
+        legosToAdd: [newLego]
+      }
+    });
   }
 }

@@ -291,7 +291,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       setDroppedLegos,
       newInstanceId,
       addConnections,
-      hideConnectedLegs
+      hideConnectedLegs,
+      addOperation
     } = useCanvasStore();
     const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
     const { dragState, setDragState } = useDragStateStore();
@@ -798,14 +799,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       });
 
       // Add to history
-      // TODO: OPERATION HISTORY needs to be wired up here
-      // operationHistory.addOperation({
-      //   type: "add",
-      //   data: {
-      //     legosToAdd: newLegos,
-      //     connectionsToAdd: newConnections
-      //   }
-      // });
+      addOperation({
+        type: "add",
+        data: {
+          legosToAdd: newLegos,
+          connectionsToAdd: newConnections
+        }
+      });
     };
 
     // // Function to get leg visibility style

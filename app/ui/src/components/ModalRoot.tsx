@@ -6,21 +6,15 @@ import LoadingModal from "./LoadingModal";
 import AuthDialog from "./AuthDialog";
 import { RuntimeConfigDialog } from "./RuntimeConfigDialog";
 import WeightEnumeratorCalculationDialog from "./WeightEnumeratorCalculationDialog";
-import { NetworkService, NetworkCreationOptions } from "../lib/networkService";
-import {
-  CustomLegoService,
-  CustomLegoCreationOptions
-} from "../lib/customLegoService";
+import { NetworkService } from "../lib/networkService";
+import { CustomLegoService } from "../lib/customLegoService";
 import { RuntimeConfigService } from "../lib/runtimeConfigService";
 import { WeightEnumeratorService } from "../lib/weightEnumeratorService";
-import { OperationHistory } from "../lib/OperationHistory";
 import { useToast } from "@chakra-ui/react";
 import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
 
 interface ModalRootProps {
-  operationHistory: OperationHistory;
-  newInstanceId: () => string;
   // Weight enumerator dependencies
   currentUser: User | null;
   setError?: (error: string) => void;
@@ -36,8 +30,6 @@ interface ModalRootProps {
 }
 
 export const ModalRoot: React.FC<ModalRootProps> = ({
-  operationHistory,
-  newInstanceId,
   currentUser,
   setError,
   weightEnumeratorCache
@@ -67,17 +59,9 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const toast = useToast();
 
-  const createNetworkOptions = (): NetworkCreationOptions => ({
-    operationHistory,
-    newInstanceId
-  });
-
   const handleCssTannerSubmit = async (matrix: number[][]) => {
     try {
-      await NetworkService.createCssTannerNetwork(
-        matrix,
-        createNetworkOptions()
-      );
+      await NetworkService.createCssTannerNetwork(matrix);
       toast({
         title: "Success",
         description: "CSS Tanner network created successfully",
@@ -99,7 +83,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const handleTannerSubmit = async (matrix: number[][]) => {
     try {
-      await NetworkService.createTannerNetwork(matrix, createNetworkOptions());
+      await NetworkService.createTannerNetwork(matrix);
       toast({
         title: "Success",
         description: "Tanner network created successfully",
@@ -121,7 +105,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const handleMspSubmit = async (matrix: number[][]) => {
     try {
-      await NetworkService.createMspNetwork(matrix, createNetworkOptions());
+      await NetworkService.createMspNetwork(matrix);
       toast({
         title: "Success",
         description: "MSP network created successfully",
@@ -141,11 +125,6 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     }
   };
 
-  const createCustomLegoOptions = (): CustomLegoCreationOptions => ({
-    operationHistory,
-    newInstanceId
-  });
-
   const handleCustomLegoSubmit = async (
     matrix: number[][],
     logicalLegs: number[]
@@ -154,8 +133,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
       CustomLegoService.createCustomLego(
         matrix,
         logicalLegs,
-        customLegoState.position,
-        createCustomLegoOptions()
+        customLegoState.position
       );
       toast({
         title: "Success",

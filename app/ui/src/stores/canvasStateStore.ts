@@ -6,6 +6,10 @@ import {
   EncodedCanvasStateSlice
 } from "./encodedCanvasStateSlice";
 import { Connection, DroppedLego } from "../lib/types";
+import {
+  createOperationHistorySlice,
+  OperationHistorySlice
+} from "./operationHistoryStateSlice";
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -40,10 +44,12 @@ export const useCanvasStore = create<
   DroppedLegosSlice &
     ConnectionSlice &
     EncodedCanvasStateSlice &
-    GlobalTensorNetworkSlice
+    GlobalTensorNetworkSlice &
+    OperationHistorySlice
 >((...a) => ({
   ...createConnectionsSlice(...a),
   ...createLegoSlice(...a),
   ...createEncodedCanvasStateSlice(...a),
-  ...createGlobalTensorNetworkStore(...a)
+  ...createGlobalTensorNetworkStore(...a),
+  ...createOperationHistorySlice(...a)
 }));

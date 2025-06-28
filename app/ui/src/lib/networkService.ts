@@ -2,24 +2,18 @@ import axios from "axios";
 import { Connection, DroppedLego } from "./types";
 import { getLegoStyle } from "../LegoStyles";
 import { useCanvasStore } from "../stores/canvasStateStore";
-import { OperationHistory } from "./OperationHistory";
 import { config, getApiUrl } from "../config";
 import { getAccessToken } from "./auth";
 import { getAxiosErrorMessage } from "./errors";
 import { useModalStore } from "../stores/modalStore";
 
-export interface NetworkCreationOptions {
-  operationHistory?: OperationHistory;
-  newInstanceId?: () => string;
-}
-
 export class NetworkService {
   private static async requestTensorNetwork(
     matrix: number[][],
-    networkType: string,
-    newInstanceId: () => string
+    networkType: string
   ) {
     const { openLoadingModal, closeLoadingModal } = useModalStore.getState();
+    const { newInstanceId } = useCanvasStore.getState();
 
     try {
       openLoadingModal("Generating network...");
@@ -56,60 +50,34 @@ export class NetworkService {
     }
   }
 
-  static async createCssTannerNetwork(
-    matrix: number[][],
-    options: NetworkCreationOptions
-  ): Promise<void> {
-    const response = await this.requestTensorNetwork(
-      matrix,
-      "CSS_TANNER",
-      options.newInstanceId!
-    );
+  static async createCssTannerNetwork(matrix: number[][]): Promise<void> {
+    const response = await this.requestTensorNetwork(matrix, "CSS_TANNER");
     const { legos, connections } = response.data;
 
-    await this.processNetworkResponse(
-      legos,
-      connections,
-      "CSS Tanner",
-      options
-    );
+    await this.processNetworkResponse(legos, connections, "CSS Tanner");
   }
 
-  static async createTannerNetwork(
-    matrix: number[][],
-    options: NetworkCreationOptions
-  ): Promise<void> {
-    const response = await this.requestTensorNetwork(
-      matrix,
-      "TANNER",
-      options.newInstanceId!
-    );
+  static async createTannerNetwork(matrix: number[][]): Promise<void> {
+    const response = await this.requestTensorNetwork(matrix, "TANNER");
     const { legos, connections } = response.data;
 
-    await this.processNetworkResponse(legos, connections, "Tanner", options);
+    await this.processNetworkResponse(legos, connections, "Tanner");
   }
 
-  static async createMspNetwork(
-    matrix: number[][],
-    options: NetworkCreationOptions
-  ): Promise<void> {
-    const response = await this.requestTensorNetwork(
-      matrix,
-      "MSP",
-      options.newInstanceId!
-    );
+  static async createMspNetwork(matrix: number[][]): Promise<void> {
+    const response = await this.requestTensorNetwork(matrix, "MSP");
     const { legos, connections } = response.data;
 
-    await this.processNetworkResponse(legos, connections, "MSP", options);
+    await this.processNetworkResponse(legos, connections, "MSP");
   }
 
   private static async processNetworkResponse(
     legos: DroppedLego[],
     connections: Connection[],
-    networkType: string,
-    options: NetworkCreationOptions
+    networkType: string
   ): Promise<void> {
-    const { addDroppedLegos, addConnections } = useCanvasStore.getState();
+    const { addDroppedLegos, addConnections, addOperation } =
+      useCanvasStore.getState();
 
     // Convert connections to proper Connection instances
     const newConnections = connections.map((conn: Connection) => {
@@ -130,16 +98,13 @@ export class NetworkService {
     addDroppedLegos(styledLegos);
     addConnections(newConnections);
 
-    // Add to operation history if provided
-    if (options.operationHistory) {
-      options.operationHistory.addOperation({
-        type: "add",
-        data: {
-          legosToAdd: styledLegos,
-          connectionsToAdd: newConnections
-        }
-      });
-    }
+    addOperation({
+      type: "add",
+      data: {
+        legosToAdd: styledLegos,
+        connectionsToAdd: newConnections
+      }
+    });
   }
 
   private static positionLegos(

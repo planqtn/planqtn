@@ -34,13 +34,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 }) => {
   // Zustand store selectors
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
-  const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
+  const { updateDroppedLegos, setDroppedLegos } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const { legDragState, setLegDragState } = useLegDragStateStore();
   const { dragState, setDragState } = useDragStateStore();
   const { groupDragState, setGroupDragState } = useGroupDragStateStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
-  const { connections, addConnections } = useCanvasStore();
+  const { connections, addConnections, addOperation } = useCanvasStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -57,8 +57,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       const newX = dragState.originalX + deltaX;
       const newY = dragState.originalY + deltaY;
 
-      // Create a new array with updated positions
-      const updatedLegos = droppedLegos.map((lego, index) => {
+      const legosToUpdate = droppedLegos.filter(
+        (lego, index) =>
+          index === dragState.draggedLegoIndex ||
+          groupDragState?.legoInstanceIds.includes(lego.instanceId)
+      );
+
+      const updatedLegos = legosToUpdate.map((lego) => {
         if (
           groupDragState &&
           groupDragState.legoInstanceIds.includes(lego.instanceId)
@@ -66,32 +71,50 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           // Move all selected legos together
           const originalPos = groupDragState.originalPositions[lego.instanceId];
           return {
-            ...lego,
-            x: originalPos.x + deltaX,
-            y: originalPos.y + deltaY
+            oldLego: lego,
+            updatedLego: {
+              ...lego,
+              x: originalPos.x + deltaX,
+              y: originalPos.y + deltaY
+            }
           };
-        } else if (index === dragState.draggedLegoIndex) {
-          return {
+        }
+
+        return {
+          oldLego: lego,
+          updatedLego: {
             ...lego,
             x: newX,
             y: newY
-          };
-        }
-        return lego;
+          }
+        };
       });
 
-      setDroppedLegos(updatedLegos);
-      // Don't update tensor network during drag - it will be updated on mouse up
+      updateDroppedLegos(updatedLegos.map((lego) => lego.updatedLego));
+      addOperation({
+        type: "move",
+        data: {
+          legosToUpdate: updatedLegos.map((update) => ({
+            oldLego: update.oldLego,
+            newLego: update.updatedLego
+          }))
+        }
+      });
+
       if (groupDragState) {
         if (tensorNetwork) {
-          tensorNetwork.legos = updatedLegos.filter((lego) =>
-            groupDragState.legoInstanceIds.includes(lego.instanceId)
-          );
+          tensorNetwork.legos = updatedLegos
+            .filter((update) =>
+              groupDragState.legoInstanceIds.includes(
+                update.updatedLego.instanceId
+              )
+            )
+            .map((update) => update.updatedLego);
         }
       }
 
       // Handle connection hover detection
-      const draggedLego = updatedLegos[dragState.draggedLegoIndex];
+      const draggedLego = droppedLegos[dragState.draggedLegoIndex];
       if (draggedLego) {
         const draggedLegoHasConnections = connections.some((conn) =>
           conn.containsLego(draggedLego.instanceId)
@@ -382,11 +405,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
                 );
 
                 addConnections([newConnection]);
-                // TODO: OPERATION HISTORY needs to be wired up here
-                // operationHistory.addOperation({
-                //   type: "connect",
-                //   data: { connectionsToAdd: [newConnection] }
-                // });
+
+                addOperation({
+                  type: "connect",
+                  data: { connectionsToAdd: [newConnection] }
+                });
                 return true;
               }
             }

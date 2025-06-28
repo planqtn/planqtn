@@ -46,7 +46,7 @@ import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { calculateLegPosition } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
-import { OperationHistory } from "./lib/OperationHistory";
+
 import { FuseLegos } from "./transformations/FuseLegos";
 import { InjectTwoLegged } from "./transformations/InjectTwoLegged";
 import { AddStopper } from "./transformations/AddStopper";
@@ -142,7 +142,8 @@ const LegoStudioView: React.FC = () => {
     removeConnections,
     setLegosAndConnections,
     hideConnectedLegs,
-    setHideConnectedLegs
+    setHideConnectedLegs,
+    addOperation
   } = useCanvasStore();
 
   const [error, setError] = useState<string>("");
@@ -154,9 +155,6 @@ const LegoStudioView: React.FC = () => {
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
   // Use centralized TensorNetwork store
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
-  const [operationHistory] = useState<OperationHistory>(
-    new OperationHistory([])
-  );
 
   const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
     isSelecting: false,
@@ -602,7 +600,7 @@ const LegoStudioView: React.FC = () => {
           stopperLego
         );
         setLegosAndConnections(result.droppedLegos, result.connections);
-        operationHistory.addOperation(result.operation);
+        addOperation(result.operation);
         return true;
       } catch (error) {
         console.error("Failed to add stopper:", error);
@@ -678,7 +676,7 @@ const LegoStudioView: React.FC = () => {
             droppedLegos: newDroppedLegos,
             operation
           }) => {
-            operationHistory.addOperation(operation);
+            addOperation(operation);
             setLegosAndConnections(newDroppedLegos, newConnections);
           }
         )
@@ -693,7 +691,7 @@ const LegoStudioView: React.FC = () => {
         openCustomLegoDialog({ x: dropPosition.x, y: dropPosition.y });
       } else {
         addDroppedLego(newLego);
-        operationHistory.addOperation({
+        addOperation({
           type: "add",
           data: { legosToAdd: [newLego] }
         });
@@ -739,7 +737,7 @@ const LegoStudioView: React.FC = () => {
         selectedMatrixRows: []
       };
       addDroppedLego(newLego);
-      operationHistory.addOperation({
+      addOperation({
         type: "add",
         data: { legosToAdd: [newLego] }
       });
@@ -940,7 +938,7 @@ const LegoStudioView: React.FC = () => {
     e.stopPropagation();
 
     // Add to history before removing
-    operationHistory.addOperation({
+    addOperation({
       type: "disconnect",
       data: { connectionsToRemove: [connection] }
     });
@@ -953,7 +951,7 @@ const LegoStudioView: React.FC = () => {
     if (droppedLegos.length === 0 && connections.length === 0) return;
 
     // Store current state for history
-    operationHistory.addOperation({
+    addOperation({
       type: "remove",
       data: {
         legosToRemove: droppedLegos,
@@ -977,7 +975,7 @@ const LegoStudioView: React.FC = () => {
         droppedLegos: newDroppedLegos,
         operation: operation
       } = await trafo.apply(legosToFuse);
-      operationHistory.addOperation(operation);
+      addOperation(operation);
       setLegosAndConnections(newDroppedLegos, newConnections);
       setTensorNetwork(null);
     } catch (error) {
@@ -1096,7 +1094,7 @@ const LegoStudioView: React.FC = () => {
       setLegosAndConnections(newLegos, newConnections);
 
       // Add to operation history
-      operationHistory.addOperation({
+      addOperation({
         type: "pullOutOppositeLeg",
         data: {
           legosToRemove: [lego],
@@ -1265,7 +1263,6 @@ const LegoStudioView: React.FC = () => {
   return (
     <>
       <KeyboardHandler
-        operationHistory={operationHistory}
         onSetAltKeyPressed={setAltKeyPressed}
         onUndo={handleUndo}
         onRedo={handleRedo}
@@ -1603,7 +1600,6 @@ const LegoStudioView: React.FC = () => {
                 handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
                 setError={setError}
                 fuseLegos={fuseLegos}
-                operationHistory={operationHistory}
                 makeSpace={(
                   center: { x: number; y: number },
                   radius: number,
@@ -1645,7 +1641,6 @@ const LegoStudioView: React.FC = () => {
         )}
         {/* Network dialogs managed by ModalRoot */}
         <ModalRoot
-          operationHistory={operationHistory}
           newInstanceId={newInstanceId}
           currentUser={currentUser}
           setError={setError}

@@ -29,7 +29,6 @@ import { useState, memo, useCallback, useMemo } from "react";
 import { getLegoStyle } from "../LegoStyles.ts";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
 import * as _ from "lodash";
-import { OperationHistory } from "../lib/OperationHistory.ts";
 import {
   canDoBialgebra,
   applyBialgebra
@@ -71,7 +70,6 @@ import { useCanvasStore } from "../stores/canvasStateStore.ts";
 interface DetailsPanelProps {
   setError: (error: string) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
-  operationHistory: OperationHistory;
 
   makeSpace: (
     center: { x: number; y: number },
@@ -113,7 +111,6 @@ interface DetailsPanelProps {
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
   setError,
   fuseLegos,
-  operationHistory,
   makeSpace,
   handlePullOutSameColoredLeg,
   user,
@@ -126,7 +123,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     droppedLegos,
     setDroppedLegos,
     setLegosAndConnections,
-    updateDroppedLego
+    updateDroppedLego,
+    addOperation
   } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const bgColor = useColorModeValue("white", "gray.800");
@@ -549,7 +547,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         connectionsToAdd: newConnections
       }
     };
-    operationHistory.addOperation(operation);
+    addOperation(operation);
   };
 
   const handleUnfuseInto2Legos = (lego: DroppedLego) => {
@@ -729,7 +727,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setLegosAndConnections(newLegos, updatedConnections);
 
       // Add to operation history
-      operationHistory.addOperation({
+      addOperation({
         type: "unfuseInto2Legos",
         data: {
           legosToRemove: [lego],
@@ -944,7 +942,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         connectionsToAdd: newConnections
       }
     };
-    operationHistory.addOperation(operation);
+    addOperation(operation);
   };
 
   const handleBialgebra = async () => {
@@ -954,7 +952,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       connections
     );
     setLegosAndConnections(result.droppedLegos, result.connections);
-    operationHistory.addOperation(result.operation);
+    addOperation(result.operation);
   };
 
   const handleInverseBialgebra = async () => {
@@ -964,7 +962,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       connections
     );
     setLegosAndConnections(result.droppedLegos, result.connections);
-    operationHistory.addOperation(result.operation);
+    addOperation(result.operation);
   };
 
   const handleHopfRule = async () => {
@@ -974,7 +972,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       connections
     );
     setLegosAndConnections(result.droppedLegos, result.connections);
-    operationHistory.addOperation(result.operation);
+    addOperation(result.operation);
   };
 
   const handleConnectGraphNodes = async () => {
@@ -984,7 +982,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       connections
     );
     setLegosAndConnections(result.droppedLegos, result.connections);
-    operationHistory.addOperation(result.operation);
+    addOperation(result.operation);
 
     const newTensorNetwork = findConnectedComponent(
       result.operation.data.legosToAdd![0],
@@ -1001,7 +999,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       connections
     );
     setLegosAndConnections(result.droppedLegos, result.connections);
-    operationHistory.addOperation(result.operation);
+    addOperation(result.operation);
   };
 
   const handleLegPartitionDialogClose = () => {
