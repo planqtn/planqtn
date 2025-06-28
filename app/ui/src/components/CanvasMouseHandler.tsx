@@ -60,7 +60,6 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
       // Get the dragged lego BEFORE updating the array to avoid stale references
       const draggedLego = droppedLegos[dragState.draggedLegoIndex];
-      console.log("draggedLego", draggedLego.x, draggedLego.y);
 
       const legosToUpdate = droppedLegos.filter(
         (lego, index) =>
@@ -95,7 +94,6 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         };
       });
 
-      console.log("updatedLegos", updatedLegos);
       updateDroppedLegos(updatedLegos.map((lego) => lego.updatedLego));
       addOperation({
         type: "move",
@@ -220,6 +218,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         }
       }
     };
+
     // Mouse event handlers
     const handleMouseDown = (e: MouseEvent) => {
       if (e.target === canvas) {
