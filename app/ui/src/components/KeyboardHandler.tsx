@@ -308,7 +308,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [tensorNetwork, setTensorNetwork, onSetAltKeyPressed]);
+  }, [tensorNetwork, droppedLegos, connections, onSetAltKeyPressed]);
 
   // Track mouse position for paste operations
   useEffect(() => {
