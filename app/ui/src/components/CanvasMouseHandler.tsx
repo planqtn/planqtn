@@ -51,11 +51,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
       if (!dragState) return;
+      if (dragState.draggedLegoIndex === -1) return;
 
       const deltaX = e.clientX - dragState.startX;
       const deltaY = e.clientY - dragState.startY;
       const newX = dragState.originalX + deltaX;
       const newY = dragState.originalY + deltaY;
+
+      // Get the dragged lego BEFORE updating the array to avoid stale references
+      const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+      console.log("draggedLego", draggedLego.x, draggedLego.y);
 
       const legosToUpdate = droppedLegos.filter(
         (lego, index) =>
@@ -90,6 +95,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         };
       });
 
+      console.log("updatedLegos", updatedLegos);
       updateDroppedLegos(updatedLegos.map((lego) => lego.updatedLego));
       addOperation({
         type: "move",
@@ -103,18 +109,25 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
       if (groupDragState) {
         if (tensorNetwork) {
-          tensorNetwork.legos = updatedLegos
+          const updatedNetworkLegos = updatedLegos
             .filter((update) =>
               groupDragState.legoInstanceIds.includes(
                 update.updatedLego.instanceId
               )
             )
             .map((update) => update.updatedLego);
+
+          // Create a new tensor network instead of mutating the existing one
+          setTensorNetwork(
+            new TensorNetwork({
+              legos: updatedNetworkLegos,
+              connections: tensorNetwork.connections
+            })
+          );
         }
       }
 
-      // Handle connection hover detection
-      const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+      // Handle connection hover detection using the original draggedLego position
       if (draggedLego) {
         const draggedLegoHasConnections = connections.some((conn) =>
           conn.containsLego(draggedLego.instanceId)
@@ -276,7 +289,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         return;
       }
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
-        // performDragUpdate(e);
+        // drag proxy handles the mouse move, we call performDragUpdate on mouseup
         return;
       }
       if (legDragState?.isDragging) {
@@ -292,11 +305,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
     const handleMouseUp = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      performDragUpdate(e);
       if (!rect) {
         setLegDragState(null);
         return;
       }
+
       if (canvasDragState?.isDragging) {
         setCanvasDragState({
           isDragging: false,
@@ -309,6 +322,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
 
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
+        // Only call performDragUpdate when we were actually dragging
+        performDragUpdate(e);
         setDragState({
           draggingStage: DraggingStage.NOT_DRAGGING,
           draggedLegoIndex: -1,
@@ -471,13 +486,18 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     canvasDragState,
     zoomLevel,
     altKeyPressed,
+    connections,
     setCanvasDragState,
     setDroppedLegos,
     setLegDragState,
     setTensorNetwork,
     dragState,
     setDragState,
-    setGroupDragState
+    setGroupDragState,
+    updateDroppedLegos,
+    addOperation,
+    addConnections,
+    setHoveredConnection
   ]);
 
   return null;

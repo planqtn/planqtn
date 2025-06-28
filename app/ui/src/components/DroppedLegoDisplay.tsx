@@ -652,14 +652,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
         if (e.ctrlKey || e.metaKey) {
           // Handle Ctrl+click for toggling selection
+          // Find the current version of the lego from droppedLegos to avoid stale state
+          const currentLego = droppedLegos.find(
+            (l) => l.instanceId === lego.instanceId
+          );
+          if (!currentLego) return;
+
           if (tensorNetwork) {
             const isSelected = tensorNetwork.legos.some(
-              (l) => l.instanceId === lego.instanceId
+              (l) => l.instanceId === currentLego.instanceId
             );
             if (isSelected) {
               // Remove lego from tensor network
               const newLegos = tensorNetwork.legos.filter(
-                (l) => l.instanceId !== lego.instanceId
+                (l) => l.instanceId !== currentLego.instanceId
               );
 
               if (newLegos.length === 0) {
@@ -667,8 +673,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               } else {
                 const newConnections = tensorNetwork.connections.filter(
                   (conn) =>
-                    conn.from.legoId !== lego.instanceId &&
-                    conn.to.legoId !== lego.instanceId
+                    conn.from.legoId !== currentLego.instanceId &&
+                    conn.to.legoId !== currentLego.instanceId
                 );
                 setTensorNetwork(
                   new TensorNetwork({
@@ -679,7 +685,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               }
             } else {
               // Add lego to tensor network
-              const newLegos = [...tensorNetwork.legos, lego];
+              const newLegos = [...tensorNetwork.legos, currentLego];
               const newConnections = connections.filter(
                 (conn) =>
                   newLegos.some((l) => l.instanceId === conn.from.legoId) &&
@@ -696,7 +702,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           } else {
             // If no tensor network exists, create one with just this lego
             setTensorNetwork(
-              new TensorNetwork({ legos: [lego], connections: [] })
+              new TensorNetwork({ legos: [currentLego], connections: [] })
             );
           }
         } else {
@@ -706,9 +712,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           );
 
           if (isCurrentlySelected && tensorNetwork?.legos.length === 1) {
+            console.log(
+              "second click on same already selected lego, state: ",
+              lego.x,
+              lego.y
+            );
             // Second click on same already selected lego - expand to connected component
+            // Find the current version of the lego from droppedLegos to avoid stale state
+            const currentLego = droppedLegos.find(
+              (l) => l.instanceId === lego.instanceId
+            );
+            if (!currentLego) return;
+
             const network = findConnectedComponent(
-              lego,
+              currentLego,
               droppedLegos,
               connections
             );
@@ -720,8 +737,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             }
           } else {
             // First click on unselected lego or clicking different lego - select just this lego
+            // Find the current version of the lego from droppedLegos to avoid stale state
+            const currentLego = droppedLegos.find(
+              (l) => l.instanceId === lego.instanceId
+            );
+            if (!currentLego) return;
+
             setTensorNetwork(
-              new TensorNetwork({ legos: [lego], connections: [] })
+              new TensorNetwork({ legos: [currentLego], connections: [] })
             );
           }
         }
