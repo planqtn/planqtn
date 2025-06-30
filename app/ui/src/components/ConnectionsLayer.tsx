@@ -244,9 +244,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
             y: (fromPoint.y + toPoint.y) / 2
           };
 
-          const sharedColor = colorsMatch
-            ? fromChakraColorToHex(fromLegColor)
-            : "yellow";
+          const sharedColor = colorsMatch ? fromLegColor : "yellow";
           const connectorColor = colorsMatch ? sharedColor : "yellow";
 
           // Check if this connection is being hovered
