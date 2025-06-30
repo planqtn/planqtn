@@ -1,6 +1,6 @@
 import { OperationHistory } from "./OperationHistory";
 import { Operation, Connection, DroppedLego } from "./types";
-import { GenericStyle, HadamardStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 
 describe("OperationHistory", () => {
@@ -12,23 +12,23 @@ describe("OperationHistory", () => {
 
   describe("undo and redo", () => {
     it("should return to original state after undo and redo of add operation", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       const operation: Operation = {
         type: "add",
@@ -64,23 +64,23 @@ describe("OperationHistory", () => {
     });
 
     it("should handle multiple undos after add and move operations", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       // Add operation
       const addOperation: Operation = {
@@ -136,42 +136,42 @@ describe("OperationHistory", () => {
 
     it("should handle multiple undos after fuse and unfuse operations", () => {
       // Create initial legos
-      const hadamard: DroppedLego = {
-        id: "hadamard",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard Gate",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        x: 0,
-        y: 0,
-        instanceId: "h1",
-        style: new HadamardStyle("h1"),
-        selectedMatrixRows: []
-      };
+      const hadamard: DroppedLego = createDroppedLego(
+        {
+          id: "hadamard",
+          name: "Hadamard",
+          shortName: "H",
+          description: "Hadamard Gate",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        0,
+        0,
+        "h1"
+      );
 
-      const zRep1: DroppedLego = {
-        id: "z-rep",
-        name: "Z-Rep Code",
-        shortName: "Z",
-        description: "Z-Repetition Code",
-        parity_check_matrix: [
-          [0, 0, 0, 1, 1, 0],
-          [0, 0, 0, 0, 1, 1],
-          [1, 1, 1, 0, 0, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        x: 100,
-        y: 0,
-        instanceId: "1",
-        style: new GenericStyle("zrep"),
-        selectedMatrixRows: []
-      };
+      const zRep1: DroppedLego = createDroppedLego(
+        {
+          id: "z-rep",
+          name: "Z-Rep Code",
+          shortName: "Z",
+          description: "Z-Repetition Code",
+          parity_check_matrix: [
+            [0, 0, 0, 1, 1, 0],
+            [0, 0, 0, 0, 1, 1],
+            [1, 1, 1, 0, 0, 0]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        100,
+        0,
+        "1"
+      );
 
       const zRep2: DroppedLego = {
         ...zRep1,
@@ -345,23 +345,23 @@ describe("OperationHistory", () => {
     });
 
     it("should undo an add operation", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       const operation: Operation = {
         type: "add",
@@ -377,23 +377,23 @@ describe("OperationHistory", () => {
     });
 
     it("should undo a move operation", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       const operation: Operation = {
         type: "move",
@@ -441,23 +441,23 @@ describe("OperationHistory", () => {
     });
 
     it("should redo an add operation", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       const operation: Operation = {
         type: "add",
@@ -475,23 +475,23 @@ describe("OperationHistory", () => {
     });
 
     it("should redo a move operation", () => {
-      const lego: DroppedLego = {
-        id: "lego1",
-        name: "Test Lego",
-        shortName: "TL",
-        description: "Test Description",
-        parity_check_matrix: [
-          [1, 0],
-          [0, 1]
-        ],
-        logical_legs: [0],
-        gauge_legs: [1],
-        x: 0,
-        y: 0,
-        instanceId: "instance1",
-        style: new GenericStyle("lego1"),
-        selectedMatrixRows: []
-      };
+      const lego: DroppedLego = createDroppedLego(
+        {
+          id: "lego1",
+          name: "Test Lego",
+          shortName: "TL",
+          description: "Test Description",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0],
+          gauge_legs: [1]
+        },
+        0,
+        0,
+        "instance1"
+      );
 
       const operation: Operation = {
         type: "move",

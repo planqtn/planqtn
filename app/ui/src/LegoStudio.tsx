@@ -24,7 +24,7 @@ import {
   ImperativePanelHandle
 } from "react-resizable-panels";
 
-import { getLegoStyle } from "./LegoStyles";
+import { createDroppedLego } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
 import { KeyboardHandler } from "./components/KeyboardHandler";
@@ -44,12 +44,9 @@ import {
 
 import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
-import { calculateLegPosition } from "./components/DroppedLegoDisplay";
 import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
 
 import { FuseLegos } from "./transformations/FuseLegos";
-import { InjectTwoLegged } from "./transformations/InjectTwoLegged";
-import { AddStopper } from "./transformations/AddStopper";
 import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./components/UserMenu";
@@ -71,14 +68,14 @@ import { RuntimeConfigService } from "./lib/runtimeConfigService";
 import { ModalRoot } from "./components/ModalRoot";
 import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
 import { DragProxy } from "./components/DragProxy";
-import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
-import {
-  findClosestDanglingLeg,
-  pointToLineDistance
-} from "./lib/canvasCalculations.ts";
 import { CanvasMouseHandler } from "./components/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
+import { useBuildingBlockDragStateStore } from "./stores/buildingBlockDragStateStore.ts";
+import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
+import { findClosestDanglingLeg } from "./lib/canvasCalculations.ts";
+import { AddStopper } from "./transformations/AddStopper.ts";
+import { InjectTwoLegged } from "./transformations/InjectTwoLegged.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Memoized Left Panel Component
@@ -87,7 +84,6 @@ const LeftPanel = memo<{
   legoPanelSizes: { defaultSize: number; minSize: number };
   isLegoPanelCollapsed: boolean;
   setIsLegoPanelCollapsed: (collapsed: boolean) => void;
-  handleDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
   isUserLoggedIn: boolean;
 }>(
   ({
@@ -95,7 +91,6 @@ const LeftPanel = memo<{
     legoPanelSizes,
     isLegoPanelCollapsed,
     setIsLegoPanelCollapsed,
-    handleDragStart,
     isUserLoggedIn
   }) => {
     return (
@@ -111,10 +106,7 @@ const LeftPanel = memo<{
         onExpand={() => setIsLegoPanelCollapsed(false)}
       >
         {!isLegoPanelCollapsed && (
-          <BuildingBlocksPanel
-            onDragStart={handleDragStart}
-            isUserLoggedIn={isUserLoggedIn}
-          />
+          <BuildingBlocksPanel isUserLoggedIn={isUserLoggedIn} />
         )}
       </Panel>
     );
@@ -139,7 +131,6 @@ const LegoStudioView: React.FC = () => {
     decodeCanvasState,
     getCanvasId,
     connections,
-    removeConnections,
     setLegosAndConnections,
     hideConnectedLegs,
     setHideConnectedLegs,
@@ -187,7 +178,6 @@ const LegoStudioView: React.FC = () => {
   } | null>(null);
   // Use modal store for network dialogs
   const {
-    openCustomLegoDialog,
     openLoadingModal,
     closeLoadingModal,
     openAuthDialog,
@@ -204,19 +194,7 @@ const LegoStudioView: React.FC = () => {
     null
   );
   const { draggedLego, setDraggedLego } = useDraggedLegoStore();
-
-  // Add state for building blocks drag tracking
-  const [buildingBlockDragState, setBuildingBlockDragState] = useState<{
-    isDragging: boolean;
-    draggedLego: LegoPiece | null;
-    mouseX: number;
-    mouseY: number;
-  }>({
-    isDragging: false,
-    draggedLego: null,
-    mouseX: 0,
-    mouseY: 0
-  });
+  const { openCustomLegoDialog } = useModalStore();
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
@@ -242,27 +220,129 @@ const LegoStudioView: React.FC = () => {
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
 
-  // Add drag enter counter to prevent flickering from child elements
-  const dragEnterCounter = useRef(0);
+  const handleDropStopperOnConnection = (
+    dropPosition: { x: number; y: number },
+    draggedLego: LegoPiece
+  ): boolean => {
+    if (draggedLego.id.includes("stopper")) {
+      const closestLeg = findClosestDanglingLeg(
+        dropPosition,
+        droppedLegos,
+        connections
+      );
+      if (!closestLeg) return false;
 
-  // Add global drag end handler to clear building block drag state
-  useEffect(() => {
-    const handleGlobalDragEnd = () => {
-      if (buildingBlockDragState.isDragging) {
-        setBuildingBlockDragState({
-          isDragging: false,
-          draggedLego: null,
-          mouseX: 0,
-          mouseY: 0
+      // Get max instance ID
+      const maxInstanceId = Math.max(
+        ...droppedLegos.map((l) => parseInt(l.instanceId))
+      );
+
+      // Create the stopper lego
+      const stopperLego: DroppedLego = createDroppedLego(
+        draggedLego,
+        dropPosition.x,
+        dropPosition.y,
+        (maxInstanceId + 1).toString()
+      );
+      try {
+        const addStopper = new AddStopper(connections, droppedLegos);
+        const result = addStopper.apply(
+          closestLeg.lego,
+          closestLeg.legIndex,
+          stopperLego
+        );
+        setLegosAndConnections(result.droppedLegos, result.connections);
+        addOperation(result.operation);
+        return true;
+      } catch (error) {
+        console.error("Failed to add stopper:", error);
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error ? error.message : "Failed to add stopper",
+          status: "error",
+          duration: 3000,
+          isClosable: true
         });
-        // Reset drag enter counter
-        dragEnterCounter.current = 0;
+        return false;
       }
+    }
+    return false;
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggedLego) return;
+
+    // Get the actual drop position from the event
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropPosition = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
     };
 
-    document.addEventListener("dragend", handleGlobalDragEnd);
-    return () => document.removeEventListener("dragend", handleGlobalDragEnd);
-  }, [buildingBlockDragState.isDragging]);
+    if (draggedLego.id === "custom") {
+      openCustomLegoDialog(dropPosition);
+      return;
+    }
+
+    // Find the closest dangling leg if we're dropping a stopper
+    const success = handleDropStopperOnConnection(dropPosition, draggedLego);
+    if (success) return;
+
+    const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+
+    if (draggedLego.is_dynamic) {
+      setSelectedDynamicLego(draggedLego);
+      setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
+      setIsDynamicLegoDialogOpen(true);
+      setDraggedLego(null);
+      return;
+    }
+
+    // Use the drop position directly from the event
+    const newLego = createDroppedLego(
+      draggedLego,
+      dropPosition.x,
+      dropPosition.y,
+      newInstanceId()
+    );
+
+    // Handle two-legged lego insertion
+    if (numLegs === 2 && hoveredConnection) {
+      const trafo = new InjectTwoLegged(connections, droppedLegos);
+      trafo
+        .apply(newLego, hoveredConnection)
+        .then(
+          ({
+            connections: newConnections,
+            droppedLegos: newDroppedLegos,
+            operation
+          }) => {
+            addOperation(operation);
+            setLegosAndConnections(newDroppedLegos, newConnections);
+          }
+        )
+        .catch((error) => {
+          setError(`${error}`);
+          console.error(error);
+        });
+    } else {
+      console.log("Dropped lego", newLego);
+      // If it's a custom lego, show the dialog after dropping
+      if (draggedLego.id === "custom") {
+        openCustomLegoDialog({ x: dropPosition.x, y: dropPosition.y });
+      } else {
+        addDroppedLego(newLego);
+        addOperation({
+          type: "add",
+          data: { legosToAdd: [newLego] }
+        });
+      }
+    }
+
+    setHoveredConnection(null);
+    setDraggedLego(null);
+  };
 
   // Add title effect at the top
   useEffect(() => {
@@ -448,273 +528,6 @@ const LegoStudioView: React.FC = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const handleDragStart = useCallback(
-    (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
-      // Hide the default drag ghost by setting a transparent image
-      const dragImage = new Image();
-      dragImage.src =
-        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-      e.dataTransfer.setDragImage(dragImage, 0, 0);
-
-      if (lego.id === "custom") {
-        // Store the drop position for the custom lego
-        const rect = e.currentTarget.getBoundingClientRect();
-        // Note: position will be set when the custom lego is dropped, not during drag start
-        // Set the draggedLego state for custom legos
-        const draggedLego: DroppedLego = {
-          ...lego,
-          instanceId: newInstanceId(),
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: []
-        };
-        setDraggedLego(draggedLego);
-        setBuildingBlockDragState({
-          isDragging: true,
-          draggedLego: lego,
-          mouseX: e.clientX,
-          mouseY: e.clientY
-        });
-      } else {
-        // Handle regular lego drag
-        const rect = e.currentTarget.getBoundingClientRect();
-        const draggedLego: DroppedLego = {
-          ...lego,
-          instanceId: newInstanceId(),
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-          style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-          selectedMatrixRows: []
-        };
-        setDraggedLego(draggedLego);
-        setBuildingBlockDragState({
-          isDragging: true,
-          draggedLego: lego,
-          mouseX: e.clientX,
-          mouseY: e.clientY
-        });
-      }
-    },
-    []
-  );
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-
-    const canvasRect = e.currentTarget.getBoundingClientRect();
-
-    // Update building block drag state with current mouse position
-    if (buildingBlockDragState.isDragging) {
-      setBuildingBlockDragState((prev) => ({
-        ...prev,
-        mouseX: e.clientX,
-        mouseY: e.clientY
-      }));
-    }
-
-    // Use the draggedLego state instead of trying to get data from dataTransfer
-    if (!draggedLego) return;
-
-    const numLegs = draggedLego.parity_check_matrix[0].length / 2;
-
-    // Only handle two-legged legos
-    if (numLegs !== 2) return;
-
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
-
-    // Find the closest connection
-    let closestConnection: Connection | null = null;
-    let minDistance = Infinity;
-
-    connections.forEach((conn) => {
-      const fromLego = droppedLegos.find(
-        (l) => l.instanceId === conn.from.legoId
-      );
-      const toLego = droppedLegos.find((l) => l.instanceId === conn.to.legoId);
-      if (!fromLego || !toLego) return;
-
-      const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
-      const toPos = calculateLegPosition(toLego, conn.to.legIndex);
-
-      const fromPoint = {
-        x: fromLego.x + fromPos.endX,
-        y: fromLego.y + fromPos.endY
-      };
-      const toPoint = {
-        x: toLego.x + toPos.endX,
-        y: toLego.y + toPos.endY
-      };
-
-      // Calculate distance from point to line segment
-      const distance = pointToLineDistance(
-        x,
-        y,
-        fromPoint.x,
-        fromPoint.y,
-        toPoint.x,
-        toPoint.y
-      );
-      if (distance < minDistance && distance < 20) {
-        // 20 pixels threshold
-        minDistance = distance;
-        closestConnection = conn;
-      }
-    });
-
-    setHoveredConnection(closestConnection);
-  };
-
-  const handleDropStopperOnConnection = (
-    dropPosition: { x: number; y: number },
-    draggedLego: LegoPiece
-  ): boolean => {
-    if (draggedLego.id.includes("stopper")) {
-      const closestLeg = findClosestDanglingLeg(
-        dropPosition,
-        droppedLegos,
-        connections
-      );
-      if (!closestLeg) return false;
-
-      // Get max instance ID
-      const maxInstanceId = Math.max(
-        ...droppedLegos.map((l) => parseInt(l.instanceId))
-      );
-
-      // Create the stopper lego
-      const stopperLego: DroppedLego = {
-        ...draggedLego,
-        instanceId: (maxInstanceId + 1).toString(),
-        x: dropPosition.x,
-        y: dropPosition.y,
-        style: getLegoStyle(draggedLego.id, 1),
-        selectedMatrixRows: []
-      };
-      try {
-        const addStopper = new AddStopper(connections, droppedLegos);
-        const result = addStopper.apply(
-          closestLeg.lego,
-          closestLeg.legIndex,
-          stopperLego
-        );
-        setLegosAndConnections(result.droppedLegos, result.connections);
-        addOperation(result.operation);
-        return true;
-      } catch (error) {
-        console.error("Failed to add stopper:", error);
-        toast({
-          title: "Error",
-          description:
-            error instanceof Error ? error.message : "Failed to add stopper",
-          status: "error",
-          duration: 3000,
-          isClosable: true
-        });
-        return false;
-      }
-    }
-    return false;
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    if (!draggedLego) return;
-
-    // Get the actual drop position from the event
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-
-    // Clear building block drag state
-    setBuildingBlockDragState({
-      isDragging: false,
-      draggedLego: null,
-      mouseX: 0,
-      mouseY: 0
-    });
-
-    if (draggedLego.id === "custom") {
-      openCustomLegoDialog(dropPosition);
-      return;
-    }
-
-    // Find the closest dangling leg if we're dropping a stopper
-    const success = handleDropStopperOnConnection(dropPosition, draggedLego);
-    if (success) return;
-
-    const numLegs = draggedLego.parity_check_matrix[0].length / 2;
-
-    if (draggedLego.is_dynamic) {
-      setSelectedDynamicLego(draggedLego);
-      setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
-      setIsDynamicLegoDialogOpen(true);
-      setDraggedLego(null);
-      return;
-    }
-
-    // Use the drop position directly from the event
-    const newLego = {
-      ...draggedLego,
-      x: dropPosition.x,
-      y: dropPosition.y,
-      instanceId: newInstanceId(),
-      style: getLegoStyle(draggedLego.id, numLegs),
-      selectedMatrixRows: []
-    };
-
-    // Handle two-legged lego insertion
-    if (numLegs === 2 && hoveredConnection) {
-      const trafo = new InjectTwoLegged(connections, droppedLegos);
-      trafo
-        .apply(newLego, hoveredConnection)
-        .then(
-          ({
-            connections: newConnections,
-            droppedLegos: newDroppedLegos,
-            operation
-          }) => {
-            addOperation(operation);
-            setLegosAndConnections(newDroppedLegos, newConnections);
-          }
-        )
-        .catch((error) => {
-          setError(`${error}`);
-          console.error(error);
-        });
-    } else {
-      console.log("Dropped lego", newLego);
-      // If it's a custom lego, show the dialog after dropping
-      if (draggedLego.id === "custom") {
-        openCustomLegoDialog({ x: dropPosition.x, y: dropPosition.y });
-      } else {
-        addDroppedLego(newLego);
-        addOperation({
-          type: "add",
-          data: { legosToAdd: [newLego] }
-        });
-      }
-    }
-
-    setHoveredConnection(null);
-    setDraggedLego(null);
-  };
-
-  // Add a handler for when drag ends
-  const handleDragEnd = () => {
-    return;
-    setDraggedLego(null);
-    setHoveredConnection(null);
-    setBuildingBlockDragState({
-      isDragging: false,
-      draggedLego: null,
-      mouseX: 0,
-      mouseY: 0
-    });
-  };
-
   const handleDynamicLegoSubmit = async (
     parameters: Record<string, unknown>
   ) => {
@@ -727,15 +540,12 @@ const LegoStudioView: React.FC = () => {
       });
 
       const instanceId = newInstanceId();
-      const numLegs = dynamicLego.parity_check_matrix[0].length / 2;
-      const newLego = {
-        ...dynamicLego,
-        x: pendingDropPosition.x,
-        y: pendingDropPosition.y,
-        instanceId,
-        style: getLegoStyle(dynamicLego.id, numLegs),
-        selectedMatrixRows: []
-      };
+      const newLego = createDroppedLego(
+        dynamicLego,
+        pendingDropPosition.x,
+        pendingDropPosition.y,
+        instanceId
+      );
       addDroppedLego(newLego);
       addOperation({
         type: "add",
@@ -751,15 +561,6 @@ const LegoStudioView: React.FC = () => {
       setPendingDropPosition(null);
     }
   };
-
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    // Clear selection when clicking on empty canvas
-    if (e.target === e.currentTarget && tensorNetwork) {
-      setTensorNetwork(null);
-    }
-  };
-
-  // Keyboard handling moved to KeyboardHandler component
 
   // KeyUp, Blur, and Focus handling moved to KeyboardHandler component
 
@@ -910,23 +711,6 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  const handleConnectionDoubleClick = (
-    e: React.MouseEvent,
-    connection: Connection
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Add to history before removing
-    addOperation({
-      type: "disconnect",
-      data: { connectionsToRemove: [connection] }
-    });
-
-    // Remove the connection and update URL state with the new connections
-    removeConnections([connection]);
-  };
-
   const handleClearAll = () => {
     if (droppedLegos.length === 0 && connections.length === 0) return;
 
@@ -1019,30 +803,29 @@ const LegoStudioView: React.FC = () => {
       });
 
       // Create the new lego with updated matrix but same position
-      const newLego: DroppedLego = {
-        ...lego,
-        style: getLegoStyle(lego.id, numLegs + 1),
-        parity_check_matrix: newLegoData.parity_check_matrix
-      };
+      const newLego: DroppedLego = createDroppedLego(
+        { ...lego, parity_check_matrix: newLegoData.parity_check_matrix },
+        lego.x,
+        lego.y,
+        lego.instanceId
+      );
 
       // Create a stopper based on the lego type
-      const stopperLego: DroppedLego = {
-        id: lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
-        name: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
-        shortName: lego.id === "z_rep_code" ? "X" : "Z",
-        description: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
-        instanceId: (maxInstanceId + 1).toString(),
-        x: lego.x + 100, // Position the stopper to the right of the lego
-        y: lego.y,
-        parity_check_matrix: lego.id === "z_rep_code" ? [[1, 0]] : [[0, 1]],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle(
-          lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
-          1
-        ),
-        selectedMatrixRows: []
-      };
+      const stopperLego: DroppedLego = createDroppedLego(
+        {
+          id: lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
+          name: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          shortName: lego.id === "z_rep_code" ? "X" : "Z",
+          description: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          parity_check_matrix: lego.id === "z_rep_code" ? [[1, 0]] : [[0, 1]],
+          logical_legs: [],
+          gauge_legs: []
+        },
+
+        lego.x + 100, // Position the stopper to the right of the lego
+        lego.y,
+        (maxInstanceId + 1).toString()
+      );
 
       // Create new connection to the stopper
       const newConnection: Connection = new Connection(
@@ -1226,20 +1009,6 @@ const LegoStudioView: React.FC = () => {
     setShowPythonCodeModal(true);
   };
 
-  // Add handlers for stable drag enter/leave
-  const handleCanvasDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragEnterCounter.current++;
-  };
-
-  const handleCanvasDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragEnterCounter.current--;
-    if (dragEnterCounter.current <= 0) {
-      dragEnterCounter.current = 0;
-    }
-  };
-
   return (
     <>
       <KeyboardHandler
@@ -1276,35 +1045,6 @@ const LegoStudioView: React.FC = () => {
           position="relative"
           overflow="hidden"
         >
-          {/* Collapsed Panel Handle
-          {isLegoPanelCollapsed && (
-            <Box
-              position="absolute"
-              left={0}
-              top={0}
-              bottom={0}
-              width="8px"
-              bg={useColorModeValue("gray.200", "gray.600")}
-              cursor="col-resize"
-              zIndex={10}
-              transition="background-color 0.2s"
-              _hover={{ bg: "blue.500" }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setIsLegoPanelCollapsed(false);
-              }}
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Icon
-                as={FiChevronRight}
-                boxSize={3}
-                color={useColorModeValue("gray.600", "gray.300")}
-                _hover={{ color: "white" }}
-              />
-            </Box>
-          )} */}
           <PanelGroup direction="horizontal">
             {/* Left Panel */}
             <LeftPanel
@@ -1314,7 +1054,6 @@ const LegoStudioView: React.FC = () => {
               legoPanelSizes={legoPanelSizes}
               isLegoPanelCollapsed={isLegoPanelCollapsed}
               setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
-              handleDragStart={handleDragStart}
               isUserLoggedIn={isUserLoggedIn}
             />
             <ResizeHandle id="lego-panel-resize-handle" />
@@ -1330,12 +1069,7 @@ const LegoStudioView: React.FC = () => {
                   borderRadius="lg"
                   boxShadow="inner"
                   position="relative"
-                  onDragOver={handleDragOver}
-                  onDragEnter={handleCanvasDragEnter}
-                  onDragLeave={handleCanvasDragLeave}
                   onDrop={handleDrop}
-                  onDragEnd={handleDragEnd}
-                  onClick={handleCanvasClick}
                   data-canvas="true"
                   style={{
                     userSelect: "none",
@@ -1551,7 +1285,6 @@ const LegoStudioView: React.FC = () => {
                   <ConnectionsLayer
                     hideConnectedLegs={hideConnectedLegs}
                     hoveredConnection={hoveredConnection}
-                    onConnectionDoubleClick={handleConnectionDoubleClick}
                   />
                   {/* Selection Manager */}
                   <SelectionManager
@@ -1562,10 +1295,7 @@ const LegoStudioView: React.FC = () => {
                   />
                   <LegosLayer canvasRef={canvasRef} />
                   {/* Drag Proxy for smooth dragging */}
-                  <DragProxy
-                    canvasRef={canvasRef}
-                    buildingBlockDragState={buildingBlockDragState}
-                  />
+                  <DragProxy canvasRef={canvasRef} />
                 </Box>
               </Box>
             </Panel>

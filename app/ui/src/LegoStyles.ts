@@ -1,4 +1,4 @@
-import { DroppedLego, PauliOperator } from "./lib/types";
+import { DroppedLego, LegoPiece, PauliOperator } from "./lib/types";
 import {
   getPauliColor,
   I_COLOR,
@@ -47,19 +47,101 @@ const chakraToHexColors: { [key: string]: string } = {
   "gray.700": "#374151"
 };
 
+export interface LegPosition {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  labelX: number;
+  labelY: number;
+  angle: number;
+}
+
+const LEG_LABEL_DISTANCE = 15;
+
 export interface LegStyle {
   angle: number;
   length: number;
   width: string;
-  style: string;
+  lineStyle: "solid" | "dashed";
   from: "center" | "bottom" | "edge";
   startOffset: number;
   color: string;
   is_highlighted: boolean;
+  type: "logical" | "gauge" | "physical";
+  position: LegPosition;
 }
 
+export function recalculateLegoStyle(lego: DroppedLego): void {
+  lego.style = getLegoStyle(
+    lego.id,
+    lego.parity_check_matrix[0].length / 2,
+    lego
+  );
+}
+
+export function createHadamardLego(
+  x: number,
+  y: number,
+  instanceId: string
+): DroppedLego {
+  return createDroppedLego(
+    {
+      id: "h",
+      name: "Hadamard",
+      shortName: "H",
+      description: "Hadamard",
+      parity_check_matrix: [
+        [1, 0, 0, 1],
+        [0, 1, 1, 0]
+      ],
+      logical_legs: [],
+      gauge_legs: []
+    },
+    x,
+    y,
+    instanceId
+  );
+}
+
+export function createDroppedLego(
+  lego: LegoPiece,
+  x: number,
+  y: number,
+  instanceId: string,
+  overrides: Partial<DroppedLego> = {}
+): DroppedLego {
+  const droppedLego: DroppedLego = {
+    ...lego,
+    x,
+    y,
+    style: null,
+    instanceId: instanceId,
+    selectedMatrixRows: []
+  };
+
+  droppedLego.style = getLegoStyle(
+    lego.id,
+    lego.parity_check_matrix[0].length / 2,
+    droppedLego
+  );
+
+  return { ...droppedLego, ...overrides };
+}
+
+// Styling for a given lego. This contains calculated leg positions, colors for the legs etc.
 export abstract class LegoStyle {
-  constructor(protected readonly id: string) {}
+  public readonly legStyles: LegStyle[];
+  constructor(
+    protected readonly id: string,
+    protected readonly lego: DroppedLego
+  ) {
+    this.legStyles = Array(lego.parity_check_matrix[0].length / 2)
+      .fill(0)
+      .map((_, i) => {
+        return this.calculateLegStyle(i, true);
+      });
+  }
 
   get displayShortName(): boolean {
     return true;
@@ -98,19 +180,21 @@ export abstract class LegoStyle {
     return true;
   }
 
-  getLegHighlightPauliOperator = (legIndex: number, lego: DroppedLego) => {
+  getLegHighlightPauliOperator = (legIndex: number) => {
     // First check if there's a pushed leg
-    const h = lego.parity_check_matrix;
+    const h = this.lego.parity_check_matrix;
     const num_legs = h[0].length / 2;
 
-    if (lego.selectedMatrixRows === undefined) {
+    if (this.lego.selectedMatrixRows === undefined) {
       return PauliOperator.I;
     }
 
-    const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
+    const combinedRow = new Array(this.lego.parity_check_matrix[0].length).fill(
+      0
+    );
 
-    for (const rowIndex of lego.selectedMatrixRows) {
-      lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
+    for (const rowIndex of this.lego.selectedMatrixRows) {
+      this.lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
         combinedRow[idx] = (combinedRow[idx] + val) % 2;
       });
     }
@@ -125,28 +209,54 @@ export abstract class LegoStyle {
     return PauliOperator.I;
   };
 
-  getLegStyle(
+  getLegPosition(
+    length: number,
+    angle: number,
+    labelDistance: number
+  ): LegPosition {
+    // Calculate start position relative to center
+    const startX = 0;
+    const startY = 0;
+
+    // Calculate end position
+    const endX = startX + length * Math.cos(angle);
+    const endY = startY + length * Math.sin(angle);
+
+    // Calculate label position
+    const labelX = endX + labelDistance * Math.cos(angle);
+    const labelY = endY + labelDistance * Math.sin(angle);
+
+    return {
+      startX,
+      startY,
+      endX,
+      endY,
+      labelX,
+      labelY,
+      angle: angle
+    };
+  }
+
+  private calculateLegStyle(
     legIndex: number,
-    lego: DroppedLego,
     forSvg: boolean = false
   ): LegStyle {
-    const isLogical = lego.logical_legs.includes(legIndex);
-    const isGauge = lego.gauge_legs.includes(legIndex);
-    const legCount = lego.parity_check_matrix[0].length / 2;
-    const highlightPauliOperator = this.getLegHighlightPauliOperator(
-      legIndex,
-      lego
-    );
+    const isLogical = this.lego.logical_legs.includes(legIndex);
+    const isGauge = this.lego.gauge_legs.includes(legIndex);
+    const legCount = this.lego.parity_check_matrix[0].length / 2;
+    const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
 
     // Calculate the number of each type of leg
-    const logicalLegsCount = lego.logical_legs.length;
+    const logicalLegsCount = this.lego.logical_legs.length;
     const physicalLegsCount =
-      legCount - logicalLegsCount - lego.gauge_legs.length;
+      legCount - logicalLegsCount - this.lego.gauge_legs.length;
 
     if (isLogical) {
       // Sort logical legs to ensure consistent ordering regardless of their indices
-      const sortedLogicalLegs = [...lego.logical_legs].sort((a, b) => a - b);
+      const sortedLogicalLegs = [...this.lego.logical_legs].sort(
+        (a, b) => a - b
+      );
       const logicalIndex = sortedLogicalLegs.indexOf(legIndex);
 
       if (logicalLegsCount === 1) {
@@ -155,13 +265,15 @@ export abstract class LegoStyle {
           angle: -Math.PI / 2,
           length: 60,
           width: "3px",
-          style: "solid",
+          lineStyle: "solid",
           from: "center",
           startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted
+          is_highlighted: isHighlighted,
+          type: "logical",
+          position: this.getLegPosition(60, -Math.PI / 2, LEG_LABEL_DISTANCE)
         };
       }
 
@@ -180,13 +292,15 @@ export abstract class LegoStyle {
         angle,
         length: 60,
         width: "3px",
-        style: "solid",
+        lineStyle: "solid",
         from: "center",
         startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted
+        is_highlighted: isHighlighted,
+        type: "logical",
+        position: this.getLegPosition(60, angle, LEG_LABEL_DISTANCE)
       };
     } else if (isGauge) {
       // For gauge legs, calculate angle from bottom
@@ -195,20 +309,24 @@ export abstract class LegoStyle {
         angle,
         length: 40,
         width: "2px",
-        style: "dashed",
+        lineStyle: "dashed",
         from: "bottom",
         startOffset: 10,
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted
+        is_highlighted: isHighlighted,
+        type: "gauge",
+        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
       };
     } else {
       // For physical legs
       // Create an array of all physical leg indices (non-logical, non-gauge legs)
       const physicalLegIndices = Array.from({ length: legCount }, (_, i) => i)
         .filter(
-          (i) => !lego.logical_legs.includes(i) && !lego.gauge_legs.includes(i)
+          (i) =>
+            !this.lego.logical_legs.includes(i) &&
+            !this.lego.gauge_legs.includes(i)
         )
         .sort((a, b) => a - b);
 
@@ -221,13 +339,15 @@ export abstract class LegoStyle {
           angle: Math.PI / 2,
           length: 40,
           width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
-          style: "solid",
+          lineStyle: "solid",
           from: "center",
           startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted
+          is_highlighted: isHighlighted,
+          type: "physical",
+          position: this.getLegPosition(40, Math.PI / 2, LEG_LABEL_DISTANCE)
         };
       }
 
@@ -238,13 +358,15 @@ export abstract class LegoStyle {
           angle,
           length: 40,
           width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
-          style: "solid",
+          lineStyle: "solid",
           from: "edge",
           startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightPauliOperator, true)
             : getPauliColor(highlightPauliOperator),
-          is_highlighted: isHighlighted
+          is_highlighted: isHighlighted,
+          type: "physical",
+          position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
         };
       }
 
@@ -267,23 +389,21 @@ export abstract class LegoStyle {
         angle,
         length: 40,
         width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
-        style: "solid",
+        lineStyle: "solid",
         from: "edge",
         startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightPauliOperator, true)
           : getPauliColor(highlightPauliOperator),
-        is_highlighted: isHighlighted
+        is_highlighted: isHighlighted,
+        type: "physical",
+        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
       };
     }
   }
 
-  getLegColor(
-    legIndex: number,
-    lego: DroppedLego,
-    forSvg: boolean = false
-  ): string {
-    const legStyle = this.getLegStyle(legIndex, lego, forSvg);
+  getLegColor(legIndex: number): string {
+    const legStyle = this.legStyles[legIndex];
     return legStyle.color;
   }
 }
@@ -484,24 +604,31 @@ export class StopperStyle extends LegoStyle {
     return false;
   }
 }
-export function getLegoStyle(id: string, numLegs: number): LegoStyle {
+export function getLegoStyle(
+  id: string,
+  numLegs: number,
+  lego: DroppedLego
+): LegoStyle {
   if (id === "h") {
-    return new HadamardStyle(id);
+    return new HadamardStyle(id, lego);
   } else if (id === Z_REP_CODE || id === X_REP_CODE) {
     if (numLegs > 2) {
-      return new RepetitionCodeStyle(id);
+      return new RepetitionCodeStyle(id, lego);
     } else if (numLegs === 2) {
-      return new IdentityStyle(id);
+      return new IdentityStyle(id, lego);
     } else if (numLegs === 1) {
-      return new StopperStyle(id === Z_REP_CODE ? "stopper_z" : "stopper_x");
+      return new StopperStyle(
+        id === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        lego
+      );
     } else {
-      return new GenericStyle(id);
+      return new GenericStyle(id, lego);
     }
   } else if (id.includes("stopper")) {
-    return new StopperStyle(id);
+    return new StopperStyle(id, lego);
   } else if (id === "identity") {
-    return new IdentityStyle(id);
+    return new IdentityStyle(id, lego);
   } else {
-    return new GenericStyle(id);
+    return new GenericStyle(id, lego);
   }
 }

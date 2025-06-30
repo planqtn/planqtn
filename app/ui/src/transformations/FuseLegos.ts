@@ -1,7 +1,8 @@
 import { Connection, DroppedLego, Operation } from "../lib/types";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { recognize_parity_check_matrix } from "../lib/Legos";
-import { getLegoStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
+import { newInstanceId } from "../stores/droppedLegoStore";
 
 export class FuseLegos {
   static operationCode: string = "fuse";
@@ -76,22 +77,20 @@ export class FuseLegos {
         recognize_parity_check_matrix(result.h) || "fused_lego";
 
       // Create a new lego with the calculated parity check matrix
-      const newLego: DroppedLego = {
-        id: recognized_type,
-        instanceId: (
-          Math.max(...this.droppedLegos.map((l) => parseInt(l.instanceId))) + 1
-        ).toString(),
-        shortName: "Fused",
-        name: "Fused Lego",
-        description: "Fused " + legosToFuse.length + " legos",
-        parity_check_matrix: result.h.getMatrix(),
-        logical_legs: [],
-        gauge_legs: [],
-        x: legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length,
-        y: legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
-        style: getLegoStyle(recognized_type, result.legs.length),
-        selectedMatrixRows: []
-      };
+      const newLego: DroppedLego = createDroppedLego(
+        {
+          id: recognized_type,
+          shortName: "Fused",
+          name: "Fused Lego",
+          description: "Fused " + legosToFuse.length + " legos",
+          parity_check_matrix: result.h.getMatrix(),
+          logical_legs: [],
+          gauge_legs: []
+        },
+        legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length,
+        legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
+        newInstanceId(this.droppedLegos)
+      );
 
       // Create new connections based on the leg mapping
       const newConnections = externalConnections.map((conn) => {

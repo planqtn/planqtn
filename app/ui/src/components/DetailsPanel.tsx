@@ -26,7 +26,6 @@ import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
 import { useState, memo, useCallback, useMemo } from "react";
-import { getLegoStyle } from "../LegoStyles.ts";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
 import * as _ from "lodash";
 import {
@@ -66,6 +65,7 @@ import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore.ts";
 import { useCanvasStore } from "../stores/canvasStateStore.ts";
+import { createDroppedLego } from "../LegoStyles.ts";
 
 interface DetailsPanelProps {
   setError: (error: string) => void;
@@ -438,16 +438,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     });
     // Create new legos array starting with the modified original lego
     const newLegos: DroppedLego[] = [
-      {
-        ...lego,
-        id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
-        shortName: lego.id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
-        style: getLegoStyle(
-          lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
-          numLegs
-        ),
-        parity_check_matrix: newParityCheckMatrix
-      }
+      createDroppedLego(
+        {
+          ...lego,
+          id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
+          shortName: lego.id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
+          parity_check_matrix: newParityCheckMatrix
+        },
+        lego.x,
+        lego.y,
+        lego.instanceId
+      )
     ];
 
     // Create new connections array
@@ -466,23 +467,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     for (let i = 0; i < numLegs; i++) {
       // Calculate the angle for this leg
       const angle = (2 * Math.PI * i) / numLegs;
-      const hadamardLego: DroppedLego = {
-        id: "h",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard",
-        instanceId: (maxInstanceId + 1 + i).toString(),
-        x: lego.x + radius * Math.cos(angle),
-        y: lego.y + radius * Math.sin(angle),
-        parity_check_matrix: [
-          [1, 0, 0, 1],
-          [0, 1, 1, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle("h", 2),
-        selectedMatrixRows: []
-      };
+      const hadamardLego: DroppedLego = createDroppedLego(
+        {
+          id: "h",
+          name: "Hadamard",
+          shortName: "H",
+          description: "Hadamard",
+          parity_check_matrix: [
+            [1, 0, 0, 1],
+            [0, 1, 1, 0]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        lego.x + radius * Math.cos(angle),
+        lego.y + radius * Math.sin(angle),
+        (maxInstanceId + 1 + i).toString()
+      );
       newLegos.push(hadamardLego);
 
       // Connect Hadamard to the original lego
@@ -635,23 +636,28 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       ];
 
       // Create the two new legos
-      const lego1: DroppedLego = {
-        ...lego,
-        style: getLegoStyle(lego.id, lego1Legs + 1),
-        instanceId: (maxInstanceId + 1).toString(),
-        x: lego.x - 50, // Position slightly to the left
-        parity_check_matrix: lego1Data.parity_check_matrix,
-        alwaysShowLegs: false
-      };
+      const lego1: DroppedLego = createDroppedLego(
+        {
+          ...lego,
+          parity_check_matrix: lego1Data.parity_check_matrix
+        },
+        lego.x - 50, // Position slightly to the left
+        lego.y,
 
-      const lego2: DroppedLego = {
-        ...lego,
-        style: getLegoStyle(lego.id, lego2Legs + 1),
-        instanceId: (maxInstanceId + 2).toString(),
-        x: lego.x + 50, // Position slightly to the right
-        parity_check_matrix: lego2Data.parity_check_matrix,
-        alwaysShowLegs: false
-      };
+        (maxInstanceId + 1).toString(),
+        { alwaysShowLegs: false }
+      );
+
+      const lego2: DroppedLego = createDroppedLego(
+        {
+          ...lego,
+          parity_check_matrix: lego2Data.parity_check_matrix
+        },
+        lego.x + 50, // Position slightly to the right
+        lego.y,
+        (maxInstanceId + 2).toString(),
+        { alwaysShowLegs: false }
+      );
 
       // Create connection between the new legos
       const connectionBetweenLegos: Connection = new Connection(

@@ -22,6 +22,16 @@ export interface DroppedLegosSlice {
   newInstanceId: () => string;
 }
 
+// The non-store version of the newInstanceId logic, it simply returns max instance id + 1
+export function newInstanceId(droppedLegos: DroppedLego[]): string {
+  if (droppedLegos.length === 0) {
+    return "1";
+  }
+  return String(
+    Math.max(...droppedLegos.map((lego) => parseInt(lego.instanceId))) + 1
+  );
+}
+
 export const createLegoSlice: StateCreator<
   DroppedLegosSlice & EncodedCanvasStateSlice,
   [],
@@ -30,13 +40,7 @@ export const createLegoSlice: StateCreator<
 > = (set, get) => ({
   droppedLegos: [],
   newInstanceId: () => {
-    if (get().droppedLegos.length === 0) {
-      return "1";
-    }
-    return String(
-      Math.max(...get().droppedLegos.map((lego) => parseInt(lego.instanceId))) +
-        1
-    );
+    return newInstanceId(get().droppedLegos);
   },
 
   setDroppedLegos: (

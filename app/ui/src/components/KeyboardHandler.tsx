@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import { DroppedLego, Connection } from "../lib/types";
-import { getLegoStyle } from "../LegoStyles";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import * as _ from "lodash";
+import { createDroppedLego } from "../LegoStyles";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -137,13 +137,12 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               (l: DroppedLego, idx: number) => {
                 const newId = String(startingId + idx);
                 instanceIdMap.set(l.instanceId, newId);
-                return {
-                  ...l,
-                  instanceId: newId,
-                  x: l.x + dropX - pastedData.legos[0].x, // Maintain relative positions
-                  y: l.y + dropY - pastedData.legos[0].y,
-                  style: getLegoStyle(l.id, l.parity_check_matrix[0].length / 2)
-                };
+                return createDroppedLego(
+                  l,
+                  l.x + dropX - pastedData.legos[0].x,
+                  l.y + dropY - pastedData.legos[0].y,
+                  newId
+                );
               }
             );
 

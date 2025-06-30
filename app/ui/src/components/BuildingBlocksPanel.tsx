@@ -17,24 +17,31 @@ import {
 import { DroppedLego, LegoPiece } from "../lib/types.ts";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { getLegoBoundingBox } from "./DroppedLegoDisplay.tsx";
-import { getLegoStyle } from "../LegoStyles.ts";
+import { createDroppedLego } from "../LegoStyles.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lib/Legos.ts";
 import { LegoSvgRenderer } from "../lib/LegoSvgRenderer.ts";
 import { useModalStore } from "../stores/modalStore.ts";
+import { useDraggedLegoStore } from "../stores/draggedLegoStore.ts";
+import { useCanvasStore } from "../stores/canvasStateStore.ts";
+import { useBuildingBlockDragStateStore } from "../stores/buildingBlockDragStateStore.ts";
 
 interface BuildingBlocksPanelProps {
-  onDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
   isUserLoggedIn?: boolean;
 }
 
 export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
-  ({ onDragStart, isUserLoggedIn }) => {
+  ({ isUserLoggedIn }) => {
     const [isPanelSmall, setIsPanelSmall] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
     const { openCssTannerDialog, openTannerDialog, openMspDialog } =
       useModalStore.getState();
     const [legos, setLegos] = useState<LegoPiece[]>([]);
+    const { setDraggedLego } = useDraggedLegoStore();
+    const setBuildingBlockDragState = useBuildingBlockDragStateStore(
+      (state) => state.setBuildingBlockDragState
+    );
+    const { newInstanceId } = useCanvasStore();
 
     useEffect(() => {
       const fetchData = async () => {
@@ -79,7 +86,50 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       e: React.DragEvent<HTMLElement>,
       lego: LegoPiece
     ) => {
-      onDragStart(e, lego);
+      // Hide the default drag ghost by setting a transparent image
+      const dragImage = new Image();
+      dragImage.src =
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+      e.dataTransfer.setDragImage(dragImage, 0, 0);
+
+      if (lego.id === "custom") {
+        // Store the drop position for the custom lego
+        const rect = e.currentTarget.getBoundingClientRect();
+        // Note: position will be set when the custom lego is dropped, not during drag start
+        // Set the draggedLego state for custom legos
+
+        const draggedLego: DroppedLego = createDroppedLego(
+          lego,
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          newInstanceId()
+        );
+        setDraggedLego(draggedLego);
+        setBuildingBlockDragState({
+          isDragging: true,
+          draggedLego: lego,
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          dragEnterCounter: 0
+        });
+      } else {
+        // Handle regular lego drag
+        const rect = e.currentTarget.getBoundingClientRect();
+        const draggedLego: DroppedLego = createDroppedLego(
+          lego,
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          newInstanceId()
+        );
+        setDraggedLego(draggedLego);
+        setBuildingBlockDragState({
+          isDragging: true,
+          draggedLego: lego,
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          dragEnterCounter: 0
+        });
+      }
     };
 
     const bgColor = useColorModeValue("white", "gray.800");
@@ -107,15 +157,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       demoLego: DroppedLego;
       boundingBox: { left: number; top: number; width: number; height: number };
     } => {
-      const numLegs = lego.parity_check_matrix[0].length / 2;
-      const originLego = {
-        ...lego,
-        x: 0,
-        y: 0,
-        instanceId: lego.id,
-        style: getLegoStyle(lego.id, numLegs),
-        selectedMatrixRows: []
-      } as DroppedLego;
+      const originLego = createDroppedLego(lego, 0, 0, "-1");
 
       const boundingBox = getLegoBoundingBox(originLego, true);
       const demoLego = {
@@ -449,6 +491,9 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
         </Box>
       </Box>
     );
+  },
+  (prevProps, nextProps) => {
+    return prevProps.isUserLoggedIn === nextProps.isUserLoggedIn;
   }
 );
 

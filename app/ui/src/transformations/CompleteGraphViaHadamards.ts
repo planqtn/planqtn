@@ -1,6 +1,6 @@
 import { DroppedLego, Connection, Operation } from "../lib/types";
-import { getLegoStyle } from "../LegoStyles";
 import { Legos } from "../lib/Legos";
+import { createHadamardLego } from "../LegoStyles";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
@@ -97,23 +97,11 @@ export const applyCompleteGraphViaHadamards = async (
       const lego2DanglingLegs = legoDanglingLegs[j].danglingLegs;
 
       // Create Hadamard lego
-      const hadamardLego: DroppedLego = {
-        id: "h",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard",
-        instanceId: (maxInstanceId + 1 + hadamardIndex).toString(),
-        x: (lego1.x + lego2.x) / 2,
-        y: (lego1.y + lego2.y) / 2,
-        parity_check_matrix: [
-          [1, 0, 0, 1],
-          [0, 1, 1, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle("h", 2),
-        selectedMatrixRows: []
-      };
+      const hadamardLego: DroppedLego = createHadamardLego(
+        (lego1.x + lego2.x) / 2,
+        (lego1.y + lego2.y) / 2,
+        (maxInstanceId + 1 + hadamardIndex).toString()
+      );
       hadamardLegos.push(hadamardLego);
 
       // Find next unused dangling leg for lego1

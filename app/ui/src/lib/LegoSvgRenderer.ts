@@ -1,8 +1,5 @@
+import { LegStyle } from "../LegoStyles";
 import { DroppedLego, Connection } from "./types";
-import {
-  calculateLegPosition,
-  LegPosition
-} from "../components/DroppedLegoDisplay";
 
 export interface LegoSvgOptions {
   demoMode?: boolean;
@@ -21,26 +18,24 @@ export class LegoSvgRenderer {
     const { demoMode = true, isSelected = false, showLabels = false } = options;
 
     const numLegs = lego.parity_check_matrix[0].length / 2;
-    const size = lego.style.size;
+    const size = lego.style!.size;
     const numRegularLegs = numLegs - lego.logical_legs.length;
 
     // Calculate leg positions
-    const legPositions = Array.from({ length: numLegs }, (_, legIndex) =>
-      calculateLegPosition(lego, legIndex, 15, true)
-    );
+    const legStyles = lego.style!.legStyles;
 
     // Generate regular legs SVG
-    const regularLegsSvg = legPositions
-      .map((pos, legIndex) => {
-        const isLogical = lego.logical_legs.includes(legIndex);
+    const regularLegsSvg = legStyles
+      .map((legStyle, index) => {
+        const isLogical = lego.logical_legs.includes(index);
         if (isLogical) return "";
 
-        const legColor = pos.style.color;
+        const legColor = legStyle.color;
         return `
-          <line x1="${pos.startX}" y1="${pos.startY}" x2="${pos.endX}" y2="${pos.endY}" 
-                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}" 
-                ${pos.style.style === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
-          <circle cx="${pos.endX}" cy="${pos.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
+          <line x1="${legStyle.position.startX}" y1="${legStyle.position.startY}" x2="${legStyle.position.endX}" y2="${legStyle.position.endY}" 
+                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(legStyle.width)}" 
+                ${legStyle.lineStyle === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
+          <circle cx="${legStyle.position.endX}" cy="${legStyle.position.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
         `;
       })
       .join("");
@@ -54,17 +49,17 @@ export class LegoSvgRenderer {
     );
 
     // Generate logical legs SVG
-    const logicalLegsSvg = legPositions
-      .map((pos, legIndex) => {
+    const logicalLegsSvg = legStyles
+      .map((legStyle, legIndex) => {
         const isLogical = lego.logical_legs.includes(legIndex);
         if (!isLogical) return "";
 
-        const legColor = pos.style.color;
+        const legColor = legStyle.color;
         return `
-          <line x1="${pos.startX}" y1="${pos.startY}" x2="${pos.endX}" y2="${pos.endY}" 
-                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(pos.style.width)}" 
-                ${pos.style.style === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
-          <circle cx="${pos.endX}" cy="${pos.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
+          <line x1="${legStyle.position.startX}" y1="${legStyle.position.startY}" x2="${legStyle.position.endX}" y2="${legStyle.position.endY}" 
+                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(legStyle.width)}" 
+                ${legStyle.lineStyle === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
+          <circle cx="${legStyle.position.endX}" cy="${legStyle.position.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
         `;
       })
       .join("");
@@ -72,7 +67,7 @@ export class LegoSvgRenderer {
     // Generate labels if needed
     const labelsSvg =
       showLabels && !demoMode
-        ? this.generateLabelsSvg(lego, legPositions, options)
+        ? this.generateLabelsSvg(lego, legStyles, options)
         : "";
 
     // Generate text labels for the lego body
@@ -98,19 +93,19 @@ export class LegoSvgRenderer {
   ): string {
     if (numRegularLegs <= 2) {
       const borderRadius =
-        typeof lego.style.borderRadius === "string" &&
-        lego.style.borderRadius === "full"
+        typeof lego.style!.borderRadius === "string" &&
+        lego.style!.borderRadius === "full"
           ? size / 2
-          : typeof lego.style.borderRadius === "number"
-            ? lego.style.borderRadius
+          : typeof lego.style!.borderRadius === "number"
+            ? lego.style!.borderRadius
             : 0;
 
       return `
         <g transform="translate(-${size / 2}, -${size / 2})">
           <rect x="0" y="0" width="${size}" height="${size}" 
                 rx="${borderRadius}" ry="${borderRadius}"
-                fill="${isSelected ? lego.style.getSelectedBackgroundColorForSvg() : lego.style.getBackgroundColorForSvg()}" 
-                stroke="${isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}" 
+                fill="${isSelected ? lego.style!.getSelectedBackgroundColorForSvg() : lego.style!.getBackgroundColorForSvg()}" 
+                stroke="${isSelected ? lego.style!.getSelectedBorderColorForSvg() : lego.style!.getBorderColorForSvg()}" 
                 stroke-width="2" />
         </g>
       `;
@@ -118,8 +113,8 @@ export class LegoSvgRenderer {
       if (numRegularLegs > 8) {
         return `
           <circle cx="0" cy="0" r="${size / 2}" 
-                  fill="${isSelected ? lego.style.getSelectedBackgroundColorForSvg() : lego.style.getBackgroundColorForSvg()}" 
-                  stroke="${isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}" 
+                  fill="${isSelected ? lego.style!.getSelectedBackgroundColorForSvg() : lego.style!.getBackgroundColorForSvg()}" 
+                  stroke="${isSelected ? lego.style!.getSelectedBorderColorForSvg() : lego.style!.getBorderColorForSvg()}" 
                   stroke-width="2" />
         `;
       } else {
@@ -137,8 +132,8 @@ export class LegoSvgRenderer {
 
         return `
           <path d="${pathData}" 
-                fill="${isSelected ? lego.style.getSelectedBackgroundColorForSvg() : lego.style.getBackgroundColorForSvg()}" 
-                stroke="${isSelected ? lego.style.getSelectedBorderColorForSvg() : lego.style.getBorderColorForSvg()}" 
+                fill="${isSelected ? lego.style!.getSelectedBackgroundColorForSvg() : lego.style!.getBackgroundColorForSvg()}" 
+                stroke="${isSelected ? lego.style!.getSelectedBorderColorForSvg() : lego.style!.getBorderColorForSvg()}" 
                 stroke-width="2" />
         `;
       }
@@ -158,7 +153,7 @@ export class LegoSvgRenderer {
     const textColor = isSelected ? "white" : "#000000";
 
     if (numRegularLegs <= 2) {
-      if (lego.style.displayShortName) {
+      if (lego.style!.displayShortName) {
         return `
           <g transform="translate(-${size / 2}, -${size / 2})">
             <text x="${size / 2}" y="${size / 2 - 6}" font-size="12" font-weight="bold" 
@@ -183,7 +178,7 @@ export class LegoSvgRenderer {
       }
     } else {
       const yOffset = lego.logical_legs.length > 0 ? 5 : 0;
-      if (lego.style.displayShortName) {
+      if (lego.style!.displayShortName) {
         return `
           <text x="0" y="${yOffset}" font-size="10" font-weight="bold" 
                 text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
@@ -204,14 +199,14 @@ export class LegoSvgRenderer {
 
   private static generateLabelsSvg(
     lego: DroppedLego,
-    legPositions: LegPosition[],
+    legStyles: LegStyle[],
     options: LegoSvgOptions
   ): string {
     const { connections = [], hideConnectedLegs = false } = options;
 
     // This is a simplified version - you might want to port the full logic from DroppedLegoDisplay
-    return legPositions
-      .map((pos, legIndex) => {
+    return legStyles
+      .map((legStyle, legIndex) => {
         // Check if leg is connected
         const isLegConnected = connections.some(
           (c: Connection) =>
@@ -223,7 +218,7 @@ export class LegoSvgRenderer {
         // Simple logic: show label if not connected or if not hiding connected legs
         if (!isLegConnected || !hideConnectedLegs) {
           return `
-            <text x="${pos.labelX}" y="${pos.labelY}" font-size="12" fill="#666666" 
+            <text x="${legStyle.position.labelX}" y="${legStyle.position.labelY}" font-size="12" fill="#666666" 
                   text-anchor="middle" dominant-baseline="middle">
               ${legIndex}
             </text>

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Connection, DroppedLego } from "./types";
-import { getLegoStyle } from "../LegoStyles";
+import { recalculateLegoStyle } from "../LegoStyles";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { config, getApiUrl } from "../config";
 import { getAccessToken } from "./auth";
@@ -87,21 +87,18 @@ export class NetworkService {
     // Position legos based on network type
     const positionedLegos = this.positionLegos(legos, networkType);
 
-    // Add style information to legos
-    const styledLegos = positionedLegos.map((lego: DroppedLego) => ({
-      ...lego,
-      style: getLegoStyle(lego.id, lego.parity_check_matrix[0].length / 2),
-      selectedMatrixRows: []
-    }));
+    positionedLegos.forEach((lego: DroppedLego) => {
+      recalculateLegoStyle(lego);
+    });
 
     // Add to stores
-    addDroppedLegos(styledLegos);
+    addDroppedLegos(positionedLegos);
     addConnections(newConnections);
 
     addOperation({
       type: "add",
       data: {
-        legosToAdd: styledLegos,
+        legosToAdd: positionedLegos,
         connectionsToAdd: newConnections
       }
     });

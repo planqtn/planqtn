@@ -1,4 +1,3 @@
-import { calculateLegPosition } from "../components/DroppedLegoDisplay";
 import { Connection, DroppedLego } from "./types";
 
 // Add these helper functions near the top of the file
@@ -62,7 +61,7 @@ export const findClosestDanglingLeg = (
       );
       if (isConnected) continue;
 
-      const pos = calculateLegPosition(lego, legIndex);
+      const pos = lego.style!.legStyles[legIndex].position;
       const legX = lego.x + pos.endX;
       const legY = lego.y + pos.endY;
       const distance = Math.sqrt(

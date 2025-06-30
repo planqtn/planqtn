@@ -24,7 +24,7 @@ export interface DroppedLego extends LegoPiece {
   x: number;
   y: number;
   instanceId: string;
-  style: LegoStyle;
+  style: LegoStyle | null;
   selectedMatrixRows: number[];
   alwaysShowLegs?: boolean;
 }

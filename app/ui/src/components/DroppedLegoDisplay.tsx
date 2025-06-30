@@ -6,8 +6,8 @@ import {
   DraggingStage
 } from "../lib/types";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
-import { LegStyle } from "../LegoStyles";
-import { useMemo, memo } from "react";
+import { LegPosition, LegStyle } from "../LegoStyles";
+import { useMemo, memo, useEffect } from "react";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
 import { useDragStateStore } from "../stores/dragState";
@@ -15,19 +15,9 @@ import { useLegDragStateStore } from "../stores/legDragState";
 import { useGroupDragStateStore } from "../stores/groupDragState";
 import { useCanvasStore } from "../stores/canvasStateStore";
 
-const LEG_LABEL_DISTANCE = 15;
 const LEG_ENDPOINT_RADIUS = 5;
+
 // Add shared function for leg position calculations
-export interface LegPosition {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  labelX: number;
-  labelY: number;
-  angle: number;
-  style: LegStyle;
-}
 
 export function getLegoBoundingBox(
   lego: DroppedLego,
@@ -38,17 +28,6 @@ export function getLegoBoundingBox(
   width: number;
   height: number;
 } {
-  const numAllLegs = lego.parity_check_matrix[0].length / 2; // Total number of legs (symplectic matrix, each column is X and Z)
-  const legPositions = Array(numAllLegs)
-    .fill(0)
-    .map((_, legIndex) =>
-      calculateLegPosition(lego, legIndex, LEG_LABEL_DISTANCE, true)
-    );
-
-  // if (lego.instanceId == "3") {
-  //   console.log(legPositions);
-  // }
-
   const endpointFn = (pos: LegPosition) => {
     return demoMode
       ? { x: pos.endX, y: pos.endY }
@@ -57,21 +36,21 @@ export function getLegoBoundingBox(
 
   // Calculate SVG dimensions to accommodate all legs
   const maxEndpointX = Math.max(
-    ...legPositions.map((pos) => endpointFn(pos).x),
-    lego.style.size / 2
+    ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).x),
+    lego.style!.size / 2
   );
   const minEndpointX = Math.min(
-    ...legPositions.map((pos) => endpointFn(pos).x),
+    ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).x),
     0
   );
 
   const maxEndpointY = Math.max(
-    ...legPositions.map((pos) => endpointFn(pos).y),
-    +lego.style.size / 2
+    ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).y),
+    +lego.style!.size / 2
   );
   const minEndpointY = Math.min(
-    ...legPositions.map((pos) => endpointFn(pos).y),
-    -lego.style.size / 2
+    ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).y),
+    -lego.style!.size / 2
   );
 
   return {
@@ -79,48 +58,6 @@ export function getLegoBoundingBox(
     left: minEndpointX,
     width: maxEndpointX - minEndpointX,
     height: maxEndpointY - minEndpointY
-  };
-}
-
-export function calculateLegPosition(
-  lego: DroppedLego,
-  legIndex: number,
-  labelDistance: number = LEG_LABEL_DISTANCE,
-  forSvg: boolean = false
-): LegPosition {
-  const legStyle = lego.style.getLegStyle(legIndex, lego, forSvg);
-
-  // Calculate start position relative to center
-  const startX = 0;
-  // legStyle.from === "center"
-  //   ? 0
-  //   : legStyle.from === "bottom"
-  //     ? legStyle.startOffset * Math.cos(legStyle.angle)
-  //     : 0;
-  const startY = 0;
-  // legStyle.from === "center"
-  //   ? 0
-  //   : legStyle.from === "bottom"
-  //     ? legStyle.startOffset * Math.sin(legStyle.angle)
-  //     : 0;
-
-  // Calculate end position
-  const endX = startX + legStyle.length * Math.cos(legStyle.angle);
-  const endY = startY + legStyle.length * Math.sin(legStyle.angle);
-
-  // Calculate label position
-  const labelX = endX + labelDistance * Math.cos(legStyle.angle);
-  const labelY = endY + labelDistance * Math.sin(legStyle.angle);
-
-  return {
-    startX,
-    startY,
-    endX,
-    endY,
-    labelX,
-    labelY,
-    angle: legStyle.angle,
-    style: legStyle
   };
 }
 
@@ -133,23 +70,25 @@ interface DroppedLegoDisplayProps {
 
 // Memoized component for static leg lines only
 const StaticLegsLayer = memo<{
-  legPositions: LegPosition[];
+  legStyles: LegStyle[];
   shouldHideLeg: (legIndex: number) => boolean;
-}>(({ legPositions, shouldHideLeg }) => {
+}>(({ legStyles, shouldHideLeg }) => {
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
-      {legPositions.map((pos, legIndex) =>
+      {legStyles.map((legStyle, legIndex) =>
         shouldHideLeg(legIndex) ? null : (
           <line
             key={`static-leg-${legIndex}`}
-            x1={pos.startX}
-            y1={pos.startY}
-            x2={pos.endX}
-            y2={pos.endY}
+            x1={legStyle.position.startX}
+            y1={legStyle.position.startY}
+            x2={legStyle.position.endX}
+            y2={legStyle.position.endY}
             stroke="#A0AEC0" // Default gray color for static rendering
             strokeWidth="2"
-            strokeDasharray={pos.style.style === "dashed" ? "5,5" : undefined}
+            strokeDasharray={
+              legStyle.lineStyle === "dashed" ? "5,5" : undefined
+            }
             style={{ pointerEvents: "none" }}
           />
         )
@@ -190,30 +129,30 @@ const LegoBodyLayer = memo<{
             width={size}
             height={size}
             rx={
-              typeof lego.style.borderRadius === "string" &&
-              lego.style.borderRadius === "full"
+              typeof lego.style!.borderRadius === "string" &&
+              lego.style!.borderRadius === "full"
                 ? size / 2
-                : typeof lego.style.borderRadius === "number"
-                  ? lego.style.borderRadius
+                : typeof lego.style!.borderRadius === "number"
+                  ? lego.style!.borderRadius
                   : 0
             }
             ry={
-              typeof lego.style.borderRadius === "string" &&
-              lego.style.borderRadius === "full"
+              typeof lego.style!.borderRadius === "string" &&
+              lego.style!.borderRadius === "full"
                 ? size / 2
-                : typeof lego.style.borderRadius === "number"
-                  ? lego.style.borderRadius
+                : typeof lego.style!.borderRadius === "number"
+                  ? lego.style!.borderRadius
                   : 0
             }
             fill={
               isSelected
-                ? lego.style.getSelectedBackgroundColorForSvg()
-                : lego.style.getBackgroundColorForSvg()
+                ? lego.style!.getSelectedBackgroundColorForSvg()
+                : lego.style!.getBackgroundColorForSvg()
             }
             stroke={
               isSelected
-                ? lego.style.getSelectedBorderColorForSvg()
-                : lego.style.getBorderColorForSvg()
+                ? lego.style!.getSelectedBorderColorForSvg()
+                : lego.style!.getBorderColorForSvg()
             }
             strokeWidth="2"
           />
@@ -228,13 +167,13 @@ const LegoBodyLayer = memo<{
               r={size / 2}
               fill={
                 isSelected
-                  ? lego.style.getSelectedBackgroundColorForSvg()
-                  : lego.style.getBackgroundColorForSvg()
+                  ? lego.style!.getSelectedBackgroundColorForSvg()
+                  : lego.style!.getBackgroundColorForSvg()
               }
               stroke={
                 isSelected
-                  ? lego.style.getSelectedBorderColorForSvg()
-                  : lego.style.getBorderColorForSvg()
+                  ? lego.style!.getSelectedBorderColorForSvg()
+                  : lego.style!.getBorderColorForSvg()
               }
               strokeWidth="2"
             />
@@ -255,13 +194,13 @@ const LegoBodyLayer = memo<{
               }
               fill={
                 isSelected
-                  ? lego.style.getSelectedBackgroundColorForSvg()
-                  : lego.style.getBackgroundColorForSvg()
+                  ? lego.style!.getSelectedBackgroundColorForSvg()
+                  : lego.style!.getBackgroundColorForSvg()
               }
               stroke={
                 isSelected
-                  ? lego.style.getSelectedBorderColorForSvg()
-                  : lego.style.getBorderColorForSvg()
+                  ? lego.style!.getSelectedBorderColorForSvg()
+                  : lego.style!.getBorderColorForSvg()
               }
               strokeWidth="2"
             />
@@ -276,11 +215,8 @@ LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
   ({ lego, index, demoMode = false, canvasRef }) => {
-    const size = lego.style.size;
+    const size = lego.style!.size;
     const numAllLegs = lego.parity_check_matrix[0].length / 2;
-    const isScalar =
-      lego.parity_check_matrix.length === 1 &&
-      lego.parity_check_matrix[0].length === 1;
     const numLogicalLegs = lego.logical_legs.length;
     const numGaugeLegs = lego.gauge_legs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
@@ -296,9 +232,17 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     } = useCanvasStore();
     const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
     const { dragState, setDragState } = useDragStateStore();
-    const { setLegDragState } = useLegDragStateStore();
-    const { setGroupDragState } = useGroupDragStateStore();
+    const setLegDragState = useLegDragStateStore(
+      (state) => state.setLegDragState
+    );
+    const setGroupDragState = useGroupDragStateStore(
+      (state) => state.setGroupDragState
+    );
     const { legDragState } = useLegDragStateStore();
+
+    // useEffect(() => {
+    //   console.log("DroppedLegoDisplay", lego.id, "re-render");
+    // }, [dragState]);
 
     // Initialize selectedMatrixRows if not present
     if (!lego.selectedMatrixRows) {
@@ -308,17 +252,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const isSelected =
       tensorNetwork &&
       tensorNetwork.legos.some((l) => l.instanceId === lego.instanceId);
-
-    // Memoize leg positions calculation
-    const legPositions = useMemo(() => {
-      return isScalar
-        ? []
-        : Array(numAllLegs)
-            .fill(0)
-            .map((_, legIndex) =>
-              calculateLegPosition(lego, legIndex, LEG_LABEL_DISTANCE, true)
-            );
-    }, [numAllLegs]);
 
     // Calculate drag offset for performance during dragging
     const dragOffset = useMemo(() => {
@@ -381,7 +314,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       const isConnected = isLegConnected(legIndex);
       if (!isConnected) return false;
 
-      const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+      const thisLegStyle = lego.style!.legStyles[legIndex];
       const isThisHighlighted = thisLegStyle.is_highlighted;
 
       // If this leg is not highlighted, hide it only if connected to a non-highlighted leg
@@ -396,8 +329,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               (l) => l.instanceId === conn.to.legoId
             );
             return (
-              connectedLego?.style.getLegStyle(conn.to.legIndex, connectedLego)
-                ?.is_highlighted || false
+              connectedLego?.style!.legStyles[conn.to.legIndex]
+                .is_highlighted || false
             );
           }
           if (
@@ -408,10 +341,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               (l) => l.instanceId === conn.from.legoId
             );
             return (
-              connectedLego?.style.getLegStyle(
-                conn.from.legIndex,
-                connectedLego
-              )?.is_highlighted || false
+              connectedLego?.style!.legStyles[conn.from.legIndex]
+                .is_highlighted || false
             );
           }
           return false;
@@ -427,10 +358,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           const connectedLego = droppedLegos?.find(
             (l) => l.instanceId === conn.to.legoId
           );
-          const connectedStyle = connectedLego?.style.getLegStyle(
-            conn.to.legIndex,
-            connectedLego
-          );
+          const connectedStyle =
+            connectedLego?.style!.legStyles[conn.to.legIndex];
           return (
             connectedStyle?.is_highlighted &&
             connectedStyle.color === thisLegStyle.color
@@ -443,10 +372,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           const connectedLego = droppedLegos?.find(
             (l) => l.instanceId === conn.from.legoId
           );
-          const connectedStyle = connectedLego?.style.getLegStyle(
-            conn.from.legIndex,
-            connectedLego
-          );
+          const connectedStyle =
+            connectedLego?.style!.legStyles[conn.from.legIndex];
           return (
             connectedStyle?.is_highlighted &&
             connectedStyle.color === thisLegStyle.color
@@ -468,7 +395,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           (l) => l.instanceId === lego.instanceId
         );
 
-        if (isPartOfSelection) {
+        if (isPartOfSelection && (tensorNetwork?.legos.length || 0) > 1) {
           // Dragging a selected lego - move the whole group
           const selectedLegos = tensorNetwork?.legos || [];
           const currentPositions: {
@@ -887,13 +814,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         >
           {/* Layer 1: Static leg lines (gray background) */}
           <StaticLegsLayer
-            legPositions={legPositions}
+            legStyles={lego.style!.legStyles}
             shouldHideLeg={shouldHideLeg}
           />
 
           {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
-          {legPositions.map((pos, legIndex) => {
-            const legColor = pos.style.color;
+          {lego.style!.legStyles.map((legStyle, legIndex) => {
+            const legColor = legStyle.color;
             const shouldHide = shouldHideLeg(legIndex);
 
             if (legColor === "#A0AEC0" || shouldHide) {
@@ -903,14 +830,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             return (
               <g key={`highlight-leg-${legIndex}`}>
                 <line
-                  x1={pos.startX}
-                  y1={pos.startY}
-                  x2={pos.endX}
-                  y2={pos.endY}
+                  x1={legStyle.position.startX}
+                  y1={legStyle.position.startY}
+                  x2={legStyle.position.endX}
+                  y2={legStyle.position.endY}
                   stroke={legColor}
                   strokeWidth={4}
                   strokeDasharray={
-                    pos.style.style === "dashed" ? "5,5" : undefined
+                    legStyle.lineStyle === "dashed" ? "5,5" : undefined
                   }
                   style={{ pointerEvents: "none" }}
                 />
@@ -927,9 +854,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           />
 
           {/* Layer 4: Interactive leg endpoints and logical leg interactions */}
-          {legPositions.map((pos, legIndex) => {
+          {lego.style!.legStyles.map((legStyle, legIndex) => {
             const isLogical = lego.logical_legs.includes(legIndex);
-            const legColor = pos.style.color;
+            const legColor = legStyle.color;
             const isBeingDragged =
               legDragState?.isDragging &&
               legDragState.legoId === lego.instanceId &&
@@ -946,10 +873,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 {/* Logical leg interactive line - rendered on top for clicks */}
                 {isLogical && (
                   <line
-                    x1={pos.startX}
-                    y1={pos.startY}
-                    x2={pos.endX}
-                    y2={pos.endY}
+                    x1={legStyle.position.startX}
+                    y1={legStyle.position.startY}
+                    x2={legStyle.position.endX}
+                    y2={legStyle.position.endY}
                     stroke="transparent"
                     strokeWidth={8}
                     style={{
@@ -965,8 +892,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
                 {/* Draggable Endpoint */}
                 <circle
-                  cx={pos.endX}
-                  cy={pos.endY}
+                  cx={legStyle.position.endX}
+                  cy={legStyle.position.endY}
                   r={LEG_ENDPOINT_RADIUS}
                   fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
                   stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
@@ -1004,7 +931,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             <g>
               {numRegularLegs <= 2 ? (
                 <g transform={`translate(-${size / 2}, -${size / 2})`}>
-                  {lego.style.displayShortName ? (
+                  {lego.style!.displayShortName ? (
                     <g>
                       <text
                         x={size / 2}
@@ -1053,7 +980,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   fill={isSelected ? "white" : "#000000"}
                   style={{ pointerEvents: "none" }}
                 >
-                  {lego.style.displayShortName ? (
+                  {lego.style!.displayShortName ? (
                     <>
                       {lego.shortName}
                       <tspan x="0" dy="12">
@@ -1071,7 +998,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           {/* Leg Labels - dynamic visibility */}
           {!isScalarLego(lego) &&
             !demoMode &&
-            legPositions.map((pos, legIndex) => {
+            lego.style!.legStyles.map((legStyle, legIndex) => {
               // Check if leg is connected
               const isLegConnectedToSomething = connections.some(
                 (c) =>
@@ -1086,8 +1013,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 return (
                   <text
                     key={`${lego.instanceId}-label-${legIndex}`}
-                    x={pos.labelX}
-                    y={pos.labelY}
+                    x={legStyle.position.labelX}
+                    y={legStyle.position.labelY}
                     fontSize="12"
                     fill="#666666"
                     textAnchor="middle"
@@ -1099,7 +1026,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 );
               }
 
-              const thisLegStyle = lego.style.getLegStyle(legIndex, lego);
+              const thisLegStyle = lego.style!.legStyles[legIndex];
               const isThisHighlighted = thisLegStyle.is_highlighted;
 
               // Find the connected leg's style
@@ -1123,10 +1050,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               );
               if (!connectedLego) return null;
 
-              const connectedStyle = connectedLego.style.getLegStyle(
-                connectedLegInfo.legIndex,
-                connectedLego
-              );
+              const connectedStyle =
+                connectedLego.style!.legStyles[connectedLegInfo.legIndex];
 
               // Hide label if conditions are met
               const shouldHideLabel =
@@ -1142,8 +1067,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               return (
                 <text
                   key={`${lego.instanceId}-label-${legIndex}`}
-                  x={pos.labelX}
-                  y={pos.labelY}
+                  x={legStyle.position.labelX}
+                  y={legStyle.position.labelY}
                   fontSize="12"
                   fill="#666666"
                   textAnchor="middle"

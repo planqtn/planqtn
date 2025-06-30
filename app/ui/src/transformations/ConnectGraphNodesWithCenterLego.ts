@@ -1,5 +1,5 @@
 import { DroppedLego, Connection, Operation } from "../lib/types";
-import { getLegoStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
 import { zip } from "lodash";
 import { Legos } from "../lib/Legos";
 
@@ -78,23 +78,23 @@ export const applyConnectGraphNodes = async (
   const hadamardLegos: DroppedLego[] = legoDanglingLegs.map(
     ({ lego }, index) => {
       // Position Hadamard halfway between connector and original lego
-      return {
-        id: "h",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard",
-        instanceId: (maxInstanceId + 2 + index).toString(),
-        x: (connectorLego.x + lego.x) / 2,
-        y: (connectorLego.y + lego.y) / 2,
-        parity_check_matrix: [
-          [1, 0, 0, 1],
-          [0, 1, 1, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle("h", 2),
-        selectedMatrixRows: []
-      };
+      return createDroppedLego(
+        {
+          id: "h",
+          name: "Hadamard",
+          shortName: "H",
+          description: "Hadamard",
+          parity_check_matrix: [
+            [1, 0, 0, 1],
+            [0, 1, 1, 0]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        (connectorLego.x + lego.x) / 2,
+        (connectorLego.y + lego.y) / 2,
+        (maxInstanceId + 2 + index).toString()
+      );
     }
   );
 

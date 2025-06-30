@@ -1,5 +1,5 @@
 import { Connection } from "./types";
-import { getLegoStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
 import { exec } from "child_process";
 import { TensorNetwork } from "./TensorNetwork";
 describe("constructionCode", () => {
@@ -24,26 +24,26 @@ tn = TensorNetwork(nodes)
   it("should generate construction code for a tensor network with one lego", () => {
     const tensorNetwork = new TensorNetwork({
       legos: [
-        {
-          id: "x_rep_code",
-          name: "X-Repetition Code",
-          shortName: "XREP3",
-          description: "Phase flip code, XX stabilizers",
-          is_dynamic: true,
-          parameters: { d: 3 },
-          parity_check_matrix: [
-            [1, 1, 0, 0, 0, 0],
-            [0, 1, 1, 0, 0, 0],
-            [0, 0, 0, 1, 1, 1]
-          ],
-          logical_legs: [],
-          gauge_legs: [],
-          x: 288.89581298828125,
-          y: 381.25,
-          instanceId: "7",
-          style: getLegoStyle("x_rep_code", 3),
-          selectedMatrixRows: []
-        }
+        createDroppedLego(
+          {
+            id: "x_rep_code",
+            name: "X-Repetition Code",
+            shortName: "XREP3",
+            description: "Phase flip code, XX stabilizers",
+            is_dynamic: true,
+            parameters: { d: 3 },
+            parity_check_matrix: [
+              [1, 1, 0, 0, 0, 0],
+              [0, 1, 1, 0, 0, 0],
+              [0, 0, 0, 1, 1, 1]
+            ],
+            logical_legs: [],
+            gauge_legs: []
+          },
+          288.89581298828125,
+          381.25,
+          "7"
+        )
       ],
       connections: []
     });
@@ -72,105 +72,105 @@ tn = TensorNetwork(nodes)
   it("should generate python runnable code with the right parity check matrix", async () => {
     const tensorNetwork = new TensorNetwork({
       legos: [
-        {
-          id: "x_rep_code",
-          name: "X-Repetition Code",
-          shortName: "XREP3",
-          description: "Phase flip code, XX stabilizers",
-          is_dynamic: true,
-          parameters: { d: 3 },
-          parity_check_matrix: [
-            [1, 1, 0, 0, 0, 0],
-            [0, 1, 1, 0, 0, 0],
-            [0, 0, 0, 1, 1, 1]
-          ],
-          logical_legs: [],
-          gauge_legs: [],
-          x: 288.89581298828125,
-          y: 381.25,
-          instanceId: "2",
-          style: getLegoStyle("x_rep_code", 3),
-          selectedMatrixRows: []
-        },
-        {
-          id: "steane",
-          name: "Steane Code",
-          shortName: "STN",
-          description: "Steane code encoding tensor",
-          parity_check_matrix: [
-            [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
-          ],
-          logical_legs: [7],
-          gauge_legs: [],
-          instanceId: "3",
-          x: 477.89581298828125,
-          y: 308.25,
-          style: getLegoStyle("steane", 8),
-          selectedMatrixRows: []
-        },
-        {
-          id: "x_rep_code",
-          name: "X-Repetition Code",
-          shortName: "XREP3",
-          description: "Phase flip code, XX stabilizers",
-          is_dynamic: true,
-          parameters: { d: 4 },
-          parity_check_matrix: [
-            [1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 1, 1, 0, 0, 0, 0, 0],
-            [0, 0, 1, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 1, 1, 1]
-          ],
-          logical_legs: [],
-          gauge_legs: [],
-          x: 139.89581298828125,
-          y: 143.25,
-          instanceId: "4",
-          style: getLegoStyle("x_rep_code", 4),
-          selectedMatrixRows: []
-        },
-        {
-          id: "z_rep_code",
-          name: "Z-Repetition Code",
-          shortName: "ZREP3",
-          description: "Bitflip code, ZZ stabilizers",
-          is_dynamic: true,
-          parameters: { d: 3 },
-          parity_check_matrix: [
-            [0, 0, 0, 0, 1, 1, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1],
-            [1, 1, 1, 1, 0, 0, 0, 0]
-          ],
-          logical_legs: [],
-          gauge_legs: [],
-          x: 311.89581298828125,
-          y: 187.25,
-          instanceId: "1",
-          style: getLegoStyle("z_rep_code", 4),
-          selectedMatrixRows: []
-        },
-        {
-          id: "stopper_x",
-          name: "X Stopper",
-          shortName: "X",
-          description: "X Stopper",
-          instanceId: "5",
-          x: 411.89581298828125,
-          y: 187.25,
-          parity_check_matrix: [[1, 0]],
-          logical_legs: [],
-          gauge_legs: [],
-          style: getLegoStyle("stopper_x", 1),
-          selectedMatrixRows: []
-        }
+        createDroppedLego(
+          {
+            id: "x_rep_code",
+            name: "X-Repetition Code",
+            shortName: "XREP3",
+            description: "Phase flip code, XX stabilizers",
+            is_dynamic: true,
+            parameters: { d: 3 },
+            parity_check_matrix: [
+              [1, 1, 0, 0, 0, 0],
+              [0, 1, 1, 0, 0, 0],
+              [0, 0, 0, 1, 1, 1]
+            ],
+            logical_legs: [],
+            gauge_legs: []
+          },
+          288.89581298828125,
+          381.25,
+          "2"
+        ),
+        createDroppedLego(
+          {
+            id: "steane",
+            name: "Steane Code",
+            shortName: "STN",
+            description: "Steane code encoding tensor",
+            parity_check_matrix: [
+              [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+              [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+            ],
+            logical_legs: [7],
+            gauge_legs: []
+          },
+          477.89581298828125,
+          308.25,
+          "3"
+        ),
+        createDroppedLego(
+          {
+            id: "x_rep_code",
+            name: "X-Repetition Code",
+            shortName: "XREP3",
+            description: "Phase flip code, XX stabilizers",
+            is_dynamic: true,
+            parameters: { d: 4 },
+            parity_check_matrix: [
+              [1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 1, 1, 0, 0, 0, 0, 0],
+              [0, 0, 1, 1, 0, 0, 0, 0],
+              [0, 0, 0, 0, 1, 1, 1, 1]
+            ],
+            logical_legs: [],
+            gauge_legs: []
+          },
+          139.89581298828125,
+          143.25,
+          "4"
+        ),
+        createDroppedLego(
+          {
+            id: "z_rep_code",
+            name: "Z-Repetition Code",
+            shortName: "ZREP3",
+            description: "Bitflip code, ZZ stabilizers",
+            is_dynamic: true,
+            parameters: { d: 3 },
+            parity_check_matrix: [
+              [0, 0, 0, 0, 1, 1, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1],
+              [1, 1, 1, 1, 0, 0, 0, 0]
+            ],
+            logical_legs: [],
+            gauge_legs: []
+          },
+          311.89581298828125,
+          187.25,
+          "1"
+        ),
+        createDroppedLego(
+          {
+            id: "stopper_x",
+            name: "X Stopper",
+            shortName: "X",
+            description: "X Stopper",
+            parity_check_matrix: [[1, 0]],
+            logical_legs: [],
+            gauge_legs: []
+          },
+          411.89581298828125,
+          187.25,
+          "5"
+        )
       ],
       connections: [
         new Connection(

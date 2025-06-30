@@ -1,7 +1,7 @@
 import { DroppedLego, Connection } from "../lib/types.ts";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 import { TensorNetwork } from "../lib/TensorNetwork.ts";
-import { getLegoStyle } from "../LegoStyles.ts";
+import { createDroppedLego } from "../LegoStyles.ts";
 
 describe("simple auto flow", () => {
   const makeLego = ({
@@ -18,20 +18,24 @@ describe("simple auto flow", () => {
     selectedRows?: number[];
     x?: number;
     y?: number;
-  }): DroppedLego => ({
-    id: id,
-    name: name,
-    shortName: name,
-    description: name,
-    instanceId: id,
-    x: x,
-    y: y,
-    parity_check_matrix: parityMatrix,
-    logical_legs: [],
-    gauge_legs: [],
-    style: getLegoStyle(id, parityMatrix[0].length / 2),
-    selectedMatrixRows: selectedRows
-  });
+  }): DroppedLego =>
+    createDroppedLego(
+      {
+        id: id,
+        name: name,
+        shortName: name,
+        description: name,
+        parity_check_matrix: parityMatrix,
+        logical_legs: [],
+        gauge_legs: []
+      },
+      x,
+      y,
+      id,
+      {
+        selectedMatrixRows: selectedRows
+      }
+    );
 
   const makeConn = (
     fromId: string,

@@ -7,11 +7,12 @@ import { useGroupDragStateStore } from "../stores/groupDragState";
 import { SelectionBoxState, DraggingStage, Connection } from "../lib/types";
 import { useCanvasDragStateStore } from "../stores/canvasDragStateStore";
 import { TensorNetwork } from "../lib/TensorNetwork";
-import { calculateLegPosition } from "./DroppedLegoDisplay";
 import {
   findClosestDanglingLeg,
   pointToLineDistance
 } from "../lib/canvasCalculations";
+import { useDraggedLegoStore } from "../stores/draggedLegoStore";
+import { useBuildingBlockDragStateStore } from "../stores/buildingBlockDragStateStore";
 
 interface CanvasMouseHandlerProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -33,14 +34,20 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   setHoveredConnection
 }) => {
   // Zustand store selectors
-  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
-  const { updateDroppedLegos, setDroppedLegos } = useCanvasStore();
+  const { droppedLegos, updateDroppedLegos, setDroppedLegos } =
+    useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const { legDragState, setLegDragState } = useLegDragStateStore();
   const { dragState, setDragState } = useDragStateStore();
   const { groupDragState, setGroupDragState } = useGroupDragStateStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
   const { connections, addConnections, addOperation } = useCanvasStore();
+  const { draggedLego, setDraggedLego } = useDraggedLegoStore();
+  const {
+    buildingBlockDragState,
+    setBuildingBlockDragState,
+    clearBuildingBlockDragState
+  } = useBuildingBlockDragStateStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -150,8 +157,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
             );
             if (!fromLego || !toLego) return;
 
-            const fromPos = calculateLegPosition(fromLego, conn.from.legIndex);
-            const toPos = calculateLegPosition(toLego, conn.to.legIndex);
+            const fromPos =
+              fromLego.style!.legStyles[conn.from.legIndex].position;
+            const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
 
             const fromPoint = {
               x: fromLego.x + fromPos.endX,
@@ -188,10 +196,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
             connections
           );
           if (closestLeg) {
-            const pos = calculateLegPosition(
-              closestLeg.lego,
-              closestLeg.legIndex
-            );
+            const pos =
+              closestLeg.lego.style!.legStyles[closestLeg.legIndex].position;
             const legX = closestLeg.lego.x + pos.endX;
             const legY = closestLeg.lego.y + pos.endY;
             const distance = Math.sqrt(
@@ -242,6 +248,24 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
     };
 
+    const handleCanvasClick = (e: MouseEvent) => {
+      // Clear selection when clicking on empty canvas
+      if (e.target === e.currentTarget && tensorNetwork) {
+        if (dragState?.draggingStage === DraggingStage.JUST_FINISHED) {
+          setDragState({
+            draggingStage: DraggingStage.NOT_DRAGGING,
+            draggedLegoIndex: -1,
+            startX: 0,
+            startY: 0,
+            originalX: 0,
+            originalY: 0
+          });
+        } else {
+          setTensorNetwork(null);
+        }
+      }
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       if (!rect) return;
@@ -273,7 +297,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       ) {
         const deltaX = e.clientX - dragState.startX;
         const deltaY = e.clientY - dragState.startY;
-        if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
           const draggedLego = droppedLegos[dragState.draggedLegoIndex];
           const isPartOfSelection = tensorNetwork?.legos.some(
             (l) => l.instanceId === draggedLego.instanceId
@@ -321,10 +345,12 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
 
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
+        e.stopPropagation();
+        e.preventDefault();
         // Only call performDragUpdate when we were actually dragging
         performDragUpdate(e);
         setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
+          draggingStage: DraggingStage.JUST_FINISHED,
           draggedLegoIndex: -1,
           startX: 0,
           startY: 0,
@@ -351,7 +377,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         droppedLegos.find((lego) => {
           const legCount = lego.parity_check_matrix[0].length / 2;
           for (let i = 0; i < legCount; i++) {
-            const pos = calculateLegPosition(lego, i);
+            const pos = lego.style!.legStyles[i].position;
             const targetPoint = {
               x: lego.x + pos.endX,
               y: lego.y + pos.endY
@@ -463,16 +489,142 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
     };
 
+    // Add handlers for stable drag enter/leave
+    const handleCanvasDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      // setBuildingBlockDragState((prev) => ({
+      //   ...prev,
+      //   dragEnterCounter: prev.dragEnterCounter + 1
+      // }));
+    };
+
+    const handleCanvasDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      // setBuildingBlockDragState((prev) => ({
+      //   ...prev,
+      //   dragEnterCounter: prev.dragEnterCounter - 1
+      // }));
+      // if (buildingBlockDragState.dragEnterCounter <= 0) {
+      //   setBuildingBlockDragState((prev) => ({
+      //     ...prev,
+      //     dragEnterCounter: 0
+      //   }));
+      // }
+    };
+
+    const handleGlobalDragEnd = () => {
+      if (buildingBlockDragState.isDragging) {
+        clearBuildingBlockDragState();
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+
+      const target = e.currentTarget as HTMLElement;
+      const canvasRect = target.getBoundingClientRect();
+
+      if (!canvasRect) return;
+
+      // Update building block drag state with current mouse position
+      if (buildingBlockDragState.isDragging) {
+        setBuildingBlockDragState((prev) => ({
+          ...prev,
+          mouseX: e.clientX,
+          mouseY: e.clientY
+        }));
+      }
+
+      // Use the draggedLego state instead of trying to get data from dataTransfer
+      if (!draggedLego) return;
+
+      const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+
+      // Only handle two-legged legos
+      if (numLegs !== 2) return;
+
+      const x = e.clientX - canvasRect.left;
+      const y = e.clientY - canvasRect.top;
+
+      // Find the closest connection
+      let closestConnection: Connection | null = null;
+      let minDistance = Infinity;
+
+      connections.forEach((conn) => {
+        const fromLego = droppedLegos.find(
+          (l) => l.instanceId === conn.from.legoId
+        );
+        const toLego = droppedLegos.find(
+          (l) => l.instanceId === conn.to.legoId
+        );
+        if (!fromLego || !toLego) return;
+
+        const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
+        const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
+
+        const fromPoint = {
+          x: fromLego.x + fromPos.endX,
+          y: fromLego.y + fromPos.endY
+        };
+        const toPoint = {
+          x: toLego.x + toPos.endX,
+          y: toLego.y + toPos.endY
+        };
+
+        // Calculate distance from point to line segment
+        const distance = pointToLineDistance(
+          x,
+          y,
+          fromPoint.x,
+          fromPoint.y,
+          toPoint.x,
+          toPoint.y
+        );
+        if (distance < minDistance && distance < 20) {
+          // 20 pixels threshold
+          minDistance = distance;
+          closestConnection = conn;
+        }
+      });
+
+      setHoveredConnection(closestConnection);
+    };
+
+    // Add a handler for when drag ends
+    const handleDragEnd = () => {
+      setDraggedLego(null);
+      setHoveredConnection(null);
+      setBuildingBlockDragState({
+        isDragging: false,
+        draggedLego: null,
+        mouseX: 0,
+        mouseY: 0,
+        dragEnterCounter: 0
+      });
+    };
+
+    canvas.addEventListener("dragover", handleDragOver);
+    canvas.addEventListener("dragenter", handleCanvasDragEnter);
+    canvas.addEventListener("dragleave", handleCanvasDragLeave);
+    canvas.addEventListener("dragend", handleDragEnd);
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("mouseleave", handleMouseLeave);
+    canvas.addEventListener("click", handleCanvasClick);
+    document.addEventListener("dragend", handleGlobalDragEnd);
 
     return () => {
+      canvas.removeEventListener("dragover", handleDragOver);
+      canvas.addEventListener("dragenter", handleCanvasDragEnter);
+      canvas.addEventListener("dragleave", handleCanvasDragLeave);
+      canvas.removeEventListener("dragend", handleDragEnd);
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
+      canvas.removeEventListener("click", handleCanvasClick);
+      document.removeEventListener("dragend", handleGlobalDragEnd);
     };
   }, [
     canvasRef,
@@ -483,6 +635,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     groupDragState,
     selectionBox,
     canvasDragState,
+    buildingBlockDragState,
     zoomLevel,
     altKeyPressed,
     connections,

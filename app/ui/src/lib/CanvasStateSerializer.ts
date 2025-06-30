@@ -1,5 +1,5 @@
 import { DroppedLego, Connection, CanvasState } from "./types";
-import { GenericStyle, getLegoStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
 import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {
@@ -106,22 +106,24 @@ export class CanvasStateSerializer {
 
           // For pieces not in lego list, construct from saved data
           if (!predefinedLego) {
-            return {
-              id: piece.id,
-              name: piece.name || piece.id,
-              shortName: piece.shortName || piece.id,
-              description: piece.description || "",
-              instanceId: piece.instanceId,
-              x: piece.x,
-              y: piece.y,
-              is_dynamic: piece.is_dynamic || false,
-              parameters: piece.parameters || {},
-              parity_check_matrix: piece.parity_check_matrix || [],
-              logical_legs: piece.logical_legs || [],
-              gauge_legs: piece.gauge_legs || [],
-              style: new GenericStyle(piece.id),
-              selectedMatrixRows: piece.selectedMatrixRows || []
-            };
+            return createDroppedLego(
+              {
+                id: piece.id,
+                name: piece.name || piece.id,
+                shortName: piece.shortName || piece.id,
+                description: piece.description || "",
+
+                is_dynamic: piece.is_dynamic || false,
+                parameters: piece.parameters || {},
+                parity_check_matrix: piece.parity_check_matrix || [],
+                logical_legs: piece.logical_legs || [],
+                gauge_legs: piece.gauge_legs || []
+              },
+              piece.x,
+              piece.y,
+              piece.instanceId,
+              { selectedMatrixRows: piece.selectedMatrixRows || [] }
+            );
           }
 
           // For dynamic legos, use the saved parameters and matrix
@@ -130,37 +132,35 @@ export class CanvasStateSerializer {
             piece.parameters &&
             piece.parity_check_matrix
           ) {
-            return {
-              ...predefinedLego,
-              instanceId: piece.instanceId,
-              x: piece.x,
-              y: piece.y,
-              parameters: piece.parameters,
-              parity_check_matrix: piece.parity_check_matrix,
-              logical_legs: piece.logical_legs || [],
-              gauge_legs: piece.gauge_legs || [],
-              style: getLegoStyle(
-                piece.id,
-                piece.parity_check_matrix[0].length / 2
-              ),
-              selectedMatrixRows: piece.selectedMatrixRows || []
-            };
+            return createDroppedLego(
+              {
+                ...predefinedLego,
+                parameters: piece.parameters,
+                parity_check_matrix: piece.parity_check_matrix,
+                logical_legs: piece.logical_legs || [],
+                gauge_legs: piece.gauge_legs || []
+              },
+
+              piece.x,
+              piece.y,
+              piece.instanceId,
+
+              { selectedMatrixRows: piece.selectedMatrixRows || [] }
+            );
           }
 
           // For regular legos, use the template
-          return {
-            ...predefinedLego,
-            parity_check_matrix:
-              piece.parity_check_matrix || predefinedLego.parity_check_matrix,
-            instanceId: piece.instanceId,
-            x: piece.x,
-            y: piece.y,
-            style: getLegoStyle(
-              predefinedLego.id,
-              predefinedLego.parity_check_matrix[0].length / 2
-            ),
-            selectedMatrixRows: piece.selectedMatrixRows || []
-          };
+          return createDroppedLego(
+            {
+              ...predefinedLego,
+              parity_check_matrix:
+                piece.parity_check_matrix || predefinedLego.parity_check_matrix
+            },
+            piece.x,
+            piece.y,
+            piece.instanceId,
+            { selectedMatrixRows: piece.selectedMatrixRows || [] }
+          );
         }
       );
       // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);

@@ -1,5 +1,5 @@
 import { LegoPiece, DroppedLego } from "./types";
-import { getLegoStyle } from "../LegoStyles";
+import { createDroppedLego } from "../LegoStyles";
 import { GF2 } from "./GF2";
 import { is_gauss_equivalent } from "./parity_check";
 
@@ -325,14 +325,7 @@ export class Legos {
       }
     });
 
-    return {
-      ...data,
-      instanceId,
-      style: getLegoStyle(data.id, numLegs),
-      x,
-      y,
-      selectedMatrixRows: []
-    };
+    return createDroppedLego(data, x, y, instanceId);
   }
 }
 
