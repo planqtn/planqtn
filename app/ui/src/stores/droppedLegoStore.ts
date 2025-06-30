@@ -117,6 +117,9 @@ export interface DroppedLegosSlice {
   droppedLegos: DroppedLego[];
   connectedLegos: DroppedLego[];
 
+  temporarilyConnectLego: (instanceId: string) => void;
+  updateLegoConnectivity: (instanceId: string) => void;
+
   setDroppedLegos: (legos: DroppedLego[]) => void;
   addDroppedLego: (lego: DroppedLego) => void;
   addDroppedLegos: (legos: DroppedLego[]) => void;
@@ -150,6 +153,33 @@ export const createLegoSlice: StateCreator<
     return newInstanceId(get().droppedLegos);
   },
 
+  temporarilyConnectLego: (instanceId: string) => {
+    set((state) => {
+      if (
+        !state.connectedLegos.find((lego) => lego.instanceId === instanceId)
+      ) {
+        state.connectedLegos.push(
+          state.droppedLegos.find((lego) => lego.instanceId === instanceId)!
+        );
+      }
+    });
+  },
+
+  updateLegoConnectivity: (instanceId: string) => {
+    set((state) => {
+      if (
+        !get().connections.some(
+          (connection) =>
+            connection.from.legoId === instanceId ||
+            connection.to.legoId === instanceId
+        )
+      ) {
+        state.connectedLegos = state.connectedLegos.filter(
+          (lego) => lego.instanceId !== instanceId
+        );
+      }
+    });
+  },
   setDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
       state.droppedLegos = legos;

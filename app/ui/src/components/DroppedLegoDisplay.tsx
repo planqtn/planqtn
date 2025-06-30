@@ -228,7 +228,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       newInstanceId,
       addConnections,
       hideConnectedLegs,
-      addOperation
+      addOperation,
+      temporarilyConnectLego,
+      updateLegoConnectivity
     } = useCanvasStore();
     const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
     const { dragState, setDragState } = useDragStateStore();
@@ -239,33 +241,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       (state) => state.setGroupDragState
     );
     const { legDragState } = useLegDragStateStore();
-
-    useEffect(() => {
-      console.log(
-        "DroppedLegoDisplay",
-        lego.instanceId,
-        "re-render",
-        "as lego changed!",
-        lego.selectedMatrixRows,
-        lego.style!.legStyles
-      );
-    }, [lego.selectedMatrixRows, lego.style!.legStyles]);
-
-    // useEffect(() => {
-    //   console.log(
-    //     "DroppedLegoDisplay",
-    //     lego.instanceId,
-    //     "re-render due to droppedLegos change"
-    //   );
-    // }, [droppedLegos]);
-
-    // useEffect(() => {
-    //   console.log(
-    //     "DroppedLegoDisplay",
-    //     lego.instanceId,
-    //     "re-render due to tensorNetwork change"
-    //   );
-    // }, [tensorNetwork]);
 
     const isSelected =
       tensorNetwork &&
@@ -460,6 +435,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
+      temporarilyConnectLego(legoId);
 
       setLegDragState({
         isDragging: true,
@@ -815,6 +792,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         i === legDragState.legIndex
       ) {
         setLegDragState(null);
+        updateLegoConnectivity(legDragState.legoId);
 
         return;
       }
@@ -824,6 +802,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         // setError("Cannot connect to a leg that is already connected");
         console.error("Cannot connect to a leg that is already connected");
         setLegDragState(null);
+        updateLegoConnectivity(legDragState.legoId);
+
         return;
       }
 
@@ -858,10 +838,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           data: { connectionsToAdd: [newConnection] }
         });
         setLegDragState(null);
+        updateLegoConnectivity(legDragState.legoId);
+
         return;
       }
 
       setLegDragState(null);
+      updateLegoConnectivity(legDragState.legoId);
     };
 
     const isScalarLego = (lego: DroppedLego) => {
@@ -992,6 +975,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   cx={legStyle.position.endX}
                   cy={legStyle.position.endY}
                   r={LEG_ENDPOINT_RADIUS}
+                  className="leg-endpoint"
                   fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
                   stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
                   strokeWidth="2"
@@ -1020,7 +1004,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   }}
                   onMouseUp={(e) => {
                     e.stopPropagation();
-                    handleLegMouseUp(e, lego.instanceId, legIndex);
+                    handleLegMouseUp(e, legIndex);
                   }}
                 />
               </g>

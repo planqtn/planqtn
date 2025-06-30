@@ -320,6 +320,19 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleMouseUp = (e: MouseEvent) => {
+      // If a leg is being dragged, we need to decide if we're dropping on a valid target or the canvas.
+      if (legDragState?.isDragging) {
+        const targetElement = e.target as HTMLElement;
+        // Check if the mouse was released over an element with the 'leg-endpoint' class.
+        // We use .closest() to handle cases where the event target might be a child element.
+        if (!targetElement.closest(".leg-endpoint")) {
+          // If not dropped on a leg-endpoint, it's a drop on the canvas, so cancel the drag.
+          setLegDragState(null);
+        }
+        // In either case, the leg drag action is finished, so we stop further processing of this mouseup event.
+        return;
+      }
+
       const rect = canvas.getBoundingClientRect();
       if (!rect) {
         setLegDragState(null);
@@ -361,11 +374,6 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           originalY: 0
         });
         setGroupDragState(null);
-      }
-      // Handle leg connection inside a leg connector component
-
-      if (legDragState?.isDragging) {
-        return;
       }
     };
 
