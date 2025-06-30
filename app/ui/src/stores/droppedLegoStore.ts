@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand";
-import { produce } from "immer";
-import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
+import { WritableDraft } from "immer";
 import { getLegoStyle, LegoStyle } from "../LegoStyles";
+import { CanvasStore } from "./canvasStateStore";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(
@@ -117,16 +117,11 @@ export class DroppedLego implements LegoPiece {
 export interface DroppedLegosSlice {
   droppedLegos: DroppedLego[];
 
-  setDroppedLegos: (
-    legos: DroppedLego[] | ((prev: DroppedLego[]) => DroppedLego[])
-  ) => void;
+  setDroppedLegos: (legos: DroppedLego[]) => void;
   addDroppedLego: (lego: DroppedLego) => void;
   addDroppedLegos: (legos: DroppedLego[]) => void;
   removeDroppedLego: (instanceId: string) => void;
-  updateDroppedLego: (
-    instanceId: string,
-    updates: Partial<DroppedLego>
-  ) => void;
+  updateDroppedLego: (instanceId: string, updates: DroppedLego) => void;
   updateDroppedLegos: (legos: DroppedLego[]) => void;
   removeDroppedLegos: (instanceIds: string[]) => void;
   clearDroppedLegos: () => void;
@@ -144,8 +139,8 @@ export function newInstanceId(droppedLegos: DroppedLego[]): string {
 }
 
 export const createLegoSlice: StateCreator<
-  DroppedLegosSlice & EncodedCanvasStateSlice,
-  [],
+  CanvasStore,
+  [["zustand/immer", never]],
   [],
   DroppedLegosSlice
 > = (set, get) => ({
@@ -154,98 +149,81 @@ export const createLegoSlice: StateCreator<
     return newInstanceId(get().droppedLegos);
   },
 
-  setDroppedLegos: (
-    legos: DroppedLego[] | ((prev: DroppedLego[]) => DroppedLego[])
-  ) => {
+  setDroppedLegos: (legos: DroppedLego[]) => {
     console.log("setDroppedLegos", legos, new Error("debug").stack);
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos =
-          typeof legos === "function" ? legos(state.droppedLegos) : legos;
-      })
-    );
+    set((state) => {
+      state.droppedLegos = legos;
+    });
     get().updateEncodedCanvasState();
   },
 
   addDroppedLego: (lego: DroppedLego) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos.push(lego);
-      })
-    );
+    set((state) => {
+      state.droppedLegos.push(lego);
+    });
     get().updateEncodedCanvasState();
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos.push(...legos);
-      })
-    );
+    set((state) => {
+      state.droppedLegos.push(...legos);
+    });
     get().updateEncodedCanvasState();
   },
 
   removeDroppedLego: (instanceId: string) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos = state.droppedLegos.filter(
-          (lego: DroppedLego) => lego.instanceId !== instanceId
-        );
-      })
-    );
+    set((state) => {
+      state.droppedLegos = state.droppedLegos.filter(
+        (lego) => lego.instanceId !== instanceId
+      );
+    });
     get().updateEncodedCanvasState();
   },
 
   removeDroppedLegos: (instanceIds: string[]) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos = state.droppedLegos.filter(
-          (lego: DroppedLego) => !instanceIds.includes(lego.instanceId)
-        );
-      })
-    );
+    set((state) => {
+      state.droppedLegos = state.droppedLegos.filter(
+        (lego) => !instanceIds.includes(lego.instanceId)
+      );
+    });
     get().updateEncodedCanvasState();
   },
 
-  updateDroppedLego: (instanceId: string, updates: Partial<DroppedLego>) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        const lego = state.droppedLegos.find(
-          (l) => l.instanceId === instanceId
-        );
-        if (lego) Object.assign(lego, updates);
-      })
-    );
+  updateDroppedLego: (instanceId: string, updates: DroppedLego) => {
+    set((state) => {
+      const legoIndex = state.droppedLegos.findIndex(
+        (l) => l.instanceId === instanceId
+      );
+      if (legoIndex !== -1) {
+        state.droppedLegos[legoIndex] = updates;
+      }
+    });
     get().updateEncodedCanvasState();
   },
 
   updateDroppedLegos: (legos: DroppedLego[]) => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        // Create a Map for quick lookups of existing legos by instanceId
-        const existingLegosMap = new Map<string, DroppedLego>();
-        state.droppedLegos.forEach((lego) => {
-          existingLegosMap.set(lego.instanceId, lego);
-        });
+    set((state) => {
+      // Create a Map for quick lookups of existing legos by instanceId
+      const existingLegosMap = new Map<string, WritableDraft<DroppedLego>>();
+      state.droppedLegos.forEach((lego) => {
+        existingLegosMap.set(lego.instanceId, lego);
+      });
 
-        // Iterate over the updates and apply them
-        for (const update of legos) {
-          const lego = existingLegosMap.get(update.instanceId);
-          if (lego) {
-            Object.assign(lego, update);
-          }
+      // Iterate over the updates and apply them
+      for (const update of legos) {
+        const lego = existingLegosMap.get(update.instanceId);
+        if (lego) {
+          Object.assign(lego, update);
         }
-      })
-    );
+      }
+    });
     get().updateEncodedCanvasState();
   },
 
   clearDroppedLegos: () => {
-    set(
-      produce((state: DroppedLegosSlice) => {
-        state.droppedLegos = [];
-      })
-    );
+    set((state) => {
+      state.droppedLegos = [];
+    });
     get().updateEncodedCanvasState();
   }
 });

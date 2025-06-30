@@ -243,13 +243,29 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     useEffect(() => {
       console.log(
         "DroppedLegoDisplay",
-        lego.id,
+        lego.instanceId,
         "re-render",
         "as lego changed!",
         lego.selectedMatrixRows,
         lego.style!.legStyles
       );
     }, [lego.selectedMatrixRows, lego.style!.legStyles]);
+
+    // useEffect(() => {
+    //   console.log(
+    //     "DroppedLegoDisplay",
+    //     lego.instanceId,
+    //     "re-render due to droppedLegos change"
+    //   );
+    // }, [droppedLegos]);
+
+    // useEffect(() => {
+    //   console.log(
+    //     "DroppedLegoDisplay",
+    //     lego.instanceId,
+    //     "re-render due to tensorNetwork change"
+    //   );
+    // }, [tensorNetwork]);
 
     const isSelected =
       tensorNetwork &&

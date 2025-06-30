@@ -1,7 +1,6 @@
 import { StateCreator } from "zustand";
-import { produce } from "immer";
 import { Connection } from "../lib/types";
-import { EncodedCanvasStateSlice } from "./encodedCanvasStateSlice";
+import { CanvasStore } from "./canvasStateStore";
 
 export interface ConnectionSlice {
   connections: Connection[];
@@ -12,8 +11,8 @@ export interface ConnectionSlice {
 }
 
 export const createConnectionsSlice: StateCreator<
-  ConnectionSlice & EncodedCanvasStateSlice,
-  [],
+  CanvasStore,
+  [["zustand/immer", never]],
   [],
   ConnectionSlice
 > = (set, get) => ({
@@ -21,31 +20,25 @@ export const createConnectionsSlice: StateCreator<
   getConnections: () => get().connections,
 
   setConnections: (connections) => {
-    set(
-      produce((state: ConnectionSlice) => {
-        state.connections = connections;
-      })
-    );
+    set((state) => {
+      state.connections = connections;
+    });
     get().updateEncodedCanvasState();
   },
 
   addConnections: (newConnections) => {
-    set(
-      produce((state: ConnectionSlice) => {
-        state.connections.push(...newConnections);
-      })
-    );
+    set((state) => {
+      state.connections.push(...newConnections);
+    });
     get().updateEncodedCanvasState();
   },
 
   removeConnections: (connectionsToRemove) => {
-    set(
-      produce((state: ConnectionSlice) => {
-        state.connections = state.connections.filter(
-          (connection) => !connectionsToRemove.includes(connection)
-        );
-      })
-    );
+    set((state) => {
+      state.connections = state.connections.filter(
+        (connection) => !connectionsToRemove.includes(connection)
+      );
+    });
     get().updateEncodedCanvasState();
   }
 });

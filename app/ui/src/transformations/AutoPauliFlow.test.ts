@@ -56,10 +56,8 @@ describe("simple auto flow", () => {
     let updatedLegos = [...tensorNetwork.legos];
     let updatedTensorNetwork: TensorNetwork | null = tensorNetwork;
 
-    const setDroppedLegos = (
-      updater: (prev: DroppedLego[]) => DroppedLego[]
-    ) => {
-      updatedLegos = updater(updatedLegos);
+    const setDroppedLegos = (legos: DroppedLego[]) => {
+      updatedLegos = legos;
     };
 
     const setTensorNetwork = (

@@ -1,7 +1,6 @@
 import { StateCreator } from "zustand";
-import { ConnectionSlice } from "./connectionStore";
-import { DroppedLegosSlice } from "./droppedLegoStore";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
+import { CanvasStore } from "./canvasStateStore";
 
 export interface EncodedCanvasStateSlice {
   canvasStateSerializer: CanvasStateSerializer;
@@ -15,8 +14,8 @@ export interface EncodedCanvasStateSlice {
 }
 
 export const createEncodedCanvasStateSlice: StateCreator<
-  EncodedCanvasStateSlice & ConnectionSlice & DroppedLegosSlice,
-  [],
+  CanvasStore,
+  [["zustand/immer", never]],
   [],
   EncodedCanvasStateSlice
 > = (set, get) => ({

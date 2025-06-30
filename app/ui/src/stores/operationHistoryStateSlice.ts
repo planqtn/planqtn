@@ -1,9 +1,7 @@
 import { StateCreator } from "zustand";
 import { OperationHistory } from "../lib/OperationHistory";
-import { DroppedLegosSlice } from "./droppedLegoStore";
-import { ConnectionSlice } from "./connectionStore";
 import { Operation } from "../lib/OperationHistory.ts";
-import { GlobalTensorNetworkSlice } from "./canvasStateStore";
+import { CanvasStore } from "./canvasStateStore";
 
 export interface OperationHistorySlice {
   addOperation: (operation: Operation) => void;
@@ -12,11 +10,8 @@ export interface OperationHistorySlice {
 }
 
 export const createOperationHistorySlice: StateCreator<
-  OperationHistorySlice &
-    ConnectionSlice &
-    DroppedLegosSlice &
-    GlobalTensorNetworkSlice,
-  [],
+  CanvasStore,
+  [["zustand/immer", never]],
   [],
   OperationHistorySlice
 > = (_, get) => {

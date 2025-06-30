@@ -16,7 +16,7 @@ export function simpleAutoFlow(
   changedLego: DroppedLego,
   droppedLegos: DroppedLego[],
   connections: Connection[],
-  setDroppedLegos: (updater: (prev: DroppedLego[]) => DroppedLego[]) => void,
+  setDroppedLegos: (legos: DroppedLego[]) => void,
   setTensorNetwork: (
     updater: (prev: TensorNetwork | null) => TensorNetwork | null
   ) => void
@@ -145,8 +145,8 @@ export function simpleAutoFlow(
     }
   }
   // Apply all changes at once to make sure all updates are done
-  setDroppedLegos((prev) =>
-    prev.map((l) =>
+  setDroppedLegos(
+    droppedLegos.map((l) =>
       updatedLegosMap.has(l.instanceId)
         ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
         : l

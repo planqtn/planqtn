@@ -1,4 +1,5 @@
 import { create, StateCreator } from "zustand";
+import { immer } from "zustand/middleware/immer";
 import { createLegoSlice, DroppedLegosSlice } from "./droppedLegoStore";
 import { ConnectionSlice, createConnectionsSlice } from "./connectionStore";
 import {
@@ -12,6 +13,13 @@ import {
   OperationHistorySlice
 } from "./operationHistoryStateSlice";
 
+export interface CanvasStore
+  extends DroppedLegosSlice,
+    ConnectionSlice,
+    EncodedCanvasStateSlice,
+    GlobalTensorNetworkSlice,
+    OperationHistorySlice {}
+
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
     droppedLegos: DroppedLego[],
@@ -24,8 +32,8 @@ export interface GlobalTensorNetworkSlice {
 }
 
 export const createGlobalTensorNetworkStore: StateCreator<
-  DroppedLegosSlice & ConnectionSlice & EncodedCanvasStateSlice,
-  [],
+  CanvasStore,
+  [["zustand/immer", never]],
   [],
   GlobalTensorNetworkSlice
 > = (set, get) => ({
@@ -41,16 +49,12 @@ export const createGlobalTensorNetworkStore: StateCreator<
   }
 });
 
-export const useCanvasStore = create<
-  DroppedLegosSlice &
-    ConnectionSlice &
-    EncodedCanvasStateSlice &
-    GlobalTensorNetworkSlice &
-    OperationHistorySlice
->((...a) => ({
-  ...createConnectionsSlice(...a),
-  ...createLegoSlice(...a),
-  ...createEncodedCanvasStateSlice(...a),
-  ...createGlobalTensorNetworkStore(...a),
-  ...createOperationHistorySlice(...a)
-}));
+export const useCanvasStore = create<CanvasStore>()(
+  immer((...a) => ({
+    ...createConnectionsSlice(...a),
+    ...createLegoSlice(...a),
+    ...createEncodedCanvasStateSlice(...a),
+    ...createGlobalTensorNetworkStore(...a),
+    ...createOperationHistorySlice(...a)
+  }))
+);
