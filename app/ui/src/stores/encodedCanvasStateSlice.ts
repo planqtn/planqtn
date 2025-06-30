@@ -30,6 +30,13 @@ export const createEncodedCanvasStateSlice: StateCreator<
       set({
         droppedLegos: result.pieces,
         connections: result.connections,
+        connectedLegos: result.pieces.filter((lego) =>
+          result.connections.some(
+            (connection) =>
+              connection.from.legoId === lego.instanceId ||
+              connection.to.legoId === lego.instanceId
+          )
+        ),
         hideConnectedLegs: result.hideConnectedLegs
       });
       console.log("Decoded canvas state for canvasId:", result.canvasId);

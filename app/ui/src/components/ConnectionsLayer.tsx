@@ -1,10 +1,9 @@
-import React, { memo, useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 import { Connection } from "../lib/types";
 import { DroppedLego } from "../stores/droppedLegoStore";
 import { LegStyle } from "../LegoStyles";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { useLegDragStateStore } from "../stores/legDragState";
-import { shallow } from "zustand/shallow";
 
 interface ConnectionsLayerProps {
   hideConnectedLegs: boolean;
@@ -28,9 +27,9 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
   hideConnectedLegs,
   hoveredConnection
 }) => {
-  const { connections, addOperation, removeConnections } = useCanvasStore();
+  const { connections, addOperation, removeConnections, connectedLegos } =
+    useCanvasStore();
 
-  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   // const { tensorNetwork } = useTensorNetworkStore();
   // const { dragState } = useDragStateStore();
   const { legDragState } = useLegDragStateStore();
@@ -80,9 +79,9 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
   // Memoize lego lookup map for performance
   const legoMap = useMemo(() => {
     const map = new Map<string, DroppedLego>();
-    droppedLegos.forEach((lego) => map.set(lego.instanceId, lego));
+    connectedLegos.forEach((lego) => map.set(lego.instanceId, lego));
     return map;
-  }, [droppedLegos]);
+  }, [connectedLegos]);
 
   // Pre-compute connected legs map for O(1) lookup instead of O(n) per connection
   const connectedLegsMap = useMemo(() => {
@@ -100,7 +99,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
       string,
       { style: LegStyle; color: string; isHighlighted: boolean }
     >();
-    droppedLegos.forEach((lego) => {
+    connectedLegos.forEach((lego) => {
       const numLegs = lego.parity_check_matrix[0].length / 2;
       for (let i = 0; i < numLegs; i++) {
         const legStyle = lego.style!.legStyles[i];
@@ -113,7 +112,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
       }
     });
     return map;
-  }, [droppedLegos]);
+  }, [connectedLegos]);
 
   // Memoize connection hover check
   const isConnectionHovered = useCallback(

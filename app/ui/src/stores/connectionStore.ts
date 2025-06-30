@@ -22,6 +22,13 @@ export const createConnectionsSlice: StateCreator<
   setConnections: (connections) => {
     set((state) => {
       state.connections = connections;
+      state.connectedLegos = state.droppedLegos.filter((lego) =>
+        state.connections.some(
+          (connection) =>
+            connection.from.legoId === lego.instanceId ||
+            connection.to.legoId === lego.instanceId
+        )
+      );
     });
     get().updateEncodedCanvasState();
   },
@@ -29,6 +36,13 @@ export const createConnectionsSlice: StateCreator<
   addConnections: (newConnections) => {
     set((state) => {
       state.connections.push(...newConnections);
+      state.connectedLegos = state.droppedLegos.filter((lego) =>
+        state.connections.some(
+          (connection) =>
+            connection.from.legoId === lego.instanceId ||
+            connection.to.legoId === lego.instanceId
+        )
+      );
     });
     get().updateEncodedCanvasState();
   },
@@ -37,6 +51,13 @@ export const createConnectionsSlice: StateCreator<
     set((state) => {
       state.connections = state.connections.filter(
         (connection) => !connectionsToRemove.includes(connection)
+      );
+      state.connectedLegos = state.droppedLegos.filter((lego) =>
+        state.connections.some(
+          (connection) =>
+            connection.from.legoId === lego.instanceId ||
+            connection.to.legoId === lego.instanceId
+        )
       );
     });
     get().updateEncodedCanvasState();

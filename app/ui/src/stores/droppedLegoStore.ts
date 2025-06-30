@@ -1,5 +1,4 @@
 import { StateCreator } from "zustand";
-import { WritableDraft } from "immer";
 import { getLegoStyle, LegoStyle } from "../LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 
@@ -116,6 +115,7 @@ export class DroppedLego implements LegoPiece {
 
 export interface DroppedLegosSlice {
   droppedLegos: DroppedLego[];
+  connectedLegos: DroppedLego[];
 
   setDroppedLegos: (legos: DroppedLego[]) => void;
   addDroppedLego: (lego: DroppedLego) => void;
@@ -145,14 +145,21 @@ export const createLegoSlice: StateCreator<
   DroppedLegosSlice
 > = (set, get) => ({
   droppedLegos: [],
+  connectedLegos: [],
   newInstanceId: () => {
     return newInstanceId(get().droppedLegos);
   },
 
   setDroppedLegos: (legos: DroppedLego[]) => {
-    console.log("setDroppedLegos", legos, new Error("debug").stack);
     set((state) => {
       state.droppedLegos = legos;
+      state.connectedLegos = legos.filter((lego) =>
+        get().connections.some(
+          (connection) =>
+            connection.from.legoId === lego.instanceId ||
+            connection.to.legoId === lego.instanceId
+        )
+      );
     });
     get().updateEncodedCanvasState();
   },
@@ -176,6 +183,11 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos = state.droppedLegos.filter(
         (lego) => lego.instanceId !== instanceId
       );
+      if (state.connectedLegos.some((lego) => lego.instanceId === instanceId)) {
+        state.connectedLegos = state.connectedLegos.filter(
+          (lego) => lego.instanceId !== instanceId
+        );
+      }
     });
     get().updateEncodedCanvasState();
   },
@@ -185,6 +197,15 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos = state.droppedLegos.filter(
         (lego) => !instanceIds.includes(lego.instanceId)
       );
+      if (
+        state.connectedLegos.some((lego) =>
+          instanceIds.includes(lego.instanceId)
+        )
+      ) {
+        state.connectedLegos = state.connectedLegos.filter(
+          (lego) => !instanceIds.includes(lego.instanceId)
+        );
+      }
     });
     get().updateEncodedCanvasState();
   },
@@ -197,25 +218,35 @@ export const createLegoSlice: StateCreator<
       if (legoIndex !== -1) {
         state.droppedLegos[legoIndex] = updates;
       }
+      const connectedLegoIndex = state.connectedLegos.findIndex(
+        (l) => l.instanceId === instanceId
+      );
+      if (connectedLegoIndex !== -1) {
+        state.connectedLegos[connectedLegoIndex] = updates;
+      }
     });
     get().updateEncodedCanvasState();
   },
 
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
-      // Create a Map for quick lookups of existing legos by instanceId
-      const existingLegosMap = new Map<string, WritableDraft<DroppedLego>>();
-      state.droppedLegos.forEach((lego) => {
-        existingLegosMap.set(lego.instanceId, lego);
+      // Create a Map of the updates for quick lookup
+      const updatesMap = new Map(legos.map((lego) => [lego.instanceId, lego]));
+
+      // Iterate over the existing legos and replace them if an update exists
+      state.droppedLegos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.droppedLegos[index] = updatedLego;
+        }
       });
 
-      // Iterate over the updates and apply them
-      for (const update of legos) {
-        const lego = existingLegosMap.get(update.instanceId);
-        if (lego) {
-          Object.assign(lego, update);
+      state.connectedLegos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.connectedLegos[index] = updatedLego;
         }
-      }
+      });
     });
     get().updateEncodedCanvasState();
   },
@@ -223,6 +254,7 @@ export const createLegoSlice: StateCreator<
   clearDroppedLegos: () => {
     set((state) => {
       state.droppedLegos = [];
+      state.connectedLegos = [];
     });
     get().updateEncodedCanvasState();
   }

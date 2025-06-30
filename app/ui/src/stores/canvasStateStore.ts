@@ -50,7 +50,7 @@ export const createGlobalTensorNetworkStore: StateCreator<
 });
 
 export const useCanvasStore = create<CanvasStore>()(
-  immer((...a) => ({
+  immer<CanvasStore>((...a) => ({
     ...createConnectionsSlice(...a),
     ...createLegoSlice(...a),
     ...createEncodedCanvasStateSlice(...a),
