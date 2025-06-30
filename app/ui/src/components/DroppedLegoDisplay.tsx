@@ -793,6 +793,77 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     //   return { visibility: "visible" as const, pointerEvents: "all" as const };
     // };
 
+    const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
+      e.stopPropagation();
+      if (!legDragState) return;
+
+      const isSourceLegConnected = connections.some(
+        (conn) =>
+          (conn.from.legoId === legDragState.legoId &&
+            conn.from.legIndex === legDragState.legIndex) ||
+          (conn.to.legoId === legDragState.legoId &&
+            conn.to.legIndex === legDragState.legIndex)
+      );
+      const isTargetLegConnected = connections.some(
+        (conn) =>
+          (conn.from.legoId === lego.instanceId && conn.from.legIndex === i) ||
+          (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
+      );
+
+      if (
+        lego.instanceId === legDragState.legoId &&
+        i === legDragState.legIndex
+      ) {
+        setLegDragState(null);
+
+        return;
+      }
+
+      if (isSourceLegConnected || isTargetLegConnected) {
+        //TODO: set error message
+        // setError("Cannot connect to a leg that is already connected");
+        console.error("Cannot connect to a leg that is already connected");
+        setLegDragState(null);
+        return;
+      }
+
+      const connectionExists = connections.some(
+        (conn) =>
+          (conn.from.legoId === legDragState.legoId &&
+            conn.from.legIndex === legDragState.legIndex &&
+            conn.to.legoId === lego.instanceId &&
+            conn.to.legIndex === i) ||
+          (conn.from.legoId === lego.instanceId &&
+            conn.from.legIndex === i &&
+            conn.to.legoId === legDragState.legoId &&
+            conn.to.legIndex === legDragState.legIndex)
+      );
+
+      if (!connectionExists) {
+        const newConnection = new Connection(
+          {
+            legoId: legDragState.legoId,
+            legIndex: legDragState.legIndex
+          },
+          {
+            legoId: lego.instanceId,
+            legIndex: i
+          }
+        );
+
+        addConnections([newConnection]);
+
+        addOperation({
+          type: "connect",
+          data: { connectionsToAdd: [newConnection] }
+        });
+        setLegDragState(null);
+        return;
+      }
+
+      setLegDragState(null);
+    };
+
     const isScalarLego = (lego: DroppedLego) => {
       return (
         lego.parity_check_matrix.length === 1 &&
@@ -946,6 +1017,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                       circle.style.stroke = legColor;
                       circle.style.fill = "white";
                     }
+                  }}
+                  onMouseUp={(e) => {
+                    e.stopPropagation();
+                    handleLegMouseUp(e, lego.instanceId, legIndex);
                   }}
                 />
               </g>
