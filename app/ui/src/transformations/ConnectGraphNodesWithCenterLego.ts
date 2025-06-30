@@ -1,7 +1,8 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
-import { createDroppedLego } from "../LegoStyles";
+import { Connection } from "../lib/types";
+import { Operation } from "../lib/OperationHistory.ts";
 import { zip } from "lodash";
 import { Legos } from "../lib/Legos";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return legos.length > 0 && legos.every((lego) => lego.id === "z_rep_code");
@@ -78,7 +79,7 @@ export const applyConnectGraphNodes = async (
   const hadamardLegos: DroppedLego[] = legoDanglingLegs.map(
     ({ lego }, index) => {
       // Position Hadamard halfway between connector and original lego
-      return createDroppedLego(
+      return new DroppedLego(
         {
           id: "h",
           name: "Hadamard",

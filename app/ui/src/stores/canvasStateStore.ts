@@ -5,7 +5,8 @@ import {
   createEncodedCanvasStateSlice,
   EncodedCanvasStateSlice
 } from "./encodedCanvasStateSlice";
-import { Connection, DroppedLego } from "../lib/types";
+import { Connection } from "../lib/types";
+import { DroppedLego } from "./droppedLegoStore";
 import {
   createOperationHistorySlice,
   OperationHistorySlice

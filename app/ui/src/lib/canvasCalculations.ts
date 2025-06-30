@@ -1,4 +1,5 @@
-import { Connection, DroppedLego } from "./types";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 // Add these helper functions near the top of the file
 export const pointToLineDistance = (

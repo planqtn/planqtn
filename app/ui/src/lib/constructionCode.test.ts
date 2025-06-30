@@ -1,7 +1,7 @@
 import { Connection } from "./types";
-import { createDroppedLego } from "../LegoStyles";
 import { exec } from "child_process";
 import { TensorNetwork } from "./TensorNetwork";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 describe("constructionCode", () => {
   it("should generate empty network for empty tensor network", () => {
     const tensorNetwork = new TensorNetwork({ legos: [], connections: [] });
@@ -24,7 +24,7 @@ tn = TensorNetwork(nodes)
   it("should generate construction code for a tensor network with one lego", () => {
     const tensorNetwork = new TensorNetwork({
       legos: [
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "x_rep_code",
             name: "X-Repetition Code",
@@ -72,7 +72,7 @@ tn = TensorNetwork(nodes)
   it("should generate python runnable code with the right parity check matrix", async () => {
     const tensorNetwork = new TensorNetwork({
       legos: [
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "x_rep_code",
             name: "X-Repetition Code",
@@ -92,7 +92,7 @@ tn = TensorNetwork(nodes)
           381.25,
           "2"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "steane",
             name: "Steane Code",
@@ -115,7 +115,7 @@ tn = TensorNetwork(nodes)
           308.25,
           "3"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "x_rep_code",
             name: "X-Repetition Code",
@@ -136,7 +136,7 @@ tn = TensorNetwork(nodes)
           143.25,
           "4"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "z_rep_code",
             name: "Z-Repetition Code",
@@ -157,7 +157,7 @@ tn = TensorNetwork(nodes)
           187.25,
           "1"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "stopper_x",
             name: "X Stopper",

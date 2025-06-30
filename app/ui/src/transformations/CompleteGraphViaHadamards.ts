@@ -1,6 +1,8 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
+import { Connection } from "../lib/types";
+
 import { Legos } from "../lib/Legos";
-import { createHadamardLego } from "../LegoStyles";
+import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
+import { Operation } from "../lib/OperationHistory.ts";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]

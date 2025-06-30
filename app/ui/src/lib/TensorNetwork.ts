@@ -1,4 +1,5 @@
-import { Connection, DroppedLego } from "./types";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { StabilizerCodeTensor } from "./StabilizerCodeTensor";
 

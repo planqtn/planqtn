@@ -1,5 +1,4 @@
-import { LegoPiece, DroppedLego } from "./types";
-import { createDroppedLego } from "../LegoStyles";
+import { DroppedLego, LegoPiece } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { is_gauss_equivalent } from "./parity_check";
 
@@ -325,7 +324,7 @@ export class Legos {
       }
     });
 
-    return createDroppedLego(data, x, y, instanceId);
+    return new DroppedLego(data, x, y, instanceId);
   }
 }
 

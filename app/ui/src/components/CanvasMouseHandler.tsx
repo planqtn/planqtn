@@ -83,21 +83,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           const originalPos = groupDragState.originalPositions[lego.instanceId];
           return {
             oldLego: lego,
-            updatedLego: {
-              ...lego,
+            updatedLego: lego.with({
               x: originalPos.x + deltaX,
               y: originalPos.y + deltaY
-            }
+            })
           };
         }
 
         return {
           oldLego: lego,
-          updatedLego: {
-            ...lego,
-            x: newX,
-            y: newY
-          }
+          updatedLego: lego.with({ x: newX, y: newY })
         };
       });
 
@@ -283,11 +278,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           currentX: newX,
           currentY: newY
         });
-        const movedLegos = droppedLegos.map((lego) => ({
-          ...lego,
-          x: lego.x + deltaX,
-          y: lego.y + deltaY
-        }));
+        const movedLegos = droppedLegos.map((lego) =>
+          lego.with({ x: lego.x + deltaX, y: lego.y + deltaY })
+        );
         setDroppedLegos(movedLegos);
       }
       // Check if we should start dragging

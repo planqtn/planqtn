@@ -1,11 +1,11 @@
 import axios from "axios";
-import { Connection, DroppedLego } from "./types";
-import { recalculateLegoStyle } from "../LegoStyles";
+import { Connection } from "./types";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { config, getApiUrl } from "../config";
 import { getAccessToken } from "./auth";
 import { getAxiosErrorMessage } from "./errors";
 import { useModalStore } from "../stores/modalStore";
+import { DroppedLego } from "../stores/droppedLegoStore";
 
 export class NetworkService {
   private static async requestTensorNetwork(
@@ -87,10 +87,6 @@ export class NetworkService {
     // Position legos based on network type
     const positionedLegos = this.positionLegos(legos, networkType);
 
-    positionedLegos.forEach((lego: DroppedLego) => {
-      recalculateLegoStyle(lego);
-    });
-
     // Add to stores
     addDroppedLegos(positionedLegos);
     addConnections(newConnections);
@@ -162,7 +158,7 @@ export class NetworkService {
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
         indexInRow * nodeSpacing;
 
-      return { ...lego, x, y };
+      return lego.with({ x, y });
     });
   }
 
@@ -198,7 +194,7 @@ export class NetworkService {
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
         indexInRow * nodeSpacing;
 
-      return { ...lego, x, y };
+      return lego.with({ x, y });
     });
   }
 
@@ -220,7 +216,7 @@ export class NetworkService {
     return legos.map((lego: DroppedLego) => {
       const x = margin + (lego.x - minX) * xScale;
       const y = margin + (lego.y - minY) * xScale;
-      return { ...lego, x, y };
+      return lego.with({ x, y });
     });
   }
 }

@@ -1,8 +1,7 @@
-import { DroppedLego, Connection } from "../lib/types.ts";
+import { Connection } from "../lib/types.ts";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 import { TensorNetwork } from "../lib/TensorNetwork.ts";
-import { createDroppedLego } from "../LegoStyles.ts";
-
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 describe("simple auto flow", () => {
   const makeLego = ({
     id,
@@ -19,7 +18,7 @@ describe("simple auto flow", () => {
     x?: number;
     y?: number;
   }): DroppedLego =>
-    createDroppedLego(
+    new DroppedLego(
       {
         id: id,
         name: name,
@@ -32,9 +31,7 @@ describe("simple auto flow", () => {
       x,
       y,
       id,
-      {
-        selectedMatrixRows: selectedRows
-      }
+      { selectedMatrixRows: selectedRows }
     );
 
   const makeConn = (
@@ -212,7 +209,9 @@ describe("simple auto flow", () => {
     expect(updatedT5!.selectedMatrixRows).toHaveLength(1);
 
     // Switch legs of 5,1,2 tensor to make sure hadamard switches too
-    tensorNetwork.legos[1].selectedMatrixRows = [1];
+    tensorNetwork.legos[1] = tensorNetwork.legos[1].with({
+      selectedMatrixRows: [1]
+    });
     const { updatedLegos: secondResult } = testSimpleAutoFlow(
       tensorNetwork.legos[1],
       tensorNetwork

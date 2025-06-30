@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useEffect, useState } from "react";
-import { DroppedLego } from "../lib/types";
+import { DroppedLego } from "../stores/droppedLegoStore";
 import { DroppedLegoDisplay, getLegoBoundingBox } from "./DroppedLegoDisplay";
 import { useCanvasStore } from "../stores/canvasStateStore";
 

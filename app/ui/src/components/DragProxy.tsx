@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { DraggingStage, DroppedLego } from "../lib/types";
-import { createDroppedLego, GenericStyle, getLegoStyle } from "../LegoStyles";
+import { DraggingStage } from "../lib/types";
+import { getLegoStyle } from "../LegoStyles";
+import { DroppedLego } from "../stores/droppedLegoStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { useDragStateStore } from "../stores/dragState";
 import { useGroupDragStateStore } from "../stores/groupDragState";
@@ -225,17 +226,13 @@ const BuildingBlockDragProxy: React.FC<{
   if (!isMouseOverCanvas) return null;
 
   const lego = buildingBlockDragState.draggedLego;
-  // const numLegs = lego.parity_check_matrix[0].length / 2;
-  const style = new GenericStyle(
-    lego.id,
-    createDroppedLego(lego, 0, 0, "dummy")
-  );
+  const numLegs = lego.parity_check_matrix[0].length / 2;
 
-  // getLegoStyle(
-  //   lego.id,
-  //   numLegs,
-  //   createDroppedLego(lego, 0, 0, "dummy")
-  // );
+  const style = getLegoStyle(
+    lego.id,
+    numLegs,
+    new DroppedLego(lego, 0, 0, "dummy")
+  );
 
   // Convert global mouse coordinates to canvas-relative coordinates
   const canvasX = buildingBlockDragState.mouseX - canvasRect.left;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { LegoPiece } from "../lib/types";
+import { LegoPiece } from "../stores/droppedLegoStore.ts";
 
 interface DraggedLegoStore {
   draggedLego: LegoPiece | null;

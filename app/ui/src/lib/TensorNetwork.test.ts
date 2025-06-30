@@ -1,13 +1,13 @@
 import { TensorNetwork } from "./TensorNetwork";
-import { DroppedLego, Connection } from "./types";
-import { createDroppedLego } from "../LegoStyles";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 
 describe("TensorNetwork", () => {
   it("should correctly conjoin nodes after double tracing 602 with identity stoppers", () => {
     // Create the nodes
     const nodes: DroppedLego[] = [
-      createDroppedLego(
+      new DroppedLego(
         {
           id: "encoding_tensor_602",
           name: "Encoding Tensor 602",
@@ -29,7 +29,7 @@ describe("TensorNetwork", () => {
         0,
         "0"
       ),
-      createDroppedLego(
+      new DroppedLego(
         {
           id: "stopper_i",
           name: "Identity Stopper",
@@ -44,7 +44,7 @@ describe("TensorNetwork", () => {
         0,
         "stop1"
       ),
-      createDroppedLego(
+      new DroppedLego(
         {
           id: "stopper_i",
           name: "Identity Stopper",
@@ -98,7 +98,7 @@ describe("TensorNetwork", () => {
     // );
     const tn = new TensorNetwork({
       legos: [
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",
@@ -119,7 +119,7 @@ describe("TensorNetwork", () => {
           0,
           "1"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",
@@ -140,7 +140,7 @@ describe("TensorNetwork", () => {
           0,
           "2"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",
@@ -161,7 +161,7 @@ describe("TensorNetwork", () => {
           0,
           "3"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",
@@ -182,7 +182,7 @@ describe("TensorNetwork", () => {
           0,
           "4"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",
@@ -203,7 +203,7 @@ describe("TensorNetwork", () => {
           0,
           "5"
         ),
-        createDroppedLego(
+        new DroppedLego(
           {
             id: "t5",
             name: "[[5,1,2]] tensor",

@@ -1,5 +1,36 @@
-import { Connection, DroppedLego, Operation } from "./types";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import * as _ from "lodash";
+
+export type OperationType =
+  | "add"
+  | "remove"
+  | "move"
+  | "connect"
+  | "disconnect"
+  | "fuse"
+  | "unfuseToLegs"
+  | "unfuseInto2Legos"
+  | "colorChange"
+  | "pullOutOppositeLeg"
+  | "injectTwoLegged"
+  | "bialgebra"
+  | "inverseBialgebra"
+  | "hopf"
+  | "addStopper"
+  | "connectGraphNodesWithCenterLego"
+  | "completeGraphViaHadamards";
+
+export type Operation = {
+  type: OperationType;
+  data: {
+    legosToAdd?: DroppedLego[];
+    legosToRemove?: DroppedLego[];
+    legosToUpdate?: { oldLego: DroppedLego; newLego: DroppedLego }[];
+    connectionsToAdd?: Connection[];
+    connectionsToRemove?: Connection[];
+  };
+};
 
 export class OperationHistory {
   redoHistory: Operation[] = [];

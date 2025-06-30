@@ -1,7 +1,9 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
+import { Connection } from "../lib/types";
+import { Operation } from "../lib/OperationHistory.ts";
 import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
 import _ from "lodash";
 import { Legos } from "../lib/Legos";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 export function canDoInverseBialgebra(
   selectedLegos: DroppedLego[],

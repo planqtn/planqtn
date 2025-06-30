@@ -1,10 +1,10 @@
 import {
-  DroppedLego,
   DragState,
   Connection,
   PauliOperator,
   DraggingStage
 } from "../lib/types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
 import { LegPosition, LegStyle } from "../LegoStyles";
 import { useMemo, memo, useEffect } from "react";
@@ -240,14 +240,16 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     );
     const { legDragState } = useLegDragStateStore();
 
-    // useEffect(() => {
-    //   console.log("DroppedLegoDisplay", lego.id, "re-render");
-    // }, [dragState]);
-
-    // Initialize selectedMatrixRows if not present
-    if (!lego.selectedMatrixRows) {
-      lego.selectedMatrixRows = [];
-    }
+    useEffect(() => {
+      console.log(
+        "DroppedLegoDisplay",
+        lego.id,
+        "re-render",
+        "as lego changed!",
+        lego.selectedMatrixRows,
+        lego.style!.legStyles
+      );
+    }, [lego.selectedMatrixRows, lego.style!.legStyles]);
 
     const isSelected =
       tensorNetwork &&
@@ -519,10 +521,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       const selectedRows = [rowIndex].filter((row) => row !== -1);
 
       // Create a new lego instance with updated properties
-      const updatedLego = {
-        ...clickedLego,
+      const updatedLego = clickedLego.with({
         selectedMatrixRows: selectedRows
-      };
+      });
 
       // Update the selected tensornetwork state
       setTensorNetwork(
@@ -679,12 +680,18 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     };
 
     const handleClone = (
-      lego: DroppedLego,
+      clickedLego: DroppedLego,
       clientX: number,
       clientY: number
     ) => {
+      const isSelected =
+        tensorNetwork &&
+        tensorNetwork?.legos.some(
+          (l) => l.instanceId === clickedLego.instanceId
+        );
+
       // Check if we're cloning multiple legos
-      const legosToClone = tensorNetwork?.legos || [lego];
+      const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
       // Get a single starting ID for all new legos
       const startingId = parseInt(newInstanceId());
@@ -694,12 +701,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       const newLegos = legosToClone.map((l, idx) => {
         const newId = String(startingId + idx);
         instanceIdMap.set(l.instanceId, newId);
-        return {
-          ...l,
+        return l.with({
           instanceId: newId,
           x: l.x + 20,
           y: l.y + 20
-        };
+        });
       });
 
       // Clone connections between the selected legos
@@ -733,10 +739,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         positions[l.instanceId] = { x: l.x, y: l.y };
       });
 
-      setGroupDragState({
-        legoInstanceIds: newLegos.map((l) => l.instanceId),
-        originalPositions: positions
-      });
+      if (newLegos.length > 1) {
+        setGroupDragState({
+          legoInstanceIds: newLegos.map((l) => l.instanceId),
+          originalPositions: positions
+        });
+      }
 
       // Set up initial drag state for the first lego
       setDragState({
@@ -744,8 +752,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         draggedLegoIndex: droppedLegos.length,
         startX: clientX,
         startY: clientY,
-        originalX: lego.x + 20,
-        originalY: lego.y + 20
+        originalX: clickedLego.x + 20,
+        originalY: clickedLego.y + 20
       });
 
       // Add to history
@@ -845,15 +853,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             );
           })}
 
-          {/* Layer 3: Lego body */}
-          <LegoBodyLayer
-            lego={lego}
-            size={size}
-            numRegularLegs={numRegularLegs}
-            isSelected={isSelected || false}
-          />
-
-          {/* Layer 4: Interactive leg endpoints and logical leg interactions */}
+          {/* Layer 3: Interactive leg endpoints and logical leg interactions */}
           {lego.style!.legStyles.map((legStyle, legIndex) => {
             const isLogical = lego.logical_legs.includes(legIndex);
             const legColor = legStyle.color;
@@ -878,10 +878,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     x2={legStyle.position.endX}
                     y2={legStyle.position.endY}
                     stroke="transparent"
-                    strokeWidth={8}
+                    strokeWidth={5}
+                    onMouseOver={(e) => {
+                      e.stopPropagation();
+                      const line = e.target as SVGLineElement;
+                      line.style.stroke = legColor;
+                    }}
+                    onMouseOut={(e) => {
+                      e.stopPropagation();
+                      const line = e.target as SVGLineElement;
+                      line.style.stroke = "transparent";
+                    }}
                     style={{
                       cursor: "pointer",
-                      pointerEvents: "all"
+                      pointerEvents: "visibleStroke"
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -925,6 +935,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               </g>
             );
           })}
+
+          {/* Layer 4: Lego body */}
+          <LegoBodyLayer
+            lego={lego}
+            size={size}
+            numRegularLegs={numRegularLegs}
+            isSelected={isSelected || false}
+          />
 
           {/* Text content - selection-aware */}
           {!demoMode && (

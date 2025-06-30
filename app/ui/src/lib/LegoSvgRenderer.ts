@@ -1,5 +1,6 @@
 import { LegStyle } from "../LegoStyles";
-import { DroppedLego, Connection } from "./types";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore";
 
 export interface LegoSvgOptions {
   demoMode?: boolean;

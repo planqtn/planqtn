@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-import { DroppedLego, Connection } from "../lib/types";
+import { Connection } from "../lib/types";
+import { DroppedLego } from "../stores/droppedLegoStore";
 import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
 
 interface CanvasStateManagerProps {

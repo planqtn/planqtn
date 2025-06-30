@@ -1,7 +1,8 @@
-import { Connection, DroppedLego, Operation } from "../lib/types";
+import { Connection } from "../lib/types";
+import { Operation } from "../lib/OperationHistory.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { recognize_parity_check_matrix } from "../lib/Legos";
-import { createDroppedLego } from "../LegoStyles";
 import { newInstanceId } from "../stores/droppedLegoStore";
 
 export class FuseLegos {
@@ -77,7 +78,7 @@ export class FuseLegos {
         recognize_parity_check_matrix(result.h) || "fused_lego";
 
       // Create a new lego with the calculated parity check matrix
-      const newLego: DroppedLego = createDroppedLego(
+      const newLego: DroppedLego = new DroppedLego(
         {
           id: recognized_type,
           shortName: "Fused",

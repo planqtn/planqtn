@@ -13,15 +13,15 @@ import {
 } from "@chakra-ui/react";
 import { FaTable, FaCube } from "react-icons/fa";
 import {
-  DroppedLego,
   Connection,
-  Operation,
   TaskUpdate,
   TaskUpdateIterationStatus,
   Task,
   ParityCheckMatrix
 } from "../lib/types.ts";
 import { TensorNetwork, TensorNetworkLeg } from "../lib/TensorNetwork.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { Operation } from "../lib/OperationHistory.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
@@ -65,7 +65,6 @@ import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore.ts";
 import { useCanvasStore } from "../stores/canvasStateStore.ts";
-import { createDroppedLego } from "../LegoStyles.ts";
 
 interface DetailsPanelProps {
   setError: (error: string) => void;
@@ -323,18 +322,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setSelectedMatrixRows(selectedRows);
       if (tensorNetwork?.legos.length == 1) {
         const lego = tensorNetwork.legos[0];
-        const updatedLego = {
-          ...lego,
-          selectedMatrixRows: selectedRows
-        };
-        // Update the lego in the droppedLegos array
-        const updatedDroppedLegos = droppedLegos.map((l) =>
-          l.instanceId === lego.instanceId ? updatedLego : l
+        const updatedLego = new DroppedLego(
+          lego,
+          lego.x,
+          lego.y,
+          lego.instanceId,
+          { selectedMatrixRows: selectedRows }
         );
 
-        updateDroppedLego(updatedLego.instanceId, {
-          selectedMatrixRows: selectedRows
-        });
+        updateDroppedLego(updatedLego.instanceId, updatedLego);
 
         setTensorNetwork(
           new TensorNetwork({ legos: [updatedLego], connections: connections })
@@ -342,7 +338,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         simpleAutoFlow(
           updatedLego,
-          updatedDroppedLegos,
+          droppedLegos,
           connections,
           setDroppedLegos,
           setTensorNetwork
@@ -438,7 +434,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     });
     // Create new legos array starting with the modified original lego
     const newLegos: DroppedLego[] = [
-      createDroppedLego(
+      new DroppedLego(
         {
           ...lego,
           id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
@@ -467,7 +463,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     for (let i = 0; i < numLegs; i++) {
       // Calculate the angle for this leg
       const angle = (2 * Math.PI * i) / numLegs;
-      const hadamardLego: DroppedLego = createDroppedLego(
+      const hadamardLego: DroppedLego = new DroppedLego(
         {
           id: "h",
           name: "Hadamard",
@@ -556,7 +552,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     const originalAlwaysShowLegs = lego.alwaysShowLegs;
 
     // Temporarily force legs to be shown
-    const updatedLego = { ...lego, alwaysShowLegs: true };
+    const updatedLego = lego.with({ alwaysShowLegs: true });
     setDroppedLegos(
       droppedLegos.map((l) =>
         l.instanceId === lego.instanceId ? updatedLego : l
@@ -570,7 +566,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setDroppedLegos(
         droppedLegos.map((l) =>
           l.instanceId === lego.instanceId
-            ? { ...l, alwaysShowLegs: originalAlwaysShowLegs }
+            ? l.with({ alwaysShowLegs: originalAlwaysShowLegs })
             : l
         )
       );
@@ -636,7 +632,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       ];
 
       // Create the two new legos
-      const lego1: DroppedLego = createDroppedLego(
+      const lego1: DroppedLego = new DroppedLego(
         {
           ...lego,
           parity_check_matrix: lego1Data.parity_check_matrix
@@ -648,7 +644,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         { alwaysShowLegs: false }
       );
 
-      const lego2: DroppedLego = createDroppedLego(
+      const lego2: DroppedLego = new DroppedLego(
         {
           ...lego,
           parity_check_matrix: lego2Data.parity_check_matrix
@@ -791,14 +787,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
     if (numLegs === 1) {
       // Case 1: Original lego has 1 leg -> Create 1 new lego with 2 legs
-      const newLego: DroppedLego = {
-        ...lego,
+      const newLego: DroppedLego = lego.with({
         instanceId: (maxInstanceId + 1).toString(),
         x: lego.x + 100,
         y: lego.y,
         selectedMatrixRows: [],
         parity_check_matrix: bell_pair
-      };
+      });
       newLegos = [lego, newLego];
 
       // Connect the new lego to the original connections
@@ -830,14 +825,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }
     } else if (numLegs === 2) {
       // Case 2: Original lego has 2 legs -> Create 1 new lego with 2 legs
-      const newLego: DroppedLego = {
-        ...lego,
+      const newLego: DroppedLego = lego.with({
         instanceId: (maxInstanceId + 1).toString(),
         x: lego.x + 100,
         y: lego.y,
         selectedMatrixRows: [],
         parity_check_matrix: bell_pair
-      };
+      });
       newLegos = [lego, newLego];
 
       // -- [0,lego,1]  - [0, new lego 1] --
@@ -874,14 +868,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       // First create all legos
       for (let i = 0; i < numLegs; i++) {
         const angle = (2 * Math.PI * i) / numLegs;
-        const newLego: DroppedLego = {
-          ...lego,
+        const newLego: DroppedLego = lego.with({
           instanceId: (maxInstanceId + 1 + i).toString(),
           x: centerX + radius * Math.cos(angle),
           y: centerY + radius * Math.sin(angle),
           selectedMatrixRows: [],
           parity_check_matrix: isXCode ? d3_x_rep : d3_z_rep
-        };
+        });
         newLegos.push(newLego);
       }
 
@@ -1141,10 +1134,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                   value={tensorNetwork.legos[0].shortName}
                   onChange={(e) => {
                     const newShortName = e.target.value;
-                    const updatedLego = {
-                      ...tensorNetwork.legos[0],
+                    const updatedLego = tensorNetwork.legos[0].with({
                       shortName: newShortName
-                    };
+                    });
                     const updatedDroppedLegos = droppedLegos.map((l) =>
                       l.instanceId === tensorNetwork.legos[0].instanceId
                         ? updatedLego

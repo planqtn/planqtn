@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import { DroppedLego, Connection } from "../lib/types";
+import { Connection } from "../lib/types";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import * as _ from "lodash";
-import { createDroppedLego } from "../LegoStyles";
+import { DroppedLego } from "../stores/droppedLegoStore";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -137,7 +137,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               (l: DroppedLego, idx: number) => {
                 const newId = String(startingId + idx);
                 instanceIdMap.set(l.instanceId, newId);
-                return createDroppedLego(
+                return new DroppedLego(
                   l,
                   l.x + dropX - pastedData.legos[0].x,
                   l.y + dropY - pastedData.legos[0].y,
@@ -200,10 +200,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         let legosToRemove: DroppedLego[] = [];
 
         if (tensorNetwork) {
-          legosToRemove = tensorNetwork.legos.map((l) => ({
-            ...l,
-            instanceId: l.instanceId
-          }));
+          legosToRemove = tensorNetwork.legos;
         }
 
         if (legosToRemove.length > 0) {

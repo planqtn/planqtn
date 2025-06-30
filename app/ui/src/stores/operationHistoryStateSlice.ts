@@ -2,7 +2,7 @@ import { StateCreator } from "zustand";
 import { OperationHistory } from "../lib/OperationHistory";
 import { DroppedLegosSlice } from "./droppedLegoStore";
 import { ConnectionSlice } from "./connectionStore";
-import { Operation } from "../lib/types";
+import { Operation } from "../lib/OperationHistory.ts";
 import { GlobalTensorNetworkSlice } from "./canvasStateStore";
 
 export interface OperationHistorySlice {

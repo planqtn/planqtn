@@ -1,6 +1,7 @@
 import { OperationHistory } from "./OperationHistory";
-import { Operation, Connection, DroppedLego } from "./types";
-import { createDroppedLego } from "../LegoStyles";
+import { Connection } from "./types";
+import { Operation } from "./OperationHistory.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 
 describe("OperationHistory", () => {
@@ -12,7 +13,7 @@ describe("OperationHistory", () => {
 
   describe("undo and redo", () => {
     it("should return to original state after undo and redo of add operation", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -64,7 +65,7 @@ describe("OperationHistory", () => {
     });
 
     it("should handle multiple undos after add and move operations", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -97,7 +98,7 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 }
+              newLego: lego.with({ x: 10, y: 10 })
             }
           ]
         }
@@ -114,7 +115,7 @@ describe("OperationHistory", () => {
         droppedLegos: DroppedLego[];
       } = {
         connections: [],
-        droppedLegos: [{ ...lego, x: 10, y: 10 }]
+        droppedLegos: [lego.with({ x: 10, y: 10 })]
       };
 
       // First undo: should move lego back to (0,0)
@@ -136,7 +137,7 @@ describe("OperationHistory", () => {
 
     it("should handle multiple undos after fuse and unfuse operations", () => {
       // Create initial legos
-      const hadamard: DroppedLego = createDroppedLego(
+      const hadamard: DroppedLego = new DroppedLego(
         {
           id: "hadamard",
           name: "Hadamard",
@@ -154,7 +155,7 @@ describe("OperationHistory", () => {
         "h1"
       );
 
-      const zRep1: DroppedLego = createDroppedLego(
+      const zRep1: DroppedLego = new DroppedLego(
         {
           id: "z-rep",
           name: "Z-Rep Code",
@@ -173,11 +174,10 @@ describe("OperationHistory", () => {
         "1"
       );
 
-      const zRep2: DroppedLego = {
-        ...zRep1,
+      const zRep2: DroppedLego = zRep1.with({
         instanceId: "2",
         x: 200
-      };
+      });
 
       // Create initial connections
       const initialConnections: Connection[] = [
@@ -211,8 +211,7 @@ describe("OperationHistory", () => {
       };
 
       // Fuse operation
-      const fusedLego: DroppedLego = {
-        ...zRep1,
+      const fusedLego: DroppedLego = zRep1.with({
         instanceId: "fused",
         parity_check_matrix: [
           [1, 1, 1, 1, 0, 0, 0, 0],
@@ -222,7 +221,7 @@ describe("OperationHistory", () => {
         ],
         logical_legs: [],
         gauge_legs: []
-      };
+      });
       const fuseOperation: Operation = {
         type: "fuse",
         data: {
@@ -264,19 +263,17 @@ describe("OperationHistory", () => {
         droppedLegos: [hadamard, fusedLego]
       };
 
-      const zRep1_2: DroppedLego = {
-        ...zRep1,
+      const zRep1_2: DroppedLego = zRep1.with({
         instanceId: "zRep12",
         x: 150,
         y: 0
-      };
+      });
 
-      const zRep2_2: DroppedLego = {
-        ...zRep2,
+      const zRep2_2: DroppedLego = zRep2.with({
         instanceId: "zRep22",
         x: 250,
         y: 0
-      };
+      });
 
       // Update state after fuse
       const stateAfterUnfuse = {
@@ -345,7 +342,7 @@ describe("OperationHistory", () => {
     });
 
     it("should undo an add operation", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -377,7 +374,7 @@ describe("OperationHistory", () => {
     });
 
     it("should undo a move operation", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -401,7 +398,7 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 }
+              newLego: lego.with({ x: 10, y: 10 })
             }
           ]
         }
@@ -441,7 +438,7 @@ describe("OperationHistory", () => {
     });
 
     it("should redo an add operation", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -475,7 +472,7 @@ describe("OperationHistory", () => {
     });
 
     it("should redo a move operation", () => {
-      const lego: DroppedLego = createDroppedLego(
+      const lego: DroppedLego = new DroppedLego(
         {
           id: "lego1",
           name: "Test Lego",
@@ -499,7 +496,7 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: { ...lego, x: 10, y: 10 }
+              newLego: lego.with({ x: 10, y: 10 })
             }
           ]
         }

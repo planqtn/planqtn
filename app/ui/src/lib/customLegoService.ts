@@ -1,7 +1,6 @@
-import { DroppedLego } from "./types";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { CanvasStateSerializer } from "./CanvasStateSerializer";
-import { createDroppedLego } from "../LegoStyles";
+import { DroppedLego } from "../stores/droppedLegoStore";
 
 export interface CustomLegoCreationOptions {
   stateSerializer?: CanvasStateSerializer;
@@ -18,7 +17,7 @@ export class CustomLegoService {
       useCanvasStore.getState();
 
     const instanceId = newInstanceId();
-    const newLego: DroppedLego = createDroppedLego(
+    const newLego: DroppedLego = new DroppedLego(
       {
         // Generate unique ID to avoid caching collisions
         id:

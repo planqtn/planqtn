@@ -1,4 +1,4 @@
-import { DroppedLego, LegoPiece, PauliOperator } from "./lib/types";
+import { PauliOperator } from "./lib/types";
 import {
   getPauliColor,
   I_COLOR,
@@ -11,6 +11,7 @@ import {
   Z_COLOR_DARK,
   Z_COLOR_LIGHT
 } from "./lib/PauliColors";
+import { DroppedLego } from "./stores/droppedLegoStore";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";
@@ -70,63 +71,6 @@ export interface LegStyle {
   is_highlighted: boolean;
   type: "logical" | "gauge" | "physical";
   position: LegPosition;
-}
-
-export function recalculateLegoStyle(lego: DroppedLego): void {
-  lego.style = getLegoStyle(
-    lego.id,
-    lego.parity_check_matrix[0].length / 2,
-    lego
-  );
-}
-
-export function createHadamardLego(
-  x: number,
-  y: number,
-  instanceId: string
-): DroppedLego {
-  return createDroppedLego(
-    {
-      id: "h",
-      name: "Hadamard",
-      shortName: "H",
-      description: "Hadamard",
-      parity_check_matrix: [
-        [1, 0, 0, 1],
-        [0, 1, 1, 0]
-      ],
-      logical_legs: [],
-      gauge_legs: []
-    },
-    x,
-    y,
-    instanceId
-  );
-}
-
-export function createDroppedLego(
-  lego: LegoPiece,
-  x: number,
-  y: number,
-  instanceId: string,
-  overrides: Partial<DroppedLego> = {}
-): DroppedLego {
-  const droppedLego: DroppedLego = {
-    ...lego,
-    x,
-    y,
-    style: null,
-    instanceId: instanceId,
-    selectedMatrixRows: []
-  };
-
-  droppedLego.style = getLegoStyle(
-    lego.id,
-    lego.parity_check_matrix[0].length / 2,
-    droppedLego
-  );
-
-  return { ...droppedLego, ...overrides };
 }
 
 // Styling for a given lego. This contains calculated leg positions, colors for the legs etc.
@@ -246,6 +190,15 @@ export abstract class LegoStyle {
     const legCount = this.lego.parity_check_matrix[0].length / 2;
     const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
+
+    if (this.lego.instanceId === "14") {
+      console.log(
+        "calculateLegStyle",
+        legIndex,
+        forSvg,
+        this.lego.selectedMatrixRows
+      );
+    }
 
     // Calculate the number of each type of leg
     const logicalLegsCount = this.lego.logical_legs.length;

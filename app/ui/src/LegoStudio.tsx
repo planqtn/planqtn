@@ -24,7 +24,6 @@ import {
   ImperativePanelHandle
 } from "react-resizable-panels";
 
-import { createDroppedLego } from "./LegoStyles";
 import ErrorPanel from "./components/ErrorPanel";
 import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
 import { KeyboardHandler } from "./components/KeyboardHandler";
@@ -34,13 +33,7 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./components/SelectionManager";
-import {
-  Connection,
-  DroppedLego,
-  LegoPiece,
-  ParityCheckMatrix,
-  SelectionBoxState
-} from "./lib/types";
+import { Connection, ParityCheckMatrix, SelectionBoxState } from "./lib/types";
 
 import DetailsPanel from "./components/DetailsPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
@@ -71,11 +64,11 @@ import { DragProxy } from "./components/DragProxy";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
 import { CanvasMouseHandler } from "./components/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
-import { useBuildingBlockDragStateStore } from "./stores/buildingBlockDragStateStore.ts";
 import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
 import { findClosestDanglingLeg } from "./lib/canvasCalculations.ts";
 import { AddStopper } from "./transformations/AddStopper.ts";
 import { InjectTwoLegged } from "./transformations/InjectTwoLegged.ts";
+import { DroppedLego, LegoPiece } from "./stores/droppedLegoStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Memoized Left Panel Component
@@ -238,7 +231,7 @@ const LegoStudioView: React.FC = () => {
       );
 
       // Create the stopper lego
-      const stopperLego: DroppedLego = createDroppedLego(
+      const stopperLego: DroppedLego = new DroppedLego(
         draggedLego,
         dropPosition.x,
         dropPosition.y,
@@ -300,7 +293,7 @@ const LegoStudioView: React.FC = () => {
     }
 
     // Use the drop position directly from the event
-    const newLego = createDroppedLego(
+    const newLego = new DroppedLego(
       draggedLego,
       dropPosition.x,
       dropPosition.y,
@@ -540,7 +533,7 @@ const LegoStudioView: React.FC = () => {
       });
 
       const instanceId = newInstanceId();
-      const newLego = createDroppedLego(
+      const newLego = new DroppedLego(
         dynamicLego,
         pendingDropPosition.x,
         pendingDropPosition.y,
@@ -772,7 +765,7 @@ const LegoStudioView: React.FC = () => {
         // Push out to radius + 100 pixels (increased buffer)
         const newX = center.x + (radius + 80) * Math.cos(angle);
         const newY = center.y + (radius + 80) * Math.sin(angle);
-        return { ...lego, x: newX, y: newY };
+        return lego.with({ x: newX, y: newY });
       }
 
       return lego;
@@ -803,7 +796,7 @@ const LegoStudioView: React.FC = () => {
       });
 
       // Create the new lego with updated matrix but same position
-      const newLego: DroppedLego = createDroppedLego(
+      const newLego: DroppedLego = new DroppedLego(
         { ...lego, parity_check_matrix: newLegoData.parity_check_matrix },
         lego.x,
         lego.y,
@@ -811,7 +804,7 @@ const LegoStudioView: React.FC = () => {
       );
 
       // Create a stopper based on the lego type
-      const stopperLego: DroppedLego = createDroppedLego(
+      const stopperLego: DroppedLego = new DroppedLego(
         {
           id: lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
           name: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
@@ -1174,11 +1167,11 @@ const LegoStudioView: React.FC = () => {
                                   const centerY = rect.height / 2;
                                   const scale = 1 / zoomLevel;
                                   const rescaledLegos = droppedLegos.map(
-                                    (lego) => ({
-                                      ...lego,
-                                      x: (lego.x - centerX) * scale + centerX,
-                                      y: (lego.y - centerY) * scale + centerY
-                                    })
+                                    (lego) =>
+                                      lego.with({
+                                        x: (lego.x - centerX) * scale + centerX,
+                                        y: (lego.y - centerY) * scale + centerY
+                                      })
                                   );
                                   setDroppedLegos(rescaledLegos);
                                   setZoomLevel(1);
@@ -1194,10 +1187,8 @@ const LegoStudioView: React.FC = () => {
                               <MenuItem
                                 onClick={() => {
                                   const clearedLegos = droppedLegos.map(
-                                    (lego) => ({
-                                      ...lego,
-                                      selectedMatrixRows: []
-                                    })
+                                    (lego) =>
+                                      lego.with({ selectedMatrixRows: [] })
                                   );
                                   setDroppedLegos(clearedLegos);
                                 }}

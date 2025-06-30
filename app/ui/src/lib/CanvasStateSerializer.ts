@@ -1,5 +1,5 @@
-import { DroppedLego, Connection, CanvasState } from "./types";
-import { createDroppedLego } from "../LegoStyles";
+import { Connection, CanvasState } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore";
 import { Legos } from "./Legos";
 
 export class CanvasStateSerializer {
@@ -106,7 +106,7 @@ export class CanvasStateSerializer {
 
           // For pieces not in lego list, construct from saved data
           if (!predefinedLego) {
-            return createDroppedLego(
+            return new DroppedLego(
               {
                 id: piece.id,
                 name: piece.name || piece.id,
@@ -132,7 +132,7 @@ export class CanvasStateSerializer {
             piece.parameters &&
             piece.parity_check_matrix
           ) {
-            return createDroppedLego(
+            return new DroppedLego(
               {
                 ...predefinedLego,
                 parameters: piece.parameters,
@@ -150,7 +150,7 @@ export class CanvasStateSerializer {
           }
 
           // For regular legos, use the template
-          return createDroppedLego(
+          return new DroppedLego(
             {
               ...predefinedLego,
               parity_check_matrix:

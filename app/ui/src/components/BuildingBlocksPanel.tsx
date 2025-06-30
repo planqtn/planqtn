@@ -14,10 +14,9 @@ import {
   Button,
   Icon
 } from "@chakra-ui/react";
-import { DroppedLego, LegoPiece } from "../lib/types.ts";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { getLegoBoundingBox } from "./DroppedLegoDisplay.tsx";
-import { createDroppedLego } from "../LegoStyles.ts";
+import { DroppedLego, LegoPiece } from "../stores/droppedLegoStore.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lib/Legos.ts";
 import { LegoSvgRenderer } from "../lib/LegoSvgRenderer.ts";
@@ -98,7 +97,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
         // Note: position will be set when the custom lego is dropped, not during drag start
         // Set the draggedLego state for custom legos
 
-        const draggedLego: DroppedLego = createDroppedLego(
+        const draggedLego: DroppedLego = new DroppedLego(
           lego,
           rect.left + rect.width / 2,
           rect.top + rect.height / 2,
@@ -115,7 +114,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       } else {
         // Handle regular lego drag
         const rect = e.currentTarget.getBoundingClientRect();
-        const draggedLego: DroppedLego = createDroppedLego(
+        const draggedLego: DroppedLego = new DroppedLego(
           lego,
           rect.left + rect.width / 2,
           rect.top + rect.height / 2,
@@ -157,14 +156,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       demoLego: DroppedLego;
       boundingBox: { left: number; top: number; width: number; height: number };
     } => {
-      const originLego = createDroppedLego(lego, 0, 0, "-1");
+      const originLego = new DroppedLego(lego, 0, 0, "-1");
 
       const boundingBox = getLegoBoundingBox(originLego, true);
-      const demoLego = {
-        ...originLego,
+      const demoLego = originLego.with({
         x: -boundingBox.left / 2,
         y: -boundingBox.top / 2
-      };
+      });
 
       return {
         demoLego,

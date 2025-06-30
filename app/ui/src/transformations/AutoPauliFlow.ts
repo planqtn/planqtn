@@ -1,5 +1,6 @@
 import { cloneDeep } from "lodash";
-import { DroppedLego, Connection } from "../lib/types.ts";
+import { Connection } from "../lib/types.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork.ts";
 
 /**
@@ -147,7 +148,7 @@ export function simpleAutoFlow(
   setDroppedLegos((prev) =>
     prev.map((l) =>
       updatedLegosMap.has(l.instanceId)
-        ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
+        ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
         : l
     )
   );
@@ -156,7 +157,7 @@ export function simpleAutoFlow(
     if (!prev) return null;
     const updatedLegos = prev.legos.map((l: DroppedLego) =>
       updatedLegosMap.has(l.instanceId)
-        ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
+        ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
         : l
     );
     return prev.with({ legos: updatedLegos });
@@ -178,7 +179,7 @@ const updateLego = (
   newRows: number[]
 ): DroppedLego[] => {
   const updatedLegos = tnLegos.map((l) =>
-    l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
+    l.instanceId === targetId ? l.with({ selectedMatrixRows: newRows }) : l
   );
   return updatedLegos;
 };

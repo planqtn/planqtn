@@ -5,7 +5,8 @@ import React, {
   useImperativeHandle
 } from "react";
 import { Box } from "@chakra-ui/react";
-import { DroppedLego, SelectionBoxState } from "../lib/types";
+import { SelectionBoxState } from "../lib/types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
