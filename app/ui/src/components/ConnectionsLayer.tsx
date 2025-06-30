@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Connection } from "../lib/types";
 import { DroppedLego } from "../stores/droppedLegoStore";
 import { LegStyle } from "../LegoStyles";

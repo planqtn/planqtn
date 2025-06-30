@@ -55,7 +55,6 @@ import {
   runtimeStoreSupabase,
   userContextSupabase
 } from "../supabaseClient.ts";
-import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 import { Legos } from "../lib/Legos.ts";
 import { config, getApiUrl } from "../config.ts";
 import { getAccessToken } from "../lib/auth.ts";
@@ -65,6 +64,7 @@ import TaskLogsModal from "./TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../lib/errors.ts";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore.ts";
 import { useCanvasStore } from "../stores/canvasStateStore.ts";
+import { simpleAutoFlow } from "../transformations/AutoPauliFlow.ts";
 
 interface DetailsPanelProps {
   setError: (error: string) => void;
@@ -338,7 +338,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         simpleAutoFlow(
           updatedLego,
-          droppedLegos,
+          droppedLegos.map((lego) =>
+            lego.instanceId === updatedLego.instanceId ? updatedLego : lego
+          ),
           connections,
           setDroppedLegos,
           setTensorNetwork
@@ -349,7 +351,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       tensorNetwork,
       droppedLegos,
       connections,
-      setDroppedLegos,
+      updateDroppedLego,
       setTensorNetwork
     ]
   );
@@ -1137,18 +1139,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     const updatedLego = tensorNetwork.legos[0].with({
                       shortName: newShortName
                     });
-                    const updatedDroppedLegos = droppedLegos.map((l) =>
-                      l.instanceId === tensorNetwork.legos[0].instanceId
-                        ? updatedLego
-                        : l
-                    );
-                    setDroppedLegos(updatedDroppedLegos);
-                    setDroppedLegos(
-                      droppedLegos.map((l) =>
-                        l.instanceId === tensorNetwork.legos[0].instanceId
-                          ? updatedLego
-                          : l
-                      )
+                    updateDroppedLego(
+                      tensorNetwork.legos[0].instanceId,
+                      updatedLego
                     );
                   }}
                   onKeyDown={(e) => {
@@ -1160,11 +1153,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 <Checkbox
                   isChecked={tensorNetwork.legos[0].alwaysShowLegs || false}
                   onChange={(e) => {
-                    const updatedLego = {
-                      ...tensorNetwork.legos[0],
+                    const updatedLego = tensorNetwork.legos[0].with({
                       alwaysShowLegs: e.target.checked
-                    };
-                    updateDroppedLego(updatedLego.instanceId, updatedLego);
+                    });
+                    updateDroppedLego(
+                      tensorNetwork.legos[0].instanceId,
+                      updatedLego
+                    );
                   }}
                 >
                   Always show legs

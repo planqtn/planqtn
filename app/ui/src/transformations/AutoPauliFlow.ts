@@ -36,6 +36,7 @@ export function simpleAutoFlow(
   let tnLegos = cloneDeep(selectedTensorNetwork.legos);
   const seenLegos = new Set<string>();
   const updatedLegosMap: Map<string, number[]> = new Map();
+  let updateNeeded = false;
 
   // count variable shouldn't be needed, but it is a safety measure to prevent infinite loops - can remove later
   while (changed && count < 50) {
@@ -139,29 +140,33 @@ export function simpleAutoFlow(
             updatedLegosMap.set(lego.instanceId, newRows);
             seenLegos.add(lego.instanceId);
             changed = true;
+            updateNeeded = true;
           }
         }
       }
     }
   }
-  // Apply all changes at once to make sure all updates are done
-  setDroppedLegos(
-    droppedLegos.map((l) =>
-      updatedLegosMap.has(l.instanceId)
-        ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
-        : l
-    )
-  );
 
-  setTensorNetwork((prev) => {
-    if (!prev) return null;
-    const updatedLegos = prev.legos.map((l: DroppedLego) =>
-      updatedLegosMap.has(l.instanceId)
-        ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
-        : l
+  if (updateNeeded) {
+    // Apply all changes at once to make sure all updates are done
+    setDroppedLegos(
+      droppedLegos.map((l) =>
+        updatedLegosMap.has(l.instanceId)
+          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
+          : l
+      )
     );
-    return prev.with({ legos: updatedLegos });
-  });
+
+    setTensorNetwork((prev) => {
+      if (!prev) return null;
+      const updatedLegos = prev.legos.map((l: DroppedLego) =>
+        updatedLegosMap.has(l.instanceId)
+          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
+          : l
+      );
+      return prev.with({ legos: updatedLegos });
+    });
+  }
 }
 
 /**

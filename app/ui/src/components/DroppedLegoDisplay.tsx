@@ -7,7 +7,7 @@ import {
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
 import { LegPosition, LegStyle } from "../LegoStyles";
-import { useMemo, memo, useEffect } from "react";
+import { useMemo, memo } from "react";
 import { useTensorNetworkStore } from "../stores/tensorNetworkStore";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
 import { useDragStateStore } from "../stores/dragState";
