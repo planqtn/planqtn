@@ -376,8 +376,30 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
         e.stopPropagation();
         e.preventDefault();
-        // Only call performDragUpdate when we were actually dragging
-        performDragUpdate(e);
+
+        // Check if the dragged lego is a stopper and handle stopper logic
+        const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+        if (draggedLego && draggedLego.id.includes("stopper")) {
+          const dropPosition = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+          };
+
+          // Try to attach stopper to a nearby leg, passing the existing lego to be removed
+          const success = handleDropStopperOnLeg(
+            dropPosition,
+            draggedLego,
+            draggedLego
+          );
+          if (!success) {
+            // If stopper attachment fails, just do regular drag update
+            performDragUpdate(e);
+          }
+        } else {
+          // Not a stopper, do regular drag update
+          performDragUpdate(e);
+        }
+
         setDragState({
           draggingStage: DraggingStage.JUST_FINISHED,
           draggedLegoIndex: -1,
@@ -528,7 +550,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
     const handleDropStopperOnLeg = (
       dropPosition: { x: number; y: number },
-      draggedLego: LegoPiece
+      draggedLego: LegoPiece,
+      existingLegoToRemove?: DroppedLego
     ): boolean => {
       if (draggedLego.id.includes("stopper")) {
         const closestLeg = findClosestDanglingLeg(
@@ -540,15 +563,23 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           return false;
         }
 
-        // Create the stopper lego
-        const stopperLego: DroppedLego = new DroppedLego(
-          draggedLego,
-          dropPosition.x,
-          dropPosition.y,
-          newInstanceId()
-        );
         try {
-          const addStopper = new AddStopper(connections, droppedLegos);
+          // If we're moving an existing stopper, remove it first
+          const legosForCalculation = existingLegoToRemove
+            ? droppedLegos.filter(
+                (lego) => lego.instanceId !== existingLegoToRemove.instanceId
+              )
+            : droppedLegos;
+
+          // Create the stopper lego (new or repositioned)
+          const stopperLego: DroppedLego = new DroppedLego(
+            draggedLego,
+            dropPosition.x,
+            dropPosition.y,
+            existingLegoToRemove?.instanceId || newInstanceId()
+          );
+
+          const addStopper = new AddStopper(connections, legosForCalculation);
           const result = addStopper.apply(
             closestLeg.lego,
             closestLeg.legIndex,
