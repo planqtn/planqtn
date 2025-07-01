@@ -122,7 +122,6 @@ const LegoStudioView: React.FC = () => {
     addDroppedLego,
     newInstanceId,
     decodeCanvasState,
-    getCanvasId,
     connections,
     setLegosAndConnections,
     hideConnectedLegs,
@@ -369,83 +368,6 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  // Helper functions for localStorage cache management
-  const getCacheKey = useCallback((canvasId: string, cacheType: string) => {
-    return `planqtn_cache_${cacheType}_${canvasId}`;
-  }, []);
-
-  const loadCachesFromLocalStorage = useCallback(
-    (canvasId: string) => {
-      try {
-        // Load parity check matrix cache
-        const parityCacheKey = getCacheKey(canvasId, "parity");
-        const parityCacheData = localStorage.getItem(parityCacheKey);
-        if (parityCacheData) {
-          const parityCache = new Map<string, ParityCheckMatrix>(
-            JSON.parse(parityCacheData)
-          );
-          setParityCheckMatrixCache(parityCache);
-          console.log(
-            "Loaded parity check matrix cache for canvasId:",
-            canvasId,
-            "key",
-            parityCacheKey,
-            "value",
-            parityCacheData
-          );
-          console.log("parityCheckMatrixCache", parityCheckMatrixCache);
-        } else {
-          console.log(
-            "No parity check matrix cache found for canvasId:",
-            canvasId
-          );
-        }
-
-        // Load weight enumerator cache
-        const weightCacheKey = getCacheKey(canvasId, "weight");
-        const weightCacheData = localStorage.getItem(weightCacheKey);
-        if (weightCacheData) {
-          const weightCache = new Map<
-            string,
-            {
-              taskId: string;
-              polynomial: string;
-              normalizerPolynomial: string;
-              truncateLength: number | null;
-            }
-          >(JSON.parse(weightCacheData));
-          setWeightEnumeratorCache(weightCache);
-        }
-      } catch (error) {
-        console.error("Failed to load caches from localStorage:", error);
-      }
-    },
-    [getCacheKey]
-  );
-
-  const saveCachesToLocalStorage = useCallback(
-    (canvasId: string) => {
-      try {
-        // Save parity check matrix cache
-        const parityCacheKey = getCacheKey(canvasId, "parity");
-        const parityCacheData = JSON.stringify(
-          Array.from(parityCheckMatrixCache.entries())
-        );
-        localStorage.setItem(parityCacheKey, parityCacheData);
-
-        // Save weight enumerator cache
-        const weightCacheKey = getCacheKey(canvasId, "weight");
-        const weightCacheData = JSON.stringify(
-          Array.from(weightEnumeratorCache.entries())
-        );
-        localStorage.setItem(weightCacheKey, weightCacheData);
-      } catch (error) {
-        console.error("Failed to save caches to localStorage:", error);
-      }
-    },
-    [getCacheKey, parityCheckMatrixCache, weightEnumeratorCache]
-  );
-
   // Add a new effect to handle initial URL state
   useEffect(() => {
     const handleHashChange = async () => {
@@ -454,7 +376,6 @@ const LegoStudioView: React.FC = () => {
       if (stateParam) {
         try {
           await decodeCanvasState(stateParam);
-          loadCachesFromLocalStorage(getCanvasId());
         } catch (error) {
           // Clear the invalid state from the URL
           // window.history.replaceState(null, '', window.location.pathname + window.location.search)
@@ -463,9 +384,6 @@ const LegoStudioView: React.FC = () => {
             error instanceof Error ? error : new Error(String(error))
           );
         }
-      } else {
-        // No state in URL, generate a new canvas ID and load empty caches
-        loadCachesFromLocalStorage(getCanvasId());
       }
     };
 
@@ -477,21 +395,7 @@ const LegoStudioView: React.FC = () => {
 
     // Cleanup
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [decodeCanvasState, loadCachesFromLocalStorage]);
-
-  // Save caches to localStorage when they change
-  useEffect(() => {
-    if (getCanvasId()) {
-      console.log("Saving caches to localStorage for canvasId:", getCanvasId());
-      saveCachesToLocalStorage(getCanvasId());
-    }
-  }, [
-    getCanvasId,
-    parityCheckMatrixCache,
-    weightEnumeratorCache,
-    saveCachesToLocalStorage
-  ]);
-
+  }, [decodeCanvasState]);
   // Add mouse position tracking with useRef to avoid re-renders
   const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
 
