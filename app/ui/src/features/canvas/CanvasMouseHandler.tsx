@@ -458,8 +458,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
 
-      const target = e.currentTarget as HTMLElement;
-      const canvasRect = target.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
 
       if (!canvasRect) return;
 
@@ -527,7 +526,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       setHoveredConnection(closestConnection);
     };
 
-    const handleDropStopperOnConnection = (
+    const handleDropStopperOnLeg = (
       dropPosition: { x: number; y: number },
       draggedLego: LegoPiece
     ): boolean => {
@@ -537,19 +536,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           droppedLegos,
           connections
         );
-        if (!closestLeg) return false;
-
-        // Get max instance ID
-        const maxInstanceId = Math.max(
-          ...droppedLegos.map((l) => parseInt(l.instanceId))
-        );
+        if (!closestLeg) {
+          return false;
+        }
 
         // Create the stopper lego
         const stopperLego: DroppedLego = new DroppedLego(
           draggedLego,
           dropPosition.x,
           dropPosition.y,
-          (maxInstanceId + 1).toString()
+          newInstanceId()
         );
         try {
           const addStopper = new AddStopper(connections, droppedLegos);
@@ -593,9 +589,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     const handleDrop = async (e: DragEvent) => {
       if (!draggedLego) return;
 
-      // Get the actual drop position from the event
-      const target = e.target as HTMLElement;
-      const rect = target.getBoundingClientRect();
+      // Get the actual drop position from the event using canvas rect, not target rect
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
       const dropPosition = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
@@ -607,7 +605,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
 
       // Find the closest dangling leg if we're dropping a stopper
-      const success = handleDropStopperOnConnection(dropPosition, draggedLego);
+      const success = handleDropStopperOnLeg(dropPosition, draggedLego);
       if (success) return;
 
       const numLegs = draggedLego.parity_check_matrix[0].length / 2;

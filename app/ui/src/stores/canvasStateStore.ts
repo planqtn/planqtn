@@ -42,6 +42,16 @@ export const createGlobalTensorNetworkStore: StateCreator<
     connections: Connection[]
   ) => {
     set({ droppedLegos, connections });
+    const connectedLegoIds: Set<string> = new Set(
+      connections.flatMap((connection) => [
+        connection.from.legoId,
+        connection.to.legoId
+      ])
+    );
+    const connectedLegos = droppedLegos.filter((lego) =>
+      connectedLegoIds.has(lego.instanceId)
+    );
+    get().connectedLegos = connectedLegos;
     get().updateEncodedCanvasState();
   },
   getLegosAndConnections: () => {
