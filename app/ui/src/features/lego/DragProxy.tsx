@@ -1,9 +1,8 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { DraggingStage } from "../../lib/types";
 import { getLegoStyle } from "./LegoStyles";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useDragStateStore } from "../../stores/dragState";
+import { DraggingStage } from "../../stores/legoDragState";
 import { useGroupDragStateStore } from "../../stores/groupDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 
@@ -16,8 +15,7 @@ const SingleLegoDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos } = useCanvasStore();
-  const { dragState } = useDragStateStore();
+  const { droppedLegos, dragState } = useCanvasStore();
 
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
@@ -104,8 +102,7 @@ const GroupDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos } = useCanvasStore();
-  const { dragState } = useDragStateStore();
+  const { droppedLegos, dragState } = useCanvasStore();
   const { groupDragState } = useGroupDragStateStore();
 
   // Memoize dragged legos to prevent stale references
@@ -290,7 +287,7 @@ export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const dragStateStage = useDragStateStore(
+  const dragStateStage = useCanvasStore(
     (state) => state.dragState?.draggingStage
   );
   const groupDragState = useGroupDragStateStore(

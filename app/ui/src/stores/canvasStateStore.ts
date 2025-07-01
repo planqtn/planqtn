@@ -12,12 +12,14 @@ import {
   createOperationHistorySlice,
   OperationHistorySlice
 } from "./operationHistoryStateSlice";
+import { createLegoDragStateSlice, LegoDragStateSlice } from "./legoDragState";
 
 export interface CanvasStore
   extends DroppedLegosSlice,
     ConnectionSlice,
     EncodedCanvasStateSlice,
     GlobalTensorNetworkSlice,
+    LegoDragStateSlice,
     OperationHistorySlice {}
 
 export interface GlobalTensorNetworkSlice {
@@ -65,6 +67,7 @@ export const useCanvasStore = create<CanvasStore>()(
     ...createLegoSlice(...a),
     ...createEncodedCanvasStateSlice(...a),
     ...createGlobalTensorNetworkStore(...a),
-    ...createOperationHistorySlice(...a)
+    ...createOperationHistorySlice(...a),
+    ...createLegoDragStateSlice(...a)
   }))
 );

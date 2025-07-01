@@ -21,7 +21,7 @@ import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lego/Legos.ts";
 import { LegoSvgRenderer } from "../lego/LegoSvgRenderer.ts";
 import { useModalStore } from "../../stores/modalStore.ts";
-import { useDraggedLegoStore } from "../../stores/draggedLegoStore.ts";
+import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
 
@@ -195,7 +195,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
     const { openCssTannerDialog, openTannerDialog, openMspDialog } =
       useModalStore.getState();
     const [legos, setLegos] = useState<LegoPiece[]>([]);
-    const { setDraggedLego } = useDraggedLegoStore();
+    const { setDraggedLegoProto: setDraggedLego } = useDraggedLegoStore();
     const setBuildingBlockDragState = useBuildingBlockDragStateStore(
       (state) => state.setBuildingBlockDragState
     );

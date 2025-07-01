@@ -2,22 +2,22 @@ import React, { useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useTensorNetworkStore } from "../../stores/tensorNetworkStore";
 import { useLegDragStateStore } from "../../stores/legDragState";
-import { useDragStateStore } from "../../stores/dragState";
 import { useGroupDragStateStore } from "../../stores/groupDragState";
-import { SelectionBoxState, DraggingStage, Connection } from "../../lib/types";
+import { SelectionBoxState, Connection } from "../../lib/types";
 import { useCanvasDragStateStore } from "../../stores/canvasDragStateStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import {
   findClosestDanglingLeg,
   pointToLineDistance
 } from "./canvasCalculations";
-import { useDraggedLegoStore } from "../../stores/draggedLegoStore";
+import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore";
 import { AddStopper } from "../../transformations/AddStopper";
 import { useModalStore } from "../../stores/modalStore";
 import { InjectTwoLegged } from "../../transformations/InjectTwoLegged";
 import { useToast } from "@chakra-ui/react";
+import { DraggingStage } from "../../stores/legoDragState";
 
 interface CanvasMouseHandlerProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -55,15 +55,17 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setLegosAndConnections,
     newInstanceId,
     addDroppedLego,
-    connectedLegos
+    connectedLegos,
+    dragState,
+    setDragState
   } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const { legDragState, setLegDragState } = useLegDragStateStore();
-  const { dragState, setDragState } = useDragStateStore();
   const { groupDragState, setGroupDragState } = useGroupDragStateStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
   const { connections, addConnections, addOperation } = useCanvasStore();
-  const { draggedLego, setDraggedLego } = useDraggedLegoStore();
+  const { draggedLegoProto: draggedLego, setDraggedLegoProto: setDraggedLego } =
+    useDraggedLegoStore();
   const {
     buildingBlockDragState,
     setBuildingBlockDragState,

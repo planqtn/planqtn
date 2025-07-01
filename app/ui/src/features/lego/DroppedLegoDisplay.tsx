@@ -1,22 +1,17 @@
-import {
-  DragState,
-  Connection,
-  PauliOperator,
-  DraggingStage
-} from "../../lib/types.ts";
+import { Connection, PauliOperator } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import {
   findConnectedComponent,
   TensorNetwork
 } from "../../lib/TensorNetwork.ts";
 import { LegPosition, LegStyle } from "./LegoStyles.ts";
-import { useMemo, memo } from "react";
+import { useMemo, memo, useEffect } from "react";
 import { useTensorNetworkStore } from "../../stores/tensorNetworkStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
-import { useDragStateStore } from "../../stores/dragState.ts";
 import { useLegDragStateStore } from "../../stores/legDragState.ts";
 import { useGroupDragStateStore } from "../../stores/groupDragState.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
+import { DraggingStage } from "../../stores/legoDragState.ts";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -223,20 +218,54 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const numLogicalLegs = lego.logical_legs.length;
     const numGaugeLegs = lego.gauge_legs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
-    const {
-      droppedLegos,
-      connections,
-      addDroppedLegos,
-      setDroppedLegos,
-      newInstanceId,
-      addConnections,
-      hideConnectedLegs,
-      addOperation,
-      temporarilyConnectLego,
-      updateLegoConnectivity
-    } = useCanvasStore();
+
+    // Optimize store subscriptions to prevent unnecessary rerenders
+    const connections = useCanvasStore((state) => state.connections);
+    const hideConnectedLegs = useCanvasStore(
+      (state) => state.hideConnectedLegs
+    );
+    const addDroppedLegos = useCanvasStore((state) => state.addDroppedLegos);
+    const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
+    const newInstanceId = useCanvasStore((state) => state.newInstanceId);
+    const addConnections = useCanvasStore((state) => state.addConnections);
+    const addOperation = useCanvasStore((state) => state.addOperation);
+    const temporarilyConnectLego = useCanvasStore(
+      (state) => state.temporarilyConnectLego
+    );
+    const updateLegoConnectivity = useCanvasStore(
+      (state) => state.updateLegoConnectivity
+    );
+    const setDragState = useCanvasStore((state) => state.setDragState);
+
+    // Only subscribe to the specific drag state properties that matter for this lego
+    const isThisLegoBeingDragged = useCanvasStore((state) => {
+      return (
+        state.dragState.draggedLegoIndex === index &&
+        state.dragState.draggingStage === DraggingStage.DRAGGING
+      );
+    });
+
+    useEffect(() => {
+      console.log(
+        "lego",
+        lego.instanceId,
+        "render due to connections change",
+        connections
+      );
+    }, [connections]);
+
+    useEffect(() => {
+      console.log(
+        "lego",
+        lego.instanceId,
+        "isThisLegoBeingDragged changed to:",
+        isThisLegoBeingDragged
+      );
+    }, [isThisLegoBeingDragged, lego.instanceId]);
+
+    console.log("lego", lego.instanceId, "render due to rerender");
+
     const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
-    const { dragState, setDragState } = useDragStateStore();
     const setLegDragState = useLegDragStateStore(
       (state) => state.setLegDragState
     );
@@ -249,44 +278,17 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       tensorNetwork &&
       tensorNetwork.legos.some((l) => l.instanceId === lego.instanceId);
 
-    // Calculate drag offset for performance during dragging
-    const dragOffset = useMemo(() => {
-      if (dragState?.draggingStage !== DraggingStage.DRAGGING)
-        return { x: 0, y: 0 };
-
-      // Check if this lego is being dragged individually
-      if (dragState.draggedLegoIndex === index) {
-        const deltaX = dragState.startX ? lego.x - dragState.originalX : 0;
-        const deltaY = dragState.startY ? lego.y - dragState.originalY : 0;
-        return { x: deltaX, y: deltaY };
-      }
-
-      return { x: 0, y: 0 };
-    }, [dragState, index, lego.x, lego.y]);
-
     // Use base position (without drag offset) for all calculations
     const basePosition = useMemo(
       () => ({
-        x: demoMode ? lego.x : lego.x - dragOffset.x,
-        y: demoMode ? lego.y : lego.y - dragOffset.y
+        x: demoMode ? lego.x : lego.x,
+        y: demoMode ? lego.y : lego.y
       }),
-      [lego.x, lego.y, dragOffset.x, dragOffset.y, demoMode]
+      [lego.x, lego.y, demoMode]
     );
 
     // Check if this specific lego is being dragged
-    const isThisLegoDragged = useMemo(() => {
-      if (dragState?.draggingStage !== DraggingStage.DRAGGING) return false;
-
-      // Check if this lego is being dragged individually
-      if (dragState.draggedLegoIndex === index) return true;
-
-      // Check if this lego is part of a group being dragged (selected legos)
-      if (tensorNetwork?.legos.some((l) => l.instanceId === lego.instanceId)) {
-        return true;
-      }
-
-      return false;
-    }, [dragState, index, tensorNetwork, lego.instanceId]);
+    const isThisLegoDragged = isThisLegoBeingDragged;
 
     // Helper functions - memoized where possible
     const isLegConnected = useMemo(() => {
@@ -321,9 +323,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             conn.from.legoId === lego.instanceId &&
             conn.from.legIndex === legIndex
           ) {
-            const connectedLego = droppedLegos?.find(
-              (l) => l.instanceId === conn.to.legoId
-            );
+            // Get connected lego from store instead of passed prop
+            const connectedLego = useCanvasStore
+              .getState()
+              .droppedLegos?.find((l) => l.instanceId === conn.to.legoId);
             return (
               connectedLego?.style!.legStyles[conn.to.legIndex]
                 .is_highlighted || false
@@ -333,9 +336,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             conn.to.legoId === lego.instanceId &&
             conn.to.legIndex === legIndex
           ) {
-            const connectedLego = droppedLegos?.find(
-              (l) => l.instanceId === conn.from.legoId
-            );
+            // Get connected lego from store instead of passed prop
+            const connectedLego = useCanvasStore
+              .getState()
+              .droppedLegos?.find((l) => l.instanceId === conn.from.legoId);
             return (
               connectedLego?.style!.legStyles[conn.from.legIndex]
                 .is_highlighted || false
@@ -351,9 +355,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           conn.from.legoId === lego.instanceId &&
           conn.from.legIndex === legIndex
         ) {
-          const connectedLego = droppedLegos?.find(
-            (l) => l.instanceId === conn.to.legoId
-          );
+          // Get connected lego from store instead of passed prop
+          const connectedLego = useCanvasStore
+            .getState()
+            .droppedLegos?.find((l) => l.instanceId === conn.to.legoId);
           const connectedStyle =
             connectedLego?.style!.legStyles[conn.to.legIndex];
           return (
@@ -365,9 +370,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           conn.to.legoId === lego.instanceId &&
           conn.to.legIndex === legIndex
         ) {
-          const connectedLego = droppedLegos?.find(
-            (l) => l.instanceId === conn.from.legoId
-          );
+          // Get connected lego from store instead of passed prop
+          const connectedLego = useCanvasStore
+            .getState()
+            .droppedLegos?.find((l) => l.instanceId === conn.from.legoId);
           const connectedStyle =
             connectedLego?.style!.legStyles[conn.from.legIndex];
           return (
@@ -382,7 +388,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
       e.preventDefault();
       e.stopPropagation();
-      const lego = droppedLegos[index];
+      // Get lego from store instead of passed prop
+      const lego = useCanvasStore.getState().droppedLegos[index];
 
       if (e.shiftKey) {
         handleClone(lego, e.clientX, e.clientY);
@@ -452,11 +459,142 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       });
     };
 
+    const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
+      // Get the current global drag state
+      const currentDragState = useCanvasStore.getState().dragState;
+
+      if (currentDragState.draggingStage === DraggingStage.JUST_FINISHED) {
+        setDragState({
+          draggingStage: DraggingStage.NOT_DRAGGING,
+          draggedLegoIndex: -1,
+          startX: 0,
+          startY: 0,
+          originalX: 0,
+          originalY: 0
+        });
+        return;
+      }
+
+      if (currentDragState.draggingStage !== DraggingStage.DRAGGING) {
+        // Only handle click if not dragging
+        e.stopPropagation();
+
+        // Clear the drag state since this is a click, not a drag
+        setDragState({
+          draggingStage: DraggingStage.NOT_DRAGGING,
+          draggedLegoIndex: -1,
+          startX: 0,
+          startY: 0,
+          originalX: 0,
+          originalY: 0
+        });
+
+        if (e.ctrlKey || e.metaKey) {
+          // Handle Ctrl+click for toggling selection
+          // Find the current version of the lego from droppedLegos to avoid stale state
+          const currentLego = useCanvasStore
+            .getState()
+            .droppedLegos.find((l) => l.instanceId === lego.instanceId);
+          if (!currentLego) return;
+
+          if (tensorNetwork) {
+            const isSelected = tensorNetwork.legos.some(
+              (l) => l.instanceId === currentLego.instanceId
+            );
+            if (isSelected) {
+              // Remove lego from tensor network
+              const newLegos = tensorNetwork.legos.filter(
+                (l) => l.instanceId !== currentLego.instanceId
+              );
+
+              if (newLegos.length === 0) {
+                setTensorNetwork(null);
+              } else {
+                const newConnections = tensorNetwork.connections.filter(
+                  (conn) =>
+                    conn.from.legoId !== currentLego.instanceId &&
+                    conn.to.legoId !== currentLego.instanceId
+                );
+                setTensorNetwork(
+                  new TensorNetwork({
+                    legos: newLegos,
+                    connections: newConnections
+                  })
+                );
+              }
+            } else {
+              // Add lego to tensor network
+              const newLegos = [...tensorNetwork.legos, currentLego];
+              const newConnections = connections.filter(
+                (conn) =>
+                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
+                  newLegos.some((l) => l.instanceId === conn.to.legoId)
+              );
+
+              setTensorNetwork(
+                new TensorNetwork({
+                  legos: newLegos,
+                  connections: newConnections
+                })
+              );
+            }
+          } else {
+            // If no tensor network exists, create one with just this lego
+            setTensorNetwork(
+              new TensorNetwork({ legos: [currentLego], connections: [] })
+            );
+          }
+        } else {
+          // Regular click behavior
+          const isCurrentlySelected = tensorNetwork?.legos.some(
+            (l) => l.instanceId === lego.instanceId
+          );
+
+          if (isCurrentlySelected && tensorNetwork?.legos.length === 1) {
+            console.log(
+              "second click on same already selected lego, state: ",
+              lego.x,
+              lego.y
+            );
+            // Second click on same already selected lego - expand to connected component
+            // Find the current version of the lego from droppedLegos to avoid stale state
+            const currentLego = useCanvasStore
+              .getState()
+              .droppedLegos.find((l) => l.instanceId === lego.instanceId);
+            if (!currentLego) return;
+
+            const network = findConnectedComponent(
+              currentLego,
+              useCanvasStore.getState().droppedLegos,
+              connections
+            );
+            // only set tensor network if there are more than 1 legos in the network
+            if (network.legos.length > 1) {
+              setTensorNetwork(network);
+            } else {
+              console.log("same isolated lego clicked");
+            }
+          } else {
+            // First click on unselected lego or clicking different lego - select just this lego
+            // Find the current version of the lego from droppedLegos to avoid stale state
+            const currentLego = useCanvasStore
+              .getState()
+              .droppedLegos.find((l) => l.instanceId === lego.instanceId);
+            if (!currentLego) return;
+
+            setTensorNetwork(
+              new TensorNetwork({ legos: [currentLego], connections: [] })
+            );
+          }
+        }
+      }
+    };
+
     const handleLegClick = (legoId: string, legIndex: number) => {
       // Find the lego that was clicked
-      const clickedLego = droppedLegos.find(
-        (lego) => lego.instanceId === legoId
-      );
+      const clickedLego = useCanvasStore
+        .getState()
+        .droppedLegos.find((lego) => lego.instanceId === legoId);
       if (!clickedLego) return;
       const numQubits = clickedLego.numberOfLegs;
       const h = clickedLego.parity_check_matrix;
@@ -527,9 +665,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       );
 
       // Update droppedLegos by replacing the old lego with the new one
-      const newDroppedLegos = droppedLegos.map((lego) =>
-        lego.instanceId === legoId ? updatedLego : lego
-      );
+      const newDroppedLegos = useCanvasStore
+        .getState()
+        .droppedLegos.map((lego) =>
+          lego.instanceId === legoId ? updatedLego : lego
+        );
       setDroppedLegos(newDroppedLegos);
 
       simpleAutoFlow(
@@ -539,140 +679,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         setDroppedLegos,
         setTensorNetwork
       );
-    };
-
-    const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
-      if (
-        dragState &&
-        dragState.draggingStage === DraggingStage.JUST_FINISHED
-      ) {
-        setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalX: 0,
-          originalY: 0
-        });
-        return;
-      }
-
-      if (dragState?.draggingStage !== DraggingStage.DRAGGING) {
-        // Only handle click if not dragging
-        e.stopPropagation();
-
-        // Clear the drag state since this is a click, not a drag
-        setDragState(
-          (prev) =>
-            ({
-              ...prev,
-              draggedLegoIndex: -1,
-              startX: 0,
-              startY: 0,
-              originalX: 0,
-              originalY: 0
-            }) as DragState
-        );
-
-        if (e.ctrlKey || e.metaKey) {
-          // Handle Ctrl+click for toggling selection
-          // Find the current version of the lego from droppedLegos to avoid stale state
-          const currentLego = droppedLegos.find(
-            (l) => l.instanceId === lego.instanceId
-          );
-          if (!currentLego) return;
-
-          if (tensorNetwork) {
-            const isSelected = tensorNetwork.legos.some(
-              (l) => l.instanceId === currentLego.instanceId
-            );
-            if (isSelected) {
-              // Remove lego from tensor network
-              const newLegos = tensorNetwork.legos.filter(
-                (l) => l.instanceId !== currentLego.instanceId
-              );
-
-              if (newLegos.length === 0) {
-                setTensorNetwork(null);
-              } else {
-                const newConnections = tensorNetwork.connections.filter(
-                  (conn) =>
-                    conn.from.legoId !== currentLego.instanceId &&
-                    conn.to.legoId !== currentLego.instanceId
-                );
-                setTensorNetwork(
-                  new TensorNetwork({
-                    legos: newLegos,
-                    connections: newConnections
-                  })
-                );
-              }
-            } else {
-              // Add lego to tensor network
-              const newLegos = [...tensorNetwork.legos, currentLego];
-              const newConnections = connections.filter(
-                (conn) =>
-                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                  newLegos.some((l) => l.instanceId === conn.to.legoId)
-              );
-
-              setTensorNetwork(
-                new TensorNetwork({
-                  legos: newLegos,
-                  connections: newConnections
-                })
-              );
-            }
-          } else {
-            // If no tensor network exists, create one with just this lego
-            setTensorNetwork(
-              new TensorNetwork({ legos: [currentLego], connections: [] })
-            );
-          }
-        } else {
-          // Regular click behavior
-          const isCurrentlySelected = tensorNetwork?.legos.some(
-            (l) => l.instanceId === lego.instanceId
-          );
-
-          if (isCurrentlySelected && tensorNetwork?.legos.length === 1) {
-            console.log(
-              "second click on same already selected lego, state: ",
-              lego.x,
-              lego.y
-            );
-            // Second click on same already selected lego - expand to connected component
-            // Find the current version of the lego from droppedLegos to avoid stale state
-            const currentLego = droppedLegos.find(
-              (l) => l.instanceId === lego.instanceId
-            );
-            if (!currentLego) return;
-
-            const network = findConnectedComponent(
-              currentLego,
-              droppedLegos,
-              connections
-            );
-            // only set tensor network if there are more than 1 legos in the network
-            if (network.legos.length > 1) {
-              setTensorNetwork(network);
-            } else {
-              console.log("same isolated lego clicked");
-            }
-          } else {
-            // First click on unselected lego or clicking different lego - select just this lego
-            // Find the current version of the lego from droppedLegos to avoid stale state
-            const currentLego = droppedLegos.find(
-              (l) => l.instanceId === lego.instanceId
-            );
-            if (!currentLego) return;
-
-            setTensorNetwork(
-              new TensorNetwork({ legos: [currentLego], connections: [] })
-            );
-          }
-        }
-      }
     };
 
     const handleClone = (
@@ -745,7 +751,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       // Set up initial drag state for the first lego
       setDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoIndex: droppedLegos.length,
+        draggedLegoIndex: useCanvasStore.getState().droppedLegos.length,
         startX: clientX,
         startY: clientY,
         originalX: clickedLego.x + 20,
@@ -875,7 +881,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             : "none",
           transform: demoMode
             ? "scale(0.5) translate(-50%, -50%)"
-            : `translate(${dragOffset.x - size / 2}px, ${dragOffset.y - size / 2}px)`
+            : "translate(-50%, -50%)"
         }}
         onMouseDown={(e) => handleLegoMouseDown(e, index)}
         onClick={(e) => handleLegoClick(e, lego)}
@@ -1141,9 +1147,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   ? connection.to
                   : connection.from;
 
-              const connectedLego = droppedLegos.find(
-                (l) => l.instanceId === connectedLegInfo.legoId
-              );
+              const connectedLego = useCanvasStore
+                .getState()
+                .droppedLegos.find(
+                  (l) => l.instanceId === connectedLegInfo.legoId
+                );
               if (!connectedLego) return null;
 
               const connectedStyle =

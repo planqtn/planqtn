@@ -81,7 +81,14 @@ const isLegoVisible = (
 
 export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
   const viewportBounds = useViewportBounds();
-  const { droppedLegos } = useCanvasStore();
+
+  // Use a more selective subscription to avoid rerenders on drag state changes
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+
+  useEffect(() => {
+    console.log("legoslayer droppedLegos changed", droppedLegos);
+  }, [droppedLegos]);
+
   // const { dragState } = useDragStateStore();
 
   // useEffect(() => {
@@ -136,7 +143,7 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
           );
         })
     );
-  }, [viewportBounds, droppedLegos]);
+  }, [viewportBounds, droppedLegos, canvasRef]);
 
   return <>{renderedLegos}</>;
 });
