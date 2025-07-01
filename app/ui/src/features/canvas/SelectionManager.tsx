@@ -5,14 +5,11 @@ import React, {
   useImperativeHandle
 } from "react";
 import { Box } from "@chakra-ui/react";
-import { SelectionBoxState } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 
 interface SelectionManagerProps {
-  selectionBox: SelectionBoxState;
-  onSelectionBoxChange: (selectionBox: SelectionBoxState) => void;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -22,9 +19,15 @@ export interface SelectionManagerRef {
 
 export const SelectionManager = memo(
   forwardRef<SelectionManagerRef, SelectionManagerProps>(
-    ({ selectionBox, onSelectionBoxChange, canvasRef }, ref) => {
-      const { tensorNetwork, setTensorNetwork, droppedLegos, connections } =
-        useCanvasStore();
+    ({ canvasRef }, ref) => {
+      const {
+        tensorNetwork,
+        setTensorNetwork,
+        droppedLegos,
+        connections,
+        selectionBox,
+        setSelectionBox
+      } = useCanvasStore();
 
       // Helper function to handle selection box logic
       const handleSelectionBoxUpdate = useCallback(
@@ -133,7 +136,7 @@ export const SelectionManager = memo(
             }
           }
         },
-        [droppedLegos, connections, tensorNetwork]
+        [droppedLegos, connections, tensorNetwork, setTensorNetwork]
       );
 
       // Mouse event handlers
@@ -145,7 +148,7 @@ export const SelectionManager = memo(
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
 
-          onSelectionBoxChange({
+          setSelectionBox({
             isSelecting: true,
             startX: x,
             startY: y,
@@ -154,7 +157,7 @@ export const SelectionManager = memo(
             justFinished: false
           });
         },
-        [canvasRef, onSelectionBoxChange]
+        [canvasRef, setSelectionBox]
       );
 
       const handleMouseMove = useCallback(
@@ -167,13 +170,13 @@ export const SelectionManager = memo(
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
 
-          onSelectionBoxChange({
+          setSelectionBox({
             ...selectionBox,
             currentX: x,
             currentY: y
           });
         },
-        [selectionBox, canvasRef, onSelectionBoxChange]
+        [selectionBox, canvasRef, setSelectionBox]
       );
 
       const handleMouseUp = useCallback(
@@ -188,13 +191,13 @@ export const SelectionManager = memo(
           // Finalize the selection
           handleSelectionBoxUpdate(left, right, top, bottom, e, true);
 
-          onSelectionBoxChange({
+          setSelectionBox({
             ...selectionBox,
             isSelecting: false,
             justFinished: true
           });
         },
-        [selectionBox, handleSelectionBoxUpdate, onSelectionBoxChange]
+        [selectionBox, handleSelectionBoxUpdate, setSelectionBox]
       );
 
       // Expose handleMouseDown to parent via ref
@@ -210,11 +213,11 @@ export const SelectionManager = memo(
       React.useEffect(() => {
         if (selectionBox.justFinished) {
           const timeout = setTimeout(() => {
-            onSelectionBoxChange({ ...selectionBox, justFinished: false });
+            setSelectionBox({ ...selectionBox, justFinished: false });
           }, 0);
           return () => clearTimeout(timeout);
         }
-      }, [selectionBox, onSelectionBoxChange]);
+      }, [selectionBox, setSelectionBox]);
 
       return (
         <>

@@ -1,25 +1,22 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 import { Connection } from "../../lib/types";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface ConnectionsLayerProps {
-  hideConnectedLegs: boolean;
   hoveredConnection: Connection | null;
 }
 
 export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
-  hideConnectedLegs,
   hoveredConnection
 }) => {
-  const {
-    connections,
-    addOperation,
-    removeConnections,
-    connectedLegos,
-    legDragState
-  } = useCanvasStore();
+  const connections = useCanvasStore((state) => state.connections);
+  const hideConnectedLegs = useCanvasStore((state) => state.hideConnectedLegs);
+  const addOperation = useCanvasStore((state) => state.addOperation);
+  const removeConnections = useCanvasStore((state) => state.removeConnections);
+  const connectedLegos = useCanvasStore((state) => state.connectedLegos);
+  const legDragState = useCanvasStore((state) => state.legDragState);
 
   // const { tensorNetwork } = useTensorNetworkStore();
   // const { dragState } = useDragStateStore();
@@ -117,6 +114,13 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
     },
     [hoveredConnection]
   );
+
+  useEffect(() => {
+    console.log(
+      "connections layer change due to hoveredConnection",
+      hoveredConnection
+    );
+  }, [hoveredConnection]);
 
   // Memoize rendered connections with optimized calculations
   const renderedConnections = useMemo(() => {

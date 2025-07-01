@@ -1,6 +1,5 @@
 import React, { memo, useMemo, useEffect, useState } from "react";
-import { DroppedLego } from "../../stores/droppedLegoStore";
-import { DroppedLegoDisplay, getLegoBoundingBox } from "./DroppedLegoDisplay";
+import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface LegosLayerProps {
@@ -56,27 +55,6 @@ const useViewportBounds = () => {
   }, []);
 
   return viewportBounds;
-};
-
-// Function to check if a lego is visible in the viewport
-const isLegoVisible = (
-  lego: DroppedLego,
-  viewportBounds: { left: number; top: number; right: number; bottom: number }
-) => {
-  const legoBounds = getLegoBoundingBox(lego, false);
-
-  const legoLeft = lego.x + legoBounds.left;
-  const legoTop = lego.y + legoBounds.top;
-  const legoRight = lego.x + legoBounds.left + legoBounds.width;
-  const legoBottom = lego.y + legoBounds.top + legoBounds.height;
-
-  // Check if lego intersects with viewport
-  return !(
-    legoRight < viewportBounds.left ||
-    legoLeft > viewportBounds.right ||
-    legoBottom < viewportBounds.top ||
-    legoTop > viewportBounds.bottom
-  );
 };
 
 export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {

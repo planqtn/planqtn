@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { SelectionBoxState, Connection } from "../../lib/types";
+import { Connection } from "../../lib/types";
 import { useCanvasDragStateStore } from "../../stores/canvasDragStateStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import {
@@ -21,7 +21,6 @@ interface CanvasMouseHandlerProps {
   selectionManagerRef: React.RefObject<{
     handleMouseDown: (e: MouseEvent) => void;
   } | null>;
-  selectionBox: SelectionBoxState;
   zoomLevel: number;
   altKeyPressed: boolean;
   setHoveredConnection: (connection: Connection | null) => void;
@@ -36,7 +35,6 @@ interface CanvasMouseHandlerProps {
 export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   canvasRef,
   selectionManagerRef,
-  selectionBox,
   zoomLevel,
   altKeyPressed,
   setHoveredConnection,
@@ -63,7 +61,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     groupDragState,
     setGroupDragState,
     legDragState,
-    setLegDragState
+    setLegDragState,
+    selectionBox
   } = useCanvasStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
   const { draggedLegoProto: draggedLego, setDraggedLegoProto: setDraggedLego } =

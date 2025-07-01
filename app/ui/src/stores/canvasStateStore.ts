@@ -32,6 +32,11 @@ import {
   LegoLegPropertiesSlice,
   createLegoLegPropertiesSlice
 } from "./legoLegPropertiesSlice";
+import {
+  CanvasEventHandlingSlice,
+  createCanvasEventHandlingSlice
+} from "./canvasEventHandlingSlice";
+import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
 
 export interface CanvasStore
   extends DroppedLegosSlice,
@@ -46,7 +51,11 @@ export interface CanvasStore
     CloningSlice,
     LegoLegEventsSlice,
     LegDragStateSlice,
-    LegoLegPropertiesSlice {}
+    LegoLegPropertiesSlice,
+    CanvasEventHandlingSlice,
+    CanvasUISlice {
+  setError?: (error: string) => void;
+}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -112,6 +121,8 @@ export const useCanvasStore = create<CanvasStore>()(
     ...useCloningSlice(...a),
     ...useLegoLegEventsSlice(...a),
     ...useLegDragStateStore(...a),
-    ...createLegoLegPropertiesSlice(...a)
+    ...createLegoLegPropertiesSlice(...a),
+    ...createCanvasEventHandlingSlice(...a),
+    ...createCanvasUISlice(...a)
   }))
 );
