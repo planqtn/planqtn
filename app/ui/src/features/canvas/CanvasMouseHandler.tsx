@@ -13,6 +13,11 @@ import {
 } from "./canvasCalculations";
 import { useDraggedLegoStore } from "../../stores/draggedLegoStore";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
+import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore";
+import { AddStopper } from "../../transformations/AddStopper";
+import { useModalStore } from "../../stores/modalStore";
+import { InjectTwoLegged } from "../../transformations/InjectTwoLegged";
+import { useToast } from "@chakra-ui/react";
 
 interface CanvasMouseHandlerProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -23,6 +28,12 @@ interface CanvasMouseHandlerProps {
   zoomLevel: number;
   altKeyPressed: boolean;
   setHoveredConnection: (connection: Connection | null) => void;
+  handleDynamicLegoDrop: (
+    draggedLego: LegoPiece,
+    dropPosition: { x: number; y: number }
+  ) => void;
+  setError: (error: string) => void;
+  hoveredConnection: Connection | null;
 }
 
 export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
@@ -31,11 +42,20 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   selectionBox,
   zoomLevel,
   altKeyPressed,
-  setHoveredConnection
+  setHoveredConnection,
+  handleDynamicLegoDrop,
+  setError,
+  hoveredConnection
 }) => {
   // Zustand store selectors
-  const { droppedLegos, updateDroppedLegos, setDroppedLegos } =
-    useCanvasStore();
+  const {
+    droppedLegos,
+    updateDroppedLegos,
+    setDroppedLegos,
+    setLegosAndConnections,
+    newInstanceId,
+    addDroppedLego
+  } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const { legDragState, setLegDragState } = useLegDragStateStore();
   const { dragState, setDragState } = useDragStateStore();
@@ -48,6 +68,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setBuildingBlockDragState,
     clearBuildingBlockDragState
   } = useBuildingBlockDragStateStore();
+  const toast = useToast();
+
+  const { openCustomLegoDialog } = useModalStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -504,6 +527,56 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       setHoveredConnection(closestConnection);
     };
 
+    const handleDropStopperOnConnection = (
+      dropPosition: { x: number; y: number },
+      draggedLego: LegoPiece
+    ): boolean => {
+      if (draggedLego.id.includes("stopper")) {
+        const closestLeg = findClosestDanglingLeg(
+          dropPosition,
+          droppedLegos,
+          connections
+        );
+        if (!closestLeg) return false;
+
+        // Get max instance ID
+        const maxInstanceId = Math.max(
+          ...droppedLegos.map((l) => parseInt(l.instanceId))
+        );
+
+        // Create the stopper lego
+        const stopperLego: DroppedLego = new DroppedLego(
+          draggedLego,
+          dropPosition.x,
+          dropPosition.y,
+          (maxInstanceId + 1).toString()
+        );
+        try {
+          const addStopper = new AddStopper(connections, droppedLegos);
+          const result = addStopper.apply(
+            closestLeg.lego,
+            closestLeg.legIndex,
+            stopperLego
+          );
+          setLegosAndConnections(result.droppedLegos, result.connections);
+          addOperation(result.operation);
+          return true;
+        } catch (error) {
+          console.error("Failed to add stopper:", error);
+          toast({
+            title: "Error",
+            description:
+              error instanceof Error ? error.message : "Failed to add stopper",
+            status: "error",
+            duration: 3000,
+            isClosable: true
+          });
+          return false;
+        }
+      }
+      return false;
+    };
+
     // Add a handler for when drag ends
     const handleDragEnd = () => {
       setDraggedLego(null);
@@ -517,6 +590,80 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       });
     };
 
+    const handleDrop = async (e: DragEvent) => {
+      if (!draggedLego) return;
+
+      // Get the actual drop position from the event
+      const target = e.target as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      const dropPosition = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+
+      if (draggedLego.id === "custom") {
+        openCustomLegoDialog(dropPosition);
+        return;
+      }
+
+      // Find the closest dangling leg if we're dropping a stopper
+      const success = handleDropStopperOnConnection(dropPosition, draggedLego);
+      if (success) return;
+
+      const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+
+      if (draggedLego.is_dynamic) {
+        handleDynamicLegoDrop(draggedLego, dropPosition);
+        setDraggedLego(null);
+
+        return;
+      }
+
+      // Use the drop position directly from the event
+      const newLego = new DroppedLego(
+        draggedLego,
+        dropPosition.x,
+        dropPosition.y,
+        newInstanceId()
+      );
+
+      // Handle two-legged lego insertion
+      if (numLegs === 2 && hoveredConnection) {
+        const trafo = new InjectTwoLegged(connections, droppedLegos);
+        trafo
+          .apply(newLego, hoveredConnection)
+          .then(
+            ({
+              connections: newConnections,
+              droppedLegos: newDroppedLegos,
+              operation
+            }) => {
+              addOperation(operation);
+              setLegosAndConnections(newDroppedLegos, newConnections);
+            }
+          )
+          .catch((error) => {
+            setError(`${error}`);
+            console.error(error);
+          });
+      } else {
+        console.log("Dropped lego", newLego, new Error("debug").stack);
+        // If it's a custom lego, show the dialog after dropping
+        if (draggedLego.id === "custom") {
+          openCustomLegoDialog({ x: dropPosition.x, y: dropPosition.y });
+        } else {
+          addDroppedLego(newLego);
+          addOperation({
+            type: "add",
+            data: { legosToAdd: [newLego] }
+          });
+        }
+      }
+
+      setHoveredConnection(null);
+      setDraggedLego(null);
+    };
+
     canvas.addEventListener("dragover", handleDragOver);
     canvas.addEventListener("dragenter", handleCanvasDragEnter);
     canvas.addEventListener("dragleave", handleCanvasDragLeave);
@@ -527,6 +674,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     canvas.addEventListener("mouseleave", handleMouseLeave);
     canvas.addEventListener("click", handleCanvasClick);
     document.addEventListener("dragend", handleGlobalDragEnd);
+    canvas.addEventListener("drop", handleDrop);
 
     return () => {
       canvas.removeEventListener("dragover", handleDragOver);
@@ -539,6 +687,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       canvas.removeEventListener("mouseleave", handleMouseLeave);
       canvas.removeEventListener("click", handleCanvasClick);
       document.removeEventListener("dragend", handleGlobalDragEnd);
+      canvas.removeEventListener("drop", handleDrop);
     };
   }, [
     canvasRef,

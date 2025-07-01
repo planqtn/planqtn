@@ -14,7 +14,7 @@ import {
   Button,
   Icon
 } from "@chakra-ui/react";
-import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { getLegoBoundingBox } from "../lego/DroppedLegoDisplay.tsx";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
@@ -28,6 +28,165 @@ import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragSt
 interface BuildingBlocksPanelProps {
   isUserLoggedIn?: boolean;
 }
+
+// Create custom lego piece
+const customLego: LegoPiece = {
+  id: "custom",
+  name: "Custom Lego",
+  shortName: "Custom",
+  description:
+    "Create a custom lego with specified parity check matrix and logical legs",
+  parity_check_matrix: [
+    [1, 1, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 1, 1, 1]
+  ],
+  is_dynamic: true,
+  logical_legs: [],
+  gauge_legs: []
+};
+
+const getDemoLego = (
+  lego: LegoPiece
+): {
+  demoLego: DroppedLego;
+  boundingBox: { left: number; top: number; width: number; height: number };
+} => {
+  const originLego = new DroppedLego(lego, 0, 0, "-1");
+
+  const boundingBox = getLegoBoundingBox(originLego, true);
+  const demoLego = originLego.with({
+    x: -boundingBox.left / 2,
+    y: -boundingBox.top / 2
+  });
+
+  return {
+    demoLego,
+    boundingBox: getLegoBoundingBox(demoLego, true)
+  };
+};
+
+interface LegoListItemProps {
+  lego: LegoPiece;
+  isPanelSmall: boolean;
+  handleDragStart: (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => void;
+}
+
+const LegoListItem = memo<LegoListItemProps>(
+  ({ lego, isPanelSmall, handleDragStart }) => {
+    const { demoLego, boundingBox } = useMemo(() => getDemoLego(lego), [lego]);
+
+    if (isPanelSmall) {
+      return (
+        <Tooltip key={lego.id} label={lego.name} placement="top">
+          <Box
+            p={2}
+            borderRadius="md"
+            _hover={{ bg: "gray.50" }}
+            cursor="move"
+            draggable
+            onDragStart={(e) => handleDragStart(e, lego)}
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            minH="80px"
+            justifyContent="space-between"
+          >
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              width="50px"
+              height="50px"
+              flex="1"
+            >
+              <svg
+                width={Math.min(boundingBox.width * 0.3, 40)}
+                height={Math.min(boundingBox.height * 0.3, 40)}
+                viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+                style={{
+                  overflow: "visible"
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: LegoSvgRenderer.renderLegoAsSVG(demoLego, {
+                    demoMode: true
+                  })
+                }}
+              />
+            </Box>
+            <Box height="14px" display="flex" alignItems="center">
+              {lego.is_dynamic && (
+                <Badge
+                  colorScheme="green"
+                  size="xs"
+                  fontSize="8px"
+                  px={1}
+                  py={0}
+                  height="12px"
+                  minW="auto"
+                >
+                  DYN
+                </Badge>
+              )}
+            </Box>
+          </Box>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Box
+        key={lego.id}
+        p={3}
+        borderRadius="md"
+        _hover={{ bg: "gray.50" }}
+        cursor="move"
+        draggable
+        onDragStart={(e) => handleDragStart(e, lego)}
+        border="1px solid"
+        borderColor="gray.200"
+      >
+        <HStack spacing={4} align="center">
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            width="60px"
+            height="60px"
+            flexShrink={0}
+          >
+            <svg
+              width={Math.min(boundingBox.width * 0.4, 50)}
+              height={Math.min(boundingBox.height * 0.4, 50)}
+              viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              style={{
+                overflow: "visible"
+              }}
+              dangerouslySetInnerHTML={{
+                __html: LegoSvgRenderer.renderLegoAsSVG(demoLego, {
+                  demoMode: true
+                })
+              }}
+            />
+          </Box>
+          <VStack align="start" spacing={1} flex={1}>
+            <Text fontWeight="bold" fontSize="sm" color="gray.800">
+              {lego.name}
+            </Text>
+            <Text fontSize="xs" color="gray.600" noOfLines={2}>
+              {lego.description}
+            </Text>
+            {lego.is_dynamic && (
+              <Badge colorScheme="green" size="xs" mt={1}>
+                Dynamic
+              </Badge>
+            )}
+          </VStack>
+        </HStack>
+      </Box>
+    );
+  }
+);
+LegoListItem.displayName = "LegoListItem";
 
 export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
   ({ isUserLoggedIn }) => {
@@ -81,94 +240,61 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
       };
     }, [checkPanelSize]);
 
-    const handleDragStart = (
-      e: React.DragEvent<HTMLElement>,
-      lego: LegoPiece
-    ) => {
-      // Hide the default drag ghost by setting a transparent image
-      const dragImage = new Image();
-      dragImage.src =
-        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-      e.dataTransfer.setDragImage(dragImage, 0, 0);
+    const handleDragStart = useCallback(
+      (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
+        // Hide the default drag ghost by setting a transparent image
+        const dragImage = new Image();
+        dragImage.src =
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+        e.dataTransfer.setDragImage(dragImage, 0, 0);
 
-      if (lego.id === "custom") {
-        // Store the drop position for the custom lego
-        const rect = e.currentTarget.getBoundingClientRect();
-        // Note: position will be set when the custom lego is dropped, not during drag start
-        // Set the draggedLego state for custom legos
+        if (lego.id === "custom") {
+          // Store the drop position for the custom lego
+          const rect = e.currentTarget.getBoundingClientRect();
+          // Note: position will be set when the custom lego is dropped, not during drag start
+          // Set the draggedLego state for custom legos
 
-        const draggedLego: DroppedLego = new DroppedLego(
-          lego,
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2,
-          newInstanceId()
-        );
-        setDraggedLego(draggedLego);
-        setBuildingBlockDragState({
-          isDragging: true,
-          draggedLego: lego,
-          mouseX: e.clientX,
-          mouseY: e.clientY,
-          dragEnterCounter: 0
-        });
-      } else {
-        // Handle regular lego drag
-        const rect = e.currentTarget.getBoundingClientRect();
-        const draggedLego: DroppedLego = new DroppedLego(
-          lego,
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2,
-          newInstanceId()
-        );
-        setDraggedLego(draggedLego);
-        setBuildingBlockDragState({
-          isDragging: true,
-          draggedLego: lego,
-          mouseX: e.clientX,
-          mouseY: e.clientY,
-          dragEnterCounter: 0
-        });
-      }
-    };
+          const draggedLego: DroppedLego = new DroppedLego(
+            lego,
+            rect.left + rect.width / 2,
+            rect.top + rect.height / 2,
+            newInstanceId()
+          );
+          setDraggedLego(draggedLego);
+          setBuildingBlockDragState({
+            isDragging: true,
+            draggedLego: lego,
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            dragEnterCounter: 0
+          });
+        } else {
+          // Handle regular lego drag
+          const rect = e.currentTarget.getBoundingClientRect();
+          const draggedLego: DroppedLego = new DroppedLego(
+            lego,
+            rect.left + rect.width / 2,
+            rect.top + rect.height / 2,
+            newInstanceId()
+          );
+          console.log("draggedLego", draggedLego);
+          setDraggedLego(draggedLego);
+          setBuildingBlockDragState({
+            isDragging: true,
+            draggedLego: lego,
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            dragEnterCounter: 0
+          });
+        }
+      },
+      [newInstanceId, setBuildingBlockDragState, setDraggedLego]
+    );
 
     const bgColor = useColorModeValue("white", "gray.800");
     const borderColor = useColorModeValue("gray.200", "gray.600");
 
-    // Create custom lego piece
-    const customLego: LegoPiece = {
-      id: "custom",
-      name: "Custom Lego",
-      shortName: "Custom",
-      description:
-        "Create a custom lego with specified parity check matrix and logical legs",
-      parity_check_matrix: [
-        [1, 1, 1, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 1, 1, 1]
-      ],
-      is_dynamic: true,
-      logical_legs: [],
-      gauge_legs: []
-    };
-
-    const getDemoLego = (
-      lego: LegoPiece
-    ): {
-      demoLego: DroppedLego;
-      boundingBox: { left: number; top: number; width: number; height: number };
-    } => {
-      const originLego = new DroppedLego(lego, 0, 0, "-1");
-
-      const boundingBox = getLegoBoundingBox(originLego, true);
-      const demoLego = originLego.with({
-        x: -boundingBox.left / 2,
-        y: -boundingBox.top / 2
-      });
-
-      return {
-        demoLego,
-        boundingBox: getLegoBoundingBox(demoLego, true)
-      };
-    };
+    const allLegos = useMemo(() => [...legos, customLego], [legos]);
 
     return (
       <Box
@@ -248,152 +374,26 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                         gap={2}
                         justifyItems="center"
                       >
-                        {[...legos, customLego].map((lego) => {
-                          const { demoLego, boundingBox } = getDemoLego(lego);
-                          return (
-                            <Tooltip
-                              key={lego.id}
-                              label={lego.name}
-                              placement="top"
-                            >
-                              <Box
-                                p={2}
-                                borderRadius="md"
-                                _hover={{ bg: "gray.50" }}
-                                cursor="move"
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, lego)}
-                                display="flex"
-                                flexDirection="column"
-                                alignItems="center"
-                                minH="80px"
-                                justifyContent="space-between"
-                              >
-                                <Box
-                                  display="flex"
-                                  alignItems="center"
-                                  justifyContent="center"
-                                  width="50px"
-                                  height="50px"
-                                  flex="1"
-                                >
-                                  <svg
-                                    width={Math.min(
-                                      boundingBox.width * 0.3,
-                                      40
-                                    )}
-                                    height={Math.min(
-                                      boundingBox.height * 0.3,
-                                      40
-                                    )}
-                                    viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
-                                    style={{
-                                      overflow: "visible"
-                                    }}
-                                    dangerouslySetInnerHTML={{
-                                      __html: LegoSvgRenderer.renderLegoAsSVG(
-                                        demoLego,
-                                        { demoMode: true }
-                                      )
-                                    }}
-                                  />
-                                </Box>
-                                <Box
-                                  height="14px"
-                                  display="flex"
-                                  alignItems="center"
-                                >
-                                  {lego.is_dynamic && (
-                                    <Badge
-                                      colorScheme="green"
-                                      size="xs"
-                                      fontSize="8px"
-                                      px={1}
-                                      py={0}
-                                      height="12px"
-                                      minW="auto"
-                                    >
-                                      DYN
-                                    </Badge>
-                                  )}
-                                </Box>
-                              </Box>
-                            </Tooltip>
-                          );
-                        })}
+                        {allLegos.map((lego) => (
+                          <LegoListItem
+                            key={lego.id}
+                            lego={lego}
+                            isPanelSmall={isPanelSmall}
+                            handleDragStart={handleDragStart}
+                          />
+                        ))}
                       </Box>
                     ) : (
                       // List layout for normal panels
                       <VStack spacing={2} align="stretch">
-                        {[...legos, customLego].map((lego) => {
-                          const { demoLego, boundingBox } = getDemoLego(lego);
-                          return (
-                            <Box
-                              key={lego.id}
-                              p={3}
-                              borderRadius="md"
-                              _hover={{ bg: "gray.50" }}
-                              cursor="move"
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, lego)}
-                              border="1px solid"
-                              borderColor="gray.200"
-                            >
-                              <HStack spacing={4} align="center">
-                                <Box
-                                  display="flex"
-                                  alignItems="center"
-                                  justifyContent="center"
-                                  width="60px"
-                                  height="60px"
-                                  flexShrink={0}
-                                >
-                                  <svg
-                                    width={Math.min(
-                                      boundingBox.width * 0.4,
-                                      50
-                                    )}
-                                    height={Math.min(
-                                      boundingBox.height * 0.4,
-                                      50
-                                    )}
-                                    viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
-                                    style={{
-                                      overflow: "visible"
-                                    }}
-                                    dangerouslySetInnerHTML={{
-                                      __html: LegoSvgRenderer.renderLegoAsSVG(
-                                        demoLego,
-                                        { demoMode: true }
-                                      )
-                                    }}
-                                  />
-                                </Box>
-                                <VStack align="start" spacing={1} flex={1}>
-                                  <Text
-                                    fontWeight="bold"
-                                    fontSize="sm"
-                                    color="gray.800"
-                                  >
-                                    {lego.name}
-                                  </Text>
-                                  <Text
-                                    fontSize="xs"
-                                    color="gray.600"
-                                    noOfLines={2}
-                                  >
-                                    {lego.description}
-                                  </Text>
-                                  {lego.is_dynamic && (
-                                    <Badge colorScheme="green" size="xs" mt={1}>
-                                      Dynamic
-                                    </Badge>
-                                  )}
-                                </VStack>
-                              </HStack>
-                            </Box>
-                          );
-                        })}
+                        {allLegos.map((lego) => (
+                          <LegoListItem
+                            key={lego.id}
+                            lego={lego}
+                            isPanelSmall={isPanelSmall}
+                            handleDragStart={handleDragStart}
+                          />
+                        ))}
                       </VStack>
                     )}
                   </AccordionPanel>

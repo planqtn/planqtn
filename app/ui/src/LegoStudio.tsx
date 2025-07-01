@@ -64,10 +64,7 @@ import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
-import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
-import { findClosestDanglingLeg } from "./features/canvas/canvasCalculations.ts";
-import { AddStopper } from "./transformations/AddStopper.ts";
-import { InjectTwoLegged } from "./transformations/InjectTwoLegged.ts";
+
 import { DroppedLego, LegoPiece } from "./stores/droppedLegoStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
@@ -185,8 +182,6 @@ const LegoStudioView: React.FC = () => {
   const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(
     null
   );
-  const { draggedLego, setDraggedLego } = useDraggedLegoStore();
-  const { openCustomLegoDialog } = useModalStore();
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
@@ -211,130 +206,6 @@ const LegoStudioView: React.FC = () => {
 
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
-
-  const handleDropStopperOnConnection = (
-    dropPosition: { x: number; y: number },
-    draggedLego: LegoPiece
-  ): boolean => {
-    if (draggedLego.id.includes("stopper")) {
-      const closestLeg = findClosestDanglingLeg(
-        dropPosition,
-        droppedLegos,
-        connections
-      );
-      if (!closestLeg) return false;
-
-      // Get max instance ID
-      const maxInstanceId = Math.max(
-        ...droppedLegos.map((l) => parseInt(l.instanceId))
-      );
-
-      // Create the stopper lego
-      const stopperLego: DroppedLego = new DroppedLego(
-        draggedLego,
-        dropPosition.x,
-        dropPosition.y,
-        (maxInstanceId + 1).toString()
-      );
-      try {
-        const addStopper = new AddStopper(connections, droppedLegos);
-        const result = addStopper.apply(
-          closestLeg.lego,
-          closestLeg.legIndex,
-          stopperLego
-        );
-        setLegosAndConnections(result.droppedLegos, result.connections);
-        addOperation(result.operation);
-        return true;
-      } catch (error) {
-        console.error("Failed to add stopper:", error);
-        toast({
-          title: "Error",
-          description:
-            error instanceof Error ? error.message : "Failed to add stopper",
-          status: "error",
-          duration: 3000,
-          isClosable: true
-        });
-        return false;
-      }
-    }
-    return false;
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    if (!draggedLego) return;
-
-    // Get the actual drop position from the event
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-
-    if (draggedLego.id === "custom") {
-      openCustomLegoDialog(dropPosition);
-      return;
-    }
-
-    // Find the closest dangling leg if we're dropping a stopper
-    const success = handleDropStopperOnConnection(dropPosition, draggedLego);
-    if (success) return;
-
-    const numLegs = draggedLego.parity_check_matrix[0].length / 2;
-
-    if (draggedLego.is_dynamic) {
-      setSelectedDynamicLego(draggedLego);
-      setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
-      setIsDynamicLegoDialogOpen(true);
-      setDraggedLego(null);
-      return;
-    }
-
-    // Use the drop position directly from the event
-    const newLego = new DroppedLego(
-      draggedLego,
-      dropPosition.x,
-      dropPosition.y,
-      newInstanceId()
-    );
-
-    // Handle two-legged lego insertion
-    if (numLegs === 2 && hoveredConnection) {
-      const trafo = new InjectTwoLegged(connections, droppedLegos);
-      trafo
-        .apply(newLego, hoveredConnection)
-        .then(
-          ({
-            connections: newConnections,
-            droppedLegos: newDroppedLegos,
-            operation
-          }) => {
-            addOperation(operation);
-            setLegosAndConnections(newDroppedLegos, newConnections);
-          }
-        )
-        .catch((error) => {
-          setError(`${error}`);
-          console.error(error);
-        });
-    } else {
-      console.log("Dropped lego", newLego);
-      // If it's a custom lego, show the dialog after dropping
-      if (draggedLego.id === "custom") {
-        openCustomLegoDialog({ x: dropPosition.x, y: dropPosition.y });
-      } else {
-        addDroppedLego(newLego);
-        addOperation({
-          type: "add",
-          data: { legosToAdd: [newLego] }
-        });
-      }
-    }
-
-    setHoveredConnection(null);
-    setDraggedLego(null);
-  };
 
   // Add title effect at the top
   useEffect(() => {
@@ -676,6 +547,15 @@ const LegoStudioView: React.FC = () => {
     });
   };
 
+  const handleDynamicLegoDrop = (
+    draggedLego: LegoPiece,
+    dropPosition: { x: number; y: number }
+  ) => {
+    setSelectedDynamicLego(draggedLego);
+    setPendingDropPosition({ x: dropPosition.x, y: dropPosition.y });
+    setIsDynamicLegoDialogOpen(true);
+  };
+
   const handlePullOutSameColoredLeg = async (lego: DroppedLego) => {
     // Get max instance ID
     const maxInstanceId = Math.max(
@@ -928,6 +808,9 @@ const LegoStudioView: React.FC = () => {
         selectionBox={selectionBox}
         zoomLevel={zoomLevel}
         altKeyPressed={altKeyPressed}
+        handleDynamicLegoDrop={handleDynamicLegoDrop}
+        setError={setError}
+        hoveredConnection={hoveredConnection}
       />
 
       <VStack spacing={0} align="stretch" h="100vh">
@@ -966,7 +849,6 @@ const LegoStudioView: React.FC = () => {
                   borderRadius="lg"
                   boxShadow="inner"
                   position="relative"
-                  onDrop={handleDrop}
                   data-canvas="true"
                   style={{
                     userSelect: "none",
