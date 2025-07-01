@@ -1,7 +1,7 @@
 import { cloneDeep } from "lodash";
 import { Connection } from "../lib/types.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
-import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork.ts";
+import { findConnectedComponent } from "../lib/TensorNetwork.ts";
 
 /**
  * Core function that can be called directly with parameters (for tests)
@@ -10,16 +10,12 @@ import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork.ts";
  * @param droppedLegos - All dropped legos
  * @param connections - All connections
  * @param setDroppedLegos - Function to update dropped legos
- * @param setTensorNetwork - Function to update tensor network
  */
 export function simpleAutoFlow(
   changedLego: DroppedLego,
   droppedLegos: DroppedLego[],
   connections: Connection[],
-  setDroppedLegos: (legos: DroppedLego[]) => void,
-  setTensorNetwork: (
-    updater: (prev: TensorNetwork | null) => TensorNetwork | null
-  ) => void
+  setDroppedLegos: (legos: DroppedLego[]) => void
 ): void {
   if (!changedLego) {
     return;
@@ -156,16 +152,6 @@ export function simpleAutoFlow(
           : l
       )
     );
-
-    setTensorNetwork((prev) => {
-      if (!prev) return null;
-      const updatedLegos = prev.legos.map((l: DroppedLego) =>
-        updatedLegosMap.has(l.instanceId)
-          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
-          : l
-      );
-      return prev.with({ legos: updatedLegos });
-    });
   }
 }
 
@@ -175,7 +161,6 @@ export function simpleAutoFlow(
  * @param targetId
  * @param newRows
  * @param setDroppedLegos
- * @param setTensorNetwork
  * @returns new list of legos after the update
  */
 const updateLego = (

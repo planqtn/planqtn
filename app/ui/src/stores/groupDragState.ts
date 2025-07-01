@@ -1,7 +1,8 @@
-import { create } from "zustand";
+import { StateCreator } from "zustand";
 import { GroupDragState } from "../lib/types";
+import { CanvasStore } from "./canvasStateStore";
 
-interface GroupDragStateStore {
+export interface GroupDragStateSlice {
   groupDragState: GroupDragState | null;
   setGroupDragState: (
     groupDragStateOrUpdater:
@@ -9,9 +10,15 @@ interface GroupDragStateStore {
       | null
       | ((prev: GroupDragState | null) => GroupDragState | null)
   ) => void;
+  clearGroupDragState: () => void;
 }
 
-export const useGroupDragStateStore = create<GroupDragStateStore>((set) => ({
+export const useGroupDragStateSlice: StateCreator<
+  CanvasStore,
+  [["zustand/immer", never]],
+  [],
+  GroupDragStateSlice
+> = (set, get) => ({
   groupDragState: null,
 
   setGroupDragState: (
@@ -21,11 +28,15 @@ export const useGroupDragStateStore = create<GroupDragStateStore>((set) => ({
       | ((prev: GroupDragState | null) => GroupDragState | null)
   ) => {
     if (typeof groupDragStateOrUpdater === "function") {
-      set((state) => ({
-        groupDragState: groupDragStateOrUpdater(state.groupDragState)
-      }));
+      set({
+        groupDragState: groupDragStateOrUpdater(get().groupDragState)
+      });
     } else {
       set({ groupDragState: groupDragStateOrUpdater });
     }
+  },
+
+  clearGroupDragState: () => {
+    set({ groupDragState: null });
   }
-}));
+});

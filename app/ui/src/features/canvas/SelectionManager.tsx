@@ -8,7 +8,6 @@ import { Box } from "@chakra-ui/react";
 import { SelectionBoxState } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../../lib/TensorNetwork.ts";
-import { useTensorNetworkStore } from "../../stores/tensorNetworkStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 
 interface SelectionManagerProps {
@@ -24,8 +23,8 @@ export interface SelectionManagerRef {
 export const SelectionManager = memo(
   forwardRef<SelectionManagerRef, SelectionManagerProps>(
     ({ selectionBox, onSelectionBoxChange, canvasRef }, ref) => {
-      const { droppedLegos, connections } = useCanvasStore();
-      const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
+      const { tensorNetwork, setTensorNetwork, droppedLegos, connections } =
+        useCanvasStore();
 
       // Helper function to handle selection box logic
       const handleSelectionBoxUpdate = useCallback(

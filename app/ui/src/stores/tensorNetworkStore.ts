@@ -1,41 +1,22 @@
-import { create } from "zustand";
+import { StateCreator } from "zustand";
 import { TensorNetwork } from "../lib/TensorNetwork";
+import { CanvasStore } from "./canvasStateStore";
 
-interface TensorNetworkStore {
+export interface TensorNetworkSlice {
   tensorNetwork: TensorNetwork | null;
-  setTensorNetwork: (
-    networkOrUpdater:
-      | TensorNetwork
-      | null
-      | ((prev: TensorNetwork | null) => TensorNetwork | null)
-  ) => void;
-  updateTensorNetwork: (
-    updater: (prev: TensorNetwork | null) => TensorNetwork | null
-  ) => void;
+  setTensorNetwork: (network: TensorNetwork | null) => void;
 }
 
-export const useTensorNetworkStore = create<TensorNetworkStore>((set) => ({
+export const useTensorNetworkSlice: StateCreator<
+  CanvasStore,
+  [["zustand/immer", never]],
+  [],
+  TensorNetworkSlice
+> = (set) => ({
   tensorNetwork: null,
 
-  setTensorNetwork: (
-    networkOrUpdater:
-      | TensorNetwork
-      | null
-      | ((prev: TensorNetwork | null) => TensorNetwork | null)
-  ) => {
+  setTensorNetwork: (network) => {
     console.log("setTensorNetwork", new Error().stack);
-    if (typeof networkOrUpdater === "function") {
-      set((state) => ({
-        tensorNetwork: networkOrUpdater(state.tensorNetwork)
-      }));
-    } else {
-      set({ tensorNetwork: networkOrUpdater });
-    }
-  },
-
-  updateTensorNetwork: (
-    updater: (prev: TensorNetwork | null) => TensorNetwork | null
-  ) => {
-    set((state) => ({ tensorNetwork: updater(state.tensorNetwork) }));
+    set({ tensorNetwork: network });
   }
-}));
+});

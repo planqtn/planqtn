@@ -51,30 +51,21 @@ describe("simple auto flow", () => {
     tensorNetwork: TensorNetwork
   ): {
     updatedLegos: DroppedLego[];
-    updatedTensorNetwork: TensorNetwork | null;
   } => {
     let updatedLegos = [...tensorNetwork.legos];
-    let updatedTensorNetwork: TensorNetwork | null = tensorNetwork;
 
     const setDroppedLegos = (legos: DroppedLego[]) => {
       updatedLegos = legos;
-    };
-
-    const setTensorNetwork = (
-      updater: (prev: TensorNetwork | null) => TensorNetwork | null
-    ) => {
-      updatedTensorNetwork = updater(updatedTensorNetwork);
     };
 
     simpleAutoFlow(
       changedLego,
       updatedLegos,
       tensorNetwork.connections,
-      setDroppedLegos,
-      setTensorNetwork
+      setDroppedLegos
     );
 
-    return { updatedLegos, updatedTensorNetwork };
+    return { updatedLegos };
   };
 
   it("do nothing if no highlights", () => {

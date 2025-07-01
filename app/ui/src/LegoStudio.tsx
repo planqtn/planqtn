@@ -59,7 +59,6 @@ import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
 import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
-import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
@@ -123,7 +122,8 @@ const LegoStudioView: React.FC = () => {
     setLegosAndConnections,
     hideConnectedLegs,
     setHideConnectedLegs,
-    addOperation
+    addOperation,
+    tensorNetwork
   } = useCanvasStore();
 
   const [error, setError] = useState<string>("");
@@ -134,7 +134,6 @@ const LegoStudioView: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
   // Use centralized TensorNetwork store
-  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
   const [selectionBox, setSelectionBox] = useState<SelectionBoxState>({
     isSelecting: false,
@@ -493,7 +492,6 @@ const LegoStudioView: React.FC = () => {
 
     // Clear all state
     setLegosAndConnections([], []);
-    setTensorNetwork(null);
   };
 
   // Cache clearing is now handled by localStorage-based caching system
@@ -509,7 +507,6 @@ const LegoStudioView: React.FC = () => {
       } = await trafo.apply(legosToFuse);
       addOperation(operation);
       setLegosAndConnections(newDroppedLegos, newConnections);
-      setTensorNetwork(null);
     } catch (error) {
       setError(`${error}`);
       return;

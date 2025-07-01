@@ -3,7 +3,6 @@ import { getLegoStyle } from "./LegoStyles";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
-import { useGroupDragStateStore } from "../../stores/groupDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 
 interface DragProxyProps {
@@ -103,7 +102,7 @@ const GroupDragProxy: React.FC<{
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
   const { droppedLegos, dragState } = useCanvasStore();
-  const { groupDragState } = useGroupDragStateStore();
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
 
   // Memoize dragged legos to prevent stale references
   const draggedLegos = useMemo(() => {
@@ -290,9 +289,7 @@ export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
   const dragStateStage = useCanvasStore(
     (state) => state.dragState?.draggingStage
   );
-  const groupDragState = useGroupDragStateStore(
-    (state) => state.groupDragState
-  );
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );

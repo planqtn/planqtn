@@ -1,15 +1,10 @@
 import { Connection, PauliOperator } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
-import {
-  findConnectedComponent,
-  TensorNetwork
-} from "../../lib/TensorNetwork.ts";
+import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import { LegPosition, LegStyle } from "./LegoStyles.ts";
 import { useMemo, memo, useEffect } from "react";
-import { useTensorNetworkStore } from "../../stores/tensorNetworkStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 import { useLegDragStateStore } from "../../stores/legDragState.ts";
-import { useGroupDragStateStore } from "../../stores/groupDragState.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
 
@@ -224,9 +219,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const hideConnectedLegs = useCanvasStore(
       (state) => state.hideConnectedLegs
     );
-    const addDroppedLegos = useCanvasStore((state) => state.addDroppedLegos);
+
     const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
-    const newInstanceId = useCanvasStore((state) => state.newInstanceId);
+
     const addConnections = useCanvasStore((state) => state.addConnections);
     const addOperation = useCanvasStore((state) => state.addOperation);
     const temporarilyConnectLego = useCanvasStore(
@@ -235,7 +230,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const updateLegoConnectivity = useCanvasStore(
       (state) => state.updateLegoConnectivity
     );
-    const setDragState = useCanvasStore((state) => state.setDragState);
 
     // Only subscribe to the specific drag state properties that matter for this lego
     const isThisLegoBeingDragged = useCanvasStore((state) => {
@@ -265,18 +259,15 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     console.log("lego", lego.instanceId, "render due to rerender");
 
-    const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
+    const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
     const setLegDragState = useLegDragStateStore(
       (state) => state.setLegDragState
-    );
-    const setGroupDragState = useGroupDragStateStore(
-      (state) => state.setGroupDragState
     );
     const { legDragState } = useLegDragStateStore();
 
     // Optimize tensor network subscription to only trigger when this lego's selection changes
     // But still maintain access to the full tensor network for operations
-    const isSelected = useTensorNetworkStore((state) => {
+    const isSelected = useCanvasStore((state) => {
       return (
         state.tensorNetwork?.legos.some(
           (l) => l.instanceId === lego.instanceId
@@ -401,52 +392,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       });
     };
 
-    const handleLegoMouseDown = (e: React.MouseEvent, index: number) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // Get lego from store instead of passed prop
-      const lego = useCanvasStore.getState().droppedLegos[index];
-
-      if (e.shiftKey) {
-        handleClone(lego, e.clientX, e.clientY);
-      } else {
-        const isPartOfSelection = tensorNetwork?.legos.some(
-          (l) => l.instanceId === lego.instanceId
-        );
-
-        if (isPartOfSelection && (tensorNetwork?.legos.length || 0) > 1) {
-          // Dragging a selected lego - move the whole group
-          const selectedLegos = tensorNetwork?.legos || [];
-          const currentPositions: {
-            [instanceId: string]: { x: number; y: number };
-          } = {};
-          selectedLegos.forEach((l) => {
-            currentPositions[l.instanceId] = { x: l.x, y: l.y };
-          });
-
-          setGroupDragState({
-            legoInstanceIds: selectedLegos.map((l) => l.instanceId),
-            originalPositions: currentPositions
-          });
-        } else {
-          // For non-selected legos, don't set tensor network yet
-          // It will be set when we actually start dragging (in mouse move)
-          // Clear any existing group drag state
-          setGroupDragState(null);
-        }
-
-        // not dragging yet but the index is set, so we can start dragging when the mouse moves
-        setDragState({
-          draggingStage: DraggingStage.MAYBE_DRAGGING,
-          draggedLegoIndex: index,
-          startX: e.clientX,
-          startY: e.clientY,
-          originalX: lego.x,
-          originalY: lego.y
-        });
-      }
-    };
-
     const handleLegMouseDown = (
       e: React.MouseEvent,
       legoId: string,
@@ -473,137 +418,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         currentX: x,
         currentY: y
       });
-    };
-
-    const handleLegoClick = (e: React.MouseEvent, lego: DroppedLego) => {
-      // Get the current global drag state
-      const currentDragState = useCanvasStore.getState().dragState;
-
-      if (currentDragState.draggingStage === DraggingStage.JUST_FINISHED) {
-        setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalX: 0,
-          originalY: 0
-        });
-        return;
-      }
-
-      if (currentDragState.draggingStage !== DraggingStage.DRAGGING) {
-        // Only handle click if not dragging
-        e.stopPropagation();
-
-        // Clear the drag state since this is a click, not a drag
-        setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalX: 0,
-          originalY: 0
-        });
-
-        if (e.ctrlKey || e.metaKey) {
-          // Handle Ctrl+click for toggling selection
-          // Find the current version of the lego from droppedLegos to avoid stale state
-          const currentLego = useCanvasStore
-            .getState()
-            .droppedLegos.find((l) => l.instanceId === lego.instanceId);
-          if (!currentLego) return;
-
-          if (tensorNetwork) {
-            const isSelected = tensorNetwork.legos.some(
-              (l) => l.instanceId === currentLego.instanceId
-            );
-            if (isSelected) {
-              // Remove lego from tensor network
-              const newLegos = tensorNetwork.legos.filter(
-                (l) => l.instanceId !== currentLego.instanceId
-              );
-
-              if (newLegos.length === 0) {
-                setTensorNetwork(null);
-              } else {
-                const newConnections = tensorNetwork.connections.filter(
-                  (conn) =>
-                    conn.from.legoId !== currentLego.instanceId &&
-                    conn.to.legoId !== currentLego.instanceId
-                );
-                setTensorNetwork(
-                  new TensorNetwork({
-                    legos: newLegos,
-                    connections: newConnections
-                  })
-                );
-              }
-            } else {
-              // Add lego to tensor network
-              const newLegos = [...tensorNetwork.legos, currentLego];
-              const newConnections = connections.filter(
-                (conn) =>
-                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                  newLegos.some((l) => l.instanceId === conn.to.legoId)
-              );
-
-              setTensorNetwork(
-                new TensorNetwork({
-                  legos: newLegos,
-                  connections: newConnections
-                })
-              );
-            }
-          } else {
-            // If no tensor network exists, create one with just this lego
-            setTensorNetwork(
-              new TensorNetwork({ legos: [currentLego], connections: [] })
-            );
-          }
-        } else {
-          // Regular click behavior
-          const isCurrentlySelected = tensorNetwork?.legos.some(
-            (l) => l.instanceId === lego.instanceId
-          );
-
-          if (isCurrentlySelected && tensorNetwork?.legos.length === 1) {
-            console.log(
-              "second click on same already selected lego, state: ",
-              lego.x,
-              lego.y
-            );
-            // Second click on same already selected lego - expand to connected component
-            // Find the current version of the lego from droppedLegos to avoid stale state
-            const currentLego = useCanvasStore
-              .getState()
-              .droppedLegos.find((l) => l.instanceId === lego.instanceId);
-            if (!currentLego) return;
-
-            const network = findConnectedComponent(
-              currentLego,
-              useCanvasStore.getState().droppedLegos,
-              connections
-            );
-            // only set tensor network if there are more than 1 legos in the network
-            if (network.legos.length > 1) {
-              setTensorNetwork(network);
-            } else {
-              console.log("same isolated lego clicked");
-            }
-          } else {
-            // First click on unselected lego or clicking different lego - select just this lego
-            // Find the current version of the lego from droppedLegos to avoid stale state
-            const currentLego = useCanvasStore
-              .getState()
-              .droppedLegos.find((l) => l.instanceId === lego.instanceId);
-            if (!currentLego) return;
-
-            setTensorNetwork(
-              new TensorNetwork({ legos: [currentLego], connections: [] })
-            );
-          }
-        }
-      }
     };
 
     const handleLegClick = (legoId: string, legIndex: number) => {
@@ -692,100 +506,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         updatedLego,
         newDroppedLegos,
         connections,
-        setDroppedLegos,
-        setTensorNetwork
+        setDroppedLegos
       );
-    };
-
-    const handleClone = (
-      clickedLego: DroppedLego,
-      clientX: number,
-      clientY: number
-    ) => {
-      const isSelected =
-        tensorNetwork &&
-        tensorNetwork?.legos.some(
-          (l) => l.instanceId === clickedLego.instanceId
-        );
-
-      // Check if we're cloning multiple legos
-      const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
-
-      // Get a single starting ID for all new legos
-      const startingId = parseInt(newInstanceId());
-
-      // Create a mapping from old instance IDs to new ones
-      const instanceIdMap = new Map<string, string>();
-      const newLegos = legosToClone.map((l, idx) => {
-        const newId = String(startingId + idx);
-        instanceIdMap.set(l.instanceId, newId);
-        return l.with({
-          instanceId: newId,
-          x: l.x + 20,
-          y: l.y + 20
-        });
-      });
-
-      // Clone connections between the selected legos
-      const newConnections = connections
-        .filter(
-          (conn) =>
-            legosToClone.some((l) => l.instanceId === conn.from.legoId) &&
-            legosToClone.some((l) => l.instanceId === conn.to.legoId)
-        )
-        .map(
-          (conn) =>
-            new Connection(
-              {
-                legoId: instanceIdMap.get(conn.from.legoId)!,
-                legIndex: conn.from.legIndex
-              },
-              {
-                legoId: instanceIdMap.get(conn.to.legoId)!,
-                legIndex: conn.to.legIndex
-              }
-            )
-        );
-
-      // Add new legos and connections
-      addDroppedLegos(newLegos);
-      addConnections(newConnections);
-
-      // Set up drag state for the group
-      const positions: { [instanceId: string]: { x: number; y: number } } = {};
-      newLegos.forEach((l) => {
-        positions[l.instanceId] = { x: l.x, y: l.y };
-      });
-
-      if (newLegos.length > 1) {
-        setGroupDragState({
-          legoInstanceIds: newLegos.map((l) => l.instanceId),
-          originalPositions: positions
-        });
-      }
-
-      // Set up initial drag state for the first lego
-      // Get the current droppedLegos length to find the correct index
-      const currentDroppedLegos = useCanvasStore.getState().droppedLegos;
-      const firstNewLegoIndex = currentDroppedLegos.length - newLegos.length;
-
-      setDragState({
-        draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoIndex: firstNewLegoIndex,
-        startX: clientX,
-        startY: clientY,
-        originalX: clickedLego.x + 20,
-        originalY: clickedLego.y + 20
-      });
-
-      // Add to history
-      addOperation({
-        type: "add",
-        data: {
-          legosToAdd: newLegos,
-          connectionsToAdd: newConnections
-        }
-      });
     };
 
     // // Function to get leg visibility style
@@ -883,255 +605,329 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       );
     };
 
+    const storeHandleLegoClick = useCanvasStore(
+      (state) => state.handleLegoClick
+    );
+    const storeHandleLegoMouseDown = useCanvasStore(
+      (state) => state.handleLegoMouseDown
+    );
+
+    const handleLegoClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      storeHandleLegoClick(lego, e.ctrlKey, e.metaKey);
+    };
+
+    const handleLegoMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
+    };
+
     return (
-      <div
-        style={{
-          position: "absolute",
-          left: `${basePosition.x}px`,
-          top: `${basePosition.y}px`,
-          width: `${size}px`,
-          height: `${size}px`,
-          pointerEvents: "all",
-          cursor: isThisLegoDragged ? "grabbing" : "grab",
-          userSelect: "none",
-          zIndex: 0,
-          opacity: isThisLegoDragged ? 0.5 : 1,
-          filter: isSelected
-            ? "drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))"
-            : "none",
-          transform: demoMode
-            ? "scale(0.5) translate(-50%, -50%)"
-            : "translate(-50%, -50%)"
-        }}
-        onMouseDown={(e) => handleLegoMouseDown(e, index)}
-        onClick={(e) => handleLegoClick(e, lego)}
-      >
-        <svg
-          width={size}
-          height={size}
+      <>
+        <div
           style={{
-            pointerEvents: "all",
             position: "absolute",
-            left: `${0}px`,
-            top: `${0}px`,
-            overflow: "visible"
+            left: `${basePosition.x}px`,
+            top: `${basePosition.y}px`,
+            width: `${size}px`,
+            height: `${size}px`,
+            pointerEvents: "all",
+            cursor: isThisLegoDragged ? "grabbing" : "grab",
+            userSelect: "none",
+            zIndex: 0,
+            opacity: isThisLegoDragged ? 0.5 : 1,
+            filter: isSelected
+              ? "drop-shadow(0 0 4px rgba(66, 153, 225, 0.5))"
+              : "none",
+            transform: demoMode
+              ? "scale(0.5) translate(-50%, -50%)"
+              : "translate(-50%, -50%)"
           }}
-          className="lego-svg"
-          transform={demoMode ? "" : `translate(${size / 2}, ${size / 2})`}
+          onClick={handleLegoClick}
+          onMouseDown={handleLegoMouseDown}
         >
-          {/* Layer 1: Static leg lines (gray background) */}
-          <StaticLegsLayer
-            legStyles={lego.style!.legStyles}
-            shouldHideLeg={shouldHideLeg}
-          />
+          <svg
+            width={size}
+            height={size}
+            style={{
+              pointerEvents: "all",
+              position: "absolute",
+              left: `${0}px`,
+              top: `${0}px`,
+              overflow: "visible"
+            }}
+            className="lego-svg"
+            transform={demoMode ? "" : `translate(${size / 2}, ${size / 2})`}
+          >
+            {/* Layer 1: Static leg lines (gray background) */}
+            <StaticLegsLayer
+              legStyles={lego.style!.legStyles}
+              shouldHideLeg={shouldHideLeg}
+            />
 
-          {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
-          {lego.style!.legStyles.map((legStyle, legIndex) => {
-            const legColor = legStyle.color;
-            const shouldHide = shouldHideLeg(legIndex);
+            {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
+            {lego.style!.legStyles.map((legStyle, legIndex) => {
+              const legColor = legStyle.color;
+              const shouldHide = shouldHideLeg(legIndex);
 
-            if (legColor === "#A0AEC0" || shouldHide) {
-              return null;
-            }
+              if (legColor === "#A0AEC0" || shouldHide) {
+                return null;
+              }
 
-            return (
-              <g key={`highlight-leg-${legIndex}`}>
-                <line
-                  x1={legStyle.position.startX}
-                  y1={legStyle.position.startY}
-                  x2={legStyle.position.endX}
-                  y2={legStyle.position.endY}
-                  stroke={legColor}
-                  strokeWidth={4}
-                  strokeDasharray={
-                    legStyle.lineStyle === "dashed" ? "5,5" : undefined
-                  }
-                  style={{ pointerEvents: "none" }}
-                />
-              </g>
-            );
-          })}
-
-          {/* Layer 3: Interactive leg endpoints and logical leg interactions */}
-          {lego.style!.legStyles.map((legStyle, legIndex) => {
-            const isLogical = lego.logical_legs.includes(legIndex);
-            const legColor = legStyle.color;
-            const isBeingDragged =
-              legDragState?.isDragging &&
-              legDragState.legoId === lego.instanceId &&
-              legDragState.legIndex === legIndex;
-
-            const shouldHide = shouldHideLeg(legIndex);
-
-            if (shouldHide) {
-              return null;
-            }
-
-            return (
-              <g key={`interactive-leg-${legIndex}`}>
-                {/* Logical leg interactive line - rendered on top for clicks */}
-                {isLogical && (
+              return (
+                <g key={`highlight-leg-${legIndex}`}>
                   <line
                     x1={legStyle.position.startX}
                     y1={legStyle.position.startY}
                     x2={legStyle.position.endX}
                     y2={legStyle.position.endY}
-                    stroke="transparent"
-                    strokeWidth={5}
-                    onMouseOver={(e) => {
-                      e.stopPropagation();
-                      const line = e.target as SVGLineElement;
-                      line.style.stroke = legColor;
-                    }}
-                    onMouseOut={(e) => {
-                      e.stopPropagation();
-                      const line = e.target as SVGLineElement;
-                      line.style.stroke = "transparent";
-                    }}
+                    stroke={legColor}
+                    strokeWidth={4}
+                    strokeDasharray={
+                      legStyle.lineStyle === "dashed" ? "5,5" : undefined
+                    }
+                    style={{ pointerEvents: "none" }}
+                  />
+                </g>
+              );
+            })}
+
+            {/* Layer 3: Interactive leg endpoints and logical leg interactions */}
+            {lego.style!.legStyles.map((legStyle, legIndex) => {
+              const isLogical = lego.logical_legs.includes(legIndex);
+              const legColor = legStyle.color;
+              const isBeingDragged =
+                legDragState?.isDragging &&
+                legDragState.legoId === lego.instanceId &&
+                legDragState.legIndex === legIndex;
+
+              const shouldHide = shouldHideLeg(legIndex);
+
+              if (shouldHide) {
+                return null;
+              }
+
+              return (
+                <g key={`interactive-leg-${legIndex}`}>
+                  {/* Logical leg interactive line - rendered on top for clicks */}
+                  {isLogical && (
+                    <line
+                      x1={legStyle.position.startX}
+                      y1={legStyle.position.startY}
+                      x2={legStyle.position.endX}
+                      y2={legStyle.position.endY}
+                      stroke="transparent"
+                      strokeWidth={5}
+                      onMouseOver={(e) => {
+                        e.stopPropagation();
+                        const line = e.target as SVGLineElement;
+                        line.style.stroke = legColor;
+                      }}
+                      onMouseOut={(e) => {
+                        e.stopPropagation();
+                        const line = e.target as SVGLineElement;
+                        line.style.stroke = "transparent";
+                      }}
+                      style={{
+                        cursor: "pointer",
+                        pointerEvents: "visibleStroke"
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLegClick(lego.instanceId, legIndex);
+                      }}
+                    />
+                  )}
+
+                  {/* Draggable Endpoint */}
+                  <circle
+                    cx={legStyle.position.endX}
+                    cy={legStyle.position.endY}
+                    r={LEG_ENDPOINT_RADIUS}
+                    className="leg-endpoint"
+                    fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
+                    stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
+                    strokeWidth="2"
                     style={{
                       cursor: "pointer",
-                      pointerEvents: "visibleStroke"
+                      pointerEvents: "all",
+                      transition: "stroke 0.2s, fill 0.2s"
                     }}
-                    onClick={(e) => {
+                    onMouseDown={(e) => {
                       e.stopPropagation();
-                      handleLegClick(lego.instanceId, legIndex);
+                      handleLegMouseDown(e, lego.instanceId, legIndex);
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isBeingDragged) {
+                        const circle = e.target as SVGCircleElement;
+                        circle.style.stroke = legColor;
+                        circle.style.fill = "rgb(235, 248, 255)";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isBeingDragged) {
+                        const circle = e.target as SVGCircleElement;
+                        circle.style.stroke = legColor;
+                        circle.style.fill = "white";
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      e.stopPropagation();
+                      handleLegMouseUp(e, legIndex);
                     }}
                   />
-                )}
+                </g>
+              );
+            })}
 
-                {/* Draggable Endpoint */}
-                <circle
-                  cx={legStyle.position.endX}
-                  cy={legStyle.position.endY}
-                  r={LEG_ENDPOINT_RADIUS}
-                  className="leg-endpoint"
-                  fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
-                  stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
-                  strokeWidth="2"
-                  style={{
-                    cursor: "pointer",
-                    pointerEvents: "all",
-                    transition: "stroke 0.2s, fill 0.2s"
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleLegMouseDown(e, lego.instanceId, legIndex);
-                  }}
-                  onMouseOver={(e) => {
-                    if (!isBeingDragged) {
-                      const circle = e.target as SVGCircleElement;
-                      circle.style.stroke = legColor;
-                      circle.style.fill = "rgb(235, 248, 255)";
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!isBeingDragged) {
-                      const circle = e.target as SVGCircleElement;
-                      circle.style.stroke = legColor;
-                      circle.style.fill = "white";
-                    }
-                  }}
-                  onMouseUp={(e) => {
-                    e.stopPropagation();
-                    handleLegMouseUp(e, legIndex);
-                  }}
-                />
-              </g>
-            );
-          })}
+            {/* Layer 4: Lego body */}
+            <LegoBodyLayer
+              lego={lego}
+              size={size}
+              numRegularLegs={numRegularLegs}
+              isSelected={isSelected || false}
+            />
 
-          {/* Layer 4: Lego body */}
-          <LegoBodyLayer
-            lego={lego}
-            size={size}
-            numRegularLegs={numRegularLegs}
-            isSelected={isSelected || false}
-          />
-
-          {/* Text content - selection-aware */}
-          {!demoMode && (
-            <g>
-              {numRegularLegs <= 2 ? (
-                <g transform={`translate(-${size / 2}, -${size / 2})`}>
-                  {lego.style!.displayShortName ? (
-                    <g>
+            {/* Text content - selection-aware */}
+            {!demoMode && (
+              <g>
+                {numRegularLegs <= 2 ? (
+                  <g transform={`translate(-${size / 2}, -${size / 2})`}>
+                    {lego.style!.displayShortName ? (
+                      <g>
+                        <text
+                          x={size / 2}
+                          y={size / 2 - 6}
+                          fontSize="12"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={isSelected ? "white" : "#000000"}
+                        >
+                          {lego.shortName}
+                        </text>
+                        <text
+                          x={size / 2}
+                          y={size / 2 + 6}
+                          fontSize="12"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={isSelected ? "white" : "#000000"}
+                        >
+                          {lego.instanceId}
+                        </text>
+                      </g>
+                    ) : (
                       <text
                         x={size / 2}
-                        y={size / 2 - 6}
+                        y={size / 2}
                         fontSize="12"
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={isSelected ? "white" : "#000000"}
                       >
-                        {lego.shortName}
-                      </text>
-                      <text
-                        x={size / 2}
-                        y={size / 2 + 6}
-                        fontSize="12"
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill={isSelected ? "white" : "#000000"}
-                      >
                         {lego.instanceId}
                       </text>
-                    </g>
-                  ) : (
+                    )}
+                  </g>
+                ) : (
+                  <text
+                    x="0"
+                    y={lego.logical_legs.length > 0 ? 5 : 0}
+                    fontSize="10"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={isSelected ? "white" : "#000000"}
+                    style={{ pointerEvents: "none" }}
+                  >
+                    {lego.style!.displayShortName ? (
+                      <>
+                        {lego.shortName}
+                        <tspan x="0" dy="12">
+                          {lego.instanceId}
+                        </tspan>
+                      </>
+                    ) : (
+                      lego.instanceId
+                    )}
+                  </text>
+                )}
+              </g>
+            )}
+
+            {/* Leg Labels - dynamic visibility */}
+            {!isScalarLego(lego) &&
+              !demoMode &&
+              lego.style!.legStyles.map((legStyle, legIndex) => {
+                // Check if leg is connected
+                const isLegConnectedToSomething = connections.some(
+                  (c) =>
+                    (c.from.legoId === lego.instanceId &&
+                      c.from.legIndex === legIndex) ||
+                    (c.to.legoId === lego.instanceId &&
+                      c.to.legIndex === legIndex)
+                );
+
+                // If leg is not connected, always show the label
+                if (!isLegConnectedToSomething) {
+                  return (
                     <text
-                      x={size / 2}
-                      y={size / 2}
+                      key={`${lego.instanceId}-label-${legIndex}`}
+                      x={legStyle.position.labelX}
+                      y={legStyle.position.labelY}
                       fontSize="12"
-                      fontWeight="bold"
+                      fill="#666666"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fill={isSelected ? "white" : "#000000"}
+                      style={{ pointerEvents: "none" }}
                     >
-                      {lego.instanceId}
+                      {legIndex}
                     </text>
-                  )}
-                </g>
-              ) : (
-                <text
-                  x="0"
-                  y={lego.logical_legs.length > 0 ? 5 : 0}
-                  fontSize="10"
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill={isSelected ? "white" : "#000000"}
-                  style={{ pointerEvents: "none" }}
-                >
-                  {lego.style!.displayShortName ? (
-                    <>
-                      {lego.shortName}
-                      <tspan x="0" dy="12">
-                        {lego.instanceId}
-                      </tspan>
-                    </>
-                  ) : (
-                    lego.instanceId
-                  )}
-                </text>
-              )}
-            </g>
-          )}
+                  );
+                }
 
-          {/* Leg Labels - dynamic visibility */}
-          {!isScalarLego(lego) &&
-            !demoMode &&
-            lego.style!.legStyles.map((legStyle, legIndex) => {
-              // Check if leg is connected
-              const isLegConnectedToSomething = connections.some(
-                (c) =>
-                  (c.from.legoId === lego.instanceId &&
-                    c.from.legIndex === legIndex) ||
-                  (c.to.legoId === lego.instanceId &&
-                    c.to.legIndex === legIndex)
-              );
+                const thisLegStyle = lego.style!.legStyles[legIndex];
+                const isThisHighlighted = thisLegStyle.is_highlighted;
 
-              // If leg is not connected, always show the label
-              if (!isLegConnectedToSomething) {
+                // Find the connected leg's style
+                const connection = connections.find(
+                  (c) =>
+                    (c.from.legoId === lego.instanceId &&
+                      c.from.legIndex === legIndex) ||
+                    (c.to.legoId === lego.instanceId &&
+                      c.to.legIndex === legIndex)
+                );
+
+                if (!connection) return null;
+
+                const connectedLegInfo =
+                  connection.from.legoId === lego.instanceId
+                    ? connection.to
+                    : connection.from;
+
+                const connectedLego = useCanvasStore
+                  .getState()
+                  .droppedLegos.find(
+                    (l) => l.instanceId === connectedLegInfo.legoId
+                  );
+                if (!connectedLego) return null;
+
+                const connectedStyle =
+                  connectedLego.style!.legStyles[connectedLegInfo.legIndex];
+
+                // Hide label if conditions are met
+                const shouldHideLabel =
+                  hideConnectedLegs &&
+                  !lego.alwaysShowLegs &&
+                  (!isThisHighlighted
+                    ? !connectedStyle.is_highlighted
+                    : connectedStyle.is_highlighted &&
+                      connectedStyle.color === thisLegStyle.color);
+
+                if (shouldHideLabel) return null;
+
                 return (
                   <text
                     key={`${lego.instanceId}-label-${legIndex}`}
@@ -1146,65 +942,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     {legIndex}
                   </text>
                 );
-              }
-
-              const thisLegStyle = lego.style!.legStyles[legIndex];
-              const isThisHighlighted = thisLegStyle.is_highlighted;
-
-              // Find the connected leg's style
-              const connection = connections.find(
-                (c) =>
-                  (c.from.legoId === lego.instanceId &&
-                    c.from.legIndex === legIndex) ||
-                  (c.to.legoId === lego.instanceId &&
-                    c.to.legIndex === legIndex)
-              );
-
-              if (!connection) return null;
-
-              const connectedLegInfo =
-                connection.from.legoId === lego.instanceId
-                  ? connection.to
-                  : connection.from;
-
-              const connectedLego = useCanvasStore
-                .getState()
-                .droppedLegos.find(
-                  (l) => l.instanceId === connectedLegInfo.legoId
-                );
-              if (!connectedLego) return null;
-
-              const connectedStyle =
-                connectedLego.style!.legStyles[connectedLegInfo.legIndex];
-
-              // Hide label if conditions are met
-              const shouldHideLabel =
-                hideConnectedLegs &&
-                !lego.alwaysShowLegs &&
-                (!isThisHighlighted
-                  ? !connectedStyle.is_highlighted
-                  : connectedStyle.is_highlighted &&
-                    connectedStyle.color === thisLegStyle.color);
-
-              if (shouldHideLabel) return null;
-
-              return (
-                <text
-                  key={`${lego.instanceId}-label-${legIndex}`}
-                  x={legStyle.position.labelX}
-                  y={legStyle.position.labelY}
-                  fontSize="12"
-                  fill="#666666"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  style={{ pointerEvents: "none" }}
-                >
-                  {legIndex}
-                </text>
-              );
-            })}
-        </svg>
-      </div>
+              })}
+          </svg>
+        </div>
+      </>
     );
   }
 );

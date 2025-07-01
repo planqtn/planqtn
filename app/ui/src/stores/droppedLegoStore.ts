@@ -234,6 +234,7 @@ export const createLegoSlice: StateCreator<
         );
       }
     });
+    get().setTensorNetwork(null);
     get().updateEncodedCanvasState();
   },
 

@@ -4,7 +4,7 @@ import { getAccessToken } from "../../lib/auth";
 import { config } from "../../config/config";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@chakra-ui/react";
-import { useTensorNetworkStore } from "../../stores/tensorNetworkStore";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 
 export interface WeightEnumeratorServiceOptions {
   currentUser: User;
@@ -30,7 +30,7 @@ export class WeightEnumeratorService {
   ): Promise<void> {
     const { currentUser, setError, toast, weightEnumeratorCache } = options;
 
-    const { setTensorNetwork } = useTensorNetworkStore.getState();
+    const { setTensorNetwork } = useCanvasStore.getState();
 
     if (!tensorNetwork) return;
 

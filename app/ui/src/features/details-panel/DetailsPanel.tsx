@@ -62,7 +62,6 @@ import { useEffect } from "react";
 import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay.tsx";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
-import { useTensorNetworkStore } from "../../stores/tensorNetworkStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 
@@ -123,9 +122,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     setDroppedLegos,
     setLegosAndConnections,
     updateDroppedLego,
-    addOperation
+    addOperation,
+    tensorNetwork,
+    setTensorNetwork
   } = useCanvasStore();
-  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [, setSelectedMatrixRows] = useState<number[]>([]);
@@ -332,37 +332,24 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
         updateDroppedLego(updatedLego.instanceId, updatedLego);
 
-        setTensorNetwork(
-          new TensorNetwork({ legos: [updatedLego], connections: connections })
-        );
-
         simpleAutoFlow(
           updatedLego,
           droppedLegos.map((lego) =>
             lego.instanceId === updatedLego.instanceId ? updatedLego : lego
           ),
           connections,
-          setDroppedLegos,
-          setTensorNetwork
+          setDroppedLegos
         );
       }
     },
-    [
-      tensorNetwork,
-      droppedLegos,
-      connections,
-      updateDroppedLego,
-      setTensorNetwork
-    ]
+    [tensorNetwork, droppedLegos, connections, updateDroppedLego]
   );
 
   const handleLegOrderingChange = useCallback(
     (newLegOrdering: TensorNetworkLeg[]) => {
       if (tensorNetwork) {
         // Update the tensor network state
-        setTensorNetwork((prev: TensorNetwork | null) =>
-          prev ? prev.with({ legOrdering: newLegOrdering }) : null
-        );
+        setTensorNetwork(tensorNetwork.with({ legOrdering: newLegOrdering }));
 
         // Note: We don't update the cache here since we only store the matrix,
         // not the leg ordering. The leg ordering is stored in the tensor network.
@@ -377,9 +364,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       if (!tensorNetwork) return;
 
       // Update the tensor network state
-      setTensorNetwork((prev: TensorNetwork | null) =>
-        prev ? prev.with({ parityCheckMatrix: newMatrix }) : null
-      );
+      setTensorNetwork(tensorNetwork.with({ parityCheckMatrix: newMatrix }));
 
       // Update the cache
       const signature = tensorNetwork.signature!;

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Connection } from "../../lib/types";
 import { TensorNetwork } from "../../lib/TensorNetwork";
-import { useTensorNetworkStore } from "../../stores/tensorNetworkStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
@@ -38,9 +37,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     newInstanceId,
     addOperation,
     undo,
-    redo
+    redo,
+    tensorNetwork,
+    setTensorNetwork
   } = useCanvasStore();
-  const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -233,9 +233,6 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             )
           );
           removeDroppedLegos(legosToRemove.map((l) => l.instanceId));
-
-          // Clear selection states
-          setTensorNetwork(null);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         console.log("select all");
