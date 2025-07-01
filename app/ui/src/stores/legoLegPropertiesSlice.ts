@@ -353,16 +353,24 @@ export const createLegoLegPropertiesSlice: StateCreator<
         if (!state.legoConnectionMap) {
           state.legoConnectionMap = {};
         }
-        // Clear existing connection map
-        state.legoConnectionMap = {};
-        // Populate connection map for each lego
-        droppedLegos.forEach((lego) => {
-          state.legoConnectionMap[lego.instanceId] = connections.filter(
+        // Only update the array for a lego if its connections actually changed
+        for (const lego of droppedLegos) {
+          const newConnections = connections.filter(
             (conn) =>
               conn.from.legoId === lego.instanceId ||
               conn.to.legoId === lego.instanceId
           );
-        });
+          const prevConnections = state.legoConnectionMap[lego.instanceId];
+          // Only replace if changed (shallow compare)
+          if (
+            !prevConnections ||
+            prevConnections.length !== newConnections.length ||
+            prevConnections.some((c, i) => c !== newConnections[i])
+          ) {
+            state.legoConnectionMap[lego.instanceId] = newConnections;
+          }
+          // else: keep the same array reference!
+        }
       });
     },
 
