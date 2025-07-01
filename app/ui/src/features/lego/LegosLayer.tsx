@@ -83,11 +83,13 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
   const viewportBounds = useViewportBounds();
 
   // Use a more selective subscription to avoid rerenders on drag state changes
-  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+  const droppedLegosLength = useCanvasStore(
+    (state) => state.droppedLegos.length
+  );
 
   useEffect(() => {
-    console.log("legoslayer droppedLegos changed", droppedLegos);
-  }, [droppedLegos]);
+    console.log("legoslayer droppedLegos changed", droppedLegosLength);
+  }, [droppedLegosLength]);
 
   // const { dragState } = useDragStateStore();
 
@@ -122,28 +124,21 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
   //   return (legoId: string) => draggedIds.has(legoId);
   // }, [dragState, droppedLegos, tensorNetwork]);
 
-  // Simple virtualization: only render visible legos (and hide dragged ones)
   const renderedLegos = useMemo(() => {
-    return (
-      droppedLegos
-        .filter((lego) => isLegoVisible(lego, viewportBounds))
-        // .filter((lego) => !isDraggedLego(lego.instanceId)) // Hide dragged legos
-        .map((lego) => {
-          const originalIndex = droppedLegos.findIndex(
-            (l) => l.instanceId === lego.instanceId
-          );
-          return (
-            <DroppedLegoDisplay
-              key={lego.instanceId}
-              lego={lego}
-              index={originalIndex}
-              demoMode={false}
-              canvasRef={canvasRef}
-            />
-          );
-        })
-    );
-  }, [viewportBounds, droppedLegos, canvasRef]);
+    return Array(droppedLegosLength)
+      .fill(0)
+      .map((_, index) => {
+        const originalIndex = index;
+        return (
+          <DroppedLegoDisplay
+            key={"lego-" + index}
+            index={originalIndex}
+            demoMode={false}
+            canvasRef={canvasRef}
+          />
+        );
+      });
+  }, [viewportBounds, droppedLegosLength, canvasRef]);
 
   return <>{renderedLegos}</>;
 });

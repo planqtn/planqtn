@@ -1,6 +1,6 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
-import { PauliOperator } from "../lib/types";
+import { Connection, PauliOperator } from "../lib/types";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
 
@@ -13,6 +13,7 @@ export interface LegoLegEventsSlice {
   ) => void;
 
   handleLegClick: (legoId: string, legIndex: number) => void;
+  handleLegMouseUp: (legoId: string, legIndex: number) => void;
 }
 
 export const useLegoLegEventsSlice: StateCreator<
@@ -121,5 +122,92 @@ export const useLegoLegEventsSlice: StateCreator<
       get().connections,
       get().setDroppedLegos
     );
+  },
+
+  handleLegMouseUp: (legoId, legIndex) => {
+    const { legDragState, setLegDragState } = get();
+    const {
+      connections,
+      updateLegoConnectivity,
+      addOperation,
+      addConnections
+    } = get();
+    const lego = get().droppedLegos.find((lego) => lego.instanceId === legoId);
+    if (!lego) return;
+
+    if (!legDragState) return;
+
+    const isSourceLegConnected = get().connections.some(
+      (conn) =>
+        (conn.from.legoId === legDragState.legoId &&
+          conn.from.legIndex === legDragState.legIndex) ||
+        (conn.to.legoId === legDragState.legoId &&
+          conn.to.legIndex === legDragState.legIndex)
+    );
+    const isTargetLegConnected = connections.some(
+      (conn) =>
+        (conn.from.legoId === lego.instanceId &&
+          conn.from.legIndex === legIndex) ||
+        (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
+    );
+
+    if (
+      lego.instanceId === legDragState.legoId &&
+      legIndex === legDragState.legIndex
+    ) {
+      setLegDragState(null);
+      updateLegoConnectivity(legDragState.legoId);
+
+      return;
+    }
+
+    if (isSourceLegConnected || isTargetLegConnected) {
+      //TODO: set error message
+      // setError("Cannot connect to a leg that is already connected");
+      console.error("Cannot connect to a leg that is already connected");
+      setLegDragState(null);
+      updateLegoConnectivity(legDragState.legoId);
+
+      return;
+    }
+
+    const connectionExists = connections.some(
+      (conn) =>
+        (conn.from.legoId === legDragState.legoId &&
+          conn.from.legIndex === legDragState.legIndex &&
+          conn.to.legoId === lego.instanceId &&
+          conn.to.legIndex === legIndex) ||
+        (conn.from.legoId === lego.instanceId &&
+          conn.from.legIndex === legIndex &&
+          conn.to.legoId === legDragState.legoId &&
+          conn.to.legIndex === legDragState.legIndex)
+    );
+
+    if (!connectionExists) {
+      const newConnection = new Connection(
+        {
+          legoId: legDragState.legoId,
+          legIndex: legDragState.legIndex
+        },
+        {
+          legoId: lego.instanceId,
+          legIndex: legIndex
+        }
+      );
+
+      addConnections([newConnection]);
+
+      addOperation({
+        type: "connect",
+        data: { connectionsToAdd: [newConnection] }
+      });
+      setLegDragState(null);
+      updateLegoConnectivity(legDragState.legoId);
+
+      return;
+    }
+
+    setLegDragState(null);
+    updateLegoConnectivity(legDragState.legoId);
   }
 });

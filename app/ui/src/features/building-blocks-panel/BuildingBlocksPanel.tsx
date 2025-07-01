@@ -195,11 +195,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
     const { openCssTannerDialog, openTannerDialog, openMspDialog } =
       useModalStore.getState();
     const [legos, setLegos] = useState<LegoPiece[]>([]);
-    const { setDraggedLegoProto: setDraggedLego } = useDraggedLegoStore();
+    const setDraggedLego = useDraggedLegoStore(
+      (state) => state.setDraggedLegoProto
+    );
     const setBuildingBlockDragState = useBuildingBlockDragStateStore(
       (state) => state.setBuildingBlockDragState
     );
-    const { newInstanceId } = useCanvasStore();
+    const newInstanceId = useCanvasStore((state) => state.newInstanceId);
 
     useEffect(() => {
       const fetchData = async () => {

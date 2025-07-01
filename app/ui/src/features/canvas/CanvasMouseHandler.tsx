@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useLegDragStateStore } from "../../stores/legDragState";
 import { SelectionBoxState, Connection } from "../../lib/types";
 import { useCanvasDragStateStore } from "../../stores/canvasDragStateStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
@@ -62,9 +61,10 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     tensorNetwork,
     setTensorNetwork,
     groupDragState,
-    setGroupDragState
+    setGroupDragState,
+    legDragState,
+    setLegDragState
   } = useCanvasStore();
-  const { legDragState, setLegDragState } = useLegDragStateStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
   const { draggedLegoProto: draggedLego, setDraggedLegoProto: setDraggedLego } =
     useDraggedLegoStore();

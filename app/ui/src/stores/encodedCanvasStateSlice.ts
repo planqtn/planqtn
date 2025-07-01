@@ -43,6 +43,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
       // Initialize leg hide states for all legos
       result.pieces.forEach((lego) => {
         get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+        get().initializeLegConnectionStates(lego.instanceId, lego.numberOfLegs);
       });
 
       // Update all leg hide states based on the loaded connections

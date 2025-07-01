@@ -84,6 +84,7 @@ export const createGlobalTensorNetworkStore: StateCreator<
     // Initialize leg hide states for all legos
     droppedLegos.forEach((lego) => {
       get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+      get().initializeLegConnectionStates(lego.instanceId, lego.numberOfLegs);
     });
 
     // Update all leg hide states based on the new connections

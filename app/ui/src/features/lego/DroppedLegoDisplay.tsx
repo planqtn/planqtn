@@ -1,9 +1,9 @@
-import { Connection } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { LegPosition, LegStyle } from "./LegoStyles.ts";
 import { useMemo, memo, useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
+import { Connection } from "../../lib/types.ts";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -52,7 +52,6 @@ export function getLegoBoundingBox(
 }
 
 interface DroppedLegoDisplayProps {
-  lego: DroppedLego;
   index: number;
   demoMode: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -204,7 +203,8 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ lego, index, demoMode = false, canvasRef }) => {
+  ({ index, demoMode = false, canvasRef }) => {
+    const lego = useCanvasStore((state) => state.droppedLegos[index]);
     const size = lego.style!.size;
     const numAllLegs = lego.numberOfLegs;
     const numLogicalLegs = lego.logical_legs.length;
@@ -215,17 +215,39 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       (state) => state.handleLegMouseDown
     );
     const storeHandleLegClick = useCanvasStore((state) => state.handleLegClick);
-
-    // Optimize store subscriptions to prevent unnecessary rerenders
-    const connections = useCanvasStore((state) => state.connections);
-    const hideConnectedLegs = useCanvasStore(
-      (state) => state.hideConnectedLegs
+    const storeHandleLegMouseUp = useCanvasStore(
+      (state) => state.handleLegMouseUp
     );
 
-    const addConnections = useCanvasStore((state) => state.addConnections);
-    const addOperation = useCanvasStore((state) => state.addOperation);
-    const updateLegoConnectivity = useCanvasStore(
-      (state) => state.updateLegoConnectivity
+    const legConnectionStates = useCanvasStore((state) =>
+      state.getLegConnectionStates(lego.instanceId)
+    );
+
+    // Helper function to generate connection key (same as in ConnectionsLayer)
+    const getConnectionKey = (conn: Connection) => {
+      const [firstId, firstLeg, secondId, secondLeg] =
+        conn.from.legoId < conn.to.legoId
+          ? [
+              conn.from.legoId,
+              conn.from.legIndex,
+              conn.to.legoId,
+              conn.to.legIndex
+            ]
+          : [
+              conn.to.legoId,
+              conn.to.legIndex,
+              conn.from.legoId,
+              conn.from.legIndex
+            ];
+      return `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
+    };
+
+    // Optimize store subscriptions to prevent unnecessary rerenders
+    const legoConnections = useCanvasStore((state) =>
+      state.getLegoConnections(lego.instanceId)
+    );
+    const hideConnectedLegs = useCanvasStore(
+      (state) => state.hideConnectedLegs
     );
 
     // Only subscribe to the specific drag state properties that matter for this lego
@@ -241,9 +263,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         "lego",
         lego.instanceId,
         "render due to connections change",
-        connections
+        legoConnections
       );
-    }, [connections]);
+    }, [legoConnections]);
 
     useEffect(() => {
       console.log(
@@ -256,8 +278,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     console.log("lego", lego.instanceId, "render due to rerender");
 
-    const legDragState = useCanvasStore((state) => state.legDragState);
-    const setLegDragState = useCanvasStore((state) => state.setLegDragState);
     // Optimize tensor network subscription to only trigger when this lego's selection changes
     // But still maintain access to the full tensor network for operations
     const isSelected = useCanvasStore((state) => {
@@ -329,79 +349,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
       e.stopPropagation();
-      if (!legDragState) return;
-
-      const isSourceLegConnected = connections.some(
-        (conn) =>
-          (conn.from.legoId === legDragState.legoId &&
-            conn.from.legIndex === legDragState.legIndex) ||
-          (conn.to.legoId === legDragState.legoId &&
-            conn.to.legIndex === legDragState.legIndex)
-      );
-      const isTargetLegConnected = connections.some(
-        (conn) =>
-          (conn.from.legoId === lego.instanceId && conn.from.legIndex === i) ||
-          (conn.to.legoId === lego.instanceId && conn.to.legIndex === i)
-      );
-
-      if (
-        lego.instanceId === legDragState.legoId &&
-        i === legDragState.legIndex
-      ) {
-        setLegDragState(null);
-        updateLegoConnectivity(legDragState.legoId);
-
-        return;
-      }
-
-      if (isSourceLegConnected || isTargetLegConnected) {
-        //TODO: set error message
-        // setError("Cannot connect to a leg that is already connected");
-        console.error("Cannot connect to a leg that is already connected");
-        setLegDragState(null);
-        updateLegoConnectivity(legDragState.legoId);
-
-        return;
-      }
-
-      const connectionExists = connections.some(
-        (conn) =>
-          (conn.from.legoId === legDragState.legoId &&
-            conn.from.legIndex === legDragState.legIndex &&
-            conn.to.legoId === lego.instanceId &&
-            conn.to.legIndex === i) ||
-          (conn.from.legoId === lego.instanceId &&
-            conn.from.legIndex === i &&
-            conn.to.legoId === legDragState.legoId &&
-            conn.to.legIndex === legDragState.legIndex)
-      );
-
-      if (!connectionExists) {
-        const newConnection = new Connection(
-          {
-            legoId: legDragState.legoId,
-            legIndex: legDragState.legIndex
-          },
-          {
-            legoId: lego.instanceId,
-            legIndex: i
-          }
-        );
-
-        addConnections([newConnection]);
-
-        addOperation({
-          type: "connect",
-          data: { connectionsToAdd: [newConnection] }
-        });
-        setLegDragState(null);
-        updateLegoConnectivity(legDragState.legoId);
-
-        return;
-      }
-
-      setLegDragState(null);
-      updateLegoConnectivity(legDragState.legoId);
+      storeHandleLegMouseUp(lego.instanceId, i);
     };
 
     const isScalarLego = (lego: DroppedLego) => {
@@ -427,6 +375,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       e.stopPropagation();
       storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
     };
+
+    const staticLegStyles = useMemo(() => lego.style!.legStyles, [lego.style]);
+    const staticShouldHideLeg = useMemo(
+      () => legHiddenStates,
+      [legHiddenStates]
+    );
 
     return (
       <>
@@ -467,8 +421,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           >
             {/* Layer 1: Static leg lines (gray background) */}
             <StaticLegsLayer
-              legStyles={lego.style!.legStyles}
-              shouldHideLeg={legHiddenStates}
+              legStyles={staticLegStyles}
+              shouldHideLeg={staticShouldHideLeg}
             />
 
             {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
@@ -502,10 +456,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             {lego.style!.legStyles.map((legStyle, legIndex) => {
               const isLogical = lego.logical_legs.includes(legIndex);
               const legColor = legStyle.color;
-              const isBeingDragged =
-                legDragState?.isDragging &&
-                legDragState.legoId === lego.instanceId &&
-                legDragState.legIndex === legIndex;
 
               const shouldHide = legHiddenStates[legIndex];
 
@@ -551,8 +501,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     cy={legStyle.position.endY}
                     r={LEG_ENDPOINT_RADIUS}
                     className="leg-endpoint"
-                    fill={isBeingDragged ? "rgb(235, 248, 255)" : "white"}
-                    stroke={isBeingDragged ? "rgb(66, 153, 225)" : legColor}
+                    fill={"white"}
+                    stroke={legColor}
                     strokeWidth="2"
                     style={{
                       cursor: "pointer",
@@ -564,18 +514,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                       handleLegMouseDown(e, lego.instanceId, legIndex);
                     }}
                     onMouseOver={(e) => {
-                      if (!isBeingDragged) {
-                        const circle = e.target as SVGCircleElement;
-                        circle.style.stroke = legColor;
-                        circle.style.fill = "rgb(235, 248, 255)";
-                      }
+                      const circle = e.target as SVGCircleElement;
+                      circle.style.stroke = legColor;
+                      circle.style.fill = "rgb(235, 248, 255)";
                     }}
                     onMouseOut={(e) => {
-                      if (!isBeingDragged) {
-                        const circle = e.target as SVGCircleElement;
-                        circle.style.stroke = legColor;
-                        circle.style.fill = "white";
-                      }
+                      const circle = e.target as SVGCircleElement;
+                      circle.style.stroke = legColor;
+                      circle.style.fill = "white";
                     }}
                     onMouseUp={(e) => {
                       e.stopPropagation();
@@ -667,14 +613,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             {!isScalarLego(lego) &&
               !demoMode &&
               lego.style!.legStyles.map((legStyle, legIndex) => {
-                // Check if leg is connected
-                const isLegConnectedToSomething = connections.some(
-                  (c) =>
-                    (c.from.legoId === lego.instanceId &&
-                      c.from.legIndex === legIndex) ||
-                    (c.to.legoId === lego.instanceId &&
-                      c.to.legIndex === legIndex)
-                );
+                // If the leg is hidden, don't render the label
+                if (legHiddenStates[legIndex]) return null;
+
+                // Check if leg is connected using pre-calculated states
+                const isLegConnectedToSomething =
+                  legConnectionStates[legIndex] || false;
 
                 // If leg is not connected, always show the label
                 if (!isLegConnectedToSomething) {
@@ -694,11 +638,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   );
                 }
 
-                const thisLegStyle = lego.style!.legStyles[legIndex];
-                const isThisHighlighted = thisLegStyle.is_highlighted;
-
                 // Find the connected leg's style
-                const connection = connections.find(
+                const connection = legoConnections.find(
                   (c) =>
                     (c.from.legoId === lego.instanceId &&
                       c.from.legIndex === legIndex) ||
@@ -708,29 +649,15 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
                 if (!connection) return null;
 
-                const connectedLegInfo =
-                  connection.from.legoId === lego.instanceId
-                    ? connection.to
-                    : connection.from;
-
-                const connectedLego = useCanvasStore
+                // Use the new connection highlight states from the store
+                const connectionKey = getConnectionKey(connection);
+                const colorsMatch = useCanvasStore
                   .getState()
-                  .droppedLegos.find(
-                    (l) => l.instanceId === connectedLegInfo.legoId
-                  );
-                if (!connectedLego) return null;
-
-                const connectedStyle =
-                  connectedLego.style!.legStyles[connectedLegInfo.legIndex];
+                  .getConnectionHighlightState(connectionKey);
 
                 // Hide label if conditions are met
                 const shouldHideLabel =
-                  hideConnectedLegs &&
-                  !lego.alwaysShowLegs &&
-                  (!isThisHighlighted
-                    ? !connectedStyle.is_highlighted
-                    : connectedStyle.is_highlighted &&
-                      connectedStyle.color === thisLegStyle.color);
+                  hideConnectedLegs && !lego.alwaysShowLegs && colorsMatch;
 
                 if (shouldHideLabel) return null;
 

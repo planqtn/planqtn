@@ -3,7 +3,6 @@ import { Connection } from "../../lib/types";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useLegDragStateStore } from "../../stores/legDragState";
 
 interface ConnectionsLayerProps {
   hideConnectedLegs: boolean;
@@ -14,12 +13,16 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
   hideConnectedLegs,
   hoveredConnection
 }) => {
-  const { connections, addOperation, removeConnections, connectedLegos } =
-    useCanvasStore();
+  const {
+    connections,
+    addOperation,
+    removeConnections,
+    connectedLegos,
+    legDragState
+  } = useCanvasStore();
 
   // const { tensorNetwork } = useTensorNetworkStore();
   // const { dragState } = useDragStateStore();
-  const { legDragState } = useLegDragStateStore();
 
   // // Determine which legos are being dragged to hide their connections
   // const draggedLegoIds = useMemo(() => {
@@ -173,25 +176,25 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
 
           const { color: fromLegColor, isHighlighted: fromLegHighlighted } =
             fromLegData;
-          const { color: toLegColor, isHighlighted: toLegHighlighted } =
-            toLegData;
+          const { isHighlighted: toLegHighlighted } = toLegData;
+
+          // Use the new connection highlight states from the store
+          const colorsMatch = useCanvasStore
+            .getState()
+            .getConnectionHighlightState(connKey);
 
           // Determine if legs should be hidden
           const hideFromLeg =
             hideConnectedLegs &&
             fromLegConnected &&
             !fromLego.alwaysShowLegs &&
-            (!fromLegHighlighted
-              ? !toLegHighlighted
-              : toLegHighlighted && fromLegColor === toLegColor);
+            (!fromLegHighlighted ? !toLegHighlighted : colorsMatch);
 
           const hideToLeg =
             hideConnectedLegs &&
             toLegConnected &&
             !toLego.alwaysShowLegs &&
-            (!toLegHighlighted
-              ? !fromLegHighlighted
-              : fromLegHighlighted && fromLegColor === toLegColor);
+            (!toLegHighlighted ? !fromLegHighlighted : colorsMatch);
 
           // Final points with lego positions
           const fromPoint = hideFromLeg
@@ -206,8 +209,6 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
                 x: toLego.x + toPos.endX,
                 y: toLego.y + toPos.endY
               };
-
-          const colorsMatch = fromLegColor === toLegColor;
 
           // Calculate control points for the curve
           const controlPointDistance = 30;

@@ -7,6 +7,15 @@ export interface LegoLegPropertiesSlice {
   // Object mapping lego instance ID to array of boolean hide states for each leg
   legHideStates: Record<string, boolean[]>;
 
+  // Object mapping lego instance ID to array of boolean connection states for each leg
+  legConnectionStates: Record<string, boolean[]>;
+
+  // Object mapping connection key to boolean indicating if connected legs have same highlight color
+  connectionHighlightStates: Record<string, boolean>;
+
+  // Object mapping lego instance ID to array of Connection objects that involve this lego
+  legoConnectionMap: Record<string, Connection[]>;
+
   // Initialize leg hide states for a lego
   initializeLegHideStates: (legoId: string, numLegs: number) => void;
 
@@ -16,14 +25,50 @@ export interface LegoLegPropertiesSlice {
   // Get leg hide states for a specific lego
   getLegHideStates: (legoId: string) => boolean[];
 
+  // Initialize leg connection states for a lego
+  initializeLegConnectionStates: (legoId: string, numLegs: number) => void;
+
+  // Get leg connection states for a specific lego
+  getLegConnectionStates: (legoId: string) => boolean[];
+
+  // Get connection highlight state for a specific connection
+  getConnectionHighlightState: (connectionKey: string) => boolean;
+
+  // Get connections for a specific lego
+  getLegoConnections: (legoId: string) => Connection[];
+
   // Update all leg hide states based on current connections and settings
   updateAllLegHideStates: () => void;
+
+  // Update all leg connection states based on current connections
+  updateAllLegConnectionStates: () => void;
+
+  // Update all connection highlight states based on current connections
+  updateAllConnectionHighlightStates: () => void;
+
+  // Update per-lego connection mapping
+  updateLegoConnectionMap: () => void;
 
   // Remove leg hide states for a lego (when lego is deleted)
   removeLegHideStates: (legoId: string) => void;
 
+  // Remove leg connection states for a lego (when lego is deleted)
+  removeLegConnectionStates: (legoId: string) => void;
+
+  // Remove lego from connection map (when lego is deleted)
+  removeLegoFromConnectionMap: (legoId: string) => void;
+
   // Clear all leg hide states
   clearAllLegHideStates: () => void;
+
+  // Clear all leg connection states
+  clearAllLegConnectionStates: () => void;
+
+  // Clear all connection highlight states
+  clearAllConnectionHighlightStates: () => void;
+
+  // Clear all lego connection mappings
+  clearLegoConnectionMap: () => void;
 }
 
 export const createLegoLegPropertiesSlice: StateCreator<
@@ -129,6 +174,9 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
   return {
     legHideStates: {},
+    legConnectionStates: {},
+    connectionHighlightStates: {},
+    legoConnectionMap: {},
 
     initializeLegHideStates: (legoId: string, numLegs: number) => {
       set((state) => {
@@ -150,6 +198,27 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
     getLegHideStates: (legoId: string) => {
       return get().legHideStates[legoId] || [];
+    },
+
+    initializeLegConnectionStates: (legoId: string, numLegs: number) => {
+      set((state) => {
+        if (!state.legConnectionStates) {
+          state.legConnectionStates = {};
+        }
+        state.legConnectionStates[legoId] = new Array(numLegs).fill(false);
+      });
+    },
+
+    getLegConnectionStates: (legoId: string) => {
+      return get().legConnectionStates[legoId] || [];
+    },
+
+    getConnectionHighlightState: (connectionKey: string) => {
+      return get().connectionHighlightStates[connectionKey] || false;
+    },
+
+    getLegoConnections: (legoId: string) => {
+      return get().legoConnectionMap[legoId] || [];
     },
 
     updateAllLegHideStates: () => {
@@ -178,6 +247,123 @@ export const createLegoLegPropertiesSlice: StateCreator<
           state.legHideStates[lego.instanceId] = hideStates;
         });
       });
+
+      // Also update connection states since they're related
+      get().updateAllLegConnectionStates();
+      // Also update connection highlight states since they're related
+      get().updateAllConnectionHighlightStates();
+      // Also update lego connection map since it's related
+      get().updateLegoConnectionMap();
+    },
+
+    updateAllLegConnectionStates: () => {
+      const { droppedLegos, connections } = get();
+
+      set((state) => {
+        if (!state.legConnectionStates) {
+          state.legConnectionStates = {};
+        }
+
+        // Update connection states for each lego
+        droppedLegos.forEach((lego) => {
+          const connectionStates = new Array(lego.numberOfLegs).fill(false);
+
+          // Only calculate connection states if the feature is enabled and lego doesn't always show legs
+          if (!lego.alwaysShowLegs) {
+            for (let legIndex = 0; legIndex < lego.numberOfLegs; legIndex++) {
+              connectionStates[legIndex] = connections.some((conn) => {
+                if (
+                  conn.from.legoId === lego.instanceId &&
+                  conn.from.legIndex === legIndex
+                ) {
+                  return true;
+                }
+                if (
+                  conn.to.legoId === lego.instanceId &&
+                  conn.to.legIndex === legIndex
+                ) {
+                  return true;
+                }
+                return false;
+              });
+            }
+          }
+
+          state.legConnectionStates[lego.instanceId] = connectionStates;
+        });
+      });
+    },
+
+    updateAllConnectionHighlightStates: () => {
+      const { droppedLegos, connections } = get();
+
+      set((state) => {
+        if (!state.connectionHighlightStates) {
+          state.connectionHighlightStates = {};
+        }
+
+        // Clear existing states
+        state.connectionHighlightStates = {};
+
+        // Calculate highlight states for each connection
+        connections.forEach((conn) => {
+          const fromLego = droppedLegos.find(
+            (l) => l.instanceId === conn.from.legoId
+          );
+          const toLego = droppedLegos.find(
+            (l) => l.instanceId === conn.to.legoId
+          );
+
+          if (!fromLego || !toLego) return;
+
+          const fromLegStyle = fromLego.style!.legStyles[conn.from.legIndex];
+          const toLegStyle = toLego.style!.legStyles[conn.to.legIndex];
+
+          // Create a stable connection key
+          const [firstId, firstLeg, secondId, secondLeg] =
+            conn.from.legoId < conn.to.legoId
+              ? [
+                  conn.from.legoId,
+                  conn.from.legIndex,
+                  conn.to.legoId,
+                  conn.to.legIndex
+                ]
+              : [
+                  conn.to.legoId,
+                  conn.to.legIndex,
+                  conn.from.legoId,
+                  conn.from.legIndex
+                ];
+          const connectionKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
+
+          // Check if both legs are highlighted and have the same color
+          const colorsMatch =
+            fromLegStyle.is_highlighted &&
+            toLegStyle.is_highlighted &&
+            fromLegStyle.color === toLegStyle.color;
+
+          state.connectionHighlightStates[connectionKey] = colorsMatch;
+        });
+      });
+    },
+
+    updateLegoConnectionMap: () => {
+      const { droppedLegos, connections } = get();
+      set((state) => {
+        if (!state.legoConnectionMap) {
+          state.legoConnectionMap = {};
+        }
+        // Clear existing connection map
+        state.legoConnectionMap = {};
+        // Populate connection map for each lego
+        droppedLegos.forEach((lego) => {
+          state.legoConnectionMap[lego.instanceId] = connections.filter(
+            (conn) =>
+              conn.from.legoId === lego.instanceId ||
+              conn.to.legoId === lego.instanceId
+          );
+        });
+      });
     },
 
     removeLegHideStates: (legoId: string) => {
@@ -188,9 +374,43 @@ export const createLegoLegPropertiesSlice: StateCreator<
       });
     },
 
+    removeLegConnectionStates: (legoId: string) => {
+      set((state) => {
+        if (state.legConnectionStates) {
+          delete state.legConnectionStates[legoId];
+        }
+      });
+    },
+
+    removeLegoFromConnectionMap: (legoId: string) => {
+      set((state) => {
+        if (state.legoConnectionMap) {
+          delete state.legoConnectionMap[legoId];
+        }
+      });
+    },
+
     clearAllLegHideStates: () => {
       set((state) => {
         state.legHideStates = {};
+      });
+    },
+
+    clearAllLegConnectionStates: () => {
+      set((state) => {
+        state.legConnectionStates = {};
+      });
+    },
+
+    clearAllConnectionHighlightStates: () => {
+      set((state) => {
+        state.connectionHighlightStates = {};
+      });
+    },
+
+    clearLegoConnectionMap: () => {
+      set((state) => {
+        state.legoConnectionMap = {};
       });
     }
   };
