@@ -274,9 +274,25 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     );
     const { legDragState } = useLegDragStateStore();
 
-    const isSelected =
-      tensorNetwork &&
-      tensorNetwork.legos.some((l) => l.instanceId === lego.instanceId);
+    // Optimize tensor network subscription to only trigger when this lego's selection changes
+    // But still maintain access to the full tensor network for operations
+    const isSelected = useTensorNetworkStore((state) => {
+      return (
+        state.tensorNetwork?.legos.some(
+          (l) => l.instanceId === lego.instanceId
+        ) || false
+      );
+    });
+
+    // Add effect to log when selection changes for this specific lego
+    useEffect(() => {
+      console.log(
+        "lego",
+        lego.instanceId,
+        "selection state changed to:",
+        isSelected
+      );
+    }, [isSelected, lego.instanceId]);
 
     // Use base position (without drag offset) for all calculations
     const basePosition = useMemo(
@@ -749,9 +765,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       }
 
       // Set up initial drag state for the first lego
+      // Get the current droppedLegos length to find the correct index
+      const currentDroppedLegos = useCanvasStore.getState().droppedLegos;
+      const firstNewLegoIndex = currentDroppedLegos.length - newLegos.length;
+
       setDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoIndex: useCanvasStore.getState().droppedLegos.length,
+        draggedLegoIndex: firstNewLegoIndex,
         startX: clientX,
         startY: clientY,
         originalX: clickedLego.x + 20,

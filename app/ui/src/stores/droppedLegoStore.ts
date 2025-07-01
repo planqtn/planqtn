@@ -99,6 +99,7 @@ export class DroppedLego implements LegoPiece {
       {
         selectedMatrixRows:
           overrides.selectedMatrixRows || this.selectedMatrixRows,
+        alwaysShowLegs: overrides.alwaysShowLegs ?? this.alwaysShowLegs,
         ...overrides
       }
     );
