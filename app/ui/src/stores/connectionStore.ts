@@ -8,6 +8,7 @@ export interface ConnectionSlice {
   setConnections: (connections: Connection[]) => void;
   addConnections: (connections: Connection[]) => void;
   removeConnections: (connections: Connection[]) => void;
+  isLegConnected: (legoId: string, legIndex: number) => boolean;
 }
 
 export const createConnectionsSlice: StateCreator<
@@ -30,6 +31,8 @@ export const createConnectionsSlice: StateCreator<
         )
       );
     });
+    // Update leg hide states after connections change
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -44,6 +47,8 @@ export const createConnectionsSlice: StateCreator<
         )
       );
     });
+    // Update leg hide states after connections change
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -60,6 +65,26 @@ export const createConnectionsSlice: StateCreator<
         )
       );
     });
+    // Update leg hide states after connections change
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
+  },
+
+  isLegConnected: (legoId, legIndex) => {
+    return get().connections.some((connection) => {
+      if (
+        connection.from.legoId === legoId &&
+        connection.from.legIndex === legIndex
+      ) {
+        return true;
+      }
+      if (
+        connection.to.legoId === legoId &&
+        connection.to.legIndex === legIndex
+      ) {
+        return true;
+      }
+      return false;
+    });
   }
 });

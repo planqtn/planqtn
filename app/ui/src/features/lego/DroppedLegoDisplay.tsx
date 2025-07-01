@@ -1,10 +1,7 @@
-import { Connection, PauliOperator } from "../../lib/types.ts";
+import { Connection } from "../../lib/types.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
-import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import { LegPosition, LegStyle } from "./LegoStyles.ts";
 import { useMemo, memo, useEffect } from "react";
-import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
-import { useLegDragStateStore } from "../../stores/legDragState.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
 
@@ -64,13 +61,13 @@ interface DroppedLegoDisplayProps {
 // Memoized component for static leg lines only
 const StaticLegsLayer = memo<{
   legStyles: LegStyle[];
-  shouldHideLeg: (legIndex: number) => boolean;
+  shouldHideLeg: boolean[];
 }>(({ legStyles, shouldHideLeg }) => {
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
       {legStyles.map((legStyle, legIndex) =>
-        shouldHideLeg(legIndex) ? null : (
+        shouldHideLeg[legIndex] ? null : (
           <line
             key={`static-leg-${legIndex}`}
             x1={legStyle.position.startX}
@@ -214,19 +211,19 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const numGaugeLegs = lego.gauge_legs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
 
+    const storeHandleLegMouseDown = useCanvasStore(
+      (state) => state.handleLegMouseDown
+    );
+    const storeHandleLegClick = useCanvasStore((state) => state.handleLegClick);
+
     // Optimize store subscriptions to prevent unnecessary rerenders
     const connections = useCanvasStore((state) => state.connections);
     const hideConnectedLegs = useCanvasStore(
       (state) => state.hideConnectedLegs
     );
 
-    const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
-
     const addConnections = useCanvasStore((state) => state.addConnections);
     const addOperation = useCanvasStore((state) => state.addOperation);
-    const temporarilyConnectLego = useCanvasStore(
-      (state) => state.temporarilyConnectLego
-    );
     const updateLegoConnectivity = useCanvasStore(
       (state) => state.updateLegoConnectivity
     );
@@ -259,12 +256,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     console.log("lego", lego.instanceId, "render due to rerender");
 
-    const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
-    const setLegDragState = useLegDragStateStore(
-      (state) => state.setLegDragState
-    );
-    const { legDragState } = useLegDragStateStore();
-
+    const legDragState = useCanvasStore((state) => state.legDragState);
+    const setLegDragState = useCanvasStore((state) => state.setLegDragState);
     // Optimize tensor network subscription to only trigger when this lego's selection changes
     // But still maintain access to the full tensor network for operations
     const isSelected = useCanvasStore((state) => {
@@ -297,100 +290,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     // Check if this specific lego is being dragged
     const isThisLegoDragged = isThisLegoBeingDragged;
 
-    // Helper functions - memoized where possible
-    const isLegConnected = useMemo(() => {
-      const connectedLegs = new Set<number>();
-      connections.forEach((conn) => {
-        if (conn.from.legoId === lego.instanceId) {
-          connectedLegs.add(conn.from.legIndex);
-        }
-        if (conn.to.legoId === lego.instanceId) {
-          connectedLegs.add(conn.to.legIndex);
-        }
-      });
-      return (legIndex: number) => connectedLegs.has(legIndex);
-    }, [connections, lego.instanceId]);
-
-    // Function to determine if a leg should be hidden
-    const shouldHideLeg = (legIndex: number) => {
-      if (!hideConnectedLegs) return false;
-      if (lego.alwaysShowLegs) return false;
-
-      const isConnected = isLegConnected(legIndex);
-      if (!isConnected) return false;
-
-      const thisLegStyle = lego.style!.legStyles[legIndex];
-      const isThisHighlighted = thisLegStyle.is_highlighted;
-
-      // If this leg is not highlighted, hide it only if connected to a non-highlighted leg
-      if (!isThisHighlighted) {
-        // Check if connected to a highlighted leg
-        return !connections.some((conn) => {
-          if (
-            conn.from.legoId === lego.instanceId &&
-            conn.from.legIndex === legIndex
-          ) {
-            // Get connected lego from store instead of passed prop
-            const connectedLego = useCanvasStore
-              .getState()
-              .droppedLegos?.find((l) => l.instanceId === conn.to.legoId);
-            return (
-              connectedLego?.style!.legStyles[conn.to.legIndex]
-                .is_highlighted || false
-            );
-          }
-          if (
-            conn.to.legoId === lego.instanceId &&
-            conn.to.legIndex === legIndex
-          ) {
-            // Get connected lego from store instead of passed prop
-            const connectedLego = useCanvasStore
-              .getState()
-              .droppedLegos?.find((l) => l.instanceId === conn.from.legoId);
-            return (
-              connectedLego?.style!.legStyles[conn.from.legIndex]
-                .is_highlighted || false
-            );
-          }
-          return false;
-        });
-      }
-
-      // If this leg is highlighted, hide it only if connected to a leg with the same highlight color
-      return connections.some((conn) => {
-        if (
-          conn.from.legoId === lego.instanceId &&
-          conn.from.legIndex === legIndex
-        ) {
-          // Get connected lego from store instead of passed prop
-          const connectedLego = useCanvasStore
-            .getState()
-            .droppedLegos?.find((l) => l.instanceId === conn.to.legoId);
-          const connectedStyle =
-            connectedLego?.style!.legStyles[conn.to.legIndex];
-          return (
-            connectedStyle?.is_highlighted &&
-            connectedStyle.color === thisLegStyle.color
-          );
-        }
-        if (
-          conn.to.legoId === lego.instanceId &&
-          conn.to.legIndex === legIndex
-        ) {
-          // Get connected lego from store instead of passed prop
-          const connectedLego = useCanvasStore
-            .getState()
-            .droppedLegos?.find((l) => l.instanceId === conn.from.legoId);
-          const connectedStyle =
-            connectedLego?.style!.legStyles[conn.from.legIndex];
-          return (
-            connectedStyle?.is_highlighted &&
-            connectedStyle.color === thisLegStyle.color
-          );
-        }
-        return false;
-      });
-    };
+    const legHiddenStates = useCanvasStore((state) =>
+      state.getLegHideStates(lego.instanceId)
+    );
 
     const handleLegMouseDown = (
       e: React.MouseEvent,
@@ -407,107 +309,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      temporarilyConnectLego(legoId);
-
-      setLegDragState({
-        isDragging: true,
-        legoId,
-        legIndex,
-        startX: x,
-        startY: y,
-        currentX: x,
-        currentY: y
-      });
+      storeHandleLegMouseDown(legoId, legIndex, x, y);
     };
 
     const handleLegClick = (legoId: string, legIndex: number) => {
-      // Find the lego that was clicked
-      const clickedLego = useCanvasStore
-        .getState()
-        .droppedLegos.find((lego) => lego.instanceId === legoId);
-      if (!clickedLego) return;
-      const numQubits = clickedLego.numberOfLegs;
-      const h = clickedLego.parity_check_matrix;
-      const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
-        (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1
-      );
-      const currentOperator = existingPushedLeg
-        ? h[existingPushedLeg][legIndex] == 1
-          ? PauliOperator.X
-          : PauliOperator.Z
-        : PauliOperator.I;
-
-      // Find available operators in parity check matrix for this leg
-      const hasX = clickedLego.parity_check_matrix.some(
-        (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0
-      );
-      const hasZ = clickedLego.parity_check_matrix.some(
-        (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1
-      );
-
-      // Cycle through operators only if they exist in matrix
-      let nextOperator: PauliOperator;
-      switch (currentOperator) {
-        case PauliOperator.I:
-          nextOperator = hasX
-            ? PauliOperator.X
-            : hasZ
-              ? PauliOperator.Z
-              : PauliOperator.I;
-          break;
-        case PauliOperator.X:
-          nextOperator = hasZ ? PauliOperator.Z : PauliOperator.I;
-          break;
-        case PauliOperator.Z:
-          nextOperator = PauliOperator.I;
-          break;
-        default:
-          nextOperator = PauliOperator.I;
-      }
-
-      // Find the first row in parity check matrix that matches currentOperator on legIndex
-      const baseRepresentative =
-        clickedLego.parity_check_matrix.find((row) => {
-          if (nextOperator === PauliOperator.X) {
-            return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
-          } else if (nextOperator === PauliOperator.Z) {
-            return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
-          }
-          return false;
-        }) || new Array(2 * numQubits).fill(0);
-
-      // Find the row index that corresponds to the baseRepresentative
-      const rowIndex = clickedLego.parity_check_matrix.findIndex((row) =>
-        row.every((val, idx) => val === baseRepresentative[idx])
-      );
-
-      // Update the selected rows based on the pushed legs
-      const selectedRows = [rowIndex].filter((row) => row !== -1);
-
-      // Create a new lego instance with updated properties
-      const updatedLego = clickedLego.with({
-        selectedMatrixRows: selectedRows
-      });
-
-      // Update the selected tensornetwork state
-      setTensorNetwork(
-        new TensorNetwork({ legos: [updatedLego], connections: [] })
-      );
-
-      // Update droppedLegos by replacing the old lego with the new one
-      const newDroppedLegos = useCanvasStore
-        .getState()
-        .droppedLegos.map((lego) =>
-          lego.instanceId === legoId ? updatedLego : lego
-        );
-      setDroppedLegos(newDroppedLegos);
-
-      simpleAutoFlow(
-        updatedLego,
-        newDroppedLegos,
-        connections,
-        setDroppedLegos
-      );
+      storeHandleLegClick(legoId, legIndex);
     };
 
     // // Function to get leg visibility style
@@ -662,13 +468,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             {/* Layer 1: Static leg lines (gray background) */}
             <StaticLegsLayer
               legStyles={lego.style!.legStyles}
-              shouldHideLeg={shouldHideLeg}
+              shouldHideLeg={legHiddenStates}
             />
 
             {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
             {lego.style!.legStyles.map((legStyle, legIndex) => {
               const legColor = legStyle.color;
-              const shouldHide = shouldHideLeg(legIndex);
+              const shouldHide = legHiddenStates[legIndex];
 
               if (legColor === "#A0AEC0" || shouldHide) {
                 return null;
@@ -701,7 +507,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 legDragState.legoId === lego.instanceId &&
                 legDragState.legIndex === legIndex;
 
-              const shouldHide = shouldHideLeg(legIndex);
+              const shouldHide = legHiddenStates[legIndex];
 
               if (shouldHide) {
                 return null;

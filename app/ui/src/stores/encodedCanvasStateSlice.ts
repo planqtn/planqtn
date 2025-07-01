@@ -39,6 +39,15 @@ export const createEncodedCanvasStateSlice: StateCreator<
         ),
         hideConnectedLegs: result.hideConnectedLegs
       });
+
+      // Initialize leg hide states for all legos
+      result.pieces.forEach((lego) => {
+        get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+      });
+
+      // Update all leg hide states based on the loaded connections
+      get().updateAllLegHideStates();
+
       console.log("Decoded canvas state for canvasId:", result.canvasId);
       console.log(new Error().stack);
     } catch (error) {
@@ -60,6 +69,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
   getEncodedCanvasState: () => get().encodedCanvasState,
   setHideConnectedLegs: (hideConnectedLegs: boolean) => {
     set({ hideConnectedLegs });
+    // Update all leg hide states when the setting changes
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   }
 });

@@ -195,6 +195,10 @@ export const createLegoSlice: StateCreator<
     set((state) => {
       state.droppedLegos.push(lego);
     });
+    // Initialize leg hide states for the new lego
+    get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+    // Update all leg hide states to account for the new lego
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -202,6 +206,12 @@ export const createLegoSlice: StateCreator<
     set((state) => {
       state.droppedLegos.push(...legos);
     });
+    // Initialize leg hide states for new legos
+    legos.forEach((lego) => {
+      get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+    });
+    // Update all leg hide states to account for the new legos
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -216,6 +226,10 @@ export const createLegoSlice: StateCreator<
         );
       }
     });
+    // Remove leg hide states for the deleted lego
+    get().removeLegHideStates(instanceId);
+    // Update all leg hide states to account for the removed lego
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -234,6 +248,12 @@ export const createLegoSlice: StateCreator<
         );
       }
     });
+    // Remove leg hide states for deleted legos
+    instanceIds.forEach((instanceId) => {
+      get().removeLegHideStates(instanceId);
+    });
+    // Update all leg hide states to account for the removed legos
+    get().updateAllLegHideStates();
     get().setTensorNetwork(null);
     get().updateEncodedCanvasState();
   },
@@ -253,6 +273,13 @@ export const createLegoSlice: StateCreator<
         state.connectedLegos[connectedLegoIndex] = updates;
       }
     });
+    // Update leg hide states if the number of legs changed
+    const existingStates = get().getLegHideStates(instanceId);
+    if (existingStates.length !== updates.numberOfLegs) {
+      get().initializeLegHideStates(instanceId, updates.numberOfLegs);
+    }
+    // Update all leg hide states to account for the updated lego
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -276,6 +303,15 @@ export const createLegoSlice: StateCreator<
         }
       });
     });
+    // Update leg hide states for updated legos
+    legos.forEach((lego) => {
+      const existingStates = get().getLegHideStates(lego.instanceId);
+      if (existingStates.length !== lego.numberOfLegs) {
+        get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+      }
+    });
+    // Update all leg hide states to account for the updated legos
+    get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
   },
 
@@ -284,6 +320,8 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos = [];
       state.connectedLegos = [];
     });
+    // Clear all leg hide states
+    get().clearAllLegHideStates();
     get().updateEncodedCanvasState();
   }
 });

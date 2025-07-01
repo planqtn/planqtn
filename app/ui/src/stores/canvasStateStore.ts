@@ -23,6 +23,15 @@ import {
 } from "./droppedLegoEventsSlice";
 import { GroupDragStateSlice, useGroupDragStateSlice } from "./groupDragState";
 import { CloningSlice, useCloningSlice } from "./cloningSlice";
+import {
+  LegoLegEventsSlice,
+  useLegoLegEventsSlice
+} from "./legoLegEventsSlice";
+import { LegDragStateSlice, useLegDragStateStore } from "./legDragState";
+import {
+  LegoLegPropertiesSlice,
+  createLegoLegPropertiesSlice
+} from "./legoLegPropertiesSlice";
 
 export interface CanvasStore
   extends DroppedLegosSlice,
@@ -34,7 +43,10 @@ export interface CanvasStore
     TensorNetworkSlice,
     DroppedLegoClickHandlerSlice,
     GroupDragStateSlice,
-    CloningSlice {}
+    CloningSlice,
+    LegoLegEventsSlice,
+    LegDragStateSlice,
+    LegoLegPropertiesSlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -68,6 +80,15 @@ export const createGlobalTensorNetworkStore: StateCreator<
       connectedLegoIds.has(lego.instanceId)
     );
     get().connectedLegos = connectedLegos;
+
+    // Initialize leg hide states for all legos
+    droppedLegos.forEach((lego) => {
+      get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
+    });
+
+    // Update all leg hide states based on the new connections
+    get().updateAllLegHideStates();
+
     get().setTensorNetwork(null);
     get().updateEncodedCanvasState();
   },
@@ -87,6 +108,9 @@ export const useCanvasStore = create<CanvasStore>()(
     ...useTensorNetworkSlice(...a),
     ...useDroppedLegoClickHandlerSlice(...a),
     ...useGroupDragStateSlice(...a),
-    ...useCloningSlice(...a)
+    ...useCloningSlice(...a),
+    ...useLegoLegEventsSlice(...a),
+    ...useLegDragStateStore(...a),
+    ...createLegoLegPropertiesSlice(...a)
   }))
 );

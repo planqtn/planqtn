@@ -1,7 +1,8 @@
-import { create } from "zustand";
+import { StateCreator } from "zustand";
 import { LegDragState } from "../lib/types";
+import { CanvasStore } from "./canvasStateStore";
 
-interface LegDragStateStore {
+export interface LegDragStateSlice {
   legDragState: LegDragState | null;
   setLegDragState: (
     stateOrUpdater:
@@ -11,7 +12,12 @@ interface LegDragStateStore {
   ) => void;
 }
 
-export const useLegDragStateStore = create<LegDragStateStore>((set) => ({
+export const useLegDragStateStore: StateCreator<
+  CanvasStore,
+  [["zustand/immer", never]],
+  [],
+  LegDragStateSlice
+> = (set) => ({
   legDragState: null,
 
   setLegDragState: (
@@ -27,4 +33,4 @@ export const useLegDragStateStore = create<LegDragStateStore>((set) => ({
           : stateOrUpdater
     }));
   }
-}));
+});
