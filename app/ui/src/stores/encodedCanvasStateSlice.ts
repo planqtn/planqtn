@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { CanvasStateSerializer } from "../lib/CanvasStateSerializer";
+import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
 import { CanvasStore } from "./canvasStateStore";
 
 export interface EncodedCanvasStateSlice {

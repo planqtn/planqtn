@@ -1,6 +1,6 @@
 import { StateCreator } from "zustand";
-import { OperationHistory } from "../lib/OperationHistory";
-import { Operation } from "../lib/OperationHistory.ts";
+import { OperationHistory } from "../features/canvas/OperationHistory.ts";
+import { Operation } from "../features/canvas/OperationHistory.ts";
 import { CanvasStore } from "./canvasStateStore";
 
 export interface OperationHistorySlice {

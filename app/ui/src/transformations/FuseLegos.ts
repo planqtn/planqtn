@@ -1,8 +1,8 @@
 import { Connection } from "../lib/types";
-import { Operation } from "../lib/OperationHistory.ts";
+import { Operation } from "../features/canvas/OperationHistory.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
-import { recognize_parity_check_matrix } from "../lib/Legos";
+import { recognize_parity_check_matrix } from "../features/lego/Legos.ts";
 import { newInstanceId } from "../stores/droppedLegoStore";
 
 export class FuseLegos {

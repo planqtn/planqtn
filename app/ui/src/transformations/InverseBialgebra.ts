@@ -1,8 +1,8 @@
 import { Connection } from "../lib/types";
-import { Operation } from "../lib/OperationHistory.ts";
-import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
+import { Operation } from "../features/canvas/OperationHistory.ts";
+import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
 import _ from "lodash";
-import { Legos } from "../lib/Legos";
+import { Legos } from "../features/lego/Legos.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 export function canDoInverseBialgebra(

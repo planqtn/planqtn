@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { getLegoStyle, LegoStyle } from "../LegoStyles";
+import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {

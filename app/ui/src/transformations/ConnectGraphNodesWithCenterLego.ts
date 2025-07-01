@@ -1,7 +1,7 @@
 import { Connection } from "../lib/types";
-import { Operation } from "../lib/OperationHistory.ts";
+import { Operation } from "../features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
-import { Legos } from "../lib/Legos";
+import { Legos } from "../features/lego/Legos.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {

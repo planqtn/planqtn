@@ -25,47 +25,47 @@ import {
 } from "react-resizable-panels";
 
 import ErrorPanel from "./components/ErrorPanel";
-import BuildingBlocksPanel from "./components/BuildingBlocksPanel.tsx";
-import { KeyboardHandler } from "./components/KeyboardHandler";
-import { ConnectionsLayer } from "./components/ConnectionsLayer";
-import { LegosLayer } from "./components/LegosLayer";
+import BuildingBlocksPanel from "./features/building-blocks-panel/BuildingBlocksPanel.tsx";
+import { KeyboardHandler } from "./features/canvas/KeyboardHandler.tsx";
+import { ConnectionsLayer } from "./features/lego/ConnectionsLayer.tsx";
+import { LegosLayer } from "./features/lego/LegosLayer.tsx";
 import {
   SelectionManager,
   SelectionManagerRef
-} from "./components/SelectionManager";
+} from "./features/canvas/SelectionManager.tsx";
 import { Connection, ParityCheckMatrix, SelectionBoxState } from "./lib/types";
 
-import DetailsPanel from "./components/DetailsPanel";
-import { ResizeHandle } from "./components/ResizeHandle";
-import { DynamicLegoDialog } from "./components/DynamicLegoDialog";
+import DetailsPanel from "./features/details-panel/DetailsPanel.tsx";
+import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
+import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { FuseLegos } from "./transformations/FuseLegos";
 import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { useLocation, useNavigate } from "react-router-dom";
-import { UserMenu } from "./components/UserMenu";
+import { UserMenu } from "./features/auth/UserMenu.tsx";
 
-import { userContextSupabase } from "./supabaseClient";
+import { userContextSupabase } from "./config/supabaseClient.ts";
 import { User } from "@supabase/supabase-js";
 
-import { Legos } from "./lib/Legos";
+import { Legos } from "./features/lego/Legos.ts";
 import { TbPlugConnected } from "react-icons/tb";
 import { checkSupabaseStatus } from "./lib/errors.ts";
 import { FiMoreVertical } from "react-icons/fi";
 // import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 
-import FloatingTaskPanel from "./components/FloatingTaskPanel";
+import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
 
-import PythonCodeModal from "./components/PythonCodeModal.tsx";
+import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
-import { RuntimeConfigService } from "./lib/runtimeConfigService";
+import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
 import { useTensorNetworkStore } from "./stores/tensorNetworkStore";
-import { DragProxy } from "./components/DragProxy";
+import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { useCanvasStore } from "./stores/canvasStateStore.ts";
-import { CanvasMouseHandler } from "./components/CanvasMouseHandler.tsx";
+import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { useDraggedLegoStore } from "./stores/draggedLegoStore.ts";
-import { findClosestDanglingLeg } from "./lib/canvasCalculations.ts";
+import { findClosestDanglingLeg } from "./features/canvas/canvasCalculations.ts";
 import { AddStopper } from "./transformations/AddStopper.ts";
 import { InjectTwoLegged } from "./transformations/InjectTwoLegged.ts";
 import { DroppedLego, LegoPiece } from "./stores/droppedLegoStore.ts";

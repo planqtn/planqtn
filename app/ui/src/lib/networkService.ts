@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Connection } from "./types";
 import { useCanvasStore } from "../stores/canvasStateStore";
-import { config, getApiUrl } from "../config";
+import { config, getApiUrl } from "../config/config";
 import { getAccessToken } from "./auth";
 import { getAxiosErrorMessage } from "./errors";
 import { useModalStore } from "../stores/modalStore";
