@@ -338,9 +338,10 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
           // Check if both legs are highlighted and have the same color
           const colorsMatch =
-            fromLegStyle.is_highlighted &&
-            toLegStyle.is_highlighted &&
-            fromLegStyle.color === toLegStyle.color;
+            (fromLegStyle.is_highlighted &&
+              toLegStyle.is_highlighted &&
+              fromLegStyle.color === toLegStyle.color) ||
+            (!fromLegStyle.is_highlighted && !toLegStyle.is_highlighted);
 
           state.connectionHighlightStates[connectionKey] = colorsMatch;
         });

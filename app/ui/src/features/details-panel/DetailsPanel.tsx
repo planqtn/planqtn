@@ -116,16 +116,17 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   setParityCheckMatrixCache,
   weightEnumeratorCache
 }) => {
-  const {
-    connections,
-    droppedLegos,
-    setDroppedLegos,
-    setLegosAndConnections,
-    updateDroppedLego,
-    addOperation,
-    tensorNetwork,
-    setTensorNetwork
-  } = useCanvasStore();
+  const connections = useCanvasStore((state) => state.connections);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+  const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
+  const setLegosAndConnections = useCanvasStore(
+    (state) => state.setLegosAndConnections
+  );
+  const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
+  const addOperation = useCanvasStore((state) => state.addOperation);
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
+
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [, setSelectedMatrixRows] = useState<number[]>([]);

@@ -276,7 +276,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       );
     }, [isThisLegoBeingDragged, lego.instanceId]);
 
-    console.log("lego", lego.instanceId, "render due to rerender");
+    // console.log("lego", lego.instanceId, "render due to rerender");
 
     // Optimize tensor network subscription to only trigger when this lego's selection changes
     // But still maintain access to the full tensor network for operations

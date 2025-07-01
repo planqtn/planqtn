@@ -188,6 +188,9 @@ export const createLegoSlice: StateCreator<
         )
       );
     });
+    get().updateAllConnectionHighlightStates();
+    get().updateAllLegHideStates();
+    get().updateLegoConnectionMap();
     get().updateEncodedCanvasState();
   },
 
