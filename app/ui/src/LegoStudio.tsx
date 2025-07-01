@@ -99,27 +99,45 @@ const LegoStudioView: React.FC = () => {
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
-  const {
-    decodeCanvasState,
-    // New store-based handlers and state
-    handleDynamicLegoSubmit,
-    handleClearAll,
-    fuseLegos,
-    makeSpace,
-    handleDynamicLegoDrop,
-    handleExportPythonCode,
-    handlePullOutSameColoredLeg,
-    // Modal state
-    showPythonCodeModal,
-    setShowPythonCodeModal,
-    pythonCode,
-    // Dynamic lego state
-    selectedDynamicLego,
-    isDynamicLegoDialogOpen,
-    setIsDynamicLegoDialogOpen,
-    setSelectedDynamicLego,
-    setPendingDropPosition
-  } = useCanvasStore();
+
+  const decodeCanvasState = useCanvasStore((state) => state.decodeCanvasState);
+  const handleDynamicLegoSubmit = useCanvasStore(
+    (state) => state.handleDynamicLegoSubmit
+  );
+  const handleClearAll = useCanvasStore((state) => state.handleClearAll);
+  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
+  const makeSpace = useCanvasStore((state) => state.makeSpace);
+  const handleDynamicLegoDrop = useCanvasStore(
+    (state) => state.handleDynamicLegoDrop
+  );
+  const handleExportPythonCode = useCanvasStore(
+    (state) => state.handleExportPythonCode
+  );
+  const handlePullOutSameColoredLeg = useCanvasStore(
+    (state) => state.handlePullOutSameColoredLeg
+  );
+  const showPythonCodeModal = useCanvasStore(
+    (state) => state.showPythonCodeModal
+  );
+  const setShowPythonCodeModal = useCanvasStore(
+    (state) => state.setShowPythonCodeModal
+  );
+  const pythonCode = useCanvasStore((state) => state.pythonCode);
+  const selectedDynamicLego = useCanvasStore(
+    (state) => state.selectedDynamicLego
+  );
+  const isDynamicLegoDialogOpen = useCanvasStore(
+    (state) => state.isDynamicLegoDialogOpen
+  );
+  const setIsDynamicLegoDialogOpen = useCanvasStore(
+    (state) => state.setIsDynamicLegoDialogOpen
+  );
+  const setSelectedDynamicLego = useCanvasStore(
+    (state) => state.setSelectedDynamicLego
+  );
+  const setPendingDropPosition = useCanvasStore(
+    (state) => state.setPendingDropPosition
+  );
 
   // Keep local state that's not in the store
   const [error, setError] = useState<string>("");
