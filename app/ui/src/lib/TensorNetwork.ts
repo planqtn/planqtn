@@ -134,14 +134,7 @@ export class TensorNetwork {
   ) => {
     const sortedLegos = [...legos]
       .sort((a, b) => a.instanceId.localeCompare(b.instanceId))
-      .map(
-        (lego) =>
-          lego.id +
-          "-" +
-          lego.instanceId +
-          "-" +
-          lego.parity_check_matrix[0].length / 2
-      );
+      .map((lego) => lego.id + "-" + lego.instanceId + "-" + lego.numberOfLegs);
     const sortedConnections = [...connections].sort((a, b) => {
       const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
       const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
@@ -207,7 +200,7 @@ export class TensorNetwork {
   } {
     if (!this.legos) return { externalLegs: [], danglingLegs: [] };
     const allLegs: TensorNetworkLeg[] = this.legos.flatMap((lego) => {
-      const numLegs = lego.parity_check_matrix[0].length / 2;
+      const numLegs = lego.numberOfLegs;
       return Array.from({ length: numLegs }, (_, i) => ({
         instanceId: lego.instanceId,
         legIndex: i
@@ -253,10 +246,10 @@ export class TensorNetwork {
       return new StabilizerCodeTensor(
         new GF2(this.legos[0].parity_check_matrix),
         this.legos[0].instanceId,
-        Array.from(
-          { length: this.legos[0].parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: this.legos[0].instanceId, legIndex: i })
-        )
+        Array.from({ length: this.legos[0].numberOfLegs }, (_, i) => ({
+          instanceId: this.legos[0].instanceId,
+          legIndex: i
+        }))
       );
     }
 
@@ -269,10 +262,10 @@ export class TensorNetwork {
       tensor: new StabilizerCodeTensor(
         new GF2(lego.parity_check_matrix),
         lego.instanceId,
-        Array.from(
-          { length: lego.parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: lego.instanceId, legIndex: i })
-        )
+        Array.from({ length: lego.numberOfLegs }, (_, i) => ({
+          instanceId: lego.instanceId,
+          legIndex: i
+        }))
       ),
       legos: new Set([lego.instanceId])
     }));

@@ -63,10 +63,8 @@ export async function applyHopfRule(
 
   // Calculate new number of legs for each lego (current - 2 for each pair removed)
   const numPairsToRemove = 1; // We remove one pair of connections
-  const newXLegs =
-    xLego.parity_check_matrix[0].length / 2 - 2 * numPairsToRemove;
-  const newZLegs =
-    zLego.parity_check_matrix[0].length / 2 - 2 * numPairsToRemove;
+  const newXLegs = xLego.numberOfLegs - 2 * numPairsToRemove;
+  const newZLegs = zLego.numberOfLegs - 2 * numPairsToRemove;
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
@@ -103,7 +101,7 @@ export async function applyHopfRule(
   let nextZLegIndex = 0;
 
   // Map all legs except the ones that were connected internally
-  for (let i = 0; i < xLego.parity_check_matrix[0].length / 2; i++) {
+  for (let i = 0; i < xLego.numberOfLegs; i++) {
     if (
       !connectionsToRemove.some(
         (conn) =>
@@ -115,7 +113,7 @@ export async function applyHopfRule(
     }
   }
 
-  for (let i = 0; i < zLego.parity_check_matrix[0].length / 2; i++) {
+  for (let i = 0; i < zLego.numberOfLegs; i++) {
     if (
       !connectionsToRemove.some(
         (conn) =>

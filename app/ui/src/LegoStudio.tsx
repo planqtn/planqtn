@@ -561,7 +561,7 @@ const LegoStudioView: React.FC = () => {
     const maxInstanceId = Math.max(
       ...droppedLegos.map((l) => parseInt(l.instanceId))
     );
-    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const numLegs = lego.numberOfLegs;
 
     // Find any existing connections to the original lego
     const existingConnections = connections.filter(

@@ -196,7 +196,7 @@ const updateLego = (
  * @returns X and Z parts of the highlight operation
  */
 const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
 
   for (const rowIndex of lego.selectedMatrixRows) {
@@ -219,7 +219,7 @@ const findRowIndices = (
   lego: DroppedLego,
   legIndex: number
 ): { xRowIndices: number[]; zRowIndices: number[] } => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   const xRowIndices: number[] = [];
   const zRowIndices: number[] = [];
 
@@ -237,7 +237,7 @@ const findRowIndices = (
  * @returns boolean true if the lego is simple, false otherwise
  */
 const isSimpleLego = (lego: DroppedLego): boolean => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   if (lego.parity_check_matrix.length < 2) {
     return true;
   }

@@ -87,7 +87,7 @@ export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
       { style: LegStyle; color: string; isHighlighted: boolean }
     >();
     connectedLegos.forEach((lego) => {
-      const numLegs = lego.parity_check_matrix[0].length / 2;
+      const numLegs = lego.numberOfLegs;
       for (let i = 0; i < numLegs; i++) {
         const legStyle = lego.style!.legStyles[i];
         const legColor = lego.style!.getLegColor(i);

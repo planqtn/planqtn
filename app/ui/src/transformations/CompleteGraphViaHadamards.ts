@@ -15,7 +15,7 @@ const getDanglingLegs = (
   connections: Connection[]
 ): { lego: DroppedLego; danglingLegs: number[] }[] => {
   return legos.map((lego) => {
-    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const numLegs = lego.numberOfLegs;
     const connectedLegs = new Set<number>();
 
     // Find all connected legs
@@ -69,7 +69,7 @@ export const applyCompleteGraphViaHadamards = async (
       }
       return Legos.createDynamicLego(
         "z_rep_code",
-        lego.parity_check_matrix[0].length / 2 + numNewLegs,
+        lego.numberOfLegs + numNewLegs,
         lego.instanceId,
         lego.x,
         lego.y
@@ -118,10 +118,7 @@ export const applyCompleteGraphViaHadamards = async (
         usedLegs1.add(legIndex1);
       } else {
         // Use a new leg if no dangling legs are available
-        legIndex1 =
-          lego1.parity_check_matrix[0].length / 2 -
-          (legos.length - 1) +
-          newLegsOffset1;
+        legIndex1 = lego1.numberOfLegs - (legos.length - 1) + newLegsOffset1;
         newLegsOffset1++;
       }
 
@@ -137,10 +134,7 @@ export const applyCompleteGraphViaHadamards = async (
         usedLegs2.add(legIndex2);
       } else {
         // Use a new leg if no dangling legs are available
-        legIndex2 =
-          lego2.parity_check_matrix[0].length / 2 -
-          (legos.length - j) +
-          usedLegs2.size;
+        legIndex2 = lego2.numberOfLegs - (legos.length - j) + usedLegs2.size;
       }
 
       // Create connections

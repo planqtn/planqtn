@@ -80,7 +80,7 @@ export abstract class LegoStyle {
     protected readonly id: string,
     protected readonly lego: DroppedLego
   ) {
-    this.legStyles = Array(lego.parity_check_matrix[0].length / 2)
+    this.legStyles = Array(lego.numberOfLegs)
       .fill(0)
       .map((_, i) => {
         return this.calculateLegStyle(i, true);
@@ -187,7 +187,7 @@ export abstract class LegoStyle {
   ): LegStyle {
     const isLogical = this.lego.logical_legs.includes(legIndex);
     const isGauge = this.lego.gauge_legs.includes(legIndex);
-    const legCount = this.lego.parity_check_matrix[0].length / 2;
+    const legCount = this.lego.numberOfLegs;
     const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
 

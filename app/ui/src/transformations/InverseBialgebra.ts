@@ -50,7 +50,7 @@ export function canDoInverseBialgebra(
     );
 
     // Count dangling legs
-    const totalLegs = lego.parity_check_matrix[0].length / 2;
+    const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
       .filter((conn) => conn.containsLego(lego.instanceId))
       .map((conn) =>
@@ -103,7 +103,7 @@ export async function applyInverseBialgebra(
 
   // Find dangling legs for each partition
   const zDanglingLegs = zLegos.flatMap((lego) => {
-    const totalLegs = lego.parity_check_matrix[0].length / 2;
+    const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
       .filter((conn) => conn.containsLego(lego.instanceId))
       .map((conn) =>
@@ -117,7 +117,7 @@ export async function applyInverseBialgebra(
   });
 
   const xDanglingLegs = xLegos.flatMap((lego) => {
-    const totalLegs = lego.parity_check_matrix[0].length / 2;
+    const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
       .filter((conn) => conn.containsLego(lego.instanceId))
       .map((conn) =>

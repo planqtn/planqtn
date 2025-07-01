@@ -3,11 +3,7 @@ import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
-  lego.style = getLegoStyle(
-    lego.id,
-    lego.parity_check_matrix[0].length / 2,
-    lego
-  );
+  lego.style = getLegoStyle(lego.id, lego.numberOfLegs, lego);
 }
 
 export function createHadamardLego(
@@ -87,11 +83,11 @@ export class DroppedLego implements LegoPiece {
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
 
-    this.style = getLegoStyle(
-      lego.id,
-      lego.parity_check_matrix[0].length / 2,
-      this
-    );
+    this.style = getLegoStyle(lego.id, this.numberOfLegs, this);
+  }
+
+  public get numberOfLegs(): number {
+    return this.parity_check_matrix[0].length / 2;
   }
 
   public with(overrides: Partial<DroppedLego>): DroppedLego {

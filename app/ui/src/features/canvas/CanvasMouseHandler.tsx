@@ -159,10 +159,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        if (
-          draggedLego.parity_check_matrix[0].length / 2 === 2 &&
-          !draggedLegoHasConnections
-        ) {
+        if (draggedLego.numberOfLegs === 2 && !draggedLegoHasConnections) {
           // Find the closest connection for two-legged legos
           let closestConnection: Connection | null = null;
           let minDistance = Infinity;
@@ -398,7 +395,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           }
         } else if (
           draggedLego &&
-          draggedLego.parity_check_matrix[0].length / 2 === 2 &&
+          draggedLego.numberOfLegs === 2 &&
           hoveredConnection
         ) {
           // Handle two-legged lego insertion into connection

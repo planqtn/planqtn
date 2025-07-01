@@ -18,7 +18,7 @@ export class LegoSvgRenderer {
   ): string {
     const { demoMode = true, isSelected = false, showLabels = false } = options;
 
-    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const numLegs = lego.numberOfLegs;
     const size = lego.style!.size;
     const numRegularLegs = numLegs - lego.logical_legs.length;
 
@@ -149,8 +149,7 @@ export class LegoSvgRenderer {
   ): string {
     if (demoMode) return "";
 
-    const numRegularLegs =
-      lego.parity_check_matrix[0].length / 2 - lego.logical_legs.length;
+    const numRegularLegs = lego.numberOfLegs - lego.logical_legs.length;
     const textColor = isSelected ? "white" : "#000000";
 
     if (numRegularLegs <= 2) {

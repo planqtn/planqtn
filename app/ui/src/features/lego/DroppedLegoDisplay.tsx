@@ -219,7 +219,7 @@ LegoBodyLayer.displayName = "LegoBodyLayer";
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
   ({ lego, index, demoMode = false, canvasRef }) => {
     const size = lego.style!.size;
-    const numAllLegs = lego.parity_check_matrix[0].length / 2;
+    const numAllLegs = lego.numberOfLegs;
     const numLogicalLegs = lego.logical_legs.length;
     const numGaugeLegs = lego.gauge_legs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
@@ -458,7 +458,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         (lego) => lego.instanceId === legoId
       );
       if (!clickedLego) return;
-      const numQubits = clickedLego.parity_check_matrix[0].length / 2;
+      const numQubits = clickedLego.numberOfLegs;
       const h = clickedLego.parity_check_matrix;
       const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
         (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1

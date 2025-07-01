@@ -51,7 +51,7 @@ export const findClosestDanglingLeg = (
   let minDistance = Infinity;
 
   droppedLegos.forEach((lego) => {
-    const totalLegs = lego.parity_check_matrix[0].length / 2;
+    const totalLegs = lego.numberOfLegs;
     for (let legIndex = 0; legIndex < totalLegs; legIndex++) {
       // Skip if leg is already connected
       const isConnected = connections.some(
