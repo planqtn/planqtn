@@ -54,7 +54,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setDroppedLegos,
     setLegosAndConnections,
     newInstanceId,
-    addDroppedLego
+    addDroppedLego,
+    connectedLegos
   } = useCanvasStore();
   const { tensorNetwork, setTensorNetwork } = useTensorNetworkStore();
   const { legDragState, setLegDragState } = useLegDragStateStore();
@@ -342,7 +343,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
+    const handleMouseUp = async (e: MouseEvent) => {
       // If a leg is being dragged, we need to decide if we're dropping on a valid target or the canvas.
       if (legDragState?.isDragging) {
         const targetElement = e.target as HTMLElement;
@@ -395,8 +396,40 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
             // If stopper attachment fails, just do regular drag update
             performDragUpdate(e);
           }
+        } else if (
+          draggedLego &&
+          draggedLego.parity_check_matrix[0].length / 2 === 2 &&
+          hoveredConnection
+        ) {
+          // Handle two-legged lego insertion into connection
+          const dropPosition = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+          };
+
+          // Check if this lego already has connections - if so, just do regular move
+          const hasExistingConnections = connectedLegos.some(
+            (lego) => lego.instanceId === draggedLego.instanceId
+          );
+
+          if (hasExistingConnections) {
+            // Lego already has connections, just do regular move
+            performDragUpdate(e);
+          } else {
+            // Use shared two-legged insertion logic for unconnected legos
+            const success = await handleTwoLeggedInsertion(
+              draggedLego,
+              dropPosition,
+              hoveredConnection,
+              draggedLego
+            );
+            if (!success) {
+              // If injection fails, fall back to regular drag update
+              performDragUpdate(e);
+            }
+          }
         } else {
-          // Not a stopper, do regular drag update
+          // Not a stopper or two-legged with connection, do regular drag update
           performDragUpdate(e);
         }
 
@@ -548,6 +581,41 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       setHoveredConnection(closestConnection);
     };
 
+    const handleTwoLeggedInsertion = async (
+      lego: DroppedLego,
+      dropPosition: { x: number; y: number },
+      connection: Connection,
+      existingLegoToRemove?: DroppedLego
+    ): Promise<boolean> => {
+      try {
+        // Create the lego at the drop position
+        const repositionedLego = new DroppedLego(
+          lego,
+          dropPosition.x,
+          dropPosition.y,
+          existingLegoToRemove?.instanceId || newInstanceId()
+        );
+
+        // Remove the original lego if we're moving an existing one
+        const legosForCalculation = existingLegoToRemove
+          ? droppedLegos.filter(
+              (l) => l.instanceId !== existingLegoToRemove.instanceId
+            )
+          : droppedLegos;
+
+        const trafo = new InjectTwoLegged(connections, legosForCalculation);
+        const result = await trafo.apply(repositionedLego, connection);
+
+        addOperation(result.operation);
+        setLegosAndConnections(result.droppedLegos, result.connections);
+        return true;
+      } catch (error) {
+        setError(`${error}`);
+        console.error(error);
+        return false;
+      }
+    };
+
     const handleDropStopperOnLeg = (
       dropPosition: { x: number; y: number },
       draggedLego: LegoPiece,
@@ -658,23 +726,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
       // Handle two-legged lego insertion
       if (numLegs === 2 && hoveredConnection) {
-        const trafo = new InjectTwoLegged(connections, droppedLegos);
-        trafo
-          .apply(newLego, hoveredConnection)
-          .then(
-            ({
-              connections: newConnections,
-              droppedLegos: newDroppedLegos,
-              operation
-            }) => {
-              addOperation(operation);
-              setLegosAndConnections(newDroppedLegos, newConnections);
-            }
-          )
-          .catch((error) => {
-            setError(`${error}`);
-            console.error(error);
-          });
+        await handleTwoLeggedInsertion(
+          newLego,
+          dropPosition,
+          hoveredConnection
+        );
       } else {
         console.log("Dropped lego", newLego, new Error("debug").stack);
         // If it's a custom lego, show the dialog after dropping
