@@ -174,7 +174,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           legOrdering: legOrdering
         })
       );
-      console.log("legordergin", legOrdering);
 
       setParityCheckMatrixCache((prev) => {
         const newCache = new Map(prev);

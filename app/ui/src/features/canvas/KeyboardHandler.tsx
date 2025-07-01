@@ -235,7 +235,6 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           removeDroppedLegos(legosToRemove.map((l) => l.instanceId));
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
-        console.log("select all");
         e.preventDefault();
         if (droppedLegos.length > 0) {
           const tensorNetwork = new TensorNetwork({
@@ -243,10 +242,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             connections: _.cloneDeep(connections)
           });
 
-          console.log("tensorNetwork", tensorNetwork);
           setTensorNetwork(tensorNetwork);
-        } else {
-          console.log("no droppedLegos");
         }
       } else if (e.key === "Escape") {
         // Dismiss error message when Escape is pressed

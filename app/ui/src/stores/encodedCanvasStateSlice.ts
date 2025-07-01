@@ -48,9 +48,6 @@ export const createEncodedCanvasStateSlice: StateCreator<
 
       // Update all leg hide states based on the loaded connections
       get().updateAllLegHideStates();
-
-      console.log("Decoded canvas state for canvasId:", result.canvasId);
-      console.log(new Error().stack);
     } catch (error) {
       console.error("Failed to decode canvas state:", error);
       if (error instanceof Error) console.log(error.stack);

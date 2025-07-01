@@ -116,11 +116,6 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         );
 
         if (isCurrentlySelected && get().tensorNetwork?.legos.length === 1) {
-          console.log(
-            "second click on same already selected lego, state: ",
-            lego.x,
-            lego.y
-          );
           // Second click on same already selected lego - expand to connected component
           // Find the current version of the lego from droppedLegos to avoid stale state
           const currentLego = get().droppedLegos.find(
@@ -136,8 +131,6 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
           // only set tensor network if there are more than 1 legos in the network
           if (network.legos.length > 1) {
             get().setTensorNetwork(network);
-          } else {
-            console.log("same isolated lego clicked");
           }
         } else {
           // First click on unselected lego or clicking different lego - select just this lego

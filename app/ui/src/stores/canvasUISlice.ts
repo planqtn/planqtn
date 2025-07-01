@@ -1,11 +1,13 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
-import { SelectionBoxState } from "../lib/types";
+import { Connection, SelectionBoxState } from "../lib/types";
 
 export interface CanvasUISlice {
   selectionBox: SelectionBoxState;
   setSelectionBox: (selectionBox: SelectionBoxState) => void;
   updateSelectionBox: (updates: Partial<SelectionBoxState>) => void;
+  hoveredConnection: Connection | null;
+  setHoveredConnection: (hoveredConnection: Connection | null) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -31,5 +33,17 @@ export const createCanvasUISlice: StateCreator<
   updateSelectionBox: (updates) =>
     set((state) => {
       state.selectionBox = { ...state.selectionBox, ...updates };
-    })
+    }),
+
+  hoveredConnection: null,
+  setHoveredConnection: (hoveredConnection) => {
+    console.log(
+      "setHoveredConnection",
+      hoveredConnection?.from.legoId,
+      hoveredConnection?.to.legoId
+    );
+    set((state) => {
+      state.hoveredConnection = hoveredConnection;
+    });
+  }
 });

@@ -1,6 +1,6 @@
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { LegPosition, LegStyle } from "./LegoStyles.ts";
-import { useMemo, memo, useEffect } from "react";
+import { useMemo, memo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
 import { Connection } from "../../lib/types.ts";
@@ -52,7 +52,7 @@ export function getLegoBoundingBox(
 }
 
 interface DroppedLegoDisplayProps {
-  index: number;
+  instanceId: string;
   demoMode: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -203,8 +203,11 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ index, demoMode = false, canvasRef }) => {
-    const lego = useCanvasStore((state) => state.droppedLegos[index]);
+  ({ instanceId, demoMode = false, canvasRef }) => {
+    const lego = useCanvasStore((state) =>
+      state.droppedLegos.find((l) => l.instanceId === instanceId)
+    );
+    if (!lego) return null;
     const size = lego.style!.size;
     const numAllLegs = lego.numberOfLegs;
     const numLogicalLegs = lego.logical_legs.length;
@@ -253,29 +256,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     // Only subscribe to the specific drag state properties that matter for this lego
     const isThisLegoBeingDragged = useCanvasStore((state) => {
       return (
-        state.dragState.draggedLegoIndex === index &&
+        state.dragState.draggedLegoIndex !== undefined &&
+        state.droppedLegos[state.dragState.draggedLegoIndex]?.instanceId ===
+          instanceId &&
         state.dragState.draggingStage === DraggingStage.DRAGGING
       );
     });
-
-    useEffect(() => {
-      console.log(
-        "lego",
-        lego.instanceId,
-        "render due to connections change",
-        legoConnections
-      );
-    }, [legoConnections]);
-
-    useEffect(() => {
-      console.log(
-        "lego",
-        lego.instanceId,
-        "isThisLegoBeingDragged changed to:",
-        isThisLegoBeingDragged
-      );
-    }, [isThisLegoBeingDragged, lego.instanceId]);
-
     // console.log("lego", lego.instanceId, "render due to rerender");
 
     // Optimize tensor network subscription to only trigger when this lego's selection changes
@@ -287,16 +273,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         ) || false
       );
     });
-
-    // Add effect to log when selection changes for this specific lego
-    useEffect(() => {
-      console.log(
-        "lego",
-        lego.instanceId,
-        "selection state changed to:",
-        isSelected
-      );
-    }, [isSelected, lego.instanceId]);
 
     // Use base position (without drag offset) for all calculations
     const basePosition = useMemo(
@@ -336,17 +312,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       storeHandleLegClick(legoId, legIndex);
     };
 
-    // // Function to get leg visibility style
-    // const getLegVisibility = (legIndex: number) => {
-    //   if (shouldHideLeg(legIndex)) {
-    //     return {
-    //       visibility: "hidden" as const,
-    //       pointerEvents: "none" as const
-    //     };
-    //   }
-    //   return { visibility: "visible" as const, pointerEvents: "all" as const };
-    // };
-
     const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
       e.stopPropagation();
       storeHandleLegMouseUp(lego.instanceId, i);
@@ -373,6 +338,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const handleLegoMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      // Find the index for legacy compatibility
+      const index = useCanvasStore
+        .getState()
+        .droppedLegos.findIndex((l) => l.instanceId === instanceId);
       storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
     };
 

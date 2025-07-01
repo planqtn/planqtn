@@ -78,27 +78,23 @@ export const createGlobalTensorNetworkStore: StateCreator<
     droppedLegos: DroppedLego[],
     connections: Connection[]
   ) => {
-    set({ droppedLegos, connections });
-    const connectedLegoIds: Set<string> = new Set(
-      connections.flatMap((connection) => [
-        connection.from.legoId,
-        connection.to.legoId
-      ])
-    );
-    const connectedLegos = droppedLegos.filter((lego) =>
-      connectedLegoIds.has(lego.instanceId)
-    );
-    get().connectedLegos = connectedLegos;
-
-    // Initialize leg hide states for all legos
-    droppedLegos.forEach((lego) => {
-      get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
-      get().initializeLegConnectionStates(lego.instanceId, lego.numberOfLegs);
+    set((state) => {
+      state.droppedLegos = droppedLegos;
+      state.connections = connections;
+      state.connectedLegos = droppedLegos.filter((lego) =>
+        connections.some(
+          (connection) =>
+            connection.from.legoId === lego.instanceId ||
+            connection.to.legoId === lego.instanceId
+        )
+      );
     });
 
     // Update all leg hide states based on the new connections
+    get().updateAllLegConnectionStates();
     get().updateAllLegHideStates();
 
+    get().setHoveredConnection(null);
     get().setTensorNetwork(null);
     get().updateEncodedCanvasState();
   },

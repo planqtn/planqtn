@@ -38,8 +38,6 @@ export class InjectTwoLegged {
     let updatedLegos: DroppedLego[];
     let legosToAdd: DroppedLego[] = [];
     if (isExistingLego) {
-      console.log("existing lego coordinates", oldLego?.x, oldLego?.y);
-      console.log("new lego coordinates", lego.x, lego.y);
       // Update the position of the existing lego
       legosToAdd = [];
       updatedLegos = this.droppedLegos.map((l) => {
@@ -52,7 +50,6 @@ export class InjectTwoLegged {
         }
         return l;
       });
-      console.log("legos to update", legosToUpdate);
     } else {
       legosToAdd = [lego];
       // Add the new lego

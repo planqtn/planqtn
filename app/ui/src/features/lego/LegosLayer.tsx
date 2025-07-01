@@ -1,6 +1,7 @@
 import React, { memo, useMemo, useEffect, useState } from "react";
 import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { useShallow } from "zustand/react/shallow";
 
 interface LegosLayerProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -59,15 +60,9 @@ const useViewportBounds = () => {
 
 export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
   const viewportBounds = useViewportBounds();
-
-  // Use a more selective subscription to avoid rerenders on drag state changes
-  const droppedLegosLength = useCanvasStore(
-    (state) => state.droppedLegos.length
+  const droppedLegoIds = useCanvasStore(
+    useShallow((state) => state.droppedLegos.map((l) => l.instanceId))
   );
-
-  useEffect(() => {
-    console.log("legoslayer droppedLegos changed", droppedLegosLength);
-  }, [droppedLegosLength]);
 
   // const { dragState } = useDragStateStore();
 
@@ -103,20 +98,15 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
   // }, [dragState, droppedLegos, tensorNetwork]);
 
   const renderedLegos = useMemo(() => {
-    return Array(droppedLegosLength)
-      .fill(0)
-      .map((_, index) => {
-        const originalIndex = index;
-        return (
-          <DroppedLegoDisplay
-            key={"lego-" + index}
-            index={originalIndex}
-            demoMode={false}
-            canvasRef={canvasRef}
-          />
-        );
-      });
-  }, [viewportBounds, droppedLegosLength, canvasRef]);
+    return droppedLegoIds.map((instanceId) => (
+      <DroppedLegoDisplay
+        key={instanceId}
+        instanceId={instanceId}
+        demoMode={false}
+        canvasRef={canvasRef}
+      />
+    ));
+  }, [viewportBounds, droppedLegoIds, canvasRef]);
 
   return <>{renderedLegos}</>;
 });

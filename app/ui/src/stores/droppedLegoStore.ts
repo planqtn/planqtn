@@ -123,6 +123,7 @@ export interface DroppedLegosSlice {
   removeDroppedLego: (instanceId: string) => void;
   updateDroppedLego: (instanceId: string, updates: DroppedLego) => void;
   updateDroppedLegos: (legos: DroppedLego[]) => void;
+  moveDroppedLegos: (legos: DroppedLego[]) => void;
   removeDroppedLegos: (instanceIds: string[]) => void;
   clearDroppedLegos: () => void;
   newInstanceId: () => string;
@@ -296,6 +297,28 @@ export const createLegoSlice: StateCreator<
     get().updateEncodedCanvasState();
   },
 
+  moveDroppedLegos: (legos: DroppedLego[]) => {
+    set((state) => {
+      // Create a Map of the updates for quick lookup
+      const updatesMap = new Map(legos.map((lego) => [lego.instanceId, lego]));
+
+      // Iterate over the existing legos and replace them if an update exists
+      state.droppedLegos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.droppedLegos[index] = updatedLego;
+        }
+      });
+
+      state.connectedLegos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.connectedLegos[index] = updatedLego;
+        }
+      });
+    });
+    get().updateEncodedCanvasState();
+  },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
       // Create a Map of the updates for quick lookup

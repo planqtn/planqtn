@@ -325,7 +325,6 @@ export class TensorNetwork {
 
     // If we have multiple components at the end, tensor them together
     if (components.length > 1) {
-      console.log("TENSORING", components.length);
       let result = components[0].tensor;
       for (let i = 1; i < components.length; i++) {
         result = result.tensorWith(components[i].tensor);

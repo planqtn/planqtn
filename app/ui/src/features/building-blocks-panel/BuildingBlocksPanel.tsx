@@ -279,7 +279,6 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
             rect.top + rect.height / 2,
             newInstanceId()
           );
-          console.log("draggedLego", draggedLego);
           setDraggedLego(draggedLego);
           setBuildingBlockDragState({
             isDragging: true,

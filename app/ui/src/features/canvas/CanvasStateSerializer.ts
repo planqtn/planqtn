@@ -70,7 +70,6 @@ export class CanvasStateSerializer {
 
       // Preserve the canvas ID from the decoded state if it exists
       if (decoded.canvasId) {
-        console.log("Decoded canvasId:", decoded.canvasId);
         this.canvasId = decoded.canvasId;
       }
 

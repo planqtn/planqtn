@@ -40,6 +40,53 @@ export const pointToLineDistance = (
   return Math.sqrt(dx * dx + dy * dy);
 };
 
+export const findClosestConnection = (
+  dropPosition: { x: number; y: number },
+  droppedLegos: DroppedLego[],
+  connections: Connection[]
+): Connection | null => {
+  // Find the closest connection
+  let closestConnection: Connection | null = null;
+  let minDistance = Infinity;
+
+  connections.forEach((conn) => {
+    const fromLego = droppedLegos.find(
+      (l) => l.instanceId === conn.from.legoId
+    );
+    const toLego = droppedLegos.find((l) => l.instanceId === conn.to.legoId);
+    if (!fromLego || !toLego) return;
+
+    const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
+    const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
+
+    const fromPoint = {
+      x: fromLego.x + fromPos.endX,
+      y: fromLego.y + fromPos.endY
+    };
+    const toPoint = {
+      x: toLego.x + toPos.endX,
+      y: toLego.y + toPos.endY
+    };
+
+    // Calculate distance from point to line segment
+    const distance = pointToLineDistance(
+      dropPosition.x,
+      dropPosition.y,
+      fromPoint.x,
+      fromPoint.y,
+      toPoint.x,
+      toPoint.y
+    );
+    if (distance < minDistance && distance < 40) {
+      // 20 pixels threshold
+      minDistance = distance;
+      closestConnection = conn;
+    }
+  });
+
+  return closestConnection;
+};
+
 // Add this before the App component
 export const findClosestDanglingLeg = (
   dropPosition: { x: number; y: number },

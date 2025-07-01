@@ -23,7 +23,7 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./features/canvas/SelectionManager.tsx";
-import { Connection, ParityCheckMatrix } from "./lib/types";
+import { ParityCheckMatrix } from "./lib/types";
 
 import DetailsPanel from "./features/details-panel/DetailsPanel.tsx";
 import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
@@ -178,9 +178,6 @@ const LegoStudioView: React.FC = () => {
   }, []);
 
   const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
-  const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(
-    null
-  );
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
@@ -531,13 +528,11 @@ const LegoStudioView: React.FC = () => {
 
       <CanvasMouseHandler
         canvasRef={canvasRef}
-        setHoveredConnection={setHoveredConnection}
         selectionManagerRef={selectionManagerRef}
         zoomLevel={zoomLevel}
         altKeyPressed={altKeyPressed}
         handleDynamicLegoDrop={handleDynamicLegoDrop}
         setError={setError}
-        hoveredConnection={hoveredConnection}
       />
 
       <VStack spacing={0} align="stretch" h="100vh">
@@ -652,7 +647,7 @@ const LegoStudioView: React.FC = () => {
                       />
                     </Box>
                   </Box>
-                  <ConnectionsLayer hoveredConnection={hoveredConnection} />
+                  <ConnectionsLayer />
                   {/* Selection Manager */}
                   <SelectionManager
                     ref={selectionManagerRef}

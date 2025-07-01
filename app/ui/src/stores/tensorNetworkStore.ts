@@ -16,7 +16,6 @@ export const useTensorNetworkSlice: StateCreator<
   tensorNetwork: null,
 
   setTensorNetwork: (network) => {
-    console.log("setTensorNetwork", new Error().stack);
     set({ tensorNetwork: network });
   }
 });
