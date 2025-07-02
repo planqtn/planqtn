@@ -36,11 +36,6 @@ interface PauliRowProps {
   charWidth: number;
   getPauliString: (row: number[]) => string;
   getPauliColor: (pauli: string) => string;
-  setTooltip: React.Dispatch<
-    React.SetStateAction<{ x: number; y: number } | null>
-  >;
-  legOrdering?: TensorNetworkLeg[];
-  onLegHover?: (leg: TensorNetworkLeg | null) => void;
   selectedRows: number[];
   draggedRowIndex: number | null;
   handleDragStart: (e: React.DragEvent, rowIndex: number) => void;
@@ -48,31 +43,29 @@ interface PauliRowProps {
   handleDrop: (e: React.DragEvent, rowIndex: number) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleRowClick: (rowIndex: number) => void;
-  setHoveredLegIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  legOrdering?: TensorNetworkLeg[];
+  onLegHover?: (leg: TensorNetworkLeg | null) => void;
+  setHoveredLegIndex: (index: number | null) => void;
+  setHoveredRowIndex: (index: number | null) => void;
 }
 
 interface PauliCellProps {
   pauli: string;
   color: string;
-  onHover: (index: number) => void;
-  onUnhover: () => void;
-  index: number;
-  setTooltip: (
-    pos: { x: number; y: number } | null,
-    index: number | null
-  ) => void;
   onRowClick?: () => void;
+  onHover?: (index: number) => void;
+  onUnhover?: () => void;
+  index: number;
 }
 
 // Memoized PauliCell component
 const PauliCell = memo(function PauliCell({
   pauli,
   color,
+  onRowClick,
   onHover,
   onUnhover,
-  index,
-  setTooltip,
-  onRowClick
+  index
 }: PauliCellProps) {
   return (
     <span
@@ -82,15 +75,17 @@ const PauliCell = memo(function PauliCell({
         borderRadius: 3,
         cursor: "pointer"
       }}
-      onMouseEnter={(e) => {
-        onHover(index);
-        setTooltip({ x: e.clientX, y: e.clientY }, index);
+      onMouseEnter={() => {
+        if (onHover) {
+          onHover(index);
+        }
       }}
       onMouseLeave={() => {
-        onUnhover();
-        setTooltip(null, null);
+        if (onUnhover) {
+          onUnhover();
+        }
       }}
-      onClick={(e) => {
+      onClick={() => {
         // Let the click bubble up to the parent row
         if (onRowClick) {
           onRowClick();
@@ -110,9 +105,6 @@ const PauliRow = function PauliRow({
   charWidth,
   getPauliString,
   getPauliColor,
-  setTooltip,
-  legOrdering,
-  onLegHover,
   selectedRows,
   draggedRowIndex,
   handleDragStart,
@@ -120,7 +112,10 @@ const PauliRow = function PauliRow({
   handleDrop,
   handleDragEnd,
   handleRowClick,
-  setHoveredLegIndex
+  legOrdering,
+  onLegHover,
+  setHoveredLegIndex,
+  setHoveredRowIndex
 }: PauliRowProps) {
   const pauliString = getPauliString(row);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -200,19 +195,20 @@ const PauliRow = function PauliRow({
               key={i}
               pauli={pauli}
               color={getPauliColor(pauli)}
+              onRowClick={() => handleRowClick(rowIndex)}
+              index={i}
               onHover={(idx) => {
+                setHoveredLegIndex(idx);
+                setHoveredRowIndex(rowIndex);
                 if (onLegHover && legOrdering && legOrdering[idx]) {
                   onLegHover(legOrdering[idx]);
-                  setHoveredLegIndex(idx);
                 }
               }}
               onUnhover={() => {
-                if (onLegHover) onLegHover(null);
                 setHoveredLegIndex(null);
+                setHoveredRowIndex(null);
+                if (onLegHover) onLegHover(null);
               }}
-              index={i}
-              setTooltip={setTooltip}
-              onRowClick={() => handleRowClick(rowIndex)}
             />
           ))}
         </Text>
@@ -239,10 +235,7 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
   const [isLegReorderDialogOpen, setIsLegReorderDialogOpen] = useState(false);
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [tooltipContent] = useState<string | null>(null);
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const hasInitialized = useRef(false);
   const charMeasureRef = useRef<HTMLSpanElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -581,9 +574,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     charWidth,
     getPauliString,
     getPauliColor,
-    setTooltip: setMousePos,
-    legOrdering,
-    onLegHover,
     selectedRows: effectiveSelectedRows,
     draggedRowIndex,
     handleDragStart,
@@ -591,7 +581,10 @@ export const ParityCheckMatrixDisplay: React.FC<
     handleDrop,
     handleDragEnd,
     handleRowClick,
-    setHoveredLegIndex
+    legOrdering,
+    onLegHover,
+    setHoveredLegIndex,
+    setHoveredRowIndex
   };
 
   // Add a key to force re-render when selection changes
@@ -647,12 +640,44 @@ export const ParityCheckMatrixDisplay: React.FC<
         </Menu>
       </HStack>
 
+      {/* Status box showing current hover position */}
+      <Box
+        bg="gray.50"
+        border="1px solid"
+        borderColor="gray.200"
+        borderRadius="md"
+        px={3}
+        py={2}
+        mb={2}
+        fontSize="sm"
+        minHeight="32px"
+        display="flex"
+        alignItems="center"
+      >
+        {hoveredRowIndex !== null && hoveredLegIndex !== null ? (
+          <Text>
+            <b>Row {hoveredRowIndex}</b> • <b>Column {hoveredLegIndex}</b>
+            {legOrdering && legOrdering[hoveredLegIndex] && (
+              <>
+                {" "}
+                • <b>Tensor:</b> {legOrdering[hoveredLegIndex].instanceId} •{" "}
+                <b>Leg:</b> {legOrdering[hoveredLegIndex].legIndex}
+              </>
+            )}
+          </Text>
+        ) : (
+          <Text color="gray.500">
+            Hover over a Pauli operator to see position info
+          </Text>
+        )}
+      </Box>
+
       <Box
         position="relative"
         width="100%"
         height="100%"
         mx={0}
-        mt={6}
+        mt={0}
         style={{ flex: 1, minHeight: 0 }}
       >
         <Resizable
@@ -737,9 +762,6 @@ export const ParityCheckMatrixDisplay: React.FC<
                   charWidth={data.charWidth}
                   getPauliString={data.getPauliString}
                   getPauliColor={data.getPauliColor}
-                  setTooltip={data.setTooltip}
-                  legOrdering={data.legOrdering}
-                  onLegHover={data.onLegHover}
                   selectedRows={data.selectedRows}
                   draggedRowIndex={data.draggedRowIndex}
                   handleDragStart={data.handleDragStart}
@@ -747,55 +769,15 @@ export const ParityCheckMatrixDisplay: React.FC<
                   handleDrop={data.handleDrop}
                   handleDragEnd={data.handleDragEnd}
                   handleRowClick={data.handleRowClick}
+                  legOrdering={data.legOrdering}
+                  onLegHover={data.onLegHover}
                   setHoveredLegIndex={data.setHoveredLegIndex}
+                  setHoveredRowIndex={data.setHoveredRowIndex}
                 />
               </div>
             )}
           </List>
-          {/* Floating Tooltip for hovered column */}
-          {hoveredLegIndex !== null &&
-            mousePos &&
-            legOrdering &&
-            legOrdering[hoveredLegIndex] && (
-              <Box
-                position="fixed"
-                left={mousePos.x + 12}
-                top={mousePos.y - 32}
-                bg="gray.700"
-                color="white"
-                px={3}
-                py={1}
-                borderRadius="md"
-                fontSize="sm"
-                opacity={0.92}
-                pointerEvents="none"
-                zIndex={9999}
-                boxShadow="md"
-                style={{
-                  transform: "translate(-50%, -100%)"
-                }}
-              >
-                Tensor: <b>{legOrdering[hoveredLegIndex].instanceId}</b> &nbsp;
-                Leg: <b>{legOrdering[hoveredLegIndex].legIndex}</b>
-              </Box>
-            )}
-          {mousePos && tooltipContent && (
-            <Box
-              position="fixed"
-              left={mousePos.x + 10}
-              top={mousePos.y + 10}
-              zIndex={1000}
-              bg="white"
-              border="1px solid #ccc"
-              p={2}
-              borderRadius="md"
-              pointerEvents="none"
-              fontSize="sm"
-              boxShadow="md"
-            >
-              {tooltipContent}
-            </Box>
-          )}
+
           {/* Resize grip indicator */}
           <Box
             position="absolute"
