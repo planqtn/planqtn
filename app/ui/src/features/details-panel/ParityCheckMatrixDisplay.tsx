@@ -686,7 +686,7 @@ export const ParityCheckMatrixDisplay: React.FC<
           minHeight={200}
           maxWidth="100vw"
           maxHeight="100vh"
-          onResizeStop={(e, direction, ref, d) => {
+          onResizeStop={(_e, _direction, _ref, d) => {
             setListSize({
               width: listSize.width + d.width,
               height: listSize.height + d.height
