@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  memo,
-  useCallback,
-  useMemo
-} from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import {
   Box,
   Text,
@@ -55,7 +48,6 @@ interface PauliRowProps {
   handleDrop: (e: React.DragEvent, rowIndex: number) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleRowClick: (rowIndex: number) => void;
-  hoveredLegIndex: number | null;
   setHoveredLegIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
@@ -69,6 +61,7 @@ interface PauliCellProps {
     pos: { x: number; y: number } | null,
     index: number | null
   ) => void;
+  onRowClick?: () => void;
 }
 
 // Memoized PauliCell component
@@ -78,7 +71,8 @@ const PauliCell = memo(function PauliCell({
   onHover,
   onUnhover,
   index,
-  setTooltip
+  setTooltip,
+  onRowClick
 }: PauliCellProps) {
   return (
     <span
@@ -92,10 +86,15 @@ const PauliCell = memo(function PauliCell({
         onHover(index);
         setTooltip({ x: e.clientX, y: e.clientY }, index);
       }}
-      onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY }, index)}
       onMouseLeave={() => {
         onUnhover();
         setTooltip(null, null);
+      }}
+      onClick={(e) => {
+        e.stopPropagation(); // Prevent double-firing
+        if (onRowClick) {
+          onRowClick();
+        }
       }}
     >
       {pauli}
@@ -103,22 +102,8 @@ const PauliCell = memo(function PauliCell({
   );
 });
 
-// Custom comparison for PauliRow to prevent unnecessary rerenders
-function areEqualPauliRow(prevProps: PauliRowProps, nextProps: PauliRowProps) {
-  // Only rerender if this row's selection status or other relevant props change
-  const wasSelected = prevProps.selectedRows.includes(prevProps.rowIndex);
-  const isSelected = nextProps.selectedRows.includes(nextProps.rowIndex);
-  return (
-    wasSelected === isSelected &&
-    prevProps.handleRowClick === nextProps.handleRowClick &&
-    prevProps.row === nextProps.row &&
-    prevProps.draggedRowIndex === nextProps.draggedRowIndex
-    // Add more prop comparisons if needed
-  );
-}
-
 // Memoized PauliRow component
-const PauliRow = memo(function PauliRow({
+const PauliRow = function PauliRow({
   row,
   rowIndex,
   numLegs,
@@ -135,36 +120,59 @@ const PauliRow = memo(function PauliRow({
   handleDrop,
   handleDragEnd,
   handleRowClick,
-  hoveredLegIndex,
   setHoveredLegIndex
 }: PauliRowProps) {
   const pauliString = getPauliString(row);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const isSelected = selectedRows.includes(rowIndex);
+  const isDragged = draggedRowIndex === rowIndex;
+
+  const getBackgroundColor = () => {
+    if (isDragOver) return "#FFF5E6"; // Orange tint for drop zone
+    if (isDragged) return "#E6F3FF"; // Light blue for dragged row
+    if (isSelected) return "#F0F8FF"; // Very light blue for selected rows
+    return "transparent";
+  };
+
+  const getBorderColor = () => {
+    if (isDragOver) return "2px dashed #FF8C00"; // Orange dashed border for drop zone
+    if (isSelected) return "1px solid #B0D4F1"; // Light blue border for selected
+    return "1px solid transparent";
+  };
 
   return (
-    <HStack
+    <div
       key={rowIndex}
-      spacing={2}
       draggable
       onDragStart={(e) => handleDragStart(e, rowIndex)}
       onDragOver={handleDragOver}
-      onDrop={(e) => handleDrop(e, rowIndex)}
-      onDragEnd={handleDragEnd}
-      cursor="pointer"
-      bg={
-        draggedRowIndex === rowIndex
-          ? "blue.50"
-          : selectedRows.includes(rowIndex)
-            ? "blue.100"
-            : "transparent"
-      }
-      p={1}
-      borderRadius="md"
-      onClick={() => handleRowClick(rowIndex)}
-      _hover={{
-        bg: selectedRows.includes(rowIndex) ? "blue.100" : "gray.50"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
       }}
-      border={selectedRows.includes(rowIndex) ? "1px solid" : "1px solid"}
-      borderColor={selectedRows.includes(rowIndex) ? "blue.500" : "transparent"}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+      }}
+      onDrop={(e) => {
+        handleDrop(e, rowIndex);
+        setIsDragOver(false);
+      }}
+      onDragEnd={handleDragEnd}
+      onClick={() => handleRowClick(rowIndex)}
+      style={{
+        pointerEvents: "all",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        cursor: "grab",
+        backgroundColor: getBackgroundColor(),
+        padding: "1px",
+        borderRadius: "6px",
+        border: getBorderColor(),
+        transition: "all 0.2s ease"
+      }}
     >
       <Text fontSize={12} width="65px" flexShrink={0} color="gray.500">
         [{rowIndex}] w
@@ -204,13 +212,14 @@ const PauliRow = memo(function PauliRow({
               }}
               index={i}
               setTooltip={setTooltip}
+              onRowClick={() => handleRowClick(rowIndex)}
             />
           ))}
         </Text>
       </Box>
-    </HStack>
+    </div>
   );
-}, areEqualPauliRow);
+};
 
 export const ParityCheckMatrixDisplay: React.FC<
   ParityCheckMatrixDisplayProps
@@ -238,6 +247,30 @@ export const ParityCheckMatrixDisplay: React.FC<
   const charMeasureRef = useRef<HTMLSpanElement>(null);
   const [charWidth, setCharWidth] = useState<number>(8);
   const [listSize, setListSize] = useState({ width: 800, height: 600 });
+
+  // Local selection state as fallback
+  const [localSelectedRows, setLocalSelectedRows] = useState<number[]>([]);
+  const [lastParentSelectedRows, setLastParentSelectedRows] = useState<
+    number[]
+  >([]);
+
+  // Check if parent is updating selectedRows properly
+  const parentUpdating =
+    JSON.stringify(selectedRows) !== JSON.stringify(lastParentSelectedRows);
+
+  // Use parent selectedRows if updating, otherwise use local state
+  const effectiveSelectedRows = parentUpdating
+    ? selectedRows
+    : localSelectedRows;
+
+  // Update tracking when parent selectedRows changes
+  useEffect(() => {
+    if (parentUpdating) {
+      setLastParentSelectedRows([...selectedRows]);
+      setLocalSelectedRows([...selectedRows]);
+    }
+  }, [selectedRows, parentUpdating]);
+
   // Initialize history only once when component mounts
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -287,29 +320,42 @@ export const ParityCheckMatrixDisplay: React.FC<
   // Memoize drag/row handlers
   const handleDragStart = useCallback(
     (e: React.DragEvent, rowIndex: number) => {
-      setDraggedRowIndex(rowIndex);
+      console.log("Drag start:", rowIndex);
       e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", rowIndex.toString());
+      // Delay state update to avoid blocking the drag start
+      setTimeout(() => setDraggedRowIndex(rowIndex), 0);
     },
     []
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent, targetRowIndex: number) => {
       e.preventDefault();
-      if (draggedRowIndex === null || draggedRowIndex === targetRowIndex)
+      e.stopPropagation();
+
+      const draggedRowIndexStr = e.dataTransfer.getData("text/plain");
+      const draggedIdx = parseInt(draggedRowIndexStr, 10);
+
+      console.log("Drop:", draggedIdx, "onto", targetRowIndex);
+
+      if (isNaN(draggedIdx) || draggedIdx === targetRowIndex) {
+        setDraggedRowIndex(null);
         return;
+      }
 
       // Create a new matrix with the rows added
       const newMatrix = matrix.map((row, index) => {
         if (index === targetRowIndex) {
           // Add the dragged row to the target row (modulo 2)
           return row.map(
-            (cell, cellIndex) => (cell + matrix[draggedRowIndex][cellIndex]) % 2
+            (cell, cellIndex) => (cell + matrix[draggedIdx][cellIndex]) % 2
           );
         }
         return row;
@@ -330,16 +376,11 @@ export const ParityCheckMatrixDisplay: React.FC<
 
       setDraggedRowIndex(null);
     },
-    [
-      draggedRowIndex,
-      matrix,
-      currentHistoryIndex,
-      matrixHistory,
-      onMatrixChange
-    ]
+    [matrix, currentHistoryIndex, matrixHistory, onMatrixChange]
   );
 
   const handleDragEnd = useCallback(() => {
+    console.log("Drag end");
     setDraggedRowIndex(null);
   }, []);
 
@@ -405,19 +446,22 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   };
 
-  // Memoize selectedRows
-  const memoizedSelectedRows = useMemo(() => selectedRows, [selectedRows]);
-
   // Memoize handleRowClick with minimal dependencies
   const handleRowClick = useCallback(
     (rowIndex: number) => {
-      onRowSelectionChange?.(
-        selectedRows.includes(rowIndex)
-          ? selectedRows.filter((i) => i !== rowIndex)
-          : [...selectedRows, rowIndex]
-      );
+      const newSelection = effectiveSelectedRows.includes(rowIndex)
+        ? effectiveSelectedRows.filter((i) => i !== rowIndex)
+        : [...effectiveSelectedRows, rowIndex];
+
+      // Always update local state
+      setLocalSelectedRows(newSelection);
+
+      // Also try to update parent if callback provided
+      if (onRowSelectionChange) {
+        onRowSelectionChange(newSelection);
+      }
     },
-    [onRowSelectionChange, selectedRows]
+    [onRowSelectionChange, effectiveSelectedRows]
   );
 
   const handleLegReorder = (newLegOrdering: TensorNetworkLeg[]) => {
@@ -461,6 +505,29 @@ export const ParityCheckMatrixDisplay: React.FC<
       </Box>
     );
   }
+
+  // Create itemData object for react-window to detect changes
+  const itemData = {
+    matrix,
+    numLegs,
+    charWidth,
+    getPauliString,
+    getPauliColor,
+    setTooltip: setMousePos,
+    legOrdering,
+    onLegHover,
+    selectedRows: effectiveSelectedRows,
+    draggedRowIndex,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+    handleRowClick,
+    setHoveredLegIndex
+  };
+
+  // Add a key to force re-render when selection changes
+  const listKey = `list-${effectiveSelectedRows.join("-")}-${draggedRowIndex || "none"}`;
 
   return (
     <Box>
@@ -533,39 +600,46 @@ export const ParityCheckMatrixDisplay: React.FC<
         >
           {/* Pauli stabilizer rows - virtualized */}
           <List
-            height={listSize.height} // You can make this dynamic or use a parent container's height
+            key={listKey}
+            height={listSize.height}
             width={listSize.width}
             itemCount={matrix.length}
-            itemSize={20} // Adjust to match your row height
-            // style={{ width: "100%", height: "100%" }}
+            itemSize={20}
+            itemData={itemData}
           >
             {({
               index,
-              style
+              style,
+              data
             }: {
               index: number;
               style: React.CSSProperties;
+              data: typeof itemData;
             }) => (
-              <div style={style} key={index}>
+              <div
+                style={{
+                  ...style
+                }}
+                key={`${index}-${data.selectedRows.join(",")}`}
+              >
                 <PauliRow
-                  row={matrix[index]}
+                  row={data.matrix[index]}
                   rowIndex={index}
-                  numLegs={numLegs}
-                  charWidth={charWidth}
-                  getPauliString={getPauliString}
-                  getPauliColor={getPauliColor}
-                  setTooltip={setMousePos}
-                  legOrdering={legOrdering}
-                  onLegHover={onLegHover}
-                  selectedRows={memoizedSelectedRows}
-                  draggedRowIndex={draggedRowIndex}
-                  handleDragStart={handleDragStart}
-                  handleDragOver={handleDragOver}
-                  handleDrop={handleDrop}
-                  handleDragEnd={handleDragEnd}
-                  handleRowClick={handleRowClick}
-                  hoveredLegIndex={hoveredLegIndex}
-                  setHoveredLegIndex={setHoveredLegIndex}
+                  numLegs={data.numLegs}
+                  charWidth={data.charWidth}
+                  getPauliString={data.getPauliString}
+                  getPauliColor={data.getPauliColor}
+                  setTooltip={data.setTooltip}
+                  legOrdering={data.legOrdering}
+                  onLegHover={data.onLegHover}
+                  selectedRows={data.selectedRows}
+                  draggedRowIndex={data.draggedRowIndex}
+                  handleDragStart={data.handleDragStart}
+                  handleDragOver={data.handleDragOver}
+                  handleDrop={data.handleDrop}
+                  handleDragEnd={data.handleDragEnd}
+                  handleRowClick={data.handleRowClick}
+                  setHoveredLegIndex={data.setHoveredLegIndex}
                 />
               </div>
             )}
@@ -629,47 +703,4 @@ export const ParityCheckMatrixDisplay: React.FC<
   );
 };
 
-// Custom comparison function that ignores position changes
-const arePropsEqual = (
-  prevProps: ParityCheckMatrixDisplayProps,
-  nextProps: ParityCheckMatrixDisplayProps
-) => {
-  // Compare matrix deeply
-  if (prevProps.matrix.length !== nextProps.matrix.length) return false;
-  for (let i = 0; i < prevProps.matrix.length; i++) {
-    if (prevProps.matrix[i].length !== nextProps.matrix[i].length) return false;
-    for (let j = 0; j < prevProps.matrix[i].length; j++) {
-      if (prevProps.matrix[i][j] !== nextProps.matrix[i][j]) return false;
-    }
-  }
-
-  // Compare other props (excluding functions which should be stable)
-  if (prevProps.title !== nextProps.title) return false;
-
-  // Compare legOrdering deeply
-  if (prevProps.legOrdering?.length !== nextProps.legOrdering?.length)
-    return false;
-  if (prevProps.legOrdering && nextProps.legOrdering) {
-    for (let i = 0; i < prevProps.legOrdering.length; i++) {
-      if (
-        prevProps.legOrdering[i].instanceId !==
-          nextProps.legOrdering[i].instanceId ||
-        prevProps.legOrdering[i].legIndex !== nextProps.legOrdering[i].legIndex
-      )
-        return false;
-    }
-  }
-
-  // Compare selectedRows
-  if (prevProps.selectedRows?.length !== nextProps.selectedRows?.length)
-    return false;
-  if (prevProps.selectedRows && nextProps.selectedRows) {
-    for (let i = 0; i < prevProps.selectedRows.length; i++) {
-      if (prevProps.selectedRows[i] !== nextProps.selectedRows[i]) return false;
-    }
-  }
-
-  return true;
-};
-
-export default memo(ParityCheckMatrixDisplay, arePropsEqual);
+export default ParityCheckMatrixDisplay;

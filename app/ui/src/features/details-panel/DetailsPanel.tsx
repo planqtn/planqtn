@@ -357,6 +357,30 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     [tensorNetwork, setTensorNetwork]
   );
 
+  const handleLegoMatrixChange = useCallback(
+    (newMatrix: number[][]) => {
+      if (!tensorNetwork) return;
+      const lego = tensorNetwork.legos[0];
+      const updatedLego = new DroppedLego(
+        lego,
+        lego.x,
+        lego.y,
+        lego.instanceId,
+        { parity_check_matrix: newMatrix }
+      );
+      updateDroppedLego(updatedLego.instanceId, updatedLego);
+      simpleAutoFlow(
+        updatedLego,
+        droppedLegos.map((lego) =>
+          lego.instanceId === updatedLego.instanceId ? updatedLego : lego
+        ),
+        connections,
+        setDroppedLegos
+      );
+    },
+    [tensorNetwork, setTensorNetwork]
+  );
+
   // Memoized callbacks for ParityCheckMatrixDisplay
   const handleMultiLegoMatrixChange = useCallback(
     (newMatrix: number[][]) => {
@@ -1198,6 +1222,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 legOrdering={singleLegoLegOrdering}
                 selectedRows={tensorNetwork.legos[0].selectedMatrixRows || []}
                 onRowSelectionChange={handleMatrixRowSelection}
+                onMatrixChange={handleLegoMatrixChange}
               />
             </VStack>
           </>

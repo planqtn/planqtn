@@ -72,7 +72,8 @@ export class DroppedLego implements LegoPiece {
     this.name = lego.name;
     this.shortName = lego.shortName;
     this.description = lego.description;
-    this.parity_check_matrix = lego.parity_check_matrix;
+    this.parity_check_matrix =
+      overrides.parity_check_matrix || lego.parity_check_matrix;
     this.logical_legs = lego.logical_legs;
     this.gauge_legs = lego.gauge_legs;
     this.is_dynamic = lego.is_dynamic;
@@ -285,6 +286,11 @@ export const createLegoSlice: StateCreator<
       if (connectedLegoIndex !== -1) {
         state.connectedLegos[connectedLegoIndex] = updates;
       }
+      state.tensorNetwork?.legos.forEach((lego, index) => {
+        if (lego.instanceId === instanceId) {
+          state.tensorNetwork!.legos[index] = updates;
+        }
+      });
     });
     // Update leg hide states if the number of legs changed
     const existingStates = get().getLegHideStates(instanceId);

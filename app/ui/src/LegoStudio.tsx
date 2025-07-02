@@ -138,7 +138,6 @@ const LegoStudioView: React.FC = () => {
   const setPendingDropPosition = useCanvasStore(
     (state) => state.setPendingDropPosition
   );
-  const error = useCanvasStore((state) => state.error);
   const setError = useCanvasStore((state) => state.setError);
 
   const { canvasDragState } = useCanvasDragStateStore();
