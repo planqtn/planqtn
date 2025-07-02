@@ -8,6 +8,8 @@ export interface CanvasUISlice {
   updateSelectionBox: (updates: Partial<SelectionBoxState>) => void;
   hoveredConnection: Connection | null;
   setHoveredConnection: (hoveredConnection: Connection | null) => void;
+  setError: (error: string | null) => void;
+  error: string | null;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -37,13 +39,14 @@ export const createCanvasUISlice: StateCreator<
 
   hoveredConnection: null,
   setHoveredConnection: (hoveredConnection) => {
-    console.log(
-      "setHoveredConnection",
-      hoveredConnection?.from.legoId,
-      hoveredConnection?.to.legoId
-    );
     set((state) => {
       state.hoveredConnection = hoveredConnection;
+    });
+  },
+  error: null,
+  setError: (error) => {
+    set((state) => {
+      state.error = error;
     });
   }
 });

@@ -7,7 +7,6 @@ import { DroppedLego } from "../../stores/droppedLegoStore";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
-  onSetError: (error: string) => void;
   onFuseLegos: (legos: DroppedLego[]) => void;
   onPullOutSameColoredLeg: (lego: DroppedLego) => void;
   onToast: (props: {
@@ -21,7 +20,6 @@ interface KeyboardHandlerProps {
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   onSetAltKeyPressed,
-  onSetError,
   onFuseLegos,
   onPullOutSameColoredLeg,
   onToast
@@ -39,7 +37,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     undo,
     redo,
     tensorNetwork,
-    setTensorNetwork
+    setTensorNetwork,
+    setError
   } = useCanvasStore();
 
   useEffect(() => {
@@ -69,8 +68,12 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               selectedLegoIds.has(conn.to.legoId)
           );
 
+          // Remove 'style' property from each lego before copying
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const plainLegos = selectedLegos.map(({ style, ...rest }) => rest);
+
           const clipboardData = {
-            legos: selectedLegos,
+            legos: plainLegos,
             connections: selectedConnections
           };
 
@@ -137,6 +140,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
               (l: DroppedLego, idx: number) => {
                 const newId = String(startingId + idx);
                 instanceIdMap.set(l.instanceId, newId);
+                // Style will be recalculated in DroppedLego constructor
                 return new DroppedLego(
                   l,
                   l.x + dropX - pastedData.legos[0].x,
@@ -246,7 +250,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         }
       } else if (e.key === "Escape") {
         // Dismiss error message when Escape is pressed
-        onSetError("");
+        setError(null);
       } else if (e.key === "f") {
         e.preventDefault();
         if (tensorNetwork) {

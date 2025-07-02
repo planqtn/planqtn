@@ -316,6 +316,13 @@ export const createLegoSlice: StateCreator<
           state.connectedLegos[index] = updatedLego;
         }
       });
+
+      state.tensorNetwork?.legos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.tensorNetwork!.legos[index] = updatedLego;
+        }
+      });
     });
     get().updateEncodedCanvasState();
   },
@@ -338,6 +345,12 @@ export const createLegoSlice: StateCreator<
           state.connectedLegos[index] = updatedLego;
         }
       });
+      state.tensorNetwork?.legos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instanceId);
+        if (updatedLego) {
+          state.tensorNetwork!.legos[index] = updatedLego;
+        }
+      });
     });
     // Update leg hide states for updated legos
     legos.forEach((lego) => {
@@ -347,6 +360,7 @@ export const createLegoSlice: StateCreator<
         get().initializeLegConnectionStates(lego.instanceId, lego.numberOfLegs);
       }
     });
+
     // Update all leg hide states to account for the updated legos
     get().updateAllLegHideStates();
     get().updateEncodedCanvasState();

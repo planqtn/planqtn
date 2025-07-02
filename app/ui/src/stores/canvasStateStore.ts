@@ -24,9 +24,9 @@ import {
 import { GroupDragStateSlice, useGroupDragStateSlice } from "./groupDragState";
 import { CloningSlice, useCloningSlice } from "./cloningSlice";
 import {
-  LegoLegEventsSlice,
+  DroppedLegoLegEventsSlice,
   useLegoLegEventsSlice
-} from "./legoLegEventsSlice";
+} from "./droppedLegoLegEventsSlice";
 import { LegDragStateSlice, useLegDragStateStore } from "./legDragState";
 import {
   LegoLegPropertiesSlice,
@@ -49,13 +49,11 @@ export interface CanvasStore
     DroppedLegoClickHandlerSlice,
     GroupDragStateSlice,
     CloningSlice,
-    LegoLegEventsSlice,
+    DroppedLegoLegEventsSlice,
     LegDragStateSlice,
     LegoLegPropertiesSlice,
     CanvasEventHandlingSlice,
-    CanvasUISlice {
-  setError?: (error: string) => void;
-}
+    CanvasUISlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (

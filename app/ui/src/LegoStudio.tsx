@@ -138,9 +138,8 @@ const LegoStudioView: React.FC = () => {
   const setPendingDropPosition = useCanvasStore(
     (state) => state.setPendingDropPosition
   );
-
-  // Keep local state that's not in the store
-  const [error, setError] = useState<string>("");
+  const error = useCanvasStore((state) => state.error);
+  const setError = useCanvasStore((state) => state.setError);
 
   const { canvasDragState } = useCanvasDragStateStore();
 
@@ -515,7 +514,6 @@ const LegoStudioView: React.FC = () => {
     <>
       <KeyboardHandler
         onSetAltKeyPressed={setAltKeyPressed}
-        onSetError={setError}
         onFuseLegos={fuseLegos}
         onPullOutSameColoredLeg={handlePullOutSameColoredLeg}
         onToast={(props) =>
@@ -532,7 +530,6 @@ const LegoStudioView: React.FC = () => {
         zoomLevel={zoomLevel}
         altKeyPressed={altKeyPressed}
         handleDynamicLegoDrop={handleDynamicLegoDrop}
-        setError={setError}
       />
 
       <VStack spacing={0} align="stretch" h="100vh">
@@ -666,7 +663,6 @@ const LegoStudioView: React.FC = () => {
             <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
               <DetailsPanel
                 handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-                setError={setError}
                 fuseLegos={fuseLegos}
                 makeSpace={(
                   center: { x: number; y: number },
@@ -684,7 +680,7 @@ const LegoStudioView: React.FC = () => {
             </Panel>
           </PanelGroup>
           {/* Error Panel */}
-          <ErrorPanel error={error} onDismiss={() => setError("")} />
+          <ErrorPanel />
         </Box>
 
         <FloatingTaskPanel

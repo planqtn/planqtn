@@ -66,7 +66,6 @@ import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 
 interface DetailsPanelProps {
-  setError: (error: string) => void;
   fuseLegos: (legos: DroppedLego[]) => void;
 
   makeSpace: (
@@ -107,7 +106,6 @@ interface DetailsPanelProps {
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
-  setError,
   fuseLegos,
   makeSpace,
   handlePullOutSameColoredLeg,
@@ -126,6 +124,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const addOperation = useCanvasStore((state) => state.addOperation);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
+  const setError = useCanvasStore((state) => state.setError);
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");

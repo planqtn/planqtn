@@ -345,7 +345,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
     };
 
-    const staticLegStyles = useMemo(() => lego.style!.legStyles, [lego.style]);
     const staticShouldHideLeg = useMemo(
       () => legHiddenStates,
       [legHiddenStates]
@@ -390,13 +389,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           >
             {/* Layer 1: Static leg lines (gray background) */}
             <StaticLegsLayer
-              legStyles={staticLegStyles}
+              legStyles={lego.style!.legStyles}
               shouldHideLeg={staticShouldHideLeg}
             />
 
             {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
             {lego.style!.legStyles.map((legStyle, legIndex) => {
-              const legColor = legStyle.color;
+              const legColor = lego.style!.getLegColor(legIndex);
               const shouldHide = legHiddenStates[legIndex];
 
               if (legColor === "#A0AEC0" || shouldHide) {
@@ -424,7 +423,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             {/* Layer 3: Interactive leg endpoints and logical leg interactions */}
             {lego.style!.legStyles.map((legStyle, legIndex) => {
               const isLogical = lego.logical_legs.includes(legIndex);
-              const legColor = legStyle.color;
+              const legColor = lego.style!.getLegColor(legIndex);
 
               const shouldHide = legHiddenStates[legIndex];
 

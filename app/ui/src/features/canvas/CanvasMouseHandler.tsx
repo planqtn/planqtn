@@ -27,7 +27,6 @@ interface CanvasMouseHandlerProps {
     draggedLego: LegoPiece,
     dropPosition: { x: number; y: number }
   ) => void;
-  setError: (error: string) => void;
 }
 
 export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
@@ -35,8 +34,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   selectionManagerRef,
   zoomLevel,
   altKeyPressed,
-  handleDynamicLegoDrop,
-  setError
+  handleDynamicLegoDrop
 }) => {
   // Zustand store selectors
   const {
@@ -60,7 +58,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setLegDragState,
     selectionBox,
     hoveredConnection,
-    setHoveredConnection
+    setHoveredConnection,
+    setError
   } = useCanvasStore();
   const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
   const { draggedLegoProto: draggedLego, setDraggedLegoProto: setDraggedLego } =

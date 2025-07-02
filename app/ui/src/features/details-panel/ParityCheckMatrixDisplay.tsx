@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  memo,
+  useCallback,
+  useMemo
+} from "react";
 import {
   Box,
   Text,
   Heading,
   HStack,
-  VStack,
-  useToast,
   Menu,
   MenuButton,
   MenuList,
@@ -16,6 +21,8 @@ import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { LegReorderDialog } from "./LegReorderDialog.tsx";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
+import { FixedSizeList as List } from "react-window";
+import { Resizable } from "re-resizable";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -28,6 +35,182 @@ interface ParityCheckMatrixDisplayProps {
   onRowSelectionChange?: (selectedRows: number[]) => void;
   onLegHover?: (leg: TensorNetworkLeg | null) => void;
 }
+
+interface PauliRowProps {
+  row: number[];
+  rowIndex: number;
+  numLegs: number;
+  charWidth: number;
+  getPauliString: (row: number[]) => string;
+  getPauliColor: (pauli: string) => string;
+  setTooltip: React.Dispatch<
+    React.SetStateAction<{ x: number; y: number } | null>
+  >;
+  legOrdering?: TensorNetworkLeg[];
+  onLegHover?: (leg: TensorNetworkLeg | null) => void;
+  selectedRows: number[];
+  draggedRowIndex: number | null;
+  handleDragStart: (e: React.DragEvent, rowIndex: number) => void;
+  handleDragOver: (e: React.DragEvent) => void;
+  handleDrop: (e: React.DragEvent, rowIndex: number) => void;
+  handleDragEnd: (e: React.DragEvent) => void;
+  handleRowClick: (rowIndex: number) => void;
+  hoveredLegIndex: number | null;
+  setHoveredLegIndex: React.Dispatch<React.SetStateAction<number | null>>;
+}
+
+interface PauliCellProps {
+  pauli: string;
+  color: string;
+  onHover: (index: number) => void;
+  onUnhover: () => void;
+  index: number;
+  setTooltip: (
+    pos: { x: number; y: number } | null,
+    index: number | null
+  ) => void;
+}
+
+// Memoized PauliCell component
+const PauliCell = memo(function PauliCell({
+  pauli,
+  color,
+  onHover,
+  onUnhover,
+  index,
+  setTooltip
+}: PauliCellProps) {
+  return (
+    <span
+      style={{
+        color,
+        background: "transparent",
+        borderRadius: 3,
+        cursor: "pointer"
+      }}
+      onMouseEnter={(e) => {
+        onHover(index);
+        setTooltip({ x: e.clientX, y: e.clientY }, index);
+      }}
+      onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY }, index)}
+      onMouseLeave={() => {
+        onUnhover();
+        setTooltip(null, null);
+      }}
+    >
+      {pauli}
+    </span>
+  );
+});
+
+// Custom comparison for PauliRow to prevent unnecessary rerenders
+function areEqualPauliRow(prevProps: PauliRowProps, nextProps: PauliRowProps) {
+  // Only rerender if this row's selection status or other relevant props change
+  const wasSelected = prevProps.selectedRows.includes(prevProps.rowIndex);
+  const isSelected = nextProps.selectedRows.includes(nextProps.rowIndex);
+  return (
+    wasSelected === isSelected &&
+    prevProps.handleRowClick === nextProps.handleRowClick &&
+    prevProps.row === nextProps.row &&
+    prevProps.draggedRowIndex === nextProps.draggedRowIndex
+    // Add more prop comparisons if needed
+  );
+}
+
+// Memoized PauliRow component
+const PauliRow = memo(function PauliRow({
+  row,
+  rowIndex,
+  numLegs,
+  charWidth,
+  getPauliString,
+  getPauliColor,
+  setTooltip,
+  legOrdering,
+  onLegHover,
+  selectedRows,
+  draggedRowIndex,
+  handleDragStart,
+  handleDragOver,
+  handleDrop,
+  handleDragEnd,
+  handleRowClick,
+  hoveredLegIndex,
+  setHoveredLegIndex
+}: PauliRowProps) {
+  const pauliString = getPauliString(row);
+
+  return (
+    <HStack
+      key={rowIndex}
+      spacing={2}
+      draggable
+      onDragStart={(e) => handleDragStart(e, rowIndex)}
+      onDragOver={handleDragOver}
+      onDrop={(e) => handleDrop(e, rowIndex)}
+      onDragEnd={handleDragEnd}
+      cursor="pointer"
+      bg={
+        draggedRowIndex === rowIndex
+          ? "blue.50"
+          : selectedRows.includes(rowIndex)
+            ? "blue.100"
+            : "transparent"
+      }
+      p={1}
+      borderRadius="md"
+      onClick={() => handleRowClick(rowIndex)}
+      _hover={{
+        bg: selectedRows.includes(rowIndex) ? "blue.100" : "gray.50"
+      }}
+      border={selectedRows.includes(rowIndex) ? "1px solid" : "1px solid"}
+      borderColor={selectedRows.includes(rowIndex) ? "blue.500" : "transparent"}
+    >
+      <Text fontSize={12} width="65px" flexShrink={0} color="gray.500">
+        [{rowIndex}] w
+        {row
+          .slice(0, row.length / 2)
+          .reduce(
+            (w: number, x: number, i: number) =>
+              w + (x || row[i + row.length / 2] ? 1 : 0),
+            0
+          )}
+      </Text>
+      <Box position="relative" width={numLegs * charWidth}>
+        <Text
+          as="span"
+          fontFamily="monospace"
+          fontSize="16px"
+          whiteSpace="pre"
+          letterSpacing={0}
+          lineHeight={1}
+          p={0}
+          m={0}
+        >
+          {pauliString.split("").map((pauli, i) => (
+            <PauliCell
+              key={i}
+              pauli={pauli}
+              color={getPauliColor(pauli)}
+              onHover={(idx) => {
+                if (onLegHover && legOrdering && legOrdering[idx]) {
+                  onLegHover(legOrdering[idx]);
+                  setHoveredLegIndex(idx);
+                }
+              }}
+              onUnhover={() => {
+                if (onLegHover) onLegHover(null);
+                setHoveredLegIndex(null);
+              }}
+              index={i}
+              setTooltip={setTooltip}
+            />
+          ))}
+        </Text>
+      </Box>
+    </HStack>
+  );
+}, areEqualPauliRow);
 
 export const ParityCheckMatrixDisplay: React.FC<
   ParityCheckMatrixDisplayProps
@@ -50,11 +233,11 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
+  const [tooltipContent] = useState<string | null>(null);
   const hasInitialized = useRef(false);
-  const toast = useToast();
   const charMeasureRef = useRef<HTMLSpanElement>(null);
   const [charWidth, setCharWidth] = useState<number>(8);
-
+  const [listSize, setListSize] = useState({ width: 800, height: 600 });
   // Initialize history only once when component mounts
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -75,50 +258,90 @@ export const ParityCheckMatrixDisplay: React.FC<
   const numLegs = matrix[0].length / 2;
   const n_stabilizers = matrix.length;
 
-  const handleDragStart = (e: React.DragEvent, rowIndex: number) => {
-    setDraggedRowIndex(rowIndex);
-    e.dataTransfer.effectAllowed = "move";
-  };
+  // Memoize getPauliString and getPauliColor
+  const getPauliString = useCallback((row: number[]) => {
+    const n = row.length / 2;
+    let result = "";
+    for (let i = 0; i < n; i++) {
+      const x = row[i];
+      const z = row[i + n];
+      if (x === 0 && z === 0) result += "_";
+      else if (x === 1 && z === 0) result += "X";
+      else if (x === 0 && z === 1) result += "Z";
+      else if (x === 1 && z === 1) result += "Y";
+    }
+    return result;
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const getPauliColor = useCallback((pauli: string) => {
+    const pauli_colors = {
+      X: SVG_COLORS.X,
+      Z: SVG_COLORS.Z,
+      Y: SVG_COLORS.Y
+    };
+    return (
+      pauli_colors[pauli.toUpperCase() as keyof typeof pauli_colors] || "black"
+    );
+  }, []);
+
+  // Memoize drag/row handlers
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, rowIndex: number) => {
+      setDraggedRowIndex(rowIndex);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    []
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, targetRowIndex: number) => {
-    e.preventDefault();
-    if (draggedRowIndex === null || draggedRowIndex === targetRowIndex) return;
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetRowIndex: number) => {
+      e.preventDefault();
+      if (draggedRowIndex === null || draggedRowIndex === targetRowIndex)
+        return;
 
-    // Create a new matrix with the rows added
-    const newMatrix = matrix.map((row, index) => {
-      if (index === targetRowIndex) {
-        // Add the dragged row to the target row (modulo 2)
-        return row.map(
-          (cell, cellIndex) => (cell + matrix[draggedRowIndex][cellIndex]) % 2
-        );
+      // Create a new matrix with the rows added
+      const newMatrix = matrix.map((row, index) => {
+        if (index === targetRowIndex) {
+          // Add the dragged row to the target row (modulo 2)
+          return row.map(
+            (cell, cellIndex) => (cell + matrix[draggedRowIndex][cellIndex]) % 2
+          );
+        }
+        return row;
+      });
+
+      // Update history
+      const newHistory = [
+        ...matrixHistory.slice(0, currentHistoryIndex + 1),
+        newMatrix
+      ];
+      setMatrixHistory(newHistory);
+      setCurrentHistoryIndex(newHistory.length - 1);
+
+      // Update the matrix through the callback
+      if (onMatrixChange) {
+        onMatrixChange(newMatrix);
       }
-      return row;
-    });
 
-    // Update history
-    const newHistory = [
-      ...matrixHistory.slice(0, currentHistoryIndex + 1),
-      newMatrix
-    ];
-    setMatrixHistory(newHistory);
-    setCurrentHistoryIndex(newHistory.length - 1);
+      setDraggedRowIndex(null);
+    },
+    [
+      draggedRowIndex,
+      matrix,
+      currentHistoryIndex,
+      matrixHistory,
+      onMatrixChange
+    ]
+  );
 
-    // Update the matrix through the callback
-    if (onMatrixChange) {
-      onMatrixChange(newMatrix);
-    }
-
+  const handleDragEnd = useCallback(() => {
     setDraggedRowIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedRowIndex(null);
-  };
+  }, []);
 
   const handleUndo = () => {
     if (currentHistoryIndex > 0) {
@@ -138,41 +361,6 @@ export const ParityCheckMatrixDisplay: React.FC<
         onMatrixChange(matrixHistory[newIndex]);
       }
     }
-  };
-
-  const getPauliString = (row: number[]): string => {
-    const n = row.length / 2;
-    let result = "";
-    for (let i = 0; i < n; i++) {
-      const x = row[i];
-      const z = row[i + n];
-      if (x === 0 && z === 0) result += "_";
-      else if (x === 1 && z === 0) result += "X";
-      else if (x === 0 && z === 1) result += "Z";
-      else if (x === 1 && z === 1) result += "Y";
-    }
-    return result;
-  };
-
-  const getPauliWeight = (row: number[]): number => {
-    const n = row.length / 2;
-    let weight = 0;
-    for (let i = 0; i < n; i++) {
-      weight += row[i] == 1 || row[i + n] == 1 ? 1 : 0;
-    }
-    return weight;
-  };
-
-  const pauli_colors = {
-    X: SVG_COLORS.X,
-    Z: SVG_COLORS.Z,
-    Y: SVG_COLORS.Y
-  };
-
-  const getPauliColor = (pauli: string): string => {
-    return (
-      pauli_colors[pauli.toUpperCase() as keyof typeof pauli_colors] || "black"
-    );
   };
 
   const isCSS = (row: number[]): boolean => {
@@ -217,18 +405,20 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent, rowIndex: number) => {
-    if (e.ctrlKey || e.metaKey) {
-      // Toggle selection
-      const newSelection = selectedRows.includes(rowIndex)
-        ? selectedRows.filter((i) => i !== rowIndex)
-        : [...selectedRows, rowIndex];
-      onRowSelectionChange?.(newSelection);
-    } else {
-      // Single selection
-      onRowSelectionChange?.([rowIndex]);
-    }
-  };
+  // Memoize selectedRows
+  const memoizedSelectedRows = useMemo(() => selectedRows, [selectedRows]);
+
+  // Memoize handleRowClick with minimal dependencies
+  const handleRowClick = useCallback(
+    (rowIndex: number) => {
+      onRowSelectionChange?.(
+        selectedRows.includes(rowIndex)
+          ? selectedRows.filter((i) => i !== rowIndex)
+          : [...selectedRows, rowIndex]
+      );
+    },
+    [onRowSelectionChange, selectedRows]
+  );
 
   const handleLegReorder = (newLegOrdering: TensorNetworkLeg[]) => {
     if (onLegOrderingChange) {
@@ -241,13 +431,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   const copyMatrixAsNumpy = () => {
     const numpyStr = `np.array([\n${matrix.map((row) => `    [${row.join(", ")}]`).join(",\n")}\n])`;
     navigator.clipboard.writeText(numpyStr);
-    toast({
-      title: "Copied to clipboard",
-      description: "Matrix copied in numpy format",
-      status: "success",
-      duration: 2000,
-      isClosable: true
-    });
   };
 
   const copyMatrixAsQdistrnd = () => {
@@ -269,13 +452,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     const qdistrndStr =
       "F:=GF(2);;\n" + arrayStr + "DistRandStab(H,100,0,2:field:=F);";
     navigator.clipboard.writeText(qdistrndStr);
-    toast({
-      title: "Copied to clipboard",
-      description: "Matrix copied in qdistrnd format",
-      status: "success",
-      duration: 2000,
-      isClosable: true
-    });
   };
 
   if (isScalar) {
@@ -334,132 +510,111 @@ export const ParityCheckMatrixDisplay: React.FC<
         </Menu>
       </HStack>
 
-      <Box position="relative" width="fit-content" mx={0} mt={6}>
-        {/* Pauli stabilizer rows */}
-        <VStack align="stretch" spacing={1}>
-          {/* Hidden span for measuring monospace char width */}
-          <span
-            ref={charMeasureRef}
-            style={{
-              fontFamily: "monospace",
-              fontSize: "16px",
-              visibility: "hidden",
-              position: "absolute"
-            }}
+      <Box
+        position="relative"
+        width="100%"
+        height="100%"
+        mx={0}
+        mt={6}
+        style={{ flex: 1, minHeight: 0 }}
+      >
+        <Resizable
+          size={listSize}
+          minWidth={300}
+          minHeight={200}
+          maxWidth="100vw"
+          maxHeight="100vh"
+          onResizeStop={(e, direction, ref, d) => {
+            setListSize({
+              width: listSize.width + d.width,
+              height: listSize.height + d.height
+            });
+          }}
+        >
+          {/* Pauli stabilizer rows - virtualized */}
+          <List
+            height={listSize.height} // You can make this dynamic or use a parent container's height
+            width={listSize.width}
+            itemCount={matrix.length}
+            itemSize={20} // Adjust to match your row height
+            // style={{ width: "100%", height: "100%" }}
           >
-            X
-          </span>
-          {matrix.map((row, rowIndex) => (
-            <HStack
-              key={rowIndex}
-              spacing={2}
-              draggable
-              onDragStart={(e) => handleDragStart(e, rowIndex)}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, rowIndex)}
-              onDragEnd={handleDragEnd}
-              cursor="pointer"
-              bg={
-                draggedRowIndex === rowIndex
-                  ? "blue.50"
-                  : selectedRows.includes(rowIndex)
-                    ? "blue.100"
-                    : "transparent"
-              }
-              p={1}
-              borderRadius="md"
-              onClick={(e) => handleRowClick(e, rowIndex)}
-              _hover={{
-                bg: selectedRows.includes(rowIndex) ? "blue.100" : "gray.50"
-              }}
-              border={
-                selectedRows.includes(rowIndex) ? "1px solid" : "1px solid"
-              }
-              borderColor={
-                selectedRows.includes(rowIndex) ? "blue.500" : "transparent"
-              }
-            >
-              <Text fontWeight="bold" width="30px">
-                {rowIndex}.
-              </Text>
-              <Box position="relative" width={numLegs * charWidth}>
-                <Text
-                  as="span"
-                  fontFamily="monospace"
-                  fontSize="16px"
-                  whiteSpace="pre"
-                  letterSpacing={0}
-                  lineHeight={1}
-                  p={0}
-                  m={0}
-                >
-                  {getPauliString(row)
-                    .split("")
-                    .map((pauli, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          color: getPauliColor(pauli),
-                          background:
-                            hoveredLegIndex === i ? "#E6FFFA" : undefined,
-                          borderRadius: hoveredLegIndex === i ? 3 : undefined,
-                          cursor: "pointer"
-                        }}
-                        onMouseEnter={(e) => {
-                          setHoveredLegIndex(i);
-                          setMousePos({ x: e.clientX, y: e.clientY });
-                          if (onLegHover && legOrdering)
-                            onLegHover(legOrdering[i]);
-                        }}
-                        onMouseMove={(e) => {
-                          setMousePos({ x: e.clientX, y: e.clientY });
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredLegIndex(null);
-                          setMousePos(null);
-                          if (onLegHover) onLegHover(null);
-                        }}
-                      >
-                        {pauli}
-                      </span>
-                    ))}
-                </Text>
-              </Box>
-              <Text
-                fontSize="14px"
-                color="gray.500"
-                whiteSpace="nowrap"
-                flexShrink={0}
+            {({
+              index,
+              style
+            }: {
+              index: number;
+              style: React.CSSProperties;
+            }) => (
+              <div style={style} key={index}>
+                <PauliRow
+                  row={matrix[index]}
+                  rowIndex={index}
+                  numLegs={numLegs}
+                  charWidth={charWidth}
+                  getPauliString={getPauliString}
+                  getPauliColor={getPauliColor}
+                  setTooltip={setMousePos}
+                  legOrdering={legOrdering}
+                  onLegHover={onLegHover}
+                  selectedRows={memoizedSelectedRows}
+                  draggedRowIndex={draggedRowIndex}
+                  handleDragStart={handleDragStart}
+                  handleDragOver={handleDragOver}
+                  handleDrop={handleDrop}
+                  handleDragEnd={handleDragEnd}
+                  handleRowClick={handleRowClick}
+                  hoveredLegIndex={hoveredLegIndex}
+                  setHoveredLegIndex={setHoveredLegIndex}
+                />
+              </div>
+            )}
+          </List>
+          {/* Floating Tooltip for hovered column */}
+          {hoveredLegIndex !== null &&
+            mousePos &&
+            legOrdering &&
+            legOrdering[hoveredLegIndex] && (
+              <Box
+                position="fixed"
+                left={mousePos.x + 12}
+                top={mousePos.y - 32}
+                bg="gray.700"
+                color="white"
+                px={3}
+                py={1}
+                borderRadius="md"
+                fontSize="sm"
+                opacity={0.92}
+                pointerEvents="none"
+                zIndex={9999}
+                boxShadow="md"
+                style={{
+                  transform: "translate(-50%, -100%)"
+                }}
               >
-                | {getPauliWeight(row)}
-              </Text>
-            </HStack>
-          ))}
-        </VStack>
-        {/* Floating Tooltip for hovered column */}
-        {hoveredLegIndex !== null && mousePos && legOrdering && (
-          <Box
-            position="fixed"
-            left={mousePos.x + 12}
-            top={mousePos.y - 32}
-            bg="gray.700"
-            color="white"
-            px={3}
-            py={1}
-            borderRadius="md"
-            fontSize="sm"
-            opacity={0.92}
-            pointerEvents="none"
-            zIndex={9999}
-            boxShadow="md"
-            style={{
-              transform: "translate(-50%, -100%)"
-            }}
-          >
-            Tensor: <b>{legOrdering[hoveredLegIndex].instanceId}</b> &nbsp; Leg:{" "}
-            <b>{legOrdering[hoveredLegIndex].legIndex}</b>
-          </Box>
-        )}
+                Tensor: <b>{legOrdering[hoveredLegIndex].instanceId}</b> &nbsp;
+                Leg: <b>{legOrdering[hoveredLegIndex].legIndex}</b>
+              </Box>
+            )}
+          {mousePos && tooltipContent && (
+            <Box
+              position="fixed"
+              left={mousePos.x + 10}
+              top={mousePos.y + 10}
+              zIndex={1000}
+              bg="white"
+              border="1px solid #ccc"
+              p={2}
+              borderRadius="md"
+              pointerEvents="none"
+              fontSize="sm"
+              boxShadow="md"
+            >
+              {tooltipContent}
+            </Box>
+          )}
+        </Resizable>
       </Box>
 
       {legOrdering && onLegOrderingChange && (
