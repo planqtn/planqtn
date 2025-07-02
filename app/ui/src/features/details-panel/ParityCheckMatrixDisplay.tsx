@@ -566,11 +566,12 @@ export const ParityCheckMatrixDisplay: React.FC<
             {matrix.every(isCSS) && (
               <MenuItem onClick={handleCSSSort}>CSS-sort</MenuItem>
             )}
-            {legOrdering && onLegOrderingChange && (
+            {/* TODO: Re-enable this when we have a way to re-order legs */}
+            {/* {legOrdering && onLegOrderingChange && (
               <MenuItem onClick={() => setIsLegReorderDialogOpen(true)}>
                 Reorder Legs
               </MenuItem>
-            )}
+            )} */}
             <MenuItem onClick={copyMatrixAsNumpy}>Copy as numpy</MenuItem>
             <MenuItem onClick={copyMatrixAsQdistrnd}>Copy as qdistrnd</MenuItem>
           </MenuList>
