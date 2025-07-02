@@ -1147,10 +1147,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     const updatedLego = tensorNetwork.legos[0].with({
                       shortName: newShortName
                     });
-                    updateDroppedLego(
-                      tensorNetwork.legos[0].instanceId,
-                      updatedLego
-                    );
+                    setTimeout(() => {
+                      updateDroppedLego(
+                        tensorNetwork.legos[0].instanceId,
+                        updatedLego
+                      );
+                    });
                   }}
                   onKeyDown={(e) => {
                     e.stopPropagation();

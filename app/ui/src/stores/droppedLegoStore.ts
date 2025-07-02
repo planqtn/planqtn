@@ -70,8 +70,8 @@ export class DroppedLego implements LegoPiece {
   ) {
     this.id = lego.id;
     this.name = lego.name;
-    this.shortName = lego.shortName;
-    this.description = lego.description;
+    this.shortName = overrides.shortName || lego.shortName;
+    this.description = overrides.description || lego.description;
     this.parity_check_matrix =
       overrides.parity_check_matrix || lego.parity_check_matrix;
     this.logical_legs = lego.logical_legs;
