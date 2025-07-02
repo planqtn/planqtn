@@ -91,7 +91,7 @@ const PauliCell = memo(function PauliCell({
         setTooltip(null, null);
       }}
       onClick={(e) => {
-        e.stopPropagation(); // Prevent double-firing
+        // Let the click bubble up to the parent row
         if (onRowClick) {
           onRowClick();
         }
@@ -234,7 +234,7 @@ export const ParityCheckMatrixDisplay: React.FC<
   onRowSelectionChange,
   onLegHover
 }) => {
-  const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+  const [draggedRowIndex] = useState<number | null>(null);
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
   const [isLegReorderDialogOpen, setIsLegReorderDialogOpen] = useState(false);
@@ -245,8 +245,10 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [tooltipContent] = useState<string | null>(null);
   const hasInitialized = useRef(false);
   const charMeasureRef = useRef<HTMLSpanElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const listRef = useRef<any>(null);
   const [charWidth, setCharWidth] = useState<number>(8);
-  const [listSize, setListSize] = useState({ width: 800, height: 600 });
+  const [listSize, setListSize] = useState({ width: 250, height: 600 });
 
   // Local selection state as fallback
   const [localSelectedRows, setLocalSelectedRows] = useState<number[]>([]);
@@ -270,6 +272,33 @@ export const ParityCheckMatrixDisplay: React.FC<
       setLocalSelectedRows([...selectedRows]);
     }
   }, [selectedRows, parentUpdating]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log(
+      "Using",
+      parentUpdating ? "PARENT" : "LOCAL",
+      "state. Selected:",
+      effectiveSelectedRows
+    );
+  }, [effectiveSelectedRows, parentUpdating]);
+
+  // Prevent wheel events during drag operations
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (draggedRowIndex !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    if (draggedRowIndex !== null) {
+      document.addEventListener("wheel", handleWheel, { passive: false });
+      return () => {
+        document.removeEventListener("wheel", handleWheel);
+      };
+    }
+  }, [draggedRowIndex]);
 
   // Initialize history only once when component mounts
   useEffect(() => {
@@ -323,8 +352,12 @@ export const ParityCheckMatrixDisplay: React.FC<
       console.log("Drag start:", rowIndex);
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", rowIndex.toString());
-      // Delay state update to avoid blocking the drag start
-      setTimeout(() => setDraggedRowIndex(rowIndex), 0);
+
+      // Prevent scrolling during drag
+      document.body.style.overflow = "hidden";
+
+      // Don't update drag state to prevent re-renders during drag
+      // setDraggedRowIndex(rowIndex);
     },
     []
   );
@@ -340,13 +373,15 @@ export const ParityCheckMatrixDisplay: React.FC<
       e.preventDefault();
       e.stopPropagation();
 
+      // Re-enable scrolling
+      document.body.style.overflow = "";
+
       const draggedRowIndexStr = e.dataTransfer.getData("text/plain");
       const draggedIdx = parseInt(draggedRowIndexStr, 10);
 
       console.log("Drop:", draggedIdx, "onto", targetRowIndex);
 
       if (isNaN(draggedIdx) || draggedIdx === targetRowIndex) {
-        setDraggedRowIndex(null);
         return;
       }
 
@@ -373,15 +408,14 @@ export const ParityCheckMatrixDisplay: React.FC<
       if (onMatrixChange) {
         onMatrixChange(newMatrix);
       }
-
-      setDraggedRowIndex(null);
     },
     [matrix, currentHistoryIndex, matrixHistory, onMatrixChange]
   );
 
   const handleDragEnd = useCallback(() => {
     console.log("Drag end");
-    setDraggedRowIndex(null);
+    // Re-enable scrolling in case drop didn't fire
+    document.body.style.overflow = "";
   }, []);
 
   const handleUndo = () => {
@@ -430,6 +464,40 @@ export const ParityCheckMatrixDisplay: React.FC<
       if (!bHasX && bHasZ && (aHasX || !aHasZ)) return 1;
 
       return 0;
+    });
+
+    // Update history
+    const newHistory = [
+      ...matrixHistory.slice(0, currentHistoryIndex + 1),
+      newMatrix
+    ];
+    setMatrixHistory(newHistory);
+    setCurrentHistoryIndex(newHistory.length - 1);
+
+    // Update the matrix through the callback
+    if (onMatrixChange) {
+      onMatrixChange(newMatrix);
+    }
+  };
+
+  const handleWeightSort = () => {
+    // Helper function to calculate Pauli weight
+    const calculateWeight = (row: number[]) => {
+      const n = row.length / 2;
+      let weight = 0;
+      for (let i = 0; i < n; i++) {
+        if (row[i] === 1 || row[i + n] === 1) {
+          weight++;
+        }
+      }
+      return weight;
+    };
+
+    // Create a new matrix with rows sorted by weight (ascending)
+    const newMatrix = [...matrix].sort((a, b) => {
+      const weightA = calculateWeight(a);
+      const weightB = calculateWeight(b);
+      return weightA - weightB;
     });
 
     // Update history
@@ -566,6 +634,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             {matrix.every(isCSS) && (
               <MenuItem onClick={handleCSSSort}>CSS-sort</MenuItem>
             )}
+            <MenuItem onClick={handleWeightSort}>Sort by weight</MenuItem>
             {/* TODO: Re-enable this when we have a way to re-order legs */}
             {/* {legOrdering && onLegOrderingChange && (
               <MenuItem onClick={() => setIsLegReorderDialogOpen(true)}>
@@ -588,7 +657,7 @@ export const ParityCheckMatrixDisplay: React.FC<
       >
         <Resizable
           size={listSize}
-          minWidth={300}
+          minWidth={250}
           minHeight={200}
           maxWidth="100vw"
           maxHeight="100vh"
@@ -597,6 +666,43 @@ export const ParityCheckMatrixDisplay: React.FC<
               width: listSize.width + d.width,
               height: listSize.height + d.height
             });
+          }}
+          handleStyles={{
+            bottom: {
+              background: "#E2E8F0",
+              borderTop: "1px solid #CBD5E0",
+              height: "8px",
+              cursor: "ns-resize"
+            },
+            right: {
+              background: "#E2E8F0",
+              borderLeft: "1px solid #CBD5E0",
+              width: "8px",
+              cursor: "ew-resize"
+            },
+            bottomRight: {
+              background: "#CBD5E0",
+              border: "1px solid #A0AEC0",
+              borderRadius: "0 0 6px 0",
+              width: "12px",
+              height: "12px",
+              cursor: "nw-resize"
+            }
+          }}
+          handleClasses={{
+            bottom: "resize-handle-bottom",
+            right: "resize-handle-right",
+            bottomRight: "resize-handle-corner"
+          }}
+          enable={{
+            top: false,
+            right: true,
+            bottom: true,
+            left: false,
+            topRight: false,
+            bottomRight: true,
+            bottomLeft: false,
+            topLeft: false
           }}
         >
           {/* Pauli stabilizer rows - virtualized */}
@@ -607,6 +713,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             itemCount={matrix.length}
             itemSize={20}
             itemData={itemData}
+            ref={listRef}
           >
             {({
               index,
@@ -689,6 +796,34 @@ export const ParityCheckMatrixDisplay: React.FC<
               {tooltipContent}
             </Box>
           )}
+          {/* Resize grip indicator */}
+          <Box
+            position="absolute"
+            bottom="0"
+            right="0"
+            width="12px"
+            height="12px"
+            pointerEvents="none"
+            zIndex={1}
+            opacity={0.6}
+            _hover={{ opacity: 1 }}
+            transition="opacity 0.2s"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              style={{ transform: "rotate(90deg)" }}
+            >
+              <path
+                d="M9 3L3 9M6 3L3 6M9 6L6 9"
+                stroke="#A0AEC0"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </Box>
         </Resizable>
       </Box>
 
