@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from "react";
-import { Connection } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
 import { useCanvasStore } from "../../stores/canvasStateStore";

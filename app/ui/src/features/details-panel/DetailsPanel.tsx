@@ -13,12 +13,12 @@ import {
 } from "@chakra-ui/react";
 import { FaTable, FaCube } from "react-icons/fa";
 import {
-  Connection,
   TaskUpdate,
   TaskUpdateIterationStatus,
   Task,
   ParityCheckMatrix
 } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import {
   createHadamardLego,

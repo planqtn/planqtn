@@ -3,7 +3,7 @@ import { LegPosition, LegStyle } from "./LegoStyles.ts";
 import { useMemo, memo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
-import { Connection } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import {
   getSmartLegoSize,
   getLevelOfDetail

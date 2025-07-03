@@ -1,5 +1,5 @@
 import { TensorNetwork } from "./TensorNetwork";
-import { Connection } from "./types";
+import { Connection } from "../stores/connectionStore";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { LogicalPoint } from "../types/coordinates.ts";

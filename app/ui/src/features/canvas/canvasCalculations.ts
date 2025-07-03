@@ -1,4 +1,4 @@
-import { Connection } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
 

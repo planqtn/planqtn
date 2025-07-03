@@ -1,7 +1,25 @@
-import { Connection, CanvasState } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
+
+interface CanvasState {
+  canvasId: string;
+  pieces: Array<{
+    id: string;
+    instanceId: string;
+    x: number;
+    y: number;
+    is_dynamic?: boolean;
+    parameters?: Record<string, unknown>;
+    parity_check_matrix?: number[][];
+    logical_legs?: number[];
+    gauge_legs?: number[];
+    selectedMatrixRows?: number[];
+  }>;
+  connections: Array<Connection>;
+  hideConnectedLegs: boolean;
+}
 
 export class CanvasStateSerializer {
   private canvasId: string;

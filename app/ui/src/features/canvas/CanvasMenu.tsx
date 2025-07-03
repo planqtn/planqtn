@@ -17,7 +17,7 @@ import { FiMoreVertical } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
-import { Connection } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { User } from "@supabase/supabase-js";
 import { ImperativePanelHandle } from "react-resizable-panels";

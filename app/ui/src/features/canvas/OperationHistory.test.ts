@@ -1,5 +1,5 @@
 import { OperationHistory } from "./OperationHistory";
-import { Connection } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import { Operation } from "./OperationHistory.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { describe, it, expect, beforeEach } from "@jest/globals";

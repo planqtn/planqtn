@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Connection } from "./types";
+import { Connection } from "../stores/connectionStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { config, getApiUrl } from "../config/config";
 import { getAccessToken } from "./auth";

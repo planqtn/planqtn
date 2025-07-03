@@ -1,4 +1,4 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
 import _ from "lodash";

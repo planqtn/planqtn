@@ -1,6 +1,7 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
-import { Connection, PauliOperator } from "../lib/types";
+import { PauliOperator } from "../lib/types";
+import { Connection } from "./connectionStore";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
 import { WindowPoint } from "../types/coordinates";

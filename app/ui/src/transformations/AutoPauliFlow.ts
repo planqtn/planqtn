@@ -1,5 +1,5 @@
 import { cloneDeep } from "lodash";
-import { Connection } from "../lib/types.ts";
+import { Connection } from "../stores/connectionStore";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { findConnectedComponent } from "../lib/TensorNetwork.ts";
 

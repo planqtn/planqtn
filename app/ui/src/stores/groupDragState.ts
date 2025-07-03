@@ -1,7 +1,12 @@
 import { StateCreator } from "zustand";
-import { GroupDragState } from "../lib/types";
 import { CanvasStore } from "./canvasStateStore";
+import { LogicalPoint } from "../types/coordinates";
 
+// Add a new interface for group drag state
+export interface GroupDragState {
+  legoInstanceIds: string[];
+  originalPositions: { [instanceId: string]: LogicalPoint };
+}
 export interface GroupDragStateSlice {
   groupDragState: GroupDragState | null;
   setGroupDragState: (

@@ -2,7 +2,7 @@ import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
 import { DraggingStage } from "./legoDragState";
-import { Connection } from "../lib/types";
+import { Connection } from "./connectionStore";
 import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface CloningSlice {
@@ -66,12 +66,9 @@ export const useCloningSlice: StateCreator<
     get().addConnections(newConnections);
 
     // Set up drag state for the group
-    const positions: { [instanceId: string]: { x: number; y: number } } = {};
+    const positions: { [instanceId: string]: LogicalPoint } = {};
     newLegos.forEach((l) => {
-      positions[l.instanceId] = {
-        x: l.logicalPosition.x,
-        y: l.logicalPosition.y
-      };
+      positions[l.instanceId] = l.logicalPosition;
     });
 
     if (newLegos.length > 1) {

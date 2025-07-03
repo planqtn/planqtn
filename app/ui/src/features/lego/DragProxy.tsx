@@ -5,16 +5,12 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { getSmartLegoSize } from "../../utils/coordinateTransforms";
-import {
-  CanvasPoint,
-  LogicalPoint,
-  WindowPoint
-} from "../../types/coordinates.ts";
+import { LogicalPoint, WindowPoint } from "../../types/coordinates.ts";
 import { useDebugStore } from "../../stores/debugStore.ts";
 
 // Separate handler for single lego drags
 const SingleLegoDragProxy: React.FC<{
-  mousePos: { x: number; y: number };
+  mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
   const {
@@ -42,28 +38,8 @@ const SingleLegoDragProxy: React.FC<{
 
   if (!draggedLego || !canvasRect) return null;
 
-  // Convert mouse position to canvas coordinates using cached rect
-  const canvasMousePoint = new CanvasPoint(
-    mousePos.x - canvasRect.left,
-    mousePos.y - canvasRect.top
-  );
-
-  // Convert drag start position to canvas coordinates using cached rect
-  const canvasDragStartPoint = viewport.fromWindowToCanvas(
-    legoDragState.startMouseWindowPoint
-  );
-
-  // Calculate delta in canvas coordinates - need to account for zoom
-  const canvasHtmlDelta = canvasMousePoint.minus(canvasDragStartPoint);
-
-  // Transform screen delta to canvas delta for zoom-aware movement
-  const canvasDelta = canvasHtmlDelta.factor(1 / zoomLevel);
-
-  // Calculate proxy position: original lego position + canvas delta
-  const baseProxyPoint = legoDragState.startLegoLogicalPoint.plus(canvasDelta);
-
   // Apply zoom transformation to get screen position using new coordinate system
-  const screenProxyPos = viewport.fromLogicalToCanvas(baseProxyPoint);
+  const proxyCanvasPos = viewport.fromWindowToCanvas(mousePos);
 
   // Use smart sizing for consistency
   const originalSize = draggedLego.style!.size;
@@ -74,8 +50,8 @@ const SingleLegoDragProxy: React.FC<{
       key={`single-drag-proxy-${draggedLego.instanceId}`}
       style={{
         position: "absolute",
-        left: `${screenProxyPos.x - smartSize / 2}px`,
-        top: `${screenProxyPos.y - smartSize / 2}px`,
+        left: `${proxyCanvasPos.x - smartSize / 2}px`,
+        top: `${proxyCanvasPos.y - smartSize / 2}px`,
         width: `${smartSize}px`,
         height: `${smartSize}px`,
         opacity: 0.7,
@@ -119,15 +95,11 @@ const SingleLegoDragProxy: React.FC<{
 
 // Separate handler for group drags
 const GroupDragProxy: React.FC<{
-  mousePos: { x: number; y: number };
+  mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const {
-    legoDragState: dragState,
-    groupDragState,
-    viewport,
-    droppedLegos
-  } = useCanvasStore();
+  const { legoDragState, groupDragState, viewport, droppedLegos } =
+    useCanvasStore();
 
   const zoomLevel = viewport.zoomLevel;
 
@@ -141,8 +113,8 @@ const GroupDragProxy: React.FC<{
 
   if (
     !groupDragState ||
-    !dragState ||
-    dragState.draggingStage !== DraggingStage.DRAGGING ||
+    !legoDragState ||
+    legoDragState.draggingStage !== DraggingStage.DRAGGING ||
     !canvasRect
   ) {
     return null;
@@ -150,22 +122,12 @@ const GroupDragProxy: React.FC<{
 
   if (draggedLegos.length === 0) return null;
 
-  // Convert mouse position to canvas coordinates using cached rect
-  const canvasMouseX = mousePos.x - canvasRect.left;
-  const canvasMouseY = mousePos.y - canvasRect.top;
-
-  // Convert drag start position to canvas coordinates using cached rect
-  const canvasDragStartPoint = viewport.fromWindowToCanvas(
-    dragState.startMouseWindowPoint
+  const startMouseLogicalPoint = viewport.fromWindowToLogical(
+    legoDragState.startMouseWindowPoint
   );
+  const currentMouseLogicalPoint = viewport.fromWindowToLogical(mousePos);
 
-  // Calculate delta in canvas coordinates - need to account for zoom
-  const deltaScreenX = canvasMouseX - canvasDragStartPoint.x;
-  const deltaScreenY = canvasMouseY - canvasDragStartPoint.y;
-
-  // Transform screen delta to canvas delta for zoom-aware movement
-  const deltaX = deltaScreenX / zoomLevel;
-  const deltaY = deltaScreenY / zoomLevel;
+  const deltaLogical = currentMouseLogicalPoint.minus(startMouseLogicalPoint);
 
   return (
     <>
@@ -174,13 +136,10 @@ const GroupDragProxy: React.FC<{
         if (!originalPos) return null; // Safety check for stale state
 
         // Calculate base proxy position in canvas coordinates
-        const baseProxyX = originalPos.x + deltaX;
-        const baseProxyY = originalPos.y + deltaY;
+        const baseProxy = originalPos.plus(deltaLogical);
 
         // Apply zoom transformation to get screen position using new coordinate system
-        const screenProxyPos = viewport.fromLogicalToCanvas(
-          new LogicalPoint(baseProxyX, baseProxyY)
-        );
+        const proxyCanvasPos = viewport.fromLogicalToCanvas(baseProxy);
 
         // Use smart sizing for consistency
         const originalSize = lego.style!.size;
@@ -191,8 +150,8 @@ const GroupDragProxy: React.FC<{
             key={`group-drag-proxy-${lego.instanceId}`}
             style={{
               position: "absolute",
-              left: `${screenProxyPos.x - smartSize / 2}px`,
-              top: `${screenProxyPos.y - smartSize / 2}px`,
+              left: `${proxyCanvasPos.x - smartSize / 2}px`,
+              top: `${proxyCanvasPos.y - smartSize / 2}px`,
               width: `${smartSize}px`,
               height: `${smartSize}px`,
               opacity: 0.7,
@@ -328,7 +287,7 @@ const BuildingBlockDragProxy: React.FC<{
 
 // Shared hook for mouse tracking with debug integration
 const useMouseTracking = (shouldTrack: boolean = true) => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
   const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -339,7 +298,7 @@ const useMouseTracking = (shouldTrack: boolean = true) => {
         cancelAnimationFrame(animationFrameRef.current);
       }
       animationFrameRef.current = requestAnimationFrame(() => {
-        setMousePos({ x: e.clientX, y: e.clientY });
+        setMousePos(WindowPoint.fromMouseEvent(e));
         if (import.meta.env.VITE_ENV === "debug") {
           useDebugStore
             .getState()

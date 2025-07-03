@@ -2,7 +2,7 @@ import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego, LegoPiece } from "./droppedLegoStore";
 import { Legos } from "../features/lego/Legos";
-import { Connection } from "../lib/types";
+import { Connection } from "./connectionStore";
 import { LogicalPoint } from "../types/coordinates";
 
 export interface CanvasEventHandlingSlice {

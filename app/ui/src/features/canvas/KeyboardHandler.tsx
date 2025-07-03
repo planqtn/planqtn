@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Connection } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";

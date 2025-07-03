@@ -1,9 +1,18 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
-import { Connection, SelectionBoxState } from "../lib/types";
+import { Connection } from "./connectionStore";
 import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
+
+export interface SelectionBoxState {
+  isSelecting: boolean;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  justFinished: boolean;
+}
 
 export interface BoundingBox {
   minX: number;

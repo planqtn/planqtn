@@ -1,6 +1,14 @@
 import { StateCreator } from "zustand";
-import { LegDragState } from "../lib/types";
 import { CanvasStore } from "./canvasStateStore";
+import { WindowPoint } from "../types/coordinates";
+
+export interface LegDragState {
+  isDragging: boolean;
+  legoId: string;
+  legIndex: number;
+  startMouseWindowPoint: WindowPoint;
+  currentMouseWindowPoint: WindowPoint;
+}
 
 export interface LegDragStateSlice {
   legDragState: LegDragState | null;

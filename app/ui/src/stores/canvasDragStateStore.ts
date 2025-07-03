@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { CanvasDragState } from "../lib/types";
+
+import { WindowPoint } from "../types/coordinates";
+
+export interface CanvasDragState {
+  isDragging: boolean;
+  mouseWindowPoint: WindowPoint;
+}
 
 interface CanvasDragStateStore {
   canvasDragState: CanvasDragState | null;

@@ -1,4 +1,4 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 
 import { Legos } from "../features/lego/Legos.ts";
 import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { TensorNetwork } from "../lib/TensorNetwork";
-import { Connection } from "../lib/types";
+import { Connection } from "./connectionStore";
 
 export interface ModalState {
   // Network dialogs

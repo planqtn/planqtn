@@ -1,4 +1,4 @@
-import { Connection } from "../lib/types.ts";
+import { Connection } from "../stores/connectionStore";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 import { TensorNetwork } from "../lib/TensorNetwork.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";

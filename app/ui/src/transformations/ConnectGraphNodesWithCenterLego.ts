@@ -1,4 +1,4 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
 import { Legos } from "../features/lego/Legos.ts";
