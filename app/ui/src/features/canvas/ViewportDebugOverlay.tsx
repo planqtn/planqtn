@@ -5,7 +5,7 @@ import { LogicalPoint } from "../../types/coordinates";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore";
 import { useCanvasDragStateStore } from "../../stores/canvasDragStateStore";
 import { useDebugStore } from "../../stores/debugStore";
-import { useVisibleLegos } from "../../hooks/useVisibleLegos";
+import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 
 // Custom hook for persistent collapsed state
 const useLocalStorageState = (key: string, defaultValue: boolean) => {
@@ -60,6 +60,8 @@ export const ViewportDebugOverlay: React.FC = () => {
   );
   const [visibleLegosCollapsed, setVisibleLegosCollapsed] =
     useLocalStorageState("visibleLegosCollapsed", false);
+  const [connectedLegosCollapsed, setConnectedLegosCollapsed] =
+    useLocalStorageState("connectedLegosCollapsed", false);
   const [legDragStateCollapsed, setLegDragStateCollapsed] =
     useLocalStorageState("legDragStateCollapsed", false);
 
@@ -75,7 +77,9 @@ export const ViewportDebugOverlay: React.FC = () => {
   const debugMouseLogicalPos =
     viewport.fromCanvasToLogical(debugMouseCanvasPos);
 
-  const visibleLegos = useVisibleLegos();
+  const visibleLegos = useVisibleLegoIds();
+  const connectedLegos = useCanvasStore((state) => state.connectedLegos);
+  const connectedLegoIds = connectedLegos.map((c) => c.instanceId);
 
   const zoomLevel = viewport.zoomLevel;
 
@@ -245,14 +249,25 @@ export const ViewportDebugOverlay: React.FC = () => {
           </button>
           {!visibleLegosCollapsed && (
             <pre style={{ fontSize: "10px", margin: "4px 0 0 16px" }}>
-              {JSON.stringify(
-                visibleLegos.map((lego) => lego.instanceId),
-                null,
-                2
-              )}
+              {JSON.stringify(visibleLegos, null, 2)}
             </pre>
           )}
         </div>
+
+        <div>
+          <button
+            style={toggleButtonStyle}
+            onClick={() => setConnectedLegosCollapsed(!connectedLegosCollapsed)}
+          >
+            {connectedLegosCollapsed ? "▶" : "▼"} Connected Legos
+          </button>
+          {!connectedLegosCollapsed && (
+            <pre style={{ fontSize: "10px", margin: "4px 0 0 16px" }}>
+              {JSON.stringify(connectedLegoIds, null, 2)}
+            </pre>
+          )}
+        </div>
+
         <div>
           <button
             style={toggleButtonStyle}

@@ -2,4 +2,4 @@
 
 export PYTHONPATH=".."
 
-find . -type f -name '*.ts' | entr -r $@
+find . -type f -name '*.ts*' | entr -r $@

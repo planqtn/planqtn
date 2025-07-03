@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand";
 import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
-import { CanvasPoint, LogicalPoint } from "../types/coordinates";
+import { LogicalPoint } from "../types/coordinates";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.id, lego.numberOfLegs, lego);
@@ -56,7 +56,6 @@ export class DroppedLego implements LegoPiece {
   public alwaysShowLegs: boolean;
   public style: LegoStyle;
   public logicalPosition: LogicalPoint;
-  public canvasPosition?: CanvasPoint;
 
   constructor(
     lego: LegoPiece,
@@ -82,7 +81,6 @@ export class DroppedLego implements LegoPiece {
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
 
     this.style = getLegoStyle(lego.id, this.numberOfLegs, this);
-    this.canvasPosition = overrides.canvasPosition;
   }
 
   public get numberOfLegs(): number {

@@ -3,7 +3,7 @@ import { LogicalPoint } from "../types/coordinates";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-export const useVisibleLegos = () => {
+export const useVisibleLegoIds = () => {
   const { droppedLegos, connections, viewport } = useCanvasStore(
     useShallow((state) => ({
       droppedLegos: state.droppedLegos,
@@ -22,7 +22,7 @@ export const useVisibleLegos = () => {
     ) {
       console.warn("Invalid viewport in calculateVisibleLegos:", viewport);
 
-      return droppedLegos;
+      return droppedLegos.map((lego) => lego.instanceId);
     }
 
     // Calculate viewport bounds with some padding for connections
@@ -36,7 +36,9 @@ export const useVisibleLegos = () => {
     ) {
       console.warn("Invalid viewport in calculateVisibleLegos:", viewport);
 
-      return droppedLegos;
+      return droppedLegos.map((lego) => {
+        return lego.instanceId;
+      });
     }
 
     // Get visible legos (within viewport bounds)
@@ -70,14 +72,10 @@ export const useVisibleLegos = () => {
         connectedIds.has(lego.instanceId) && !visibleIds.has(lego.instanceId)
     );
 
-    const visibleLegos = [...directlyVisible, ...connectedLegos].map((lego) => {
-      return lego.with({
-        canvasPosition: viewport.fromLogicalToCanvas(
-          new LogicalPoint(lego.logicalPosition.x, lego.logicalPosition.y)
-        )
-      });
-    });
+    const visibleLegoIds = [...directlyVisible, ...connectedLegos].map(
+      (lego) => lego.instanceId
+    );
 
-    return visibleLegos;
+    return visibleLegoIds;
   }, [droppedLegos, connections, viewport]);
 };

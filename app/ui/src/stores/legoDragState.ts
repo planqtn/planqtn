@@ -11,7 +11,7 @@ export enum DraggingStage {
 
 export interface LegoDragState {
   draggingStage: DraggingStage;
-  draggedLegoIndex: number;
+  draggedLegoInstanceId: string;
   startMouseWindowPoint: WindowPoint;
   startLegoLogicalPoint: LogicalPoint;
 }
@@ -24,7 +24,7 @@ export interface LegoDragStateSlice {
 
 const initialLegoDragState: LegoDragState = {
   draggingStage: DraggingStage.NOT_DRAGGING,
-  draggedLegoIndex: -1,
+  draggedLegoInstanceId: "",
   startMouseWindowPoint: new WindowPoint(0, 0),
   startLegoLogicalPoint: new LogicalPoint(0, 0)
 };

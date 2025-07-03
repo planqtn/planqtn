@@ -65,9 +65,8 @@ export function getLegoBoundingBox(
 }
 
 interface DroppedLegoDisplayProps {
-  lego: DroppedLego;
+  legoInstanceId: string;
   demoMode: boolean;
-  canvasPosition: { x: number; y: number };
 }
 
 // Memoized component for static leg lines only
@@ -216,11 +215,18 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ lego, demoMode = false, canvasPosition }) => {
+  ({ legoInstanceId, demoMode = false }) => {
+    const lego = useCanvasStore(
+      (state) =>
+        state.droppedLegos.find((l) => l.instanceId === legoInstanceId)!
+    );
+
     const canvasRef = useCanvasStore((state) => state.canvasRef);
     // Get zoom level for smart scaling
     const viewport = useCanvasStore((state) => state.viewport);
     const zoomLevel = viewport.zoomLevel;
+
+    const canvasPosition = viewport.fromLogicalToCanvas(lego.logicalPosition);
 
     // Use smart zoom position for calculations with central coordinate system
     const basePosition = useMemo(() => {
@@ -257,9 +263,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Only subscribe to the specific drag state properties that matter for this lego
     const isThisLegoBeingDragged = useCanvasStore((state) => {
-      if (state.legoDragState.draggedLegoIndex === undefined) return false;
-      const draggedLego =
-        state.droppedLegos[state.legoDragState.draggedLegoIndex];
+      if (state.legoDragState.draggedLegoInstanceId === "") return false;
+      const draggedLego = state.droppedLegos.find(
+        (l) => l.instanceId === state.legoDragState.draggedLegoInstanceId
+      );
       return (
         draggedLego?.instanceId === lego.instanceId &&
         state.legoDragState.draggingStage === DraggingStage.DRAGGING
@@ -375,12 +382,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const handleLegoMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
-      // Find the index for legacy compatibility
-      const droppedLegos = useCanvasStore.getState().droppedLegos;
-      const index = droppedLegos.findIndex(
-        (l) => l.instanceId === lego.instanceId
+      storeHandleLegoMouseDown(
+        lego.instanceId,
+        e.clientX,
+        e.clientY,
+        e.shiftKey
       );
-      storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
     };
 
     return (

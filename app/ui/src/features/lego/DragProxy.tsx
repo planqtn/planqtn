@@ -10,7 +10,6 @@ import {
   LogicalPoint,
   WindowPoint
 } from "../../types/coordinates.ts";
-import { useVisibleLegos } from "../../hooks/useVisibleLegos.ts";
 import { useDebugStore } from "../../stores/debugStore.ts";
 
 // Separate handler for single lego drags
@@ -18,15 +17,21 @@ const SingleLegoDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { legoDragState: legoDragState, viewport } = useCanvasStore();
-  const visibleLegos = useVisibleLegos();
+  const {
+    legoDragState: legoDragState,
+    viewport,
+    droppedLegos
+  } = useCanvasStore();
   const zoomLevel = viewport.zoomLevel;
 
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
-    if (!legoDragState || legoDragState.draggedLegoIndex < 0) return null;
-    return visibleLegos[legoDragState.draggedLegoIndex] || null;
-  }, [visibleLegos, legoDragState]);
+    if (!legoDragState || legoDragState.draggedLegoInstanceId === "")
+      return null;
+    return droppedLegos.find(
+      (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+    );
+  }, [droppedLegos, legoDragState]);
 
   if (
     !legoDragState ||
@@ -120,19 +125,19 @@ const GroupDragProxy: React.FC<{
   const {
     legoDragState: dragState,
     groupDragState,
-    viewport
+    viewport,
+    droppedLegos
   } = useCanvasStore();
-  const visibleLegos = useVisibleLegos();
 
   const zoomLevel = viewport.zoomLevel;
 
   // Memoize dragged legos to prevent stale references
   const draggedLegos = useMemo(() => {
     if (!groupDragState) return [];
-    return visibleLegos.filter((lego) =>
+    return droppedLegos.filter((lego) =>
       groupDragState.legoInstanceIds.includes(lego.instanceId)
     );
-  }, [visibleLegos, groupDragState]);
+  }, [droppedLegos, groupDragState]);
 
   if (
     !groupDragState ||

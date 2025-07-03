@@ -3,11 +3,11 @@ import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
 import { DraggingStage } from "../../stores/legoDragState";
-import { useVisibleLegos } from "../../hooks/useVisibleLegos";
+import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
-  const visibleLegos = useVisibleLegos();
+  const visibleLegos = useVisibleLegoIds();
   const viewport = useCanvasStore((state) => state.viewport);
   // Get drag state to hide dragged legos (proxy will show instead)
   const { dragState, tensorNetwork } = useCanvasStore(
@@ -23,11 +23,7 @@ export const LegosLayer: React.FC = () => {
 
     // Add individually dragged lego
     if (dragState?.draggingStage === DraggingStage.DRAGGING) {
-      const droppedLegos = useCanvasStore.getState().droppedLegos;
-      const draggedLego = droppedLegos[dragState.draggedLegoIndex];
-      if (draggedLego) {
-        draggedIds.add(draggedLego.instanceId);
-      }
+      draggedIds.add(dragState.draggedLegoInstanceId);
     }
 
     // Add group dragged legos (selected legos)
@@ -46,13 +42,12 @@ export const LegosLayer: React.FC = () => {
   // Render only visible legos (virtualization)
   const renderedLegos = useMemo(() => {
     return visibleLegos
-      .filter((lego) => !isDraggedLego(lego.instanceId)) // Hide dragged legos
-      .map((lego) => (
+      .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
+      .map((legoInstanceId) => (
         <DroppedLegoDisplay
-          key={lego.instanceId}
-          lego={lego}
+          key={legoInstanceId}
+          legoInstanceId={legoInstanceId}
           demoMode={false}
-          canvasPosition={lego.canvasPosition!}
         />
       ));
   }, [visibleLegos, isDraggedLego, viewport.logicalPanOffset]);

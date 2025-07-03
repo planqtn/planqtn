@@ -22,6 +22,7 @@ export const useCloningSlice: StateCreator<
       tensorNetwork &&
       tensorNetwork?.legos.some((l) => l.instanceId === clickedLego.instanceId);
 
+    const cloneOffset = new LogicalPoint(20, 20);
     // Check if we're cloning multiple legos
     const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
@@ -35,7 +36,7 @@ export const useCloningSlice: StateCreator<
       instanceIdMap.set(l.instanceId, newId);
       return l.with({
         instanceId: newId,
-        logicalPosition: l.logicalPosition.plus(new LogicalPoint(20, 20))
+        logicalPosition: l.logicalPosition.plus(cloneOffset)
       });
     });
 
@@ -80,14 +81,9 @@ export const useCloningSlice: StateCreator<
       });
     }
 
-    // Set up initial drag state for the first lego
-    // Get the current droppedLegos length to find the correct index
-    const currentDroppedLegos = get().droppedLegos;
-    const firstNewLegoIndex = currentDroppedLegos.length - newLegos.length;
-
     get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
-      draggedLegoIndex: firstNewLegoIndex,
+      draggedLegoInstanceId: newLegos[0].instanceId,
       startMouseWindowPoint: new WindowPoint(x, y),
       startLegoLogicalPoint: clickedLego.logicalPosition.plus(
         new LogicalPoint(20, 20)

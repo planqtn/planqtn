@@ -12,7 +12,7 @@ export interface DroppedLegoClickHandlerSlice {
     metaKey: boolean
   ) => void;
   handleLegoMouseDown: (
-    index: number,
+    instanceId: string,
     x: number,
     y: number,
     shiftKey: boolean
@@ -136,13 +136,14 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
   },
 
   handleLegoMouseDown: (
-    index: number,
+    instanceId: string,
     x: number,
     y: number,
     shiftKey: boolean
   ) => {
     // Get lego from store instead of passed prop
-    const lego = get().droppedLegos[index];
+    const lego = get().droppedLegos.find((l) => l.instanceId === instanceId);
+    if (!lego) return;
 
     if (shiftKey) {
       get().handleClone(lego, x, y);
@@ -175,7 +176,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       // not dragging yet but the index is set, so we can start dragging when the mouse moves
       get().setLegoDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoIndex: index,
+        draggedLegoInstanceId: lego.instanceId,
         startMouseWindowPoint: new WindowPoint(x, y),
         startLegoLogicalPoint: lego.logicalPosition
       });
