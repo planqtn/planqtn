@@ -41,8 +41,8 @@ export const CanvasMiniMap: React.FC = () => {
   // Use new viewport system from canvasUI store
   const {
     viewport,
-    droppedLegoBoundingBox,
-    tensorNetworkBoundingBox,
+    calculateDroppedLegoBoundingBox,
+    calculateTensorNetworkBoundingBox,
     setCanvasPanelDimensions: setPanelDimensions,
     setZoomToMouse,
     setPanOffset,
@@ -75,6 +75,9 @@ export const CanvasMiniMap: React.FC = () => {
       resizeObserver.disconnect();
     };
   }, [canvasRef, setPanelDimensions]);
+
+  const droppedLegoBoundingBox = calculateDroppedLegoBoundingBox();
+  const tensorNetworkBoundingBox = calculateTensorNetworkBoundingBox();
 
   // Calculate minimap dimensions and positions
   const minimapBounds = React.useMemo(() => {

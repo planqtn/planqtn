@@ -115,8 +115,6 @@ export interface CanvasUISlice {
   setCanvasRef: (element: HTMLDivElement | null) => void;
 
   viewport: Viewport;
-  droppedLegoBoundingBox: BoundingBox | null;
-  tensorNetworkBoundingBox: BoundingBox | null;
 
   // Canvas panel dimensions tracking
   setCanvasPanelDimensions: (width: number, height: number) => void;
@@ -205,8 +203,6 @@ export const createCanvasUISlice: StateCreator<
   // New viewport and coordinate system
   viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), null),
 
-  droppedLegoBoundingBox: null,
-  tensorNetworkBoundingBox: null,
   visibleLegos: [],
 
   setCanvasPanelDimensions: (width, height) => {

@@ -64,6 +64,8 @@ export const ViewportDebugOverlay: React.FC = () => {
     useLocalStorageState("connectedLegosCollapsed", false);
   const [legDragStateCollapsed, setLegDragStateCollapsed] =
     useLocalStorageState("legDragStateCollapsed", false);
+  const [droppedLegoBoundingBoxCollapsed, setDroppedLegoBoundingBoxCollapsed] =
+    useLocalStorageState("droppedLegoBoundingBoxCollapsed", false);
 
   // has to be the last one to avoid hook number changes
 
@@ -127,6 +129,110 @@ export const ViewportDebugOverlay: React.FC = () => {
     zIndex: 1001 // Ensure it appears above other elements
   };
 
+  const droppedLegoBoundingBox = useCanvasStore(
+    (state) => state.calculateDroppedLegoBoundingBox
+  )();
+
+  const tensorNetworkBoundingBox = useCanvasStore(
+    (state) => state.calculateTensorNetworkBoundingBox
+  )();
+
+  const legoBoundingBoxStyle = droppedLegoBoundingBox
+    ? {
+        position: "absolute" as const,
+        top: viewport.fromLogicalToCanvas(
+          new LogicalPoint(
+            droppedLegoBoundingBox.minX,
+            droppedLegoBoundingBox.minY
+          )
+        ).y, // Adjusted to center the circle at (10, 10)
+        left: viewport.fromLogicalToCanvas(
+          new LogicalPoint(
+            droppedLegoBoundingBox.minX,
+            droppedLegoBoundingBox.minY
+          )
+        ).x, // Adjusted to center the circle at (10, 10)
+        width:
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              droppedLegoBoundingBox.maxX,
+              droppedLegoBoundingBox.maxY
+            )
+          ).x -
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              droppedLegoBoundingBox.minX,
+              droppedLegoBoundingBox.minY
+            )
+          ).x,
+        height:
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              droppedLegoBoundingBox.maxY,
+              droppedLegoBoundingBox.maxY
+            )
+          ).y -
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              droppedLegoBoundingBox.minY,
+              droppedLegoBoundingBox.minY
+            )
+          ).y,
+        border: "2px dashed blue",
+        borderRadius: "5px",
+        pointerEvents: "none" as const,
+        zIndex: 1001 // Ensure it appears above other elements
+      }
+    : {};
+
+  const tensorNetworkBoundingBoxStyle = tensorNetworkBoundingBox
+    ? {
+        position: "absolute" as const,
+        top: viewport.fromLogicalToCanvas(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          )
+        ).y,
+        left: viewport.fromLogicalToCanvas(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          )
+        ).x,
+        width:
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              tensorNetworkBoundingBox.maxX,
+              tensorNetworkBoundingBox.maxY
+            )
+          ).x -
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              tensorNetworkBoundingBox.minX,
+              tensorNetworkBoundingBox.minY
+            )
+          ).x,
+        height:
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              tensorNetworkBoundingBox.maxY,
+              tensorNetworkBoundingBox.maxY
+            )
+          ).y -
+          viewport.fromLogicalToCanvas(
+            new LogicalPoint(
+              tensorNetworkBoundingBox.minY,
+              tensorNetworkBoundingBox.minY
+            )
+          ).y,
+        border: "2px dashed green",
+        borderRadius: "5px",
+        pointerEvents: "none" as const,
+        zIndex: 1001 // Ensure it appears above other elements
+      }
+    : {};
+
   return (
     <>
       {/* Main viewport debug box - should always align with canvas borders */}
@@ -134,6 +240,9 @@ export const ViewportDebugOverlay: React.FC = () => {
 
       {/* Red circle at (10, 10) */}
       <Box style={circleStyle} />
+
+      <Box style={legoBoundingBoxStyle} />
+      <Box style={tensorNetworkBoundingBoxStyle} />
 
       {/* Debug info overlay */}
       <Box
@@ -293,6 +402,25 @@ export const ViewportDebugOverlay: React.FC = () => {
           {!legDragStateCollapsed && (
             <pre style={{ fontSize: "10px", margin: "4px 0 0 16px" }}>
               {JSON.stringify(legDragState, null, 2)}
+            </pre>
+          )}
+        </div>
+
+        <div>
+          <button
+            style={toggleButtonStyle}
+            onClick={() =>
+              setDroppedLegoBoundingBoxCollapsed(
+                !droppedLegoBoundingBoxCollapsed
+              )
+            }
+          >
+            {droppedLegoBoundingBoxCollapsed ? "▶" : "▼"} Dropped Lego Bounding
+            Box
+          </button>
+          {!droppedLegoBoundingBoxCollapsed && (
+            <pre style={{ fontSize: "10px", margin: "4px 0 0 16px" }}>
+              {JSON.stringify(droppedLegoBoundingBox, null, 2)}
             </pre>
           )}
         </div>
