@@ -24,11 +24,7 @@ import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
-import {
-  CanvasPoint,
-  canvasToLogical,
-  LogicalPoint
-} from "../../types/coordinates.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 interface BuildingBlocksPanelProps {
   isUserLoggedIn?: boolean;
@@ -60,7 +56,7 @@ const getDemoLego = (
 
   const boundingBox = getLegoBoundingBox(originLego, true);
   const demoLego = originLego.with({
-    logicalPosition: new CanvasPoint(
+    logicalPosition: new LogicalPoint(
       -boundingBox.left / 2,
       -boundingBox.top / 2
     )
@@ -251,23 +247,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
 
     const handleDragStart = useCallback(
       (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
-        const { viewport } = useCanvasStore.getState();
         // Hide the default drag ghost by setting a transparent image
         const dragImage = new Image();
         dragImage.src =
           "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
         e.dataTransfer.setDragImage(dragImage, 0, 0);
-        const rect = e.currentTarget.getBoundingClientRect();
 
-        const canvasPosition = new CanvasPoint(
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2
-        );
-        const logicalPosition = canvasToLogical(
-          canvasPosition,
-          viewport.zoomLevel,
-          viewport.logicalPanOffset
-        );
+        const logicalPosition = new LogicalPoint(0, 0);
 
         if (lego.id === "custom") {
           // Store the drop position for the custom lego
@@ -277,8 +263,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
             logicalPosition,
-            newInstanceId(),
-            { logicalPosition: canvasPosition }
+            newInstanceId()
           );
           setDraggedLego(draggedLego);
           setBuildingBlockDragState({
@@ -294,8 +279,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
             logicalPosition,
-            newInstanceId(),
-            { logicalPosition: canvasPosition }
+            newInstanceId()
           );
           setDraggedLego(draggedLego);
           setBuildingBlockDragState({

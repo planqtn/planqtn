@@ -3,7 +3,7 @@ import { DroppedLego } from "./droppedLegoStore";
 import { CanvasStore } from "./canvasStateStore";
 import { DraggingStage } from "./legoDragState";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
-import { LogicalPoint } from "../types/coordinates";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface DroppedLegoClickHandlerSlice {
   handleLegoClick: (
@@ -27,16 +27,10 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
 > = (_, get) => ({
   handleLegoClick: (lego, ctrlKey, metaKey) => {
     // Get the current global drag state
-    const currentDragState = get().dragState;
+    const currentDragState = get().legoDragState;
 
     if (currentDragState.draggingStage === DraggingStage.JUST_FINISHED) {
-      get().setDragState({
-        draggingStage: DraggingStage.NOT_DRAGGING,
-        draggedLegoIndex: -1,
-        startX: 0,
-        startY: 0,
-        originalPoint: new LogicalPoint(0, 0)
-      });
+      get().resetLegoDragState();
       return;
     }
 
@@ -44,13 +38,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       // Only handle click if not dragging
 
       // Clear the drag state since this is a click, not a drag
-      get().setDragState({
-        draggingStage: DraggingStage.NOT_DRAGGING,
-        draggedLegoIndex: -1,
-        startX: 0,
-        startY: 0,
-        originalPoint: new LogicalPoint(0, 0)
-      });
+      get().resetLegoDragState();
 
       if (ctrlKey || metaKey) {
         // Handle Ctrl+click for toggling selection
@@ -185,12 +173,11 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       }
 
       // not dragging yet but the index is set, so we can start dragging when the mouse moves
-      get().setDragState({
+      get().setLegoDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
         draggedLegoIndex: index,
-        startX: x,
-        startY: y,
-        originalPoint: lego.logicalPosition
+        startMouseWindowPoint: new WindowPoint(x, y),
+        startLegoLogicalPoint: lego.logicalPosition
       });
     }
   }

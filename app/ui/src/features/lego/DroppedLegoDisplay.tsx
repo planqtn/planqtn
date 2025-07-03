@@ -9,6 +9,7 @@ import {
   getLevelOfDetail
 } from "../../utils/coordinateTransforms.ts";
 import { useShallow } from "zustand/react/shallow";
+import { WindowPoint } from "../../types/coordinates.ts";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -66,8 +67,6 @@ export function getLegoBoundingBox(
 interface DroppedLegoDisplayProps {
   lego: DroppedLego;
   demoMode: boolean;
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-  // Separate position prop for React.memo to detect changes
   canvasPosition: { x: number; y: number };
 }
 
@@ -217,7 +216,8 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ lego, demoMode = false, canvasRef, canvasPosition }) => {
+  ({ lego, demoMode = false, canvasPosition }) => {
+    const canvasRef = useCanvasStore((state) => state.canvasRef);
     // Get zoom level for smart scaling
     const viewport = useCanvasStore((state) => state.viewport);
     const zoomLevel = viewport.zoomLevel;
@@ -257,11 +257,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Only subscribe to the specific drag state properties that matter for this lego
     const isThisLegoBeingDragged = useCanvasStore((state) => {
-      if (state.dragState.draggedLegoIndex === undefined) return false;
-      const draggedLego = state.droppedLegos[state.dragState.draggedLegoIndex];
+      if (state.legoDragState.draggedLegoIndex === undefined) return false;
+      const draggedLego =
+        state.droppedLegos[state.legoDragState.draggedLegoIndex];
       return (
         draggedLego?.instanceId === lego.instanceId &&
-        state.dragState.draggingStage === DraggingStage.DRAGGING
+        state.legoDragState.draggingStage === DraggingStage.DRAGGING
       );
     });
 
@@ -343,13 +344,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
       e.preventDefault();
       e.stopPropagation();
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
 
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      storeHandleLegMouseDown(legoId, legIndex, x, y);
+      storeHandleLegMouseDown(
+        legoId,
+        legIndex,
+        WindowPoint.fromMouseEvent(e as unknown as MouseEvent)
+      );
     };
 
     const handleLegClick = (legoId: string, legIndex: number) => {

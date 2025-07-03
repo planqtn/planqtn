@@ -4,12 +4,7 @@ import { CanvasStore } from "./canvasStateStore";
 
 export interface LegDragStateSlice {
   legDragState: LegDragState | null;
-  setLegDragState: (
-    stateOrUpdater:
-      | LegDragState
-      | null
-      | ((prev: LegDragState | null) => LegDragState | null)
-  ) => void;
+  setLegDragState: (legDragState: LegDragState | null) => void;
 }
 
 export const useLegDragStateStore: StateCreator<
@@ -20,17 +15,9 @@ export const useLegDragStateStore: StateCreator<
 > = (set) => ({
   legDragState: null,
 
-  setLegDragState: (
-    stateOrUpdater:
-      | LegDragState
-      | null
-      | ((prev: LegDragState | null) => LegDragState | null)
-  ) => {
-    set((state) => ({
-      legDragState:
-        typeof stateOrUpdater === "function"
-          ? stateOrUpdater(state.legDragState)
-          : stateOrUpdater
-    }));
+  setLegDragState: (legDragState: LegDragState | null) => {
+    set({
+      legDragState: legDragState
+    });
   }
 });

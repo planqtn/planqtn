@@ -1,3 +1,4 @@
+import { WindowPoint } from "../types/coordinates";
 import { TensorNetworkLeg } from "./TensorNetwork";
 
 export enum PauliOperator {
@@ -47,18 +48,13 @@ export interface LegDragState {
   isDragging: boolean;
   legoId: string;
   legIndex: number;
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
+  startMouseWindowPoint: WindowPoint;
+  currentMouseWindowPoint: WindowPoint;
 }
 
 export interface CanvasDragState {
   isDragging: boolean;
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
+  mouseWindowPoint: WindowPoint;
 }
 
 export interface SelectionBoxState {

@@ -2,7 +2,7 @@
 // All components should use these utilities for consistent behavior
 
 import { Viewport } from "../stores/canvasUISlice";
-import { LogicalPoint, mouseEventToCanvasPoint } from "../types/coordinates";
+import { LogicalPoint } from "../types/coordinates";
 
 /**
  * Calculate smart lego size based on zoom level
@@ -30,34 +30,6 @@ export const getLevelOfDetail = (
     showLegs: zoomLevel > 0.3,
     showLegLabels: effectiveSize >= 55
   };
-};
-
-/**
- * Handle mouse wheel events with zoom-to-mouse functionality
- */
-export const handleWheelEventWithZoomToMouse = (
-  e: WheelEvent,
-  canvasRef: React.RefObject<HTMLDivElement | null>,
-  currentZoomLevel: number,
-  setZoomToMouse: (newZoomLevel: number, mouseCanvasPos: LogicalPoint) => void
-): void => {
-  // Only handle zoom if Ctrl/Cmd key is pressed
-  if (!(e.ctrlKey || e.metaKey)) return;
-
-  e.preventDefault();
-
-  const mouseCanvasPos = mouseEventToCanvasPoint(e, canvasRef);
-  if (!mouseCanvasPos) return;
-
-  // Calculate new zoom level
-  const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-  const newZoomLevel = Math.max(
-    0.04,
-    Math.min(9, currentZoomLevel * zoomDelta)
-  );
-
-  // Apply zoom centered on mouse position
-  setZoomToMouse(newZoomLevel, mouseCanvasPos);
 };
 
 /**

@@ -18,14 +18,11 @@ import {
   RepeatIcon
 } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { handleWheelEventWithZoomToMouse } from "../../utils/coordinateTransforms";
 import { LogicalPoint } from "../../types/coordinates";
 
-interface CanvasMiniMapProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
+export const CanvasMiniMap: React.FC = () => {
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
+  const handleWheelEvent = useCanvasStore((state) => state.handleWheelEvent);
   const [isExpanded, setIsExpanded] = useState(true);
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -60,7 +57,7 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
   // Track canvas panel dimensions
   useEffect(() => {
     const updateDimensions = () => {
-      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      const canvasRect = canvasRef?.current?.getBoundingClientRect();
       if (canvasRect) {
         setPanelDimensions(canvasRect.width, canvasRect.height);
       }
@@ -70,8 +67,8 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
 
     // Listen for resize events
     const resizeObserver = new ResizeObserver(updateDimensions);
-    if (canvasRef.current) {
-      resizeObserver.observe(canvasRef.current);
+    if (canvasRef?.current) {
+      resizeObserver.observe(canvasRef?.current);
     }
 
     return () => {
@@ -250,16 +247,12 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
 
   // Handle mouse wheel zoom with zoom-to-mouse
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef?.current;
     if (!canvas) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      handleWheelEventWithZoomToMouse(e, canvasRef, zoomLevel, setZoomToMouse);
-    };
-
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-    return () => canvas.removeEventListener("wheel", handleWheel);
-  }, [canvasRef, zoomLevel, setZoomToMouse]);
+    canvas.addEventListener("wheel", handleWheelEvent, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheelEvent);
+  }, [canvasRef, handleWheelEvent]);
 
   // Zoom control handlers
   const handleZoomIn = useCallback(() => {
@@ -302,16 +295,13 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
       droppedLegoBoundingBox.height > 0
     ) {
       // Center on content if available
-      centerPoint = {
-        x: droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
-        y: droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
-      };
+      centerPoint = new LogicalPoint(
+        droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
+        droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
+      );
     } else {
       // Use logical canvas center as fallback
-      centerPoint = {
-        x: viewport.logicalWidth / 2,
-        y: viewport.logicalHeight / 2
-      };
+      centerPoint = viewport.logicalCenter;
     }
 
     setZoomToMouse(
@@ -330,16 +320,16 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
       droppedLegoBoundingBox.height > 0
     ) {
       // Center on the content if legos exist
-      centerPoint = {
-        x: droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
-        y: droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
-      };
+      centerPoint = new LogicalPoint(
+        droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
+        droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
+      );
     } else {
       // Fallback to canvas center in logical coordinates (center of the coordinate system)
-      centerPoint = {
-        x: viewport.logicalWidth / 2,
-        y: viewport.logicalHeight / 2
-      };
+      centerPoint = new LogicalPoint(
+        viewport.logicalWidth / 2,
+        viewport.logicalHeight / 2
+      );
     }
 
     // Safety check for valid center point
@@ -348,13 +338,13 @@ export const CanvasMiniMap: React.FC<CanvasMiniMapProps> = ({ canvasRef }) => {
         "Invalid center point in zoom reset, using fallback:",
         centerPoint
       );
-      centerPoint = {
-        x: viewport.logicalWidth / 2,
-        y: viewport.logicalHeight / 2
-      };
+      centerPoint = new LogicalPoint(
+        viewport.logicalWidth / 2,
+        viewport.logicalHeight / 2
+      );
     }
 
-    setZoomToMouse(1, new LogicalPoint(centerPoint.x, centerPoint.y));
+    setZoomToMouse(1, centerPoint);
   }, [viewport, setZoomToMouse, droppedLegoBoundingBox]);
 
   const handleToggle = useCallback(() => {

@@ -187,8 +187,8 @@ export const ConnectionsLayer: React.FC = () => {
               toLego.logicalPosition.y + toPos.endY * toScale
             );
         // Apply zoom transformations to connection points using new coordinate system
-        const fromPoint = viewport.convertToCanvasPoint(fromBasePoint);
-        const toPoint = viewport.convertToCanvasPoint(toBasePoint);
+        const fromPoint = viewport.fromLogicalToCanvas(fromBasePoint);
+        const toPoint = viewport.fromLogicalToCanvas(toBasePoint);
 
         // Calculate control points for the curve - scale with zoom for better topology
         const baseControlPointDistance = 30;
@@ -318,15 +318,13 @@ export const ConnectionsLayer: React.FC = () => {
     );
 
     // Apply zoom transformations to drag line using new coordinate system
-    const fromPoint = viewport.convertToCanvasPoint(fromBasePoint);
-    const legoCenter = viewport.convertToCanvasPoint(
+    const fromPoint = viewport.fromLogicalToCanvas(fromBasePoint);
+    const legoCenter = viewport.fromLogicalToCanvas(
       new LogicalPoint(fromLego.logicalPosition.x, fromLego.logicalPosition.y)
     );
 
-    // legDragState coordinates are already in canvas coordinates
-    // Transform them to screen coordinates for SVG rendering using new system
-    const dragEndPoint = viewport.convertToCanvasPoint(
-      new LogicalPoint(legDragState.currentX, legDragState.currentY)
+    const dragEndPoint = viewport.fromWindowToCanvas(
+      legDragState.currentMouseWindowPoint
     );
 
     const legStyle = fromLego.style!.legStyles[legDragState.legIndex];

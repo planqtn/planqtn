@@ -147,7 +147,7 @@ const LegoStudioView: React.FC = () => {
   const { viewport } = useCanvasStore();
   const zoomLevel = viewport.zoomLevel;
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
   // Use centralized TensorNetwork store
 
@@ -528,7 +528,6 @@ const LegoStudioView: React.FC = () => {
       />
 
       <CanvasMouseHandler
-        canvasRef={canvasRef}
         selectionManagerRef={selectionManagerRef}
         zoomLevel={zoomLevel}
         altKeyPressed={altKeyPressed}
@@ -565,7 +564,7 @@ const LegoStudioView: React.FC = () => {
               <Box h="100%" display="flex" flexDirection="column" p={4}>
                 {/* Canvas with overlay controls */}
                 <Box
-                  ref={canvasRef}
+                  ref={setCanvasRef}
                   flex={1}
                   bg="gray.100"
                   borderRadius="lg"
@@ -649,19 +648,18 @@ const LegoStudioView: React.FC = () => {
 
                   <ConnectionsLayer />
                   {/* Selection Manager */}
-                  <SelectionManager
-                    ref={selectionManagerRef}
-                    canvasRef={canvasRef}
-                  />
-                  <LegosLayer canvasRef={canvasRef} />
+                  <SelectionManager ref={selectionManagerRef} />
+                  <LegosLayer />
                   {/* Drag Proxy for smooth dragging */}
-                  <DragProxy canvasRef={canvasRef} />
+                  <DragProxy />
 
-                  {/* Debug viewport overlay */}
-                  <ViewportDebugOverlay canvasRef={canvasRef} />
+                  {import.meta.env.VITE_ENV === "debug" && (
+                    // Debug viewport overlay
+                    <ViewportDebugOverlay />
+                  )}
 
                   {/* Mini-map with zoom level display */}
-                  <CanvasMiniMap canvasRef={canvasRef} />
+                  <CanvasMiniMap />
                 </Box>
               </Box>
             </Panel>

@@ -72,7 +72,7 @@ export const useVisibleLegos = () => {
 
     const visibleLegos = [...directlyVisible, ...connectedLegos].map((lego) => {
       return lego.with({
-        canvasPosition: viewport.convertToCanvasPoint(
+        canvasPosition: viewport.fromLogicalToCanvas(
           new LogicalPoint(lego.logicalPosition.x, lego.logicalPosition.y)
         )
       });

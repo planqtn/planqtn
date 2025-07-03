@@ -1,7 +1,9 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { Connection, SelectionBoxState } from "../lib/types";
-import { LogicalPoint, CanvasPoint } from "../types/coordinates";
+import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
+import { createRef, RefObject } from "react";
+import { castDraft } from "immer";
 
 export interface BoundingBox {
   minX: number;
@@ -20,7 +22,10 @@ export class Viewport {
 
     // Zoom and pan state
     public zoomLevel: number,
-    public logicalPanOffset: LogicalPoint
+    public logicalPanOffset: LogicalPoint,
+
+    // Canvas ref
+    public canvasRef: RefObject<HTMLDivElement> | null
   ) {}
 
   public get logicalWidth(): number {
@@ -46,7 +51,8 @@ export class Viewport {
       overrides.screenWidth || this.screenWidth,
       overrides.screenHeight || this.screenHeight,
       overrides.zoomLevel || this.zoomLevel,
-      overrides.logicalPanOffset || this.logicalPanOffset
+      overrides.logicalPanOffset || this.logicalPanOffset,
+      overrides.canvasRef || this.canvasRef
     );
   }
 
@@ -59,18 +65,29 @@ export class Viewport {
     );
   }
 
-  convertToLogicalPoint(point: CanvasPoint): LogicalPoint {
+  fromCanvasToLogical(point: CanvasPoint): LogicalPoint {
     return new LogicalPoint(
       point.x * this.zoomLevel + this.logicalPanOffset.x,
       point.y * this.zoomLevel + this.logicalPanOffset.y
     );
   }
 
-  convertToCanvasPoint(point: LogicalPoint): CanvasPoint {
+  fromLogicalToCanvas(point: LogicalPoint): CanvasPoint {
     return new CanvasPoint(
       (point.x - this.logicalPanOffset.x) / this.zoomLevel,
       (point.y - this.logicalPanOffset.y) / this.zoomLevel
     );
+  }
+
+  fromWindowToCanvas(point: WindowPoint): CanvasPoint {
+    return new CanvasPoint(
+      point.x - (this.canvasRef?.current?.getBoundingClientRect().left ?? 0),
+      point.y - (this.canvasRef?.current?.getBoundingClientRect().top ?? 0)
+    );
+  }
+
+  fromWindowToLogical(point: WindowPoint): LogicalPoint {
+    return this.fromCanvasToLogical(this.fromWindowToCanvas(point));
   }
 }
 
@@ -86,6 +103,8 @@ export interface CanvasUISlice {
   panOffset: LogicalPoint;
   setPanOffset: (offset: LogicalPoint) => void;
   updatePanOffset: (deltaX: number, deltaY: number) => void;
+  canvasRef: RefObject<HTMLDivElement> | null;
+  setCanvasRef: (element: HTMLDivElement | null) => void;
 
   viewport: Viewport;
   droppedLegoBoundingBox: BoundingBox | null;
@@ -95,11 +114,17 @@ export interface CanvasUISlice {
   setCanvasPanelDimensions: (width: number, height: number) => void;
 
   // Viewport management
-  setZoomToMouse: (newZoomLevel: number, mouseCanvasPos: CanvasPoint) => void;
+  setZoomToMouse: (
+    newZoomLevel: number,
+    mouseLogicalPosition: LogicalPoint
+  ) => void;
 
   // Bounding box calculations
   calculateDroppedLegoBoundingBox: () => BoundingBox | null;
   calculateTensorNetworkBoundingBox: () => BoundingBox | null;
+
+  // Mouse wheel handling
+  handleWheelEvent: (e: WheelEvent) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -141,32 +166,38 @@ export const createCanvasUISlice: StateCreator<
   setZoomLevel: (zoomLevel) => {
     const clampedZoom = Math.max(0.04, Math.min(9, zoomLevel));
     set((state) => {
-      state.viewport = state.viewport.with({
-        zoomLevel: clampedZoom
-      });
+      state.viewport = castDraft(
+        state.viewport.with({
+          zoomLevel: clampedZoom
+        })
+      );
     });
   },
   panOffset: new LogicalPoint(0, 0),
   setPanOffset: (offset) => {
     set((state) => {
       state.panOffset = offset;
-      state.viewport = state.viewport.with({
-        logicalPanOffset: offset
-      });
+      state.viewport = castDraft(
+        state.viewport.with({
+          logicalPanOffset: offset
+        })
+      );
     });
     console.log("setPanOffset", offset);
   },
   updatePanOffset: (deltaX, deltaY) => {
     set((state) => {
       state.panOffset = state.panOffset.plus(new LogicalPoint(deltaX, deltaY));
-      state.viewport = state.viewport.with({
-        logicalPanOffset: state.panOffset
-      });
+      state.viewport = castDraft(
+        state.viewport.with({
+          logicalPanOffset: state.panOffset as LogicalPoint
+        })
+      );
     });
   },
 
   // New viewport and coordinate system
-  viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0)),
+  viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), null),
 
   droppedLegoBoundingBox: null,
   tensorNetworkBoundingBox: null,
@@ -174,10 +205,25 @@ export const createCanvasUISlice: StateCreator<
 
   setCanvasPanelDimensions: (width, height) => {
     set((state) => {
-      state.viewport = state.viewport.with({
-        screenWidth: width,
-        screenHeight: height
-      });
+      state.viewport = castDraft(
+        state.viewport.with({
+          screenWidth: width,
+          screenHeight: height
+        })
+      );
+    });
+  },
+
+  canvasRef: null,
+  setCanvasRef: (element: HTMLDivElement | null) => {
+    if (!element) {
+      return;
+    }
+    const newRef = createRef() as RefObject<HTMLDivElement>;
+    newRef.current = element;
+    set({
+      canvasRef: newRef,
+      viewport: get().viewport.with({ canvasRef: newRef })
     });
   },
 
@@ -243,10 +289,12 @@ export const createCanvasUISlice: StateCreator<
     }
 
     set((state) => {
-      state.viewport = state.viewport.with({
-        zoomLevel: clampedZoom,
-        logicalPanOffset: newPanOffset
-      });
+      state.viewport = castDraft(
+        state.viewport.with({
+          zoomLevel: clampedZoom,
+          logicalPanOffset: newPanOffset
+        })
+      );
     });
   },
 
@@ -308,5 +356,30 @@ export const createCanvasUISlice: StateCreator<
       width: maxX - minX,
       height: maxY - minY
     };
+  },
+
+  /**
+   * Handle mouse wheel events with zoom-to-mouse functionality
+   */
+  handleWheelEvent: (e: WheelEvent): void => {
+    // Only handle zoom if Ctrl/Cmd key is pressed
+    if (!(e.ctrlKey || e.metaKey)) return;
+
+    e.preventDefault();
+
+    const mouseCanvasPos = get().viewport.fromWindowToLogical(
+      WindowPoint.fromMouseEvent(e)
+    );
+    if (!mouseCanvasPos) return;
+
+    // Calculate new zoom level
+    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoomLevel = Math.max(
+      0.04,
+      Math.min(9, get().viewport.zoomLevel * zoomDelta)
+    );
+
+    // Apply zoom centered on mouse position
+    get().setZoomToMouse(newZoomLevel, mouseCanvasPos);
   }
 });

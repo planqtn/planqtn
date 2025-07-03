@@ -1,23 +1,18 @@
-import React, { memo, useMemo } from "react";
+import React, { useMemo } from "react";
 import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegos } from "../../hooks/useVisibleLegos";
 
-interface LegosLayerProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
+export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
   const visibleLegos = useVisibleLegos();
   const viewport = useCanvasStore((state) => state.viewport);
-
   // Get drag state to hide dragged legos (proxy will show instead)
   const { dragState, tensorNetwork } = useCanvasStore(
     useShallow((state) => ({
-      dragState: state.dragState,
+      dragState: state.legoDragState,
       tensorNetwork: state.tensorNetwork
     }))
   );
@@ -57,13 +52,12 @@ export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
           key={lego.instanceId}
           lego={lego}
           demoMode={false}
-          canvasRef={canvasRef}
           canvasPosition={lego.canvasPosition!}
         />
       ));
-  }, [visibleLegos, isDraggedLego, canvasRef, viewport.logicalPanOffset]);
+  }, [visibleLegos, isDraggedLego, viewport.logicalPanOffset]);
 
   return <>{renderedLegos}</>;
-});
+};
 
 LegosLayer.displayName = "LegosLayer";

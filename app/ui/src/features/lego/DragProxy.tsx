@@ -5,57 +5,60 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { getSmartLegoSize } from "../../utils/coordinateTransforms";
-import { CanvasPoint, LogicalPoint } from "../../types/coordinates.ts";
+import {
+  CanvasPoint,
+  LogicalPoint,
+  WindowPoint
+} from "../../types/coordinates.ts";
 import { useVisibleLegos } from "../../hooks/useVisibleLegos.ts";
-
-interface DragProxyProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
+import { useDebugStore } from "../../stores/debugStore.ts";
 
 // Separate handler for single lego drags
 const SingleLegoDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { dragState, viewport } = useCanvasStore();
+  const { legoDragState: legoDragState, viewport } = useCanvasStore();
   const visibleLegos = useVisibleLegos();
   const zoomLevel = viewport.zoomLevel;
 
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
-    if (!dragState || dragState.draggedLegoIndex < 0) return null;
-    return visibleLegos[dragState.draggedLegoIndex] || null;
-  }, [visibleLegos, dragState]);
+    if (!legoDragState || legoDragState.draggedLegoIndex < 0) return null;
+    return visibleLegos[legoDragState.draggedLegoIndex] || null;
+  }, [visibleLegos, legoDragState]);
 
-  if (!dragState || dragState.draggingStage !== DraggingStage.DRAGGING) {
+  if (
+    !legoDragState ||
+    legoDragState.draggingStage !== DraggingStage.DRAGGING
+  ) {
     return null;
   }
 
   if (!draggedLego || !canvasRect) return null;
 
   // Convert mouse position to canvas coordinates using cached rect
-  const canvasHtmlMousePoint = new CanvasPoint(
+  const canvasMousePoint = new CanvasPoint(
     mousePos.x - canvasRect.left,
     mousePos.y - canvasRect.top
   );
 
   // Convert drag start position to canvas coordinates using cached rect
-  const canvasHtmlDragStartPoint = new CanvasPoint(
-    dragState.startX - canvasRect.left,
-    dragState.startY - canvasRect.top
+  const canvasDragStartPoint = viewport.fromWindowToCanvas(
+    legoDragState.startMouseWindowPoint
   );
 
   // Calculate delta in canvas coordinates - need to account for zoom
-  const canvasHtmlDelta = canvasHtmlMousePoint.minus(canvasHtmlDragStartPoint);
+  const canvasHtmlDelta = canvasMousePoint.minus(canvasDragStartPoint);
 
   // Transform screen delta to canvas delta for zoom-aware movement
   const canvasDelta = canvasHtmlDelta.factor(1 / zoomLevel);
 
   // Calculate proxy position: original lego position + canvas delta
-  const baseProxyPoint = dragState.originalPoint.plus(canvasDelta);
+  const baseProxyPoint = legoDragState.startLegoLogicalPoint.plus(canvasDelta);
 
   // Apply zoom transformation to get screen position using new coordinate system
-  const screenProxyPos = viewport.convertToCanvasPoint(baseProxyPoint);
+  const screenProxyPos = viewport.fromLogicalToCanvas(baseProxyPoint);
 
   // Use smart sizing for consistency
   const originalSize = draggedLego.style!.size;
@@ -114,7 +117,11 @@ const GroupDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { dragState, groupDragState, viewport } = useCanvasStore();
+  const {
+    legoDragState: dragState,
+    groupDragState,
+    viewport
+  } = useCanvasStore();
   const visibleLegos = useVisibleLegos();
 
   const zoomLevel = viewport.zoomLevel;
@@ -143,12 +150,13 @@ const GroupDragProxy: React.FC<{
   const canvasMouseY = mousePos.y - canvasRect.top;
 
   // Convert drag start position to canvas coordinates using cached rect
-  const canvasStartX = dragState.startX - canvasRect.left;
-  const canvasStartY = dragState.startY - canvasRect.top;
+  const canvasDragStartPoint = viewport.fromWindowToCanvas(
+    dragState.startMouseWindowPoint
+  );
 
   // Calculate delta in canvas coordinates - need to account for zoom
-  const deltaScreenX = canvasMouseX - canvasStartX;
-  const deltaScreenY = canvasMouseY - canvasStartY;
+  const deltaScreenX = canvasMouseX - canvasDragStartPoint.x;
+  const deltaScreenY = canvasMouseY - canvasDragStartPoint.y;
 
   // Transform screen delta to canvas delta for zoom-aware movement
   const deltaX = deltaScreenX / zoomLevel;
@@ -165,7 +173,7 @@ const GroupDragProxy: React.FC<{
         const baseProxyY = originalPos.y + deltaY;
 
         // Apply zoom transformation to get screen position using new coordinate system
-        const screenProxyPos = viewport.convertToCanvasPoint(
+        const screenProxyPos = viewport.fromLogicalToCanvas(
           new LogicalPoint(baseProxyX, baseProxyY)
         );
 
@@ -230,7 +238,7 @@ const GroupDragProxy: React.FC<{
 
 // Separate handler for building block drags
 const BuildingBlockDragProxy: React.FC<{
-  canvasRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: React.RefObject<HTMLDivElement | null> | null;
 }> = ({ canvasRef }) => {
   const { buildingBlockDragState } = useBuildingBlockDragStateStore();
   const { viewport } = useCanvasStore();
@@ -245,6 +253,7 @@ const BuildingBlockDragProxy: React.FC<{
   }
 
   const canvasRect = canvasRef.current.getBoundingClientRect();
+  // Use mouse position from buildingBlockDragState (updated by dragover events)
   const isMouseOverCanvas =
     buildingBlockDragState.mouseX >= canvasRect.left &&
     buildingBlockDragState.mouseX <= canvasRect.right &&
@@ -265,7 +274,7 @@ const BuildingBlockDragProxy: React.FC<{
   // Use smart sizing for building block drag proxy
   const smartSize = getSmartLegoSize(style.size, zoomLevel);
 
-  // Convert global mouse coordinates to canvas-relative coordinates
+  // Convert global mouse coordinates to canvas-relative coordinates (use buildingBlockDragState)
   const canvasX = buildingBlockDragState.mouseX - canvasRect.left;
   const canvasY = buildingBlockDragState.mouseY - canvasRect.top;
 
@@ -312,24 +321,67 @@ const BuildingBlockDragProxy: React.FC<{
   );
 };
 
-export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
-  // Track mouse position internally to avoid re-rendering parent components
+// Shared hook for mouse tracking with debug integration
+const useMouseTracking = (shouldTrack: boolean = true) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!shouldTrack) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = requestAnimationFrame(() => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+        if (import.meta.env.VITE_ENV === "debug") {
+          useDebugStore
+            .getState()
+            .setDebugMousePos(new WindowPoint(e.clientX, e.clientY));
+        }
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [shouldTrack]);
+
+  return mousePos;
+};
+
+export const DragProxy: React.FC = () => {
+  const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
   const dragStateStage = useCanvasStore(
-    (state) => state.dragState?.draggingStage
+    (state) => state.legoDragState?.draggingStage
   );
   const groupDragState = useCanvasStore((state) => state.groupDragState);
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );
 
+  // Use shared mouse tracking - track when canvas lego or group dragging is happening
+  // Building block dragging uses its own mouse tracking via dragover events
+  const shouldTrackMouse =
+    dragStateStage === DraggingStage.MAYBE_DRAGGING ||
+    dragStateStage === DraggingStage.DRAGGING ||
+    !!groupDragState;
+
+  const mousePos = useMouseTracking(shouldTrackMouse);
+
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
+
   // Cache canvas rect to avoid getBoundingClientRect on every render
   useEffect(() => {
-    if (canvasRef.current) {
+    if (canvasRef?.current) {
       const updateCanvasRect = () => {
-        if (canvasRef.current) {
+        if (canvasRef?.current) {
           setCanvasRect(canvasRef.current.getBoundingClientRect());
         }
       };
@@ -347,33 +399,6 @@ export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
       };
     }
   }, [canvasRef]);
-
-  // Update mouse position on mouse move - only for canvas lego dragging
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Only update state when dragging canvas legos to avoid unnecessary re-renders
-      if (
-        dragStateStage === DraggingStage.MAYBE_DRAGGING ||
-        dragStateStage === DraggingStage.DRAGGING
-      ) {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        animationFrameRef.current = requestAnimationFrame(() => {
-          setMousePos({ x: e.clientX, y: e.clientY });
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [dragStateStage, buildingBlockDragState]);
 
   return (
     <div

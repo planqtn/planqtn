@@ -94,7 +94,7 @@ export const findClosestDanglingLeg = (
   dropPosition: LogicalPoint,
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): { lego: DroppedLego; legIndex: number } | null => {
+): { lego: DroppedLego; legIndex: number; distance: number } | null => {
   let closestLego: DroppedLego | null = null;
   let closestLegIndex: number = -1;
   let minDistance = Infinity;
@@ -131,6 +131,6 @@ export const findClosestDanglingLeg = (
   });
 
   return closestLego && closestLegIndex !== -1
-    ? { lego: closestLego, legIndex: closestLegIndex }
+    ? { lego: closestLego, legIndex: closestLegIndex, distance: minDistance }
     : null;
 };

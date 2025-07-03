@@ -15,17 +15,11 @@ import { useModalStore } from "../../stores/modalStore";
 import { InjectTwoLegged } from "../../transformations/InjectTwoLegged";
 import { useToast } from "@chakra-ui/react";
 import { DraggingStage } from "../../stores/legoDragState";
-import { useCanvasCoordinates } from "../../hooks/useCanvasCoordinates";
-import {
-  CanvasPoint,
-  LogicalPoint,
-  mouseEventToCanvasPoint,
-  mouseEventToLogicalPoint
-} from "../../types/coordinates";
+import { LogicalPoint, WindowPoint } from "../../types/coordinates";
 import { useVisibleLegos } from "../../hooks/useVisibleLegos";
+import { useDebugStore } from "../../stores/debugStore";
 
 interface CanvasMouseHandlerProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
   selectionManagerRef: React.RefObject<{
     handleMouseDown: (e: MouseEvent) => void;
   } | null>;
@@ -38,7 +32,6 @@ interface CanvasMouseHandlerProps {
 }
 
 export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
-  canvasRef,
   selectionManagerRef,
   zoomLevel,
   altKeyPressed,
@@ -53,8 +46,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     newInstanceId,
     addDroppedLego,
     connectedLegos,
-    dragState,
-    setDragState,
+    legoDragState,
+    setLegoDragState,
+    resetLegoDragState,
     connections,
     addConnections,
     addOperation,
@@ -67,9 +61,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     selectionBox,
     hoveredConnection,
     setHoveredConnection,
-    setError
+    setError,
+    viewport,
+    canvasRef
   } = useCanvasStore();
-  const { canvasDragState, setCanvasDragState } = useCanvasDragStateStore();
+
+  const { canvasDragState, setCanvasDragState, resetCanvasDragState } =
+    useCanvasDragStateStore();
   const { draggedLegoProto: draggedLego, setDraggedLegoProto: setDraggedLego } =
     useDraggedLegoStore();
   const {
@@ -81,38 +79,33 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
   const { openCustomLegoDialog } = useModalStore();
 
-  // Use the new coordinate system
-  const { viewport } = useCanvasCoordinates(canvasRef);
   const visibleLegos = useVisibleLegos();
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     // Drag update handler
     const performDragUpdate = (e: MouseEvent) => {
-      if (!dragState) return;
-      if (dragState.draggedLegoIndex === -1) return;
+      if (!legoDragState) return;
+      if (legoDragState.draggedLegoIndex === -1) return;
 
       // Use coordinate system utilities for consistent transformation
 
-      const mouseLogicalPoint = mouseEventToLogicalPoint(
-        e,
-        canvasRef,
-        viewport.zoomLevel,
-        viewport.logicalPanOffset
+      const mouseLogicalPoint = viewport.fromWindowToLogical(
+        WindowPoint.fromMouseEvent(e)
       );
       if (!mouseLogicalPoint) return;
 
-      const logicalDelta = mouseLogicalPoint.minus(dragState.originalPoint);
-      const newLogicalPoint = dragState.originalPoint.plus(logicalDelta);
+      const logicalDelta = mouseLogicalPoint.minus(
+        legoDragState.startLegoLogicalPoint
+      );
+      const newLogicalPoint =
+        legoDragState.startLegoLogicalPoint.plus(logicalDelta);
 
       // Get the dragged lego BEFORE updating the array to avoid stale references
-      const draggedLego = visibleLegos[dragState.draggedLegoIndex];
+      const draggedLego = visibleLegos[legoDragState.draggedLegoIndex];
 
       const legosToUpdate = droppedLegos.filter(
         (lego, index) =>
-          index === dragState.draggedLegoIndex ||
+          index === legoDragState.draggedLegoIndex ||
           groupDragState?.legoInstanceIds.includes(lego.instanceId)
       );
 
@@ -178,18 +171,14 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         );
 
         // Convert mouse position to canvas coordinates for comparison
-        const mouseLogicalPoint = mouseEventToLogicalPoint(
-          e,
-          canvasRef,
-          viewport.zoomLevel,
-          viewport.logicalPanOffset
+        const mouseLogicalPoint = viewport.fromWindowToLogical(
+          WindowPoint.fromMouseEvent(e)
         );
         if (!mouseLogicalPoint) return;
-        const canvasCoords = viewport.convertToCanvasPoint(mouseLogicalPoint);
 
         if (draggedLego.numberOfLegs === 2 && !draggedLegoHasConnections) {
           const closestConnection = findClosestConnection(
-            canvasCoords,
+            viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
             droppedLegos,
             connections
           );
@@ -201,23 +190,14 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         ) {
           // Find the closest dangling leg for stoppers using canvas coordinates
           const closestLeg = findClosestDanglingLeg(
-            canvasCoords,
+            viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
             droppedLegos,
             connections
           );
           if (closestLeg) {
-            const pos =
-              closestLeg.lego.style!.legStyles[closestLeg.legIndex].position;
-            const legX = closestLeg.lego.logicalPosition.x + pos.endX;
-            const legY = closestLeg.lego.logicalPosition.y + pos.endY;
-            const distance = Math.sqrt(
-              Math.pow(canvasCoords.x - legX, 2) +
-                Math.pow(canvasCoords.y - legY, 2)
-            );
-
             // Scale threshold with zoom level for consistent interaction
             const threshold = 20 / zoomLevel;
-            if (distance < threshold) {
+            if (closestLeg.distance < threshold) {
               setHoveredConnection(
                 new Connection(
                   {
@@ -239,21 +219,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
     // Mouse event handlers
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.target === canvas) {
+      if (e.target === canvasRef?.current) {
         if (!e.altKey) {
           if (selectionManagerRef.current?.handleMouseDown) {
             selectionManagerRef.current.handleMouseDown(e);
           }
         } else {
           // Use coordinate system for canvas HTML coordinates
-          const canvasHtmlPoint = mouseEventToCanvasPoint(e, canvasRef);
-          if (!canvasHtmlPoint) return;
           setCanvasDragState({
             isDragging: true,
-            startX: canvasHtmlPoint.x,
-            startY: canvasHtmlPoint.y,
-            currentX: canvasHtmlPoint.x,
-            currentY: canvasHtmlPoint.y
+            mouseWindowPoint: WindowPoint.fromMouseEvent(e)
           });
         }
       }
@@ -262,14 +237,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     const handleCanvasClick = (e: MouseEvent) => {
       // Clear selection when clicking on empty canvas
       if (e.target === e.currentTarget && tensorNetwork) {
-        if (dragState?.draggingStage === DraggingStage.JUST_FINISHED) {
-          setDragState({
-            draggingStage: DraggingStage.NOT_DRAGGING,
-            draggedLegoIndex: -1,
-            originalPoint: new LogicalPoint(0, 0),
-            startX: 0,
-            startY: 0
-          });
+        if (legoDragState?.draggingStage === DraggingStage.JUST_FINISHED) {
+          resetLegoDragState();
         } else {
           setTensorNetwork(null);
         }
@@ -277,41 +246,42 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (import.meta.env.DEV) {
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+
+        useDebugStore.getState().setDebugMousePos(mouseWindowPoint);
+      }
       // Selection box dragging is now handled by SelectionManager
       if (selectionBox.isSelecting) return;
       if (canvasDragState?.isDragging) {
         // Use coordinate system for consistent canvas HTML coordinates
-        const currentCanvasHtmlPoint = mouseEventToCanvasPoint(e, canvasRef);
-        if (!currentCanvasHtmlPoint) return;
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
 
-        const deltaScreenX = currentCanvasHtmlPoint.x - canvasDragState.startX;
-        const deltaScreenY = currentCanvasHtmlPoint.y - canvasDragState.startY;
-
-        // Transform screen delta to canvas delta for zoom-aware movement
-        const deltaCanvasX = deltaScreenX / zoomLevel;
-        const deltaCanvasY = deltaScreenY / zoomLevel;
-
+        const deltaMouseWindow =
+          canvasDragState.mouseWindowPoint.minus(mouseWindowPoint);
         setCanvasDragState({
           ...canvasDragState,
-          startX: currentCanvasHtmlPoint.x,
-          startY: currentCanvasHtmlPoint.y,
-          currentX: currentCanvasHtmlPoint.x,
-          currentY: currentCanvasHtmlPoint.y
+          mouseWindowPoint: mouseWindowPoint
         });
+
+        // Transform screen delta to canvas delta for zoom-aware movement
+        const deltaLogical = deltaMouseWindow.factor(1 / zoomLevel);
 
         // Update pan offset and move all legos using canvas deltas
         const { updatePanOffset } = useCanvasStore.getState();
-        updatePanOffset(deltaCanvasX, deltaCanvasY);
+        updatePanOffset(deltaLogical.x, deltaLogical.y);
       }
       // Check if we should start dragging
       if (
-        dragState &&
-        dragState.draggingStage === DraggingStage.MAYBE_DRAGGING
+        legoDragState &&
+        legoDragState.draggingStage === DraggingStage.MAYBE_DRAGGING
       ) {
-        const deltaX = e.clientX - dragState.startX;
-        const deltaY = e.clientY - dragState.startY;
-        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-          const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        const mouseDelta = mouseWindowPoint.minus(
+          legoDragState.startMouseWindowPoint
+        );
+        if (Math.abs(mouseDelta.x) > 1 || Math.abs(mouseDelta.y) > 1) {
+          const draggedLego = droppedLegos[legoDragState.draggedLegoIndex];
           const isPartOfSelection = tensorNetwork?.legos.some(
             (l) => l.instanceId === draggedLego.instanceId
           );
@@ -320,24 +290,26 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
               new TensorNetwork({ legos: [draggedLego], connections: [] })
             );
           }
-          setDragState({ ...dragState, draggingStage: DraggingStage.DRAGGING });
+          setLegoDragState({
+            ...legoDragState,
+            draggingStage: DraggingStage.DRAGGING
+          });
         }
         return;
       }
-      if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
+      if (
+        legoDragState &&
+        legoDragState.draggingStage === DraggingStage.DRAGGING
+      ) {
         // drag proxy handles the mouse move, we call performDragUpdate on mouseup
         return;
       }
       if (legDragState?.isDragging) {
-        const canvasHtmlPoint = mouseEventToCanvasPoint(e, canvasRef);
-        if (!canvasHtmlPoint) return;
-        const mouseCanvasCoords =
-          viewport.convertToCanvasPoint(canvasHtmlPoint);
-        setLegDragState((prev) => ({
-          ...prev!,
-          currentX: mouseCanvasCoords.x,
-          currentY: mouseCanvasCoords.y
-        }));
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        setLegDragState({
+          ...legDragState,
+          currentMouseWindowPoint: mouseWindowPoint
+        });
       }
     };
 
@@ -356,32 +328,24 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       }
 
       if (canvasDragState?.isDragging) {
-        setCanvasDragState({
-          isDragging: false,
-          startX: 0,
-          startY: 0,
-          currentX: 0,
-          currentY: 0
-        });
+        resetCanvasDragState();
         return;
       }
 
-      if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
+      if (
+        legoDragState &&
+        legoDragState.draggingStage === DraggingStage.DRAGGING
+      ) {
         e.stopPropagation();
         e.preventDefault();
 
         // Check if the dragged lego is a stopper and handle stopper logic
-        const draggedLego = droppedLegos[dragState.draggedLegoIndex];
+        const draggedLego = droppedLegos[legoDragState.draggedLegoIndex];
 
         if (draggedLego && draggedLego.id.includes("stopper")) {
-          const canvasHtmlPoint = mouseEventToCanvasPoint(e, canvasRef);
-          if (!canvasHtmlPoint) return;
-          const dropCanvasCoords =
-            viewport.convertToCanvasPoint(canvasHtmlPoint);
-
           // Try to attach stopper to a nearby leg, passing the existing lego to be removed
           const success = handleDropStopperOnLeg(
-            dropCanvasCoords,
+            viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
             draggedLego,
             draggedLego
           );
@@ -391,13 +355,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           }
         } else if (draggedLego && draggedLego.numberOfLegs === 2) {
           // Handle two-legged lego insertion into connection
-          const canvasHtmlPoint = mouseEventToCanvasPoint(e, canvasRef);
-          if (!canvasHtmlPoint) return;
-          const dropCanvasCoords =
-            viewport.convertToCanvasPoint(canvasHtmlPoint);
 
           const closestConnection = findClosestConnection(
-            dropCanvasCoords,
+            viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
             droppedLegos,
             connections
           );
@@ -414,7 +374,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
             // Use shared two-legged insertion logic for unconnected legos
             const success = await handleTwoLeggedInsertion(
               draggedLego,
-              dropCanvasCoords,
+              viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
               closestConnection,
               draggedLego
             );
@@ -428,48 +388,27 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           performDragUpdate(e);
         }
 
-        setDragState({
-          draggingStage: DraggingStage.JUST_FINISHED,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalPoint: new LogicalPoint(0, 0)
-        });
+        resetLegoDragState(true);
         setGroupDragState(null);
-      } else if (dragState && dragState.draggedLegoIndex !== -1) {
-        setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalPoint: new LogicalPoint(0, 0)
-        });
+      } else if (legoDragState && legoDragState.draggedLegoIndex !== -1) {
+        resetLegoDragState();
         setGroupDragState(null);
       }
     };
 
     const handleMouseLeave = () => {
-      if (dragState && dragState.draggingStage === DraggingStage.DRAGGING) {
-        setDragState({
-          draggingStage: DraggingStage.NOT_DRAGGING,
-          draggedLegoIndex: -1,
-          startX: 0,
-          startY: 0,
-          originalPoint: new LogicalPoint(0, 0)
-        });
+      if (
+        legoDragState &&
+        legoDragState.draggingStage === DraggingStage.DRAGGING
+      ) {
+        resetLegoDragState();
         setGroupDragState(null);
       }
       if (legDragState?.isDragging) {
         setLegDragState(null);
       }
       if (canvasDragState?.isDragging) {
-        setCanvasDragState({
-          isDragging: false,
-          startX: 0,
-          startY: 0,
-          currentX: 0,
-          currentY: 0
-        });
+        resetCanvasDragState();
       }
     };
 
@@ -505,7 +444,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
 
-      const canvasRect = canvas.getBoundingClientRect();
+      const canvasRect = canvasRef?.current?.getBoundingClientRect();
 
       if (!canvasRect) return;
 
@@ -524,18 +463,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
     const handleTwoLeggedInsertion = async (
       lego: DroppedLego,
-      dropPosition: CanvasPoint,
+      dropPosition: LogicalPoint,
       connection: Connection,
       existingLegoToRemove?: DroppedLego
     ): Promise<boolean> => {
       try {
         console.log("handleTwoLeggedInsertion", lego, dropPosition, connection);
-        const logicalDropPosition =
-          viewport.convertToLogicalPoint(dropPosition);
         // Create the lego at the drop position
         const repositionedLego = new DroppedLego(
           lego,
-          logicalDropPosition,
+          dropPosition,
           existingLegoToRemove?.instanceId || newInstanceId()
         );
 
@@ -560,15 +497,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleDropStopperOnLeg = (
-      dropPosition: CanvasPoint,
+      dropPosition: LogicalPoint,
       draggedLego: LegoPiece,
       existingLegoToRemove?: DroppedLego
     ): boolean => {
       if (draggedLego.id.includes("stopper")) {
-        const logicalDropPosition =
-          viewport.convertToLogicalPoint(dropPosition);
         const closestLeg = findClosestDanglingLeg(
-          logicalDropPosition,
+          dropPosition,
           droppedLegos,
           connections
         );
@@ -587,7 +522,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           // Create the stopper lego (new or repositioned)
           const stopperLego: DroppedLego = new DroppedLego(
             draggedLego,
-            logicalDropPosition,
+            dropPosition,
             existingLegoToRemove?.instanceId || newInstanceId()
           );
 
@@ -629,16 +564,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       });
     };
 
+    // This is when a new lego is dropped on a canvas from the building blocks panel. The handling of a dragged lego from the canvas is handled by mouseUp.
     const handleDrop = async (e: DragEvent) => {
       if (!draggedLego) return;
 
-      // Get the actual drop position from the event using canvas coordinates
-      const canvasDropPos = mouseEventToCanvasPoint(
-        e as unknown as MouseEvent,
-        canvasRef
+      const logicalDropPos = viewport.fromWindowToLogical(
+        WindowPoint.fromMouseEvent(e)
       );
-      if (!canvasDropPos) return;
-      const logicalDropPos = viewport.convertToLogicalPoint(canvasDropPos);
 
       if (draggedLego.id === "custom") {
         openCustomLegoDialog(logicalDropPos);
@@ -689,30 +621,31 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       setDraggedLego(null);
     };
 
-    canvas.addEventListener("dragover", handleDragOver);
-    canvas.addEventListener("dragenter", handleCanvasDragEnter);
-    canvas.addEventListener("dragleave", handleCanvasDragLeave);
-    canvas.addEventListener("dragend", handleDragEnd);
-    canvas.addEventListener("mousedown", handleMouseDown);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseup", handleMouseUp);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
-    canvas.addEventListener("click", handleCanvasClick);
+    const canvas = canvasRef?.current;
+    canvas?.addEventListener("dragover", handleDragOver);
+    canvas?.addEventListener("dragenter", handleCanvasDragEnter);
+    canvas?.addEventListener("dragleave", handleCanvasDragLeave);
+    canvas?.addEventListener("dragend", handleDragEnd);
+    canvas?.addEventListener("mousedown", handleMouseDown);
+    canvas?.addEventListener("mousemove", handleMouseMove);
+    canvas?.addEventListener("mouseup", handleMouseUp);
+    canvas?.addEventListener("mouseleave", handleMouseLeave);
+    canvas?.addEventListener("click", handleCanvasClick);
     document.addEventListener("dragend", handleGlobalDragEnd);
-    canvas.addEventListener("drop", handleDrop);
+    canvas?.addEventListener("drop", handleDrop);
 
     return () => {
-      canvas.removeEventListener("dragover", handleDragOver);
-      canvas.addEventListener("dragenter", handleCanvasDragEnter);
-      canvas.addEventListener("dragleave", handleCanvasDragLeave);
-      canvas.removeEventListener("dragend", handleDragEnd);
-      canvas.removeEventListener("mousedown", handleMouseDown);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("mouseup", handleMouseUp);
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
-      canvas.removeEventListener("click", handleCanvasClick);
+      canvas?.removeEventListener("dragover", handleDragOver);
+      canvas?.addEventListener("dragenter", handleCanvasDragEnter);
+      canvas?.addEventListener("dragleave", handleCanvasDragLeave);
+      canvas?.removeEventListener("dragend", handleDragEnd);
+      canvas?.removeEventListener("mousedown", handleMouseDown);
+      canvas?.removeEventListener("mousemove", handleMouseMove);
+      canvas?.removeEventListener("mouseup", handleMouseUp);
+      canvas?.removeEventListener("mouseleave", handleMouseLeave);
+      canvas?.removeEventListener("click", handleCanvasClick);
       document.removeEventListener("dragend", handleGlobalDragEnd);
-      canvas.removeEventListener("drop", handleDrop);
+      canvas?.removeEventListener("drop", handleDrop);
     };
   }, [
     canvasRef,
@@ -731,8 +664,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setDroppedLegos,
     setLegDragState,
     setTensorNetwork,
-    dragState,
-    setDragState,
+    legoDragState,
+    setLegoDragState,
     setGroupDragState,
     addOperation,
     addConnections,

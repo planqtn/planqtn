@@ -3,7 +3,7 @@ import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
 import { DraggingStage } from "./legoDragState";
 import { Connection } from "../lib/types";
-import { LogicalPoint } from "../types/coordinates";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
@@ -85,12 +85,13 @@ export const useCloningSlice: StateCreator<
     const currentDroppedLegos = get().droppedLegos;
     const firstNewLegoIndex = currentDroppedLegos.length - newLegos.length;
 
-    get().setDragState({
+    get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
       draggedLegoIndex: firstNewLegoIndex,
-      startX: x,
-      startY: y,
-      originalPoint: clickedLego.logicalPosition.plus(new LogicalPoint(20, 20))
+      startMouseWindowPoint: new WindowPoint(x, y),
+      startLegoLogicalPoint: clickedLego.logicalPosition.plus(
+        new LogicalPoint(20, 20)
+      )
     });
 
     // Add to history
