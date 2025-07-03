@@ -76,15 +76,13 @@ export async function applyHopfRule(
     X_REP_CODE,
     newXLegs,
     String(maxInstanceId + 1),
-    xLego.x,
-    xLego.y
+    xLego.logicalPosition
   );
   const newZLego = Legos.createDynamicLego(
     Z_REP_CODE,
     newZLegs,
     String(maxInstanceId + 2),
-    zLego.x,
-    zLego.y
+    zLego.logicalPosition
   );
 
   const newLegos = [newXLego, newZLego];

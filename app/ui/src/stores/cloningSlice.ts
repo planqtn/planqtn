@@ -3,6 +3,7 @@ import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
 import { DraggingStage } from "./legoDragState";
 import { Connection } from "../lib/types";
+import { LogicalPoint } from "../types/coordinates";
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
@@ -34,8 +35,7 @@ export const useCloningSlice: StateCreator<
       instanceIdMap.set(l.instanceId, newId);
       return l.with({
         instanceId: newId,
-        x: l.x + 20,
-        y: l.y + 20
+        logicalPosition: l.logicalPosition.plus(new LogicalPoint(20, 20))
       });
     });
 
@@ -67,7 +67,10 @@ export const useCloningSlice: StateCreator<
     // Set up drag state for the group
     const positions: { [instanceId: string]: { x: number; y: number } } = {};
     newLegos.forEach((l) => {
-      positions[l.instanceId] = { x: l.x, y: l.y };
+      positions[l.instanceId] = {
+        x: l.logicalPosition.x,
+        y: l.logicalPosition.y
+      };
     });
 
     if (newLegos.length > 1) {
@@ -87,8 +90,7 @@ export const useCloningSlice: StateCreator<
       draggedLegoIndex: firstNewLegoIndex,
       startX: x,
       startY: y,
-      originalX: clickedLego.x + 20,
-      originalY: clickedLego.y + 20
+      originalPoint: clickedLego.logicalPosition.plus(new LogicalPoint(20, 20))
     });
 
     // Add to history

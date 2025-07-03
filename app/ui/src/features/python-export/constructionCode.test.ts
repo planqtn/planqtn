@@ -2,6 +2,7 @@ import { Connection } from "../../lib/types.ts";
 import { exec } from "child_process";
 import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 describe("constructionCode", () => {
   it("should generate empty network for empty tensor network", () => {
     const tensorNetwork = new TensorNetwork({ legos: [], connections: [] });
@@ -40,8 +41,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [],
             gauge_legs: []
           },
-          288.89581298828125,
-          381.25,
+          new LogicalPoint(288.89581298828125, 381.25),
           "7"
         )
       ],
@@ -88,8 +88,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [],
             gauge_legs: []
           },
-          288.89581298828125,
-          381.25,
+          new LogicalPoint(288.89581298828125, 381.25),
           "2"
         ),
         new DroppedLego(
@@ -111,8 +110,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [7],
             gauge_legs: []
           },
-          477.89581298828125,
-          308.25,
+          new LogicalPoint(477.89581298828125, 308.25),
           "3"
         ),
         new DroppedLego(
@@ -132,8 +130,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [],
             gauge_legs: []
           },
-          139.89581298828125,
-          143.25,
+          new LogicalPoint(139.89581298828125, 143.25),
           "4"
         ),
         new DroppedLego(
@@ -153,8 +150,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [],
             gauge_legs: []
           },
-          311.89581298828125,
-          187.25,
+          new LogicalPoint(311.89581298828125, 187.25),
           "1"
         ),
         new DroppedLego(
@@ -167,8 +163,7 @@ tn = TensorNetwork(nodes)
             logical_legs: [],
             gauge_legs: []
           },
-          411.89581298828125,
-          187.25,
+          new LogicalPoint(411.89581298828125, 187.25),
           "5"
         )
       ],

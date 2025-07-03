@@ -3,6 +3,7 @@ import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego, LegoPiece } from "./droppedLegoStore";
 import { Legos } from "../features/lego/Legos";
 import { Connection } from "../lib/types";
+import { LogicalPoint } from "../types/coordinates";
 
 export interface CanvasEventHandlingSlice {
   pythonCode: string;
@@ -83,8 +84,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
       const instanceId = newInstanceId();
       const newLego = new DroppedLego(
         dynamicLego,
-        pendingDropPosition.x,
-        pendingDropPosition.y,
+        new LogicalPoint(pendingDropPosition.x, pendingDropPosition.y),
         instanceId
       );
       addDroppedLego(newLego);
@@ -151,14 +151,14 @@ export const createCanvasEventHandlingSlice: StateCreator<
     const skipIds = new Set(skipLegos.map((l) => l.instanceId));
     return legosToCheck.map((lego) => {
       if (skipIds.has(lego.instanceId)) return lego;
-      const dx = lego.x - center.x;
-      const dy = lego.y - center.y;
+      const dx = lego.logicalPosition.x - center.x;
+      const dy = lego.logicalPosition.y - center.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       if (distance < radius + 80) {
         const angle = Math.atan2(dy, dx);
         const newX = center.x + (radius + 80) * Math.cos(angle);
         const newY = center.y + (radius + 80) * Math.sin(angle);
-        return lego.with({ x: newX, y: newY });
+        return lego.with({ logicalPosition: new LogicalPoint(newX, newY) });
       }
       return lego;
     });
@@ -216,8 +216,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = new DroppedLego(
         { ...lego, parity_check_matrix: newLegoData.parity_check_matrix },
-        lego.x,
-        lego.y,
+        lego.logicalPosition,
         lego.instanceId
       );
 
@@ -232,8 +231,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
           logical_legs: [],
           gauge_legs: []
         },
-        lego.x + 100, // Position the stopper to the right of the lego
-        lego.y,
+        new LogicalPoint(lego.logicalPosition.x + 100, lego.logicalPosition.y),
         (maxInstanceId + 1).toString()
       );
 

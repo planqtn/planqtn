@@ -20,7 +20,10 @@ import {
   ParityCheckMatrix
 } from "../../lib/types.ts";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
-import { DroppedLego } from "../../stores/droppedLegoStore.ts";
+import {
+  createHadamardLego,
+  DroppedLego
+} from "../../stores/droppedLegoStore.ts";
 import { Operation } from "../canvas/OperationHistory.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
@@ -64,6 +67,7 @@ import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 interface DetailsPanelProps {
   fuseLegos: (legos: DroppedLego[]) => void;
@@ -323,8 +327,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         const lego = tensorNetwork.legos[0];
         const updatedLego = new DroppedLego(
           lego,
-          lego.x,
-          lego.y,
+          lego.logicalPosition,
           lego.instanceId,
           { selectedMatrixRows: selectedRows }
         );
@@ -363,8 +366,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const lego = tensorNetwork.legos[0];
       const updatedLego = new DroppedLego(
         lego,
-        lego.x,
-        lego.y,
+        lego.logicalPosition,
         lego.instanceId,
         { parity_check_matrix: newMatrix }
       );
@@ -444,17 +446,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     });
     // Create new legos array starting with the modified original lego
     const newLegos: DroppedLego[] = [
-      new DroppedLego(
-        {
-          ...lego,
-          id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
-          shortName: lego.id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
-          parity_check_matrix: newParityCheckMatrix
-        },
-        lego.x,
-        lego.y,
-        lego.instanceId
-      )
+      lego.with({
+        id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
+        shortName: lego.id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
+        parity_check_matrix: newParityCheckMatrix
+      })
     ];
 
     // Create new connections array
@@ -463,7 +459,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     // Make space for Hadamard legos
     const radius = 50; // Same radius as for Hadamard placement
     const updatedLegos = makeSpace(
-      { x: lego.x, y: lego.y },
+      { x: lego.logicalPosition.x, y: lego.logicalPosition.y },
       radius,
       [lego],
       droppedLegos
@@ -473,23 +469,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     for (let i = 0; i < numLegs; i++) {
       // Calculate the angle for this leg
       const angle = (2 * Math.PI * i) / numLegs;
-      const hadamardLego: DroppedLego = new DroppedLego(
-        {
-          id: "h",
-          name: "Hadamard",
-          shortName: "H",
-          description: "Hadamard",
-          parity_check_matrix: [
-            [1, 0, 0, 1],
-            [0, 1, 1, 0]
-          ],
-          logical_legs: [],
-          gauge_legs: []
-        },
-        lego.x + radius * Math.cos(angle),
-        lego.y + radius * Math.sin(angle),
+      const hadamardLego = createHadamardLego(
+        lego.logicalPosition.plus(
+          new LogicalPoint(radius * Math.cos(angle), radius * Math.sin(angle))
+        ),
         (maxInstanceId + 1 + i).toString()
       );
+
       newLegos.push(hadamardLego);
 
       // Connect Hadamard to the original lego
@@ -647,8 +633,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           ...lego,
           parity_check_matrix: lego1Data.parity_check_matrix
         },
-        lego.x - 50, // Position slightly to the left
-        lego.y,
+        lego.logicalPosition.plus(new LogicalPoint(-50, 0)),
 
         (maxInstanceId + 1).toString(),
         { alwaysShowLegs: false }
@@ -659,8 +644,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           ...lego,
           parity_check_matrix: lego2Data.parity_check_matrix
         },
-        lego.x + 50, // Position slightly to the right
-        lego.y,
+        lego.logicalPosition.plus(new LogicalPoint(50, 0)),
         (maxInstanceId + 2).toString(),
         { alwaysShowLegs: false }
       );
@@ -799,8 +783,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       // Case 1: Original lego has 1 leg -> Create 1 new lego with 2 legs
       const newLego: DroppedLego = lego.with({
         instanceId: (maxInstanceId + 1).toString(),
-        x: lego.x + 100,
-        y: lego.y,
+        logicalPosition: lego.logicalPosition.plus(new LogicalPoint(100, 0)),
         selectedMatrixRows: [],
         parity_check_matrix: bell_pair
       });
@@ -837,8 +820,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       // Case 2: Original lego has 2 legs -> Create 1 new lego with 2 legs
       const newLego: DroppedLego = lego.with({
         instanceId: (maxInstanceId + 1).toString(),
-        x: lego.x + 100,
-        y: lego.y,
+        logicalPosition: lego.logicalPosition.plus(new LogicalPoint(100, 0)),
         selectedMatrixRows: [],
         parity_check_matrix: bell_pair
       });
@@ -872,16 +854,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     } else if (numLegs >= 3) {
       // Case 3: Original lego has 3 or more legs -> Create n new legos in a circle
       const radius = 100; // Radius of the circle
-      const centerX = lego.x;
-      const centerY = lego.y;
+      const center = new LogicalPoint(
+        lego.logicalPosition.x,
+        lego.logicalPosition.y
+      );
 
       // First create all legos
       for (let i = 0; i < numLegs; i++) {
         const angle = (2 * Math.PI * i) / numLegs;
         const newLego: DroppedLego = lego.with({
           instanceId: (maxInstanceId + 1 + i).toString(),
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
+          logicalPosition: center.plus(
+            new LogicalPoint(radius * Math.cos(angle), radius * Math.sin(angle))
+          ),
           selectedMatrixRows: [],
           parity_check_matrix: isXCode ? d3_x_rep : d3_z_rep
         });
@@ -1133,7 +1118,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               <Text fontSize="sm" color="gray.600">
                 {tensorNetwork.legos[0].description}, instaceId:{" "}
                 {tensorNetwork.legos[0].instanceId}, x:{" "}
-                {tensorNetwork.legos[0].x}, y: {tensorNetwork.legos[0].y}
+                {tensorNetwork.legos[0].logicalPosition.x}, y:{" "}
+                {tensorNetwork.legos[0].logicalPosition.y}
               </Text>
               <Box>
                 <Text fontSize="sm" mb={1}>

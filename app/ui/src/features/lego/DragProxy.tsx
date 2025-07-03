@@ -4,6 +4,9 @@ import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
+import { getSmartLegoSize } from "../../utils/coordinateTransforms";
+import { CanvasPoint, LogicalPoint } from "../../types/coordinates.ts";
+import { useVisibleLegos } from "../../hooks/useVisibleLegos.ts";
 
 interface DragProxyProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -14,13 +17,15 @@ const SingleLegoDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos, dragState } = useCanvasStore();
+  const { dragState, viewport } = useCanvasStore();
+  const visibleLegos = useVisibleLegos();
+  const zoomLevel = viewport.zoomLevel;
 
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
     if (!dragState || dragState.draggedLegoIndex < 0) return null;
-    return droppedLegos[dragState.draggedLegoIndex] || null;
-  }, [droppedLegos, dragState]);
+    return visibleLegos[dragState.draggedLegoIndex] || null;
+  }, [visibleLegos, dragState]);
 
   if (!dragState || dragState.draggingStage !== DraggingStage.DRAGGING) {
     return null;
@@ -29,30 +34,42 @@ const SingleLegoDragProxy: React.FC<{
   if (!draggedLego || !canvasRect) return null;
 
   // Convert mouse position to canvas coordinates using cached rect
-  const canvasMouseX = mousePos.x - canvasRect.left;
-  const canvasMouseY = mousePos.y - canvasRect.top;
+  const canvasHtmlMousePoint = new CanvasPoint(
+    mousePos.x - canvasRect.left,
+    mousePos.y - canvasRect.top
+  );
 
   // Convert drag start position to canvas coordinates using cached rect
-  const canvasStartX = dragState.startX - canvasRect.left;
-  const canvasStartY = dragState.startY - canvasRect.top;
+  const canvasHtmlDragStartPoint = new CanvasPoint(
+    dragState.startX - canvasRect.left,
+    dragState.startY - canvasRect.top
+  );
 
-  // Calculate delta in canvas coordinates
-  const deltaX = canvasMouseX - canvasStartX;
-  const deltaY = canvasMouseY - canvasStartY;
+  // Calculate delta in canvas coordinates - need to account for zoom
+  const canvasHtmlDelta = canvasHtmlMousePoint.minus(canvasHtmlDragStartPoint);
 
-  // Calculate proxy position: original lego position + mouse delta (all in canvas coordinates)
-  const proxyX = dragState.originalX + deltaX;
-  const proxyY = dragState.originalY + deltaY;
+  // Transform screen delta to canvas delta for zoom-aware movement
+  const canvasDelta = canvasHtmlDelta.factor(1 / zoomLevel);
+
+  // Calculate proxy position: original lego position + canvas delta
+  const baseProxyPoint = dragState.originalPoint.plus(canvasDelta);
+
+  // Apply zoom transformation to get screen position using new coordinate system
+  const screenProxyPos = viewport.convertToCanvasPoint(baseProxyPoint);
+
+  // Use smart sizing for consistency
+  const originalSize = draggedLego.style!.size;
+  const smartSize = getSmartLegoSize(originalSize, zoomLevel);
 
   return (
     <div
       key={`single-drag-proxy-${draggedLego.instanceId}`}
       style={{
         position: "absolute",
-        left: `${proxyX - draggedLego.style!.size / 2}px`,
-        top: `${proxyY - draggedLego.style!.size / 2}px`,
-        width: `${draggedLego.style!.size}px`,
-        height: `${draggedLego.style!.size}px`,
+        left: `${screenProxyPos.x - smartSize / 2}px`,
+        top: `${screenProxyPos.y - smartSize / 2}px`,
+        width: `${smartSize}px`,
+        height: `${smartSize}px`,
         opacity: 0.7,
         transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -61,16 +78,12 @@ const SingleLegoDragProxy: React.FC<{
         zIndex: 1000
       }}
     >
-      <svg
-        width={draggedLego.style!.size}
-        height={draggedLego.style!.size}
-        style={{ overflow: "visible" }}
-      >
+      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
         {draggedLego.style!.borderRadius === "full" ? (
           <circle
-            cx={draggedLego.style!.size / 2}
-            cy={draggedLego.style!.size / 2}
-            r={draggedLego.style!.size / 2}
+            cx={smartSize / 2}
+            cy={smartSize / 2}
+            r={smartSize / 2}
             fill={draggedLego.style!.getBackgroundColorForSvg()}
             stroke={draggedLego.style!.getBorderColorForSvg()}
             strokeWidth="2"
@@ -79,8 +92,8 @@ const SingleLegoDragProxy: React.FC<{
           <rect
             x="2"
             y="2"
-            width={draggedLego.style!.size - 4}
-            height={draggedLego.style!.size - 4}
+            width={smartSize - 4}
+            height={smartSize - 4}
             rx={
               typeof draggedLego.style!.borderRadius === "number"
                 ? draggedLego.style!.borderRadius
@@ -101,16 +114,18 @@ const GroupDragProxy: React.FC<{
   mousePos: { x: number; y: number };
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos, dragState } = useCanvasStore();
-  const groupDragState = useCanvasStore((state) => state.groupDragState);
+  const { dragState, groupDragState, viewport } = useCanvasStore();
+  const visibleLegos = useVisibleLegos();
+
+  const zoomLevel = viewport.zoomLevel;
 
   // Memoize dragged legos to prevent stale references
   const draggedLegos = useMemo(() => {
     if (!groupDragState) return [];
-    return droppedLegos.filter((lego) =>
+    return visibleLegos.filter((lego) =>
       groupDragState.legoInstanceIds.includes(lego.instanceId)
     );
-  }, [droppedLegos, groupDragState]);
+  }, [visibleLegos, groupDragState]);
 
   if (
     !groupDragState ||
@@ -131,9 +146,13 @@ const GroupDragProxy: React.FC<{
   const canvasStartX = dragState.startX - canvasRect.left;
   const canvasStartY = dragState.startY - canvasRect.top;
 
-  // Calculate delta in canvas coordinates
-  const deltaX = canvasMouseX - canvasStartX;
-  const deltaY = canvasMouseY - canvasStartY;
+  // Calculate delta in canvas coordinates - need to account for zoom
+  const deltaScreenX = canvasMouseX - canvasStartX;
+  const deltaScreenY = canvasMouseY - canvasStartY;
+
+  // Transform screen delta to canvas delta for zoom-aware movement
+  const deltaX = deltaScreenX / zoomLevel;
+  const deltaY = deltaScreenY / zoomLevel;
 
   return (
     <>
@@ -141,18 +160,28 @@ const GroupDragProxy: React.FC<{
         const originalPos = groupDragState.originalPositions[lego.instanceId];
         if (!originalPos) return null; // Safety check for stale state
 
-        const legoProxyX = originalPos.x + deltaX;
-        const legoProxyY = originalPos.y + deltaY;
+        // Calculate base proxy position in canvas coordinates
+        const baseProxyX = originalPos.x + deltaX;
+        const baseProxyY = originalPos.y + deltaY;
+
+        // Apply zoom transformation to get screen position using new coordinate system
+        const screenProxyPos = viewport.convertToCanvasPoint(
+          new LogicalPoint(baseProxyX, baseProxyY)
+        );
+
+        // Use smart sizing for consistency
+        const originalSize = lego.style!.size;
+        const smartSize = getSmartLegoSize(originalSize, zoomLevel);
 
         return (
           <div
             key={`group-drag-proxy-${lego.instanceId}`}
             style={{
               position: "absolute",
-              left: `${legoProxyX - lego.style!.size / 2}px`,
-              top: `${legoProxyY - lego.style!.size / 2}px`,
-              width: `${lego.style!.size}px`,
-              height: `${lego.style!.size}px`,
+              left: `${screenProxyPos.x - smartSize / 2}px`,
+              top: `${screenProxyPos.y - smartSize / 2}px`,
+              width: `${smartSize}px`,
+              height: `${smartSize}px`,
               opacity: 0.7,
               transform: "scale(1.1)",
               filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -162,15 +191,15 @@ const GroupDragProxy: React.FC<{
             }}
           >
             <svg
-              width={lego.style!.size}
-              height={lego.style!.size}
+              width={smartSize}
+              height={smartSize}
               style={{ overflow: "visible" }}
             >
               {lego.style!.borderRadius === "full" ? (
                 <circle
-                  cx={lego.style!.size / 2}
-                  cy={lego.style!.size / 2}
-                  r={lego.style!.size / 2}
+                  cx={smartSize / 2}
+                  cy={smartSize / 2}
+                  r={smartSize / 2}
                   fill={lego.style!.getBackgroundColorForSvg()}
                   stroke={lego.style!.getBorderColorForSvg()}
                   strokeWidth="2"
@@ -179,8 +208,8 @@ const GroupDragProxy: React.FC<{
                 <rect
                   x="2"
                   y="2"
-                  width={lego.style!.size - 4}
-                  height={lego.style!.size - 4}
+                  width={smartSize - 4}
+                  height={smartSize - 4}
                   rx={
                     typeof lego.style!.borderRadius === "number"
                       ? lego.style!.borderRadius
@@ -204,6 +233,9 @@ const BuildingBlockDragProxy: React.FC<{
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }> = ({ canvasRef }) => {
   const { buildingBlockDragState } = useBuildingBlockDragStateStore();
+  const { viewport } = useCanvasStore();
+  const zoomLevel = viewport.zoomLevel;
+
   if (
     !buildingBlockDragState.isDragging ||
     !buildingBlockDragState.draggedLego ||
@@ -227,8 +259,11 @@ const BuildingBlockDragProxy: React.FC<{
   const style = getLegoStyle(
     lego.id,
     numLegs,
-    new DroppedLego(lego, 0, 0, "dummy")
+    new DroppedLego(lego, new LogicalPoint(0, 0), "dummy")
   );
+
+  // Use smart sizing for building block drag proxy
+  const smartSize = getSmartLegoSize(style.size, zoomLevel);
 
   // Convert global mouse coordinates to canvas-relative coordinates
   const canvasX = buildingBlockDragState.mouseX - canvasRect.left;
@@ -238,10 +273,10 @@ const BuildingBlockDragProxy: React.FC<{
     <div
       style={{
         position: "absolute",
-        left: `${canvasX - style.size / 2}px`,
-        top: `${canvasY - style.size / 2}px`,
-        width: `${style.size}px`,
-        height: `${style.size}px`,
+        left: `${canvasX - smartSize / 2}px`,
+        top: `${canvasY - smartSize / 2}px`,
+        width: `${smartSize}px`,
+        height: `${smartSize}px`,
         opacity: 0.7,
         transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -250,16 +285,12 @@ const BuildingBlockDragProxy: React.FC<{
         zIndex: 1000
       }}
     >
-      <svg
-        width={style.size}
-        height={style.size}
-        style={{ overflow: "visible" }}
-      >
+      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
         {style.borderRadius === "full" ? (
           <circle
-            cx={style.size / 2}
-            cy={style.size / 2}
-            r={style.size / 2}
+            cx={smartSize / 2}
+            cy={smartSize / 2}
+            r={smartSize / 2}
             fill={style.getBackgroundColorForSvg()}
             stroke={style.getBorderColorForSvg()}
             strokeWidth="2"
@@ -268,8 +299,8 @@ const BuildingBlockDragProxy: React.FC<{
           <rect
             x="2"
             y="2"
-            width={style.size - 4}
-            height={style.size - 4}
+            width={smartSize - 4}
+            height={smartSize - 4}
             rx={typeof style.borderRadius === "number" ? style.borderRadius : 0}
             fill={style.getBackgroundColorForSvg()}
             stroke={style.getBorderColorForSvg()}
@@ -293,6 +324,7 @@ export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );
+
   // Cache canvas rect to avoid getBoundingClientRect on every render
   useEffect(() => {
     if (canvasRef.current) {

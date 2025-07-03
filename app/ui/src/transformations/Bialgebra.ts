@@ -4,6 +4,7 @@ import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
 import _ from "lodash";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { Legos } from "../features/lego/Legos.ts";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 export function canDoBialgebra(
   selectedLegos: DroppedLego[],
@@ -85,8 +86,10 @@ export async function applyBialgebra(
       firstGroupType,
       legsPerLego1,
       String(maxInstanceId + 1 + i),
-      lego1.x + i * 100,
-      lego1.y
+      new LogicalPoint(
+        lego1.logicalPosition.x + i * 100,
+        lego1.logicalPosition.y + 100
+      )
     );
     newLegos.push(newLego);
   }
@@ -97,8 +100,10 @@ export async function applyBialgebra(
       secondGroupType,
       legsPerLego2,
       String(maxInstanceId + 1 + n_group_1 + i),
-      lego2.x + i * 100,
-      lego2.y + 100
+      new LogicalPoint(
+        lego2.logicalPosition.x + i * 100,
+        lego2.logicalPosition.y + 100
+      )
     );
     newLegos.push(newLego);
   }

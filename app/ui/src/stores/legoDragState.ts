@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
+import { LogicalPoint } from "../types/coordinates";
 
 export enum DraggingStage {
   NOT_DRAGGING,
@@ -13,8 +14,7 @@ export interface LegoDragState {
   draggedLegoIndex: number;
   startX: number;
   startY: number;
-  originalX: number;
-  originalY: number;
+  originalPoint: LogicalPoint;
 }
 
 export interface LegoDragStateSlice {
@@ -33,8 +33,7 @@ export const createLegoDragStateSlice: StateCreator<
     draggedLegoIndex: -1,
     startX: 0,
     startY: 0,
-    originalX: 0,
-    originalY: 0
+    originalPoint: new LogicalPoint(0, 0)
   },
 
   setDragState: (dragState: LegoDragState) => {

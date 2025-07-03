@@ -24,6 +24,11 @@ import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
+import {
+  CanvasPoint,
+  canvasToLogical,
+  LogicalPoint
+} from "../../types/coordinates.ts";
 
 interface BuildingBlocksPanelProps {
   isUserLoggedIn?: boolean;
@@ -51,12 +56,14 @@ const getDemoLego = (
   demoLego: DroppedLego;
   boundingBox: { left: number; top: number; width: number; height: number };
 } => {
-  const originLego = new DroppedLego(lego, 0, 0, "-1");
+  const originLego = new DroppedLego(lego, new LogicalPoint(0, 0), "-1");
 
   const boundingBox = getLegoBoundingBox(originLego, true);
   const demoLego = originLego.with({
-    x: -boundingBox.left / 2,
-    y: -boundingBox.top / 2
+    logicalPosition: new CanvasPoint(
+      -boundingBox.left / 2,
+      -boundingBox.top / 2
+    )
   });
 
   return {
@@ -244,23 +251,34 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
 
     const handleDragStart = useCallback(
       (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
+        const { viewport } = useCanvasStore.getState();
         // Hide the default drag ghost by setting a transparent image
         const dragImage = new Image();
         dragImage.src =
           "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
         e.dataTransfer.setDragImage(dragImage, 0, 0);
+        const rect = e.currentTarget.getBoundingClientRect();
+
+        const canvasPosition = new CanvasPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2
+        );
+        const logicalPosition = canvasToLogical(
+          canvasPosition,
+          viewport.zoomLevel,
+          viewport.logicalPanOffset
+        );
 
         if (lego.id === "custom") {
           // Store the drop position for the custom lego
-          const rect = e.currentTarget.getBoundingClientRect();
           // Note: position will be set when the custom lego is dropped, not during drag start
           // Set the draggedLego state for custom legos
 
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
-            newInstanceId()
+            logicalPosition,
+            newInstanceId(),
+            { logicalPosition: canvasPosition }
           );
           setDraggedLego(draggedLego);
           setBuildingBlockDragState({
@@ -272,12 +290,12 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
           });
         } else {
           // Handle regular lego drag
-          const rect = e.currentTarget.getBoundingClientRect();
+
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
-            newInstanceId()
+            logicalPosition,
+            newInstanceId(),
+            { logicalPosition: canvasPosition }
           );
           setDraggedLego(draggedLego);
           setBuildingBlockDragState({

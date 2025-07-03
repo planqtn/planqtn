@@ -4,6 +4,7 @@ import { TensorNetwork } from "../../lib/TensorNetwork";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { LogicalPoint } from "../../types/coordinates";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -143,8 +144,14 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
                 // Style will be recalculated in DroppedLego constructor
                 return new DroppedLego(
                   l,
-                  l.x + dropX - pastedData.legos[0].x,
-                  l.y + dropY - pastedData.legos[0].y,
+                  new LogicalPoint(
+                    l.logicalPosition.x +
+                      dropX -
+                      pastedData.legos[0].logicalPosition.x,
+                    l.logicalPosition.y +
+                      dropY -
+                      pastedData.legos[0].logicalPosition.y
+                  ),
                   newId
                 );
               }

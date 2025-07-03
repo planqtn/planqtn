@@ -3,6 +3,7 @@ import { DroppedLego } from "./droppedLegoStore";
 import { CanvasStore } from "./canvasStateStore";
 import { DraggingStage } from "./legoDragState";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
+import { LogicalPoint } from "../types/coordinates";
 
 export interface DroppedLegoClickHandlerSlice {
   handleLegoClick: (
@@ -34,8 +35,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         draggedLegoIndex: -1,
         startX: 0,
         startY: 0,
-        originalX: 0,
-        originalY: 0
+        originalPoint: new LogicalPoint(0, 0)
       });
       return;
     }
@@ -49,8 +49,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         draggedLegoIndex: -1,
         startX: 0,
         startY: 0,
-        originalX: 0,
-        originalY: 0
+        originalPoint: new LogicalPoint(0, 0)
       });
 
       if (ctrlKey || metaKey) {
@@ -168,10 +167,10 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         // Dragging a selected lego - move the whole group
         const selectedLegos = get().tensorNetwork?.legos || [];
         const currentPositions: {
-          [instanceId: string]: { x: number; y: number };
+          [instanceId: string]: LogicalPoint;
         } = {};
         selectedLegos.forEach((l) => {
-          currentPositions[l.instanceId] = { x: l.x, y: l.y };
+          currentPositions[l.instanceId] = l.logicalPosition;
         });
 
         get().setGroupDragState({
@@ -191,8 +190,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         draggedLegoIndex: index,
         startX: x,
         startY: y,
-        originalX: lego.x,
-        originalY: lego.y
+        originalPoint: lego.logicalPosition
       });
     }
   }

@@ -8,6 +8,8 @@ import { Box } from "@chakra-ui/react";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
+import { useCanvasCoordinates } from "../../hooks/useCanvasCoordinates.ts";
+import { CanvasPoint } from "../../types/coordinates.ts";
 
 interface SelectionManagerProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -29,6 +31,9 @@ export const SelectionManager = memo(
         setSelectionBox
       } = useCanvasStore();
 
+      const viewport = useCanvasStore((state) => state.viewport);
+      const convertToCanvasCoords = useCanvasCoordinates(canvasRef);
+
       // Helper function to handle selection box logic
       const handleSelectionBoxUpdate = useCallback(
         (
@@ -39,13 +44,21 @@ export const SelectionManager = memo(
           e: React.MouseEvent,
           isFinalized: boolean = false
         ) => {
-          // Find Legos within the selection box
+          // Convert HTML selection box coordinates to canvas coordinates for lego comparison
+          const logicalSelectionBoxTopLeft = viewport.convertToLogicalPoint(
+            new CanvasPoint(left, top)
+          );
+          const logicalSelectionBoxBottomRight = viewport.convertToLogicalPoint(
+            new CanvasPoint(right, bottom)
+          );
+
+          // Find Legos within the selection box (in canvas coordinates)
           const selectedLegos = droppedLegos.filter((lego: DroppedLego) => {
             return (
-              lego.x >= left &&
-              lego.x <= right &&
-              lego.y >= top &&
-              lego.y <= bottom
+              lego.logicalPosition.x >= logicalSelectionBoxTopLeft.x &&
+              lego.logicalPosition.x <= logicalSelectionBoxBottomRight.x &&
+              lego.logicalPosition.y >= logicalSelectionBoxTopLeft.y &&
+              lego.logicalPosition.y <= logicalSelectionBoxBottomRight.y
             );
           });
 
@@ -136,7 +149,13 @@ export const SelectionManager = memo(
             }
           }
         },
-        [droppedLegos, connections, tensorNetwork, setTensorNetwork]
+        [
+          droppedLegos,
+          connections,
+          tensorNetwork,
+          setTensorNetwork,
+          convertToCanvasCoords
+        ]
       );
 
       // Mouse event handlers

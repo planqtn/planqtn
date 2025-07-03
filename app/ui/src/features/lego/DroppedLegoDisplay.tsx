@@ -4,6 +4,11 @@ import { useMemo, memo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { DraggingStage } from "../../stores/legoDragState.ts";
 import { Connection } from "../../lib/types.ts";
+import {
+  getSmartLegoSize,
+  getLevelOfDetail
+} from "../../utils/coordinateTransforms.ts";
+import { useShallow } from "zustand/react/shallow";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -11,13 +16,20 @@ const LEG_ENDPOINT_RADIUS = 5;
 
 export function getLegoBoundingBox(
   lego: DroppedLego,
-  demoMode: boolean
+  demoMode: boolean,
+  zoomLevel: number = 1
 ): {
   top: number;
   left: number;
   width: number;
   height: number;
 } {
+  // Use smart zoom size calculation
+  const originalSize = lego.style!.size;
+  const size = demoMode
+    ? originalSize
+    : getSmartLegoSize(originalSize, zoomLevel);
+
   const endpointFn = (pos: LegPosition) => {
     return demoMode
       ? { x: pos.endX, y: pos.endY }
@@ -27,7 +39,7 @@ export function getLegoBoundingBox(
   // Calculate SVG dimensions to accommodate all legs
   const maxEndpointX = Math.max(
     ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).x),
-    lego.style!.size / 2
+    size / 2
   );
   const minEndpointX = Math.min(
     ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).x),
@@ -36,11 +48,11 @@ export function getLegoBoundingBox(
 
   const maxEndpointY = Math.max(
     ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).y),
-    +lego.style!.size / 2
+    +size / 2
   );
   const minEndpointY = Math.min(
     ...lego.style!.legStyles.map((legStyle) => endpointFn(legStyle.position).y),
-    -lego.style!.size / 2
+    -size / 2
   );
 
   return {
@@ -52,9 +64,11 @@ export function getLegoBoundingBox(
 }
 
 interface DroppedLegoDisplayProps {
-  instanceId: string;
+  lego: DroppedLego;
   demoMode: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
+  // Separate position prop for React.memo to detect changes
+  canvasPosition: { x: number; y: number };
 }
 
 // Memoized component for static leg lines only
@@ -203,16 +217,18 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ instanceId, demoMode = false, canvasRef }) => {
-    const lego = useCanvasStore((state) =>
-      state.droppedLegos.find((l) => l.instanceId === instanceId)
-    );
-    if (!lego) return null;
-    const size = lego.style!.size;
-    const numAllLegs = lego.numberOfLegs;
-    const numLogicalLegs = lego.logical_legs.length;
-    const numGaugeLegs = lego.gauge_legs.length;
-    const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
+  ({ lego, demoMode = false, canvasRef, canvasPosition }) => {
+    // Get zoom level for smart scaling
+    const viewport = useCanvasStore((state) => state.viewport);
+    const zoomLevel = viewport.zoomLevel;
+
+    // Use smart zoom position for calculations with central coordinate system
+    const basePosition = useMemo(() => {
+      if (demoMode) {
+        return { x: lego.logicalPosition.x, y: lego.logicalPosition.y };
+      }
+      return canvasPosition;
+    }, [lego.logicalPosition, demoMode, canvasPosition]);
 
     const storeHandleLegMouseDown = useCanvasStore(
       (state) => state.handleLegMouseDown
@@ -222,9 +238,82 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       (state) => state.handleLegMouseUp
     );
 
-    const legConnectionStates = useCanvasStore((state) =>
-      state.getLegConnectionStates(lego.instanceId)
+    const legConnectionStates = useCanvasStore(
+      useShallow((state) =>
+        lego ? state.legConnectionStates[lego.instanceId] || [] : []
+      )
     );
+
+    // Optimize store subscriptions to prevent unnecessary rerenders
+    const legoConnections = useCanvasStore(
+      useShallow((state) =>
+        lego ? state.legoConnectionMap[lego.instanceId] || [] : []
+      )
+    );
+
+    const hideConnectedLegs = useCanvasStore(
+      (state) => state.hideConnectedLegs
+    );
+
+    // Only subscribe to the specific drag state properties that matter for this lego
+    const isThisLegoBeingDragged = useCanvasStore((state) => {
+      if (state.dragState.draggedLegoIndex === undefined) return false;
+      const draggedLego = state.droppedLegos[state.dragState.draggedLegoIndex];
+      return (
+        draggedLego?.instanceId === lego.instanceId &&
+        state.dragState.draggingStage === DraggingStage.DRAGGING
+      );
+    });
+
+    // Optimize tensor network subscription to only trigger when this lego's selection changes
+    const isSelected = useCanvasStore((state) => {
+      return (
+        (lego &&
+          state.tensorNetwork?.legos.some(
+            (l) => l.instanceId === lego.instanceId
+          )) ||
+        false
+      );
+    });
+
+    const legHiddenStates = useCanvasStore(
+      useShallow((state) =>
+        lego ? state.legHideStates[lego.instanceId] || [] : []
+      )
+    );
+
+    const storeHandleLegoClick = useCanvasStore(
+      (state) => state.handleLegoClick
+    );
+    const storeHandleLegoMouseDown = useCanvasStore(
+      (state) => state.handleLegoMouseDown
+    );
+
+    const staticShouldHideLeg = useMemo(
+      () => legHiddenStates,
+      [legHiddenStates]
+    );
+
+    // Early return AFTER all hooks are called
+    if (!lego) return null;
+
+    // Now we can safely use lego without null checks
+    const originalSize = lego.style!.size;
+    const smartSize = demoMode
+      ? originalSize
+      : getSmartLegoSize(originalSize, zoomLevel);
+    const size = smartSize;
+
+    // Calculate level of detail based on effective size
+    const lod = getLevelOfDetail(smartSize, zoomLevel);
+
+    const numAllLegs = lego.numberOfLegs;
+    const numLogicalLegs = lego.logical_legs.length;
+    const numGaugeLegs = lego.gauge_legs.length;
+    const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
+
+    // Check if this specific lego is being dragged
+    const isThisLegoDragged = isThisLegoBeingDragged;
 
     // Helper function to generate connection key (same as in ConnectionsLayer)
     const getConnectionKey = (conn: Connection) => {
@@ -244,51 +333,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             ];
       return `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
     };
-
-    // Optimize store subscriptions to prevent unnecessary rerenders
-    const legoConnections = useCanvasStore((state) =>
-      state.getLegoConnections(lego.instanceId)
-    );
-    const hideConnectedLegs = useCanvasStore(
-      (state) => state.hideConnectedLegs
-    );
-
-    // Only subscribe to the specific drag state properties that matter for this lego
-    const isThisLegoBeingDragged = useCanvasStore((state) => {
-      return (
-        state.dragState.draggedLegoIndex !== undefined &&
-        state.droppedLegos[state.dragState.draggedLegoIndex]?.instanceId ===
-          instanceId &&
-        state.dragState.draggingStage === DraggingStage.DRAGGING
-      );
-    });
-    // console.log("lego", lego.instanceId, "render due to rerender");
-
-    // Optimize tensor network subscription to only trigger when this lego's selection changes
-    // But still maintain access to the full tensor network for operations
-    const isSelected = useCanvasStore((state) => {
-      return (
-        state.tensorNetwork?.legos.some(
-          (l) => l.instanceId === lego.instanceId
-        ) || false
-      );
-    });
-
-    // Use base position (without drag offset) for all calculations
-    const basePosition = useMemo(
-      () => ({
-        x: demoMode ? lego.x : lego.x,
-        y: demoMode ? lego.y : lego.y
-      }),
-      [lego.x, lego.y, demoMode]
-    );
-
-    // Check if this specific lego is being dragged
-    const isThisLegoDragged = isThisLegoBeingDragged;
-
-    const legHiddenStates = useCanvasStore((state) =>
-      state.getLegHideStates(lego.instanceId)
-    );
 
     const handleLegMouseDown = (
       e: React.MouseEvent,
@@ -324,13 +368,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       );
     };
 
-    const storeHandleLegoClick = useCanvasStore(
-      (state) => state.handleLegoClick
-    );
-    const storeHandleLegoMouseDown = useCanvasStore(
-      (state) => state.handleLegoMouseDown
-    );
-
     const handleLegoClick = (e: React.MouseEvent<HTMLDivElement>) => {
       storeHandleLegoClick(lego, e.ctrlKey, e.metaKey);
     };
@@ -339,16 +376,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       e.preventDefault();
       e.stopPropagation();
       // Find the index for legacy compatibility
-      const index = useCanvasStore
-        .getState()
-        .droppedLegos.findIndex((l) => l.instanceId === instanceId);
+      const droppedLegos = useCanvasStore.getState().droppedLegos;
+      const index = droppedLegos.findIndex(
+        (l) => l.instanceId === lego.instanceId
+      );
       storeHandleLegoMouseDown(index, e.clientX, e.clientY, e.shiftKey);
     };
-
-    const staticShouldHideLeg = useMemo(
-      () => legHiddenStates,
-      [legHiddenStates]
-    );
 
     return (
       <>
@@ -387,118 +420,122 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             className="lego-svg"
             transform={demoMode ? "" : `translate(${size / 2}, ${size / 2})`}
           >
-            {/* Layer 1: Static leg lines (gray background) */}
-            <StaticLegsLayer
-              legStyles={lego.style!.legStyles}
-              shouldHideLeg={staticShouldHideLeg}
-            />
+            {/* Layer 1: Static leg lines (gray background) - with LOD */}
+            {lod.showLegs && (
+              <StaticLegsLayer
+                legStyles={lego.style!.legStyles}
+                shouldHideLeg={staticShouldHideLeg}
+              />
+            )}
 
-            {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) */}
-            {lego.style!.legStyles.map((legStyle, legIndex) => {
-              const legColor = lego.style!.getLegColor(legIndex);
-              const shouldHide = legHiddenStates[legIndex];
+            {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
+            {lod.showLegs &&
+              lego.style!.legStyles.map((legStyle, legIndex) => {
+                const legColor = lego.style!.getLegColor(legIndex);
+                const shouldHide = legHiddenStates[legIndex];
 
-              if (legColor === "#A0AEC0" || shouldHide) {
-                return null;
-              }
+                if (legColor === "#A0AEC0" || shouldHide) {
+                  return null;
+                }
 
-              return (
-                <g key={`highlight-leg-${legIndex}`}>
-                  <line
-                    x1={legStyle.position.startX}
-                    y1={legStyle.position.startY}
-                    x2={legStyle.position.endX}
-                    y2={legStyle.position.endY}
-                    stroke={legColor}
-                    strokeWidth={4}
-                    strokeDasharray={
-                      legStyle.lineStyle === "dashed" ? "5,5" : undefined
-                    }
-                    style={{ pointerEvents: "none" }}
-                  />
-                </g>
-              );
-            })}
-
-            {/* Layer 3: Interactive leg endpoints and logical leg interactions */}
-            {lego.style!.legStyles.map((legStyle, legIndex) => {
-              const isLogical = lego.logical_legs.includes(legIndex);
-              const legColor = lego.style!.getLegColor(legIndex);
-
-              const shouldHide = legHiddenStates[legIndex];
-
-              if (shouldHide) {
-                return null;
-              }
-
-              return (
-                <g key={`interactive-leg-${legIndex}`}>
-                  {/* Logical leg interactive line - rendered on top for clicks */}
-                  {isLogical && (
+                return (
+                  <g key={`highlight-leg-${legIndex}`}>
                     <line
                       x1={legStyle.position.startX}
                       y1={legStyle.position.startY}
                       x2={legStyle.position.endX}
                       y2={legStyle.position.endY}
-                      stroke="transparent"
-                      strokeWidth={5}
-                      onMouseOver={(e) => {
-                        e.stopPropagation();
-                        const line = e.target as SVGLineElement;
-                        line.style.stroke = legColor;
-                      }}
-                      onMouseOut={(e) => {
-                        e.stopPropagation();
-                        const line = e.target as SVGLineElement;
-                        line.style.stroke = "transparent";
-                      }}
+                      stroke={legColor}
+                      strokeWidth={4}
+                      strokeDasharray={
+                        legStyle.lineStyle === "dashed" ? "5,5" : undefined
+                      }
+                      style={{ pointerEvents: "none" }}
+                    />
+                  </g>
+                );
+              })}
+
+            {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
+            {lod.showLegs &&
+              lego.style!.legStyles.map((legStyle, legIndex) => {
+                const isLogical = lego.logical_legs.includes(legIndex);
+                const legColor = lego.style!.getLegColor(legIndex);
+
+                const shouldHide = legHiddenStates[legIndex];
+
+                if (shouldHide) {
+                  return null;
+                }
+
+                return (
+                  <g key={`interactive-leg-${legIndex}`}>
+                    {/* Logical leg interactive line - rendered on top for clicks */}
+                    {isLogical && (
+                      <line
+                        x1={legStyle.position.startX}
+                        y1={legStyle.position.startY}
+                        x2={legStyle.position.endX}
+                        y2={legStyle.position.endY}
+                        stroke="transparent"
+                        strokeWidth={5}
+                        onMouseOver={(e) => {
+                          e.stopPropagation();
+                          const line = e.target as SVGLineElement;
+                          line.style.stroke = legColor;
+                        }}
+                        onMouseOut={(e) => {
+                          e.stopPropagation();
+                          const line = e.target as SVGLineElement;
+                          line.style.stroke = "transparent";
+                        }}
+                        style={{
+                          cursor: "pointer",
+                          pointerEvents: "visibleStroke"
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLegClick(lego.instanceId, legIndex);
+                        }}
+                      />
+                    )}
+
+                    {/* Draggable Endpoint */}
+                    <circle
+                      cx={legStyle.position.endX}
+                      cy={legStyle.position.endY}
+                      r={LEG_ENDPOINT_RADIUS}
+                      className="leg-endpoint"
+                      fill={"white"}
+                      stroke={legColor}
+                      strokeWidth="2"
                       style={{
                         cursor: "pointer",
-                        pointerEvents: "visibleStroke"
+                        pointerEvents: "all",
+                        transition: "stroke 0.2s, fill 0.2s"
                       }}
-                      onClick={(e) => {
+                      onMouseDown={(e) => {
                         e.stopPropagation();
-                        handleLegClick(lego.instanceId, legIndex);
+                        handleLegMouseDown(e, lego.instanceId, legIndex);
+                      }}
+                      onMouseOver={(e) => {
+                        const circle = e.target as SVGCircleElement;
+                        circle.style.stroke = legColor;
+                        circle.style.fill = "rgb(235, 248, 255)";
+                      }}
+                      onMouseOut={(e) => {
+                        const circle = e.target as SVGCircleElement;
+                        circle.style.stroke = legColor;
+                        circle.style.fill = "white";
+                      }}
+                      onMouseUp={(e) => {
+                        e.stopPropagation();
+                        handleLegMouseUp(e, legIndex);
                       }}
                     />
-                  )}
-
-                  {/* Draggable Endpoint */}
-                  <circle
-                    cx={legStyle.position.endX}
-                    cy={legStyle.position.endY}
-                    r={LEG_ENDPOINT_RADIUS}
-                    className="leg-endpoint"
-                    fill={"white"}
-                    stroke={legColor}
-                    strokeWidth="2"
-                    style={{
-                      cursor: "pointer",
-                      pointerEvents: "all",
-                      transition: "stroke 0.2s, fill 0.2s"
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      handleLegMouseDown(e, lego.instanceId, legIndex);
-                    }}
-                    onMouseOver={(e) => {
-                      const circle = e.target as SVGCircleElement;
-                      circle.style.stroke = legColor;
-                      circle.style.fill = "rgb(235, 248, 255)";
-                    }}
-                    onMouseOut={(e) => {
-                      const circle = e.target as SVGCircleElement;
-                      circle.style.stroke = legColor;
-                      circle.style.fill = "white";
-                    }}
-                    onMouseUp={(e) => {
-                      e.stopPropagation();
-                      handleLegMouseUp(e, legIndex);
-                    }}
-                  />
-                </g>
-              );
-            })}
+                  </g>
+                );
+              })}
 
             {/* Layer 4: Lego body */}
             <LegoBodyLayer
@@ -508,12 +545,12 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               isSelected={isSelected || false}
             />
 
-            {/* Text content - selection-aware */}
-            {!demoMode && (
+            {/* Text content - selection-aware with LOD */}
+            {!demoMode && lod.showText && (
               <g>
                 {numRegularLegs <= 2 ? (
                   <g transform={`translate(-${size / 2}, -${size / 2})`}>
-                    {lego.style!.displayShortName ? (
+                    {lod.showShortName && lego.style!.displayShortName ? (
                       <g>
                         <text
                           x={size / 2}
@@ -562,7 +599,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     fill={isSelected ? "white" : "#000000"}
                     style={{ pointerEvents: "none" }}
                   >
-                    {lego.style!.displayShortName ? (
+                    {lod.showShortName && lego.style!.displayShortName ? (
                       <>
                         {lego.shortName}
                         <tspan x="0" dy="12">
@@ -577,9 +614,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               </g>
             )}
 
-            {/* Leg Labels - dynamic visibility */}
+            {/* Leg Labels - dynamic visibility with LOD */}
             {!isScalarLego(lego) &&
               !demoMode &&
+              lod.showLegLabels &&
               lego.style!.legStyles.map((legStyle, legIndex) => {
                 // If the leg is hidden, don't render the label
                 if (legHiddenStates[legIndex]) return null;

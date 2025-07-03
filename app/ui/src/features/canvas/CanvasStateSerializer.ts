@@ -1,5 +1,6 @@
 import { Connection, CanvasState } from "../../lib/types";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
 
 export class CanvasStateSerializer {
@@ -32,8 +33,8 @@ export class CanvasStateSerializer {
       pieces: pieces.map((piece) => ({
         id: piece.id,
         instanceId: piece.instanceId,
-        x: piece.x,
-        y: piece.y,
+        x: piece.logicalPosition.x,
+        y: piece.logicalPosition.y,
         shortName: piece.shortName,
         is_dynamic: piece.is_dynamic,
         parameters: piece.parameters,
@@ -118,8 +119,7 @@ export class CanvasStateSerializer {
                 logical_legs: piece.logical_legs || [],
                 gauge_legs: piece.gauge_legs || []
               },
-              piece.x,
-              piece.y,
+              new LogicalPoint(piece.x, piece.y),
               piece.instanceId,
               { selectedMatrixRows: piece.selectedMatrixRows || [] }
             );
@@ -140,8 +140,7 @@ export class CanvasStateSerializer {
                 gauge_legs: piece.gauge_legs || []
               },
 
-              piece.x,
-              piece.y,
+              new LogicalPoint(piece.x, piece.y),
               piece.instanceId,
 
               { selectedMatrixRows: piece.selectedMatrixRows || [] }
@@ -155,8 +154,7 @@ export class CanvasStateSerializer {
               parity_check_matrix:
                 piece.parity_check_matrix || predefinedLego.parity_check_matrix
             },
-            piece.x,
-            piece.y,
+            new LogicalPoint(piece.x, piece.y),
             piece.instanceId,
             { selectedMatrixRows: piece.selectedMatrixRows || [] }
           );

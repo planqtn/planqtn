@@ -3,6 +3,7 @@ import { Connection } from "../../lib/types.ts";
 import { Operation } from "./OperationHistory.ts";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import { describe, it, expect, beforeEach } from "@jest/globals";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 describe("OperationHistory", () => {
   let operationHistory: OperationHistory;
@@ -26,8 +27,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -78,8 +78,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -98,7 +97,9 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: lego.with({ x: 10, y: 10 })
+              newLego: lego.with({
+                logicalPosition: new LogicalPoint(10, 10)
+              })
             }
           ]
         }
@@ -115,7 +116,11 @@ describe("OperationHistory", () => {
         droppedLegos: DroppedLego[];
       } = {
         connections: [],
-        droppedLegos: [lego.with({ x: 10, y: 10 })]
+        droppedLegos: [
+          lego.with({
+            logicalPosition: new LogicalPoint(10, 10)
+          })
+        ]
       };
 
       // First undo: should move lego back to (0,0)
@@ -123,8 +128,8 @@ describe("OperationHistory", () => {
         currentState.connections,
         currentState.droppedLegos
       );
-      expect(currentState.droppedLegos[0].x).toBe(0);
-      expect(currentState.droppedLegos[0].y).toBe(0);
+      expect(currentState.droppedLegos[0].logicalPosition.x).toBe(0);
+      expect(currentState.droppedLegos[0].logicalPosition.y).toBe(0);
 
       // Second undo: should remove the lego completely
       currentState = operationHistory.undo(
@@ -150,8 +155,7 @@ describe("OperationHistory", () => {
           logical_legs: [],
           gauge_legs: []
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "h1"
       );
 
@@ -169,14 +173,13 @@ describe("OperationHistory", () => {
           logical_legs: [],
           gauge_legs: []
         },
-        100,
-        0,
+        new LogicalPoint(100, 0),
         "1"
       );
 
       const zRep2: DroppedLego = zRep1.with({
         instanceId: "2",
-        x: 200
+        logicalPosition: new LogicalPoint(200, 0)
       });
 
       // Create initial connections
@@ -265,14 +268,12 @@ describe("OperationHistory", () => {
 
       const zRep1_2: DroppedLego = zRep1.with({
         instanceId: "zRep12",
-        x: 150,
-        y: 0
+        logicalPosition: new LogicalPoint(150, 0)
       });
 
       const zRep2_2: DroppedLego = zRep2.with({
         instanceId: "zRep22",
-        x: 250,
-        y: 0
+        logicalPosition: new LogicalPoint(250, 0)
       });
 
       // Update state after fuse
@@ -355,8 +356,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -387,8 +387,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -398,7 +397,7 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: lego.with({ x: 10, y: 10 })
+              newLego: lego.with({ logicalPosition: new LogicalPoint(10, 10) })
             }
           ]
         }
@@ -407,8 +406,8 @@ describe("OperationHistory", () => {
       operationHistory.addOperation(operation);
       const result = operationHistory.undo([], [lego]);
 
-      expect(result.droppedLegos[0].x).toBe(0);
-      expect(result.droppedLegos[0].y).toBe(0);
+      expect(result.droppedLegos[0].logicalPosition.x).toBe(0);
+      expect(result.droppedLegos[0].logicalPosition.y).toBe(0);
     });
 
     it("should undo a connect operation", () => {
@@ -451,8 +450,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -485,8 +483,7 @@ describe("OperationHistory", () => {
           logical_legs: [0],
           gauge_legs: [1]
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "instance1"
       );
 
@@ -496,7 +493,7 @@ describe("OperationHistory", () => {
           legosToUpdate: [
             {
               oldLego: lego,
-              newLego: lego.with({ x: 10, y: 10 })
+              newLego: lego.with({ logicalPosition: new LogicalPoint(10, 10) })
             }
           ]
         }
@@ -506,8 +503,8 @@ describe("OperationHistory", () => {
       operationHistory.undo([], [lego]);
       const result = operationHistory.redo([], [lego]);
 
-      expect(result.droppedLegos[0].x).toBe(10);
-      expect(result.droppedLegos[0].y).toBe(10);
+      expect(result.droppedLegos[0].logicalPosition.x).toBe(10);
+      expect(result.droppedLegos[0].logicalPosition.y).toBe(10);
     });
 
     it("should redo a connect operation", () => {

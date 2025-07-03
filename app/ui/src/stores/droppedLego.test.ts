@@ -1,4 +1,5 @@
 import { DroppedLego } from "./droppedLegoStore";
+import { LogicalPoint } from "../types/coordinates";
 
 describe("DroppedLego", () => {
   it("should create a new lego with the correct properties", () => {
@@ -15,8 +16,7 @@ describe("DroppedLego", () => {
         logical_legs: [0, 1],
         gauge_legs: [2, 3]
       },
-      0,
-      0,
+      new LogicalPoint(0, 0),
       "1"
     );
 
@@ -46,12 +46,10 @@ describe("DroppedLego", () => {
         logical_legs: [0, 1],
         gauge_legs: [2, 3]
       },
-      0,
-      0,
+      new LogicalPoint(0, 0),
       "1",
       {
-        x: 10,
-        y: 10,
+        logicalPosition: new LogicalPoint(10, 10),
         instanceId: "2"
       }
     );
@@ -68,14 +66,17 @@ describe("DroppedLego", () => {
     expect(lego.logical_legs).toEqual([0, 1]);
     expect(lego.gauge_legs).toEqual([2, 3]);
     // we ignore the override for mandatory parameters passed to the constructor
-    expect(lego.x).toBe(0);
-    expect(lego.y).toBe(0);
+    expect(lego.logicalPosition.x).toBe(0);
+    expect(lego.logicalPosition.y).toBe(0);
     expect(lego.instanceId).toBe("1");
 
     // However, when used with the with method, the override is applied
-    const lego2 = lego.with({ x: 10, y: 10, instanceId: "2" });
-    expect(lego2.x).toBe(10);
-    expect(lego2.y).toBe(10);
+    const lego2 = lego.with({
+      logicalPosition: new LogicalPoint(10, 10),
+      instanceId: "2"
+    });
+    expect(lego2.logicalPosition.x).toBe(10);
+    expect(lego2.logicalPosition.y).toBe(10);
     expect(lego2.instanceId).toBe("2");
   });
 
@@ -93,8 +94,7 @@ describe("DroppedLego", () => {
         logical_legs: [0, 1],
         gauge_legs: [2, 3]
       },
-      0,
-      0,
+      new LogicalPoint(0, 0),
       "1",
       {
         selectedMatrixRows: [0, 1]
@@ -103,9 +103,12 @@ describe("DroppedLego", () => {
 
     expect(lego.selectedMatrixRows).toEqual([0, 1]);
 
-    const lego2 = lego.with({ x: 10, y: 10, instanceId: "2" });
-    expect(lego2.x).toBe(10);
-    expect(lego2.y).toBe(10);
+    const lego2 = lego.with({
+      logicalPosition: new LogicalPoint(10, 10),
+      instanceId: "2"
+    });
+    expect(lego2.logicalPosition.x).toBe(10);
+    expect(lego2.logicalPosition.y).toBe(10);
     expect(lego2.instanceId).toBe("2");
     expect(lego2.selectedMatrixRows).toEqual([0, 1]);
   });

@@ -1,14 +1,14 @@
 import { StateCreator } from "zustand";
 import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
+import { CanvasPoint, LogicalPoint } from "../types/coordinates";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.id, lego.numberOfLegs, lego);
 }
 
 export function createHadamardLego(
-  x: number,
-  y: number,
+  canvasPosition: LogicalPoint,
   instanceId: string
 ): DroppedLego {
   return new DroppedLego(
@@ -24,8 +24,7 @@ export function createHadamardLego(
       logical_legs: [],
       gauge_legs: []
     },
-    x,
-    y,
+    canvasPosition,
     instanceId
   );
 }
@@ -52,18 +51,17 @@ export class DroppedLego implements LegoPiece {
   public gauge_legs: number[];
   public is_dynamic?: boolean;
   public parameters?: Record<string, unknown>;
-  public x: number;
-  public y: number;
   public instanceId: string;
   private _selectedMatrixRows: number[];
   public alwaysShowLegs: boolean;
   public style: LegoStyle;
+  public logicalPosition: LogicalPoint;
+  public canvasPosition?: CanvasPoint;
 
   constructor(
     lego: LegoPiece,
     // mandatory parameters
-    x: number,
-    y: number,
+    canvasPosition: LogicalPoint,
     instanceId: string,
     // optional overrides
     overrides: Partial<DroppedLego> = {}
@@ -78,13 +76,13 @@ export class DroppedLego implements LegoPiece {
     this.gauge_legs = lego.gauge_legs;
     this.is_dynamic = lego.is_dynamic;
     this.parameters = lego.parameters;
-    this.x = x;
-    this.y = y;
+    this.logicalPosition = canvasPosition;
     this.instanceId = instanceId;
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
 
     this.style = getLegoStyle(lego.id, this.numberOfLegs, this);
+    this.canvasPosition = overrides.canvasPosition;
   }
 
   public get numberOfLegs(): number {
@@ -94,8 +92,7 @@ export class DroppedLego implements LegoPiece {
   public with(overrides: Partial<DroppedLego>): DroppedLego {
     return new DroppedLego(
       this,
-      overrides.x || this.x,
-      overrides.y || this.y,
+      overrides.logicalPosition || this.logicalPosition,
       overrides.instanceId || this.instanceId,
       {
         selectedMatrixRows:
@@ -220,6 +217,7 @@ export const createLegoSlice: StateCreator<
     });
     // Update all leg hide states to account for the new legos
     get().updateAllLegHideStates();
+
     get().updateEncodedCanvasState();
   },
 
@@ -242,6 +240,7 @@ export const createLegoSlice: StateCreator<
     get().removeLegoFromConnectionMap(instanceId);
     // Update all leg hide states to account for the removed lego
     get().updateAllLegHideStates();
+
     get().updateEncodedCanvasState();
   },
 

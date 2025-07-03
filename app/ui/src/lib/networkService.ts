@@ -6,6 +6,7 @@ import { getAccessToken } from "./auth";
 import { getAxiosErrorMessage } from "./errors";
 import { useModalStore } from "../stores/modalStore";
 import { DroppedLego } from "../stores/droppedLegoStore";
+import { LogicalPoint } from "../types/coordinates";
 
 export class NetworkService {
   private static async requestTensorNetwork(
@@ -158,7 +159,7 @@ export class NetworkService {
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
         indexInRow * nodeSpacing;
 
-      return lego.with({ x, y });
+      return lego.with({ logicalPosition: new LogicalPoint(x, y) });
     });
   }
 
@@ -194,7 +195,7 @@ export class NetworkService {
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
         indexInRow * nodeSpacing;
 
-      return lego.with({ x, y });
+      return lego.with({ logicalPosition: new LogicalPoint(x, y) });
     });
   }
 
@@ -204,8 +205,8 @@ export class NetworkService {
     margin: number
   ): DroppedLego[] {
     // Find min/max x and y to determine scale
-    const xValues = legos.map((lego: DroppedLego) => lego.x);
-    const yValues = legos.map((lego: DroppedLego) => lego.y);
+    const xValues = legos.map((lego: DroppedLego) => lego.logicalPosition.x);
+    const yValues = legos.map((lego: DroppedLego) => lego.logicalPosition.y);
     const minX = Math.min(...xValues);
     const maxX = Math.max(...xValues);
     const minY = Math.min(...yValues);
@@ -214,9 +215,9 @@ export class NetworkService {
     const xScale = ((canvasWidth - 2 * margin) / (maxX - minX || 1)) * 1.2;
 
     return legos.map((lego: DroppedLego) => {
-      const x = margin + (lego.x - minX) * xScale;
-      const y = margin + (lego.y - minY) * xScale;
-      return lego.with({ x, y });
+      const x = margin + (lego.logicalPosition.x - minX) * xScale;
+      const y = margin + (lego.logicalPosition.y - minY) * xScale;
+      return lego.with({ logicalPosition: new LogicalPoint(x, y) });
     });
   }
 }

@@ -50,6 +50,8 @@ import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
+import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
+import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
 import { DroppedLego } from "./stores/droppedLegoStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
@@ -142,7 +144,9 @@ const LegoStudioView: React.FC = () => {
 
   const { canvasDragState } = useCanvasDragStateStore();
 
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const { viewport } = useCanvasStore();
+  const zoomLevel = viewport.zoomLevel;
+  const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
   // Use centralized TensorNetwork store
@@ -580,7 +584,6 @@ const LegoStudioView: React.FC = () => {
                 >
                   {/* Top-left three-dots menu */}
                   <CanvasMenu
-                    canvasRef={canvasRef}
                     zoomLevel={zoomLevel}
                     setZoomLevel={setZoomLevel}
                     isLegoPanelCollapsed={isLegoPanelCollapsed}
@@ -643,6 +646,7 @@ const LegoStudioView: React.FC = () => {
                       />
                     </Box>
                   </Box>
+
                   <ConnectionsLayer />
                   {/* Selection Manager */}
                   <SelectionManager
@@ -652,6 +656,12 @@ const LegoStudioView: React.FC = () => {
                   <LegosLayer canvasRef={canvasRef} />
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy canvasRef={canvasRef} />
+
+                  {/* Debug viewport overlay */}
+                  <ViewportDebugOverlay canvasRef={canvasRef} />
+
+                  {/* Mini-map with zoom level display */}
+                  <CanvasMiniMap canvasRef={canvasRef} />
                 </Box>
               </Box>
             </Panel>
