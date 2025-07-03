@@ -410,7 +410,6 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           return false;
         }
 
-        console.log("handleTwoLeggedInsertion doing it...");
         // Create the lego at the drop position
         const repositionedLego = new DroppedLego(
           lego,
@@ -540,23 +539,20 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
       // Handle two-legged lego insertion
       if (numLegs === 2) {
-        const res = await handleTwoLeggedInsertion(newLego, logicalDropPos);
-        if (res) {
+        const success = await handleTwoLeggedInsertion(newLego, logicalDropPos);
+
+        if (success) {
           return;
-        } else {
-          performDragUpdate(e);
         }
+      }
+      if (draggedLego.id === "custom") {
+        openCustomLegoDialog(logicalDropPos);
       } else {
-        // If it's a custom lego, show the dialog after dropping
-        if (draggedLego.id === "custom") {
-          openCustomLegoDialog(logicalDropPos);
-        } else {
-          addDroppedLego(newLego);
-          addOperation({
-            type: "add",
-            data: { legosToAdd: [newLego] }
-          });
-        }
+        addDroppedLego(newLego);
+        addOperation({
+          type: "add",
+          data: { legosToAdd: [newLego] }
+        });
       }
 
       setDraggedLego(null);
