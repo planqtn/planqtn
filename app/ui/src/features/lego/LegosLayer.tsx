@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
-import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
+import React, { Suspense, useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
+
+const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
@@ -44,11 +45,13 @@ export const LegosLayer: React.FC = () => {
     return visibleLegos
       .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
       .map((legoInstanceId) => (
-        <DroppedLegoDisplay
-          key={legoInstanceId}
-          legoInstanceId={legoInstanceId}
-          demoMode={false}
-        />
+        <Suspense fallback={<div>Loading...</div>} key={legoInstanceId}>
+          <DroppedLegoDisplay
+            key={legoInstanceId}
+            legoInstanceId={legoInstanceId}
+            demoMode={false}
+          />
+        </Suspense>
       ));
   }, [visibleLegos, isDraggedLego, viewport.logicalPanOffset]);
 

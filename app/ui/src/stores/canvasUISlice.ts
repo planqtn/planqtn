@@ -188,7 +188,6 @@ export const createCanvasUISlice: StateCreator<
         })
       );
     });
-    console.log("setPanOffset", offset);
   },
   updatePanOffset: (delta) => {
     set((state) => {

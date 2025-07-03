@@ -697,3 +697,4 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 );
 
 DroppedLegoDisplay.displayName = "DroppedLegoDisplay";
+export default DroppedLegoDisplay;

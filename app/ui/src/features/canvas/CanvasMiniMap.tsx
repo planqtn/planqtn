@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo
+} from "react";
 import {
   Box,
   Text,
@@ -19,6 +25,11 @@ import {
 } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { LogicalPoint } from "../../types/coordinates";
+
+const MINIMAP_WIDTH = 180;
+const MINIMAP_HEIGHT = 60;
+const PADDING = 40; // logical units
+const MIN_MINIMAP_PADDING = 10; // px, minimum padding in minimap
 
 export const CanvasMiniMap: React.FC = () => {
   const canvasRef = useCanvasStore((state) => state.canvasRef);
@@ -50,9 +61,6 @@ export const CanvasMiniMap: React.FC = () => {
   } = useCanvasStore();
 
   // Also track selection state for reactivity
-  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
-  const selectedLegoIds =
-    tensorNetwork?.legos?.map((lego) => lego.instanceId) || [];
 
   // Track canvas panel dimensions
   useEffect(() => {
@@ -79,180 +87,231 @@ export const CanvasMiniMap: React.FC = () => {
   const droppedLegoBoundingBox = calculateDroppedLegoBoundingBox();
   const tensorNetworkBoundingBox = calculateTensorNetworkBoundingBox();
 
-  // Calculate minimap dimensions and positions
-  const minimapBounds = React.useMemo(() => {
-    // Use dropped lego bounding box as the reference area, with fallback to viewport
+  // Calculate minimap dimensions and positions (in pixels)
+  const minimap = useMemo(() => {
+    // 1. Compute content bounds (with padding)
     const contentBounds = droppedLegoBoundingBox || {
       minX: viewport.logicalPanOffset.x,
       minY: viewport.logicalPanOffset.y,
       maxX: viewport.logicalPanOffset.x + viewport.logicalWidth,
-      maxY: viewport.logicalPanOffset.y + viewport.logicalHeight,
-      width: viewport.logicalWidth,
-      height: viewport.logicalHeight
+      maxY: viewport.logicalPanOffset.y + viewport.logicalHeight
     };
-
-    // Add padding around content
-    const padding = 100;
-    const paddedBounds = {
-      minX: contentBounds.minX - padding,
-      minY: contentBounds.minY - padding,
-      maxX: contentBounds.maxX + padding,
-      maxY: contentBounds.maxY + padding,
-      width: contentBounds.width + 2 * padding,
-      height: contentBounds.height + 2 * padding
+    const paddedContent = {
+      minX: contentBounds.minX - PADDING,
+      minY: contentBounds.minY - PADDING,
+      maxX: contentBounds.maxX + PADDING,
+      maxY: contentBounds.maxY + PADDING
     };
-
-    // Calculate viewport position as percentage of padded bounds
-    const viewportX = Math.max(
-      0,
-      Math.min(
-        100,
-        ((viewport.logicalPanOffset.x - paddedBounds.minX) /
-          paddedBounds.width) *
-          100
-      )
-    );
-    const viewportY = Math.max(
-      0,
-      Math.min(
-        100,
-        ((viewport.logicalPanOffset.y - paddedBounds.minY) /
-          paddedBounds.height) *
-          100
-      )
-    );
-
-    // Calculate viewport size as percentage
-    const viewportWidthPercent = Math.max(
-      5,
-      Math.min(80, (viewport.logicalWidth / paddedBounds.width) * 100)
-    );
-    const viewportHeightPercent = Math.max(
-      5,
-      Math.min(80, (viewport.logicalHeight / paddedBounds.height) * 100)
-    );
-
-    // Calculate content bounding box position (without padding)
-    const contentBoxX =
-      ((contentBounds.minX - paddedBounds.minX) / paddedBounds.width) * 100;
-    const contentBoxY =
-      ((contentBounds.minY - paddedBounds.minY) / paddedBounds.height) * 100;
-    const contentBoxWidth = (contentBounds.width / paddedBounds.width) * 100;
-    const contentBoxHeight = (contentBounds.height / paddedBounds.height) * 100;
-
-    // Calculate tensor network bounding box if it exists
-    let tensorNetworkBox = null;
-    if (tensorNetworkBoundingBox) {
-      tensorNetworkBox = {
-        x:
-          ((tensorNetworkBoundingBox.minX - paddedBounds.minX) /
-            paddedBounds.width) *
-          100,
-        y:
-          ((tensorNetworkBoundingBox.minY - paddedBounds.minY) /
-            paddedBounds.height) *
-          100,
-        width: (tensorNetworkBoundingBox.width / paddedBounds.width) * 100,
-        height: (tensorNetworkBoundingBox.height / paddedBounds.height) * 100
-      };
+    // 2. Compute viewport bounds
+    const viewportBounds = {
+      minX: viewport.logicalPanOffset.x,
+      minY: viewport.logicalPanOffset.y,
+      maxX: viewport.logicalPanOffset.x + viewport.logicalWidth,
+      maxY: viewport.logicalPanOffset.y + viewport.logicalHeight
+    };
+    // 3. Compute union bounds, align with viewport if viewport is larger
+    let minX = Math.min(paddedContent.minX, viewportBounds.minX);
+    let maxX = Math.max(paddedContent.maxX, viewportBounds.maxX);
+    let minY = Math.min(paddedContent.minY, viewportBounds.minY);
+    let maxY = Math.max(paddedContent.maxY, viewportBounds.maxY);
+    const viewportWidth = viewport.logicalWidth;
+    const viewportHeight = viewport.logicalHeight;
+    // For X
+    if (viewportWidth > maxX - minX) {
+      minX = viewportBounds.minX;
+      maxX = viewportBounds.maxX;
     }
-
+    // For Y
+    if (viewportHeight > maxY - minY) {
+      minY = viewportBounds.minY;
+      maxY = viewportBounds.maxY;
+    }
+    // 4. Use these for minimap scaling and mapping
+    let logicalWidth = maxX - minX;
+    let logicalHeight = maxY - minY;
+    let scale = Math.min(
+      MINIMAP_WIDTH / logicalWidth,
+      MINIMAP_HEIGHT / logicalHeight
+    );
+    // 5. Ensure minimum padding in minimap pixels
+    // Compute current padding in minimap px
+    const leftPadPx = (paddedContent.minX - minX) * scale;
+    const rightPadPx = (maxX - paddedContent.maxX) * scale;
+    const topPadPx = (paddedContent.minY - minY) * scale;
+    const bottomPadPx = (maxY - paddedContent.maxY) * scale;
+    // If any padding is less than MIN_MINIMAP_PADDING, expand bounds
+    if (leftPadPx < MIN_MINIMAP_PADDING) {
+      minX = paddedContent.minX - MIN_MINIMAP_PADDING / scale;
+    }
+    if (rightPadPx < MIN_MINIMAP_PADDING) {
+      maxX = paddedContent.maxX + MIN_MINIMAP_PADDING / scale;
+    }
+    if (topPadPx < MIN_MINIMAP_PADDING) {
+      minY = paddedContent.minY - MIN_MINIMAP_PADDING / scale;
+    }
+    if (bottomPadPx < MIN_MINIMAP_PADDING) {
+      maxY = paddedContent.maxY + MIN_MINIMAP_PADDING / scale;
+    }
+    // Recompute scale after expanding bounds
+    logicalWidth = maxX - minX;
+    logicalHeight = maxY - minY;
+    scale = Math.min(
+      MINIMAP_WIDTH / logicalWidth,
+      MINIMAP_HEIGHT / logicalHeight
+    );
+    // Helper to map logical to minimap px
+    const toMini = (x: number, y: number) => ({
+      x: (x - minX) * scale,
+      y: (y - minY) * scale
+    });
+    // Viewport
+    const vpTopLeft = toMini(
+      viewport.logicalPanOffset.x,
+      viewport.logicalPanOffset.y
+    );
+    const vpBotRight = toMini(
+      viewport.logicalPanOffset.x + viewport.logicalWidth,
+      viewport.logicalPanOffset.y + viewport.logicalHeight
+    );
+    // Content bounding box
+    const contentRect = droppedLegoBoundingBox
+      ? {
+          ...toMini(droppedLegoBoundingBox.minX, droppedLegoBoundingBox.minY),
+          w:
+            (droppedLegoBoundingBox.maxX - droppedLegoBoundingBox.minX) * scale,
+          h: (droppedLegoBoundingBox.maxY - droppedLegoBoundingBox.minY) * scale
+        }
+      : null;
+    // Selection bounding box
+    const selectionRect = tensorNetworkBoundingBox
+      ? {
+          ...toMini(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          ),
+          w:
+            (tensorNetworkBoundingBox.maxX - tensorNetworkBoundingBox.minX) *
+            scale,
+          h:
+            (tensorNetworkBoundingBox.maxY - tensorNetworkBoundingBox.minY) *
+            scale
+        }
+      : null;
     return {
-      paddedBounds,
-      viewportX,
-      viewportY,
-      viewportWidthPercent,
-      viewportHeightPercent,
-      contentBoxX,
-      contentBoxY,
-      contentBoxWidth,
-      contentBoxHeight,
-      tensorNetworkBox
+      scale,
+      toMini,
+      vpRect: {
+        x: vpTopLeft.x,
+        y: vpTopLeft.y,
+        w: vpBotRight.x - vpTopLeft.x,
+        h: vpBotRight.y - vpTopLeft.y
+      },
+      contentRect,
+      selectionRect
     };
-  }, [
-    viewport,
-    droppedLegoBoundingBox,
-    tensorNetworkBoundingBox,
-    selectedLegoIds
-  ]);
+  }, [droppedLegoBoundingBox, tensorNetworkBoundingBox, viewport]);
 
-  // Handle viewport dragging
-  const [isDraggingViewport, setIsDraggingViewport] = useState(false);
-  const [dragStartOffset, setDragStartOffset] = useState({ x: 0, y: 0 });
+  // Drag logic
+  const [dragging, setDragging] = useState(false);
+  const dragOffset = useRef<{ x: number; y: number } | null>(null);
 
   const handleSchematicMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (schematicRef.current) {
-        setIsDraggingViewport(true);
         const rect = schematicRef.current.getBoundingClientRect();
-        const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-        const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
-
-        // Calculate offset from mouse to viewport top-left corner
-        const offsetX = mouseX - minimapBounds.viewportX;
-        const offsetY = mouseY - minimapBounds.viewportY;
-        setDragStartOffset({ x: offsetX, y: offsetY });
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        // Check if inside viewport rect
+        if (
+          mx >= minimap.vpRect.x &&
+          mx <= minimap.vpRect.x + minimap.vpRect.w &&
+          my >= minimap.vpRect.y &&
+          my <= minimap.vpRect.y + minimap.vpRect.h
+        ) {
+          setDragging(true);
+          dragOffset.current = {
+            x: mx - minimap.vpRect.x,
+            y: my - minimap.vpRect.y
+          };
+        } else {
+          // Click-to-jump
+          const lx =
+            mx / minimap.scale +
+            (droppedLegoBoundingBox
+              ? droppedLegoBoundingBox.minX - PADDING
+              : viewport.logicalPanOffset.x);
+          const ly =
+            my / minimap.scale +
+            (droppedLegoBoundingBox
+              ? droppedLegoBoundingBox.minY - PADDING
+              : viewport.logicalPanOffset.y);
+          setPanOffset(
+            new LogicalPoint(
+              lx - viewport.logicalWidth / 2,
+              ly - viewport.logicalHeight / 2
+            )
+          );
+        }
       }
     },
-    [minimapBounds.viewportX, minimapBounds.viewportY]
+    [minimap, droppedLegoBoundingBox, viewport, setPanOffset]
   );
 
   const handleSchematicMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (isDraggingViewport && schematicRef.current) {
+      if (dragging && schematicRef.current) {
         const rect = schematicRef.current.getBoundingClientRect();
-        const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-        const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
-
-        // Calculate new viewport position using the initial offset
-        const newViewportX = Math.max(
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        // Clamp viewport inside minimap
+        const newMiniX = Math.max(
           0,
           Math.min(
-            100 - minimapBounds.viewportWidthPercent,
-            mouseX - dragStartOffset.x
+            MINIMAP_WIDTH - minimap.vpRect.w,
+            mx - (dragOffset.current?.x ?? 0)
           )
         );
-        const newViewportY = Math.max(
+        const newMiniY = Math.max(
           0,
           Math.min(
-            100 - minimapBounds.viewportHeightPercent,
-            mouseY - dragStartOffset.y
+            MINIMAP_HEIGHT - minimap.vpRect.h,
+            my - (dragOffset.current?.y ?? 0)
           )
         );
-
-        // Convert percentage back to canvas coordinates
-        const newCanvasX =
-          minimapBounds.paddedBounds.minX +
-          (newViewportX / 100) * minimapBounds.paddedBounds.width;
-        const newCanvasY =
-          minimapBounds.paddedBounds.minY +
-          (newViewportY / 100) * minimapBounds.paddedBounds.height;
-
-        // Update pan offset
-        setPanOffset(new LogicalPoint(-newCanvasX, -newCanvasY));
+        // Convert back to logical
+        const lx =
+          newMiniX / minimap.scale +
+          (droppedLegoBoundingBox
+            ? droppedLegoBoundingBox.minX - PADDING
+            : viewport.logicalPanOffset.x);
+        const ly =
+          newMiniY / minimap.scale +
+          (droppedLegoBoundingBox
+            ? droppedLegoBoundingBox.minY - PADDING
+            : viewport.logicalPanOffset.y);
+        setPanOffset(new LogicalPoint(lx, ly));
       }
     },
-    [isDraggingViewport, dragStartOffset, minimapBounds, setPanOffset]
+    [dragging, minimap, droppedLegoBoundingBox, viewport, setPanOffset]
   );
 
   const handleSchematicMouseUp = useCallback(() => {
-    setIsDraggingViewport(false);
-    setDragStartOffset({ x: 0, y: 0 });
+    setDragging(false);
+    dragOffset.current = null;
   }, []);
 
   useEffect(() => {
-    if (isDraggingViewport) {
+    if (dragging) {
       document.addEventListener("mouseup", handleSchematicMouseUp);
       return () =>
         document.removeEventListener("mouseup", handleSchematicMouseUp);
     }
-  }, [isDraggingViewport, handleSchematicMouseUp]);
+  }, [dragging, handleSchematicMouseUp]);
 
   // Handle mouse wheel zoom with zoom-to-mouse
   useEffect(() => {
     const canvas = canvasRef?.current;
     if (!canvas) return;
-
     canvas.addEventListener("wheel", handleWheelEvent, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheelEvent);
   }, [canvasRef, handleWheelEvent]);
@@ -260,27 +319,26 @@ export const CanvasMiniMap: React.FC = () => {
   // Zoom control handlers
   const handleZoomIn = useCallback(() => {
     const newZoomLevel = Math.min(zoomLevel * 1.2, 9);
-
-    // Use stable center point calculation
     let centerPoint;
     if (
       droppedLegoBoundingBox &&
-      droppedLegoBoundingBox.width > 0 &&
-      droppedLegoBoundingBox.height > 0
+      droppedLegoBoundingBox.maxX > droppedLegoBoundingBox.minX &&
+      droppedLegoBoundingBox.maxY > droppedLegoBoundingBox.minY
     ) {
-      // Center on content if available
       centerPoint = {
-        x: droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
-        y: droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
+        x:
+          droppedLegoBoundingBox.minX +
+          (droppedLegoBoundingBox.maxX - droppedLegoBoundingBox.minX) / 2,
+        y:
+          droppedLegoBoundingBox.minY +
+          (droppedLegoBoundingBox.maxY - droppedLegoBoundingBox.minY) / 2
       };
     } else {
-      // Use logical canvas center as fallback
       centerPoint = {
         x: viewport.logicalWidth / 2,
         y: viewport.logicalHeight / 2
       };
     }
-
     setZoomToMouse(
       newZoomLevel,
       new LogicalPoint(centerPoint.x, centerPoint.y)
@@ -289,24 +347,23 @@ export const CanvasMiniMap: React.FC = () => {
 
   const handleZoomOut = useCallback(() => {
     const newZoomLevel = Math.max(zoomLevel * 0.8, 0.04);
-
-    // Use stable center point calculation
     let centerPoint;
     if (
       droppedLegoBoundingBox &&
-      droppedLegoBoundingBox.width > 0 &&
-      droppedLegoBoundingBox.height > 0
+      droppedLegoBoundingBox.maxX > droppedLegoBoundingBox.minX &&
+      droppedLegoBoundingBox.maxY > droppedLegoBoundingBox.minY
     ) {
-      // Center on content if available
-      centerPoint = new LogicalPoint(
-        droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
-        droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
-      );
+      centerPoint = {
+        x:
+          droppedLegoBoundingBox.minX +
+          (droppedLegoBoundingBox.maxX - droppedLegoBoundingBox.minX) / 2,
+        y:
+          droppedLegoBoundingBox.minY +
+          (droppedLegoBoundingBox.maxY - droppedLegoBoundingBox.minY) / 2
+      };
     } else {
-      // Use logical canvas center as fallback
       centerPoint = viewport.logicalCenter;
     }
-
     setZoomToMouse(
       newZoomLevel,
       new LogicalPoint(centerPoint.x, centerPoint.y)
@@ -314,40 +371,27 @@ export const CanvasMiniMap: React.FC = () => {
   }, [zoomLevel, viewport, setZoomToMouse, droppedLegoBoundingBox]);
 
   const handleZoomReset = useCallback(() => {
-    // Use a stable center point for zoom reset to avoid extreme coordinate issues
     let centerPoint;
-
     if (
       droppedLegoBoundingBox &&
-      droppedLegoBoundingBox.width > 0 &&
-      droppedLegoBoundingBox.height > 0
+      droppedLegoBoundingBox.maxX > droppedLegoBoundingBox.minX &&
+      droppedLegoBoundingBox.maxY > droppedLegoBoundingBox.minY
     ) {
-      // Center on the content if legos exist
-      centerPoint = new LogicalPoint(
-        droppedLegoBoundingBox.minX + droppedLegoBoundingBox.width / 2,
-        droppedLegoBoundingBox.minY + droppedLegoBoundingBox.height / 2
-      );
+      centerPoint = {
+        x:
+          droppedLegoBoundingBox.minX +
+          (droppedLegoBoundingBox.maxX - droppedLegoBoundingBox.minX) / 2,
+        y:
+          droppedLegoBoundingBox.minY +
+          (droppedLegoBoundingBox.maxY - droppedLegoBoundingBox.minY) / 2
+      };
     } else {
-      // Fallback to canvas center in logical coordinates (center of the coordinate system)
-      centerPoint = new LogicalPoint(
-        viewport.logicalWidth / 2,
-        viewport.logicalHeight / 2
-      );
+      centerPoint = {
+        x: viewport.logicalWidth / 2,
+        y: viewport.logicalHeight / 2
+      };
     }
-
-    // Safety check for valid center point
-    if (!isFinite(centerPoint.x) || !isFinite(centerPoint.y)) {
-      console.warn(
-        "Invalid center point in zoom reset, using fallback:",
-        centerPoint
-      );
-      centerPoint = new LogicalPoint(
-        viewport.logicalWidth / 2,
-        viewport.logicalHeight / 2
-      );
-    }
-
-    setZoomToMouse(1, centerPoint);
+    setZoomToMouse(1, new LogicalPoint(centerPoint.x, centerPoint.y));
   }, [viewport, setZoomToMouse, droppedLegoBoundingBox]);
 
   const handleToggle = useCallback(() => {
@@ -419,14 +463,14 @@ export const CanvasMiniMap: React.FC = () => {
           <Box>
             <Box
               ref={schematicRef}
-              width="100%"
-              height="60px"
+              width={`${MINIMAP_WIDTH}px`}
+              height={`${MINIMAP_HEIGHT}px`}
               bg={schematicBg}
               border="1px solid"
               borderColor={borderColor}
               borderRadius="sm"
               position="relative"
-              cursor={isDraggingViewport ? "grabbing" : "grab"}
+              cursor={dragging ? "grabbing" : "grab"}
               onMouseDown={handleSchematicMouseDown}
               onMouseMove={handleSchematicMouseMove}
             >
@@ -444,13 +488,13 @@ export const CanvasMiniMap: React.FC = () => {
               />
 
               {/* Content bounding box (light gray rectangle showing where all legos are) */}
-              {droppedLegoBoundingBox && (
+              {minimap.contentRect && (
                 <Box
                   position="absolute"
-                  left={`${Math.max(0, Math.min(100, minimapBounds.contentBoxX))}%`}
-                  top={`${Math.max(0, Math.min(100, minimapBounds.contentBoxY))}%`}
-                  width={`${Math.max(1, Math.min(100, minimapBounds.contentBoxWidth))}%`}
-                  height={`${Math.max(1, Math.min(100, minimapBounds.contentBoxHeight))}%`}
+                  left={minimap.contentRect.x}
+                  top={minimap.contentRect.y}
+                  width={minimap.contentRect.w}
+                  height={minimap.contentRect.h}
                   bg={droppedLegoBoundingColor}
                   opacity={0.3}
                   borderRadius="1px"
@@ -458,13 +502,13 @@ export const CanvasMiniMap: React.FC = () => {
               )}
 
               {/* Tensor network bounding box (darker rectangle for selected legos) */}
-              {minimapBounds.tensorNetworkBox && (
+              {minimap.selectionRect && (
                 <Box
                   position="absolute"
-                  left={`${Math.max(0, Math.min(100, minimapBounds.tensorNetworkBox.x))}%`}
-                  top={`${Math.max(0, Math.min(100, minimapBounds.tensorNetworkBox.y))}%`}
-                  width={`${Math.max(1, Math.min(100, minimapBounds.tensorNetworkBox.width))}%`}
-                  height={`${Math.max(1, Math.min(100, minimapBounds.tensorNetworkBox.height))}%`}
+                  left={minimap.selectionRect.x}
+                  top={minimap.selectionRect.y}
+                  width={minimap.selectionRect.w}
+                  height={minimap.selectionRect.h}
                   border="2px solid"
                   borderColor={tensorNetworkBoundingColor}
                   bg={`${tensorNetworkBoundingColor}20`}
@@ -475,15 +519,15 @@ export const CanvasMiniMap: React.FC = () => {
               {/* Movable viewport indicator (blue rectangle) */}
               <Box
                 position="absolute"
-                left={`${minimapBounds.viewportX}%`}
-                top={`${minimapBounds.viewportY}%`}
-                width={`${minimapBounds.viewportWidthPercent}%`}
-                height={`${minimapBounds.viewportHeightPercent}%`}
+                left={minimap.vpRect.x}
+                top={minimap.vpRect.y}
+                width={minimap.vpRect.w}
+                height={minimap.vpRect.h}
                 border="2px solid"
                 borderColor={viewportColor}
                 bg={`${viewportColor}20`}
                 borderRadius="2px"
-                transition={isDraggingViewport ? "none" : "all 0.1s ease"}
+                transition={dragging ? "none" : "all 0.1s ease"}
               />
             </Box>
           </Box>
