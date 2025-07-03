@@ -40,12 +40,6 @@ export abstract class Coordinate {
   }
 }
 
-// Brand symbols for nominal typing
-declare const windowPointBrand: unique symbol;
-declare const canvasPointBrand: unique symbol;
-declare const logicalPointBrand: unique symbol;
-declare const miniCanvasPointBrand: unique symbol;
-
 /**
  * Raw window coordinates from mouse events (clientX, clientY)
  * Origin: top-left of the browser window
