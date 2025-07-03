@@ -38,7 +38,7 @@ export class Viewport {
   ) {}
 
   public get logicalWidth(): number {
-    return this.screenWidth * this.zoomLevel;
+    return this.screenWidth / this.zoomLevel;
   }
 
   public get screenWidthToHeightRatio(): number {
@@ -76,15 +76,15 @@ export class Viewport {
 
   fromCanvasToLogical(point: CanvasPoint): LogicalPoint {
     return new LogicalPoint(
-      point.x * this.zoomLevel + this.logicalPanOffset.x,
-      point.y * this.zoomLevel + this.logicalPanOffset.y
+      point.x / this.zoomLevel + this.logicalPanOffset.x,
+      point.y / this.zoomLevel + this.logicalPanOffset.y
     );
   }
 
   fromLogicalToCanvas(point: LogicalPoint): CanvasPoint {
     return new CanvasPoint(
-      (point.x - this.logicalPanOffset.x) / this.zoomLevel,
-      (point.y - this.logicalPanOffset.y) / this.zoomLevel
+      (point.x - this.logicalPanOffset.x) * this.zoomLevel,
+      (point.y - this.logicalPanOffset.y) * this.zoomLevel
     );
   }
 
@@ -109,9 +109,8 @@ export interface CanvasUISlice {
   setError: (error: string | null) => void;
   error: string | null;
   setZoomLevel: (zoomLevel: number) => void;
-  panOffset: LogicalPoint;
   setPanOffset: (offset: LogicalPoint) => void;
-  updatePanOffset: (deltaX: number, deltaY: number) => void;
+  updatePanOffset: (delta: LogicalPoint) => void;
   canvasRef: RefObject<HTMLDivElement> | null;
   setCanvasRef: (element: HTMLDivElement | null) => void;
 
@@ -185,7 +184,6 @@ export const createCanvasUISlice: StateCreator<
   panOffset: new LogicalPoint(0, 0),
   setPanOffset: (offset) => {
     set((state) => {
-      state.panOffset = offset;
       state.viewport = castDraft(
         state.viewport.with({
           logicalPanOffset: offset
@@ -194,12 +192,11 @@ export const createCanvasUISlice: StateCreator<
     });
     console.log("setPanOffset", offset);
   },
-  updatePanOffset: (deltaX, deltaY) => {
+  updatePanOffset: (delta) => {
     set((state) => {
-      state.panOffset = state.panOffset.plus(new LogicalPoint(deltaX, deltaY));
       state.viewport = castDraft(
         state.viewport.with({
-          logicalPanOffset: state.panOffset as LogicalPoint
+          logicalPanOffset: state.viewport.logicalPanOffset.plus(delta)
         })
       );
     });
@@ -271,15 +268,13 @@ export const createCanvasUISlice: StateCreator<
       return;
     }
 
-    const viewPortLogicalCenter = viewport.logicalCenter;
-
-    // Calculate the mouse position relative to canvas center
-    const mouseOffsetFromCenter = mouseLogicalPosition.minus(
-      viewPortLogicalCenter
-    );
+    // Calculate the mouse position relative to the origin, which is the top left corner of the viewport
+    const mouseOffsetFromOrigin = mouseLogicalPosition
+      .minus(viewport.logicalPanOffset)
+      .factor(-1);
 
     // Calculate the change in screen position due to zoom change
-    const zoomDelta = mouseOffsetFromCenter.factor(1 / zoomFactor);
+    const zoomDelta = mouseOffsetFromOrigin.factor(1 - zoomFactor);
 
     // Adjust pan offset to compensate for the zoom delta
     const newPanOffset = viewport.logicalPanOffset.plus(zoomDelta);
@@ -288,7 +283,7 @@ export const createCanvasUISlice: StateCreator<
     if (!isFinite(newPanOffset.x) || !isFinite(newPanOffset.y)) {
       console.warn("Invalid pan offset calculated in setZoomToMouse:", {
         newPanOffset,
-        mouseOffsetFromCenter,
+        mouseOffsetFromCenter: mouseOffsetFromOrigin,
         zoomDelta,
         mouseCanvasPos: mouseLogicalPosition,
         clampedZoom,
@@ -376,11 +371,6 @@ export const createCanvasUISlice: StateCreator<
 
     e.preventDefault();
 
-    const mouseCanvasPos = get().viewport.fromWindowToLogical(
-      WindowPoint.fromMouseEvent(e)
-    );
-    if (!mouseCanvasPos) return;
-
     // Calculate new zoom level
     const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoomLevel = Math.max(
@@ -389,6 +379,9 @@ export const createCanvasUISlice: StateCreator<
     );
 
     // Apply zoom centered on mouse position
-    get().setZoomToMouse(newZoomLevel, mouseCanvasPos);
+    get().setZoomToMouse(
+      newZoomLevel,
+      get().viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e))
+    );
   }
 });

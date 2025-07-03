@@ -201,20 +201,21 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       if (canvasDragState?.isDragging) {
         // Use coordinate system for consistent canvas HTML coordinates
         const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        const mouseWindowLogicalPoint =
+          viewport.fromWindowToLogical(mouseWindowPoint);
 
-        const deltaMouseWindow =
-          canvasDragState.mouseWindowPoint.minus(mouseWindowPoint);
         setCanvasDragState({
           ...canvasDragState,
           mouseWindowPoint: mouseWindowPoint
         });
 
-        // Transform screen delta to canvas delta for zoom-aware movement
-        const deltaLogical = deltaMouseWindow.factor(1 / zoomLevel);
+        const deltaMouseLogical = mouseWindowLogicalPoint
+          .minus(viewport.fromWindowToLogical(canvasDragState.mouseWindowPoint))
+          .factor(-1);
 
         // Update pan offset and move all legos using canvas deltas
         const { updatePanOffset } = useCanvasStore.getState();
-        updatePanOffset(deltaLogical.x, deltaLogical.y);
+        updatePanOffset(deltaMouseLogical);
       }
       // Check if we should start dragging
       if (

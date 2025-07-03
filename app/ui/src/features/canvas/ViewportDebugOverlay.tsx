@@ -115,10 +115,25 @@ export const ViewportDebugOverlay: React.FC = () => {
     margin: 0
   };
 
+  const circleStyle = {
+    position: "absolute" as const,
+    top: viewport.fromLogicalToCanvas(viewport.logicalCenter).y, // Adjusted to center the circle at (10, 10)
+    left: viewport.fromLogicalToCanvas(viewport.logicalCenter).x, // Adjusted to center the circle at (10, 10)
+    width: "10px",
+    height: "10px",
+    backgroundColor: "red",
+    borderRadius: "50%",
+    pointerEvents: "none" as const,
+    zIndex: 1001 // Ensure it appears above other elements
+  };
+
   return (
     <>
       {/* Main viewport debug box - should always align with canvas borders */}
       <Box style={debugBoxStyle} />
+
+      {/* Red circle at (10, 10) */}
+      <Box style={circleStyle} />
 
       {/* Debug info overlay */}
       <Box
