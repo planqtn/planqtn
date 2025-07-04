@@ -1,61 +1,64 @@
 import { TensorNetwork } from "./TensorNetwork";
-import { DroppedLego, Connection } from "./types";
-import { getLegoStyle } from "../LegoStyles";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 
 describe("TensorNetwork", () => {
   it("should correctly conjoin nodes after double tracing 602 with identity stoppers", () => {
     // Create the nodes
     const nodes: DroppedLego[] = [
-      {
-        id: "encoding_tensor_602",
-        name: "Encoding Tensor 602",
-        shortName: "602",
-        description: "Encoding Tensor 602",
-        instanceId: "0",
-        x: 0,
-        y: 0,
-        style: getLegoStyle("encoding_tensor_602", 6),
-        parity_check_matrix: [
-          [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
-          [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0],
-          [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        selectedMatrixRows: []
-      },
-      {
-        id: "stopper_i",
-        name: "Identity Stopper",
-        shortName: "I",
-        description: "Identity Stopper",
-        instanceId: "stop1",
-        x: 0,
-        y: 0,
-        style: getLegoStyle("stopper_i", 1),
-        parity_check_matrix: [[0, 0]],
-        logical_legs: [],
-        gauge_legs: [],
-        selectedMatrixRows: []
-      },
-      {
-        id: "stopper_i",
-        name: "Identity Stopper",
-        shortName: "I",
-        description: "Identity Stopper",
-        instanceId: "stop2",
-        x: 0,
-        y: 0,
-        style: getLegoStyle("stopper_i", 1),
-        parity_check_matrix: [[0, 0]],
-        logical_legs: [],
-        gauge_legs: [],
-        selectedMatrixRows: []
-      }
+      new DroppedLego(
+        {
+          id: "encoding_tensor_602",
+          name: "Encoding Tensor 602",
+          shortName: "602",
+          description: "Encoding Tensor 602",
+
+          parity_check_matrix: [
+            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0],
+            [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        0,
+        0,
+        "0"
+      ),
+      new DroppedLego(
+        {
+          id: "stopper_i",
+          name: "Identity Stopper",
+          shortName: "I",
+          description: "Identity Stopper",
+
+          parity_check_matrix: [[0, 0]],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        0,
+        0,
+        "stop1"
+      ),
+      new DroppedLego(
+        {
+          id: "stopper_i",
+          name: "Identity Stopper",
+          shortName: "I",
+          description: "Identity Stopper",
+
+          parity_check_matrix: [[0, 0]],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        0,
+        0,
+        "stop2"
+      )
     ];
 
     // Create the connections
@@ -71,7 +74,10 @@ describe("TensorNetwork", () => {
     ];
 
     // Create the tensor network
-    const tn = new TensorNetwork(nodes, connections);
+    const tn = new TensorNetwork({
+      legos: nodes,
+      connections: connections
+    });
 
     // Get the conjoined tensor
     const conjoined = tn.conjoin_nodes();
@@ -90,134 +96,134 @@ describe("TensorNetwork", () => {
     // console.log(
     //   "=================6 lego TN parity check matrix=====================",
     // );
-    const tn = TensorNetwork.fromObj({
+    const tn = new TensorNetwork({
       legos: [
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "1",
-          x: 894.7999877929688,
-          y: 339.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        },
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "2",
-          x: 750.7999877929688,
-          y: 334.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        },
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "3",
-          x: 625.7999877929688,
-          y: 332.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        },
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "4",
-          x: 624.7999877929688,
-          y: 141.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        },
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "5",
-          x: 749.7999877929688,
-          y: 143.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        },
-        {
-          id: "t5",
-          name: "[[5,1,2]] tensor",
-          shortName: "T5",
-          description: "[[5,1,2]] encoding tensor",
-          parity_check_matrix: [
-            [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
-          ],
-          logical_legs: [4],
-          gauge_legs: [],
-          is_dynamic: false,
-          parameters: {},
-          instanceId: "6",
-          x: 893.7999877929688,
-          y: 148.20000076293945,
-          style: getLegoStyle("t5", 5),
-          selectedMatrixRows: []
-        }
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "1"
+        ),
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "2"
+        ),
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "3"
+        ),
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "4"
+        ),
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "5"
+        ),
+        new DroppedLego(
+          {
+            id: "t5",
+            name: "[[5,1,2]] tensor",
+            shortName: "T5",
+            description: "[[5,1,2]] encoding tensor",
+            parity_check_matrix: [
+              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+              [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
+            ],
+            logical_legs: [4],
+            gauge_legs: [],
+            is_dynamic: false,
+            parameters: {}
+          },
+          0,
+          0,
+          "6"
+        )
       ],
       connections: [
         new Connection(

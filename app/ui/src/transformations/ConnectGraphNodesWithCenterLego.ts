@@ -1,7 +1,8 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
-import { getLegoStyle } from "../LegoStyles";
+import { Connection } from "../lib/types";
+import { Operation } from "../features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
-import { Legos } from "../lib/Legos";
+import { Legos } from "../features/lego/Legos.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return legos.length > 0 && legos.every((lego) => lego.id === "z_rep_code");
@@ -33,7 +34,7 @@ export const applyConnectGraphNodes = async (
 
   // Find dangling legs for each lego
   const legoDanglingLegs = legos.map((lego) => {
-    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const numLegs = lego.numberOfLegs;
     const connectedLegs = new Set<number>();
 
     // Find all connected legs
@@ -61,12 +62,12 @@ export const applyConnectGraphNodes = async (
   // Create new legos with one extra leg
   const newLegos: DroppedLego[] = legoDanglingLegs.map(
     ({ lego, danglingLeg }) => {
-      if (danglingLeg !== lego.parity_check_matrix[0].length / 2) {
+      if (danglingLeg !== lego.numberOfLegs) {
         return lego; // Keep the lego as is if it has dangling legs
       }
       return Legos.createDynamicLego(
         "z_rep_code",
-        lego.parity_check_matrix[0].length / 2 + 1,
+        lego.numberOfLegs + 1,
         lego.instanceId,
         lego.x,
         lego.y
@@ -78,23 +79,23 @@ export const applyConnectGraphNodes = async (
   const hadamardLegos: DroppedLego[] = legoDanglingLegs.map(
     ({ lego }, index) => {
       // Position Hadamard halfway between connector and original lego
-      return {
-        id: "h",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard",
-        instanceId: (maxInstanceId + 2 + index).toString(),
-        x: (connectorLego.x + lego.x) / 2,
-        y: (connectorLego.y + lego.y) / 2,
-        parity_check_matrix: [
-          [1, 0, 0, 1],
-          [0, 1, 1, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle("h", 2),
-        selectedMatrixRows: []
-      };
+      return new DroppedLego(
+        {
+          id: "h",
+          name: "Hadamard",
+          shortName: "H",
+          description: "Hadamard",
+          parity_check_matrix: [
+            [1, 0, 0, 1],
+            [0, 1, 1, 0]
+          ],
+          logical_legs: [],
+          gauge_legs: []
+        },
+        (connectorLego.x + lego.x) / 2,
+        (connectorLego.y + lego.y) / 2,
+        (maxInstanceId + 2 + index).toString()
+      );
     }
   );
 

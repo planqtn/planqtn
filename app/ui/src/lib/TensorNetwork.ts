@@ -1,4 +1,5 @@
-import { Connection, DroppedLego } from "./types";
+import { Connection } from "./types";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { StabilizerCodeTensor } from "./StabilizerCodeTensor";
 
@@ -45,7 +46,10 @@ export function findConnectedComponent(
     }
   });
 
-  return new TensorNetwork(component, componentConnections);
+  return new TensorNetwork({
+    legos: component,
+    connections: componentConnections
+  });
 }
 
 export interface TensorNetworkLeg {
@@ -54,21 +58,19 @@ export interface TensorNetworkLeg {
 }
 
 export class TensorNetwork {
-  constructor(
-    public legos: DroppedLego[],
-    public connections: Connection[],
-    public parityCheckMatrix?: number[][],
-    public weightEnumerator?: string,
-    public normalizerPolynomial?: string,
-    public truncateLength?: number,
-    public isCalculatingWeightEnumerator?: boolean,
-    public taskId?: string,
-    public constructionCode?: string,
-    public legOrdering?: TensorNetworkLeg[],
-    public signature?: string
-  ) {}
+  private _legos: DroppedLego[];
+  private _connections: Connection[];
+  public parityCheckMatrix?: number[][];
+  public weightEnumerator?: string;
+  public normalizerPolynomial?: string;
+  public truncateLength?: number;
+  public isCalculatingWeightEnumerator?: boolean;
+  public taskId?: string;
+  public constructionCode?: string;
+  public legOrdering?: TensorNetworkLeg[];
+  private _signature?: string;
 
-  public static fromObj(tn: {
+  constructor(data: {
     legos: DroppedLego[];
     connections: Connection[];
     parityCheckMatrix?: number[][];
@@ -81,20 +83,69 @@ export class TensorNetwork {
     legOrdering?: TensorNetworkLeg[];
     signature?: string;
   }) {
-    return new TensorNetwork(
-      tn.legos,
-      tn.connections,
-      tn.parityCheckMatrix,
-      tn.weightEnumerator,
-      tn.normalizerPolynomial,
-      tn.truncateLength,
-      tn.isCalculatingWeightEnumerator,
-      tn.taskId,
-      tn.constructionCode,
-      tn.legOrdering,
-      tn.signature
-    );
+    console.assert(data.legos, "legos is required");
+    console.assert(data.connections, "connections is required");
+    this._legos = data.legos;
+    this._connections = data.connections;
+    this.parityCheckMatrix = data.parityCheckMatrix;
+    this.weightEnumerator = data.weightEnumerator;
+    this.normalizerPolynomial = data.normalizerPolynomial;
+    this.truncateLength = data.truncateLength;
+    this.isCalculatingWeightEnumerator = data.isCalculatingWeightEnumerator;
+    this.taskId = data.taskId;
+    this.constructionCode = data.constructionCode;
+    this.legOrdering = data.legOrdering;
+    this._signature =
+      data.signature ||
+      this.createNetworkSignature(data.legos, data.connections);
   }
+
+  public get legos() {
+    return this._legos;
+  }
+  public get connections() {
+    return this._connections;
+  }
+  public get signature() {
+    return this._signature;
+  }
+  public set legos(legos: DroppedLego[]) {
+    this._legos = legos;
+    this._signature = this.createNetworkSignature(legos, this._connections);
+  }
+  public set connections(connections: Connection[]) {
+    this._connections = connections;
+    this._signature = this.createNetworkSignature(this._legos, connections);
+  }
+  public with(overrides: Partial<TensorNetwork>): TensorNetwork {
+    return new TensorNetwork({
+      ...this,
+      legos: this._legos,
+      connections: this._connections,
+      signature: this._signature,
+      ...overrides
+    });
+  }
+
+  // Helper function to generate network signature for caching
+  private createNetworkSignature = (
+    legos: DroppedLego[],
+    connections: Connection[]
+  ) => {
+    const sortedLegos = [...legos]
+      .sort((a, b) => a.instanceId.localeCompare(b.instanceId))
+      .map((lego) => lego.id + "-" + lego.instanceId + "-" + lego.numberOfLegs);
+    const sortedConnections = [...connections].sort((a, b) => {
+      const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
+      const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
+      return aStr.localeCompare(bStr);
+    });
+    const sig = JSON.stringify({
+      legos: sortedLegos,
+      connections: sortedConnections
+    });
+    return sig;
+  };
 
   public generateConstructionCode(): string {
     const code: string[] = [];
@@ -143,16 +194,62 @@ export class TensorNetwork {
     return code.join("\n");
   }
 
+  public getExternalAndDanglingLegs(mainNetworkConnections: Connection[]): {
+    externalLegs: TensorNetworkLeg[];
+    danglingLegs: TensorNetworkLeg[];
+  } {
+    if (!this.legos) return { externalLegs: [], danglingLegs: [] };
+    const allLegs: TensorNetworkLeg[] = this.legos.flatMap((lego) => {
+      const numLegs = lego.numberOfLegs;
+      return Array.from({ length: numLegs }, (_, i) => ({
+        instanceId: lego.instanceId,
+        legIndex: i
+      }));
+    });
+    const connectedLegs = new Set<string>();
+    mainNetworkConnections.forEach((conn) => {
+      connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
+      connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
+    });
+    // Legs in tensorNetwork but connected to something outside
+    const networkInstanceIds = new Set(this.legos.map((l) => l.instanceId));
+    const externalLegs: TensorNetworkLeg[] = [];
+    const danglingLegs: TensorNetworkLeg[] = [];
+    allLegs.forEach((leg) => {
+      // Find if this leg is connected
+      const conn = mainNetworkConnections.find(
+        (conn) =>
+          (conn.from.legoId === leg.instanceId &&
+            conn.from.legIndex === leg.legIndex) ||
+          (conn.to.legoId === leg.instanceId &&
+            conn.to.legIndex === leg.legIndex)
+      );
+      if (!conn) {
+        danglingLegs.push(leg);
+      } else {
+        // If the other side is not in the network, it's external
+        const other =
+          conn.from.legoId === leg.instanceId
+            ? conn.to.legoId
+            : conn.from.legoId;
+        if (!networkInstanceIds.has(other)) {
+          externalLegs.push(leg);
+        }
+      }
+    });
+    return { externalLegs, danglingLegs };
+  }
+
   public conjoin_nodes(): StabilizerCodeTensor {
     // If there's only one lego and no connections, return its parity check matrix
     if (this.legos.length === 1 && this.connections.length === 0) {
       return new StabilizerCodeTensor(
         new GF2(this.legos[0].parity_check_matrix),
         this.legos[0].instanceId,
-        Array.from(
-          { length: this.legos[0].parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: this.legos[0].instanceId, legIndex: i })
-        )
+        Array.from({ length: this.legos[0].numberOfLegs }, (_, i) => ({
+          instanceId: this.legos[0].instanceId,
+          legIndex: i
+        }))
       );
     }
 
@@ -165,10 +262,10 @@ export class TensorNetwork {
       tensor: new StabilizerCodeTensor(
         new GF2(lego.parity_check_matrix),
         lego.instanceId,
-        Array.from(
-          { length: lego.parity_check_matrix[0].length / 2 },
-          (_, i) => ({ instanceId: lego.instanceId, legIndex: i })
-        )
+        Array.from({ length: lego.numberOfLegs }, (_, i) => ({
+          instanceId: lego.instanceId,
+          legIndex: i
+        }))
       ),
       legos: new Set([lego.instanceId])
     }));
@@ -228,7 +325,6 @@ export class TensorNetwork {
 
     // If we have multiple components at the end, tensor them together
     if (components.length > 1) {
-      console.log("TENSORING", components.length);
       let result = components[0].tensor;
       for (let i = 1; i < components.length; i++) {
         result = result.tensorWith(components[i].tensor);

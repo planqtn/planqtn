@@ -1,4 +1,4 @@
-import { userContextSupabase } from "../supabaseClient";
+import { userContextSupabase } from "../config/supabaseClient";
 
 export async function getAccessToken(): Promise<string | null> {
   if (!userContextSupabase) {

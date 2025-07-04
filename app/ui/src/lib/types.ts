@@ -1,31 +1,10 @@
-import { LegoStyle } from "../LegoStyles";
-
-export interface LegoPiece {
-  id: string;
-  name: string;
-  shortName: string;
-  description: string;
-  is_dynamic?: boolean;
-  parameters?: Record<string, unknown>;
-  parity_check_matrix: number[][];
-  logical_legs: number[];
-  gauge_legs: number[];
-}
+import { TensorNetworkLeg } from "./TensorNetwork";
 
 export enum PauliOperator {
   X = "X",
   Z = "Z",
   Y = "Y",
   I = "I"
-}
-
-export interface DroppedLego extends LegoPiece {
-  x: number;
-  y: number;
-  instanceId: string;
-  style: LegoStyle;
-  selectedMatrixRows: number[];
-  alwaysShowLegs?: boolean;
 }
 
 export class Connection {
@@ -74,16 +53,6 @@ export interface LegDragState {
   currentY: number;
 }
 
-export interface DragState {
-  isDragging: boolean;
-  draggedLegoIndex: number;
-  startX: number;
-  startY: number;
-  originalX: number;
-  originalY: number;
-  justFinished: boolean;
-}
-
 export interface CanvasDragState {
   isDragging: boolean;
   startX: number;
@@ -107,36 +76,6 @@ export interface GroupDragState {
   originalPositions: { [instanceId: string]: { x: number; y: number } };
 }
 
-export type OperationType =
-  | "add"
-  | "remove"
-  | "move"
-  | "connect"
-  | "disconnect"
-  | "fuse"
-  | "unfuseToLegs"
-  | "unfuseInto2Legos"
-  | "colorChange"
-  | "pullOutOppositeLeg"
-  | "injectTwoLegged"
-  | "bialgebra"
-  | "inverseBialgebra"
-  | "hopf"
-  | "addStopper"
-  | "connectGraphNodesWithCenterLego"
-  | "completeGraphViaHadamards";
-
-export type Operation = {
-  type: OperationType;
-  data: {
-    legosToAdd?: DroppedLego[];
-    legosToRemove?: DroppedLego[];
-    legosToUpdate?: { oldLego: DroppedLego; newLego: DroppedLego }[];
-    connectionsToAdd?: Connection[];
-    connectionsToRemove?: Connection[];
-  };
-};
-
 export interface SelectionBoxState {
   isSelecting: boolean;
   startX: number;
@@ -147,6 +86,7 @@ export interface SelectionBoxState {
 }
 
 export interface CanvasState {
+  canvasId: string;
   pieces: Array<{
     id: string;
     instanceId: string;
@@ -204,4 +144,9 @@ export interface Task {
   result: string | null;
   execution_id: string;
   job_type: string;
+}
+
+export interface ParityCheckMatrix {
+  matrix: number[][];
+  legOrdering: TensorNetworkLeg[];
 }

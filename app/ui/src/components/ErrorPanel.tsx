@@ -1,12 +1,10 @@
 import { Box, HStack, Icon, Text, IconButton } from "@chakra-ui/react";
 import { FaExclamationCircle, FaTimes } from "react-icons/fa";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
-interface ErrorPanelProps {
-  error: string;
-  onDismiss: () => void;
-}
-
-const ErrorPanel: React.FC<ErrorPanelProps> = ({ error, onDismiss }) => {
+const ErrorPanel: React.FC = () => {
+  const error = useCanvasStore((state) => state.error);
+  const setError = useCanvasStore((state) => state.setError);
   return (
     <Box
       position="absolute"
@@ -31,7 +29,7 @@ const ErrorPanel: React.FC<ErrorPanelProps> = ({ error, onDismiss }) => {
           size="sm"
           variant="ghost"
           colorScheme="red"
-          onClick={onDismiss}
+          onClick={() => setError(null)}
         />
       </HStack>
     </Box>

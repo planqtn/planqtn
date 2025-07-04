@@ -1,5 +1,5 @@
 # Build Stage
-FROM node:22 AS builder
+FROM node:24 AS builder
 
 WORKDIR /app
 COPY ./app/ui/package*.json .
@@ -8,7 +8,7 @@ COPY ./app/ui .
 RUN npm run build
 
 # Runtime Stage
-FROM gcr.io/distroless/nodejs22-debian12
+FROM gcr.io/distroless/nodejs24-debian12
 
 WORKDIR /app
 COPY --from=builder /app/dist ./dist

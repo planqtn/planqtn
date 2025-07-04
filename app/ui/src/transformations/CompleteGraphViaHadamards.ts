@@ -1,6 +1,8 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
-import { getLegoStyle } from "../LegoStyles";
-import { Legos } from "../lib/Legos";
+import { Connection } from "../lib/types";
+
+import { Legos } from "../features/lego/Legos.ts";
+import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
+import { Operation } from "../features/canvas/OperationHistory.ts";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
@@ -13,7 +15,7 @@ const getDanglingLegs = (
   connections: Connection[]
 ): { lego: DroppedLego; danglingLegs: number[] }[] => {
   return legos.map((lego) => {
-    const numLegs = lego.parity_check_matrix[0].length / 2;
+    const numLegs = lego.numberOfLegs;
     const connectedLegs = new Set<number>();
 
     // Find all connected legs
@@ -67,7 +69,7 @@ export const applyCompleteGraphViaHadamards = async (
       }
       return Legos.createDynamicLego(
         "z_rep_code",
-        lego.parity_check_matrix[0].length / 2 + numNewLegs,
+        lego.numberOfLegs + numNewLegs,
         lego.instanceId,
         lego.x,
         lego.y
@@ -97,23 +99,11 @@ export const applyCompleteGraphViaHadamards = async (
       const lego2DanglingLegs = legoDanglingLegs[j].danglingLegs;
 
       // Create Hadamard lego
-      const hadamardLego: DroppedLego = {
-        id: "h",
-        name: "Hadamard",
-        shortName: "H",
-        description: "Hadamard",
-        instanceId: (maxInstanceId + 1 + hadamardIndex).toString(),
-        x: (lego1.x + lego2.x) / 2,
-        y: (lego1.y + lego2.y) / 2,
-        parity_check_matrix: [
-          [1, 0, 0, 1],
-          [0, 1, 1, 0]
-        ],
-        logical_legs: [],
-        gauge_legs: [],
-        style: getLegoStyle("h", 2),
-        selectedMatrixRows: []
-      };
+      const hadamardLego: DroppedLego = createHadamardLego(
+        (lego1.x + lego2.x) / 2,
+        (lego1.y + lego2.y) / 2,
+        (maxInstanceId + 1 + hadamardIndex).toString()
+      );
       hadamardLegos.push(hadamardLego);
 
       // Find next unused dangling leg for lego1
@@ -128,10 +118,7 @@ export const applyCompleteGraphViaHadamards = async (
         usedLegs1.add(legIndex1);
       } else {
         // Use a new leg if no dangling legs are available
-        legIndex1 =
-          lego1.parity_check_matrix[0].length / 2 -
-          (legos.length - 1) +
-          newLegsOffset1;
+        legIndex1 = lego1.numberOfLegs - (legos.length - 1) + newLegsOffset1;
         newLegsOffset1++;
       }
 
@@ -147,10 +134,7 @@ export const applyCompleteGraphViaHadamards = async (
         usedLegs2.add(legIndex2);
       } else {
         // Use a new leg if no dangling legs are available
-        legIndex2 =
-          lego2.parity_check_matrix[0].length / 2 -
-          (legos.length - j) +
-          usedLegs2.size;
+        legIndex2 = lego2.numberOfLegs - (legos.length - j) + usedLegs2.size;
       }
 
       // Create connections

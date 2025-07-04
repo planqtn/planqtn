@@ -1,31 +1,38 @@
 import { cloneDeep } from "lodash";
-import { Connection, DroppedLego } from "../lib/types.ts";
-import { TensorNetwork } from "../lib/TensorNetwork.ts";
+import { Connection } from "../lib/types.ts";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { findConnectedComponent } from "../lib/TensorNetwork.ts";
 
 /**
+ * Core function that can be called directly with parameters (for tests)
  * Automatically highlights (selects rows of) legos in the network when there is only one possible option.
- * @param tensorNetwork
- * @param connections
- * @param setDroppedLegos
- * @param setTensorNetwork
+ * @param changedLego - The lego that was changed
+ * @param droppedLegos - All dropped legos
+ * @param connections - All connections
+ * @param setDroppedLegos - Function to update dropped legos
  */
 export function simpleAutoFlow(
-  changedLego: DroppedLego | null,
-  tensorNetwork: TensorNetwork | null,
+  changedLego: DroppedLego,
+  droppedLegos: DroppedLego[],
   connections: Connection[],
-  setDroppedLegos: (updateFn: (prev: DroppedLego[]) => DroppedLego[]) => void,
-  setTensorNetwork: (
-    updateFn: (prev: TensorNetwork | null) => TensorNetwork | null
-  ) => void
+  setDroppedLegos: (legos: DroppedLego[]) => void
 ): void {
-  if (!tensorNetwork) {
+  if (!changedLego) {
     return;
   }
+
+  const selectedTensorNetwork = findConnectedComponent(
+    changedLego,
+    droppedLegos,
+    connections
+  );
+
   let count = 0;
   let changed = true;
-  let tnLegos = cloneDeep(tensorNetwork.legos);
+  let tnLegos = cloneDeep(selectedTensorNetwork.legos);
   const seenLegos = new Set<string>();
   const updatedLegosMap: Map<string, number[]> = new Map();
+  let updateNeeded = false;
 
   // count variable shouldn't be needed, but it is a safety measure to prevent infinite loops - can remove later
   while (changed && count < 50) {
@@ -129,29 +136,23 @@ export function simpleAutoFlow(
             updatedLegosMap.set(lego.instanceId, newRows);
             seenLegos.add(lego.instanceId);
             changed = true;
+            updateNeeded = true;
           }
         }
       }
     }
   }
-  // Apply all changes at once to make sure all updates are done
-  setDroppedLegos((prev) =>
-    prev.map((l) =>
-      updatedLegosMap.has(l.instanceId)
-        ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
-        : l
-    )
-  );
 
-  setTensorNetwork((prev) => {
-    if (!prev) return null;
-    const updatedLegos = prev.legos.map((l: DroppedLego) =>
-      updatedLegosMap.has(l.instanceId)
-        ? { ...l, selectedMatrixRows: updatedLegosMap.get(l.instanceId)! }
-        : l
+  if (updateNeeded) {
+    // Apply all changes at once to make sure all updates are done
+    setDroppedLegos(
+      droppedLegos.map((l) =>
+        updatedLegosMap.has(l.instanceId)
+          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
+          : l
+      )
     );
-    return TensorNetwork.fromObj({ ...prev, legos: updatedLegos });
-  });
+  }
 }
 
 /**
@@ -160,7 +161,6 @@ export function simpleAutoFlow(
  * @param targetId
  * @param newRows
  * @param setDroppedLegos
- * @param setTensorNetwork
  * @returns new list of legos after the update
  */
 const updateLego = (
@@ -169,7 +169,7 @@ const updateLego = (
   newRows: number[]
 ): DroppedLego[] => {
   const updatedLegos = tnLegos.map((l) =>
-    l.instanceId === targetId ? { ...l, selectedMatrixRows: newRows } : l
+    l.instanceId === targetId ? l.with({ selectedMatrixRows: newRows }) : l
   );
   return updatedLegos;
 };
@@ -181,7 +181,7 @@ const updateLego = (
  * @returns X and Z parts of the highlight operation
  */
 const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
 
   for (const rowIndex of lego.selectedMatrixRows) {
@@ -204,7 +204,7 @@ const findRowIndices = (
   lego: DroppedLego,
   legIndex: number
 ): { xRowIndices: number[]; zRowIndices: number[] } => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   const xRowIndices: number[] = [];
   const zRowIndices: number[] = [];
 
@@ -222,7 +222,7 @@ const findRowIndices = (
  * @returns boolean true if the lego is simple, false otherwise
  */
 const isSimpleLego = (lego: DroppedLego): boolean => {
-  const nLegoLegs = lego.parity_check_matrix[0].length / 2;
+  const nLegoLegs = lego.numberOfLegs;
   if (lego.parity_check_matrix.length < 2) {
     return true;
   }

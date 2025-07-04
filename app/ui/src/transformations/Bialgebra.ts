@@ -1,7 +1,9 @@
-import { DroppedLego, Connection, Operation } from "../lib/types";
-import { Z_REP_CODE, X_REP_CODE } from "../LegoStyles";
+import { Connection } from "../lib/types";
+import { Operation } from "../features/canvas/OperationHistory.ts";
+import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
 import _ from "lodash";
-import { Legos } from "../lib/Legos";
+import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { Legos } from "../features/lego/Legos.ts";
 
 export function canDoBialgebra(
   selectedLegos: DroppedLego[],
@@ -49,8 +51,8 @@ export async function applyBialgebra(
       !conn.containsLego(lego1.instanceId)
   );
 
-  const n_legs_lego1 = lego1.parity_check_matrix[0].length / 2;
-  const n_legs_lego2 = lego2.parity_check_matrix[0].length / 2;
+  const n_legs_lego1 = lego1.numberOfLegs;
+  const n_legs_lego2 = lego2.numberOfLegs;
 
   // Determine which lego is Z and which is X
   const isLego1Z = lego1.id === Z_REP_CODE;
