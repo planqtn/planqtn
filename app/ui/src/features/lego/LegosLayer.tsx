@@ -45,7 +45,7 @@ export const LegosLayer: React.FC = () => {
     return visibleLegos
       .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
       .map((legoInstanceId) => (
-        <Suspense fallback={<div>Loading...</div>} key={legoInstanceId}>
+        <Suspense fallback={<div></div>} key={legoInstanceId}>
           <DroppedLegoDisplay
             key={legoInstanceId}
             legoInstanceId={legoInstanceId}
