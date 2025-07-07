@@ -7,7 +7,7 @@ import {
   getZoomAwareStrokeWidth,
   getSmartLegoSize
 } from "../../utils/coordinateTransforms";
-import { LogicalPoint } from "../../types/coordinates";
+import { CanvasPoint, LogicalPoint } from "../../types/coordinates";
 
 export const ConnectionsLayer: React.FC = () => {
   const connections = useCanvasStore((state) => state.connections);
@@ -169,26 +169,28 @@ export const ConnectionsLayer: React.FC = () => {
           !toLego.alwaysShowLegs &&
           (!toLegHighlighted ? !fromLegHighlighted : colorsMatch);
 
-        // Final points with lego positions - apply smart zoom transformations
-        // Scale leg positions to match smart-sized legos
-        const fromBasePoint = hideFromLeg
-          ? new LogicalPoint(
+        // Apply zoom transformations to connection points using new coordinate system
+        const fromPoint = viewport
+          .fromLogicalToCanvas(
+            new LogicalPoint(
               fromLego.logicalPosition.x,
               fromLego.logicalPosition.y
             )
-          : new LogicalPoint(
-              fromLego.logicalPosition.x + fromPos.endX * fromScale,
-              fromLego.logicalPosition.y + fromPos.endY * fromScale
-            );
-        const toBasePoint = hideToLeg
-          ? new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
-          : new LogicalPoint(
-              toLego.logicalPosition.x + toPos.endX * toScale,
-              toLego.logicalPosition.y + toPos.endY * toScale
-            );
-        // Apply zoom transformations to connection points using new coordinate system
-        const fromPoint = viewport.fromLogicalToCanvas(fromBasePoint);
-        const toPoint = viewport.fromLogicalToCanvas(toBasePoint);
+          )
+          .plus(
+            new CanvasPoint(fromPos.endX, fromPos.endY).factor(
+              hideFromLeg ? 0 : fromScale
+            )
+          );
+        const toPoint = viewport
+          .fromLogicalToCanvas(
+            new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
+          )
+          .plus(
+            new CanvasPoint(toPos.endX, toPos.endY).factor(
+              hideToLeg ? 0 : toScale
+            )
+          );
 
         // Calculate control points for the curve - scale with zoom for better topology
         const baseControlPointDistance = 30;
@@ -313,15 +315,15 @@ export const ConnectionsLayer: React.FC = () => {
     const fromScale = fromSmartSize / fromOriginalSize;
 
     const fromBasePoint = new LogicalPoint(
-      fromLego.logicalPosition.x + fromPos.endX * fromScale,
-      fromLego.logicalPosition.y + fromPos.endY * fromScale
+      fromLego.logicalPosition.x,
+      fromLego.logicalPosition.y
     );
 
     // Apply zoom transformations to drag line using new coordinate system
-    const fromPoint = viewport.fromLogicalToCanvas(fromBasePoint);
-    const legoCenter = viewport.fromLogicalToCanvas(
-      new LogicalPoint(fromLego.logicalPosition.x, fromLego.logicalPosition.y)
-    );
+    const fromPoint = viewport
+      .fromLogicalToCanvas(fromBasePoint)
+      .plus(new CanvasPoint(fromPos.endX, fromPos.endY).factor(fromScale));
+    const legoCenter = viewport.fromLogicalToCanvas(fromBasePoint);
 
     const dragEndPoint = viewport.fromWindowToCanvas(
       legDragState.currentMouseWindowPoint
