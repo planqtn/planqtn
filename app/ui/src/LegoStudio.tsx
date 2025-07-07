@@ -142,13 +142,14 @@ const LegoStudioView: React.FC = () => {
   );
   const setError = useCanvasStore((state) => state.setError);
 
-  const { canvasDragState } = useCanvasDragStateStore();
-
-  const { viewport } = useCanvasStore();
-  const zoomLevel = viewport.zoomLevel;
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
+
+  const { canvasDragState } = useCanvasDragStateStore();
+  const viewport = useCanvasStore((state) => state.viewport);
+  const zoomLevel = viewport.zoomLevel;
+
   // Use centralized TensorNetwork store
 
   const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
@@ -204,6 +205,7 @@ const LegoStudioView: React.FC = () => {
 
   // Add title effect at the top
   useEffect(() => {
+    console.log("location/navigate changed", location);
     const params = new URLSearchParams(location.search);
     let title = params.get("title");
 
@@ -236,6 +238,7 @@ const LegoStudioView: React.FC = () => {
 
   // Add a new effect to handle initial URL state
   useEffect(() => {
+    console.log("decodeCanvasState changed", decodeCanvasState);
     const handleHashChange = async () => {
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const stateParam = hashParams.get("state");

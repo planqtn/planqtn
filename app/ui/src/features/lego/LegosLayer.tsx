@@ -8,7 +8,7 @@ const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
-  const visibleLegos = useVisibleLegoIds();
+  const visibleLegoIds = useVisibleLegoIds();
   const viewport = useCanvasStore((state) => state.viewport);
   // Get drag state to hide dragged legos (proxy will show instead)
   const { dragState, tensorNetwork } = useCanvasStore(
@@ -38,24 +38,23 @@ export const LegosLayer: React.FC = () => {
     }
 
     return (legoId: string) => draggedIds.has(legoId);
-  }, [dragState, tensorNetwork]);
+  }, [dragState?.draggingStage === DraggingStage.DRAGGING]);
 
-  // Render only visible legos (virtualization)
   const renderedLegos = useMemo(() => {
-    return visibleLegos
+    return visibleLegoIds
       .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
       .map((legoInstanceId) => (
-        <Suspense fallback={<div></div>} key={legoInstanceId}>
-          <DroppedLegoDisplay
-            key={legoInstanceId}
-            legoInstanceId={legoInstanceId}
-            demoMode={false}
-          />
-        </Suspense>
+        <DroppedLegoDisplay
+          key={legoInstanceId}
+          legoInstanceId={legoInstanceId}
+          demoMode={false}
+        />
       ));
-  }, [visibleLegos, isDraggedLego, viewport.logicalPanOffset]);
+  }, [visibleLegoIds, isDraggedLego, viewport]);
 
-  return <>{renderedLegos}</>;
+  return (
+    <Suspense fallback={<div>Loading legos...</div>}>{renderedLegos}</Suspense>
+  );
 };
 
 LegosLayer.displayName = "LegosLayer";

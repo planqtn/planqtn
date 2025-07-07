@@ -13,11 +13,9 @@ const SingleLegoDragProxy: React.FC<{
   mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const {
-    legoDragState: legoDragState,
-    viewport,
-    droppedLegos
-  } = useCanvasStore();
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
+  const viewport = useCanvasStore((state) => state.viewport);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const zoomLevel = viewport.zoomLevel;
 
   // Memoize the dragged lego to prevent stale references
@@ -98,8 +96,10 @@ const GroupDragProxy: React.FC<{
   mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { legoDragState, groupDragState, viewport, droppedLegos } =
-    useCanvasStore();
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
+  const viewport = useCanvasStore((state) => state.viewport);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
 
   const zoomLevel = viewport.zoomLevel;
 
@@ -204,8 +204,10 @@ const GroupDragProxy: React.FC<{
 const BuildingBlockDragProxy: React.FC<{
   canvasRef: React.RefObject<HTMLDivElement | null> | null;
 }> = ({ canvasRef }) => {
-  const { buildingBlockDragState } = useBuildingBlockDragStateStore();
-  const { viewport } = useCanvasStore();
+  const buildingBlockDragState = useBuildingBlockDragStateStore(
+    (state) => state.buildingBlockDragState
+  );
+  const viewport = useCanvasStore((state) => state.viewport);
   const zoomLevel = viewport.zoomLevel;
 
   if (

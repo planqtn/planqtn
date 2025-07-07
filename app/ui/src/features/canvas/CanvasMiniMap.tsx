@@ -48,15 +48,21 @@ export const CanvasMiniMap: React.FC = () => {
     "orange.400"
   );
 
-  const {
-    viewport,
-    calculateDroppedLegoBoundingBox,
-    calculateTensorNetworkBoundingBox,
-    setCanvasPanelDimensions: setPanelDimensions,
-    setZoomToMouse,
-    setPanOffset,
-    viewport: { zoomLevel }
-  } = useCanvasStore();
+  const viewport = useCanvasStore((state) => state.viewport);
+  const zoomLevel = viewport.zoomLevel;
+  const calculateDroppedLegoBoundingBox = useCanvasStore(
+    (state) => state.calculateDroppedLegoBoundingBox
+  );
+  const calculateTensorNetworkBoundingBox = useCanvasStore(
+    (state) => state.calculateTensorNetworkBoundingBox
+  );
+
+  const setPanelDimensions = useCanvasStore(
+    (state) => state.setCanvasPanelDimensions
+  );
+
+  const setZoomToMouse = useCanvasStore((state) => state.setZoomToMouse);
+  const setPanOffset = useCanvasStore((state) => state.setPanOffset);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -168,8 +174,6 @@ export const CanvasMiniMap: React.FC = () => {
       viewport.logicalPanOffset.x + viewport.logicalWidth,
       viewport.logicalPanOffset.y + viewport.logicalHeight
     );
-    console.log("vpTopLeft", vpTopLeft);
-    console.log("vpBotRight", vpBotRight);
     // Content bounding box
     const contentRect = droppedLegoBoundingBox
       ? {
@@ -207,10 +211,6 @@ export const CanvasMiniMap: React.FC = () => {
       selectionRect
     };
   }, [droppedLegoBoundingBox, tensorNetworkBoundingBox, viewport]);
-
-  console.log("vprect", minimap.vpRect);
-  console.log("contentRect", minimap.contentRect);
-  console.log("selectionRect", minimap.selectionRect);
 
   // Drag logic
   const [dragging, setDragging] = useState(false);

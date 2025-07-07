@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, Suspense } from "react";
 import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
@@ -367,24 +367,26 @@ export const ConnectionsLayer: React.FC = () => {
   }, [legDragState, legoMap, zoomLevel, viewport]);
 
   return (
-    <svg
-      id="connections-svg"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        userSelect: "none"
-      }}
-    >
-      {/* Existing connections */}
-      <g style={{ pointerEvents: "all" }}>{renderedConnections}</g>
+    <Suspense fallback={<div>Loading connections...</div>}>
+      <svg
+        id="connections-svg"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+          userSelect: "none"
+        }}
+      >
+        {/* Existing connections */}
+        <g style={{ pointerEvents: "all" }}>{renderedConnections}</g>
 
-      {/* Temporary line while dragging */}
-      {tempDragLine}
-    </svg>
+        {/* Temporary line while dragging */}
+        {tempDragLine}
+      </svg>
+    </Suspense>
   );
 };
 
