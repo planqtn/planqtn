@@ -41,7 +41,6 @@ export const CanvasMiniMap: React.FC = () => {
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const schematicBg = useColorModeValue("gray.50", "gray.700");
   const viewportColor = useColorModeValue("blue.400", "blue.300");
   const droppedLegoBoundingColor = useColorModeValue("gray.600", "gray.400");
   const tensorNetworkBoundingColor = useColorModeValue(
