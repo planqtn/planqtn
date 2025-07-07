@@ -5,7 +5,8 @@ import { LegStyle } from "./LegoStyles";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import {
   getZoomAwareStrokeWidth,
-  getSmartLegoSize
+  getSmartLegoSize,
+  getLevelOfDetail
 } from "../../utils/coordinateTransforms";
 import { CanvasPoint, LogicalPoint } from "../../types/coordinates";
 
@@ -121,14 +122,6 @@ export const ConnectionsLayer: React.FC = () => {
         const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
         const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
 
-        // Calculate scale factors for smart sizing
-        const fromOriginalSize = fromLego.style!.size;
-        const toOriginalSize = toLego.style!.size;
-        const fromSmartSize = getSmartLegoSize(fromOriginalSize, zoomLevel);
-        const toSmartSize = getSmartLegoSize(toOriginalSize, zoomLevel);
-        const fromScale = fromSmartSize / fromOriginalSize;
-        const toScale = toSmartSize / toOriginalSize;
-
         // Use pre-computed maps for O(1) lookup
         const fromLegConnected = connectedLegsMap.has(
           `${fromLego.instanceId}-${conn.from.legIndex}`
@@ -151,6 +144,16 @@ export const ConnectionsLayer: React.FC = () => {
           fromLegData;
         const { isHighlighted: toLegHighlighted } = toLegData;
 
+        const fromOriginalSize = fromLego.style!.size;
+        const fromSmartSize = getSmartLegoSize(fromOriginalSize, zoomLevel);
+        const fromLod = getLevelOfDetail(fromSmartSize, zoomLevel);
+        const toOriginalSize = toLego.style!.size;
+        const toSmartSize = getSmartLegoSize(toOriginalSize, zoomLevel);
+        const toLod = getLevelOfDetail(toSmartSize, zoomLevel);
+
+        const fromShowLegs = fromLod.showLegs;
+        const toShowLegs = toLod.showLegs;
+
         // Use the new connection highlight states from the store
         const colorsMatch = useCanvasStore
           .getState()
@@ -158,16 +161,18 @@ export const ConnectionsLayer: React.FC = () => {
 
         // Determine if legs should be hidden
         const hideFromLeg =
-          hideConnectedLegs &&
-          fromLegConnected &&
-          !fromLego.alwaysShowLegs &&
-          (!fromLegHighlighted ? !toLegHighlighted : colorsMatch);
+          !fromShowLegs ||
+          (hideConnectedLegs &&
+            fromLegConnected &&
+            !fromLego.alwaysShowLegs &&
+            (!fromLegHighlighted ? !toLegHighlighted : colorsMatch));
 
         const hideToLeg =
-          hideConnectedLegs &&
-          toLegConnected &&
-          !toLego.alwaysShowLegs &&
-          (!toLegHighlighted ? !fromLegHighlighted : colorsMatch);
+          !toShowLegs ||
+          (hideConnectedLegs &&
+            toLegConnected &&
+            !toLego.alwaysShowLegs &&
+            (!toLegHighlighted ? !fromLegHighlighted : colorsMatch));
 
         // Apply zoom transformations to connection points using new coordinate system
         const fromPoint = viewport
@@ -179,7 +184,7 @@ export const ConnectionsLayer: React.FC = () => {
           )
           .plus(
             new CanvasPoint(fromPos.endX, fromPos.endY).factor(
-              hideFromLeg ? 0 : fromScale
+              hideFromLeg ? 0 : 1
             )
           );
         const toPoint = viewport
@@ -187,9 +192,7 @@ export const ConnectionsLayer: React.FC = () => {
             new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
           )
           .plus(
-            new CanvasPoint(toPos.endX, toPos.endY).factor(
-              hideToLeg ? 0 : toScale
-            )
+            new CanvasPoint(toPos.endX, toPos.endY).factor(hideToLeg ? 0 : 1)
           );
 
         // Calculate control points for the curve - scale with zoom for better topology
@@ -271,7 +274,7 @@ export const ConnectionsLayer: React.FC = () => {
               }}
             />
             {/* Warning sign if operators don't match */}
-            {!colorsMatch && (
+            {!colorsMatch && fromLod.showText && toLod.showText && (
               <text
                 x={midPoint.x}
                 y={midPoint.y}
@@ -308,12 +311,7 @@ export const ConnectionsLayer: React.FC = () => {
 
     // Calculate position using shared function with smart scaling
     const fromPos = fromLego.style!.legStyles[legDragState.legIndex].position;
-
     // Calculate scale factor for smart sizing
-    const fromOriginalSize = fromLego.style!.size;
-    const fromSmartSize = getSmartLegoSize(fromOriginalSize, zoomLevel);
-    const fromScale = fromSmartSize / fromOriginalSize;
-
     const fromBasePoint = new LogicalPoint(
       fromLego.logicalPosition.x,
       fromLego.logicalPosition.y
@@ -322,7 +320,7 @@ export const ConnectionsLayer: React.FC = () => {
     // Apply zoom transformations to drag line using new coordinate system
     const fromPoint = viewport
       .fromLogicalToCanvas(fromBasePoint)
-      .plus(new CanvasPoint(fromPos.endX, fromPos.endY).factor(fromScale));
+      .plus(new CanvasPoint(fromPos.endX, fromPos.endY));
     const legoCenter = viewport.fromLogicalToCanvas(fromBasePoint);
 
     const dragEndPoint = viewport.fromWindowToCanvas(

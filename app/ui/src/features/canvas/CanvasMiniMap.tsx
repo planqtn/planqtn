@@ -26,9 +26,9 @@ import {
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { LogicalPoint } from "../../types/coordinates";
 
-const MINIMAP_WIDTH = 180;
+const MINIMAP_WIDTH = 80;
 const MINIMAP_HEIGHT = 60;
-const PADDING = 40; // logical units
+const PADDING = 50; // logical units
 const MIN_MINIMAP_PADDING = 10; // px, minimum padding in minimap
 
 export const CanvasMiniMap: React.FC = () => {
@@ -49,7 +49,6 @@ export const CanvasMiniMap: React.FC = () => {
     "orange.400"
   );
 
-  // Use new viewport system from canvasUI store
   const {
     viewport,
     calculateDroppedLegoBoundingBox,
@@ -60,9 +59,6 @@ export const CanvasMiniMap: React.FC = () => {
     viewport: { zoomLevel }
   } = useCanvasStore();
 
-  // Also track selection state for reactivity
-
-  // Track canvas panel dimensions
   useEffect(() => {
     const updateDimensions = () => {
       const canvasRect = canvasRef?.current?.getBoundingClientRect();
@@ -173,6 +169,8 @@ export const CanvasMiniMap: React.FC = () => {
       viewport.logicalPanOffset.x + viewport.logicalWidth,
       viewport.logicalPanOffset.y + viewport.logicalHeight
     );
+    console.log("vpTopLeft", vpTopLeft);
+    console.log("vpBotRight", vpBotRight);
     // Content bounding box
     const contentRect = droppedLegoBoundingBox
       ? {
@@ -211,6 +209,10 @@ export const CanvasMiniMap: React.FC = () => {
     };
   }, [droppedLegoBoundingBox, tensorNetworkBoundingBox, viewport]);
 
+  console.log("vprect", minimap.vpRect);
+  console.log("contentRect", minimap.contentRect);
+  console.log("selectionRect", minimap.selectionRect);
+
   // Drag logic
   const [dragging, setDragging] = useState(false);
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
@@ -233,24 +235,6 @@ export const CanvasMiniMap: React.FC = () => {
             x: mx - minimap.vpRect.x,
             y: my - minimap.vpRect.y
           };
-        } else {
-          // Click-to-jump
-          const lx =
-            mx / minimap.scale +
-            (droppedLegoBoundingBox
-              ? droppedLegoBoundingBox.minX - PADDING
-              : viewport.logicalPanOffset.x);
-          const ly =
-            my / minimap.scale +
-            (droppedLegoBoundingBox
-              ? droppedLegoBoundingBox.minY - PADDING
-              : viewport.logicalPanOffset.y);
-          setPanOffset(
-            new LogicalPoint(
-              lx - viewport.logicalWidth / 2,
-              ly - viewport.logicalHeight / 2
-            )
-          );
         }
       }
     },
@@ -264,19 +248,13 @@ export const CanvasMiniMap: React.FC = () => {
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
         // Clamp viewport inside minimap
-        const newMiniX = Math.max(
-          0,
-          Math.min(
-            MINIMAP_WIDTH - minimap.vpRect.w,
-            mx - (dragOffset.current?.x ?? 0)
-          )
+        const newMiniX = Math.min(
+          MINIMAP_WIDTH - minimap.vpRect.w,
+          mx - (dragOffset.current?.x ?? 0)
         );
-        const newMiniY = Math.max(
-          0,
-          Math.min(
-            MINIMAP_HEIGHT - minimap.vpRect.h,
-            my - (dragOffset.current?.y ?? 0)
-          )
+        const newMiniY = Math.min(
+          MINIMAP_HEIGHT - minimap.vpRect.h,
+          my - (dragOffset.current?.y ?? 0)
         );
         // Convert back to logical
         const lx =
@@ -398,6 +376,18 @@ export const CanvasMiniMap: React.FC = () => {
     setIsExpanded(!isExpanded);
   }, [isExpanded]);
 
+  const mouseInViewport = useCallback(
+    (e: React.MouseEvent) => {
+      return (
+        e.clientX >= minimap.vpRect.x &&
+        e.clientX <= minimap.vpRect.x + minimap.vpRect.w &&
+        e.clientY >= minimap.vpRect.y &&
+        e.clientY <= minimap.vpRect.y + minimap.vpRect.h
+      );
+    },
+    [minimap]
+  );
+
   const zoomPercentage = Math.round(zoomLevel * 100);
 
   return (
@@ -412,7 +402,7 @@ export const CanvasMiniMap: React.FC = () => {
       borderRadius="md"
       boxShadow="lg"
       zIndex={1000}
-      minWidth="180px"
+      minWidth={`${MINIMAP_WIDTH + 20}px`}
     >
       {/* Header with toggle button and help icon */}
       <HStack
@@ -458,19 +448,18 @@ export const CanvasMiniMap: React.FC = () => {
 
       {/* Collapsible content */}
       <Collapse in={isExpanded} animateOpacity>
-        <VStack p={2} spacing={2} align="stretch">
+        <VStack p={2} spacing={2} align="center">
           {/* Schematic viewport representation */}
           <Box>
             <Box
               ref={schematicRef}
               width={`${MINIMAP_WIDTH}px`}
               height={`${MINIMAP_HEIGHT}px`}
-              bg={schematicBg}
-              border="1px solid"
-              borderColor={borderColor}
               borderRadius="sm"
               position="relative"
-              cursor={dragging ? "grabbing" : "grab"}
+              cursor={
+                !mouseInViewport ? "default" : dragging ? "grabbing" : "grab"
+              }
               onMouseDown={handleSchematicMouseDown}
               onMouseMove={handleSchematicMouseMove}
             >
@@ -481,20 +470,17 @@ export const CanvasMiniMap: React.FC = () => {
                 left="0"
                 width="100%"
                 height="100%"
-                opacity={0.2}
-                backgroundImage="radial-gradient(circle, currentColor 1px, transparent 1px)"
-                backgroundSize="8px 8px"
-                color="gray.400"
+                border="none"
               />
 
               {/* Content bounding box (light gray rectangle showing where all legos are) */}
               {minimap.contentRect && (
                 <Box
                   position="absolute"
-                  left={minimap.contentRect.x}
-                  top={minimap.contentRect.y}
-                  width={minimap.contentRect.w}
-                  height={minimap.contentRect.h}
+                  left={`${minimap.contentRect.x}px`}
+                  top={`${minimap.contentRect.y}px`}
+                  width={`${minimap.contentRect.w}px`}
+                  height={`${minimap.contentRect.h}px`}
                   bg={droppedLegoBoundingColor}
                   opacity={0.3}
                   borderRadius="1px"
@@ -505,10 +491,10 @@ export const CanvasMiniMap: React.FC = () => {
               {minimap.selectionRect && (
                 <Box
                   position="absolute"
-                  left={minimap.selectionRect.x}
-                  top={minimap.selectionRect.y}
-                  width={minimap.selectionRect.w}
-                  height={minimap.selectionRect.h}
+                  left={`${minimap.selectionRect.x}px`}
+                  top={`${minimap.selectionRect.y}px`}
+                  width={`${minimap.selectionRect.w}px`}
+                  height={`${minimap.selectionRect.h}px`}
                   border="2px solid"
                   borderColor={tensorNetworkBoundingColor}
                   bg={`${tensorNetworkBoundingColor}20`}
@@ -519,10 +505,10 @@ export const CanvasMiniMap: React.FC = () => {
               {/* Movable viewport indicator (blue rectangle) */}
               <Box
                 position="absolute"
-                left={minimap.vpRect.x}
-                top={minimap.vpRect.y}
-                width={minimap.vpRect.w}
-                height={minimap.vpRect.h}
+                left={`${minimap.vpRect.x}px`}
+                top={`${minimap.vpRect.y}px`}
+                width={`${minimap.vpRect.w}px`}
+                height={`${minimap.vpRect.h}px`}
                 border="2px solid"
                 borderColor={viewportColor}
                 bg={`${viewportColor}20`}

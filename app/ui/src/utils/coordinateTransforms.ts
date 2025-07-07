@@ -25,10 +25,10 @@ export const getLevelOfDetail = (
   //   originalSize?: number
 ) => {
   return {
-    showText: zoomLevel >= 0.3,
+    showText: zoomLevel >= 0.8,
     showShortName: zoomLevel >= 1 || effectiveSize >= 65,
-    showLegs: zoomLevel > 0.3,
-    showLegLabels: effectiveSize >= 55
+    showLegs: zoomLevel > 0.8,
+    showLegLabels: zoomLevel >= 0.9
   };
 };
 
