@@ -1,6 +1,7 @@
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { CanvasStateSerializer } from "../canvas/CanvasStateSerializer";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { LogicalPoint } from "../../types/coordinates";
 
 export interface CustomLegoCreationOptions {
   stateSerializer?: CanvasStateSerializer;
@@ -33,8 +34,7 @@ export class CustomLegoService {
         gauge_legs: []
       },
 
-      position.x,
-      position.y,
+      new LogicalPoint(position.x, position.y),
       instanceId
     );
 

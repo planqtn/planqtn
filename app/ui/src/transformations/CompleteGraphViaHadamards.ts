@@ -1,8 +1,9 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 
 import { Legos } from "../features/lego/Legos.ts";
 import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
 import { Operation } from "../features/canvas/OperationHistory.ts";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
@@ -71,8 +72,7 @@ export const applyCompleteGraphViaHadamards = async (
         "z_rep_code",
         lego.numberOfLegs + numNewLegs,
         lego.instanceId,
-        lego.x,
-        lego.y
+        lego.logicalPosition
       );
     }
   );
@@ -100,8 +100,10 @@ export const applyCompleteGraphViaHadamards = async (
 
       // Create Hadamard lego
       const hadamardLego: DroppedLego = createHadamardLego(
-        (lego1.x + lego2.x) / 2,
-        (lego1.y + lego2.y) / 2,
+        new LogicalPoint(
+          (lego1.logicalPosition.x + lego2.logicalPosition.x) / 2,
+          (lego1.logicalPosition.y + lego2.logicalPosition.y) / 2
+        ),
         (maxInstanceId + 1 + hadamardIndex).toString()
       );
       hadamardLegos.push(hadamardLego);

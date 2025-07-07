@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export enum DraggingStage {
   NOT_DRAGGING,
@@ -10,17 +11,23 @@ export enum DraggingStage {
 
 export interface LegoDragState {
   draggingStage: DraggingStage;
-  draggedLegoIndex: number;
-  startX: number;
-  startY: number;
-  originalX: number;
-  originalY: number;
+  draggedLegoInstanceId: string;
+  startMouseWindowPoint: WindowPoint;
+  startLegoLogicalPoint: LogicalPoint;
 }
 
 export interface LegoDragStateSlice {
-  dragState: LegoDragState;
-  setDragState: (dragState: LegoDragState) => void;
+  legoDragState: LegoDragState;
+  setLegoDragState: (dragState: LegoDragState) => void;
+  resetLegoDragState: (justFinished?: boolean) => void;
 }
+
+const initialLegoDragState: LegoDragState = {
+  draggingStage: DraggingStage.NOT_DRAGGING,
+  draggedLegoInstanceId: "",
+  startMouseWindowPoint: new WindowPoint(0, 0),
+  startLegoLogicalPoint: new LogicalPoint(0, 0)
+};
 
 export const createLegoDragStateSlice: StateCreator<
   CanvasStore,
@@ -28,18 +35,22 @@ export const createLegoDragStateSlice: StateCreator<
   [],
   LegoDragStateSlice
 > = (set) => ({
-  dragState: {
-    draggingStage: DraggingStage.NOT_DRAGGING,
-    draggedLegoIndex: -1,
-    startX: 0,
-    startY: 0,
-    originalX: 0,
-    originalY: 0
+  legoDragState: initialLegoDragState,
+
+  setLegoDragState: (dragState: LegoDragState) => {
+    set((state) => {
+      state.legoDragState = dragState;
+    });
   },
 
-  setDragState: (dragState: LegoDragState) => {
+  resetLegoDragState: (justFinished?: boolean) => {
     set((state) => {
-      state.dragState = dragState;
+      state.legoDragState = justFinished
+        ? {
+            ...initialLegoDragState,
+            draggingStage: DraggingStage.JUST_FINISHED
+          }
+        : initialLegoDragState;
     });
   }
 });

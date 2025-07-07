@@ -16,7 +16,7 @@ import {
 import { useState, useMemo } from "react";
 import { QuestionOutlineIcon } from "@chakra-ui/icons";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork";
-import { Connection } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 
 interface WeightEnumeratorCalculationDialogProps {
   open: boolean;

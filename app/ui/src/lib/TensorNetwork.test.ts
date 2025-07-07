@@ -1,7 +1,8 @@
 import { TensorNetwork } from "./TensorNetwork";
-import { Connection } from "./types";
+import { Connection } from "../stores/connectionStore";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 describe("TensorNetwork", () => {
   it("should correctly conjoin nodes after double tracing 602 with identity stoppers", () => {
@@ -25,8 +26,7 @@ describe("TensorNetwork", () => {
           logical_legs: [],
           gauge_legs: []
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "0"
       ),
       new DroppedLego(
@@ -40,8 +40,7 @@ describe("TensorNetwork", () => {
           logical_legs: [],
           gauge_legs: []
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "stop1"
       ),
       new DroppedLego(
@@ -55,8 +54,7 @@ describe("TensorNetwork", () => {
           logical_legs: [],
           gauge_legs: []
         },
-        0,
-        0,
+        new LogicalPoint(0, 0),
         "stop2"
       )
     ];
@@ -115,8 +113,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "1"
         ),
         new DroppedLego(
@@ -136,8 +133,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "2"
         ),
         new DroppedLego(
@@ -157,8 +153,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "3"
         ),
         new DroppedLego(
@@ -178,8 +173,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "4"
         ),
         new DroppedLego(
@@ -199,8 +193,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "5"
         ),
         new DroppedLego(
@@ -220,8 +213,7 @@ describe("TensorNetwork", () => {
             is_dynamic: false,
             parameters: {}
           },
-          0,
-          0,
+          new LogicalPoint(0, 0),
           "6"
         )
       ],

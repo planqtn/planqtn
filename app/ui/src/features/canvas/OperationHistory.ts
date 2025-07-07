@@ -1,4 +1,4 @@
-import { Connection } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
 import * as _ from "lodash";
 

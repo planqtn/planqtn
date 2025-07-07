@@ -1,5 +1,6 @@
-import { Connection } from "../../lib/types.ts";
+import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 // Add these helper functions near the top of the file
 export const pointToLineDistance = (
@@ -41,7 +42,7 @@ export const pointToLineDistance = (
 };
 
 export const findClosestConnection = (
-  dropPosition: { x: number; y: number },
+  dropPosition: LogicalPoint,
   droppedLegos: DroppedLego[],
   connections: Connection[]
 ): Connection | null => {
@@ -59,16 +60,17 @@ export const findClosestConnection = (
     const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
     const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
 
-    const fromPoint = {
-      x: fromLego.x + fromPos.endX,
-      y: fromLego.y + fromPos.endY
-    };
-    const toPoint = {
-      x: toLego.x + toPos.endX,
-      y: toLego.y + toPos.endY
-    };
+    // Connection positions are in logical canvas coordinates
+    const fromPoint = new LogicalPoint(
+      fromLego.logicalPosition.x + fromPos.endX,
+      fromLego.logicalPosition.y + fromPos.endY
+    );
+    const toPoint = new LogicalPoint(
+      toLego.logicalPosition.x + toPos.endX,
+      toLego.logicalPosition.y + toPos.endY
+    );
 
-    // Calculate distance from point to line segment
+    // Calculate distance from point to line segment - all in canvas coordinates
     const distance = pointToLineDistance(
       dropPosition.x,
       dropPosition.y,
@@ -78,7 +80,7 @@ export const findClosestConnection = (
       toPoint.y
     );
     if (distance < minDistance && distance < 40) {
-      // 20 pixels threshold
+      // 40 pixels threshold
       minDistance = distance;
       closestConnection = conn;
     }
@@ -89,10 +91,10 @@ export const findClosestConnection = (
 
 // Add this before the App component
 export const findClosestDanglingLeg = (
-  dropPosition: { x: number; y: number },
+  dropPosition: LogicalPoint,
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): { lego: DroppedLego; legIndex: number } | null => {
+): { lego: DroppedLego; legIndex: number; distance: number } | null => {
   let closestLego: DroppedLego | null = null;
   let closestLegIndex: number = -1;
   let minDistance = Infinity;
@@ -110,8 +112,11 @@ export const findClosestDanglingLeg = (
       if (isConnected) continue;
 
       const pos = lego.style!.legStyles[legIndex].position;
-      const legX = lego.x + pos.endX;
-      const legY = lego.y + pos.endY;
+      // Leg positions are in logical canvas coordinates
+      const legX = lego.logicalPosition.x + pos.endX;
+      const legY = lego.logicalPosition.y + pos.endY;
+
+      // Calculate distance in canvas coordinate space
       const distance = Math.sqrt(
         Math.pow(dropPosition.x - legX, 2) + Math.pow(dropPosition.y - legY, 2)
       );
@@ -126,6 +131,6 @@ export const findClosestDanglingLeg = (
   });
 
   return closestLego && closestLegIndex !== -1
-    ? { lego: closestLego, legIndex: closestLegIndex }
+    ? { lego: closestLego, legIndex: closestLegIndex, distance: minDistance }
     : null;
 };

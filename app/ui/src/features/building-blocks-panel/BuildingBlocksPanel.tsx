@@ -24,6 +24,7 @@ import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 interface BuildingBlocksPanelProps {
   isUserLoggedIn?: boolean;
@@ -51,12 +52,14 @@ const getDemoLego = (
   demoLego: DroppedLego;
   boundingBox: { left: number; top: number; width: number; height: number };
 } => {
-  const originLego = new DroppedLego(lego, 0, 0, "-1");
+  const originLego = new DroppedLego(lego, new LogicalPoint(0, 0), "-1");
 
   const boundingBox = getLegoBoundingBox(originLego, true);
   const demoLego = originLego.with({
-    x: -boundingBox.left / 2,
-    y: -boundingBox.top / 2
+    logicalPosition: new LogicalPoint(
+      -boundingBox.left / 2,
+      -boundingBox.top / 2
+    )
   });
 
   return {
@@ -250,16 +253,16 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
           "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
         e.dataTransfer.setDragImage(dragImage, 0, 0);
 
+        const logicalPosition = new LogicalPoint(0, 0);
+
         if (lego.id === "custom") {
           // Store the drop position for the custom lego
-          const rect = e.currentTarget.getBoundingClientRect();
           // Note: position will be set when the custom lego is dropped, not during drag start
           // Set the draggedLego state for custom legos
 
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
+            logicalPosition,
             newInstanceId()
           );
           setDraggedLego(draggedLego);
@@ -272,11 +275,10 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
           });
         } else {
           // Handle regular lego drag
-          const rect = e.currentTarget.getBoundingClientRect();
+
           const draggedLego: DroppedLego = new DroppedLego(
             lego,
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
+            logicalPosition,
             newInstanceId()
           );
           setDraggedLego(draggedLego);

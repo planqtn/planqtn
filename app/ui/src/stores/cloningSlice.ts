@@ -2,7 +2,8 @@ import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
 import { DraggingStage } from "./legoDragState";
-import { Connection } from "../lib/types";
+import { Connection } from "./connectionStore";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
@@ -21,6 +22,7 @@ export const useCloningSlice: StateCreator<
       tensorNetwork &&
       tensorNetwork?.legos.some((l) => l.instanceId === clickedLego.instanceId);
 
+    const cloneOffset = new LogicalPoint(20, 20);
     // Check if we're cloning multiple legos
     const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
@@ -34,8 +36,7 @@ export const useCloningSlice: StateCreator<
       instanceIdMap.set(l.instanceId, newId);
       return l.with({
         instanceId: newId,
-        x: l.x + 20,
-        y: l.y + 20
+        logicalPosition: l.logicalPosition.plus(cloneOffset)
       });
     });
 
@@ -65,9 +66,9 @@ export const useCloningSlice: StateCreator<
     get().addConnections(newConnections);
 
     // Set up drag state for the group
-    const positions: { [instanceId: string]: { x: number; y: number } } = {};
+    const positions: { [instanceId: string]: LogicalPoint } = {};
     newLegos.forEach((l) => {
-      positions[l.instanceId] = { x: l.x, y: l.y };
+      positions[l.instanceId] = l.logicalPosition;
     });
 
     if (newLegos.length > 1) {
@@ -77,18 +78,13 @@ export const useCloningSlice: StateCreator<
       });
     }
 
-    // Set up initial drag state for the first lego
-    // Get the current droppedLegos length to find the correct index
-    const currentDroppedLegos = get().droppedLegos;
-    const firstNewLegoIndex = currentDroppedLegos.length - newLegos.length;
-
-    get().setDragState({
+    get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
-      draggedLegoIndex: firstNewLegoIndex,
-      startX: x,
-      startY: y,
-      originalX: clickedLego.x + 20,
-      originalY: clickedLego.y + 20
+      draggedLegoInstanceId: newLegos[0].instanceId,
+      startMouseWindowPoint: new WindowPoint(x, y),
+      startLegoLogicalPoint: clickedLego.logicalPosition.plus(
+        new LogicalPoint(20, 20)
+      )
     });
 
     // Add to history

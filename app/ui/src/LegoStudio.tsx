@@ -50,6 +50,8 @@ import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
+import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
+import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
 import { DroppedLego } from "./stores/droppedLegoStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
@@ -140,11 +142,14 @@ const LegoStudioView: React.FC = () => {
   );
   const setError = useCanvasStore((state) => state.setError);
 
-  const { canvasDragState } = useCanvasDragStateStore();
-
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
+  const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
+
+  const { canvasDragState } = useCanvasDragStateStore();
+  const viewport = useCanvasStore((state) => state.viewport);
+  const zoomLevel = viewport.zoomLevel;
+
   // Use centralized TensorNetwork store
 
   const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
@@ -200,6 +205,7 @@ const LegoStudioView: React.FC = () => {
 
   // Add title effect at the top
   useEffect(() => {
+    console.log("location/navigate changed", location);
     const params = new URLSearchParams(location.search);
     let title = params.get("title");
 
@@ -232,6 +238,7 @@ const LegoStudioView: React.FC = () => {
 
   // Add a new effect to handle initial URL state
   useEffect(() => {
+    console.log("decodeCanvasState changed", decodeCanvasState);
     const handleHashChange = async () => {
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const stateParam = hashParams.get("state");
@@ -524,7 +531,6 @@ const LegoStudioView: React.FC = () => {
       />
 
       <CanvasMouseHandler
-        canvasRef={canvasRef}
         selectionManagerRef={selectionManagerRef}
         zoomLevel={zoomLevel}
         altKeyPressed={altKeyPressed}
@@ -561,7 +567,7 @@ const LegoStudioView: React.FC = () => {
               <Box h="100%" display="flex" flexDirection="column" p={4}>
                 {/* Canvas with overlay controls */}
                 <Box
-                  ref={canvasRef}
+                  ref={setCanvasRef}
                   flex={1}
                   bg="gray.100"
                   borderRadius="lg"
@@ -580,7 +586,6 @@ const LegoStudioView: React.FC = () => {
                 >
                   {/* Top-left three-dots menu */}
                   <CanvasMenu
-                    canvasRef={canvasRef}
                     zoomLevel={zoomLevel}
                     setZoomLevel={setZoomLevel}
                     isLegoPanelCollapsed={isLegoPanelCollapsed}
@@ -643,15 +648,21 @@ const LegoStudioView: React.FC = () => {
                       />
                     </Box>
                   </Box>
+
                   <ConnectionsLayer />
                   {/* Selection Manager */}
-                  <SelectionManager
-                    ref={selectionManagerRef}
-                    canvasRef={canvasRef}
-                  />
-                  <LegosLayer canvasRef={canvasRef} />
+                  <SelectionManager ref={selectionManagerRef} />
+                  <LegosLayer />
                   {/* Drag Proxy for smooth dragging */}
-                  <DragProxy canvasRef={canvasRef} />
+                  <DragProxy />
+
+                  {import.meta.env.VITE_ENV === "debug" && (
+                    // Debug viewport overlay
+                    <ViewportDebugOverlay />
+                  )}
+
+                  {/* Mini-map with zoom level display */}
+                  <CanvasMiniMap />
                 </Box>
               </Box>
             </Panel>

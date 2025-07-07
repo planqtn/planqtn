@@ -1,9 +1,10 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { recognize_parity_check_matrix } from "../features/lego/Legos.ts";
 import { newInstanceId } from "../stores/droppedLegoStore";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 export class FuseLegos {
   static operationCode: string = "fuse";
@@ -88,8 +89,12 @@ export class FuseLegos {
           logical_legs: [],
           gauge_legs: []
         },
-        legosToFuse.reduce((sum, l) => sum + l.x, 0) / legosToFuse.length,
-        legosToFuse.reduce((sum, l) => sum + l.y, 0) / legosToFuse.length,
+        new LogicalPoint(
+          legosToFuse.reduce((sum, l) => sum + l.logicalPosition.x, 0) /
+            legosToFuse.length,
+          legosToFuse.reduce((sum, l) => sum + l.logicalPosition.y, 0) /
+            legosToFuse.length
+        ),
         newInstanceId(this.droppedLegos)
       );
 

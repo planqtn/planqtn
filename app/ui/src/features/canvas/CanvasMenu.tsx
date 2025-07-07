@@ -17,13 +17,12 @@ import { FiMoreVertical } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
-import { Connection } from "../../lib/types";
+import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { User } from "@supabase/supabase-js";
 import { ImperativePanelHandle } from "react-resizable-panels";
 
 interface CanvasMenuProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
   zoomLevel: number;
   setZoomLevel: (level: number) => void;
   isLegoPanelCollapsed: boolean;
@@ -42,7 +41,6 @@ interface CanvasMenuProps {
 }
 
 export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  canvasRef,
   zoomLevel,
   setZoomLevel,
   isLegoPanelCollapsed,
@@ -143,19 +141,6 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                 </MenuItemOption>
                 <MenuItem
                   onClick={() => {
-                    const droppedLegos = useCanvasStore.getState().droppedLegos;
-                    const rect = canvasRef.current?.getBoundingClientRect();
-                    if (!rect) return;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const scale = 1 / zoomLevel;
-                    const rescaledLegos = droppedLegos.map((lego) =>
-                      lego.with({
-                        x: (lego.x - centerX) * scale + centerX,
-                        y: (lego.y - centerY) * scale + centerY
-                      })
-                    );
-                    setDroppedLegos(rescaledLegos);
                     setZoomLevel(1);
                   }}
                   isDisabled={zoomLevel === 1}

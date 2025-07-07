@@ -4,55 +4,54 @@ import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
-
-interface DragProxyProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
+import { getSmartLegoSize } from "../../utils/coordinateTransforms";
+import { LogicalPoint, WindowPoint } from "../../types/coordinates.ts";
+import { useDebugStore } from "../../stores/debugStore.ts";
 
 // Separate handler for single lego drags
 const SingleLegoDragProxy: React.FC<{
-  mousePos: { x: number; y: number };
+  mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos, dragState } = useCanvasStore();
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
+  const viewport = useCanvasStore((state) => state.viewport);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+  const zoomLevel = viewport.zoomLevel;
 
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
-    if (!dragState || dragState.draggedLegoIndex < 0) return null;
-    return droppedLegos[dragState.draggedLegoIndex] || null;
-  }, [droppedLegos, dragState]);
+    if (!legoDragState || legoDragState.draggedLegoInstanceId === "")
+      return null;
+    return droppedLegos.find(
+      (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+    );
+  }, [droppedLegos, legoDragState]);
 
-  if (!dragState || dragState.draggingStage !== DraggingStage.DRAGGING) {
+  if (
+    !legoDragState ||
+    legoDragState.draggingStage !== DraggingStage.DRAGGING
+  ) {
     return null;
   }
 
   if (!draggedLego || !canvasRect) return null;
 
-  // Convert mouse position to canvas coordinates using cached rect
-  const canvasMouseX = mousePos.x - canvasRect.left;
-  const canvasMouseY = mousePos.y - canvasRect.top;
+  // Apply zoom transformation to get screen position using new coordinate system
+  const proxyCanvasPos = viewport.fromWindowToCanvas(mousePos);
 
-  // Convert drag start position to canvas coordinates using cached rect
-  const canvasStartX = dragState.startX - canvasRect.left;
-  const canvasStartY = dragState.startY - canvasRect.top;
-
-  // Calculate delta in canvas coordinates
-  const deltaX = canvasMouseX - canvasStartX;
-  const deltaY = canvasMouseY - canvasStartY;
-
-  // Calculate proxy position: original lego position + mouse delta (all in canvas coordinates)
-  const proxyX = dragState.originalX + deltaX;
-  const proxyY = dragState.originalY + deltaY;
+  // Use smart sizing for consistency
+  const originalSize = draggedLego.style!.size;
+  const smartSize = getSmartLegoSize(originalSize, zoomLevel);
 
   return (
     <div
       key={`single-drag-proxy-${draggedLego.instanceId}`}
       style={{
         position: "absolute",
-        left: `${proxyX - draggedLego.style!.size / 2}px`,
-        top: `${proxyY - draggedLego.style!.size / 2}px`,
-        width: `${draggedLego.style!.size}px`,
-        height: `${draggedLego.style!.size}px`,
+        left: `${proxyCanvasPos.x - smartSize / 2}px`,
+        top: `${proxyCanvasPos.y - smartSize / 2}px`,
+        width: `${smartSize}px`,
+        height: `${smartSize}px`,
         opacity: 0.7,
         transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -61,16 +60,12 @@ const SingleLegoDragProxy: React.FC<{
         zIndex: 1000
       }}
     >
-      <svg
-        width={draggedLego.style!.size}
-        height={draggedLego.style!.size}
-        style={{ overflow: "visible" }}
-      >
+      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
         {draggedLego.style!.borderRadius === "full" ? (
           <circle
-            cx={draggedLego.style!.size / 2}
-            cy={draggedLego.style!.size / 2}
-            r={draggedLego.style!.size / 2}
+            cx={smartSize / 2}
+            cy={smartSize / 2}
+            r={smartSize / 2}
             fill={draggedLego.style!.getBackgroundColorForSvg()}
             stroke={draggedLego.style!.getBorderColorForSvg()}
             strokeWidth="2"
@@ -79,8 +74,8 @@ const SingleLegoDragProxy: React.FC<{
           <rect
             x="2"
             y="2"
-            width={draggedLego.style!.size - 4}
-            height={draggedLego.style!.size - 4}
+            width={smartSize - 4}
+            height={smartSize - 4}
             rx={
               typeof draggedLego.style!.borderRadius === "number"
                 ? draggedLego.style!.borderRadius
@@ -98,11 +93,15 @@ const SingleLegoDragProxy: React.FC<{
 
 // Separate handler for group drags
 const GroupDragProxy: React.FC<{
-  mousePos: { x: number; y: number };
+  mousePos: WindowPoint;
   canvasRect: DOMRect | null;
 }> = ({ mousePos, canvasRect }) => {
-  const { droppedLegos, dragState } = useCanvasStore();
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
   const groupDragState = useCanvasStore((state) => state.groupDragState);
+  const viewport = useCanvasStore((state) => state.viewport);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+
+  const zoomLevel = viewport.zoomLevel;
 
   // Memoize dragged legos to prevent stale references
   const draggedLegos = useMemo(() => {
@@ -114,8 +113,8 @@ const GroupDragProxy: React.FC<{
 
   if (
     !groupDragState ||
-    !dragState ||
-    dragState.draggingStage !== DraggingStage.DRAGGING ||
+    !legoDragState ||
+    legoDragState.draggingStage !== DraggingStage.DRAGGING ||
     !canvasRect
   ) {
     return null;
@@ -123,17 +122,12 @@ const GroupDragProxy: React.FC<{
 
   if (draggedLegos.length === 0) return null;
 
-  // Convert mouse position to canvas coordinates using cached rect
-  const canvasMouseX = mousePos.x - canvasRect.left;
-  const canvasMouseY = mousePos.y - canvasRect.top;
+  const startMouseLogicalPoint = viewport.fromWindowToLogical(
+    legoDragState.startMouseWindowPoint
+  );
+  const currentMouseLogicalPoint = viewport.fromWindowToLogical(mousePos);
 
-  // Convert drag start position to canvas coordinates using cached rect
-  const canvasStartX = dragState.startX - canvasRect.left;
-  const canvasStartY = dragState.startY - canvasRect.top;
-
-  // Calculate delta in canvas coordinates
-  const deltaX = canvasMouseX - canvasStartX;
-  const deltaY = canvasMouseY - canvasStartY;
+  const deltaLogical = currentMouseLogicalPoint.minus(startMouseLogicalPoint);
 
   return (
     <>
@@ -141,18 +135,25 @@ const GroupDragProxy: React.FC<{
         const originalPos = groupDragState.originalPositions[lego.instanceId];
         if (!originalPos) return null; // Safety check for stale state
 
-        const legoProxyX = originalPos.x + deltaX;
-        const legoProxyY = originalPos.y + deltaY;
+        // Calculate base proxy position in canvas coordinates
+        const baseProxy = originalPos.plus(deltaLogical);
+
+        // Apply zoom transformation to get screen position using new coordinate system
+        const proxyCanvasPos = viewport.fromLogicalToCanvas(baseProxy);
+
+        // Use smart sizing for consistency
+        const originalSize = lego.style!.size;
+        const smartSize = getSmartLegoSize(originalSize, zoomLevel);
 
         return (
           <div
             key={`group-drag-proxy-${lego.instanceId}`}
             style={{
               position: "absolute",
-              left: `${legoProxyX - lego.style!.size / 2}px`,
-              top: `${legoProxyY - lego.style!.size / 2}px`,
-              width: `${lego.style!.size}px`,
-              height: `${lego.style!.size}px`,
+              left: `${proxyCanvasPos.x - smartSize / 2}px`,
+              top: `${proxyCanvasPos.y - smartSize / 2}px`,
+              width: `${smartSize}px`,
+              height: `${smartSize}px`,
               opacity: 0.7,
               transform: "scale(1.1)",
               filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -162,15 +163,15 @@ const GroupDragProxy: React.FC<{
             }}
           >
             <svg
-              width={lego.style!.size}
-              height={lego.style!.size}
+              width={smartSize}
+              height={smartSize}
               style={{ overflow: "visible" }}
             >
               {lego.style!.borderRadius === "full" ? (
                 <circle
-                  cx={lego.style!.size / 2}
-                  cy={lego.style!.size / 2}
-                  r={lego.style!.size / 2}
+                  cx={smartSize / 2}
+                  cy={smartSize / 2}
+                  r={smartSize / 2}
                   fill={lego.style!.getBackgroundColorForSvg()}
                   stroke={lego.style!.getBorderColorForSvg()}
                   strokeWidth="2"
@@ -179,8 +180,8 @@ const GroupDragProxy: React.FC<{
                 <rect
                   x="2"
                   y="2"
-                  width={lego.style!.size - 4}
-                  height={lego.style!.size - 4}
+                  width={smartSize - 4}
+                  height={smartSize - 4}
                   rx={
                     typeof lego.style!.borderRadius === "number"
                       ? lego.style!.borderRadius
@@ -201,9 +202,14 @@ const GroupDragProxy: React.FC<{
 
 // Separate handler for building block drags
 const BuildingBlockDragProxy: React.FC<{
-  canvasRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: React.RefObject<HTMLDivElement | null> | null;
 }> = ({ canvasRef }) => {
-  const { buildingBlockDragState } = useBuildingBlockDragStateStore();
+  const buildingBlockDragState = useBuildingBlockDragStateStore(
+    (state) => state.buildingBlockDragState
+  );
+  const viewport = useCanvasStore((state) => state.viewport);
+  const zoomLevel = viewport.zoomLevel;
+
   if (
     !buildingBlockDragState.isDragging ||
     !buildingBlockDragState.draggedLego ||
@@ -213,6 +219,7 @@ const BuildingBlockDragProxy: React.FC<{
   }
 
   const canvasRect = canvasRef.current.getBoundingClientRect();
+  // Use mouse position from buildingBlockDragState (updated by dragover events)
   const isMouseOverCanvas =
     buildingBlockDragState.mouseX >= canvasRect.left &&
     buildingBlockDragState.mouseX <= canvasRect.right &&
@@ -227,10 +234,13 @@ const BuildingBlockDragProxy: React.FC<{
   const style = getLegoStyle(
     lego.id,
     numLegs,
-    new DroppedLego(lego, 0, 0, "dummy")
+    new DroppedLego(lego, new LogicalPoint(0, 0), "dummy")
   );
 
-  // Convert global mouse coordinates to canvas-relative coordinates
+  // Use smart sizing for building block drag proxy
+  const smartSize = getSmartLegoSize(style.size, zoomLevel);
+
+  // Convert global mouse coordinates to canvas-relative coordinates (use buildingBlockDragState)
   const canvasX = buildingBlockDragState.mouseX - canvasRect.left;
   const canvasY = buildingBlockDragState.mouseY - canvasRect.top;
 
@@ -238,10 +248,10 @@ const BuildingBlockDragProxy: React.FC<{
     <div
       style={{
         position: "absolute",
-        left: `${canvasX - style.size / 2}px`,
-        top: `${canvasY - style.size / 2}px`,
-        width: `${style.size}px`,
-        height: `${style.size}px`,
+        left: `${canvasX - smartSize / 2}px`,
+        top: `${canvasY - smartSize / 2}px`,
+        width: `${smartSize}px`,
+        height: `${smartSize}px`,
         opacity: 0.7,
         transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -250,16 +260,12 @@ const BuildingBlockDragProxy: React.FC<{
         zIndex: 1000
       }}
     >
-      <svg
-        width={style.size}
-        height={style.size}
-        style={{ overflow: "visible" }}
-      >
+      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
         {style.borderRadius === "full" ? (
           <circle
-            cx={style.size / 2}
-            cy={style.size / 2}
-            r={style.size / 2}
+            cx={smartSize / 2}
+            cy={smartSize / 2}
+            r={smartSize / 2}
             fill={style.getBackgroundColorForSvg()}
             stroke={style.getBorderColorForSvg()}
             strokeWidth="2"
@@ -268,8 +274,8 @@ const BuildingBlockDragProxy: React.FC<{
           <rect
             x="2"
             y="2"
-            width={style.size - 4}
-            height={style.size - 4}
+            width={smartSize - 4}
+            height={smartSize - 4}
             rx={typeof style.borderRadius === "number" ? style.borderRadius : 0}
             fill={style.getBackgroundColorForSvg()}
             stroke={style.getBorderColorForSvg()}
@@ -281,23 +287,67 @@ const BuildingBlockDragProxy: React.FC<{
   );
 };
 
-export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
-  // Track mouse position internally to avoid re-rendering parent components
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
+// Shared hook for mouse tracking with debug integration
+const useMouseTracking = (shouldTrack: boolean = true) => {
+  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
   const animationFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!shouldTrack) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = requestAnimationFrame(() => {
+        setMousePos(WindowPoint.fromMouseEvent(e));
+        if (import.meta.env.VITE_ENV === "debug") {
+          useDebugStore
+            .getState()
+            .setDebugMousePos(new WindowPoint(e.clientX, e.clientY));
+        }
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [shouldTrack]);
+
+  return mousePos;
+};
+
+export const DragProxy: React.FC = () => {
+  const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
   const dragStateStage = useCanvasStore(
-    (state) => state.dragState?.draggingStage
+    (state) => state.legoDragState?.draggingStage
   );
   const groupDragState = useCanvasStore((state) => state.groupDragState);
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );
+
+  // Use shared mouse tracking - track when canvas lego or group dragging is happening
+  // Building block dragging uses its own mouse tracking via dragover events
+  const shouldTrackMouse =
+    dragStateStage === DraggingStage.MAYBE_DRAGGING ||
+    dragStateStage === DraggingStage.DRAGGING ||
+    !!groupDragState;
+
+  const mousePos = useMouseTracking(shouldTrackMouse);
+
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
+
   // Cache canvas rect to avoid getBoundingClientRect on every render
   useEffect(() => {
-    if (canvasRef.current) {
+    if (canvasRef?.current) {
       const updateCanvasRect = () => {
-        if (canvasRef.current) {
+        if (canvasRef?.current) {
           setCanvasRect(canvasRef.current.getBoundingClientRect());
         }
       };
@@ -315,33 +365,6 @@ export const DragProxy: React.FC<DragProxyProps> = ({ canvasRef }) => {
       };
     }
   }, [canvasRef]);
-
-  // Update mouse position on mouse move - only for canvas lego dragging
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Only update state when dragging canvas legos to avoid unnecessary re-renders
-      if (
-        dragStateStage === DraggingStage.MAYBE_DRAGGING ||
-        dragStateStage === DraggingStage.DRAGGING
-      ) {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        animationFrameRef.current = requestAnimationFrame(() => {
-          setMousePos({ x: e.clientX, y: e.clientY });
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [dragStateStage, buildingBlockDragState]);
 
   return (
     <div

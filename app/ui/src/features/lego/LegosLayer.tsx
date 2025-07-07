@@ -1,114 +1,60 @@
-import React, { memo, useMemo, useEffect, useState } from "react";
-import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
+import React, { Suspense, useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
+import { DraggingStage } from "../../stores/legoDragState";
+import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 
-interface LegosLayerProps {
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
+const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
-// Hook to get viewport bounds
-const useViewportBounds = () => {
-  const [viewportBounds, setViewportBounds] = useState({
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0
-  });
-
-  useEffect(() => {
-    const updateViewportBounds = () => {
-      const canvasPanel = document.querySelector("#main-panel");
-      if (canvasPanel) {
-        const rect = canvasPanel.getBoundingClientRect();
-        // Add some padding to render legos slightly outside viewport
-        const padding = 200;
-        setViewportBounds({
-          left: -padding,
-          top: -padding,
-          right: rect.width + padding,
-          bottom: rect.height + padding
-        });
-      }
-    };
-
-    // Update on mount
-    updateViewportBounds();
-
-    // Update on window resize
-    window.addEventListener("resize", updateViewportBounds);
-
-    // Use ResizeObserver for the canvas panel specifically
-    const canvasPanel = document.querySelector("#main-panel");
-    let resizeObserver: ResizeObserver | null = null;
-
-    if (canvasPanel) {
-      resizeObserver = new ResizeObserver(updateViewportBounds);
-      resizeObserver.observe(canvasPanel);
-    }
-
-    return () => {
-      window.removeEventListener("resize", updateViewportBounds);
-      if (resizeObserver && canvasPanel) {
-        resizeObserver.unobserve(canvasPanel);
-      }
-    };
-  }, []);
-
-  return viewportBounds;
-};
-
-export const LegosLayer: React.FC<LegosLayerProps> = memo(({ canvasRef }) => {
-  const viewportBounds = useViewportBounds();
-  const droppedLegoIds = useCanvasStore(
-    useShallow((state) => state.droppedLegos.map((l) => l.instanceId))
+export const LegosLayer: React.FC = () => {
+  // Use the new coordinate system with virtualization
+  const visibleLegoIds = useVisibleLegoIds();
+  const viewport = useCanvasStore((state) => state.viewport);
+  // Get drag state to hide dragged legos (proxy will show instead)
+  const { dragState, tensorNetwork } = useCanvasStore(
+    useShallow((state) => ({
+      dragState: state.legoDragState,
+      tensorNetwork: state.tensorNetwork
+    }))
   );
 
-  // const { dragState } = useDragStateStore();
+  // Check which legos are being dragged to hide them
+  const isDraggedLego = useMemo(() => {
+    const draggedIds = new Set<string>();
 
-  // useEffect(() => {
-  //   console.log("legoslayer tensorNetwork changed");
-  // }, [tensorNetwork]);
-  // useEffect(() => {
-  //   console.log("legoslayer dragState changed");
-  // }, [dragState]);
+    // Add individually dragged lego
+    if (dragState?.draggingStage === DraggingStage.DRAGGING) {
+      draggedIds.add(dragState.draggedLegoInstanceId);
+    }
 
-  // Check which legos are being dragged to hide them (proxy will show instead)
-  // const isDraggedLego = useMemo(() => {
-  //   const draggedIds = new Set<string>();
+    // Add group dragged legos (selected legos)
+    if (
+      tensorNetwork?.legos &&
+      dragState?.draggingStage === DraggingStage.DRAGGING
+    ) {
+      tensorNetwork.legos.forEach((lego) => {
+        draggedIds.add(lego.instanceId);
+      });
+    }
 
-  //   // Add individually dragged lego
-  //   if (dragState?.draggingStage === DraggingStage.DRAGGING) {
-  //     const draggedLego = droppedLegos[dragState.draggedLegoIndex];
-  //     if (draggedLego) {
-  //       draggedIds.add(draggedLego.instanceId);
-  //     }
-  //   }
-
-  //   // Add group dragged legos (selected legos)
-  //   if (tensorNetwork?.legos) {
-  //     tensorNetwork.legos.forEach((lego) => {
-  //       if (dragState?.draggingStage === DraggingStage.DRAGGING) {
-  //         draggedIds.add(lego.instanceId);
-  //       }
-  //     });
-  //   }
-
-  //   return (legoId: string) => draggedIds.has(legoId);
-  // }, [dragState, droppedLegos, tensorNetwork]);
+    return (legoId: string) => draggedIds.has(legoId);
+  }, [dragState?.draggingStage === DraggingStage.DRAGGING]);
 
   const renderedLegos = useMemo(() => {
-    return droppedLegoIds.map((instanceId) => (
-      <DroppedLegoDisplay
-        key={instanceId}
-        instanceId={instanceId}
-        demoMode={false}
-        canvasRef={canvasRef}
-      />
-    ));
-  }, [viewportBounds, droppedLegoIds, canvasRef]);
+    return visibleLegoIds
+      .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
+      .map((legoInstanceId) => (
+        <DroppedLegoDisplay
+          key={legoInstanceId}
+          legoInstanceId={legoInstanceId}
+          demoMode={false}
+        />
+      ));
+  }, [visibleLegoIds, isDraggedLego, viewport]);
 
-  return <>{renderedLegos}</>;
-});
+  return (
+    <Suspense fallback={<div>Loading legos...</div>}>{renderedLegos}</Suspense>
+  );
+};
 
 LegosLayer.displayName = "LegosLayer";

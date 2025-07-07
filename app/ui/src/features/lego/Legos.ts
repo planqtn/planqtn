@@ -1,6 +1,7 @@
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
 import { GF2 } from "../../lib/GF2.ts";
 import { is_gauss_equivalent } from "../../lib/parity_check.ts";
+import { LogicalPoint } from "../../types/coordinates.ts";
 
 export enum LegoType {
   H = "h",
@@ -314,8 +315,7 @@ export class Legos {
     legoId: string,
     numLegs: number,
     instanceId: string,
-    x: number,
-    y: number
+    logicalPosition: LogicalPoint
   ): DroppedLego {
     const data = this.getDynamicLego({
       lego_id: legoId,
@@ -324,7 +324,7 @@ export class Legos {
       }
     });
 
-    return new DroppedLego(data, x, y, instanceId);
+    return new DroppedLego(data, logicalPosition, instanceId);
   }
 }
 

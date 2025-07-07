@@ -1,15 +1,16 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
-import { Connection, PauliOperator } from "../lib/types";
+import { PauliOperator } from "../lib/types";
+import { Connection } from "./connectionStore";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
+import { WindowPoint } from "../types/coordinates";
 
 export interface DroppedLegoLegEventsSlice {
   handleLegMouseDown: (
     legoId: string,
     legIndex: number,
-    x: number,
-    y: number
+    mouseWindowPoint: WindowPoint
   ) => void;
 
   handleLegClick: (legoId: string, legIndex: number) => void;
@@ -22,17 +23,15 @@ export const useLegoLegEventsSlice: StateCreator<
   [],
   DroppedLegoLegEventsSlice
 > = (_, get) => ({
-  handleLegMouseDown: (legoId, legIndex, x, y) => {
+  handleLegMouseDown: (legoId, legIndex, mouseWindowPoint) => {
     get().temporarilyConnectLego(legoId);
 
     get().setLegDragState({
       isDragging: true,
       legoId,
       legIndex,
-      startX: x,
-      startY: y,
-      currentX: x,
-      currentY: y
+      startMouseWindowPoint: mouseWindowPoint,
+      currentMouseWindowPoint: mouseWindowPoint
     });
   },
 

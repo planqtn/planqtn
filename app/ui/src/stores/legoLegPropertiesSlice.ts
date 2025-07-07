@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
-import { Connection } from "../lib/types";
+import { Connection } from "./connectionStore";
 
 export interface LegoLegPropertiesSlice {
   // Object mapping lego instance ID to array of boolean hide states for each leg

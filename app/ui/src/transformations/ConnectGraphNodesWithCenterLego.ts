@@ -1,8 +1,9 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
 import { Legos } from "../features/lego/Legos.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return legos.length > 0 && legos.every((lego) => lego.id === "z_rep_code");
@@ -28,8 +29,10 @@ export const applyConnectGraphNodes = async (
     "z_rep_code",
     numLegs,
     (maxInstanceId + 1).toString(),
-    legos.reduce((sum, l) => sum + l.x, 0) / legos.length,
-    legos.reduce((sum, l) => sum + l.y, 0) / legos.length
+    new LogicalPoint(
+      legos.reduce((sum, l) => sum + l.logicalPosition.x, 0) / legos.length,
+      legos.reduce((sum, l) => sum + l.logicalPosition.y, 0) / legos.length
+    )
   );
 
   // Find dangling legs for each lego
@@ -69,8 +72,7 @@ export const applyConnectGraphNodes = async (
         "z_rep_code",
         lego.numberOfLegs + 1,
         lego.instanceId,
-        lego.x,
-        lego.y
+        lego.logicalPosition
       );
     }
   );
@@ -92,8 +94,10 @@ export const applyConnectGraphNodes = async (
           logical_legs: [],
           gauge_legs: []
         },
-        (connectorLego.x + lego.x) / 2,
-        (connectorLego.y + lego.y) / 2,
+        new LogicalPoint(
+          (connectorLego.logicalPosition.x + lego.logicalPosition.x) / 2,
+          (connectorLego.logicalPosition.y + lego.logicalPosition.y) / 2
+        ),
         (maxInstanceId + 2 + index).toString()
       );
     }

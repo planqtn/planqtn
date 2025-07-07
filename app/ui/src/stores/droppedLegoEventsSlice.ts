@@ -3,6 +3,7 @@ import { DroppedLego } from "./droppedLegoStore";
 import { CanvasStore } from "./canvasStateStore";
 import { DraggingStage } from "./legoDragState";
 import { findConnectedComponent, TensorNetwork } from "../lib/TensorNetwork";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface DroppedLegoClickHandlerSlice {
   handleLegoClick: (
@@ -11,7 +12,7 @@ export interface DroppedLegoClickHandlerSlice {
     metaKey: boolean
   ) => void;
   handleLegoMouseDown: (
-    index: number,
+    instanceId: string,
     x: number,
     y: number,
     shiftKey: boolean
@@ -26,17 +27,10 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
 > = (_, get) => ({
   handleLegoClick: (lego, ctrlKey, metaKey) => {
     // Get the current global drag state
-    const currentDragState = get().dragState;
+    const currentDragState = get().legoDragState;
 
     if (currentDragState.draggingStage === DraggingStage.JUST_FINISHED) {
-      get().setDragState({
-        draggingStage: DraggingStage.NOT_DRAGGING,
-        draggedLegoIndex: -1,
-        startX: 0,
-        startY: 0,
-        originalX: 0,
-        originalY: 0
-      });
+      get().resetLegoDragState();
       return;
     }
 
@@ -44,14 +38,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       // Only handle click if not dragging
 
       // Clear the drag state since this is a click, not a drag
-      get().setDragState({
-        draggingStage: DraggingStage.NOT_DRAGGING,
-        draggedLegoIndex: -1,
-        startX: 0,
-        startY: 0,
-        originalX: 0,
-        originalY: 0
-      });
+      get().resetLegoDragState();
 
       if (ctrlKey || metaKey) {
         // Handle Ctrl+click for toggling selection
@@ -149,13 +136,14 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
   },
 
   handleLegoMouseDown: (
-    index: number,
+    instanceId: string,
     x: number,
     y: number,
     shiftKey: boolean
   ) => {
     // Get lego from store instead of passed prop
-    const lego = get().droppedLegos[index];
+    const lego = get().droppedLegos.find((l) => l.instanceId === instanceId);
+    if (!lego) return;
 
     if (shiftKey) {
       get().handleClone(lego, x, y);
@@ -168,10 +156,10 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         // Dragging a selected lego - move the whole group
         const selectedLegos = get().tensorNetwork?.legos || [];
         const currentPositions: {
-          [instanceId: string]: { x: number; y: number };
+          [instanceId: string]: LogicalPoint;
         } = {};
         selectedLegos.forEach((l) => {
-          currentPositions[l.instanceId] = { x: l.x, y: l.y };
+          currentPositions[l.instanceId] = l.logicalPosition;
         });
 
         get().setGroupDragState({
@@ -186,13 +174,11 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       }
 
       // not dragging yet but the index is set, so we can start dragging when the mouse moves
-      get().setDragState({
+      get().setLegoDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoIndex: index,
-        startX: x,
-        startY: y,
-        originalX: lego.x,
-        originalY: lego.y
+        draggedLegoInstanceId: lego.instanceId,
+        startMouseWindowPoint: new WindowPoint(x, y),
+        startLegoLogicalPoint: lego.logicalPosition
       });
     }
   }

@@ -1,7 +1,8 @@
-import { Connection } from "../lib/types.ts";
+import { Connection } from "../stores/connectionStore";
 import { simpleAutoFlow } from "./AutoPauliFlow.ts";
 import { TensorNetwork } from "../lib/TensorNetwork.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { LogicalPoint } from "../types/coordinates.ts";
 describe("simple auto flow", () => {
   const makeLego = ({
     id,
@@ -28,8 +29,7 @@ describe("simple auto flow", () => {
         logical_legs: [],
         gauge_legs: []
       },
-      x,
-      y,
+      new LogicalPoint(x, y),
       id,
       { selectedMatrixRows: selectedRows }
     );

@@ -1,9 +1,10 @@
-import { Connection } from "../lib/types";
+import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
 import _ from "lodash";
 import { Legos } from "../features/lego/Legos.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { LogicalPoint } from "../types/coordinates.ts";
 
 export function canDoInverseBialgebra(
   selectedLegos: DroppedLego[],
@@ -155,15 +156,13 @@ export async function applyInverseBialgebra(
     X_REP_CODE,
     zLegoLegs,
     String(maxInstanceId + 1),
-    avgZPos.x,
-    avgZPos.y
+    new LogicalPoint(avgZPos.x, avgZPos.y)
   );
   const newXLego = Legos.createDynamicLego(
     Z_REP_CODE,
     xLegoLegs,
     String(maxInstanceId + 2),
-    avgXPos.x,
-    avgXPos.y
+    new LogicalPoint(avgXPos.x, avgXPos.y)
   );
 
   const newLegos = [newZLego, newXLego];
