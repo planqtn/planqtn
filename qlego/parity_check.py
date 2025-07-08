@@ -99,7 +99,6 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     """Conjoins two parity check matrices via single trace on one leg."""
     h1 = _normalize_emtpy_matrices_to_zero(h1)
     h2 = _normalize_emtpy_matrices_to_zero(h2)
-
     n1 = h1.shape[1] // 2
     h = tensor_product(h1, h2)
     h = self_trace(h, leg1, n1 + leg2)
@@ -158,7 +157,8 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     kept_rows = np.array(kept_rows)
     if kept_rows.size == 0:
-        return GF2([[1]])
+
+        return GF2([GF2.Zeros(len(kept_cols))])
     mx = mx[kept_rows][:, kept_cols]
 
     # print("after removals:")

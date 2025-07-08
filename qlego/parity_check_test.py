@@ -67,6 +67,13 @@ def test_tensor_with_free_qubit():
     )
 
 
+def test_conjoin_with_free_qubit():
+    h1 = GF2([[1, 0, 0, 1], [0, 1, 1, 0]])
+    h2 = GF2([[0, 0]])
+    h3 = conjoin(h1, h2, 0, 0)
+    assert np.array_equal(h3, GF2([[0, 0]]))
+
+
 def test_tensor_two_free_qubits():
     h1 = GF2([[0, 0]])
 

@@ -238,7 +238,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
   }
 
   if (keptRows.length === 0) {
-    return new GF2([[1]]);
+    return GF2.zeros(1, keptCols.length);
   }
 
   // Create new matrix with kept rows and columns

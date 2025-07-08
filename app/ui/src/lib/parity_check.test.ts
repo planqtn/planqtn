@@ -264,6 +264,23 @@ describe("parity_check", () => {
     const result = tensor_product(h1, h2);
     expect(result).toEqual(new GF2([[1, 0]]));
   });
+
+  it("should conjoin two free qubits", () => {
+    const h1 = new GF2([[0, 0]]);
+    const h2 = new GF2([[0, 0]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[1]]));
+  });
+
+  it("should conjoin a free qubit with a regular lego", () => {
+    const h1 = new GF2([[0, 0]]);
+    const h2 = new GF2([
+      [1, 1, 0, 0],
+      [0, 0, 1, 1]
+    ]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[0, 0]]));
+  });
 });
 
 describe("GF2 Linear Algebra Tests", () => {
