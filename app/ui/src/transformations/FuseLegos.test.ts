@@ -6,6 +6,7 @@ import {
   DroppedLego
 } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates";
+import { Legos } from "../features/lego/Legos";
 
 // Mock data for testing
 const testDroppedLegos = [
@@ -165,4 +166,57 @@ it("should be able to fuse two independent legos with an external connection", a
     (l) => l.instanceId === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
+});
+
+it.only("should tensor the identity stopper with a regular lego", async () => {
+  const droppedLegos = [
+    createHadamardLego(new LogicalPoint(2, 2), "9"),
+    // this should only add a single "unstabilized" leg
+    new DroppedLego(Legos.stopper_i(), new LogicalPoint(1, 1), "8")
+  ];
+  const fuseLegos = new FuseLegos([], droppedLegos, () => {
+    return "newInstanceId";
+  });
+  const result = await fuseLegos.apply(droppedLegos);
+  expect(result.droppedLegos).toHaveLength(1);
+  const fusedLego = result.droppedLegos.find(
+    (l) => l.instanceId === "newInstanceId"
+  );
+  expect(fusedLego).toBeTruthy();
+  expect(fusedLego?.parity_check_matrix).toEqual([
+    [1, 0, 0, 0, 1, 0],
+    [0, 1, 0, 1, 0, 0]
+  ]);
+});
+
+it("should be able to fuse a scalar lego a stopper and a regular lego", async () => {
+  const droppedLegos = [
+    createHadamardLego(new LogicalPoint(2, 2), "9"),
+    new DroppedLego(
+      {
+        type_id: "scalar",
+        shortName: "S",
+        name: "Scalar",
+        description: "Scalar",
+        parity_check_matrix: [[1]],
+        logical_legs: [],
+        gauge_legs: []
+      },
+      new LogicalPoint(1, 1),
+      "8"
+    )
+  ];
+  const fuseLegos = new FuseLegos([], droppedLegos, () => {
+    return "newInstanceId";
+  });
+  const result = await fuseLegos.apply(droppedLegos);
+  expect(result.droppedLegos).toHaveLength(2);
+  const fusedLego = result.droppedLegos.find(
+    (l) => l.instanceId === "newInstanceId"
+  );
+  expect(fusedLego).toBeTruthy();
+  expect(fusedLego?.parity_check_matrix).toEqual([
+    [1, 0, 0, 0, 1, 0],
+    [0, 1, 0, 1, 0, 0]
+  ]);
 });

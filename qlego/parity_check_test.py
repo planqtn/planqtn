@@ -2,13 +2,13 @@ from galois import GF2
 import numpy as np
 import pytest
 from qlego.linalg import gauss
-from qlego.parity_check import conjoin, self_trace, sprint
+from qlego.parity_check import conjoin, self_trace, sprint, tensor_product
 from qlego.tensor_network import StabilizerCodeTensorEnumerator
 
 
 # Handle empty matrices as input
 def test_conjoin_empty_matrices():
-    h1 = GF2([[]])
+    h1 = GF2([])
     h2 = GF2([[]])
 
     np.testing.assert_array_equal(conjoin(h1, h2), GF2([[1]]))
@@ -26,6 +26,56 @@ def test_conjoin_to_one():
     h2 = GF2([[1, 0]])
     h3 = conjoin(h1, h2, 0, 0)
     assert np.array_equal(h3, GF2([[1]]))
+
+
+def test_tensor_product_with_scalar_0():
+    h1 = GF2([[0]])
+    h2 = GF2([[1, 0]])
+    h3 = tensor_product(h1, h2)
+    assert np.array_equal(h3, GF2([[0]]))
+
+
+def test_tensor_product_with_scalar_1():
+    h1 = GF2([[1]])
+    h2 = GF2([[1, 0]])
+    h3 = tensor_product(h1, h2)
+    assert np.array_equal(h3, h2)
+
+
+def test_tensor_with_free_qubit():
+    h1 = GF2([[1, 0, 0, 1], [0, 1, 1, 0]])
+
+    h2 = GF2([[0, 0]])
+    assert np.array_equal(
+        tensor_product(h1, h2),
+        GF2(
+            [
+                [1, 0, 0, 0, 1, 0],
+                [0, 1, 0, 1, 0, 0],
+            ]
+        ),
+    )
+
+    assert np.array_equal(
+        tensor_product(h2, h1),
+        GF2(
+            [
+                [0, 1, 0, 0, 0, 1],
+                [0, 0, 1, 0, 1, 0],
+            ]
+        ),
+    )
+
+
+def test_tensor_two_free_qubits():
+    h1 = GF2([[0, 0]])
+
+    h2 = GF2([[0, 0]])
+    h3 = tensor_product(h1, h2)
+    assert np.array_equal(
+        h3,
+        GF2([[0, 0, 0, 0]]),
+    )
 
 
 def test_conjoin_single_trace_422_codes():

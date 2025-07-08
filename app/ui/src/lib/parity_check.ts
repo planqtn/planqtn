@@ -39,15 +39,61 @@ export function tensor_product(h1: GF2, h2: GF2): GF2 {
 
   const is_scalar_1 = halfN1 === 0;
   const is_scalar_2 = halfN2 === 0;
-
   if (is_scalar_1) {
-    h1 = new GF2([[1]]);
+    // normalize non-zero scalars to 1
+    if (h1.get(0, 0) === 0) {
+      return new GF2([[0]]);
+    }
+    return h2;
   }
   if (is_scalar_2) {
-    h2 = new GF2([[1]]);
+    // normalize non-zero scalars to 1
+    if (h2.get(0, 0) === 0) {
+      return new GF2([[0]]);
+    }
+    return h1;
   }
   if (is_scalar_1 || is_scalar_2) {
     return h1.multiply(h2);
+  }
+
+  // check for the special case of the identity stoppers (free qubits) and their tensor products
+  const h1_has_only_one_all_zero_row =
+    r1 == 1 && h1.toArray().every((row) => row.every((b) => b === 0));
+
+  if (h1_has_only_one_all_zero_row) {
+    // we just add the number of free qubits to the other matrix and that's it
+    // so we need to add halfN1 cols to h2 with zeros to each half of the matrix
+    const new_h2 = new GF2(
+      h2
+        .toArray()
+        .map((row) => [
+          ...Array(halfN1).fill(0),
+          ...row.slice(0, halfN2),
+          ...Array(halfN1).fill(0),
+          ...row.slice(halfN2)
+        ])
+    );
+    return new_h2;
+  }
+
+  const h2_has_only_one_all_zero_row =
+    r2 == 1 && h2.toArray().every((row) => row.every((b) => b === 0));
+
+  if (h2_has_only_one_all_zero_row) {
+    // we just add the number of free qubits to the other matrix and that's it
+    // so we need to add halfN2 cols to h1 with zeros
+    const new_h1 = new GF2(
+      h1
+        .toArray()
+        .map((row) => [
+          ...row.slice(0, halfN1),
+          ...Array(halfN2).fill(0),
+          ...row.slice(halfN1),
+          ...Array(halfN2).fill(0)
+        ])
+    );
+    return new_h1;
   }
 
   // Create block diagonal matrices for X and Z parts
@@ -80,7 +126,7 @@ export function tensor_product(h1: GF2, h2: GF2): GF2 {
           ...zRow
         ];
       }
-    })
+    }).filter((row) => row.some((b) => b !== 0))
   );
 
   // Verify shape
