@@ -12,6 +12,7 @@ import {
   Z_COLOR_LIGHT
 } from "../../lib/PauliColors";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { JSX } from "react";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";
@@ -80,11 +81,14 @@ export abstract class LegoStyle {
     protected readonly id: string,
     protected readonly lego: DroppedLego
   ) {
-    this.legStyles = Array(lego.numberOfLegs)
-      .fill(0)
-      .map((_, i) => {
-        return this.calculateLegStyle(i, true);
-      });
+    this.legStyles =
+      lego.numberOfLegs > 0
+        ? Array(lego.numberOfLegs)
+            .fill(0)
+            .map((_, i) => {
+              return this.calculateLegStyle(i, true);
+            })
+        : [];
   }
 
   get displayShortName(): boolean {
@@ -118,10 +122,6 @@ export abstract class LegoStyle {
     return (
       chakraToHexColors[this.selectedBorderColor] || this.selectedBorderColor
     );
-  }
-
-  get is_special(): boolean {
-    return true;
   }
 
   getLegHighlightPauliOperator = (legIndex: number) => {
@@ -415,10 +415,6 @@ export class GenericStyle extends LegoStyle {
   get selectedBorderColor(): string {
     return "blue.700";
   }
-
-  get is_special(): boolean {
-    return false;
-  }
 }
 
 export class IdentityStyle extends LegoStyle {
@@ -444,10 +440,6 @@ export class IdentityStyle extends LegoStyle {
 
   get selectedBorderColor(): string {
     return "blue.500";
-  }
-
-  get is_special(): boolean {
-    return false;
   }
 
   get displayShortName(): boolean {
@@ -479,11 +471,6 @@ export class RepetitionCodeStyle extends LegoStyle {
   get selectedBorderColor(): string {
     return this.id === Z_REP_CODE ? X_COLOR_DARK : Z_COLOR_DARK;
   }
-
-  get is_special(): boolean {
-    return false;
-  }
-
   get displayShortName(): boolean {
     return false;
   }
@@ -549,12 +536,34 @@ export class StopperStyle extends LegoStyle {
     }
   }
 
-  get is_special(): boolean {
-    return false;
-  }
-
   get displayShortName(): boolean {
     return false;
+  }
+}
+
+export class ScalarStyle extends LegoStyle {
+  get size(): number {
+    return 40;
+  }
+
+  get borderRadius(): string {
+    return "full";
+  }
+
+  get backgroundColor(): string {
+    return "none";
+  }
+
+  get borderColor(): string {
+    return "black";
+  }
+
+  get selectedBackgroundColor(): string {
+    return "blue.100";
+  }
+
+  get selectedBorderColor(): string {
+    return "blue.500";
   }
 }
 export function getLegoStyle(
@@ -562,7 +571,10 @@ export function getLegoStyle(
   numLegs: number,
   lego: DroppedLego
 ): LegoStyle {
-  if (id === "h") {
+  if (numLegs === 0) {
+    console.log("ScalarStyle", id, lego);
+    return new ScalarStyle(id, lego);
+  } else if (id === "h") {
     return new HadamardStyle(id, lego);
   } else if (id === Z_REP_CODE || id === X_REP_CODE) {
     if (numLegs > 2) {

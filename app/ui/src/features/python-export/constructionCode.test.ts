@@ -27,7 +27,7 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            id: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -74,7 +74,7 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            id: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -93,7 +93,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            id: "steane",
+            type_id: "steane",
             name: "Steane Code",
             shortName: "STN",
             description: "Steane code encoding tensor",
@@ -115,7 +115,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            id: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -135,7 +135,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            id: "z_rep_code",
+            type_id: "z_rep_code",
             name: "Z-Repetition Code",
             shortName: "ZREP3",
             description: "Bitflip code, ZZ stabilizers",
@@ -155,7 +155,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            id: "stopper_x",
+            type_id: "stopper_x",
             name: "X Stopper",
             shortName: "X",
             description: "X Stopper",

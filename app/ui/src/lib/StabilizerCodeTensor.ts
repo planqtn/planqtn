@@ -8,15 +8,15 @@ export class StabilizerCodeTensor {
     public readonly idx: string,
     public readonly legs: TensorNetworkLeg[] = []
   ) {
-    if (this.legs.length !== this.h.shape[1] / 2) {
+    if (this.legs.length !== this.n) {
       throw new Error(
-        `Number of legs doesn't match number of legs in parity check matrix: ${this.legs.length} !== ${this.h.shape[1] / 2}`
+        `Number of legs doesn't match number of legs in parity check matrix: ${this.legs.length} !== ${this.n}`
       );
     }
   }
 
   get n(): number {
-    return this.h.shape[1] / 2;
+    return Math.trunc(this.h.shape[1] / 2);
   }
 
   private removeLeg(
@@ -146,7 +146,7 @@ export class StabilizerCodeTensor {
       ...this.legs,
       ...other.legs.map((leg) => ({
         instanceId: leg.instanceId,
-        legIndex: leg.legIndex + this.n
+        legIndex: leg.legIndex
       }))
     ];
 

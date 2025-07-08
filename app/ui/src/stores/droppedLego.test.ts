@@ -5,7 +5,7 @@ describe("DroppedLego", () => {
   it("should create a new lego with the correct properties", () => {
     const lego = new DroppedLego(
       {
-        id: "1",
+        type_id: "1",
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",
@@ -20,7 +20,7 @@ describe("DroppedLego", () => {
       "1"
     );
 
-    expect(lego.id).toBe("1");
+    expect(lego.type_id).toBe("1");
     expect(lego.name).toBe("Test Lego");
     expect(lego.shortName).toBe("TL");
     expect(lego.description).toBe("Test Lego");
@@ -35,7 +35,7 @@ describe("DroppedLego", () => {
   it("should create a new lego with the correct properties when overridden", () => {
     const lego = new DroppedLego(
       {
-        id: "1",
+        type_id: "1",
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",
@@ -54,7 +54,7 @@ describe("DroppedLego", () => {
       }
     );
 
-    expect(lego.id).toBe("1");
+    expect(lego.type_id).toBe("1");
     expect(lego.name).toBe("Test Lego");
     expect(lego.shortName).toBe("TL");
     expect(lego.description).toBe("Test Lego");
@@ -83,7 +83,7 @@ describe("DroppedLego", () => {
   it("should create a new lego with the correct properties when overridden with the with method", () => {
     const lego = new DroppedLego(
       {
-        id: "1",
+        type_id: "1",
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",

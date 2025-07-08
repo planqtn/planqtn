@@ -232,7 +232,7 @@ const BuildingBlockDragProxy: React.FC<{
   const numLegs = lego.parity_check_matrix[0].length / 2;
 
   const style = getLegoStyle(
-    lego.id,
+    lego.type_id,
     numLegs,
     new DroppedLego(lego, new LogicalPoint(0, 0), "dummy")
   );

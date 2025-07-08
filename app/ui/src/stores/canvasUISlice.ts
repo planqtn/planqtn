@@ -98,6 +98,23 @@ export class Viewport {
   fromWindowToLogical(point: WindowPoint): LogicalPoint {
     return this.fromCanvasToLogical(this.fromWindowToCanvas(point));
   }
+
+  fromLogicalToCanvasBB(rect: BoundingBox): BoundingBox {
+    const canvasMin = this.fromLogicalToCanvas(
+      new LogicalPoint(rect.minX, rect.minY)
+    );
+    const canvasMax = this.fromLogicalToCanvas(
+      new LogicalPoint(rect.maxX, rect.maxY)
+    );
+    return {
+      minX: canvasMin.x,
+      minY: canvasMin.y,
+      maxX: canvasMax.x,
+      maxY: canvasMax.y,
+      width: canvasMax.x - canvasMin.x,
+      height: canvasMax.y - canvasMin.y
+    };
+  }
 }
 
 export interface CanvasUISlice {

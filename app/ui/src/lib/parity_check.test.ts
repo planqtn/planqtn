@@ -301,4 +301,18 @@ describe("GF2 Linear Algebra Tests", () => {
       ])
     );
   });
+
+  test("conjoin to zero", () => {
+    const h1 = new GF2([[1, 0]]);
+    const h2 = new GF2([[0, 1]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[0]]));
+  });
+
+  test("conjoin to one", () => {
+    const h1 = new GF2([[1, 0]]);
+    const h2 = new GF2([[1, 0]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[1]]));
+  });
 });

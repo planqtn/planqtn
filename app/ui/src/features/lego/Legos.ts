@@ -100,7 +100,7 @@ export class Legos {
   public static listAvailableLegos(): LegoPiece[] {
     return [
       {
-        id: LegoType.T6,
+        type_id: LegoType.T6,
         name: "[[6,0,3]] tensor",
         shortName: "T6",
         description: "[[6,0,3]] encoding tensor",
@@ -111,7 +111,7 @@ export class Legos {
         parameters: {}
       },
       {
-        id: LegoType.T5,
+        type_id: LegoType.T5,
         name: "[[5,1,2]] tensor",
         shortName: "T5",
         description: "[[5,1,2]] encoding tensor",
@@ -122,7 +122,7 @@ export class Legos {
         parameters: {}
       },
       {
-        id: LegoType.H,
+        type_id: LegoType.H,
         name: "Hadamard",
         shortName: "H",
         description: "Hadamard tensor",
@@ -136,7 +136,7 @@ export class Legos {
       this.stopper_z(),
       this.stopper_i(),
       {
-        id: LegoType.ZREP,
+        type_id: LegoType.ZREP,
         name: "Z-Repetition Code",
         shortName: "ZREP3",
         description: "Bitflip code, ZZ stabilizers",
@@ -147,7 +147,7 @@ export class Legos {
         gauge_legs: []
       },
       {
-        id: LegoType.XREP,
+        type_id: LegoType.XREP,
         name: "X-Repetition Code",
         shortName: "XREP3",
         description: "Phase flip code, XX stabilizers",
@@ -158,7 +158,7 @@ export class Legos {
         gauge_legs: []
       },
       {
-        id: LegoType.ID,
+        type_id: LegoType.ID,
         name: "Identity",
         shortName: "I",
         description: "Identity tensor",
@@ -169,7 +169,7 @@ export class Legos {
         parameters: {}
       },
       {
-        id: "steane",
+        type_id: "steane",
         name: "Steane Code",
         shortName: "STN",
         description: "Steane code encoding tensor",
@@ -180,7 +180,7 @@ export class Legos {
         parameters: {}
       },
       {
-        id: "832",
+        type_id: "832",
         name: "[[8,3,2]] code",
         shortName: "[[8,3,2]]",
         description: "[[8,3,2]] encoding tensor with all 3 logical legs",
@@ -204,7 +204,7 @@ export class Legos {
         parameters: {}
       },
       {
-        id: "15qrm",
+        type_id: "15qrm",
         name: "[[15,1,3]] QRM",
         shortName: "QRM15",
         description: "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
@@ -236,7 +236,7 @@ export class Legos {
   }
   static stopper_i(): LegoPiece {
     return {
-      id: LegoType.STOPPER_I,
+      type_id: LegoType.STOPPER_I,
       name: "Identity Stopper",
       shortName: "I",
       description: "Identity stopper tensor",
@@ -249,7 +249,7 @@ export class Legos {
   }
   static stopper_z(): LegoPiece {
     return {
-      id: LegoType.STOPPER_Z,
+      type_id: LegoType.STOPPER_Z,
       name: "Z Stopper",
       shortName: "Z",
       description: "Z-type stopper tensor",
@@ -262,7 +262,7 @@ export class Legos {
   }
   static stopper_x(): LegoPiece {
     return {
-      id: LegoType.STOPPER_X,
+      type_id: LegoType.STOPPER_X,
       name: "X Stopper",
       shortName: "X",
       description: "X-type stopper tensor",
@@ -277,7 +277,7 @@ export class Legos {
   public static getDynamicLego(request: DynamicLegoRequest): LegoPiece {
     // Get the lego definition from available legos
     const legos = this.listAvailableLegos();
-    const legoDef = legos.find((l) => l.id === request.lego_id);
+    const legoDef = legos.find((l) => l.type_id === request.lego_id);
 
     if (!legoDef || !legoDef.is_dynamic) {
       throw new Error(`Invalid or non-dynamic lego ID: ${request.lego_id}`);
@@ -337,7 +337,7 @@ export function recognize_parity_check_matrix(h: GF2): string | null {
     if (!lego.is_dynamic) {
       const lego_matrix = new GF2(lego.parity_check_matrix);
       if (is_gauss_equivalent(h, lego_matrix)) {
-        return lego.id;
+        return lego.type_id;
       }
     }
   }

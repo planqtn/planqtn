@@ -13,8 +13,8 @@ export function canDoInverseBialgebra(
   if (selectedLegos.length < 2) return false;
 
   // Partition legos by type
-  const zLegos = selectedLegos.filter((lego) => lego.id === Z_REP_CODE);
-  const xLegos = selectedLegos.filter((lego) => lego.id === X_REP_CODE);
+  const zLegos = selectedLegos.filter((lego) => lego.type_id === Z_REP_CODE);
+  const xLegos = selectedLegos.filter((lego) => lego.type_id === X_REP_CODE);
 
   // Check if we have exactly two partitions
   if (
@@ -80,8 +80,8 @@ export async function applyInverseBialgebra(
   operation: Operation;
 }> {
   // Partition legos by type
-  const zLegos = selectedLegos.filter((lego) => lego.id === Z_REP_CODE);
-  const xLegos = selectedLegos.filter((lego) => lego.id === X_REP_CODE);
+  const zLegos = selectedLegos.filter((lego) => lego.type_id === Z_REP_CODE);
+  const xLegos = selectedLegos.filter((lego) => lego.type_id === X_REP_CODE);
 
   // Get external connections for each partition
   const zExternalConns = connections.filter(

@@ -266,16 +266,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   }, [selectedRows, parentUpdating]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log(
-      "Using",
-      parentUpdating ? "PARENT" : "LOCAL",
-      "state. Selected:",
-      effectiveSelectedRows
-    );
-  }, [effectiveSelectedRows, parentUpdating]);
-
   // Prevent wheel events during drag operations
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -562,7 +552,7 @@ export const ParityCheckMatrixDisplay: React.FC<
   if (isScalar) {
     return (
       <Box>
-        <Text>Scalar</Text>
+        <Text>Scalar: {matrix[0][0]}</Text>
       </Box>
     );
   }

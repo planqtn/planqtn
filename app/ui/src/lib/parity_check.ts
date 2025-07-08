@@ -185,6 +185,9 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
   );
 
   if (keptCols.length === 0) {
+    if (keptRows.length === 0) {
+      return new GF2([[0]]);
+    }
     return new GF2([[1]]);
   }
 

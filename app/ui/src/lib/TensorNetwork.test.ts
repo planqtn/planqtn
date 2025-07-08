@@ -1,6 +1,6 @@
 import { TensorNetwork } from "./TensorNetwork";
 import { Connection } from "../stores/connectionStore";
-import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { LogicalPoint } from "../types/coordinates.ts";
 
@@ -10,7 +10,7 @@ describe("TensorNetwork", () => {
     const nodes: DroppedLego[] = [
       new DroppedLego(
         {
-          id: "encoding_tensor_602",
+          type_id: "encoding_tensor_602",
           name: "Encoding Tensor 602",
           shortName: "602",
           description: "Encoding Tensor 602",
@@ -31,7 +31,7 @@ describe("TensorNetwork", () => {
       ),
       new DroppedLego(
         {
-          id: "stopper_i",
+          type_id: "stopper_i",
           name: "Identity Stopper",
           shortName: "I",
           description: "Identity Stopper",
@@ -45,7 +45,7 @@ describe("TensorNetwork", () => {
       ),
       new DroppedLego(
         {
-          id: "stopper_i",
+          type_id: "stopper_i",
           name: "Identity Stopper",
           shortName: "I",
           description: "Identity Stopper",
@@ -98,7 +98,7 @@ describe("TensorNetwork", () => {
       legos: [
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -118,7 +118,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -138,7 +138,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -158,7 +158,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -178,7 +178,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -198,7 +198,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            id: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -271,5 +271,30 @@ describe("TensorNetwork", () => {
     // console.log(sstr(GF2.gauss(conjoined.h)));
     // console.log(sstr(expectedMatrix));
     expect(GF2.gauss(conjoined.h)).toEqual(expectedMatrix);
+  });
+
+  it("should correctly fuse two legos with new legs containing the old leg ids", () => {
+    const tn = new TensorNetwork({
+      legos: [
+        createHadamardLego(new LogicalPoint(0, 0), "1"),
+        createHadamardLego(new LogicalPoint(1, 1), "2")
+      ],
+      connections: []
+    });
+    const conjoined = tn.conjoin_nodes();
+    expect(conjoined.h).toEqual(
+      new GF2([
+        [1, 0, 0, 0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 1],
+        [0, 0, 0, 1, 0, 0, 1, 0]
+      ])
+    );
+    expect(conjoined.legs).toEqual([
+      { instanceId: "1", legIndex: 0 },
+      { instanceId: "1", legIndex: 1 },
+      { instanceId: "2", legIndex: 0 },
+      { instanceId: "2", legIndex: 1 }
+    ]);
   });
 });

@@ -21,7 +21,7 @@ describe("simple auto flow", () => {
   }): DroppedLego =>
     new DroppedLego(
       {
-        id: id,
+        type_id: id,
         name: name,
         shortName: name,
         description: name,

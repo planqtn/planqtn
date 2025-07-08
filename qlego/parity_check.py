@@ -124,6 +124,9 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     kept_cols = np.array([col for col in range(2 * n) if col not in legs])
 
     if len(kept_cols) == 0:
+        # we have a scalar lego, if there were no rows left, then we have 0, otherwise we normalize to 1
+        if len(kept_rows) == 0:
+            return GF2([[0]])
         return GF2([[1]])
 
     kept_rows = np.array(kept_rows)

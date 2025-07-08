@@ -2,9 +2,50 @@ import { StateCreator } from "zustand";
 import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
+import { Legos } from "../features/lego/Legos";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
-  lego.style = getLegoStyle(lego.id, lego.numberOfLegs, lego);
+  lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
+}
+
+export function createXRepCodeLego(
+  canvasPosition: LogicalPoint,
+  instanceId: string,
+  d: number = 3
+): DroppedLego {
+  return new DroppedLego(
+    {
+      type_id: "x_rep_code",
+      name: "X Repetition Code",
+      shortName: "XRep",
+      description: "X Repetition Code",
+      parity_check_matrix: Legos.x_rep_code(d),
+      logical_legs: [],
+      gauge_legs: []
+    },
+    canvasPosition,
+    instanceId
+  );
+}
+
+export function createZRepCodeLego(
+  canvasPosition: LogicalPoint,
+  instanceId: string,
+  d: number = 3
+): DroppedLego {
+  return new DroppedLego(
+    {
+      type_id: "z_rep_code",
+      name: "Z Repetition Code",
+      shortName: "ZRep",
+      description: "Z Repetition Code",
+      parity_check_matrix: Legos.z_rep_code(d),
+      logical_legs: [],
+      gauge_legs: []
+    },
+    canvasPosition,
+    instanceId
+  );
 }
 
 export function createHadamardLego(
@@ -13,7 +54,7 @@ export function createHadamardLego(
 ): DroppedLego {
   return new DroppedLego(
     {
-      id: "h",
+      type_id: "h",
       name: "Hadamard",
       shortName: "H",
       description: "Hadamard",
@@ -30,7 +71,7 @@ export function createHadamardLego(
 }
 
 export interface LegoPiece {
-  id: string;
+  type_id: string;
   name: string;
   shortName: string;
   description: string;
@@ -42,7 +83,7 @@ export interface LegoPiece {
 }
 
 export class DroppedLego implements LegoPiece {
-  public id: string;
+  public type_id: string;
   public name: string;
   public shortName: string;
   public description: string;
@@ -65,7 +106,7 @@ export class DroppedLego implements LegoPiece {
     // optional overrides
     overrides: Partial<DroppedLego> = {}
   ) {
-    this.id = lego.id;
+    this.type_id = lego.type_id;
     this.name = lego.name;
     this.shortName = overrides.shortName || lego.shortName;
     this.description = overrides.description || lego.description;
@@ -80,11 +121,11 @@ export class DroppedLego implements LegoPiece {
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
 
-    this.style = getLegoStyle(lego.id, this.numberOfLegs, this);
+    this.style = getLegoStyle(lego.type_id, this.numberOfLegs, this);
   }
 
   public get numberOfLegs(): number {
-    return this.parity_check_matrix[0].length / 2;
+    return Math.trunc(this.parity_check_matrix[0].length / 2);
   }
 
   public with(overrides: Partial<DroppedLego>): DroppedLego {
@@ -103,6 +144,13 @@ export class DroppedLego implements LegoPiece {
 
   public get selectedMatrixRows(): number[] {
     return this._selectedMatrixRows;
+  }
+
+  public get scalarValue(): number | null {
+    if (this.numberOfLegs === 0) {
+      return this.parity_check_matrix[0][0];
+    }
+    return null;
   }
 }
 
