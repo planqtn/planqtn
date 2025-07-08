@@ -241,8 +241,6 @@ class StabilizerCodeTensorEnumerator:
         new_legs = [leg for leg in self.legs if leg not in legs1]
         new_legs += [leg for leg in other.legs if leg not in legs2]
 
-        print("new_legs", new_legs)
-
         return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=new_legs)
 
     def _brute_force_stabilizer_enumerator_from_parity(

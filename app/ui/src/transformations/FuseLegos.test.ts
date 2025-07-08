@@ -168,7 +168,7 @@ it("should be able to fuse two independent legos with an external connection", a
   expect(fusedLego).toBeTruthy();
 });
 
-it.only("should tensor the identity stopper with a regular lego", async () => {
+it("should tensor the identity stopper with a regular lego", async () => {
   const droppedLegos = [
     createHadamardLego(new LogicalPoint(2, 2), "9"),
     // this should only add a single "unstabilized" leg
@@ -204,13 +204,14 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
       },
       new LogicalPoint(1, 1),
       "8"
-    )
+    ),
+    new DroppedLego(Legos.stopper_i(), new LogicalPoint(1, 1), "10")
   ];
   const fuseLegos = new FuseLegos([], droppedLegos, () => {
     return "newInstanceId";
   });
   const result = await fuseLegos.apply(droppedLegos);
-  expect(result.droppedLegos).toHaveLength(2);
+  expect(result.droppedLegos).toHaveLength(1);
   const fusedLego = result.droppedLegos.find(
     (l) => l.instanceId === "newInstanceId"
   );

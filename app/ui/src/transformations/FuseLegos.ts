@@ -85,8 +85,6 @@ export class FuseLegos {
         throw new Error("Cannot fuse these legos");
       }
 
-      console.log("result", result);
-
       // Try to recognize the type of the fused lego
       const recognized_type =
         recognize_parity_check_matrix(result.h) || "fused_lego";

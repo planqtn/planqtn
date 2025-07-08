@@ -571,7 +571,6 @@ export function getLegoStyle(
   lego: DroppedLego
 ): LegoStyle {
   if (numLegs === 0) {
-    console.log("ScalarStyle", id, lego);
     return new ScalarStyle(id, lego);
   } else if (id === "h") {
     return new HadamardStyle(id, lego);

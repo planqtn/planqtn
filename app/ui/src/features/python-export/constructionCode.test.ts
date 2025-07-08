@@ -202,7 +202,6 @@ tn = TensorNetwork(nodes)
           return;
         }
 
-        // console.log("stdout: ", stdout);
         // Parse the output into a matrix
         const parity_check_matrix = stdout
           .trim()
