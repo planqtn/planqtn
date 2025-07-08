@@ -78,7 +78,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
     if (!selectedDynamicLego || !pendingDropPosition) return;
     try {
       const dynamicLego = Legos.getDynamicLego({
-        lego_id: selectedDynamicLego.id,
+        lego_id: selectedDynamicLego.type_id,
         parameters
       });
       const instanceId = newInstanceId();
@@ -207,7 +207,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
     try {
       // Get the new repetition code with one more leg
       const newLegoData = Legos.getDynamicLego({
-        lego_id: lego.id,
+        lego_id: lego.type_id,
         parameters: {
           d: numLegs + 1
         }
@@ -223,11 +223,13 @@ export const createCanvasEventHandlingSlice: StateCreator<
       // Create a stopper based on the lego type
       const stopperLego: DroppedLego = new DroppedLego(
         {
-          id: lego.id === "z_rep_code" ? "stopper_x" : "stopper_z",
-          name: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
-          shortName: lego.id === "z_rep_code" ? "X" : "Z",
-          description: lego.id === "z_rep_code" ? "X Stopper" : "Z Stopper",
-          parity_check_matrix: lego.id === "z_rep_code" ? [[1, 0]] : [[0, 1]],
+          type_id: lego.type_id === "z_rep_code" ? "stopper_x" : "stopper_z",
+          name: lego.type_id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          shortName: lego.type_id === "z_rep_code" ? "X" : "Z",
+          description:
+            lego.type_id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          parity_check_matrix:
+            lego.type_id === "z_rep_code" ? [[1, 0]] : [[0, 1]],
           logical_legs: [],
           gauge_legs: []
         },

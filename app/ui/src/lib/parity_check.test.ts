@@ -222,6 +222,65 @@ describe("parity_check", () => {
 
     expect(result.equals(expected)).toBe(true);
   });
+
+  it("should conjoin to zero", () => {
+    const h1 = new GF2([[1, 0]]);
+    const h2 = new GF2([[0, 1]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[0]]));
+  });
+
+  it("should conjoin to one", () => {
+    const h1 = new GF2([[1, 0]]);
+    const h2 = new GF2([[1, 0]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[1]]));
+  });
+
+  it("should tensor product of identity stopper with a regular lego", () => {
+    const h1 = new GF2([[0, 0]]);
+    const h2 = new GF2([[1, 0]]);
+    const result = tensor_product(h1, h2);
+    expect(result).toEqual(new GF2([[0, 1, 0, 0]]));
+  });
+
+  it("should tensor product of regular lego with identity stopper", () => {
+    const h1 = new GF2([[1, 0]]);
+    const h2 = new GF2([[0, 0]]);
+    const result = tensor_product(h1, h2);
+    expect(result).toEqual(new GF2([[1, 0, 0, 0]]));
+  });
+
+  it("should tensor product of scalar 0 with a regular lego should be 0", () => {
+    const zero = new GF2([[0]]);
+    const h2 = new GF2([[1, 0]]);
+    const result = tensor_product(zero, h2);
+    expect(result).toEqual(new GF2([[0]]));
+  });
+
+  it("should tensor product of scalar 1 with a regular lego should be the regular lego", () => {
+    const h1 = new GF2([[1]]);
+    const h2 = new GF2([[1, 0]]);
+    const result = tensor_product(h1, h2);
+    expect(result).toEqual(new GF2([[1, 0]]));
+  });
+
+  it("should conjoin two free qubits", () => {
+    const h1 = new GF2([[0, 0]]);
+    const h2 = new GF2([[0, 0]]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[1]]));
+  });
+
+  it("should conjoin a free qubit with a regular lego", () => {
+    const h1 = new GF2([[0, 0]]);
+    const h2 = new GF2([
+      [1, 1, 0, 0],
+      [0, 0, 1, 1]
+    ]);
+    const result = conjoin(h1, h2, 0, 0);
+    expect(result).toEqual(new GF2([[0, 0]]));
+  });
 });
 
 describe("GF2 Linear Algebra Tests", () => {

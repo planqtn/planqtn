@@ -447,8 +447,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     // Create new legos array starting with the modified original lego
     const newLegos: DroppedLego[] = [
       lego.with({
-        id: lego.id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
-        shortName: lego.id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
+        type_id: lego.type_id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
+        shortName: lego.type_id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
         parity_check_matrix: newParityCheckMatrix
       })
     ];
@@ -618,11 +618,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
       const [lego1Data, lego2Data] = [
         Legos.getDynamicLego({
-          lego_id: lego.id,
+          lego_id: lego.type_id,
           parameters: { d: lego1Legs + 1 }
         }),
         Legos.getDynamicLego({
-          lego_id: lego.id,
+          lego_id: lego.type_id,
           parameters: { d: lego2Legs + 1 }
         })
       ];
@@ -777,7 +777,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       [0, 0, 1, 1]
     ];
 
-    const isXCode = lego.id === "x_rep_code";
+    const isXCode = lego.type_id === "x_rep_code";
 
     if (numLegs === 1) {
       // Case 1: Original lego has 1 leg -> Create 1 new lego with 2 legs
@@ -1161,8 +1161,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                   Always show legs
                 </Checkbox>
               </Box>
-              {(tensorNetwork.legos[0].id === "x_rep_code" ||
-                tensorNetwork.legos[0].id === "z_rep_code") && (
+              {(tensorNetwork.legos[0].type_id === "x_rep_code" ||
+                tensorNetwork.legos[0].type_id === "z_rep_code") && (
                 <>
                   <Button
                     leftIcon={<Icon as={FaCube} />}

@@ -118,7 +118,6 @@ export const ConnectionsLayer: React.FC = () => {
               ];
         const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-        // Calculate positions using shared function
         const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
         const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
 

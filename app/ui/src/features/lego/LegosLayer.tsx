@@ -10,11 +10,21 @@ export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
   const visibleLegoIds = useVisibleLegoIds();
   const viewport = useCanvasStore((state) => state.viewport);
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const calculateTensorNetworkBoundingBox = useCanvasStore(
+    (state) => state.calculateTensorNetworkBoundingBox
+  );
+  const tnBoundingBoxLogical =
+    tensorNetwork && tensorNetwork.legos.length > 0
+      ? calculateTensorNetworkBoundingBox()
+      : null;
+  const tnBoundingBox = tnBoundingBoxLogical
+    ? viewport.fromLogicalToCanvasBB(tnBoundingBoxLogical)
+    : null;
   // Get drag state to hide dragged legos (proxy will show instead)
-  const { dragState, tensorNetwork } = useCanvasStore(
+  const { dragState } = useCanvasStore(
     useShallow((state) => ({
-      dragState: state.legoDragState,
-      tensorNetwork: state.tensorNetwork
+      dragState: state.legoDragState
     }))
   );
 
@@ -53,7 +63,35 @@ export const LegosLayer: React.FC = () => {
   }, [visibleLegoIds, isDraggedLego, viewport]);
 
   return (
-    <Suspense fallback={<div>Loading legos...</div>}>{renderedLegos}</Suspense>
+    <>
+      {tensorNetwork && tnBoundingBox && (
+        <svg
+          id="tn-bounding-box"
+          style={{
+            position: "absolute",
+            top: tnBoundingBox.minY,
+            left: tnBoundingBox.minX,
+            width: tnBoundingBox.width,
+            height: tnBoundingBox.height,
+            zIndex: 0,
+            pointerEvents: "inherit"
+          }}
+        >
+          <rect
+            x={0}
+            y={0}
+            width={tnBoundingBox.width}
+            height={tnBoundingBox.height}
+            fill="none"
+            strokeWidth="2"
+            stroke="blue"
+          />
+        </svg>
+      )}
+      <Suspense fallback={<div>Loading legos...</div>}>
+        {renderedLegos}
+      </Suspense>
+    </>
   );
 };
 

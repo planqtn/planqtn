@@ -16,7 +16,7 @@ describe("OperationHistory", () => {
     it("should return to original state after undo and redo of add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
@@ -67,7 +67,7 @@ describe("OperationHistory", () => {
     it("should handle multiple undos after add and move operations", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
@@ -144,7 +144,7 @@ describe("OperationHistory", () => {
       // Create initial legos
       const hadamard: DroppedLego = new DroppedLego(
         {
-          id: "hadamard",
+          type_id: "hadamard",
           name: "Hadamard",
           shortName: "H",
           description: "Hadamard Gate",
@@ -161,7 +161,7 @@ describe("OperationHistory", () => {
 
       const zRep1: DroppedLego = new DroppedLego(
         {
-          id: "z-rep",
+          type_id: "z-rep",
           name: "Z-Rep Code",
           shortName: "Z",
           description: "Z-Repetition Code",
@@ -345,7 +345,7 @@ describe("OperationHistory", () => {
     it("should undo an add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
@@ -376,7 +376,7 @@ describe("OperationHistory", () => {
     it("should undo a move operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
@@ -439,7 +439,7 @@ describe("OperationHistory", () => {
     it("should redo an add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
@@ -472,7 +472,7 @@ describe("OperationHistory", () => {
     it("should redo a move operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          id: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",

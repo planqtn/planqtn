@@ -21,7 +21,7 @@ export class CustomLegoService {
     const newLego: DroppedLego = new DroppedLego(
       {
         // Generate unique ID to avoid caching collisions
-        id:
+        type_id:
           "custom-" +
           instanceId +
           "-" +

@@ -8,7 +8,9 @@ import { LogicalPoint } from "../types/coordinates.ts";
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
 ): boolean => {
-  return legos.length > 1 && legos.every((lego) => lego.id === "z_rep_code");
+  return (
+    legos.length > 1 && legos.every((lego) => lego.type_id === "z_rep_code")
+  );
 };
 
 const getDanglingLegs = (

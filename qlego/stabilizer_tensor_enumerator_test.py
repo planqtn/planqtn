@@ -302,15 +302,22 @@ def test_conjoin_to_scalar():
 
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
 
+    stopper_1 = StabilizerCodeTensorEnumerator(idx=1, h=GF2([PAULI_I]))
+    stopper_2 = StabilizerCodeTensorEnumerator(idx=2, h=GF2([PAULI_I]))
     joint = (
-        StabilizerCodeTensorEnumerator(idx=0, h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]))
-        .conjoin(
-            StabilizerCodeTensorEnumerator(idx=1, h=GF2([PAULI_I])), [(0, 0)], [(1, 0)]
+        StabilizerCodeTensorEnumerator(
+            idx=0,
+            h=GF2(
+                [
+                    [1, 1, 0, 0],
+                    [0, 0, 1, 1],
+                ]
+            ),
         )
-        .conjoin(
-            StabilizerCodeTensorEnumerator(idx=2, h=GF2([PAULI_I])), [(0, 1)], [(2, 0)]
-        )
+        .conjoin(stopper_1, [(0, 0)], [(1, 0)])
+        .conjoin(stopper_2, [(0, 1)], [(2, 0)])
     )
+
     wep = joint.scalar_stabilizer_enumerator()
 
     assert wep == {0: 1}

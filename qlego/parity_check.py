@@ -26,6 +26,12 @@ def bring_col_to_front(h, col, target_col):
         h[:, [c, c + 1]] = h[:, [c + 1, c]]
 
 
+def _normalize_emtpy_matrices_to_zero(h):
+    if len(h) == 0 or h.shape == (0, 0) or h.shape == (1, 0):
+        h = GF2([[0]])
+    return h
+
+
 def tensor_product(h1: GF2, h2: GF2) -> GF2:
     """Compute the tensor product of two parity check matrices.
 
@@ -36,6 +42,8 @@ def tensor_product(h1: GF2, h2: GF2) -> GF2:
     Returns:
         The tensor product of h1 and h2 as a new parity check matrix
     """
+    h1 = _normalize_emtpy_matrices_to_zero(h1)
+    h2 = _normalize_emtpy_matrices_to_zero(h2)
 
     r1, n1 = h1.shape
     r2, n2 = h2.shape
@@ -46,11 +54,27 @@ def tensor_product(h1: GF2, h2: GF2) -> GF2:
     is_scalar_2 = n2 == 0
 
     if is_scalar_1:
-        h1 = GF2([[1]])
+        if h1[0][0] == 0:
+            return GF2([[0]])
+        return h2
     if is_scalar_2:
-        h2 = GF2([[1]])
-    if is_scalar_1 or is_scalar_2:
-        return h1 * h2
+        if h2[0][0] == 0:
+            return GF2([[0]])
+        return h1
+
+    # if all the rows of h1 are zero and only has a single row, then this is a tensor of free qubits
+    if len(h1) == 1 and np.all(h1[0] == 0):
+        # then we'll just add n1 number of cols to h2 with zeros to each half of the matrix
+        return GF2(
+            np.hstack((np.zeros((r2, n1)), h2[:, :n2], np.zeros((r2, n1)), h2[:, n2:]))
+        )
+
+    # if all the rows of h2 are zero and only has a single row, then this is a tensor of free qubits
+    if len(h2) == 1 and np.all(h2[0] == 0):
+        # then we'll just add n2 number of cols to h1 with zeros to each half of the matrix
+        return GF2(
+            np.hstack((h1[:, :n1], np.zeros((r1, n2)), h1[:, n1:], np.zeros((r1, n2))))
+        )
 
     h = GF2(
         np.hstack(
@@ -73,6 +97,8 @@ def tensor_product(h1: GF2, h2: GF2) -> GF2:
 
 def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
     """Conjoins two parity check matrices via single trace on one leg."""
+    h1 = _normalize_emtpy_matrices_to_zero(h1)
+    h2 = _normalize_emtpy_matrices_to_zero(h2)
     n1 = h1.shape[1] // 2
     h = tensor_product(h1, h2)
     h = self_trace(h, leg1, n1 + leg2)
@@ -124,11 +150,15 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     kept_cols = np.array([col for col in range(2 * n) if col not in legs])
 
     if len(kept_cols) == 0:
+        # we have a scalar lego, if there were no rows left, then we have 0, otherwise we normalize to 1
+        if len(kept_rows) == 0:
+            return GF2([[0]])
         return GF2([[1]])
 
     kept_rows = np.array(kept_rows)
     if kept_rows.size == 0:
-        return GF2([[1]])
+
+        return GF2([GF2.Zeros(len(kept_cols))])
     mx = mx[kept_rows][:, kept_cols]
 
     # print("after removals:")

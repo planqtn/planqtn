@@ -3,7 +3,7 @@ import { Operation } from "../features/canvas/OperationHistory.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { recognize_parity_check_matrix } from "../features/lego/Legos.ts";
-import { newInstanceId } from "../stores/droppedLegoStore";
+import { newInstanceId as storeNewInstanceId } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates.ts";
 
 export class FuseLegos {
@@ -11,8 +11,14 @@ export class FuseLegos {
 
   constructor(
     private connections: Connection[],
-    private droppedLegos: DroppedLego[]
-  ) {}
+    private droppedLegos: DroppedLego[],
+    private newInstanceId: ((legos: DroppedLego[]) => string) | null = null
+  ) {
+    if (this.newInstanceId === null) {
+      console.log("newInstanceId is null, using default");
+      this.newInstanceId = storeNewInstanceId;
+    }
+  }
 
   public async apply(legosToFuse: DroppedLego[]): Promise<{
     connections: Connection[];
@@ -20,6 +26,11 @@ export class FuseLegos {
     operation: Operation;
   }> {
     try {
+      for (const lego of legosToFuse) {
+        if (!this.droppedLegos.some((l) => l.instanceId === lego.instanceId)) {
+          throw new Error("Lego not found");
+        }
+      }
       // Get all connections between the legos being fused
       const internalConnections = this.connections.filter(
         (conn) =>
@@ -81,7 +92,7 @@ export class FuseLegos {
       // Create a new lego with the calculated parity check matrix
       const newLego: DroppedLego = new DroppedLego(
         {
-          id: recognized_type,
+          type_id: recognized_type,
           shortName: "Fused",
           name: "Fused Lego",
           description: "Fused " + legosToFuse.length + " legos",
@@ -95,7 +106,7 @@ export class FuseLegos {
           legosToFuse.reduce((sum, l) => sum + l.logicalPosition.y, 0) /
             legosToFuse.length
         ),
-        newInstanceId(this.droppedLegos)
+        this.newInstanceId!(this.droppedLegos)
       );
 
       // Create new connections based on the leg mapping
@@ -110,6 +121,7 @@ export class FuseLegos {
               leg.instanceId === conn.from.legoId &&
               leg.legIndex === conn.from.legIndex
           );
+
           return new Connection(
             { legoId: newLego.instanceId, legIndex: newLegIndex },
             conn.to

@@ -47,6 +47,7 @@ export const CanvasMiniMap: React.FC = () => {
     "orange.500",
     "orange.400"
   );
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
 
   const viewport = useCanvasStore((state) => state.viewport);
   const zoomLevel = viewport.zoomLevel;
@@ -86,7 +87,10 @@ export const CanvasMiniMap: React.FC = () => {
   }, [canvasRef, setPanelDimensions]);
 
   const droppedLegoBoundingBox = calculateDroppedLegoBoundingBox();
-  const tensorNetworkBoundingBox = calculateTensorNetworkBoundingBox();
+  const tensorNetworkBoundingBox =
+    tensorNetwork && tensorNetwork.legos.length > 0
+      ? calculateTensorNetworkBoundingBox()
+      : null;
 
   // Calculate minimap dimensions and positions (in pixels)
   const minimap = useMemo(() => {

@@ -88,6 +88,16 @@ export class Viewport {
     );
   }
 
+  fromLogicalToWindow(point: LogicalPoint): WindowPoint {
+    const canvasPoint = this.fromLogicalToCanvas(point);
+    return new WindowPoint(
+      canvasPoint.x +
+        (this.canvasRef?.current?.getBoundingClientRect().left ?? 0),
+      canvasPoint.y +
+        (this.canvasRef?.current?.getBoundingClientRect().top ?? 0)
+    );
+  }
+
   fromWindowToCanvas(point: WindowPoint): CanvasPoint {
     return new CanvasPoint(
       point.x - (this.canvasRef?.current?.getBoundingClientRect().left ?? 0),
@@ -97,6 +107,23 @@ export class Viewport {
 
   fromWindowToLogical(point: WindowPoint): LogicalPoint {
     return this.fromCanvasToLogical(this.fromWindowToCanvas(point));
+  }
+
+  fromLogicalToCanvasBB(rect: BoundingBox): BoundingBox {
+    const canvasMin = this.fromLogicalToCanvas(
+      new LogicalPoint(rect.minX, rect.minY)
+    );
+    const canvasMax = this.fromLogicalToCanvas(
+      new LogicalPoint(rect.maxX, rect.maxY)
+    );
+    return {
+      minX: canvasMin.x,
+      minY: canvasMin.y,
+      maxX: canvasMax.x,
+      maxY: canvasMax.y,
+      width: canvasMax.x - canvasMin.x,
+      height: canvasMax.y - canvasMin.y
+    };
   }
 }
 

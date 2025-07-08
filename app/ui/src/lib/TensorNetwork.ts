@@ -134,7 +134,9 @@ export class TensorNetwork {
   ) => {
     const sortedLegos = [...legos]
       .sort((a, b) => a.instanceId.localeCompare(b.instanceId))
-      .map((lego) => lego.id + "-" + lego.instanceId + "-" + lego.numberOfLegs);
+      .map(
+        (lego) => lego.type_id + "-" + lego.instanceId + "-" + lego.numberOfLegs
+      );
     const sortedConnections = [...connections].sort((a, b) => {
       const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
       const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;

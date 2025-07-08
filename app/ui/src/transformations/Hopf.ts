@@ -14,8 +14,8 @@ export function canDoHopfRule(
   // Check if one is X and one is Z type
   const [lego1, lego2] = selectedLegos;
   const hasXAndZ =
-    (lego1.id === X_REP_CODE && lego2.id === Z_REP_CODE) ||
-    (lego1.id === Z_REP_CODE && lego2.id === X_REP_CODE);
+    (lego1.type_id === X_REP_CODE && lego2.type_id === Z_REP_CODE) ||
+    (lego1.type_id === Z_REP_CODE && lego2.type_id === X_REP_CODE);
   if (!hasXAndZ) return false;
 
   // Count connections between the two legos
@@ -39,7 +39,7 @@ export async function applyHopfRule(
 }> {
   // Get the X and Z legos in correct order
   const [xLego, zLego] =
-    selectedLegos[0].id === X_REP_CODE
+    selectedLegos[0].type_id === X_REP_CODE
       ? [selectedLegos[0], selectedLegos[1]]
       : [selectedLegos[1], selectedLegos[0]];
 
