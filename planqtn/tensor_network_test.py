@@ -7,13 +7,13 @@ import scipy
 import sympy
 import os
 
-from qlego.codes.surface_code import SurfaceCodeTN
-from qlego.legos import Legos
-from qlego.linalg import gauss
-from qlego.parity_check import conjoin, sprint, sstr, tensor_product
-from qlego.progress_reporter import TqdmProgressReporter
-from qlego.symplectic import weight
-from qlego.tensor_network import (
+from planqtn.codes.surface_code import SurfaceCodeTN
+from planqtn.legos import Legos
+from planqtn.linalg import gauss
+from planqtn.parity_check import conjoin, sprint, sstr, tensor_product
+from planqtn.progress_reporter import TqdmProgressReporter
+from planqtn.symplectic import weight
+from planqtn.tensor_network import (
     PAULI_I,
     PAULI_X,
     PAULI_Y,
@@ -331,7 +331,7 @@ def test_double_trace_422():
 
 
 def test_construction_code():
-    # Add the parent directory to Python path to find qlego package
+    # Add the parent directory to Python path to find planqtn package
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     tn = SurfaceCodeTN(3)

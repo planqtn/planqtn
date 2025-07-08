@@ -2,8 +2,8 @@ from typing import Any, Dict, List
 
 from galois import GF2
 from pydantic import BaseModel
-from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from qlego.tensor_network import TensorNetwork
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.tensor_network import TensorNetwork
 
 
 class LegoPiece(BaseModel):

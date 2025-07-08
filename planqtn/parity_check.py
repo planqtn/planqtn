@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from scipy.linalg import block_diag
 
-from qlego.linalg import gauss
+from planqtn.linalg import gauss
 
 
 def sstr(h):

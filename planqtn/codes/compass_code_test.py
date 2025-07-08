@@ -1,11 +1,11 @@
 from galois import GF2
 import numpy as np
 import pytest
-from qlego.codes.compass_code import CompassCodeTN
-from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
-from qlego.legos import Legos
-from qlego.simple_poly import SimplePoly
-from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.codes.compass_code import CompassCodeTN
+from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
+from planqtn.legos import Legos
+from planqtn.simple_poly import SimplePoly
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
 
 def test_compass_code():

@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 import pytest
 from tqdm import tqdm
-from qlego.progress_reporter import (
+from planqtn.progress_reporter import (
     IterationState,
     ProgressReporter,
     TqdmProgressReporter,

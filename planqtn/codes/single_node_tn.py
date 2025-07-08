@@ -1,8 +1,8 @@
 from typing import List, Tuple
 from galois import GF2
 import numpy as np
-from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
-from qlego.tensor_network import (
+from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
+from planqtn.tensor_network import (
     TensorNetwork,
     StabilizerCodeTensorEnumerator,
 )

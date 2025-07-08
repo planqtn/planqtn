@@ -6,12 +6,12 @@ import sympy
 
 from galois import GF2
 from tqdm import tqdm
-from qlego.legos import LegoAnnotation
-from qlego.linalg import gauss
-from qlego.parity_check import conjoin, self_trace, tensor_product
-from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
-from qlego.simple_poly import SimplePoly
-from qlego.symplectic import omega, sslice, weight
+from planqtn.legos import LegoAnnotation
+from planqtn.linalg import gauss
+from planqtn.parity_check import conjoin, self_trace, tensor_product
+from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
+from planqtn.simple_poly import SimplePoly
+from planqtn.symplectic import omega, sslice, weight
 
 
 def _index_leg(idx, leg):

@@ -1,8 +1,8 @@
 from galois import GF2
 import numpy as np
-from qlego.legos import Legos
-from qlego.codes.surface_code import SurfaceCodeTN
-from qlego.tensor_network import PAULI_X, PAULI_Z
+from planqtn.legos import Legos
+from planqtn.codes.surface_code import SurfaceCodeTN
+from planqtn.tensor_network import PAULI_X, PAULI_Z
 
 
 class CompassCodeTN(SurfaceCodeTN):

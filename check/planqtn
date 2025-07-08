@@ -12,9 +12,9 @@ set -e
 
 export PYTHONPATH="."
 
-black qlego --check
-pytest qlego
+black planqtn --check
+pytest planqtn
 
-mypy qlego
+mypy planqtn
 
 echo "All checks passed"

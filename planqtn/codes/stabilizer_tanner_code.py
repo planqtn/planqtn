@@ -1,7 +1,7 @@
 import numpy as np
-from qlego.tensor_network import PAULI_X, TensorNetwork
-from qlego.legos import Legos
-from qlego.tensor_network import (
+from planqtn.tensor_network import PAULI_X, TensorNetwork
+from planqtn.legos import Legos
+from planqtn.tensor_network import (
     PAULI_I,
     StabilizerCodeTensorEnumerator,
 )

@@ -10,17 +10,17 @@ import numpy as np
 import sympy
 from tqdm import tqdm
 
-from qlego.legos import LegoAnnotation, Legos
-from qlego.linalg import gauss
-from qlego.parity_check import conjoin, self_trace, sprint, sstr, tensor_product
-from qlego.progress_reporter import DummyProgressReporter, ProgressReporter
-from qlego.simple_poly import SimplePoly
-from qlego.stabilizer_tensor_enumerator import (
+from planqtn.legos import LegoAnnotation, Legos
+from planqtn.linalg import gauss
+from planqtn.parity_check import conjoin, self_trace, sprint, sstr, tensor_product
+from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
+from planqtn.simple_poly import SimplePoly
+from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     _index_leg,
     _index_legs,
 )
-from qlego.symplectic import omega, sconcat, sslice, weight
+from planqtn.symplectic import omega, sconcat, sslice, weight
 
 
 PAULI_I = GF2([0, 0])
@@ -132,9 +132,9 @@ class TensorNetwork:
 
         # Import statements would go at top of file
         code.append(
-            "from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
+            "from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
         )
-        code.append("from qlego.tensor_network import TensorNetwork")
+        code.append("from planqtn.tensor_network import TensorNetwork")
         code.append("from galois import GF2")
         code.append("")
 

@@ -1,7 +1,7 @@
 from galois import GF2
 import numpy as np
 
-from qlego.linalg import gauss, right_kernel
+from planqtn.linalg import gauss, right_kernel
 
 
 def test_right_kernel():

@@ -9,10 +9,10 @@ from planqtn_types.api_types import (
     WeightEnumeratorCalculationArgs,
     WeightEnumeratorCalculationResult,
 )
-from qlego.progress_reporter import ProgressReporter
-from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from qlego.symplectic import symp_to_str
-from qlego.tensor_network import TensorNetwork
+from planqtn.progress_reporter import ProgressReporter
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.symplectic import symp_to_str
+from planqtn.tensor_network import TensorNetwork
 
 
 logger = logging.getLogger(__name__)

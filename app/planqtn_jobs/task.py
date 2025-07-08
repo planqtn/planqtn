@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import supabase
 import supabase.client
 
-from qlego.progress_reporter import (
+from planqtn.progress_reporter import (
     DummyProgressReporter,
     IterationStateEncoder,
     ProgressReporter,

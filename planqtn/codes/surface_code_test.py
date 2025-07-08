@@ -1,9 +1,9 @@
 from galois import GF2
 import numpy as np
 import scipy
-from qlego.codes.surface_code import SurfaceCodeTN
-from qlego.legos import Legos
-from qlego.tensor_network import (
+from planqtn.codes.surface_code import SurfaceCodeTN
+from planqtn.legos import Legos
+from planqtn.tensor_network import (
     PAULI_X,
     PAULI_Y,
     PAULI_Z,

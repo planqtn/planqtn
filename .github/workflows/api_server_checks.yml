@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is checking the API Server 🚀
 on:
   pull_request:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "pyproject.toml"
       - "app/conftest.py"
 
@@ -13,7 +13,7 @@ on:
       - ".github/workflows/api_server_checks.yml"
   push:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "pyproject.toml"
       - "app/conftest.py"
 

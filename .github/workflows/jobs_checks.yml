@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is checking the Job Execution 🚀
 on:
   pull_request:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "pyproject.toml"
 
       - "app/conftest.py"
@@ -14,7 +14,7 @@ on:
       - "app/planqtn_types/**"
   push:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "requirements.txt"
       - "requirements.dev.txt"
       - "app/conftest.py"

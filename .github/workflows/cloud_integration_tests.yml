@@ -5,7 +5,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "pyproject.toml"
 
       - "app/conftest.py"
@@ -23,7 +23,7 @@ on:
       - ".github/workflows/cloud_integration_tests.yml"
   push:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "pyproject.toml"
 
       - "app/conftest.py"
@@ -64,7 +64,7 @@ jobs:
             api:
               - "app/planqtn_api/**"                    
             common: 
-              - "qlego/**"
+              - "planqtn/**"
               - "pyproject.toml"
               - "app/conftest.py"
               - "app/supabase/**"

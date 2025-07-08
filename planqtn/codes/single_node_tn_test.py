@@ -1,9 +1,9 @@
 from galois import GF2
-from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
-from qlego.codes.single_node_tn import SingleNodeTensorNetwork
-from qlego.legos import Legos
-from qlego.simple_poly import SimplePoly
-from qlego.tensor_network import StabilizerCodeTensorEnumerator
+from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
+from planqtn.codes.single_node_tn import SingleNodeTensorNetwork
+from planqtn.legos import Legos
+from planqtn.simple_poly import SimplePoly
+from planqtn.tensor_network import StabilizerCodeTensorEnumerator
 
 
 def test_d3_rsc_joint_z_coset():
