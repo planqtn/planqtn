@@ -2,11 +2,11 @@ from galois import GF2
 import scipy.linalg
 import numpy as np
 import pytest
-from qlego.legos import Legos
-from qlego.linalg import gauss
-from qlego.simple_poly import SimplePoly
-from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from qlego.tensor_network import PAULI_I, PAULI_X, PAULI_Z
+from planqtn.legos import Legos
+from planqtn.linalg import gauss
+from planqtn.simple_poly import SimplePoly
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.tensor_network import PAULI_I, PAULI_X, PAULI_Z
 
 
 @pytest.mark.parametrize(

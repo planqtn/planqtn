@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "requirements.txt"
       - "requirements.dev.txt"
       - "app/conftest.py"
@@ -27,7 +27,7 @@ on:
 
   push:
     paths:
-      - "qlego/**"
+      - "planqtn/**"
       - "requirements.txt"
       - "requirements.dev.txt"
       - "app/conftest.py"
@@ -67,7 +67,7 @@ jobs:
             api:
               - "app/planqtn_api/**"                    
             common: 
-              - "qlego/**"
+              - "planqtn/**"
               - "pyproject.toml"
 
               - "app/conftest.py"

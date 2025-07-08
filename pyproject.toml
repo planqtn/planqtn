@@ -51,7 +51,7 @@ Homepage = "https://github.com/planqtn/planqtn"
 Issues = "https://github.com/planqtn/planqtn/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["qlego"]
+packages = ["planqtn"]
 
 [build-system]
 requires = ["hatchling"]

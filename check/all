@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Ensure script is run from the root directory
-if [ ! -f "check/qlego" ]; then
+if [ ! -f "check/planqtn" ]; then
     echo "Error: This script must be run from the root directory of the repository"
     echo "Current directory: $(pwd)"
-    echo "Expected to find: check/qlego"
+    echo "Expected to find: check/planqtn"
     exit 1
 fi
 
-check/qlego
+check/planqtn
 check/api
 check/jobs
 check/ui

@@ -1,7 +1,7 @@
 from galois import GF2
 
-from qlego.codes.compass_code import CompassCodeTN
-from qlego.codes.css_tanner_code import CssTannerCodeTN
+from planqtn.codes.compass_code import CompassCodeTN
+from planqtn.codes.css_tanner_code import CssTannerCodeTN
 
 
 def test_tanner_graph_enumerator():

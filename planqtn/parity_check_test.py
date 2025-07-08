@@ -1,9 +1,9 @@
 from galois import GF2
 import numpy as np
 import pytest
-from qlego.linalg import gauss
-from qlego.parity_check import conjoin, self_trace, sprint, tensor_product
-from qlego.tensor_network import StabilizerCodeTensorEnumerator
+from planqtn.linalg import gauss
+from planqtn.parity_check import conjoin, self_trace, sprint, tensor_product
+from planqtn.tensor_network import StabilizerCodeTensorEnumerator
 
 
 # Handle empty matrices as input

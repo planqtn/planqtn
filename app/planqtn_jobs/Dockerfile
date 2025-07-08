@@ -15,7 +15,7 @@ COPY app/planqtn_jobs/requirements.txt /app/planqtn_jobs/requirements.txt
 RUN uv pip install -r pyproject.toml -r /app/planqtn_jobs/requirements.txt --system
 
 # Copy source code
-COPY ./qlego /app/qlego
+COPY ./planqtn /app/planqtn
 COPY ./app/planqtn_types /app/planqtn_types
 COPY ./app/planqtn_jobs /app/planqtn_jobs
 
@@ -32,7 +32,7 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libpython3.12.so* /usr/lib/x86_64-
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Copy application code
-COPY --from=builder /app/qlego /app/qlego
+COPY --from=builder /app/planqtn /app/planqtn
 COPY --from=builder /app/planqtn_types /app/planqtn_types
 COPY --from=builder /app/planqtn_jobs /app/planqtn_jobs
 

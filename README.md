@@ -88,14 +88,14 @@ You are looking at a private preview of PlanqTN. We are before the v0.1.0 public
 
 The project has the following main parts:
 
-1. PlanqTN library for weight enumerators, under the [qlego](./qlego) folder
+1. PlanqTN library for weight enumerators, under the [planqtn](./planqtn) folder
 2. the PlanqTN Tensor Studio under [app](./app) folder
 
 !WARNING!
 
 There are many breaking changes expected in the library and the app, including significant design changes. Exciting times!
 
-### Install instructions for the qlego library only
+### Install instructions for the planqtn library only
 
 !WARNING! this will change soon the planqtn! + we'll publish to PyPi.
 

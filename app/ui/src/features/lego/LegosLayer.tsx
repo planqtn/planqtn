@@ -73,8 +73,8 @@ export const LegosLayer: React.FC = () => {
             left: tnBoundingBox.minX,
             width: tnBoundingBox.width,
             height: tnBoundingBox.height,
-            zIndex: 0,
-            pointerEvents: "inherit"
+            zIndex: 1,
+            pointerEvents: "none"
           }}
         >
           <rect

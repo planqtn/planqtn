@@ -19,7 +19,7 @@ Depending on what you want to work on, your setup might require very minimal tim
 
 ### Components
 
-Source code is in `qlego` (will shortly rename it to `planqtn`). Dependencies are in `requirements.txt` and `requirements.dev.txt` for development. `setup.py` drives the local installation and eventually the pypi setup.
+Source code is in `planqtn` (will shortly rename it to `planqtn`). Dependencies are in `requirements.txt` and `requirements.dev.txt` for development. `setup.py` drives the local installation and eventually the pypi setup.
 
 ### Development setup
 
@@ -34,10 +34,10 @@ pip install -r requirements.txt -r requirements.dev.txt
 Before committing, ensure that you followed the black formatting and tests are passing:
 
 ```
-check/qlego
+check/planqtn
 ```
 
-Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on qlego, and changes will trigger integration tests on Github Actions.
+Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on planqtn, and changes will trigger integration tests on Github Actions.
 
 ## PlanqTN Studio
 
@@ -194,7 +194,7 @@ This is the typical, fastest way to check that things are working, but it's heav
 
 - run `hack/htn kernel start` to spin up the `dev` kernel.
 - Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load` (this will trigger the restart of the Supabase cluster). To run without supabase restart, which is a bit slow, you can instead run `hack/htn images jobs --build --load-no-restart`, but then in order for the Edge Runtime to pick up the new image tag, you'll need to manually run `npx supabase functions serve --no-verify-jwt` from the `app` folder in the repo. This also has the benefit of showing the logs of the functions. Use `--no-verify-jwt` when the dev kernel is only for runtime context, otherwise if it's for both user/runtime contexts, then JWT verification is fine. This is because runtime context is using the user JWT to authenticate as the user in the task store when storing back the results. However, if the runtime context supabase is separate from the task store instance, then the Supabase JWT verification will fail on the runtime context, as the JWT is valid only in the User Context Supabase instance.
-- After modifying `planqtn_jobs` or `qlego` or the edge function `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
+- After modifying `planqtn_jobs` or `planqtn` or the edge function `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
 
 ### Using the `dev` kernel as a local runtime context only - relaxation of authorization
 
@@ -210,7 +210,7 @@ This is a workflow tested automatically by Github Actions, and is only required 
 - install the `htn` tool: `hack/cli_build.sh --install`
 - run `htn kernel start` to spin up the `local` kernel.
 - Then, to build the jobs images and load them into the k3d cluster, run `hack/htn images jobs --build --load-no-restart --k3d-cluster local`
-- After modifying `planqtn_jobs` or `qlego`, run `export KERNEL_ENV=local; check/jobs-integration`
+- After modifying `planqtn_jobs` or `planqtn`, run `export KERNEL_ENV=local; check/jobs-integration`
 
 ### The `cloud` workflow
 

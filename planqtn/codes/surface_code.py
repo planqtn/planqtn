@@ -1,7 +1,7 @@
 from galois import GF2
-from qlego.tensor_network import TensorNetwork
-from qlego.legos import Legos
-from qlego.tensor_network import (
+from planqtn.tensor_network import TensorNetwork
+from planqtn.legos import Legos
+from planqtn.tensor_network import (
     PAULI_X,
     PAULI_Z,
     StabilizerCodeTensorEnumerator,

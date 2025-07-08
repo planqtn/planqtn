@@ -154,9 +154,9 @@ export class TensorNetwork {
 
     // Add imports
     code.push(
-      "from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
+      "from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator"
     );
-    code.push("from qlego.tensor_network import TensorNetwork");
+    code.push("from planqtn.tensor_network import TensorNetwork");
     code.push("from galois import GF2");
     code.push("");
 

@@ -1,5 +1,5 @@
-from qlego.legos import Legos
-from qlego.tensor_network import StabilizerCodeTensorEnumerator
+from planqtn.legos import Legos
+from planqtn.tensor_network import StabilizerCodeTensorEnumerator
 
 
 def test_x_spider_h_is_z_spider():

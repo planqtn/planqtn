@@ -5,11 +5,11 @@ from galois import GF2
 import numpy as np
 
 from planqtn_types.api_types import *
-from qlego.codes.css_tanner_code import CssTannerCodeTN
-from qlego.codes.stabilizer_measurement_state_prep import (
+from planqtn.codes.css_tanner_code import CssTannerCodeTN
+from planqtn.codes.stabilizer_measurement_state_prep import (
     StabilizerMeasurementStatePrepTN,
 )
-from qlego.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
+from planqtn.codes.stabilizer_tanner_code import StabilizerTannerCodeTN
 
 router = APIRouter()
 

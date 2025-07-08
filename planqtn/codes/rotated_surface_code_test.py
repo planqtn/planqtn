@@ -2,10 +2,10 @@ from galois import GF2
 import numpy as np
 import pytest
 
-from qlego.codes.rotated_surface_code import RotatedSurfaceCodeTN
-from qlego.legos import Legos
-from qlego.simple_poly import SimplePoly
-from qlego.tensor_network import (
+from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
+from planqtn.legos import Legos
+from planqtn.simple_poly import SimplePoly
+from planqtn.tensor_network import (
     PAULI_X,
     PAULI_Y,
     PAULI_Z,

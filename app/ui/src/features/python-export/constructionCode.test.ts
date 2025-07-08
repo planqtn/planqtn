@@ -8,8 +8,8 @@ describe("constructionCode", () => {
     const tensorNetwork = new TensorNetwork({ legos: [], connections: [] });
     const code = tensorNetwork.generateConstructionCode();
     expect(code)
-      .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from qlego.tensor_network import TensorNetwork
+      .toBe(`from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.tensor_network import TensorNetwork
 from galois import GF2
 
 # Create nodes
@@ -49,8 +49,8 @@ tn = TensorNetwork(nodes)
     });
     const code = tensorNetwork.generateConstructionCode();
     expect(code)
-      .toBe(`from qlego.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from qlego.tensor_network import TensorNetwork
+      .toBe(`from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.tensor_network import TensorNetwork
 from galois import GF2
 
 # Create nodes

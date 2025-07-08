@@ -10,12 +10,12 @@ services:
       - PYTHONPATH=/app
     develop:
       watch:
-        - path: ./qlego
+        - path: ./planqtn
           action: rebuild
         - path: ./planqtn_api
           action: rebuild
 
-        - path: ./qlego
+        - path: ./planqtn
           action: restart
         - path: ./planqtn_api
           action: restart

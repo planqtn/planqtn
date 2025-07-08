@@ -1,4 +1,4 @@
-from qlego.simple_poly import SimplePoly
+from planqtn.simple_poly import SimplePoly
 
 
 def test_normalizer_enumerator_polynomial_513():
