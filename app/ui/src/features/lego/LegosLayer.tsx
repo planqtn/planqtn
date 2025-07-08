@@ -64,34 +64,33 @@ export const LegosLayer: React.FC = () => {
 
   return (
     <>
-      <Suspense fallback={<div>Loading legos...</div>}>
-        {renderedLegos}
-      </Suspense>
-
-      {tnBoundingBox && (
+      {tensorNetwork && tnBoundingBox && (
         <svg
           id="tn-bounding-box"
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            zIndex: 1,
-            pointerEvents: "none"
+            top: tnBoundingBox.minY,
+            left: tnBoundingBox.minX,
+            width: tnBoundingBox.width,
+            height: tnBoundingBox.height,
+            zIndex: 0,
+            pointerEvents: "inherit"
           }}
         >
           <rect
-            x={tnBoundingBox.minX}
-            y={tnBoundingBox.minY}
+            x={0}
+            y={0}
             width={tnBoundingBox.width}
             height={tnBoundingBox.height}
             fill="none"
+            strokeWidth="2"
             stroke="blue"
-            strokeWidth="1"
           />
         </svg>
       )}
+      <Suspense fallback={<div>Loading legos...</div>}>
+        {renderedLegos}
+      </Suspense>
     </>
   );
 };

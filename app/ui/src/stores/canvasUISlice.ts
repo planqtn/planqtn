@@ -88,6 +88,16 @@ export class Viewport {
     );
   }
 
+  fromLogicalToWindow(point: LogicalPoint): WindowPoint {
+    const canvasPoint = this.fromLogicalToCanvas(point);
+    return new WindowPoint(
+      canvasPoint.x +
+        (this.canvasRef?.current?.getBoundingClientRect().left ?? 0),
+      canvasPoint.y +
+        (this.canvasRef?.current?.getBoundingClientRect().top ?? 0)
+    );
+  }
+
   fromWindowToCanvas(point: WindowPoint): CanvasPoint {
     return new CanvasPoint(
       point.x - (this.canvasRef?.current?.getBoundingClientRect().left ?? 0),
