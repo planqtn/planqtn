@@ -60,7 +60,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         if (tensorNetwork && tensorNetwork.legos.length > 0) {
           const selectedLegos = tensorNetwork.legos;
           const selectedLegoIds = new Set(
-            selectedLegos.map((l: DroppedLego) => l.instanceId)
+            selectedLegos.map((l: DroppedLego) => l.instance_id)
           );
 
           const selectedConnections = connections.filter(
@@ -140,7 +140,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             const newLegos = pastedData.legos.map(
               (l: DroppedLego, idx: number) => {
                 const newId = String(startingId + idx);
-                instanceIdMap.set(l.instanceId, newId);
+                instanceIdMap.set(l.instance_id, newId);
                 // Style will be recalculated in DroppedLego constructor
                 return new DroppedLego(
                   l,
@@ -163,11 +163,11 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
                 return {
                   from: {
                     legoId: instanceIdMap.get(conn.from.legoId)!,
-                    legIndex: conn.from.legIndex
+                    leg_index: conn.from.leg_index
                   },
                   to: {
                     legoId: instanceIdMap.get(conn.to.legoId)!,
-                    legIndex: conn.to.legIndex
+                    leg_index: conn.to.leg_index
                   }
                 };
               }
@@ -219,8 +219,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           const connectionsToRemove = connections.filter((conn) =>
             legosToRemove.some(
               (lego) =>
-                conn.from.legoId === lego.instanceId ||
-                conn.to.legoId === lego.instanceId
+                conn.from.legoId === lego.instance_id ||
+                conn.to.legoId === lego.instance_id
             )
           );
 
@@ -238,12 +238,12 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             connections.filter((conn) =>
               legosToRemove.some(
                 (lego) =>
-                  conn.from.legoId === lego.instanceId ||
-                  conn.to.legoId === lego.instanceId
+                  conn.from.legoId === lego.instance_id ||
+                  conn.to.legoId === lego.instance_id
               )
             )
           );
-          removeDroppedLegos(legosToRemove.map((l) => l.instanceId));
+          removeDroppedLegos(legosToRemove.map((l) => l.instance_id));
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
@@ -267,8 +267,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.preventDefault();
         if (
           tensorNetwork &&
-          (tensorNetwork.legos[0].typeId === "x_rep_code" ||
-            tensorNetwork.legos[0].typeId === "z_rep_code")
+          (tensorNetwork.legos[0].type_id === "x_rep_code" ||
+            tensorNetwork.legos[0].type_id === "z_rep_code")
         ) {
           onPullOutSameColoredLeg(tensorNetwork.legos[0]);
         }

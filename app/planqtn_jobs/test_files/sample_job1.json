@@ -1,8 +1,8 @@
 {
   "legos": {
     "3": {
-      "instanceId": "3",
-      "shortName": "[[8,3,2]]",
+      "instance_id": "3",
+      "short_name": "[[8,3,2]]",
       "name": "[[8,3,2]]",
       "id": "832",
       "parity_check_matrix": [
@@ -22,8 +22,8 @@
       "gauge_legs": []
     },
     "4": {
-      "instanceId": "4",
-      "shortName": "QRM15",
+      "instance_id": "4",
+      "short_name": "QRM15",
       "name": "QRM15",
       "id": "15qrm",
       "parity_check_matrix": [
@@ -98,10 +98,10 @@
   },
   "connections": [
     {
-      "from": { "legoId": "3", "legIndex": 10 },
-      "to": { "legoId": "4", "legIndex": 10 }
+      "from": { "legoId": "3", "leg_index": 10 },
+      "to": { "legoId": "4", "leg_index": 10 }
     }
   ],
   "truncate_length": null,
-  "open_legs": [{ "instanceId": "3", "legIndex": 7 }]
+  "open_legs": [{ "instance_id": "3", "leg_index": 7 }]
 }

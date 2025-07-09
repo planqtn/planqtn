@@ -1,291 +1,291 @@
 {
   "legos": [
     {
-      "instanceId": "1",
-      "typeId": "stopper_i",
-      "shortName": "q0.id",
+      "instance_id": "1",
+      "type_id": "stopper_i",
+      "short_name": "q0.id",
       "description": "q0.id",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [[0, 0]],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "parity_check_matrix": [[0, 0]],
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "2",
-      "typeId": "h",
-      "shortName": "q0.h0",
+      "instance_id": "2",
+      "type_id": "h",
+      "short_name": "q0.h0",
       "description": "q0.h0",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "3",
-      "typeId": "x_rep_code",
-      "shortName": "q0.z",
+      "instance_id": "3",
+      "type_id": "x_rep_code",
+      "short_name": "q0.z",
       "description": "q0.z",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "4",
-      "typeId": "h",
-      "shortName": "q0.h1",
+      "instance_id": "4",
+      "type_id": "h",
+      "short_name": "q0.h1",
       "description": "q0.h1",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "5",
-      "typeId": "x_rep_code",
-      "shortName": "q0.x",
+      "instance_id": "5",
+      "type_id": "x_rep_code",
+      "short_name": "q0.x",
       "description": "q0.x",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "6",
-      "typeId": "stopper_i",
-      "shortName": "q1.id",
+      "instance_id": "6",
+      "type_id": "stopper_i",
+      "short_name": "q1.id",
       "description": "q1.id",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [[0, 0]],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "parity_check_matrix": [[0, 0]],
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "7",
-      "typeId": "h",
-      "shortName": "q1.h0",
+      "instance_id": "7",
+      "type_id": "h",
+      "short_name": "q1.h0",
       "description": "q1.h0",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "8",
-      "typeId": "x_rep_code",
-      "shortName": "q1.z",
+      "instance_id": "8",
+      "type_id": "x_rep_code",
+      "short_name": "q1.z",
       "description": "q1.z",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "9",
-      "typeId": "h",
-      "shortName": "q1.h1",
+      "instance_id": "9",
+      "type_id": "h",
+      "short_name": "q1.h1",
       "description": "q1.h1",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "10",
-      "typeId": "x_rep_code",
-      "shortName": "q1.x",
+      "instance_id": "10",
+      "type_id": "x_rep_code",
+      "short_name": "q1.x",
       "description": "q1.x",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "11",
-      "typeId": "z_rep_code",
-      "shortName": "x0",
+      "instance_id": "11",
+      "type_id": "z_rep_code",
+      "short_name": "x0",
       "description": "x0",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [0, 0, 1, 1],
         [1, 1, 0, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     },
     {
-      "instanceId": "12",
-      "typeId": "z_rep_code",
-      "shortName": "z0",
+      "instance_id": "12",
+      "type_id": "z_rep_code",
+      "short_name": "z0",
       "description": "z0",
       "x": 0,
       "y": 0,
-      "parityCheckMatrix": [
+      "parity_check_matrix": [
         [0, 0, 1, 1],
         [1, 1, 0, 0]
       ],
-      "logicalLegs": [],
-      "gaugeLegs": []
+      "logical_legs": [],
+      "gauge_legs": []
     }
   ],
   "connections": [
     {
       "from": {
         "legoId": "1",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "2",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "2",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "3",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "4",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "3",
-        "legIndex": 1
+        "leg_index": 1
       }
     },
     {
       "from": {
         "legoId": "4",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "5",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "6",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "7",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "7",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "8",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "9",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "8",
-        "legIndex": 1
+        "leg_index": 1
       }
     },
     {
       "from": {
         "legoId": "9",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "10",
-        "legIndex": 0
+        "leg_index": 0
       }
     },
     {
       "from": {
         "legoId": "11",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "5",
-        "legIndex": 2
+        "leg_index": 2
       }
     },
     {
       "from": {
         "legoId": "11",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "10",
-        "legIndex": 2
+        "leg_index": 2
       }
     },
     {
       "from": {
         "legoId": "12",
-        "legIndex": 0
+        "leg_index": 0
       },
       "to": {
         "legoId": "3",
-        "legIndex": 2
+        "leg_index": 2
       }
     },
     {
       "from": {
         "legoId": "12",
-        "legIndex": 1
+        "leg_index": 1
       },
       "to": {
         "legoId": "8",
-        "legIndex": 2
+        "leg_index": 2
       }
     }
   ],

@@ -90,7 +90,7 @@ export const LegReorderDialog: React.FC<LegReorderDialogProps> = ({
                   <Box flex={1}>
                     <Text fontWeight="bold">Leg {index}</Text>
                     <Text fontSize="sm" color="gray.600">
-                      {leg.instanceId}:{leg.legIndex}
+                      {leg.instance_id}:{leg.leg_index}
                     </Text>
                   </Box>
                   <HStack spacing={1}>

@@ -33,8 +33,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
         connectedLegos: result.pieces.filter((lego) =>
           result.connections.some(
             (connection) =>
-              connection.from.legoId === lego.instanceId ||
-              connection.to.legoId === lego.instanceId
+              connection.from.legoId === lego.instance_id ||
+              connection.to.legoId === lego.instance_id
           )
         ),
         hideConnectedLegs: result.hideConnectedLegs
@@ -42,8 +42,11 @@ export const createEncodedCanvasStateSlice: StateCreator<
 
       // Initialize leg hide states for all legos
       result.pieces.forEach((lego) => {
-        get().initializeLegHideStates(lego.instanceId, lego.numberOfLegs);
-        get().initializeLegConnectionStates(lego.instanceId, lego.numberOfLegs);
+        get().initializeLegHideStates(lego.instance_id, lego.numberOfLegs);
+        get().initializeLegConnectionStates(
+          lego.instance_id,
+          lego.numberOfLegs
+        );
       });
 
       // Update all leg hide states based on the loaded connections

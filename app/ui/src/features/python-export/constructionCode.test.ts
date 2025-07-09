@@ -27,19 +27,19 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            typeId: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0],
               [0, 0, 0, 1, 1, 1]
             ],
-            logicalLegs: [],
-            gaugeLegs: []
+            logical_legs: [],
+            gauge_legs: []
           },
           new LogicalPoint(288.89581298828125, 381.25),
           "7"
@@ -74,30 +74,30 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            typeId: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0],
               [0, 0, 0, 1, 1, 1]
             ],
-            logicalLegs: [],
-            gaugeLegs: []
+            logical_legs: [],
+            gauge_legs: []
           },
           new LogicalPoint(288.89581298828125, 381.25),
           "2"
         ),
         new DroppedLego(
           {
-            typeId: "steane",
+            type_id: "steane",
             name: "Steane Code",
-            shortName: "STN",
+            short_name: "STN",
             description: "Steane code encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -107,61 +107,61 @@ tn = TensorNetwork(nodes)
               [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
             ],
-            logicalLegs: [7],
-            gaugeLegs: []
+            logical_legs: [7],
+            gauge_legs: []
           },
           new LogicalPoint(477.89581298828125, 308.25),
           "3"
         ),
         new DroppedLego(
           {
-            typeId: "x_rep_code",
+            type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 4 },
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 0, 0, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0, 0, 0],
               [0, 0, 1, 1, 0, 0, 0, 0],
               [0, 0, 0, 0, 1, 1, 1, 1]
             ],
-            logicalLegs: [],
-            gaugeLegs: []
+            logical_legs: [],
+            gauge_legs: []
           },
           new LogicalPoint(139.89581298828125, 143.25),
           "4"
         ),
         new DroppedLego(
           {
-            typeId: "z_rep_code",
+            type_id: "z_rep_code",
             name: "Z-Repetition Code",
-            shortName: "ZREP3",
+            short_name: "ZREP3",
             description: "Bitflip code, ZZ stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [0, 0, 0, 0, 1, 1, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 0],
               [0, 0, 0, 0, 0, 0, 1, 1],
               [1, 1, 1, 1, 0, 0, 0, 0]
             ],
-            logicalLegs: [],
-            gaugeLegs: []
+            logical_legs: [],
+            gauge_legs: []
           },
           new LogicalPoint(311.89581298828125, 187.25),
           "1"
         ),
         new DroppedLego(
           {
-            typeId: "stopper_x",
+            type_id: "stopper_x",
             name: "X Stopper",
-            shortName: "X",
+            short_name: "X",
             description: "X Stopper",
-            parityCheckMatrix: [[1, 0]],
-            logicalLegs: [],
-            gaugeLegs: []
+            parity_check_matrix: [[1, 0]],
+            logical_legs: [],
+            gauge_legs: []
           },
           new LogicalPoint(411.89581298828125, 187.25),
           "5"
@@ -169,20 +169,20 @@ tn = TensorNetwork(nodes)
       ],
       connections: [
         new Connection(
-          { legoId: "1", legIndex: 0 },
-          { legoId: "3", legIndex: 7 }
+          { legoId: "1", leg_index: 0 },
+          { legoId: "3", leg_index: 7 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 1 },
-          { legoId: "2", legIndex: 2 }
+          { legoId: "1", leg_index: 1 },
+          { legoId: "2", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 0 },
-          { legoId: "1", legIndex: 2 }
+          { legoId: "4", leg_index: 0 },
+          { legoId: "1", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 3 },
-          { legoId: "5", legIndex: 0 }
+          { legoId: "1", leg_index: 3 },
+          { legoId: "5", leg_index: 0 }
         )
       ]
     });
@@ -204,7 +204,7 @@ tn = TensorNetwork(nodes)
         }
 
         // Parse the output into a matrix
-        const parityCheckMatrix = stdout
+        const parity_check_matrix = stdout
           .trim()
           .split("\n")
           .map((line: string) =>
@@ -227,7 +227,7 @@ tn = TensorNetwork(nodes)
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1]
         ];
 
-        expect(parityCheckMatrix).toEqual(expected_parityCheckMatrix);
+        expect(parity_check_matrix).toEqual(expected_parityCheckMatrix);
         resolve();
       });
     });

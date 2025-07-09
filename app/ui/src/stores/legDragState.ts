@@ -5,7 +5,7 @@ import { WindowPoint } from "../types/coordinates";
 export interface LegDragState {
   isDragging: boolean;
   legoId: string;
-  legIndex: number;
+  leg_index: number;
   startMouseWindowPoint: WindowPoint;
   currentMouseWindowPoint: WindowPoint;
 }

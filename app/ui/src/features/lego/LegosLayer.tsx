@@ -43,7 +43,7 @@ export const LegosLayer: React.FC = () => {
       dragState?.draggingStage === DraggingStage.DRAGGING
     ) {
       tensorNetwork.legos.forEach((lego) => {
-        draggedIds.add(lego.instanceId);
+        draggedIds.add(lego.instance_id);
       });
     }
 

@@ -78,14 +78,14 @@ export const createCanvasEventHandlingSlice: StateCreator<
     if (!selectedDynamicLego || !pendingDropPosition) return;
     try {
       const dynamicLego = Legos.getDynamicLego({
-        lego_id: selectedDynamicLego.typeId,
+        lego_id: selectedDynamicLego.type_id,
         parameters
       });
-      const instanceId = newInstanceId();
+      const instance_id = newInstanceId();
       const newLego = new DroppedLego(
         dynamicLego,
         new LogicalPoint(pendingDropPosition.x, pendingDropPosition.y),
-        instanceId
+        instance_id
       );
       addDroppedLego(newLego);
       addOperation({
@@ -148,9 +148,9 @@ export const createCanvasEventHandlingSlice: StateCreator<
   },
 
   makeSpace: (center, radius, skipLegos, legosToCheck) => {
-    const skipIds = new Set(skipLegos.map((l) => l.instanceId));
+    const skipIds = new Set(skipLegos.map((l) => l.instance_id));
     return legosToCheck.map((lego) => {
-      if (skipIds.has(lego.instanceId)) return lego;
+      if (skipIds.has(lego.instance_id)) return lego;
       const dx = lego.logicalPosition.x - center.x;
       const dy = lego.logicalPosition.y - center.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -193,21 +193,21 @@ export const createCanvasEventHandlingSlice: StateCreator<
 
     // Get max instance ID
     const maxInstanceId = Math.max(
-      ...droppedLegos.map((l) => parseInt(l.instanceId))
+      ...droppedLegos.map((l) => parseInt(l.instance_id))
     );
     const numLegs = lego.numberOfLegs;
 
     // Find any existing connections to the original lego
     const existingConnections = connections.filter(
       (conn) =>
-        conn.from.legoId === lego.instanceId ||
-        conn.to.legoId === lego.instanceId
+        conn.from.legoId === lego.instance_id ||
+        conn.to.legoId === lego.instance_id
     );
 
     try {
       // Get the new repetition code with one more leg
       const newLegoData = Legos.getDynamicLego({
-        lego_id: lego.typeId,
+        lego_id: lego.type_id,
         parameters: {
           d: numLegs + 1
         }
@@ -215,21 +215,23 @@ export const createCanvasEventHandlingSlice: StateCreator<
 
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = new DroppedLego(
-        { ...lego, parityCheckMatrix: newLegoData.parityCheckMatrix },
+        { ...lego, parity_check_matrix: newLegoData.parity_check_matrix },
         lego.logicalPosition,
-        lego.instanceId
+        lego.instance_id
       );
 
       // Create a stopper based on the lego type
       const stopperLego: DroppedLego = new DroppedLego(
         {
-          typeId: lego.typeId === "z_rep_code" ? "stopper_x" : "stopper_z",
-          name: lego.typeId === "z_rep_code" ? "X Stopper" : "Z Stopper",
-          shortName: lego.typeId === "z_rep_code" ? "X" : "Z",
-          description: lego.typeId === "z_rep_code" ? "X Stopper" : "Z Stopper",
-          parityCheckMatrix: lego.typeId === "z_rep_code" ? [[1, 0]] : [[0, 1]],
-          logicalLegs: [],
-          gaugeLegs: []
+          type_id: lego.type_id === "z_rep_code" ? "stopper_x" : "stopper_z",
+          name: lego.type_id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          short_name: lego.type_id === "z_rep_code" ? "X" : "Z",
+          description:
+            lego.type_id === "z_rep_code" ? "X Stopper" : "Z Stopper",
+          parity_check_matrix:
+            lego.type_id === "z_rep_code" ? [[1, 0]] : [[0, 1]],
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(lego.logicalPosition.x + 100, lego.logicalPosition.y),
         (maxInstanceId + 1).toString()
@@ -238,25 +240,26 @@ export const createCanvasEventHandlingSlice: StateCreator<
       // Create new connection to the stopper
       const newConnection: Connection = new Connection(
         {
-          legoId: lego.instanceId,
-          legIndex: numLegs // The new leg will be at index numLegs
+          legoId: lego.instance_id,
+          leg_index: numLegs // The new leg will be at index numLegs
         },
         {
-          legoId: stopperLego.instanceId,
-          legIndex: 0
+          legoId: stopperLego.instance_id,
+          leg_index: 0
         }
       );
 
       // Update the state
       const newLegos = [
-        ...droppedLegos.filter((l) => l.instanceId !== lego.instanceId),
+        ...droppedLegos.filter((l) => l.instance_id !== lego.instance_id),
         newLego,
         stopperLego
       ];
       const newConnections = [
         ...connections.filter(
           (c) =>
-            c.from.legoId !== lego.instanceId && c.to.legoId !== lego.instanceId
+            c.from.legoId !== lego.instance_id &&
+            c.to.legoId !== lego.instance_id
         ),
         ...existingConnections,
         newConnection

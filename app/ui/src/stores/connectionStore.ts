@@ -5,34 +5,34 @@ export class Connection {
   constructor(
     public from: {
       legoId: string;
-      legIndex: number;
+      leg_index: number;
     },
     public to: {
       legoId: string;
-      legIndex: number;
+      leg_index: number;
     }
   ) {}
 
   public equals(other: Connection): boolean {
     return (
       (this.from.legoId === other.from.legoId &&
-        this.from.legIndex === other.from.legIndex &&
+        this.from.leg_index === other.from.leg_index &&
         this.to.legoId === other.to.legoId &&
-        this.to.legIndex === other.to.legIndex) ||
+        this.to.leg_index === other.to.leg_index) ||
       (this.from.legoId === other.to.legoId &&
-        this.from.legIndex === other.to.legIndex &&
+        this.from.leg_index === other.to.leg_index &&
         this.to.legoId === other.from.legoId &&
-        this.to.legIndex === other.from.legIndex)
+        this.to.leg_index === other.from.leg_index)
     );
   }
 
   public containsLego(legoId: string): boolean {
     return this.from.legoId === legoId || this.to.legoId === legoId;
   }
-  public containsLeg(legoId: string, legIndex: number): boolean {
+  public containsLeg(legoId: string, leg_index: number): boolean {
     return (
-      (this.from.legoId === legoId && this.from.legIndex === legIndex) ||
-      (this.to.legoId === legoId && this.to.legIndex === legIndex)
+      (this.from.legoId === legoId && this.from.leg_index === leg_index) ||
+      (this.to.legoId === legoId && this.to.leg_index === leg_index)
     );
   }
 }
@@ -42,7 +42,7 @@ export interface ConnectionSlice {
   setConnections: (connections: Connection[]) => void;
   addConnections: (connections: Connection[]) => void;
   removeConnections: (connections: Connection[]) => void;
-  isLegConnected: (legoId: string, legIndex: number) => boolean;
+  isLegConnected: (legoId: string, leg_index: number) => boolean;
 }
 
 export const createConnectionsSlice: StateCreator<
@@ -60,8 +60,8 @@ export const createConnectionsSlice: StateCreator<
       state.connectedLegos = state.droppedLegos.filter((lego) =>
         state.connections.some(
           (connection) =>
-            connection.from.legoId === lego.instanceId ||
-            connection.to.legoId === lego.instanceId
+            connection.from.legoId === lego.instance_id ||
+            connection.to.legoId === lego.instance_id
         )
       );
     });
@@ -76,8 +76,8 @@ export const createConnectionsSlice: StateCreator<
       state.connectedLegos = state.droppedLegos.filter((lego) =>
         state.connections.some(
           (connection) =>
-            connection.from.legoId === lego.instanceId ||
-            connection.to.legoId === lego.instanceId
+            connection.from.legoId === lego.instance_id ||
+            connection.to.legoId === lego.instance_id
         )
       );
     });
@@ -94,8 +94,8 @@ export const createConnectionsSlice: StateCreator<
       state.connectedLegos = state.droppedLegos.filter((lego) =>
         state.connections.some(
           (connection) =>
-            connection.from.legoId === lego.instanceId ||
-            connection.to.legoId === lego.instanceId
+            connection.from.legoId === lego.instance_id ||
+            connection.to.legoId === lego.instance_id
         )
       );
     });
@@ -104,17 +104,17 @@ export const createConnectionsSlice: StateCreator<
     get().updateEncodedCanvasState();
   },
 
-  isLegConnected: (legoId, legIndex) => {
+  isLegConnected: (legoId, leg_index) => {
     return get().connections.some((connection) => {
       if (
         connection.from.legoId === legoId &&
-        connection.from.legIndex === legIndex
+        connection.from.leg_index === leg_index
       ) {
         return true;
       }
       if (
         connection.to.legoId === legoId &&
-        connection.to.legIndex === legIndex
+        connection.to.leg_index === leg_index
       ) {
         return true;
       }

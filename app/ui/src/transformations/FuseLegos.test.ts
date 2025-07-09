@@ -12,39 +12,39 @@ import { Legos } from "../features/lego/Legos";
 const testDroppedLegos = [
   new DroppedLego(
     {
-      typeId: "lego1",
-      shortName: "L1",
+      type_id: "lego1",
+      short_name: "L1",
       name: "Lego 1",
       description: "Test Lego 1",
-      parityCheckMatrix: [[1, 0]],
-      logicalLegs: [],
-      gaugeLegs: []
+      parity_check_matrix: [[1, 0]],
+      logical_legs: [],
+      gauge_legs: []
     },
     new LogicalPoint(0, 0),
     "instance1"
   ),
   new DroppedLego(
     {
-      typeId: "lego2",
-      shortName: "L2",
+      type_id: "lego2",
+      short_name: "L2",
       name: "Lego 2",
       description: "Test Lego 2",
-      parityCheckMatrix: [[1, 0]],
-      logicalLegs: [],
-      gaugeLegs: []
+      parity_check_matrix: [[1, 0]],
+      logical_legs: [],
+      gauge_legs: []
     },
     new LogicalPoint(1, 1),
     "instance2"
   ),
   new DroppedLego(
     {
-      typeId: "stopper_x",
-      shortName: "X",
+      type_id: "stopper_x",
+      short_name: "X",
       name: "X-Phase Flip Stopper",
       description: "X-Phase Flip Stopper",
-      parityCheckMatrix: [[0, 1]],
-      logicalLegs: [],
-      gaugeLegs: []
+      parity_check_matrix: [[0, 1]],
+      logical_legs: [],
+      gauge_legs: []
     },
     new LogicalPoint(1, 1),
     "stopper3"
@@ -54,13 +54,13 @@ const testDroppedLegos = [
 const invalidDroppedLegos = [
   new DroppedLego(
     {
-      typeId: "lego3",
-      shortName: "L3",
+      type_id: "lego3",
+      short_name: "L3",
       name: "Lego 3",
       description: "Test Lego 3",
-      parityCheckMatrix: [[1, 0]],
-      logicalLegs: [],
-      gaugeLegs: []
+      parity_check_matrix: [[1, 0]],
+      logical_legs: [],
+      gauge_legs: []
     },
     new LogicalPoint(2, 2),
     "instance3"
@@ -72,8 +72,8 @@ it("should successfully fuse two Z stopper legos into a single scalar one", asyn
   const fuseLegos = new FuseLegos(
     [
       new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 0 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 0 }
       )
     ],
     testDroppedLegos,
@@ -85,10 +85,10 @@ it("should successfully fuse two Z stopper legos into a single scalar one", asyn
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parityCheckMatrix).toEqual([[1]]);
+  expect(fusedLego?.parity_check_matrix).toEqual([[1]]);
   expect(result.connections).toHaveLength(0);
   expect(result.operation.type).toBe("fuse");
   expect(result.operation.data.legosToAdd).toHaveLength(1);
@@ -100,8 +100,8 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
   const fuseLegos = new FuseLegos(
     [
       new Connection(
-        { legoId: "instance2", legIndex: 0 },
-        { legoId: "stopper3", legIndex: 0 }
+        { legoId: "instance2", leg_index: 0 },
+        { legoId: "stopper3", leg_index: 0 }
       )
     ],
     testDroppedLegos,
@@ -113,11 +113,11 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
 
-  expect(fusedLego?.parityCheckMatrix).toEqual([[0]]);
+  expect(fusedLego?.parity_check_matrix).toEqual([[0]]);
   expect(result.connections).toHaveLength(0);
   expect(result.operation.type).toBe("fuse");
   expect(result.operation.data.legosToAdd).toHaveLength(1);
@@ -140,7 +140,10 @@ it("should be able to fuse two independent legos with an external connection", a
   ];
   const fuseLegos = new FuseLegos(
     [
-      new Connection({ legoId: "5", legIndex: 0 }, { legoId: "6", legIndex: 0 })
+      new Connection(
+        { legoId: "5", leg_index: 0 },
+        { legoId: "6", leg_index: 0 }
+      )
     ],
     droppedLegos,
     () => {
@@ -151,7 +154,7 @@ it("should be able to fuse two independent legos with an external connection", a
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
 });
@@ -168,10 +171,10 @@ it("should tensor the identity stopper with a regular lego", async () => {
   const result = await fuseLegos.apply(droppedLegos);
   expect(result.droppedLegos).toHaveLength(1);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parityCheckMatrix).toEqual([
+  expect(fusedLego?.parity_check_matrix).toEqual([
     [1, 0, 0, 0, 1, 0],
     [0, 1, 0, 1, 0, 0]
   ]);
@@ -182,13 +185,13 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
     createHadamardLego(new LogicalPoint(2, 2), "9"),
     new DroppedLego(
       {
-        typeId: "scalar",
-        shortName: "S",
+        type_id: "scalar",
+        short_name: "S",
         name: "Scalar",
         description: "Scalar",
-        parityCheckMatrix: [[1]],
-        logicalLegs: [],
-        gaugeLegs: []
+        parity_check_matrix: [[1]],
+        logical_legs: [],
+        gauge_legs: []
       },
       new LogicalPoint(1, 1),
       "8"
@@ -201,10 +204,10 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
   const result = await fuseLegos.apply(droppedLegos);
   expect(result.droppedLegos).toHaveLength(1);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parityCheckMatrix).toEqual([
+  expect(fusedLego?.parity_check_matrix).toEqual([
     [1, 0, 0, 0, 1, 0],
     [0, 1, 0, 1, 0, 0]
   ]);

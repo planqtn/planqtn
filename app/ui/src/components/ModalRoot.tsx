@@ -127,12 +127,12 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
 
   const handleCustomLegoSubmit = async (
     matrix: number[][],
-    logicalLegs: number[]
+    logical_legs: number[]
   ) => {
     try {
       CustomLegoService.createCustomLego(
         matrix,
-        logicalLegs,
+        logical_legs,
         customLegoState.position
       );
       toast({

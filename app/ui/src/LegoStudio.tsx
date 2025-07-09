@@ -709,7 +709,7 @@ const LegoStudioView: React.FC = () => {
               setPendingDropPosition(null);
             }}
             onSubmit={handleDynamicLegoSubmit}
-            legoId={selectedDynamicLego?.typeId || ""}
+            legoId={selectedDynamicLego?.type_id || ""}
             parameters={selectedDynamicLego?.parameters || {}}
           />
         )}

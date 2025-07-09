@@ -123,27 +123,27 @@ export abstract class LegoStyle {
     );
   }
 
-  getLegHighlightPauliOperator = (legIndex: number) => {
+  getLegHighlightPauliOperator = (leg_index: number) => {
     // First check if there's a pushed leg
-    const h = this.lego.parityCheckMatrix;
+    const h = this.lego.parity_check_matrix;
     const num_legs = h[0].length / 2;
 
     if (this.lego.selectedMatrixRows === undefined) {
       return PauliOperator.I;
     }
 
-    const combinedRow = new Array(this.lego.parityCheckMatrix[0].length).fill(
+    const combinedRow = new Array(this.lego.parity_check_matrix[0].length).fill(
       0
     );
 
     for (const rowIndex of this.lego.selectedMatrixRows) {
-      this.lego.parityCheckMatrix[rowIndex].forEach((val, idx) => {
+      this.lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
         combinedRow[idx] = (combinedRow[idx] + val) % 2;
       });
     }
 
-    const xPart = combinedRow[legIndex];
-    const zPart = combinedRow[legIndex + num_legs];
+    const xPart = combinedRow[leg_index];
+    const zPart = combinedRow[leg_index + num_legs];
 
     if (xPart === 1 && zPart === 0) return PauliOperator.X;
     if (xPart === 0 && zPart === 1) return PauliOperator.Z;
@@ -181,35 +181,35 @@ export abstract class LegoStyle {
   }
 
   private calculateLegStyle(
-    legIndex: number,
+    leg_index: number,
     forSvg: boolean = false
   ): LegStyle {
-    const isLogical = this.lego.logicalLegs.includes(legIndex);
-    const isGauge = this.lego.gaugeLegs.includes(legIndex);
+    const isLogical = this.lego.logical_legs.includes(leg_index);
+    const isGauge = this.lego.gauge_legs.includes(leg_index);
     const legCount = this.lego.numberOfLegs;
-    const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
+    const highlightPauliOperator = this.getLegHighlightPauliOperator(leg_index);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
 
-    if (this.lego.instanceId === "14") {
+    if (this.lego.instance_id === "14") {
       console.log(
         "calculateLegStyle",
-        legIndex,
+        leg_index,
         forSvg,
         this.lego.selectedMatrixRows
       );
     }
 
     // Calculate the number of each type of leg
-    const logicalLegsCount = this.lego.logicalLegs.length;
+    const logicalLegsCount = this.lego.logical_legs.length;
     const physicalLegsCount =
-      legCount - logicalLegsCount - this.lego.gaugeLegs.length;
+      legCount - logicalLegsCount - this.lego.gauge_legs.length;
 
     if (isLogical) {
       // Sort logical legs to ensure consistent ordering regardless of their indices
-      const sortedLogicalLegs = [...this.lego.logicalLegs].sort(
+      const sortedLogicalLegs = [...this.lego.logical_legs].sort(
         (a, b) => a - b
       );
-      const logicalIndex = sortedLogicalLegs.indexOf(legIndex);
+      const logicalIndex = sortedLogicalLegs.indexOf(leg_index);
 
       if (logicalLegsCount === 1) {
         // Single logical leg points straight up
@@ -256,7 +256,7 @@ export abstract class LegoStyle {
       };
     } else if (isGauge) {
       // For gauge legs, calculate angle from bottom
-      const angle = Math.PI + (2 * Math.PI * legIndex) / legCount;
+      const angle = Math.PI + (2 * Math.PI * leg_index) / legCount;
       return {
         angle,
         length: 40,
@@ -277,13 +277,13 @@ export abstract class LegoStyle {
       const physicalLegIndices = Array.from({ length: legCount }, (_, i) => i)
         .filter(
           (i) =>
-            !this.lego.logicalLegs.includes(i) &&
-            !this.lego.gaugeLegs.includes(i)
+            !this.lego.logical_legs.includes(i) &&
+            !this.lego.gauge_legs.includes(i)
         )
         .sort((a, b) => a - b);
 
       // Find the index of the current leg in the physical legs array
-      const physicalIndex = physicalLegIndices.indexOf(legIndex);
+      const physicalIndex = physicalLegIndices.indexOf(leg_index);
 
       if (physicalLegsCount === 1) {
         // Single physical leg points straight down
@@ -354,8 +354,8 @@ export abstract class LegoStyle {
     }
   }
 
-  getLegColor(legIndex: number): string {
-    const legStyle = this.legStyles[legIndex];
+  getLegColor(leg_index: number): string {
+    const legStyle = this.legStyles[leg_index];
     return legStyle.color;
   }
 }
@@ -566,32 +566,32 @@ export class ScalarStyle extends LegoStyle {
   }
 }
 export function getLegoStyle(
-  typeId: string,
+  type_id: string,
   numLegs: number,
   lego: DroppedLego
 ): LegoStyle {
   if (numLegs === 0) {
-    return new ScalarStyle(typeId, lego);
-  } else if (typeId === "h") {
-    return new HadamardStyle(typeId, lego);
-  } else if (typeId === Z_REP_CODE || typeId === X_REP_CODE) {
+    return new ScalarStyle(type_id, lego);
+  } else if (type_id === "h") {
+    return new HadamardStyle(type_id, lego);
+  } else if (type_id === Z_REP_CODE || type_id === X_REP_CODE) {
     if (numLegs > 2) {
-      return new RepetitionCodeStyle(typeId, lego);
+      return new RepetitionCodeStyle(type_id, lego);
     } else if (numLegs === 2) {
-      return new IdentityStyle(typeId, lego);
+      return new IdentityStyle(type_id, lego);
     } else if (numLegs === 1) {
       return new StopperStyle(
-        typeId === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        type_id === Z_REP_CODE ? "stopper_z" : "stopper_x",
         lego
       );
     } else {
-      return new GenericStyle(typeId, lego);
+      return new GenericStyle(type_id, lego);
     }
-  } else if (typeId.includes("stopper")) {
-    return new StopperStyle(typeId, lego);
-  } else if (typeId === "identity") {
-    return new IdentityStyle(typeId, lego);
+  } else if (type_id.includes("stopper")) {
+    return new StopperStyle(type_id, lego);
+  } else if (type_id === "identity") {
+    return new IdentityStyle(type_id, lego);
   } else {
-    return new GenericStyle(typeId, lego);
+    return new GenericStyle(type_id, lego);
   }
 }

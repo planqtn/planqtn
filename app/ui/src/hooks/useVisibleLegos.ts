@@ -22,7 +22,7 @@ export const useVisibleLegoIds = () => {
     ) {
       console.warn("Invalid viewport in calculateVisibleLegos:", viewport);
 
-      return droppedLegos.map((lego) => lego.instanceId);
+      return droppedLegos.map((lego) => lego.instance_id);
     }
 
     // Calculate viewport bounds with some padding for connections
@@ -37,7 +37,7 @@ export const useVisibleLegoIds = () => {
       console.warn("Invalid viewport in calculateVisibleLegos:", viewport);
 
       return droppedLegos.map((lego) => {
-        return lego.instanceId;
+        return lego.instance_id;
       });
     }
 
@@ -54,7 +54,7 @@ export const useVisibleLegoIds = () => {
     });
 
     // Get connected legos (connected to visible ones, even if outside viewport)
-    const visibleIds = new Set(directlyVisible.map((l) => l.instanceId));
+    const visibleIds = new Set(directlyVisible.map((l) => l.instance_id));
     const connectedIds = new Set<string>();
 
     connections.forEach((conn) => {
@@ -69,11 +69,11 @@ export const useVisibleLegoIds = () => {
     // Combine visible and connected legos
     const connectedLegos = droppedLegos.filter(
       (lego) =>
-        connectedIds.has(lego.instanceId) && !visibleIds.has(lego.instanceId)
+        connectedIds.has(lego.instance_id) && !visibleIds.has(lego.instance_id)
     );
 
     const visibleLegoIds = [...directlyVisible, ...connectedLegos].map(
-      (lego) => lego.instanceId
+      (lego) => lego.instance_id
     );
 
     return visibleLegoIds;

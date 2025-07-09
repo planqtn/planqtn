@@ -9,12 +9,12 @@ import { WindowPoint } from "../types/coordinates";
 export interface DroppedLegoLegEventsSlice {
   handleLegMouseDown: (
     legoId: string,
-    legIndex: number,
+    leg_index: number,
     mouseWindowPoint: WindowPoint
   ) => void;
 
-  handleLegClick: (legoId: string, legIndex: number) => void;
-  handleLegMouseUp: (legoId: string, legIndex: number) => void;
+  handleLegClick: (legoId: string, leg_index: number) => void;
+  handleLegMouseUp: (legoId: string, leg_index: number) => void;
 }
 
 export const useLegoLegEventsSlice: StateCreator<
@@ -23,41 +23,41 @@ export const useLegoLegEventsSlice: StateCreator<
   [],
   DroppedLegoLegEventsSlice
 > = (_, get) => ({
-  handleLegMouseDown: (legoId, legIndex, mouseWindowPoint) => {
+  handleLegMouseDown: (legoId, leg_index, mouseWindowPoint) => {
     get().temporarilyConnectLego(legoId);
 
     get().setLegDragState({
       isDragging: true,
       legoId,
-      legIndex,
+      leg_index,
       startMouseWindowPoint: mouseWindowPoint,
       currentMouseWindowPoint: mouseWindowPoint
     });
   },
 
-  handleLegClick: (legoId, legIndex) => {
+  handleLegClick: (legoId, leg_index) => {
     // Find the lego that was clicked
     const clickedLego = get().droppedLegos.find(
-      (lego) => lego.instanceId === legoId
+      (lego) => lego.instance_id === legoId
     );
     if (!clickedLego) return;
     const numQubits = clickedLego.numberOfLegs;
-    const h = clickedLego.parityCheckMatrix;
+    const h = clickedLego.parity_check_matrix;
     const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
-      (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1
+      (row) => h[row][leg_index] == 1 || h[row][leg_index + numQubits] == 1
     );
     const currentOperator = existingPushedLeg
-      ? h[existingPushedLeg][legIndex] == 1
+      ? h[existingPushedLeg][leg_index] == 1
         ? PauliOperator.X
         : PauliOperator.Z
       : PauliOperator.I;
 
     // Find available operators in parity check matrix for this leg
-    const hasX = clickedLego.parityCheckMatrix.some(
-      (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0
+    const hasX = clickedLego.parity_check_matrix.some(
+      (row) => row[leg_index] === 1 && row[leg_index + numQubits] === 0
     );
-    const hasZ = clickedLego.parityCheckMatrix.some(
-      (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1
+    const hasZ = clickedLego.parity_check_matrix.some(
+      (row) => row[leg_index] === 0 && row[leg_index + numQubits] === 1
     );
 
     // Cycle through operators only if they exist in matrix
@@ -80,19 +80,19 @@ export const useLegoLegEventsSlice: StateCreator<
         nextOperator = PauliOperator.I;
     }
 
-    // Find the first row in parity check matrix that matches currentOperator on legIndex
+    // Find the first row in parity check matrix that matches currentOperator on leg_index
     const baseRepresentative =
-      clickedLego.parityCheckMatrix.find((row) => {
+      clickedLego.parity_check_matrix.find((row) => {
         if (nextOperator === PauliOperator.X) {
-          return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
+          return row[leg_index] === 1 && row[leg_index + numQubits] === 0;
         } else if (nextOperator === PauliOperator.Z) {
-          return row[legIndex] === 0 && row[legIndex + numQubits] === 1;
+          return row[leg_index] === 0 && row[leg_index + numQubits] === 1;
         }
         return false;
       }) || new Array(2 * numQubits).fill(0);
 
     // Find the row index that corresponds to the baseRepresentative
-    const rowIndex = clickedLego.parityCheckMatrix.findIndex((row) =>
+    const rowIndex = clickedLego.parity_check_matrix.findIndex((row) =>
       row.every((val, idx) => val === baseRepresentative[idx])
     );
 
@@ -111,7 +111,7 @@ export const useLegoLegEventsSlice: StateCreator<
 
     // Update droppedLegos by replacing the old lego with the new one
     const newDroppedLegos = get().droppedLegos.map((lego) =>
-      lego.instanceId === legoId ? updatedLego : lego
+      lego.instance_id === legoId ? updatedLego : lego
     );
     get().setDroppedLegos(newDroppedLegos);
 
@@ -123,7 +123,7 @@ export const useLegoLegEventsSlice: StateCreator<
     );
   },
 
-  handleLegMouseUp: (legoId, legIndex) => {
+  handleLegMouseUp: (legoId, leg_index) => {
     const { legDragState, setLegDragState } = get();
     const {
       connections,
@@ -131,7 +131,7 @@ export const useLegoLegEventsSlice: StateCreator<
       addOperation,
       addConnections
     } = get();
-    const lego = get().droppedLegos.find((lego) => lego.instanceId === legoId);
+    const lego = get().droppedLegos.find((lego) => lego.instance_id === legoId);
     if (!lego) return;
 
     if (!legDragState) return;
@@ -139,20 +139,20 @@ export const useLegoLegEventsSlice: StateCreator<
     const isSourceLegConnected = get().connections.some(
       (conn) =>
         (conn.from.legoId === legDragState.legoId &&
-          conn.from.legIndex === legDragState.legIndex) ||
+          conn.from.leg_index === legDragState.leg_index) ||
         (conn.to.legoId === legDragState.legoId &&
-          conn.to.legIndex === legDragState.legIndex)
+          conn.to.leg_index === legDragState.leg_index)
     );
     const isTargetLegConnected = connections.some(
       (conn) =>
-        (conn.from.legoId === lego.instanceId &&
-          conn.from.legIndex === legIndex) ||
-        (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
+        (conn.from.legoId === lego.instance_id &&
+          conn.from.leg_index === leg_index) ||
+        (conn.to.legoId === lego.instance_id && conn.to.leg_index === leg_index)
     );
 
     if (
-      lego.instanceId === legDragState.legoId &&
-      legIndex === legDragState.legIndex
+      lego.instance_id === legDragState.legoId &&
+      leg_index === legDragState.leg_index
     ) {
       setLegDragState(null);
       updateLegoConnectivity(legDragState.legoId);
@@ -172,24 +172,24 @@ export const useLegoLegEventsSlice: StateCreator<
     const connectionExists = connections.some(
       (conn) =>
         (conn.from.legoId === legDragState.legoId &&
-          conn.from.legIndex === legDragState.legIndex &&
-          conn.to.legoId === lego.instanceId &&
-          conn.to.legIndex === legIndex) ||
-        (conn.from.legoId === lego.instanceId &&
-          conn.from.legIndex === legIndex &&
+          conn.from.leg_index === legDragState.leg_index &&
+          conn.to.legoId === lego.instance_id &&
+          conn.to.leg_index === leg_index) ||
+        (conn.from.legoId === lego.instance_id &&
+          conn.from.leg_index === leg_index &&
           conn.to.legoId === legDragState.legoId &&
-          conn.to.legIndex === legDragState.legIndex)
+          conn.to.leg_index === legDragState.leg_index)
     );
 
     if (!connectionExists) {
       const newConnection = new Connection(
         {
           legoId: legDragState.legoId,
-          legIndex: legDragState.legIndex
+          leg_index: legDragState.leg_index
         },
         {
-          legoId: lego.instanceId,
-          legIndex: legIndex
+          legoId: lego.instance_id,
+          leg_index: leg_index
         }
       );
 

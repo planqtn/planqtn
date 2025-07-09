@@ -78,14 +78,14 @@ export class WeightEnumeratorService {
           payload: {
             legos: tensorNetwork.legos.reduce(
               (acc, lego) => {
-                acc[lego.instanceId] = {
-                  instanceId: lego.instanceId,
-                  shortName: lego.shortName || "Generic Lego",
-                  name: lego.shortName || "Generic Lego",
-                  id: lego.typeId,
-                  parityCheckMatrix: lego.parityCheckMatrix,
-                  logicalLegs: lego.logicalLegs,
-                  gaugeLegs: lego.gaugeLegs
+                acc[lego.instance_id] = {
+                  instance_id: lego.instance_id,
+                  short_name: lego.short_name || "Generic Lego",
+                  name: lego.short_name || "Generic Lego",
+                  id: lego.type_id,
+                  parity_check_matrix: lego.parity_check_matrix,
+                  logical_legs: lego.logical_legs,
+                  gauge_legs: lego.gauge_legs
                 };
                 return acc;
               },

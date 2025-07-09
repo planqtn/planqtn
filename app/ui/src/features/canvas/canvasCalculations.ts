@@ -52,13 +52,13 @@ export const findClosestConnection = (
 
   connections.forEach((conn) => {
     const fromLego = droppedLegos.find(
-      (l) => l.instanceId === conn.from.legoId
+      (l) => l.instance_id === conn.from.legoId
     );
-    const toLego = droppedLegos.find((l) => l.instanceId === conn.to.legoId);
+    const toLego = droppedLegos.find((l) => l.instance_id === conn.to.legoId);
     if (!fromLego || !toLego) return;
 
-    const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
-    const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
+    const fromPos = fromLego.style!.legStyles[conn.from.leg_index].position;
+    const toPos = toLego.style!.legStyles[conn.to.leg_index].position;
 
     // Connection positions are in logical canvas coordinates
     const fromPoint = new LogicalPoint(
@@ -94,24 +94,25 @@ export const findClosestDanglingLeg = (
   dropPosition: LogicalPoint,
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): { lego: DroppedLego; legIndex: number; distance: number } | null => {
+): { lego: DroppedLego; leg_index: number; distance: number } | null => {
   let closestLego: DroppedLego | null = null;
   let closestLegIndex: number = -1;
   let minDistance = Infinity;
 
   droppedLegos.forEach((lego) => {
     const totalLegs = lego.numberOfLegs;
-    for (let legIndex = 0; legIndex < totalLegs; legIndex++) {
+    for (let leg_index = 0; leg_index < totalLegs; leg_index++) {
       // Skip if leg is already connected
       const isConnected = connections.some(
         (conn) =>
-          (conn.from.legoId === lego.instanceId &&
-            conn.from.legIndex === legIndex) ||
-          (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex)
+          (conn.from.legoId === lego.instance_id &&
+            conn.from.leg_index === leg_index) ||
+          (conn.to.legoId === lego.instance_id &&
+            conn.to.leg_index === leg_index)
       );
       if (isConnected) continue;
 
-      const pos = lego.style!.legStyles[legIndex].position;
+      const pos = lego.style!.legStyles[leg_index].position;
       // Leg positions are in logical canvas coordinates
       const legX = lego.logicalPosition.x + pos.endX;
       const legY = lego.logicalPosition.y + pos.endY;
@@ -125,12 +126,12 @@ export const findClosestDanglingLeg = (
         // 20 pixels threshold
         minDistance = distance;
         closestLego = lego;
-        closestLegIndex = legIndex;
+        closestLegIndex = leg_index;
       }
     }
   });
 
   return closestLego && closestLegIndex !== -1
-    ? { lego: closestLego, legIndex: closestLegIndex, distance: minDistance }
+    ? { lego: closestLego, leg_index: closestLegIndex, distance: minDistance }
     : null;
 };

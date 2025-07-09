@@ -22,10 +22,10 @@ export class AddStopper {
     // Verify the leg is not already connected
     const isLegConnected = this.connections.some(
       (conn) =>
-        (conn.from.legoId === targetLego.instanceId &&
-          conn.from.legIndex === targetLegIndex) ||
-        (conn.to.legoId === targetLego.instanceId &&
-          conn.to.legIndex === targetLegIndex)
+        (conn.from.legoId === targetLego.instance_id &&
+          conn.from.leg_index === targetLegIndex) ||
+        (conn.to.legoId === targetLego.instance_id &&
+          conn.to.leg_index === targetLegIndex)
     );
 
     if (isLegConnected) {
@@ -34,7 +34,7 @@ export class AddStopper {
 
     // Check if the stopper lego already exists in droppedLegos
     const existingStopperIndex = this.droppedLegos.findIndex(
-      (l) => l.instanceId === stopperLego.instanceId
+      (l) => l.instance_id === stopperLego.instance_id
     );
     let updatedLegos: DroppedLego[];
 
@@ -51,12 +51,12 @@ export class AddStopper {
     // Create new connection to the stopper
     const newConnection = new Connection(
       {
-        legoId: targetLego.instanceId,
-        legIndex: targetLegIndex
+        legoId: targetLego.instance_id,
+        leg_index: targetLegIndex
       },
       {
-        legoId: stopperLego.instanceId,
-        legIndex: 0
+        legoId: stopperLego.instance_id,
+        leg_index: 0
       }
     );
 

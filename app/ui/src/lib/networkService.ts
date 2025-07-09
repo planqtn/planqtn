@@ -9,25 +9,25 @@ import { DroppedLego } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates";
 
 interface ResponseLego {
-  instanceId: string;
-  typeId: string;
-  shortName: string;
+  instance_id: string;
+  type_id: string;
+  short_name: string;
   description: string;
   x: number;
   y: number;
-  parityCheckMatrix: number[][];
-  logicalLegs: number[];
-  gaugeLegs: number[];
+  parity_check_matrix: number[][];
+  logical_legs: number[];
+  gauge_legs: number[];
 }
 
 interface ResponseConnection {
   from: {
     legoId: string;
-    legIndex: number;
+    leg_index: number;
   };
   to: {
     legoId: string;
-    legIndex: number;
+    leg_index: number;
   };
 }
 
@@ -103,16 +103,16 @@ export class NetworkService {
       (lego: ResponseLego) =>
         new DroppedLego(
           {
-            typeId: lego.typeId,
-            name: lego.shortName,
-            shortName: lego.shortName,
-            description: lego.shortName,
-            parityCheckMatrix: lego.parityCheckMatrix,
-            logicalLegs: lego.logicalLegs,
-            gaugeLegs: lego.gaugeLegs
+            type_id: lego.type_id,
+            name: lego.short_name,
+            short_name: lego.short_name,
+            description: lego.short_name,
+            parity_check_matrix: lego.parity_check_matrix,
+            logical_legs: lego.logical_legs,
+            gauge_legs: lego.gauge_legs
           },
           new LogicalPoint(lego.x, lego.y),
-          lego.instanceId
+          lego.instance_id
         )
     );
     const connections = rawConnections.map(
@@ -170,23 +170,23 @@ export class NetworkService {
   ): DroppedLego[] {
     // Group legos by type
     const zNodes = legos.filter((lego: DroppedLego) =>
-      lego.shortName.startsWith("z")
+      lego.short_name.startsWith("z")
     );
     const qNodes = legos.filter((lego: DroppedLego) =>
-      lego.shortName.startsWith("q")
+      lego.short_name.startsWith("q")
     );
     const xNodes = legos.filter((lego: DroppedLego) =>
-      lego.shortName.startsWith("x")
+      lego.short_name.startsWith("x")
     );
 
     return legos.map((lego: DroppedLego) => {
       let nodesInRow: DroppedLego[];
       let y: number;
 
-      if (lego.shortName.startsWith("z")) {
+      if (lego.short_name.startsWith("z")) {
         nodesInRow = zNodes;
         y = 100; // Top row
-      } else if (lego.shortName.startsWith("q")) {
+      } else if (lego.short_name.startsWith("q")) {
         nodesInRow = qNodes;
         y = 250; // Middle row
       } else {
@@ -195,7 +195,7 @@ export class NetworkService {
       }
 
       const indexInRow = nodesInRow.findIndex(
-        (l) => l.instanceId === lego.instanceId
+        (l) => l.instance_id === lego.instance_id
       );
       const x =
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +
@@ -212,17 +212,17 @@ export class NetworkService {
   ): DroppedLego[] {
     // Group legos by type
     const checkNodes = legos.filter(
-      (lego: DroppedLego) => !lego.shortName.startsWith("q")
+      (lego: DroppedLego) => !lego.short_name.startsWith("q")
     );
     const qNodes = legos.filter((lego: DroppedLego) =>
-      lego.shortName.startsWith("q")
+      lego.short_name.startsWith("q")
     );
 
     return legos.map((lego: DroppedLego) => {
       let nodesInRow: DroppedLego[];
       let y: number;
 
-      if (lego.shortName.startsWith("q")) {
+      if (lego.short_name.startsWith("q")) {
         nodesInRow = qNodes;
         y = 300; // Bottom row
       } else {
@@ -231,7 +231,7 @@ export class NetworkService {
       }
 
       const indexInRow = nodesInRow.findIndex(
-        (l) => l.instanceId === lego.instanceId
+        (l) => l.instance_id === lego.instance_id
       );
       const x =
         (canvasWidth - (nodesInRow.length - 1) * nodeSpacing) / 2 +

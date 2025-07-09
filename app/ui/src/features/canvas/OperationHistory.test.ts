@@ -16,16 +16,16 @@ describe("OperationHistory", () => {
     it("should return to original state after undo and redo of add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -67,16 +67,16 @@ describe("OperationHistory", () => {
     it("should handle multiple undos after add and move operations", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -144,16 +144,16 @@ describe("OperationHistory", () => {
       // Create initial legos
       const hadamard: DroppedLego = new DroppedLego(
         {
-          typeId: "hadamard",
+          type_id: "hadamard",
           name: "Hadamard",
-          shortName: "H",
+          short_name: "H",
           description: "Hadamard Gate",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [],
-          gaugeLegs: []
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(0, 0),
         "h1"
@@ -161,24 +161,24 @@ describe("OperationHistory", () => {
 
       const zRep1: DroppedLego = new DroppedLego(
         {
-          typeId: "z-rep",
+          type_id: "z-rep",
           name: "Z-Rep Code",
-          shortName: "Z",
+          short_name: "Z",
           description: "Z-Repetition Code",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [0, 0, 0, 1, 1, 0],
             [0, 0, 0, 0, 1, 1],
             [1, 1, 1, 0, 0, 0]
           ],
-          logicalLegs: [],
-          gaugeLegs: []
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(100, 0),
         "1"
       );
 
       const zRep2: DroppedLego = zRep1.with({
-        instanceId: "2",
+        instance_id: "2",
         logicalPosition: new LogicalPoint(200, 0)
       });
 
@@ -187,21 +187,21 @@ describe("OperationHistory", () => {
         new Connection(
           {
             legoId: "hadamard",
-            legIndex: 0
+            leg_index: 0
           },
           {
             legoId: "1",
-            legIndex: 0
+            leg_index: 0
           }
         ),
         new Connection(
           {
             legoId: "1",
-            legIndex: 1
+            leg_index: 1
           },
           {
             legoId: "2",
-            legIndex: 0
+            leg_index: 0
           }
         )
       ];
@@ -215,15 +215,15 @@ describe("OperationHistory", () => {
 
       // Fuse operation
       const fusedLego: DroppedLego = zRep1.with({
-        instanceId: "fused",
-        parityCheckMatrix: [
+        instance_id: "fused",
+        parity_check_matrix: [
           [1, 1, 1, 1, 0, 0, 0, 0],
           [0, 0, 0, 0, 1, 1, 0, 0],
           [0, 0, 0, 0, 0, 1, 1, 0],
           [0, 0, 0, 0, 0, 0, 1, 1]
         ],
-        logicalLegs: [],
-        gaugeLegs: []
+        logical_legs: [],
+        gauge_legs: []
       });
       const fuseOperation: Operation = {
         type: "fuse",
@@ -235,11 +235,11 @@ describe("OperationHistory", () => {
             new Connection(
               {
                 legoId: "h1",
-                legIndex: 0
+                leg_index: 0
               },
               {
                 legoId: "fused",
-                legIndex: 0
+                leg_index: 0
               }
             )
           ]
@@ -255,11 +255,11 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0
+              leg_index: 0
             },
             {
               legoId: "fused",
-              legIndex: 0
+              leg_index: 0
             }
           )
         ],
@@ -267,12 +267,12 @@ describe("OperationHistory", () => {
       };
 
       const zRep1_2: DroppedLego = zRep1.with({
-        instanceId: "zRep12",
+        instance_id: "zRep12",
         logicalPosition: new LogicalPoint(150, 0)
       });
 
       const zRep2_2: DroppedLego = zRep2.with({
-        instanceId: "zRep22",
+        instance_id: "zRep22",
         logicalPosition: new LogicalPoint(250, 0)
       });
 
@@ -282,21 +282,21 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0
+              leg_index: 0
             },
             {
               legoId: "zRep12",
-              legIndex: 0
+              leg_index: 0
             }
           ),
           new Connection(
             {
               legoId: "zRep12",
-              legIndex: 2
+              leg_index: 2
             },
             {
               legoId: "zRep22",
-              legIndex: 2
+              leg_index: 2
             }
           )
         ],
@@ -345,16 +345,16 @@ describe("OperationHistory", () => {
     it("should undo an add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -376,16 +376,16 @@ describe("OperationHistory", () => {
     it("should undo a move operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -412,8 +412,8 @@ describe("OperationHistory", () => {
 
     it("should undo a connect operation", () => {
       const connection: Connection = new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 1 }
       );
 
       const operation: Operation = {
@@ -439,16 +439,16 @@ describe("OperationHistory", () => {
     it("should redo an add operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -466,22 +466,22 @@ describe("OperationHistory", () => {
       const result = operationHistory.redo([], []);
 
       expect(result.droppedLegos).toHaveLength(1);
-      expect(result.droppedLegos[0].instanceId).toBe("instance1");
+      expect(result.droppedLegos[0].instance_id).toBe("instance1");
     });
 
     it("should redo a move operation", () => {
       const lego: DroppedLego = new DroppedLego(
         {
-          typeId: "lego1",
+          type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 0],
             [0, 1]
           ],
-          logicalLegs: [0],
-          gaugeLegs: [1]
+          logical_legs: [0],
+          gauge_legs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -509,8 +509,8 @@ describe("OperationHistory", () => {
 
     it("should redo a connect operation", () => {
       const connection: Connection = new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 1 }
       );
 
       const operation: Operation = {

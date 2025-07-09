@@ -26,24 +26,26 @@ export class FuseLegos {
   }> {
     try {
       for (const lego of legosToFuse) {
-        if (!this.droppedLegos.some((l) => l.instanceId === lego.instanceId)) {
+        if (
+          !this.droppedLegos.some((l) => l.instance_id === lego.instance_id)
+        ) {
           throw new Error("Lego not found");
         }
       }
       // Get all connections between the legos being fused
       const internalConnections = this.connections.filter(
         (conn) =>
-          legosToFuse.some((l) => l.instanceId === conn.from.legoId) &&
-          legosToFuse.some((l) => l.instanceId === conn.to.legoId)
+          legosToFuse.some((l) => l.instance_id === conn.from.legoId) &&
+          legosToFuse.some((l) => l.instance_id === conn.to.legoId)
       );
 
       // Get all connections to legos outside the fusion group
       const externalConnections = this.connections.filter((conn) => {
         const fromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId
+          (l) => l.instance_id === conn.from.legoId
         );
         const toInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.to.legoId
+          (l) => l.instance_id === conn.to.legoId
         );
         return (fromInGroup && !toInGroup) || (!fromInGroup && toInGroup);
       });
@@ -55,20 +57,20 @@ export class FuseLegos {
       );
 
       // Create a map of old leg indices to track external connections
-      const legMap = new Map<string, { legoId: string; legIndex: number }>();
+      const legMap = new Map<string, { legoId: string; leg_index: number }>();
       externalConnections.forEach((conn) => {
         const isFromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId
+          (l) => l.instance_id === conn.from.legoId
         );
         if (isFromInGroup) {
-          legMap.set(`${conn.from.legoId}-${conn.from.legIndex}`, {
+          legMap.set(`${conn.from.legoId}-${conn.from.leg_index}`, {
             legoId: conn.to.legoId,
-            legIndex: conn.to.legIndex
+            leg_index: conn.to.leg_index
           });
         } else {
-          legMap.set(`${conn.to.legoId}-${conn.to.legIndex}`, {
+          legMap.set(`${conn.to.legoId}-${conn.to.leg_index}`, {
             legoId: conn.from.legoId,
-            legIndex: conn.from.legIndex
+            leg_index: conn.from.leg_index
           });
         }
       });
@@ -91,13 +93,13 @@ export class FuseLegos {
       // Create a new lego with the calculated parity check matrix
       const newLego: DroppedLego = new DroppedLego(
         {
-          typeId: recognized_type,
-          shortName: "Fused",
+          type_id: recognized_type,
+          short_name: "Fused",
           name: "Fused Lego",
           description: "Fused " + legosToFuse.length + " legos",
-          parityCheckMatrix: result.h.getMatrix(),
-          logicalLegs: [],
-          gaugeLegs: []
+          parity_check_matrix: result.h.getMatrix(),
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(
           legosToFuse.reduce((sum, l) => sum + l.logicalPosition.x, 0) /
@@ -111,29 +113,29 @@ export class FuseLegos {
       // Create new connections based on the leg mapping
       const newConnections = externalConnections.map((conn) => {
         const isFromInGroup = legosToFuse.some(
-          (l) => l.instanceId === conn.from.legoId
+          (l) => l.instance_id === conn.from.legoId
         );
         if (isFromInGroup) {
           // Find the new leg index from the legs array
           const newLegIndex = result.legs.findIndex(
             (leg) =>
-              leg.instanceId === conn.from.legoId &&
-              leg.legIndex === conn.from.legIndex
+              leg.instance_id === conn.from.legoId &&
+              leg.leg_index === conn.from.leg_index
           );
 
           return new Connection(
-            { legoId: newLego.instanceId, legIndex: newLegIndex },
+            { legoId: newLego.instance_id, leg_index: newLegIndex },
             conn.to
           );
         } else {
           const newLegIndex = result.legs.findIndex(
             (leg) =>
-              leg.instanceId === conn.to.legoId &&
-              leg.legIndex === conn.to.legIndex
+              leg.instance_id === conn.to.legoId &&
+              leg.leg_index === conn.to.leg_index
           );
           return new Connection(conn.from, {
-            legoId: newLego.instanceId,
-            legIndex: newLegIndex
+            legoId: newLego.instance_id,
+            leg_index: newLegIndex
           });
         }
       });
@@ -141,7 +143,7 @@ export class FuseLegos {
       // Update state
       const resultingDroppedLegos = [
         ...this.droppedLegos.filter(
-          (l) => !legosToFuse.some((fl) => fl.instanceId === l.instanceId)
+          (l) => !legosToFuse.some((fl) => fl.instance_id === l.instance_id)
         ),
         newLego
       ];

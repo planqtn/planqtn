@@ -69,8 +69,8 @@ export const SelectionManager = memo(
               const newLegos = [...tensorNetwork.legos, ...selectedLegos];
               const newConnections = connections.filter(
                 (conn) =>
-                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                  newLegos.some((l) => l.instanceId === conn.to.legoId)
+                  newLegos.some((l) => l.instance_id === conn.from.legoId) &&
+                  newLegos.some((l) => l.instance_id === conn.to.legoId)
               );
               const newNetwork = new TensorNetwork({
                 legos: newLegos,
@@ -96,8 +96,8 @@ export const SelectionManager = memo(
               const newLegos = [...tensorNetwork.legos, ...selectedLegos];
               const newConnections = connections.filter(
                 (conn) =>
-                  newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                  newLegos.some((l) => l.instanceId === conn.to.legoId)
+                  newLegos.some((l) => l.instance_id === conn.from.legoId) &&
+                  newLegos.some((l) => l.instance_id === conn.to.legoId)
               );
               const newNetwork = new TensorNetwork({
                 legos: newLegos,
@@ -106,7 +106,7 @@ export const SelectionManager = memo(
               setTensorNetwork(newNetwork);
             } else {
               const selectedLegoIds = new Set(
-                selectedLegos.map((lego: DroppedLego) => lego.instanceId)
+                selectedLegos.map((lego: DroppedLego) => lego.instance_id)
               );
               const internalConnections = connections.filter(
                 (conn) =>
@@ -122,7 +122,7 @@ export const SelectionManager = memo(
           } else {
             // Create a tensor network from the selected legos
             const selectedLegoIds = new Set(
-              selectedLegos.map((lego: DroppedLego) => lego.instanceId)
+              selectedLegos.map((lego: DroppedLego) => lego.instance_id)
             );
             const internalConnections = connections.filter(
               (conn) =>

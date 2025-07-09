@@ -11,31 +11,31 @@ export interface CustomLegoCreationOptions {
 export class CustomLegoService {
   static createCustomLego(
     matrix: number[][],
-    logicalLegs: number[],
+    logical_legs: number[],
     position: { x: number; y: number }
   ): void {
     const { addDroppedLego, addOperation, newInstanceId } =
       useCanvasStore.getState();
 
-    const instanceId = newInstanceId();
+    const instance_id = newInstanceId();
     const newLego: DroppedLego = new DroppedLego(
       {
         // Generate unique ID to avoid caching collisions
-        typeId:
+        type_id:
           "custom-" +
-          instanceId +
+          instance_id +
           "-" +
           Math.random().toString(36).substring(2, 15),
         name: "Custom Lego",
-        shortName: "Custom",
+        short_name: "Custom",
         description: "Custom lego with user-defined parity check matrix",
-        parityCheckMatrix: matrix,
-        logicalLegs: logicalLegs,
-        gaugeLegs: []
+        parity_check_matrix: matrix,
+        logical_legs: logical_legs,
+        gauge_legs: []
       },
 
       new LogicalPoint(position.x, position.y),
-      instanceId
+      instance_id
     );
 
     // Add to store

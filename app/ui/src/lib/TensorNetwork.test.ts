@@ -10,12 +10,12 @@ describe("TensorNetwork", () => {
     const nodes: DroppedLego[] = [
       new DroppedLego(
         {
-          typeId: "encoding_tensor_602",
+          type_id: "encoding_tensor_602",
           name: "Encoding Tensor 602",
-          shortName: "602",
+          short_name: "602",
           description: "Encoding Tensor 602",
 
-          parityCheckMatrix: [
+          parity_check_matrix: [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -23,36 +23,36 @@ describe("TensorNetwork", () => {
             [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
           ],
-          logicalLegs: [],
-          gaugeLegs: []
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(0, 0),
         "0"
       ),
       new DroppedLego(
         {
-          typeId: "stopper_i",
+          type_id: "stopper_i",
           name: "Identity Stopper",
-          shortName: "I",
+          short_name: "I",
           description: "Identity Stopper",
 
-          parityCheckMatrix: [[0, 0]],
-          logicalLegs: [],
-          gaugeLegs: []
+          parity_check_matrix: [[0, 0]],
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(0, 0),
         "stop1"
       ),
       new DroppedLego(
         {
-          typeId: "stopper_i",
+          type_id: "stopper_i",
           name: "Identity Stopper",
-          shortName: "I",
+          short_name: "I",
           description: "Identity Stopper",
 
-          parityCheckMatrix: [[0, 0]],
-          logicalLegs: [],
-          gaugeLegs: []
+          parity_check_matrix: [[0, 0]],
+          logical_legs: [],
+          gauge_legs: []
         },
         new LogicalPoint(0, 0),
         "stop2"
@@ -62,12 +62,12 @@ describe("TensorNetwork", () => {
     // Create the connections
     const connections: Connection[] = [
       new Connection(
-        { legoId: "stop1", legIndex: 0 },
-        { legoId: "0", legIndex: 4 }
+        { legoId: "stop1", leg_index: 0 },
+        { legoId: "0", leg_index: 4 }
       ),
       new Connection(
-        { legoId: "stop2", legIndex: 0 },
-        { legoId: "0", legIndex: 5 }
+        { legoId: "stop2", leg_index: 0 },
+        { legoId: "0", leg_index: 5 }
       )
     ];
 
@@ -98,18 +98,18 @@ describe("TensorNetwork", () => {
       legos: [
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -118,18 +118,18 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -138,18 +138,18 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -158,18 +158,18 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -178,18 +178,18 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -198,18 +198,18 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            typeId: "t5",
+            type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parityCheckMatrix: [
+            parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logicalLegs: [4],
-            gaugeLegs: [],
+            logical_legs: [4],
+            gauge_legs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -219,36 +219,36 @@ describe("TensorNetwork", () => {
       ],
       connections: [
         new Connection(
-          { legoId: "5", legIndex: 0 },
-          { legoId: "6", legIndex: 3 }
+          { legoId: "5", leg_index: 0 },
+          { legoId: "6", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 0 },
-          { legoId: "5", legIndex: 3 }
+          { legoId: "4", leg_index: 0 },
+          { legoId: "5", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 2 },
-          { legoId: "3", legIndex: 3 }
+          { legoId: "4", leg_index: 2 },
+          { legoId: "3", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 1 },
-          { legoId: "3", legIndex: 0 }
+          { legoId: "4", leg_index: 1 },
+          { legoId: "3", leg_index: 0 }
         ),
         new Connection(
-          { legoId: "5", legIndex: 2 },
-          { legoId: "2", legIndex: 3 }
+          { legoId: "5", leg_index: 2 },
+          { legoId: "2", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "6", legIndex: 1 },
-          { legoId: "1", legIndex: 0 }
+          { legoId: "6", leg_index: 1 },
+          { legoId: "1", leg_index: 0 }
         ),
         new Connection(
-          { legoId: "2", legIndex: 1 },
-          { legoId: "1", legIndex: 2 }
+          { legoId: "2", leg_index: 1 },
+          { legoId: "1", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 3 },
-          { legoId: "2", legIndex: 0 }
+          { legoId: "1", leg_index: 3 },
+          { legoId: "2", leg_index: 0 }
         )
       ]
     });
@@ -291,10 +291,10 @@ describe("TensorNetwork", () => {
       ])
     );
     expect(conjoined.legs).toEqual([
-      { instanceId: "1", legIndex: 0 },
-      { instanceId: "1", legIndex: 1 },
-      { instanceId: "2", legIndex: 0 },
-      { instanceId: "2", legIndex: 1 }
+      { instance_id: "1", leg_index: 0 },
+      { instance_id: "1", leg_index: 1 },
+      { instance_id: "2", leg_index: 0 },
+      { instance_id: "2", leg_index: 1 }
     ]);
   });
 });

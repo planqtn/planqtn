@@ -23,8 +23,11 @@ export class InjectTwoLegged {
 
     // Create new connections
     const newConnections = [
-      new Connection(connection.from, { legoId: lego.instanceId, legIndex: 0 }),
-      new Connection({ legoId: lego.instanceId, legIndex: 1 }, connection.to)
+      new Connection(connection.from, {
+        legoId: lego.instance_id,
+        leg_index: 0
+      }),
+      new Connection({ legoId: lego.instance_id, leg_index: 1 }, connection.to)
     ];
 
     const externalConnections = this.connections.filter(
@@ -41,7 +44,7 @@ export class InjectTwoLegged {
       // Update the position of the existing lego
       legosToAdd = [];
       updatedLegos = this.droppedLegos.map((l) => {
-        if (l.instanceId === lego.instanceId) {
+        if (l.instance_id === lego.instance_id) {
           legosToUpdate.push({
             oldLego: oldLego!,
             newLego: lego

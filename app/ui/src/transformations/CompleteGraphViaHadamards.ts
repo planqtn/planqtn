@@ -9,7 +9,7 @@ export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
 ): boolean => {
   return (
-    legos.length > 1 && legos.every((lego) => lego.typeId === "z_rep_code")
+    legos.length > 1 && legos.every((lego) => lego.type_id === "z_rep_code")
   );
 };
 
@@ -23,11 +23,11 @@ const getDanglingLegs = (
 
     // Find all connected legs
     connections.forEach((conn) => {
-      if (conn.from.legoId === lego.instanceId) {
-        connectedLegs.add(conn.from.legIndex);
+      if (conn.from.legoId === lego.instance_id) {
+        connectedLegs.add(conn.from.leg_index);
       }
-      if (conn.to.legoId === lego.instanceId) {
-        connectedLegs.add(conn.to.legIndex);
+      if (conn.to.legoId === lego.instance_id) {
+        connectedLegs.add(conn.to.leg_index);
       }
     });
 
@@ -56,7 +56,7 @@ export const applyCompleteGraphViaHadamards = async (
 }> => {
   // Get max instance ID
   const maxInstanceId = Math.max(
-    ...allLegos.map((l) => parseInt(l.instanceId))
+    ...allLegos.map((l) => parseInt(l.instance_id))
   );
 
   // Find dangling legs for each lego
@@ -73,7 +73,7 @@ export const applyCompleteGraphViaHadamards = async (
       return Legos.createDynamicLego(
         "z_rep_code",
         lego.numberOfLegs + numNewLegs,
-        lego.instanceId,
+        lego.instance_id,
         lego.logicalPosition
       );
     }
@@ -88,7 +88,7 @@ export const applyCompleteGraphViaHadamards = async (
 
   // Track which dangling legs have been used for each lego
   const usedDanglingLegs: Map<string, Set<number>> = new Map();
-  legos.forEach((lego) => usedDanglingLegs.set(lego.instanceId, new Set()));
+  legos.forEach((lego) => usedDanglingLegs.set(lego.instance_id, new Set()));
 
   // Create connections between all pairs of legos
   for (let i = 0; i < legos.length; i++) {
@@ -112,7 +112,7 @@ export const applyCompleteGraphViaHadamards = async (
 
       // Find next unused dangling leg for lego1
       let legIndex1: number;
-      const usedLegs1 = usedDanglingLegs.get(lego1.instanceId)!;
+      const usedLegs1 = usedDanglingLegs.get(lego1.instance_id)!;
       const availableDanglingLeg1 = lego1DanglingLegs.find(
         (leg) => !usedLegs1.has(leg)
       );
@@ -128,7 +128,7 @@ export const applyCompleteGraphViaHadamards = async (
 
       // Find next unused dangling leg for lego2
       let legIndex2: number;
-      const usedLegs2 = usedDanglingLegs.get(lego2.instanceId)!;
+      const usedLegs2 = usedDanglingLegs.get(lego2.instance_id)!;
       const availableDanglingLeg2 = lego2DanglingLegs.find(
         (leg) => !usedLegs2.has(leg)
       );
@@ -144,12 +144,12 @@ export const applyCompleteGraphViaHadamards = async (
       // Create connections
       newConnections.push(
         new Connection(
-          { legoId: lego1.instanceId, legIndex: legIndex1 },
-          { legoId: hadamardLego.instanceId, legIndex: 0 }
+          { legoId: lego1.instance_id, leg_index: legIndex1 },
+          { legoId: hadamardLego.instance_id, leg_index: 0 }
         ),
         new Connection(
-          { legoId: hadamardLego.instanceId, legIndex: 1 },
-          { legoId: lego2.instanceId, legIndex: legIndex2 }
+          { legoId: hadamardLego.instance_id, leg_index: 1 },
+          { legoId: lego2.instance_id, leg_index: legIndex2 }
         )
       );
 
@@ -160,7 +160,7 @@ export const applyCompleteGraphViaHadamards = async (
   // Update state
   const updatedLegos = [
     ...allLegos.filter(
-      (l) => !legos.some((selected) => selected.instanceId === l.instanceId)
+      (l) => !legos.some((selected) => selected.instance_id === l.instance_id)
     ),
     ...newLegos,
     ...hadamardLegos

@@ -650,8 +650,8 @@ export const ParityCheckMatrixDisplay: React.FC<
             {legOrdering && legOrdering[hoveredLegIndex] && (
               <>
                 {" "}
-                • <b>Tensor:</b> {legOrdering[hoveredLegIndex].instanceId} •{" "}
-                <b>Leg:</b> {legOrdering[hoveredLegIndex].legIndex}
+                • <b>Tensor:</b> {legOrdering[hoveredLegIndex].instance_id} •{" "}
+                <b>Leg:</b> {legOrdering[hoveredLegIndex].leg_index}
               </>
             )}
           </Text>
