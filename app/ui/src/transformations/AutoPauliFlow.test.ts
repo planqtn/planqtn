@@ -25,9 +25,9 @@ describe("simple auto flow", () => {
         name: name,
         shortName: name,
         description: name,
-        parity_check_matrix: parityMatrix,
-        logical_legs: [],
-        gauge_legs: []
+        parityCheckMatrix: parityMatrix,
+        logicalLegs: [],
+        gaugeLegs: []
       },
       new LogicalPoint(x, y),
       id,

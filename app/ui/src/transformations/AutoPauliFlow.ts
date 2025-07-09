@@ -182,10 +182,10 @@ const updateLego = (
  */
 const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
   const nLegoLegs = lego.numberOfLegs;
-  const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
+  const combinedRow = new Array(lego.parityCheckMatrix[0].length).fill(0);
 
   for (const rowIndex of lego.selectedMatrixRows) {
-    lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
+    lego.parityCheckMatrix[rowIndex].forEach((val, idx) => {
       combinedRow[idx] = (combinedRow[idx] + val) % 2;
     });
   }
@@ -208,7 +208,7 @@ const findRowIndices = (
   const xRowIndices: number[] = [];
   const zRowIndices: number[] = [];
 
-  lego.parity_check_matrix.forEach((row, idx) => {
+  lego.parityCheckMatrix.forEach((row, idx) => {
     if (row[legIndex] === 1) xRowIndices.push(idx);
     if (row[legIndex + nLegoLegs] === 1) zRowIndices.push(idx);
   });
@@ -223,13 +223,13 @@ const findRowIndices = (
  */
 const isSimpleLego = (lego: DroppedLego): boolean => {
   const nLegoLegs = lego.numberOfLegs;
-  if (lego.parity_check_matrix.length < 2) {
+  if (lego.parityCheckMatrix.length < 2) {
     return true;
   }
-  if (lego.parity_check_matrix.length > 2) {
+  if (lego.parityCheckMatrix.length > 2) {
     return false;
   }
-  const [row1, row2] = lego.parity_check_matrix;
+  const [row1, row2] = lego.parityCheckMatrix;
   const combinedRow = row1.map((val, i) => (val + row2[i]) % 2);
 
   const legActions: Set<string>[] = Array.from(

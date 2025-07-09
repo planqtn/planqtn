@@ -15,9 +15,9 @@ export interface LegoServerPayload {
   description?: string;
   is_dynamic?: boolean;
   parameters?: Record<string, unknown>;
-  parity_check_matrix: number[][];
-  logical_legs: number[];
-  gauge_legs: number[];
+  parityCheckMatrix: number[][];
+  logicalLegs: number[];
+  gaugeLegs: number[];
 }
 
 export interface TaskUpdateIterationStatus {

@@ -33,13 +33,13 @@ tn = TensorNetwork(nodes)
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0],
               [0, 0, 0, 1, 1, 1]
             ],
-            logical_legs: [],
-            gauge_legs: []
+            logicalLegs: [],
+            gaugeLegs: []
           },
           new LogicalPoint(288.89581298828125, 381.25),
           "7"
@@ -80,13 +80,13 @@ tn = TensorNetwork(nodes)
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0],
               [0, 0, 0, 1, 1, 1]
             ],
-            logical_legs: [],
-            gauge_legs: []
+            logicalLegs: [],
+            gaugeLegs: []
           },
           new LogicalPoint(288.89581298828125, 381.25),
           "2"
@@ -97,7 +97,7 @@ tn = TensorNetwork(nodes)
             name: "Steane Code",
             shortName: "STN",
             description: "Steane code encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -107,8 +107,8 @@ tn = TensorNetwork(nodes)
               [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
             ],
-            logical_legs: [7],
-            gauge_legs: []
+            logicalLegs: [7],
+            gaugeLegs: []
           },
           new LogicalPoint(477.89581298828125, 308.25),
           "3"
@@ -121,14 +121,14 @@ tn = TensorNetwork(nodes)
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 4 },
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 0, 0, 0, 0, 0, 0],
               [0, 1, 1, 0, 0, 0, 0, 0],
               [0, 0, 1, 1, 0, 0, 0, 0],
               [0, 0, 0, 0, 1, 1, 1, 1]
             ],
-            logical_legs: [],
-            gauge_legs: []
+            logicalLegs: [],
+            gaugeLegs: []
           },
           new LogicalPoint(139.89581298828125, 143.25),
           "4"
@@ -141,14 +141,14 @@ tn = TensorNetwork(nodes)
             description: "Bitflip code, ZZ stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [0, 0, 0, 0, 1, 1, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 0],
               [0, 0, 0, 0, 0, 0, 1, 1],
               [1, 1, 1, 1, 0, 0, 0, 0]
             ],
-            logical_legs: [],
-            gauge_legs: []
+            logicalLegs: [],
+            gaugeLegs: []
           },
           new LogicalPoint(311.89581298828125, 187.25),
           "1"
@@ -159,9 +159,9 @@ tn = TensorNetwork(nodes)
             name: "X Stopper",
             shortName: "X",
             description: "X Stopper",
-            parity_check_matrix: [[1, 0]],
-            logical_legs: [],
-            gauge_legs: []
+            parityCheckMatrix: [[1, 0]],
+            logicalLegs: [],
+            gaugeLegs: []
           },
           new LogicalPoint(411.89581298828125, 187.25),
           "5"
@@ -204,7 +204,7 @@ tn = TensorNetwork(nodes)
         }
 
         // Parse the output into a matrix
-        const parity_check_matrix = stdout
+        const parityCheckMatrix = stdout
           .trim()
           .split("\n")
           .map((line: string) =>
@@ -212,7 +212,7 @@ tn = TensorNetwork(nodes)
           );
 
         // prettier-ignore
-        const expected_parity_check_matrix = [
+        const expected_parityCheckMatrix = [
             [1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1],
             [0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -227,7 +227,7 @@ tn = TensorNetwork(nodes)
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1]
         ];
 
-        expect(parity_check_matrix).toEqual(expected_parity_check_matrix);
+        expect(parityCheckMatrix).toEqual(expected_parityCheckMatrix);
         resolve();
       });
     });

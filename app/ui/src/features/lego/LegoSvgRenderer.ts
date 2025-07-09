@@ -20,7 +20,7 @@ export class LegoSvgRenderer {
 
     const numLegs = lego.numberOfLegs;
     const size = lego.style!.size;
-    const numRegularLegs = numLegs - lego.logical_legs.length;
+    const numRegularLegs = numLegs - lego.logicalLegs.length;
 
     // Calculate leg positions
     const legStyles = lego.style!.legStyles;
@@ -28,7 +28,7 @@ export class LegoSvgRenderer {
     // Generate regular legs SVG
     const regularLegsSvg = legStyles
       .map((legStyle, index) => {
-        const isLogical = lego.logical_legs.includes(index);
+        const isLogical = lego.logicalLegs.includes(index);
         if (isLogical) return "";
 
         const legColor = legStyle.color;
@@ -52,7 +52,7 @@ export class LegoSvgRenderer {
     // Generate logical legs SVG
     const logicalLegsSvg = legStyles
       .map((legStyle, legIndex) => {
-        const isLogical = lego.logical_legs.includes(legIndex);
+        const isLogical = lego.logicalLegs.includes(legIndex);
         if (!isLogical) return "";
 
         const legColor = legStyle.color;
@@ -149,7 +149,7 @@ export class LegoSvgRenderer {
   ): string {
     if (demoMode) return "";
 
-    const numRegularLegs = lego.numberOfLegs - lego.logical_legs.length;
+    const numRegularLegs = lego.numberOfLegs - lego.logicalLegs.length;
     const textColor = isSelected ? "white" : "#000000";
 
     if (numRegularLegs <= 2) {
@@ -177,7 +177,7 @@ export class LegoSvgRenderer {
         `;
       }
     } else {
-      const yOffset = lego.logical_legs.length > 0 ? 5 : 0;
+      const yOffset = lego.logicalLegs.length > 0 ? 5 : 0;
       if (lego.style!.displayShortName) {
         return `
           <text x="0" y="${yOffset}" font-size="10" font-weight="bold" 

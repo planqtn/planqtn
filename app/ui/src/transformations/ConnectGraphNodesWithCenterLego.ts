@@ -89,12 +89,12 @@ export const applyConnectGraphNodes = async (
           name: "Hadamard",
           shortName: "H",
           description: "Hadamard",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0, 0, 1],
             [0, 1, 1, 0]
           ],
-          logical_legs: [],
-          gauge_legs: []
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(
           (connectorLego.logicalPosition.x + lego.logicalPosition.x) / 2,

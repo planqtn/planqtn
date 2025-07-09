@@ -316,8 +316,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const lod = getLevelOfDetail(smartSize, zoomLevel);
 
     const numAllLegs = lego.numberOfLegs;
-    const numLogicalLegs = lego.logical_legs.length;
-    const numGaugeLegs = lego.gauge_legs.length;
+    const numLogicalLegs = lego.logicalLegs.length;
+    const numGaugeLegs = lego.gaugeLegs.length;
     const numRegularLegs = numAllLegs - numLogicalLegs - numGaugeLegs;
 
     // Check if this specific lego is being dragged
@@ -370,8 +370,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     const isScalarLego = (lego: DroppedLego) => {
       return (
-        lego.parity_check_matrix.length === 1 &&
-        lego.parity_check_matrix[0].length === 1
+        lego.parityCheckMatrix.length === 1 &&
+        lego.parityCheckMatrix[0].length === 1
       );
     };
 
@@ -495,7 +495,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
                 {lod.showLegs &&
                   lego.style!.legStyles.map((legStyle, legIndex) => {
-                    const isLogical = lego.logical_legs.includes(legIndex);
+                    const isLogical = lego.logicalLegs.includes(legIndex);
                     const legColor = lego.style!.getLegColor(legIndex);
 
                     const shouldHide = legHiddenStates[legIndex];
@@ -627,7 +627,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     ) : (
                       <text
                         x="0"
-                        y={lego.logical_legs.length > 0 ? 5 : 0}
+                        y={lego.logicalLegs.length > 0 ? 5 : 0}
                         fontSize="10"
                         fontWeight="bold"
                         textAnchor="middle"

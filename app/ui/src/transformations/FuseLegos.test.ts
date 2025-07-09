@@ -16,9 +16,9 @@ const testDroppedLegos = [
       shortName: "L1",
       name: "Lego 1",
       description: "Test Lego 1",
-      parity_check_matrix: [[1, 0]],
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: [[1, 0]],
+      logicalLegs: [],
+      gaugeLegs: []
     },
     new LogicalPoint(0, 0),
     "instance1"
@@ -29,9 +29,9 @@ const testDroppedLegos = [
       shortName: "L2",
       name: "Lego 2",
       description: "Test Lego 2",
-      parity_check_matrix: [[1, 0]],
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: [[1, 0]],
+      logicalLegs: [],
+      gaugeLegs: []
     },
     new LogicalPoint(1, 1),
     "instance2"
@@ -42,9 +42,9 @@ const testDroppedLegos = [
       shortName: "X",
       name: "X-Phase Flip Stopper",
       description: "X-Phase Flip Stopper",
-      parity_check_matrix: [[0, 1]],
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: [[0, 1]],
+      logicalLegs: [],
+      gaugeLegs: []
     },
     new LogicalPoint(1, 1),
     "stopper3"
@@ -58,9 +58,9 @@ const invalidDroppedLegos = [
       shortName: "L3",
       name: "Lego 3",
       description: "Test Lego 3",
-      parity_check_matrix: [[1, 0]],
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: [[1, 0]],
+      logicalLegs: [],
+      gaugeLegs: []
     },
     new LogicalPoint(2, 2),
     "instance3"
@@ -88,7 +88,7 @@ it("should successfully fuse two Z stopper legos into a single scalar one", asyn
     (l) => l.instanceId === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parity_check_matrix).toEqual([[1]]);
+  expect(fusedLego?.parityCheckMatrix).toEqual([[1]]);
   expect(result.connections).toHaveLength(0);
   expect(result.operation.type).toBe("fuse");
   expect(result.operation.data.legosToAdd).toHaveLength(1);
@@ -117,7 +117,7 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
   );
   expect(fusedLego).toBeTruthy();
 
-  expect(fusedLego?.parity_check_matrix).toEqual([[0]]);
+  expect(fusedLego?.parityCheckMatrix).toEqual([[0]]);
   expect(result.connections).toHaveLength(0);
   expect(result.operation.type).toBe("fuse");
   expect(result.operation.data.legosToAdd).toHaveLength(1);
@@ -171,7 +171,7 @@ it("should tensor the identity stopper with a regular lego", async () => {
     (l) => l.instanceId === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parity_check_matrix).toEqual([
+  expect(fusedLego?.parityCheckMatrix).toEqual([
     [1, 0, 0, 0, 1, 0],
     [0, 1, 0, 1, 0, 0]
   ]);
@@ -186,9 +186,9 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
         shortName: "S",
         name: "Scalar",
         description: "Scalar",
-        parity_check_matrix: [[1]],
-        logical_legs: [],
-        gauge_legs: []
+        parityCheckMatrix: [[1]],
+        logicalLegs: [],
+        gaugeLegs: []
       },
       new LogicalPoint(1, 1),
       "8"
@@ -204,7 +204,7 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
     (l) => l.instanceId === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
-  expect(fusedLego?.parity_check_matrix).toEqual([
+  expect(fusedLego?.parityCheckMatrix).toEqual([
     [1, 0, 0, 0, 1, 0],
     [0, 1, 0, 1, 0, 0]
   ]);

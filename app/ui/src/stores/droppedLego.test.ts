@@ -9,12 +9,12 @@ describe("DroppedLego", () => {
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",
-        parity_check_matrix: [
+        parityCheckMatrix: [
           [1, 0],
           [0, 1]
         ],
-        logical_legs: [0, 1],
-        gauge_legs: [2, 3]
+        logicalLegs: [0, 1],
+        gaugeLegs: [2, 3]
       },
       new LogicalPoint(0, 0),
       "1"
@@ -24,12 +24,12 @@ describe("DroppedLego", () => {
     expect(lego.name).toBe("Test Lego");
     expect(lego.shortName).toBe("TL");
     expect(lego.description).toBe("Test Lego");
-    expect(lego.parity_check_matrix).toEqual([
+    expect(lego.parityCheckMatrix).toEqual([
       [1, 0],
       [0, 1]
     ]);
-    expect(lego.logical_legs).toEqual([0, 1]);
-    expect(lego.gauge_legs).toEqual([2, 3]);
+    expect(lego.logicalLegs).toEqual([0, 1]);
+    expect(lego.gaugeLegs).toEqual([2, 3]);
   });
 
   it("should create a new lego with the correct properties when overridden", () => {
@@ -39,12 +39,12 @@ describe("DroppedLego", () => {
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",
-        parity_check_matrix: [
+        parityCheckMatrix: [
           [1, 0],
           [0, 1]
         ],
-        logical_legs: [0, 1],
-        gauge_legs: [2, 3]
+        logicalLegs: [0, 1],
+        gaugeLegs: [2, 3]
       },
       new LogicalPoint(0, 0),
       "1",
@@ -59,12 +59,12 @@ describe("DroppedLego", () => {
     expect(lego.shortName).toBe("TL");
     expect(lego.description).toBe("Test Lego");
     expect(lego.selectedMatrixRows).toEqual([]);
-    expect(lego.parity_check_matrix).toEqual([
+    expect(lego.parityCheckMatrix).toEqual([
       [1, 0],
       [0, 1]
     ]);
-    expect(lego.logical_legs).toEqual([0, 1]);
-    expect(lego.gauge_legs).toEqual([2, 3]);
+    expect(lego.logicalLegs).toEqual([0, 1]);
+    expect(lego.gaugeLegs).toEqual([2, 3]);
     // we ignore the override for mandatory parameters passed to the constructor
     expect(lego.logicalPosition.x).toBe(0);
     expect(lego.logicalPosition.y).toBe(0);
@@ -87,12 +87,12 @@ describe("DroppedLego", () => {
         name: "Test Lego",
         shortName: "TL",
         description: "Test Lego",
-        parity_check_matrix: [
+        parityCheckMatrix: [
           [1, 0],
           [0, 1]
         ],
-        logical_legs: [0, 1],
-        gauge_legs: [2, 3]
+        logicalLegs: [0, 1],
+        gaugeLegs: [2, 3]
       },
       new LogicalPoint(0, 0),
       "1",

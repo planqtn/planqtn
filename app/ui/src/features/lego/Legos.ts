@@ -104,9 +104,9 @@ export class Legos {
         name: "[[6,0,3]] tensor",
         shortName: "T6",
         description: "[[6,0,3]] encoding tensor",
-        parity_check_matrix: this.encoding_tensor_603,
-        logical_legs: [4, 5],
-        gauge_legs: [],
+        parityCheckMatrix: this.encoding_tensor_603,
+        logicalLegs: [4, 5],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -115,9 +115,9 @@ export class Legos {
         name: "[[5,1,2]] tensor",
         shortName: "T5",
         description: "[[5,1,2]] encoding tensor",
-        parity_check_matrix: this.encoding_tensor_512,
-        logical_legs: [4],
-        gauge_legs: [],
+        parityCheckMatrix: this.encoding_tensor_512,
+        logicalLegs: [4],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -126,9 +126,9 @@ export class Legos {
         name: "Hadamard",
         shortName: "H",
         description: "Hadamard tensor",
-        parity_check_matrix: this.h,
-        logical_legs: [],
-        gauge_legs: [],
+        parityCheckMatrix: this.h,
+        logicalLegs: [],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -142,9 +142,9 @@ export class Legos {
         description: "Bitflip code, ZZ stabilizers",
         is_dynamic: true,
         parameters: { d: 3 },
-        parity_check_matrix: this.z_rep_code(),
-        logical_legs: [],
-        gauge_legs: []
+        parityCheckMatrix: this.z_rep_code(),
+        logicalLegs: [],
+        gaugeLegs: []
       },
       {
         typeId: LegoType.XREP,
@@ -153,18 +153,18 @@ export class Legos {
         description: "Phase flip code, XX stabilizers",
         is_dynamic: true,
         parameters: { d: 3 },
-        parity_check_matrix: this.x_rep_code(),
-        logical_legs: [],
-        gauge_legs: []
+        parityCheckMatrix: this.x_rep_code(),
+        logicalLegs: [],
+        gaugeLegs: []
       },
       {
         typeId: LegoType.ID,
         name: "Identity",
         shortName: "I",
         description: "Identity tensor",
-        parity_check_matrix: this.identity,
-        logical_legs: [],
-        gauge_legs: [],
+        parityCheckMatrix: this.identity,
+        logicalLegs: [],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -173,9 +173,9 @@ export class Legos {
         name: "Steane Code",
         shortName: "STN",
         description: "Steane code encoding tensor",
-        parity_check_matrix: this.steane_code_813_encoding_tensor,
-        logical_legs: [7],
-        gauge_legs: [],
+        parityCheckMatrix: this.steane_code_813_encoding_tensor,
+        logicalLegs: [7],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -185,7 +185,7 @@ export class Legos {
         shortName: "[[8,3,2]]",
         description: "[[8,3,2]] encoding tensor with all 3 logical legs",
 
-        parity_check_matrix: [
+        parityCheckMatrix: [
           [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -198,8 +198,8 @@ export class Legos {
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
         ],
-        logical_legs: [8, 9, 10],
-        gauge_legs: [],
+        logicalLegs: [8, 9, 10],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       },
@@ -209,7 +209,7 @@ export class Legos {
         shortName: "QRM15",
         description: "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
         // prettier-ignore
-        parity_check_matrix: [
+        parityCheckMatrix: [
             [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -227,8 +227,8 @@ export class Legos {
             [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1]
         ],
-        logical_legs: [15],
-        gauge_legs: [],
+        logicalLegs: [15],
+        gaugeLegs: [],
         is_dynamic: false,
         parameters: {}
       }
@@ -240,9 +240,9 @@ export class Legos {
       name: "Identity Stopper",
       shortName: "I",
       description: "Identity stopper tensor",
-      parity_check_matrix: this.stopper_i_paulis,
-      logical_legs: [],
-      gauge_legs: [],
+      parityCheckMatrix: this.stopper_i_paulis,
+      logicalLegs: [],
+      gaugeLegs: [],
       is_dynamic: false,
       parameters: {}
     };
@@ -253,9 +253,9 @@ export class Legos {
       name: "Z Stopper",
       shortName: "Z",
       description: "Z-type stopper tensor",
-      parity_check_matrix: this.stopper_z_paulis,
-      logical_legs: [],
-      gauge_legs: [],
+      parityCheckMatrix: this.stopper_z_paulis,
+      logicalLegs: [],
+      gaugeLegs: [],
       is_dynamic: false,
       parameters: {}
     };
@@ -266,9 +266,9 @@ export class Legos {
       name: "X Stopper",
       shortName: "X",
       description: "X-type stopper tensor",
-      parity_check_matrix: this.stopper_x_paulis,
-      logical_legs: [],
-      gauge_legs: [],
+      parityCheckMatrix: this.stopper_x_paulis,
+      logicalLegs: [],
+      gaugeLegs: [],
       is_dynamic: false,
       parameters: {}
     };
@@ -302,7 +302,7 @@ export class Legos {
             : this.x_rep_code(d);
         return {
           ...legoDef,
-          parity_check_matrix: matrix,
+          parityCheckMatrix: matrix,
           parameters: { d }
         };
       }
@@ -328,14 +328,14 @@ export class Legos {
   }
 }
 
-export function recognize_parity_check_matrix(h: GF2): string | null {
+export function recognize_parityCheckMatrix(h: GF2): string | null {
   // Get all available legos
   const legos = Legos.listAvailableLegos();
 
   // First check static legos
   for (const lego of legos) {
     if (!lego.is_dynamic) {
-      const lego_matrix = new GF2(lego.parity_check_matrix);
+      const lego_matrix = new GF2(lego.parityCheckMatrix);
       if (is_gauss_equivalent(h, lego_matrix)) {
         return lego.typeId;
       }

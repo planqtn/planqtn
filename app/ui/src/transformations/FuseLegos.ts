@@ -2,7 +2,7 @@ import { Connection } from "../stores/connectionStore";
 import { Operation } from "../features/canvas/OperationHistory.ts";
 import { DroppedLego } from "../stores/droppedLegoStore.ts";
 import { TensorNetwork } from "../lib/TensorNetwork";
-import { recognize_parity_check_matrix } from "../features/lego/Legos.ts";
+import { recognize_parityCheckMatrix } from "../features/lego/Legos.ts";
 import { newInstanceId as storeNewInstanceId } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates.ts";
 
@@ -86,7 +86,7 @@ export class FuseLegos {
 
       // Try to recognize the type of the fused lego
       const recognized_type =
-        recognize_parity_check_matrix(result.h) || "fused_lego";
+        recognize_parityCheckMatrix(result.h) || "fused_lego";
 
       // Create a new lego with the calculated parity check matrix
       const newLego: DroppedLego = new DroppedLego(
@@ -95,9 +95,9 @@ export class FuseLegos {
           shortName: "Fused",
           name: "Fused Lego",
           description: "Fused " + legosToFuse.length + " legos",
-          parity_check_matrix: result.h.getMatrix(),
-          logical_legs: [],
-          gauge_legs: []
+          parityCheckMatrix: result.h.getMatrix(),
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(
           legosToFuse.reduce((sum, l) => sum + l.logicalPosition.x, 0) /

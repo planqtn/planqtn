@@ -7,9 +7,9 @@
       "description": "q0.id",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [[0, 0]],
-      "logical_legs": [],
-      "gauge_legs": []
+      "parityCheckMatrix": [[0, 0]],
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "2",
@@ -18,12 +18,12 @@
       "description": "q0.h0",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "3",
@@ -32,13 +32,13 @@
       "description": "q0.z",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "4",
@@ -47,12 +47,12 @@
       "description": "q0.h1",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "5",
@@ -61,13 +61,13 @@
       "description": "q0.x",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "6",
@@ -76,9 +76,9 @@
       "description": "q1.id",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [[0, 0]],
-      "logical_legs": [],
-      "gauge_legs": []
+      "parityCheckMatrix": [[0, 0]],
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "7",
@@ -87,12 +87,12 @@
       "description": "q1.h0",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "8",
@@ -101,13 +101,13 @@
       "description": "q1.z",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "9",
@@ -116,12 +116,12 @@
       "description": "q1.h1",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "10",
@@ -130,13 +130,13 @@
       "description": "q1.x",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [1, 1, 0, 0, 0, 0],
         [0, 1, 1, 0, 0, 0],
         [0, 0, 0, 1, 1, 1]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "11",
@@ -145,12 +145,12 @@
       "description": "x0",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [0, 0, 1, 1],
         [1, 1, 0, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     },
     {
       "instanceId": "12",
@@ -159,12 +159,12 @@
       "description": "z0",
       "x": 0,
       "y": 0,
-      "parity_check_matrix": [
+      "parityCheckMatrix": [
         [0, 0, 1, 1],
         [1, 1, 0, 0]
       ],
-      "logical_legs": [],
-      "gauge_legs": []
+      "logicalLegs": [],
+      "gaugeLegs": []
     }
   ],
   "connections": [

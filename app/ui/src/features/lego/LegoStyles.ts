@@ -125,19 +125,19 @@ export abstract class LegoStyle {
 
   getLegHighlightPauliOperator = (legIndex: number) => {
     // First check if there's a pushed leg
-    const h = this.lego.parity_check_matrix;
+    const h = this.lego.parityCheckMatrix;
     const num_legs = h[0].length / 2;
 
     if (this.lego.selectedMatrixRows === undefined) {
       return PauliOperator.I;
     }
 
-    const combinedRow = new Array(this.lego.parity_check_matrix[0].length).fill(
+    const combinedRow = new Array(this.lego.parityCheckMatrix[0].length).fill(
       0
     );
 
     for (const rowIndex of this.lego.selectedMatrixRows) {
-      this.lego.parity_check_matrix[rowIndex].forEach((val, idx) => {
+      this.lego.parityCheckMatrix[rowIndex].forEach((val, idx) => {
         combinedRow[idx] = (combinedRow[idx] + val) % 2;
       });
     }
@@ -184,8 +184,8 @@ export abstract class LegoStyle {
     legIndex: number,
     forSvg: boolean = false
   ): LegStyle {
-    const isLogical = this.lego.logical_legs.includes(legIndex);
-    const isGauge = this.lego.gauge_legs.includes(legIndex);
+    const isLogical = this.lego.logicalLegs.includes(legIndex);
+    const isGauge = this.lego.gaugeLegs.includes(legIndex);
     const legCount = this.lego.numberOfLegs;
     const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
@@ -200,13 +200,13 @@ export abstract class LegoStyle {
     }
 
     // Calculate the number of each type of leg
-    const logicalLegsCount = this.lego.logical_legs.length;
+    const logicalLegsCount = this.lego.logicalLegs.length;
     const physicalLegsCount =
-      legCount - logicalLegsCount - this.lego.gauge_legs.length;
+      legCount - logicalLegsCount - this.lego.gaugeLegs.length;
 
     if (isLogical) {
       // Sort logical legs to ensure consistent ordering regardless of their indices
-      const sortedLogicalLegs = [...this.lego.logical_legs].sort(
+      const sortedLogicalLegs = [...this.lego.logicalLegs].sort(
         (a, b) => a - b
       );
       const logicalIndex = sortedLogicalLegs.indexOf(legIndex);
@@ -277,8 +277,8 @@ export abstract class LegoStyle {
       const physicalLegIndices = Array.from({ length: legCount }, (_, i) => i)
         .filter(
           (i) =>
-            !this.lego.logical_legs.includes(i) &&
-            !this.lego.gauge_legs.includes(i)
+            !this.lego.logicalLegs.includes(i) &&
+            !this.lego.gaugeLegs.includes(i)
         )
         .sort((a, b) => a - b);
 

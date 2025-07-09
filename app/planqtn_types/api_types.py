@@ -53,7 +53,7 @@ class TensorNetworkResponse(BaseModel):
 
         nodes = [
             StabilizerCodeTensorEnumerator(
-                idx=lego["instanceId"], h=GF2(lego["parity_check_matrix"])
+                idx=lego["instanceId"], h=GF2(lego["parityCheckMatrix"])
             )
             for lego in self.legos
         ]
@@ -102,9 +102,9 @@ class TensorNetworkResponse(BaseModel):
                     if piece.annotation is not None and piece.annotation.y is not None
                     else 0
                 ),
-                "parity_check_matrix": piece.h.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": piece.h.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             }
             # print("lego", lego["shortName"], "x", lego["x"], "y", lego["y"])
             legos.append(lego)

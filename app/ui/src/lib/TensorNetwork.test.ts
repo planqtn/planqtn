@@ -15,7 +15,7 @@ describe("TensorNetwork", () => {
           shortName: "602",
           description: "Encoding Tensor 602",
 
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -23,8 +23,8 @@ describe("TensorNetwork", () => {
             [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1]
           ],
-          logical_legs: [],
-          gauge_legs: []
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(0, 0),
         "0"
@@ -36,9 +36,9 @@ describe("TensorNetwork", () => {
           shortName: "I",
           description: "Identity Stopper",
 
-          parity_check_matrix: [[0, 0]],
-          logical_legs: [],
-          gauge_legs: []
+          parityCheckMatrix: [[0, 0]],
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(0, 0),
         "stop1"
@@ -50,9 +50,9 @@ describe("TensorNetwork", () => {
           shortName: "I",
           description: "Identity Stopper",
 
-          parity_check_matrix: [[0, 0]],
-          logical_legs: [],
-          gauge_legs: []
+          parityCheckMatrix: [[0, 0]],
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(0, 0),
         "stop2"
@@ -102,14 +102,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -122,14 +122,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -142,14 +142,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -162,14 +162,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -182,14 +182,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },
@@ -202,14 +202,14 @@ describe("TensorNetwork", () => {
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
-            parity_check_matrix: [
+            parityCheckMatrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
               [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]
             ],
-            logical_legs: [4],
-            gauge_legs: [],
+            logicalLegs: [4],
+            gaugeLegs: [],
             is_dynamic: false,
             parameters: {}
           },

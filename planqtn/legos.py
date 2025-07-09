@@ -137,54 +137,54 @@ class Legos:
                 "name": "[[6,0,3]] tensor",
                 "shortName": "T6",
                 "description": "[[6,0,3]] encoding tensor",
-                "parity_check_matrix": cls.enconding_tensor_603.tolist(),
-                "logical_legs": [4, 5],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.enconding_tensor_603.tolist(),
+                "logicalLegs": [4, 5],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.T5.value,
                 "name": "[[5,1,2]] tensor",
                 "shortName": "T5",
                 "description": "[[5,1,2]] encoding tensor",
-                "parity_check_matrix": cls.enconding_tensor_512.tolist(),
-                "logical_legs": [4],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.enconding_tensor_512.tolist(),
+                "logicalLegs": [4],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.H.value,
                 "name": "Hadamard",
                 "shortName": "H",
                 "description": "Hadamard tensor",
-                "parity_check_matrix": cls.h.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.h.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.STOPPER_X.value,
                 "name": "X Stopper",
                 "shortName": "X",
                 "description": "X-type stopper tensor",
-                "parity_check_matrix": cls.stopper_x.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.stopper_x.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.STOPPER_Z.value,
                 "name": "Z Stopper",
                 "shortName": "Z",
                 "description": "Z-type stopper tensor",
-                "parity_check_matrix": cls.stopper_z.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.stopper_z.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.STOPPER_I.value,
                 "name": "Identity Stopper",
                 "shortName": "I",
                 "description": "Identity stopper tensor",
-                "parity_check_matrix": cls.stopper_i.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.stopper_i.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.ZREP.value,
@@ -193,9 +193,9 @@ class Legos:
                 "description": "Bitflip code, ZZ stabilizers",
                 "is_dynamic": True,
                 "parameters": {"d": 3},
-                "parity_check_matrix": cls.z_rep_code().tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.z_rep_code().tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.XREP.value,
@@ -204,18 +204,18 @@ class Legos:
                 "description": "Phase flip code, XX stabilizers",
                 "is_dynamic": True,
                 "parameters": {"d": 3},
-                "parity_check_matrix": cls.x_rep_code().tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.x_rep_code().tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": LegoType.ID.value,
                 "name": "Identity",
                 "shortName": "I",
                 "description": "Identity tensor",
-                "parity_check_matrix": cls.identity.tolist(),
-                "logical_legs": [],
-                "gauge_legs": [],
+                "parityCheckMatrix": cls.identity.tolist(),
+                "logicalLegs": [],
+                "gaugeLegs": [],
             },
             {
                 "id": "steane",
@@ -223,10 +223,10 @@ class Legos:
                 "shortName": "STN",
                 "description": "Steane code encoding tensor",
                 # fmt: off
-                "parity_check_matrix": cls.steane_code_813_encoding_tensor.tolist(),
+                "parityCheckMatrix": cls.steane_code_813_encoding_tensor.tolist(),
                 # fmt: on
-                "logical_legs": [7],
-                "gauge_legs": [],
+                "logicalLegs": [7],
+                "gaugeLegs": [],
             },
             {
                 "id": "832",
@@ -234,7 +234,7 @@ class Legos:
                 "shortName": "[[8,3,2]]",
                 "description": "[[8,3,2]] encoding tensor with all 3 logical legs",
                 # fmt: off
-                "parity_check_matrix": np.array([
+                "parityCheckMatrix": np.array([
                     [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -248,8 +248,8 @@ class Legos:
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
                 ]).tolist(),
                 # fmt: on
-                "logical_legs": [8, 9, 10],
-                "gauge_legs": [],
+                "logicalLegs": [8, 9, 10],
+                "gaugeLegs": [],
             },
             {
                 "id": "15qrm",
@@ -257,7 +257,7 @@ class Legos:
                 "shortName": "QRM15",
                 "description": "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
                 # fmt: off
-                "parity_check_matrix":  np.array([
+                "parityCheckMatrix":  np.array([
                         [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -276,8 +276,8 @@ class Legos:
                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1]
                     ]).tolist(),
                 # fmt: on
-                "logical_legs": [15],
-                "gauge_legs": [],
+                "logicalLegs": [15],
+                "gaugeLegs": [],
             },
         ]
 

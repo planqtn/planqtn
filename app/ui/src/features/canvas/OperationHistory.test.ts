@@ -20,12 +20,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -71,12 +71,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -148,12 +148,12 @@ describe("OperationHistory", () => {
           name: "Hadamard",
           shortName: "H",
           description: "Hadamard Gate",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [],
-          gauge_legs: []
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(0, 0),
         "h1"
@@ -165,13 +165,13 @@ describe("OperationHistory", () => {
           name: "Z-Rep Code",
           shortName: "Z",
           description: "Z-Repetition Code",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [0, 0, 0, 1, 1, 0],
             [0, 0, 0, 0, 1, 1],
             [1, 1, 1, 0, 0, 0]
           ],
-          logical_legs: [],
-          gauge_legs: []
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(100, 0),
         "1"
@@ -216,14 +216,14 @@ describe("OperationHistory", () => {
       // Fuse operation
       const fusedLego: DroppedLego = zRep1.with({
         instanceId: "fused",
-        parity_check_matrix: [
+        parityCheckMatrix: [
           [1, 1, 1, 1, 0, 0, 0, 0],
           [0, 0, 0, 0, 1, 1, 0, 0],
           [0, 0, 0, 0, 0, 1, 1, 0],
           [0, 0, 0, 0, 0, 0, 1, 1]
         ],
-        logical_legs: [],
-        gauge_legs: []
+        logicalLegs: [],
+        gaugeLegs: []
       });
       const fuseOperation: Operation = {
         type: "fuse",
@@ -349,12 +349,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -380,12 +380,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -443,12 +443,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"
@@ -476,12 +476,12 @@ describe("OperationHistory", () => {
           name: "Test Lego",
           shortName: "TL",
           description: "Test Description",
-          parity_check_matrix: [
+          parityCheckMatrix: [
             [1, 0],
             [0, 1]
           ],
-          logical_legs: [0],
-          gauge_legs: [1]
+          logicalLegs: [0],
+          gaugeLegs: [1]
         },
         new LogicalPoint(0, 0),
         "instance1"

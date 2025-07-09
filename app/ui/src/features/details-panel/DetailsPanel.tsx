@@ -368,7 +368,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         lego,
         lego.logicalPosition,
         lego.instanceId,
-        { parity_check_matrix: newMatrix }
+        { parityCheckMatrix: newMatrix }
       );
       updateDroppedLego(updatedLego.instanceId, updatedLego);
       simpleAutoFlow(
@@ -420,7 +420,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     );
   }, [
     tensorNetwork?.legos?.[0]?.instanceId,
-    tensorNetwork?.legos?.[0]?.parity_check_matrix?.length
+    tensorNetwork?.legos?.[0]?.parityCheckMatrix?.length
   ]);
 
   const handleChangeColor = (lego: DroppedLego) => {
@@ -440,7 +440,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     // Store the old state for history
     const oldLegos = [lego];
     const oldConnections = existingConnections;
-    const newParityCheckMatrix = lego.parity_check_matrix.map((row) => {
+    const newParityCheckMatrix = lego.parityCheckMatrix.map((row) => {
       const n = row.length / 2;
       return [...row.slice(n), ...row.slice(0, n)];
     });
@@ -449,7 +449,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       lego.with({
         typeId: lego.typeId === "x_rep_code" ? "z_rep_code" : "x_rep_code",
         shortName: lego.typeId === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
-        parity_check_matrix: newParityCheckMatrix
+        parityCheckMatrix: newParityCheckMatrix
       })
     ];
 
@@ -631,7 +631,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const lego1: DroppedLego = new DroppedLego(
         {
           ...lego,
-          parity_check_matrix: lego1Data.parity_check_matrix
+          parityCheckMatrix: lego1Data.parityCheckMatrix
         },
         lego.logicalPosition.plus(new LogicalPoint(-50, 0)),
 
@@ -642,7 +642,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       const lego2: DroppedLego = new DroppedLego(
         {
           ...lego,
-          parity_check_matrix: lego2Data.parity_check_matrix
+          parityCheckMatrix: lego2Data.parityCheckMatrix
         },
         lego.logicalPosition.plus(new LogicalPoint(50, 0)),
         (maxInstanceId + 2).toString(),
@@ -785,7 +785,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         instanceId: (maxInstanceId + 1).toString(),
         logicalPosition: lego.logicalPosition.plus(new LogicalPoint(100, 0)),
         selectedMatrixRows: [],
-        parity_check_matrix: bell_pair
+        parityCheckMatrix: bell_pair
       });
       newLegos = [lego, newLego];
 
@@ -822,7 +822,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         instanceId: (maxInstanceId + 1).toString(),
         logicalPosition: lego.logicalPosition.plus(new LogicalPoint(100, 0)),
         selectedMatrixRows: [],
-        parity_check_matrix: bell_pair
+        parityCheckMatrix: bell_pair
       });
       newLegos = [lego, newLego];
 
@@ -868,7 +868,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             new LogicalPoint(radius * Math.cos(angle), radius * Math.sin(angle))
           ),
           selectedMatrixRows: [],
-          parity_check_matrix: isXCode ? d3_x_rep : d3_z_rep
+          parityCheckMatrix: isXCode ? d3_x_rep : d3_z_rep
         });
         newLegos.push(newLego);
       }
@@ -1206,7 +1206,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 </>
               )}
               <ParityCheckMatrixDisplay
-                matrix={tensorNetwork.legos[0].parity_check_matrix}
+                matrix={tensorNetwork.legos[0].parityCheckMatrix}
                 legOrdering={singleLegoLegOrdering}
                 selectedRows={tensorNetwork.legos[0].selectedMatrixRows || []}
                 onRowSelectionChange={handleMatrixRowSelection}

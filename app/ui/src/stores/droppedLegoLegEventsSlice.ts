@@ -42,7 +42,7 @@ export const useLegoLegEventsSlice: StateCreator<
     );
     if (!clickedLego) return;
     const numQubits = clickedLego.numberOfLegs;
-    const h = clickedLego.parity_check_matrix;
+    const h = clickedLego.parityCheckMatrix;
     const existingPushedLeg = clickedLego.selectedMatrixRows?.find(
       (row) => h[row][legIndex] == 1 || h[row][legIndex + numQubits] == 1
     );
@@ -53,10 +53,10 @@ export const useLegoLegEventsSlice: StateCreator<
       : PauliOperator.I;
 
     // Find available operators in parity check matrix for this leg
-    const hasX = clickedLego.parity_check_matrix.some(
+    const hasX = clickedLego.parityCheckMatrix.some(
       (row) => row[legIndex] === 1 && row[legIndex + numQubits] === 0
     );
-    const hasZ = clickedLego.parity_check_matrix.some(
+    const hasZ = clickedLego.parityCheckMatrix.some(
       (row) => row[legIndex] === 0 && row[legIndex + numQubits] === 1
     );
 
@@ -82,7 +82,7 @@ export const useLegoLegEventsSlice: StateCreator<
 
     // Find the first row in parity check matrix that matches currentOperator on legIndex
     const baseRepresentative =
-      clickedLego.parity_check_matrix.find((row) => {
+      clickedLego.parityCheckMatrix.find((row) => {
         if (nextOperator === PauliOperator.X) {
           return row[legIndex] === 1 && row[legIndex + numQubits] === 0;
         } else if (nextOperator === PauliOperator.Z) {
@@ -92,7 +92,7 @@ export const useLegoLegEventsSlice: StateCreator<
       }) || new Array(2 * numQubits).fill(0);
 
     // Find the row index that corresponds to the baseRepresentative
-    const rowIndex = clickedLego.parity_check_matrix.findIndex((row) =>
+    const rowIndex = clickedLego.parityCheckMatrix.findIndex((row) =>
       row.every((val, idx) => val === baseRepresentative[idx])
     );
 

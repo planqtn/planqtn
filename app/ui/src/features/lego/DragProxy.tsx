@@ -229,7 +229,7 @@ const BuildingBlockDragProxy: React.FC<{
   if (!isMouseOverCanvas) return null;
 
   const lego = buildingBlockDragState.draggedLego;
-  const numLegs = lego.parity_check_matrix[0].length / 2;
+  const numLegs = lego.parityCheckMatrix[0].length / 2;
 
   const style = getLegoStyle(
     lego.typeId,

@@ -215,7 +215,7 @@ export const createCanvasEventHandlingSlice: StateCreator<
 
       // Create the new lego with updated matrix but same position
       const newLego: DroppedLego = new DroppedLego(
-        { ...lego, parity_check_matrix: newLegoData.parity_check_matrix },
+        { ...lego, parityCheckMatrix: newLegoData.parityCheckMatrix },
         lego.logicalPosition,
         lego.instanceId
       );
@@ -227,10 +227,9 @@ export const createCanvasEventHandlingSlice: StateCreator<
           name: lego.typeId === "z_rep_code" ? "X Stopper" : "Z Stopper",
           shortName: lego.typeId === "z_rep_code" ? "X" : "Z",
           description: lego.typeId === "z_rep_code" ? "X Stopper" : "Z Stopper",
-          parity_check_matrix:
-            lego.typeId === "z_rep_code" ? [[1, 0]] : [[0, 1]],
-          logical_legs: [],
-          gauge_legs: []
+          parityCheckMatrix: lego.typeId === "z_rep_code" ? [[1, 0]] : [[0, 1]],
+          logicalLegs: [],
+          gaugeLegs: []
         },
         new LogicalPoint(lego.logicalPosition.x + 100, lego.logicalPosition.y),
         (maxInstanceId + 1).toString()

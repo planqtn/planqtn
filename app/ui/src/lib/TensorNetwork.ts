@@ -164,7 +164,7 @@ export class TensorNetwork {
     code.push("# Create nodes");
     code.push("nodes = {");
     for (const lego of this.legos) {
-      const matrix = lego.parity_check_matrix.map((row: number[]) =>
+      const matrix = lego.parityCheckMatrix.map((row: number[]) =>
         row.map((val: number) => `${val}`).join(", ")
       );
       code.push(
@@ -246,7 +246,7 @@ export class TensorNetwork {
     // If there's only one lego and no connections, return its parity check matrix
     if (this.legos.length === 1 && this.connections.length === 0) {
       return new StabilizerCodeTensor(
-        new GF2(this.legos[0].parity_check_matrix),
+        new GF2(this.legos[0].parityCheckMatrix),
         this.legos[0].instanceId,
         Array.from({ length: this.legos[0].numberOfLegs }, (_, i) => ({
           instanceId: this.legos[0].instanceId,
@@ -262,7 +262,7 @@ export class TensorNetwork {
     };
     const components: Component[] = this.legos.map((lego) => ({
       tensor: new StabilizerCodeTensor(
-        new GF2(lego.parity_check_matrix),
+        new GF2(lego.parityCheckMatrix),
         lego.instanceId,
         Array.from({ length: lego.numberOfLegs }, (_, i) => ({
           instanceId: lego.instanceId,

@@ -522,7 +522,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       const success = handleDropStopperOnLeg(logicalDropPos, draggedLego);
       if (success) return;
 
-      const numLegs = draggedLego.parity_check_matrix[0].length / 2;
+      const numLegs = draggedLego.parityCheckMatrix[0].length / 2;
 
       if (draggedLego.is_dynamic) {
         handleDynamicLegoDrop(draggedLego, logicalDropPos);

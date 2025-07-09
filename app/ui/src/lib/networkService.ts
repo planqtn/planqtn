@@ -15,9 +15,9 @@ interface ResponseLego {
   description: string;
   x: number;
   y: number;
-  parity_check_matrix: number[][];
-  logical_legs: number[];
-  gauge_legs: number[];
+  parityCheckMatrix: number[][];
+  logicalLegs: number[];
+  gaugeLegs: number[];
 }
 
 interface ResponseConnection {
@@ -107,9 +107,9 @@ export class NetworkService {
             name: lego.shortName,
             shortName: lego.shortName,
             description: lego.shortName,
-            parity_check_matrix: lego.parity_check_matrix,
-            logical_legs: lego.logical_legs,
-            gauge_legs: lego.gauge_legs
+            parityCheckMatrix: lego.parityCheckMatrix,
+            logicalLegs: lego.logicalLegs,
+            gaugeLegs: lego.gaugeLegs
           },
           new LogicalPoint(lego.x, lego.y),
           lego.instanceId
@@ -131,7 +131,6 @@ export class NetworkService {
     const positionedLegos = this.positionLegos(legos, networkType);
 
     // Add to stores
-    console.log("calling addDroppedLegos");
     addDroppedLegos(positionedLegos);
     addConnections(newConnections);
 

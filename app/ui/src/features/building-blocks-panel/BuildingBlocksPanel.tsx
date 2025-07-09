@@ -37,13 +37,13 @@ const customLego: LegoPiece = {
   shortName: "Custom",
   description:
     "Create a custom lego with specified parity check matrix and logical legs",
-  parity_check_matrix: [
+  parityCheckMatrix: [
     [1, 1, 1, 1, 0, 0, 0, 0],
     [0, 0, 0, 0, 1, 1, 1, 1]
   ],
   is_dynamic: true,
-  logical_legs: [],
-  gauge_legs: []
+  logicalLegs: [],
+  gaugeLegs: []
 };
 
 const getDemoLego = (

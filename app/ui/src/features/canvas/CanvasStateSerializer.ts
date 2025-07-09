@@ -12,9 +12,9 @@ interface CanvasState {
     y: number;
     is_dynamic?: boolean;
     parameters?: Record<string, unknown>;
-    parity_check_matrix?: number[][];
-    logical_legs?: number[];
-    gauge_legs?: number[];
+    parityCheckMatrix?: number[][];
+    logicalLegs?: number[];
+    gaugeLegs?: number[];
     selectedMatrixRows?: number[];
   }>;
   connections: Array<Connection>;
@@ -56,9 +56,9 @@ export class CanvasStateSerializer {
         shortName: piece.shortName,
         is_dynamic: piece.is_dynamic,
         parameters: piece.parameters,
-        parity_check_matrix: piece.parity_check_matrix,
-        logical_legs: piece.logical_legs,
-        gauge_legs: piece.gauge_legs,
+        parityCheckMatrix: piece.parityCheckMatrix,
+        logicalLegs: piece.logicalLegs,
+        gaugeLegs: piece.gaugeLegs,
         selectedMatrixRows: piece.selectedMatrixRows
       })),
       connections,
@@ -104,9 +104,9 @@ export class CanvasStateSerializer {
           y: number;
           is_dynamic?: boolean;
           parameters?: Record<string, unknown>;
-          parity_check_matrix: number[][];
-          logical_legs?: number[];
-          gauge_legs?: number[];
+          parityCheckMatrix: number[][];
+          logicalLegs?: number[];
+          gaugeLegs?: number[];
           name?: string;
           shortName?: string;
           description?: string;
@@ -114,8 +114,8 @@ export class CanvasStateSerializer {
         }) => {
           const predefinedLego = legosList.find((l) => l.typeId === piece.id);
           if (
-            !piece.parity_check_matrix ||
-            piece.parity_check_matrix.length === 0
+            !piece.parityCheckMatrix ||
+            piece.parityCheckMatrix.length === 0
           ) {
             throw new Error(
               `Piece ${piece.instanceId} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`
@@ -133,9 +133,9 @@ export class CanvasStateSerializer {
 
                 is_dynamic: piece.is_dynamic || false,
                 parameters: piece.parameters || {},
-                parity_check_matrix: piece.parity_check_matrix || [],
-                logical_legs: piece.logical_legs || [],
-                gauge_legs: piece.gauge_legs || []
+                parityCheckMatrix: piece.parityCheckMatrix || [],
+                logicalLegs: piece.logicalLegs || [],
+                gaugeLegs: piece.gaugeLegs || []
               },
               new LogicalPoint(piece.x, piece.y),
               piece.instanceId,
@@ -144,18 +144,14 @@ export class CanvasStateSerializer {
           }
 
           // For dynamic legos, use the saved parameters and matrix
-          if (
-            piece.is_dynamic &&
-            piece.parameters &&
-            piece.parity_check_matrix
-          ) {
+          if (piece.is_dynamic && piece.parameters && piece.parityCheckMatrix) {
             return new DroppedLego(
               {
                 ...predefinedLego,
                 parameters: piece.parameters,
-                parity_check_matrix: piece.parity_check_matrix,
-                logical_legs: piece.logical_legs || [],
-                gauge_legs: piece.gauge_legs || []
+                parityCheckMatrix: piece.parityCheckMatrix,
+                logicalLegs: piece.logicalLegs || [],
+                gaugeLegs: piece.gaugeLegs || []
               },
 
               new LogicalPoint(piece.x, piece.y),
@@ -169,8 +165,8 @@ export class CanvasStateSerializer {
           return new DroppedLego(
             {
               ...predefinedLego,
-              parity_check_matrix:
-                piece.parity_check_matrix || predefinedLego.parity_check_matrix
+              parityCheckMatrix:
+                piece.parityCheckMatrix || predefinedLego.parityCheckMatrix
             },
             new LogicalPoint(piece.x, piece.y),
             piece.instanceId,

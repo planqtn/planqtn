@@ -19,9 +19,9 @@ export function createXRepCodeLego(
       name: "X Repetition Code",
       shortName: "XRep",
       description: "X Repetition Code",
-      parity_check_matrix: Legos.x_rep_code(d),
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: Legos.x_rep_code(d),
+      logicalLegs: [],
+      gaugeLegs: []
     },
     canvasPosition,
     instanceId
@@ -39,9 +39,9 @@ export function createZRepCodeLego(
       name: "Z Repetition Code",
       shortName: "ZRep",
       description: "Z Repetition Code",
-      parity_check_matrix: Legos.z_rep_code(d),
-      logical_legs: [],
-      gauge_legs: []
+      parityCheckMatrix: Legos.z_rep_code(d),
+      logicalLegs: [],
+      gaugeLegs: []
     },
     canvasPosition,
     instanceId
@@ -58,12 +58,12 @@ export function createHadamardLego(
       name: "Hadamard",
       shortName: "H",
       description: "Hadamard",
-      parity_check_matrix: [
+      parityCheckMatrix: [
         [1, 0, 0, 1],
         [0, 1, 1, 0]
       ],
-      logical_legs: [],
-      gauge_legs: []
+      logicalLegs: [],
+      gaugeLegs: []
     },
     canvasPosition,
     instanceId
@@ -77,9 +77,9 @@ export interface LegoPiece {
   description: string;
   is_dynamic?: boolean;
   parameters?: Record<string, unknown>;
-  parity_check_matrix: number[][];
-  logical_legs: number[];
-  gauge_legs: number[];
+  parityCheckMatrix: number[][];
+  logicalLegs: number[];
+  gaugeLegs: number[];
 }
 
 export class DroppedLego implements LegoPiece {
@@ -87,9 +87,9 @@ export class DroppedLego implements LegoPiece {
   public name: string;
   public shortName: string;
   public description: string;
-  public parity_check_matrix: number[][];
-  public logical_legs: number[];
-  public gauge_legs: number[];
+  public parityCheckMatrix: number[][];
+  public logicalLegs: number[];
+  public gaugeLegs: number[];
   public is_dynamic?: boolean;
   public parameters?: Record<string, unknown>;
   public instanceId: string;
@@ -110,10 +110,10 @@ export class DroppedLego implements LegoPiece {
     this.name = lego.name;
     this.shortName = overrides.shortName || lego.shortName;
     this.description = overrides.description || lego.description;
-    this.parity_check_matrix =
-      overrides.parity_check_matrix || lego.parity_check_matrix;
-    this.logical_legs = lego.logical_legs;
-    this.gauge_legs = lego.gauge_legs;
+    this.parityCheckMatrix =
+      overrides.parityCheckMatrix || lego.parityCheckMatrix;
+    this.logicalLegs = lego.logicalLegs;
+    this.gaugeLegs = lego.gaugeLegs;
     this.is_dynamic = lego.is_dynamic;
     this.parameters = lego.parameters;
     this.logicalPosition = canvasPosition;
@@ -125,7 +125,7 @@ export class DroppedLego implements LegoPiece {
   }
 
   public get numberOfLegs(): number {
-    return Math.trunc(this.parity_check_matrix[0].length / 2);
+    return Math.trunc(this.parityCheckMatrix[0].length / 2);
   }
 
   public with(overrides: Partial<DroppedLego>): DroppedLego {
@@ -148,7 +148,7 @@ export class DroppedLego implements LegoPiece {
 
   public get scalarValue(): number | null {
     if (this.numberOfLegs === 0) {
-      return this.parity_check_matrix[0][0];
+      return this.parityCheckMatrix[0][0];
     }
     return null;
   }
@@ -253,7 +253,6 @@ export const createLegoSlice: StateCreator<
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
-    console.log("calling addDroppedLegos in store");
     set((state) => {
       state.droppedLegos.push(...legos);
     });

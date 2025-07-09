@@ -29,9 +29,9 @@ export class CustomLegoService {
         name: "Custom Lego",
         shortName: "Custom",
         description: "Custom lego with user-defined parity check matrix",
-        parity_check_matrix: matrix,
-        logical_legs: logicalLegs,
-        gauge_legs: []
+        parityCheckMatrix: matrix,
+        logicalLegs: logicalLegs,
+        gaugeLegs: []
       },
 
       new LogicalPoint(position.x, position.y),
