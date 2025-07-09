@@ -32,7 +32,7 @@ interface BuildingBlocksPanelProps {
 
 // Create custom lego piece
 const customLego: LegoPiece = {
-  type_id: "custom",
+  typeId: "custom",
   name: "Custom Lego",
   shortName: "Custom",
   description:
@@ -80,7 +80,7 @@ const LegoListItem = memo<LegoListItemProps>(
 
     if (isPanelSmall) {
       return (
-        <Tooltip key={lego.type_id} label={lego.name} placement="top">
+        <Tooltip key={lego.typeId} label={lego.name} placement="top">
           <Box
             p={2}
             borderRadius="md"
@@ -138,7 +138,7 @@ const LegoListItem = memo<LegoListItemProps>(
 
     return (
       <Box
-        key={lego.type_id}
+        key={lego.typeId}
         p={3}
         borderRadius="md"
         _hover={{ bg: "gray.50" }}
@@ -255,7 +255,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
 
         const logicalPosition = new LogicalPoint(0, 0);
 
-        if (lego.type_id === "custom") {
+        if (lego.typeId === "custom") {
           // Store the drop position for the custom lego
           // Note: position will be set when the custom lego is dropped, not during drag start
           // Set the draggedLego state for custom legos
@@ -379,7 +379,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                       >
                         {allLegos.map((lego) => (
                           <LegoListItem
-                            key={lego.type_id}
+                            key={lego.typeId}
                             lego={lego}
                             isPanelSmall={isPanelSmall}
                             handleDragStart={handleDragStart}
@@ -391,7 +391,7 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                       <VStack spacing={2} align="stretch">
                         {allLegos.map((lego) => (
                           <LegoListItem
-                            key={lego.type_id}
+                            key={lego.typeId}
                             lego={lego}
                             isPanelSmall={isPanelSmall}
                             handleDragStart={handleDragStart}

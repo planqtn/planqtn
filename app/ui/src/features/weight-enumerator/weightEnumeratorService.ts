@@ -1,6 +1,6 @@
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork";
 import { getApiUrl } from "../../config/config";
-import { getAccessToken } from "../../lib/auth";
+import { getAccessToken } from "../auth/auth";
 import { config } from "../../config/config";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@chakra-ui/react";
@@ -82,7 +82,7 @@ export class WeightEnumeratorService {
                   instanceId: lego.instanceId,
                   shortName: lego.shortName || "Generic Lego",
                   name: lego.shortName || "Generic Lego",
-                  id: lego.type_id,
+                  id: lego.typeId,
                   parity_check_matrix: lego.parity_check_matrix,
                   logical_legs: lego.logical_legs,
                   gauge_legs: lego.gauge_legs

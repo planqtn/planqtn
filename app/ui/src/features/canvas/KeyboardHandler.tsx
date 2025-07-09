@@ -267,8 +267,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.preventDefault();
         if (
           tensorNetwork &&
-          (tensorNetwork.legos[0].type_id === "x_rep_code" ||
-            tensorNetwork.legos[0].type_id === "z_rep_code")
+          (tensorNetwork.legos[0].typeId === "x_rep_code" ||
+            tensorNetwork.legos[0].typeId === "z_rep_code")
         ) {
           onPullOutSameColoredLeg(tensorNetwork.legos[0]);
         }

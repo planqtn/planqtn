@@ -566,32 +566,32 @@ export class ScalarStyle extends LegoStyle {
   }
 }
 export function getLegoStyle(
-  id: string,
+  typeId: string,
   numLegs: number,
   lego: DroppedLego
 ): LegoStyle {
   if (numLegs === 0) {
-    return new ScalarStyle(id, lego);
-  } else if (id === "h") {
-    return new HadamardStyle(id, lego);
-  } else if (id === Z_REP_CODE || id === X_REP_CODE) {
+    return new ScalarStyle(typeId, lego);
+  } else if (typeId === "h") {
+    return new HadamardStyle(typeId, lego);
+  } else if (typeId === Z_REP_CODE || typeId === X_REP_CODE) {
     if (numLegs > 2) {
-      return new RepetitionCodeStyle(id, lego);
+      return new RepetitionCodeStyle(typeId, lego);
     } else if (numLegs === 2) {
-      return new IdentityStyle(id, lego);
+      return new IdentityStyle(typeId, lego);
     } else if (numLegs === 1) {
       return new StopperStyle(
-        id === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        typeId === Z_REP_CODE ? "stopper_z" : "stopper_x",
         lego
       );
     } else {
-      return new GenericStyle(id, lego);
+      return new GenericStyle(typeId, lego);
     }
-  } else if (id.includes("stopper")) {
-    return new StopperStyle(id, lego);
-  } else if (id === "identity") {
-    return new IdentityStyle(id, lego);
+  } else if (typeId.includes("stopper")) {
+    return new StopperStyle(typeId, lego);
+  } else if (typeId === "identity") {
+    return new IdentityStyle(typeId, lego);
   } else {
-    return new GenericStyle(id, lego);
+    return new GenericStyle(typeId, lego);
   }
 }

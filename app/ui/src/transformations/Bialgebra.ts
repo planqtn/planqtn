@@ -13,7 +13,7 @@ export function canDoBialgebra(
   if (selectedLegos.length !== 2) return false;
   const [lego1, lego2] = selectedLegos;
 
-  const lego_types = new Set([lego1.type_id, lego2.type_id]);
+  const lego_types = new Set([lego1.typeId, lego2.typeId]);
   if (!_.isEqual(lego_types, new Set([Z_REP_CODE, X_REP_CODE]))) {
     return false;
   }
@@ -56,7 +56,7 @@ export async function applyBialgebra(
   const n_legs_lego2 = lego2.numberOfLegs;
 
   // Determine which lego is Z and which is X
-  const isLego1Z = lego1.type_id === Z_REP_CODE;
+  const isLego1Z = lego1.typeId === Z_REP_CODE;
   const firstGroupType = isLego1Z ? X_REP_CODE : Z_REP_CODE;
   const secondGroupType = isLego1Z ? Z_REP_CODE : X_REP_CODE;
 

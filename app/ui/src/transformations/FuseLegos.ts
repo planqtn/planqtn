@@ -15,7 +15,6 @@ export class FuseLegos {
     private newInstanceId: ((legos: DroppedLego[]) => string) | null = null
   ) {
     if (this.newInstanceId === null) {
-      console.log("newInstanceId is null, using default");
       this.newInstanceId = storeNewInstanceId;
     }
   }
@@ -92,7 +91,7 @@ export class FuseLegos {
       // Create a new lego with the calculated parity check matrix
       const newLego: DroppedLego = new DroppedLego(
         {
-          type_id: recognized_type,
+          typeId: recognized_type,
           shortName: "Fused",
           name: "Fused Lego",
           description: "Fused " + legosToFuse.length + " legos",

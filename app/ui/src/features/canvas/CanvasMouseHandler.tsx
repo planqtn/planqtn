@@ -294,7 +294,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         );
         if (!draggedLego) return;
 
-        if (draggedLego && draggedLego.type_id.includes("stopper")) {
+        if (draggedLego && draggedLego.typeId.includes("stopper")) {
           // Try to attach stopper to a nearby leg, passing the existing lego to be removed
           const success = handleDropStopperOnLeg(
             viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e)),
@@ -443,7 +443,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       draggedLego: LegoPiece,
       existingLegoToRemove?: DroppedLego
     ): boolean => {
-      if (draggedLego.type_id.includes("stopper")) {
+      if (draggedLego.typeId.includes("stopper")) {
         const closestLeg = findClosestDanglingLeg(
           dropPosition,
           droppedLegos,
@@ -513,7 +513,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         WindowPoint.fromMouseEvent(e)
       );
 
-      if (draggedLego.type_id === "custom") {
+      if (draggedLego.typeId === "custom") {
         openCustomLegoDialog(logicalDropPos);
         return;
       }
@@ -546,7 +546,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           return;
         }
       }
-      if (draggedLego.type_id === "custom") {
+      if (draggedLego.typeId === "custom") {
         openCustomLegoDialog(logicalDropPos);
       } else {
         addDroppedLego(newLego);

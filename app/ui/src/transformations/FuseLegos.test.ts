@@ -12,7 +12,7 @@ import { Legos } from "../features/lego/Legos";
 const testDroppedLegos = [
   new DroppedLego(
     {
-      type_id: "lego1",
+      typeId: "lego1",
       shortName: "L1",
       name: "Lego 1",
       description: "Test Lego 1",
@@ -25,7 +25,7 @@ const testDroppedLegos = [
   ),
   new DroppedLego(
     {
-      type_id: "lego2",
+      typeId: "lego2",
       shortName: "L2",
       name: "Lego 2",
       description: "Test Lego 2",
@@ -38,7 +38,7 @@ const testDroppedLegos = [
   ),
   new DroppedLego(
     {
-      type_id: "stopper_x",
+      typeId: "stopper_x",
       shortName: "X",
       name: "X-Phase Flip Stopper",
       description: "X-Phase Flip Stopper",
@@ -54,7 +54,7 @@ const testDroppedLegos = [
 const invalidDroppedLegos = [
   new DroppedLego(
     {
-      type_id: "lego3",
+      typeId: "lego3",
       shortName: "L3",
       name: "Lego 3",
       description: "Test Lego 3",
@@ -110,18 +110,6 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
     }
   );
   const result = await fuseLegos.apply(testDroppedLegos.slice(1, 3));
-
-  console.log(
-    "result",
-    result.droppedLegos.map((l) => {
-      return {
-        instanceId: l.instanceId,
-        parity_check_matrix: l.parity_check_matrix
-          .map((row) => row.join(" "))
-          .join("\n")
-      };
-    })
-  );
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
@@ -194,7 +182,7 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
     createHadamardLego(new LogicalPoint(2, 2), "9"),
     new DroppedLego(
       {
-        type_id: "scalar",
+        typeId: "scalar",
         shortName: "S",
         name: "Scalar",
         description: "Scalar",

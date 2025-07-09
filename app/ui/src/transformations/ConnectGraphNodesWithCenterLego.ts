@@ -7,7 +7,7 @@ import { LogicalPoint } from "../types/coordinates.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return (
-    legos.length > 0 && legos.every((lego) => lego.type_id === "z_rep_code")
+    legos.length > 0 && legos.every((lego) => lego.typeId === "z_rep_code")
   );
 };
 
@@ -85,7 +85,7 @@ export const applyConnectGraphNodes = async (
       // Position Hadamard halfway between connector and original lego
       return new DroppedLego(
         {
-          type_id: "h",
+          typeId: "h",
           name: "Hadamard",
           shortName: "H",
           description: "Hadamard",

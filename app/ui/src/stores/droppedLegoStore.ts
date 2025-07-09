@@ -5,7 +5,7 @@ import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
-  lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
+  lego.style = getLegoStyle(lego.typeId, lego.numberOfLegs, lego);
 }
 
 export function createXRepCodeLego(
@@ -15,7 +15,7 @@ export function createXRepCodeLego(
 ): DroppedLego {
   return new DroppedLego(
     {
-      type_id: "x_rep_code",
+      typeId: "x_rep_code",
       name: "X Repetition Code",
       shortName: "XRep",
       description: "X Repetition Code",
@@ -35,7 +35,7 @@ export function createZRepCodeLego(
 ): DroppedLego {
   return new DroppedLego(
     {
-      type_id: "z_rep_code",
+      typeId: "z_rep_code",
       name: "Z Repetition Code",
       shortName: "ZRep",
       description: "Z Repetition Code",
@@ -54,7 +54,7 @@ export function createHadamardLego(
 ): DroppedLego {
   return new DroppedLego(
     {
-      type_id: "h",
+      typeId: "h",
       name: "Hadamard",
       shortName: "H",
       description: "Hadamard",
@@ -71,7 +71,7 @@ export function createHadamardLego(
 }
 
 export interface LegoPiece {
-  type_id: string;
+  typeId: string;
   name: string;
   shortName: string;
   description: string;
@@ -83,7 +83,7 @@ export interface LegoPiece {
 }
 
 export class DroppedLego implements LegoPiece {
-  public type_id: string;
+  public typeId: string;
   public name: string;
   public shortName: string;
   public description: string;
@@ -106,7 +106,7 @@ export class DroppedLego implements LegoPiece {
     // optional overrides
     overrides: Partial<DroppedLego> = {}
   ) {
-    this.type_id = lego.type_id;
+    this.typeId = lego.typeId;
     this.name = lego.name;
     this.shortName = overrides.shortName || lego.shortName;
     this.description = overrides.description || lego.description;
@@ -121,7 +121,7 @@ export class DroppedLego implements LegoPiece {
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
 
-    this.style = getLegoStyle(lego.type_id, this.numberOfLegs, this);
+    this.style = getLegoStyle(lego.typeId, this.numberOfLegs, this);
   }
 
   public get numberOfLegs(): number {
@@ -253,6 +253,7 @@ export const createLegoSlice: StateCreator<
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
+    console.log("calling addDroppedLegos in store");
     set((state) => {
       state.droppedLegos.push(...legos);
     });

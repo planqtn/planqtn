@@ -48,7 +48,6 @@ class TannerRequest(BaseModel):
 class TensorNetworkResponse(BaseModel):
     legos: List[Dict[str, Any]]
     connections: List[Dict[str, Any]]
-    message: str = "Successfully created Tanner network"
 
     def to_tensor_network(self):
 
@@ -90,7 +89,7 @@ class TensorNetworkResponse(BaseModel):
                 lego_type = "generic"
             lego = {
                 "instanceId": str(i + start_node_index),
-                "id": lego_type,
+                "typeId": lego_type,
                 "shortName": instance_id,
                 "description": instance_id,
                 "x": (

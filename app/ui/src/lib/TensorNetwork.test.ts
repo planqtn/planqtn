@@ -10,7 +10,7 @@ describe("TensorNetwork", () => {
     const nodes: DroppedLego[] = [
       new DroppedLego(
         {
-          type_id: "encoding_tensor_602",
+          typeId: "encoding_tensor_602",
           name: "Encoding Tensor 602",
           shortName: "602",
           description: "Encoding Tensor 602",
@@ -31,7 +31,7 @@ describe("TensorNetwork", () => {
       ),
       new DroppedLego(
         {
-          type_id: "stopper_i",
+          typeId: "stopper_i",
           name: "Identity Stopper",
           shortName: "I",
           description: "Identity Stopper",
@@ -45,7 +45,7 @@ describe("TensorNetwork", () => {
       ),
       new DroppedLego(
         {
-          type_id: "stopper_i",
+          typeId: "stopper_i",
           name: "Identity Stopper",
           shortName: "I",
           description: "Identity Stopper",
@@ -98,7 +98,7 @@ describe("TensorNetwork", () => {
       legos: [
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -118,7 +118,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -138,7 +138,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -158,7 +158,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -178,7 +178,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -198,7 +198,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            typeId: "t5",
             name: "[[5,1,2]] tensor",
             shortName: "T5",
             description: "[[5,1,2]] encoding tensor",

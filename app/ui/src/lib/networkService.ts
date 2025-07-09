@@ -2,11 +2,39 @@ import axios from "axios";
 import { Connection } from "../stores/connectionStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { config, getApiUrl } from "../config/config";
-import { getAccessToken } from "./auth";
+import { getAccessToken } from "../features/auth/auth";
 import { getAxiosErrorMessage } from "./errors";
 import { useModalStore } from "../stores/modalStore";
 import { DroppedLego } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates";
+
+interface ResponseLego {
+  instanceId: string;
+  typeId: string;
+  shortName: string;
+  description: string;
+  x: number;
+  y: number;
+  parity_check_matrix: number[][];
+  logical_legs: number[];
+  gauge_legs: number[];
+}
+
+interface ResponseConnection {
+  from: {
+    legoId: string;
+    legIndex: number;
+  };
+  to: {
+    legoId: string;
+    legIndex: number;
+  };
+}
+
+interface NetworkResponse {
+  legos: ResponseLego[];
+  connections: ResponseConnection[];
+}
 
 export class NetworkService {
   private static async requestTensorNetwork(
@@ -53,30 +81,44 @@ export class NetworkService {
 
   static async createCssTannerNetwork(matrix: number[][]): Promise<void> {
     const response = await this.requestTensorNetwork(matrix, "CSS_TANNER");
-    const { legos, connections } = response.data;
-
-    await this.processNetworkResponse(legos, connections, "CSS Tanner");
+    await this.processNetworkResponse(response.data, "CSS Tanner");
   }
 
   static async createTannerNetwork(matrix: number[][]): Promise<void> {
     const response = await this.requestTensorNetwork(matrix, "TANNER");
-    const { legos, connections } = response.data;
-
-    await this.processNetworkResponse(legos, connections, "Tanner");
+    await this.processNetworkResponse(response.data, "Tanner");
   }
 
   static async createMspNetwork(matrix: number[][]): Promise<void> {
     const response = await this.requestTensorNetwork(matrix, "MSP");
-    const { legos, connections } = response.data;
-
-    await this.processNetworkResponse(legos, connections, "MSP");
+    await this.processNetworkResponse(response.data, "MSP");
   }
 
   private static async processNetworkResponse(
-    legos: DroppedLego[],
-    connections: Connection[],
+    response: NetworkResponse,
     networkType: string
   ): Promise<void> {
+    const { legos: rawLegos, connections: rawConnections } = response;
+    const legos = rawLegos.map(
+      (lego: ResponseLego) =>
+        new DroppedLego(
+          {
+            typeId: lego.typeId,
+            name: lego.shortName,
+            shortName: lego.shortName,
+            description: lego.shortName,
+            parity_check_matrix: lego.parity_check_matrix,
+            logical_legs: lego.logical_legs,
+            gauge_legs: lego.gauge_legs
+          },
+          new LogicalPoint(lego.x, lego.y),
+          lego.instanceId
+        )
+    );
+    const connections = rawConnections.map(
+      (connection: ResponseConnection) =>
+        new Connection(connection.from, connection.to)
+    );
     const { addDroppedLegos, addConnections, addOperation } =
       useCanvasStore.getState();
 
@@ -89,6 +131,7 @@ export class NetworkService {
     const positionedLegos = this.positionLegos(legos, networkType);
 
     // Add to stores
+    console.log("calling addDroppedLegos");
     addDroppedLegos(positionedLegos);
     addConnections(newConnections);
 

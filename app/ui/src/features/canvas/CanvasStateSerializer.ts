@@ -49,7 +49,7 @@ export class CanvasStateSerializer {
     const state: CanvasState = {
       canvasId: this.canvasId,
       pieces: pieces.map((piece) => ({
-        id: piece.type_id,
+        id: piece.typeId,
         instanceId: piece.instanceId,
         x: piece.logicalPosition.x,
         y: piece.logicalPosition.y,
@@ -112,7 +112,7 @@ export class CanvasStateSerializer {
           description?: string;
           selectedMatrixRows?: number[];
         }) => {
-          const predefinedLego = legosList.find((l) => l.type_id === piece.id);
+          const predefinedLego = legosList.find((l) => l.typeId === piece.id);
           if (
             !piece.parity_check_matrix ||
             piece.parity_check_matrix.length === 0
@@ -126,7 +126,7 @@ export class CanvasStateSerializer {
           if (!predefinedLego) {
             return new DroppedLego(
               {
-                type_id: piece.id,
+                typeId: piece.id,
                 name: piece.name || piece.id,
                 shortName: piece.shortName || piece.id,
                 description: piece.description || "",

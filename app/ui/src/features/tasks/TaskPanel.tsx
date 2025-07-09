@@ -27,7 +27,7 @@ import {
 } from "@supabase/supabase-js";
 import { FaFileAlt, FaTrash } from "react-icons/fa";
 import { userContextSupabase } from "../../config/supabaseClient.ts";
-import { getAccessToken } from "../../lib/auth.ts";
+import { getAccessToken } from "../auth/auth.ts";
 import { getApiUrl } from "../../config/config.ts";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import axios, { AxiosError } from "axios";

@@ -9,7 +9,7 @@ export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
 ): boolean => {
   return (
-    legos.length > 1 && legos.every((lego) => lego.type_id === "z_rep_code")
+    legos.length > 1 && legos.every((lego) => lego.typeId === "z_rep_code")
   );
 };
 

@@ -27,7 +27,7 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            type_id: "x_rep_code",
+            typeId: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -74,7 +74,7 @@ tn = TensorNetwork(nodes)
       legos: [
         new DroppedLego(
           {
-            type_id: "x_rep_code",
+            typeId: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -93,7 +93,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            type_id: "steane",
+            typeId: "steane",
             name: "Steane Code",
             shortName: "STN",
             description: "Steane code encoding tensor",
@@ -115,7 +115,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            type_id: "x_rep_code",
+            typeId: "x_rep_code",
             name: "X-Repetition Code",
             shortName: "XREP3",
             description: "Phase flip code, XX stabilizers",
@@ -135,7 +135,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            type_id: "z_rep_code",
+            typeId: "z_rep_code",
             name: "Z-Repetition Code",
             shortName: "ZREP3",
             description: "Bitflip code, ZZ stabilizers",
@@ -155,7 +155,7 @@ tn = TensorNetwork(nodes)
         ),
         new DroppedLego(
           {
-            type_id: "stopper_x",
+            typeId: "stopper_x",
             name: "X Stopper",
             shortName: "X",
             description: "X Stopper",
@@ -191,6 +191,7 @@ tn = TensorNetwork(nodes)
 
     const python_script = code + "\n\n" + "print(tn.conjoin_nodes().h)";
     // Execute Python script and handle output
+    console.log("this file", process.env.PYTHONPATH);
     await new Promise<void>((resolve, reject) => {
       exec(`python3 -c '${python_script}'`, (error, stdout, stderr) => {
         if (error) {
