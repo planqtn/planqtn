@@ -14,7 +14,9 @@ export function getAxiosErrorMessage(
       ? "Status: " +
         error.response.status +
         " Error: " +
-        error.response.data.error
+        (typeof error.response.data.error === "string"
+          ? error.response.data.error
+          : JSON.stringify(error.response.data.error))
       : ""
   } ${hint}`;
 }

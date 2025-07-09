@@ -142,7 +142,8 @@ export const createCanvasEventHandlingSlice: StateCreator<
       addOperation(operation);
       setLegosAndConnections(newDroppedLegos, newConnections);
     } catch (error) {
-      if (setError) setError(`${error}`);
+      if (setError)
+        setError(`${error instanceof Error ? error.message : String(error)}`);
       return;
     }
   },
@@ -278,7 +279,10 @@ export const createCanvasEventHandlingSlice: StateCreator<
         }
       });
     } catch (error) {
-      if (setError) setError(`Error pulling out opposite leg: ${error}`);
+      if (setError)
+        setError(
+          `Error pulling out opposite leg: ${error instanceof Error ? error.message : String(error)}`
+        );
     }
   }
 });

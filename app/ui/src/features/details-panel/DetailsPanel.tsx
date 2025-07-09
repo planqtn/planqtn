@@ -733,7 +733,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
       });
     } catch (error) {
-      setError(`Error unfusing lego: ${error}`);
+      setError(
+        `Error unfusing lego: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     setShowLegPartitionDialog(false);
@@ -1042,7 +1044,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       }>;
       console.error("Error cancelling task:", error);
       setError(
-        `Failed to cancel task: Status: ${error.response?.status} ${error.response?.data.error} `
+        `Failed to cancel task: Status: ${error.response?.status} ${typeof error.response?.data.error === "string" ? error.response?.data.error : JSON.stringify(error.response?.data.error)} `
       );
     }
   };
