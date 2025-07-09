@@ -2,6 +2,7 @@ import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
+import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
 
 interface CanvasState {
   canvasId: string;
@@ -77,7 +78,56 @@ export class CanvasStateSerializer {
     canvasId: string;
   }> {
     try {
+      // Validate the encoded state first
+      const validationResult = validateEncodedCanvasState(encoded);
+      if (!validationResult.isValid) {
+        console.error(
+          "Canvas state validation failed:",
+          validationResult.errors
+        );
+        throw new Error(
+          `Invalid canvas state: ${validationResult.errors?.join(", ")}`
+        );
+      }
+
       const decoded = JSON.parse(atob(encoded));
+      console.log("Decoded state:", decoded);
+
+      // Check if this is legacy format and convert if needed
+      const isLegacyFormat = decoded.pieces?.some(
+        (piece: Record<string, unknown>) =>
+          piece.instanceId !== undefined && piece.shortName !== undefined
+      );
+
+      if (isLegacyFormat) {
+        console.log("Converting legacy format to current format");
+        // Convert legacy format to current format
+        decoded.pieces = decoded.pieces.map(
+          (piece: Record<string, unknown>) => ({
+            ...piece,
+            instance_id: piece.instanceId,
+            short_name: piece.shortName,
+            type_id: piece.id
+          })
+        );
+
+        // Convert legacy connection format
+        if (decoded.connections) {
+          decoded.connections = decoded.connections.map(
+            (conn: Record<string, unknown>) => ({
+              from: {
+                legoId: (conn.from as Record<string, unknown>).legoId,
+                leg_index: (conn.from as Record<string, unknown>).legIndex
+              },
+              to: {
+                legoId: (conn.to as Record<string, unknown>).legoId,
+                leg_index: (conn.to as Record<string, unknown>).legIndex
+              }
+            })
+          );
+        }
+      }
+
       if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
         return {
           pieces: [],
