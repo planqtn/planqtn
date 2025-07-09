@@ -433,7 +433,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         setLegosAndConnections(result.droppedLegos, result.connections);
         return true;
       } catch (error) {
-        setError(`${error}`);
+        setError(`${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         return false;
       }

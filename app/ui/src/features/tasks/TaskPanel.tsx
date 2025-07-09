@@ -101,6 +101,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         if (task.state === 0 || task.state === 1) {
           subscribeToTaskUpdates(task.uuid);
         }
+        console.log("Got task:", task);
       });
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -476,7 +477,9 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
 
                     {task.state === 3 && (
                       <VStack align="stretch" spacing={3}>
-                        <Text color="red.500">Task failed: {task.result}</Text>
+                        <Text color="red.500">
+                          Task failed: {JSON.stringify(task.result)}
+                        </Text>
                         <Button
                           leftIcon={<Icon as={FaFileAlt} />}
                           size="sm"
