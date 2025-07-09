@@ -12,14 +12,14 @@ export function findConnectedComponent(
   const visited = new Set<string>();
   const component: DroppedLego[] = [];
   const componentConnections: Connection[] = [];
-  const queue: string[] = [startLego.instanceId];
-  visited.add(startLego.instanceId);
+  const queue: string[] = [startLego.instance_id];
+  visited.add(startLego.instance_id);
 
   // First pass: collect all connected legos using BFS
   while (queue.length > 0) {
     const currentLegoId = queue.shift()!;
     const currentLego = droppedLegos.find(
-      (l) => l.instanceId === currentLegoId
+      (l) => l.instance_id === currentLegoId
     );
     if (!currentLego) continue;
     component.push(currentLego);
@@ -53,14 +53,14 @@ export function findConnectedComponent(
 }
 
 export interface TensorNetworkLeg {
-  instanceId: string;
-  legIndex: number;
+  instance_id: string;
+  leg_index: number;
 }
 
 export class TensorNetwork {
   private _legos: DroppedLego[];
   private _connections: Connection[];
-  public parityCheckMatrix?: number[][];
+  public parity_check_matrix?: number[][];
   public weightEnumerator?: string;
   public normalizerPolynomial?: string;
   public truncateLength?: number;
@@ -73,7 +73,7 @@ export class TensorNetwork {
   constructor(data: {
     legos: DroppedLego[];
     connections: Connection[];
-    parityCheckMatrix?: number[][];
+    parity_check_matrix?: number[][];
     weightEnumerator?: string;
     normalizerPolynomial?: string;
     truncateLength?: number;
@@ -87,7 +87,7 @@ export class TensorNetwork {
     console.assert(data.connections, "connections is required");
     this._legos = data.legos;
     this._connections = data.connections;
-    this.parityCheckMatrix = data.parityCheckMatrix;
+    this.parity_check_matrix = data.parity_check_matrix;
     this.weightEnumerator = data.weightEnumerator;
     this.normalizerPolynomial = data.normalizerPolynomial;
     this.truncateLength = data.truncateLength;
@@ -133,13 +133,14 @@ export class TensorNetwork {
     connections: Connection[]
   ) => {
     const sortedLegos = [...legos]
-      .sort((a, b) => a.instanceId.localeCompare(b.instanceId))
+      .sort((a, b) => a.instance_id.localeCompare(b.instance_id))
       .map(
-        (lego) => lego.type_id + "-" + lego.instanceId + "-" + lego.numberOfLegs
+        (lego) =>
+          lego.type_id + "-" + lego.instance_id + "-" + lego.numberOfLegs
       );
     const sortedConnections = [...connections].sort((a, b) => {
-      const aStr = `${a.from.legoId}${a.from.legIndex}${a.to.legoId}${a.to.legIndex}`;
-      const bStr = `${b.from.legoId}${b.from.legIndex}${b.to.legoId}${b.to.legIndex}`;
+      const aStr = `${a.from.legoId}${a.from.leg_index}${a.to.legoId}${a.to.leg_index}`;
+      const bStr = `${b.from.legoId}${b.from.leg_index}${b.to.legoId}${b.to.leg_index}`;
       return aStr.localeCompare(bStr);
     });
     const sig = JSON.stringify({
@@ -168,7 +169,7 @@ export class TensorNetwork {
         row.map((val: number) => `${val}`).join(", ")
       );
       code.push(
-        `    "${lego.instanceId}": StabilizerCodeTensorEnumerator(idx="${lego.instanceId}", h=GF2([`
+        `    "${lego.instance_id}": StabilizerCodeTensorEnumerator(idx="${lego.instance_id}", h=GF2([`
       );
       for (const row of matrix) {
         code.push(`            [${row}],`);
@@ -189,7 +190,7 @@ export class TensorNetwork {
     code.push("# Add traces");
     for (const conn of this.connections) {
       code.push(
-        `tn.self_trace("${conn.from.legoId}", "${conn.to.legoId}", [${conn.from.legIndex}], [${conn.to.legIndex}])`
+        `tn.self_trace("${conn.from.legoId}", "${conn.to.legoId}", [${conn.from.leg_index}], [${conn.to.leg_index}])`
       );
     }
 
@@ -204,34 +205,34 @@ export class TensorNetwork {
     const allLegs: TensorNetworkLeg[] = this.legos.flatMap((lego) => {
       const numLegs = lego.numberOfLegs;
       return Array.from({ length: numLegs }, (_, i) => ({
-        instanceId: lego.instanceId,
-        legIndex: i
+        instance_id: lego.instance_id,
+        leg_index: i
       }));
     });
     const connectedLegs = new Set<string>();
     mainNetworkConnections.forEach((conn) => {
-      connectedLegs.add(`${conn.from.legoId}:${conn.from.legIndex}`);
-      connectedLegs.add(`${conn.to.legoId}:${conn.to.legIndex}`);
+      connectedLegs.add(`${conn.from.legoId}:${conn.from.leg_index}`);
+      connectedLegs.add(`${conn.to.legoId}:${conn.to.leg_index}`);
     });
     // Legs in tensorNetwork but connected to something outside
-    const networkInstanceIds = new Set(this.legos.map((l) => l.instanceId));
+    const networkInstanceIds = new Set(this.legos.map((l) => l.instance_id));
     const externalLegs: TensorNetworkLeg[] = [];
     const danglingLegs: TensorNetworkLeg[] = [];
     allLegs.forEach((leg) => {
       // Find if this leg is connected
       const conn = mainNetworkConnections.find(
         (conn) =>
-          (conn.from.legoId === leg.instanceId &&
-            conn.from.legIndex === leg.legIndex) ||
-          (conn.to.legoId === leg.instanceId &&
-            conn.to.legIndex === leg.legIndex)
+          (conn.from.legoId === leg.instance_id &&
+            conn.from.leg_index === leg.leg_index) ||
+          (conn.to.legoId === leg.instance_id &&
+            conn.to.leg_index === leg.leg_index)
       );
       if (!conn) {
         danglingLegs.push(leg);
       } else {
         // If the other side is not in the network, it's external
         const other =
-          conn.from.legoId === leg.instanceId
+          conn.from.legoId === leg.instance_id
             ? conn.to.legoId
             : conn.from.legoId;
         if (!networkInstanceIds.has(other)) {
@@ -247,15 +248,15 @@ export class TensorNetwork {
     if (this.legos.length === 1 && this.connections.length === 0) {
       return new StabilizerCodeTensor(
         new GF2(this.legos[0].parity_check_matrix),
-        this.legos[0].instanceId,
+        this.legos[0].instance_id,
         Array.from({ length: this.legos[0].numberOfLegs }, (_, i) => ({
-          instanceId: this.legos[0].instanceId,
-          legIndex: i
+          instance_id: this.legos[0].instance_id,
+          leg_index: i
         }))
       );
     }
 
-    // Map from lego instanceId to its index in components list
+    // Map from lego instance_id to its index in components list
     type Component = {
       tensor: StabilizerCodeTensor;
       legos: Set<string>;
@@ -263,16 +264,16 @@ export class TensorNetwork {
     const components: Component[] = this.legos.map((lego) => ({
       tensor: new StabilizerCodeTensor(
         new GF2(lego.parity_check_matrix),
-        lego.instanceId,
+        lego.instance_id,
         Array.from({ length: lego.numberOfLegs }, (_, i) => ({
-          instanceId: lego.instanceId,
-          legIndex: i
+          instance_id: lego.instance_id,
+          leg_index: i
         }))
       ),
-      legos: new Set([lego.instanceId])
+      legos: new Set([lego.instance_id])
     }));
     const legoToComponent = new Map<string, number>();
-    this.legos.forEach((lego, i) => legoToComponent.set(lego.instanceId, i));
+    this.legos.forEach((lego, i) => legoToComponent.set(lego.instance_id, i));
 
     // Process each connection
     for (const conn of this.connections) {
@@ -289,8 +290,8 @@ export class TensorNetwork {
       if (comp1Idx === comp2Idx) {
         const comp = components[comp1Idx];
         comp.tensor = comp.tensor.selfTrace(
-          [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
-          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }]
+          [{ instance_id: conn.from.legoId, leg_index: conn.from.leg_index }],
+          [{ instance_id: conn.to.legoId, leg_index: conn.to.leg_index }]
         );
       }
       // Case 2: Legos are in different components - merge them
@@ -301,8 +302,8 @@ export class TensorNetwork {
         // Conjoin the tensors
         const newTensor = comp1.tensor.conjoin(
           comp2.tensor,
-          [{ instanceId: conn.from.legoId, legIndex: conn.from.legIndex }],
-          [{ instanceId: conn.to.legoId, legIndex: conn.to.legIndex }]
+          [{ instance_id: conn.from.legoId, leg_index: conn.from.leg_index }],
+          [{ instance_id: conn.to.legoId, leg_index: conn.to.leg_index }]
         );
 
         // Update the first component with merged result

@@ -73,7 +73,7 @@ export class OperationHistory {
     newDroppedLegos = newDroppedLegos.filter(
       (lego) =>
         !lastOperation.data?.legosToAdd?.some(
-          (removeMe) => removeMe.instanceId === lego.instanceId
+          (removeMe) => removeMe.instance_id === lego.instance_id
         )
     );
     // we add the ones that were removed
@@ -84,7 +84,7 @@ export class OperationHistory {
     // we update the ones that were updated
     newDroppedLegos = newDroppedLegos.map((lego) => {
       const update = lastOperation.data?.legosToUpdate?.find(
-        (updateMe) => updateMe.newLego.instanceId === lego.instanceId
+        (updateMe) => updateMe.newLego.instance_id === lego.instance_id
       );
       if (update) {
         return update.oldLego;
@@ -121,7 +121,7 @@ export class OperationHistory {
     newDroppedLegos = newDroppedLegos.filter(
       (lego) =>
         !nextOperation.data?.legosToRemove?.some(
-          (removeMe) => removeMe.instanceId === lego.instanceId
+          (removeMe) => removeMe.instance_id === lego.instance_id
         )
     );
     newDroppedLegos = [
@@ -130,7 +130,7 @@ export class OperationHistory {
     ];
     newDroppedLegos = newDroppedLegos.map((lego) => {
       const update = nextOperation.data?.legosToUpdate?.find(
-        (updateMe) => updateMe.oldLego.instanceId === lego.instanceId
+        (updateMe) => updateMe.oldLego.instance_id === lego.instance_id
       );
       if (update) {
         return update.newLego;

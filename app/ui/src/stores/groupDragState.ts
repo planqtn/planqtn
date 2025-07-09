@@ -5,7 +5,7 @@ import { LogicalPoint } from "../types/coordinates";
 // Add a new interface for group drag state
 export interface GroupDragState {
   legoInstanceIds: string[];
-  originalPositions: { [instanceId: string]: LogicalPoint };
+  originalPositions: { [instance_id: string]: LogicalPoint };
 }
 export interface GroupDragStateSlice {
   groupDragState: GroupDragState | null;

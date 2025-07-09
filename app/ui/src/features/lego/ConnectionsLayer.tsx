@@ -43,7 +43,7 @@ export const ConnectionsLayer: React.FC = () => {
   // Memoize lego lookup map for performance
   const legoMap = useMemo(() => {
     const map = new Map<string, DroppedLego>();
-    connectedLegos.forEach((lego) => map.set(lego.instanceId, lego));
+    connectedLegos.forEach((lego) => map.set(lego.instance_id, lego));
     return map;
   }, [connectedLegos]);
 
@@ -51,8 +51,8 @@ export const ConnectionsLayer: React.FC = () => {
   const connectedLegsMap = useMemo(() => {
     const map = new Map<string, boolean>();
     connections.forEach((conn) => {
-      map.set(`${conn.from.legoId}-${conn.from.legIndex}`, true);
-      map.set(`${conn.to.legoId}-${conn.to.legIndex}`, true);
+      map.set(`${conn.from.legoId}-${conn.from.leg_index}`, true);
+      map.set(`${conn.to.legoId}-${conn.to.leg_index}`, true);
     });
     return map;
   }, [connections]);
@@ -68,7 +68,7 @@ export const ConnectionsLayer: React.FC = () => {
       for (let i = 0; i < numLegs; i++) {
         const legStyle = lego.style!.legStyles[i];
         const legColor = lego.style!.getLegColor(i);
-        map.set(`${lego.instanceId}-${i}`, {
+        map.set(`${lego.instance_id}-${i}`, {
           style: legStyle,
           color: legColor,
           isHighlighted: legStyle.is_highlighted
@@ -84,9 +84,9 @@ export const ConnectionsLayer: React.FC = () => {
       return !!(
         hoveredConnection &&
         hoveredConnection.from.legoId === conn.from.legoId &&
-        hoveredConnection.from.legIndex === conn.from.legIndex &&
+        hoveredConnection.from.leg_index === conn.from.leg_index &&
         hoveredConnection.to.legoId === conn.to.legoId &&
-        hoveredConnection.to.legIndex === conn.to.legIndex
+        hoveredConnection.to.leg_index === conn.to.leg_index
       );
     },
     [hoveredConnection]
@@ -106,35 +106,35 @@ export const ConnectionsLayer: React.FC = () => {
           conn.from.legoId < conn.to.legoId
             ? [
                 conn.from.legoId,
-                conn.from.legIndex,
+                conn.from.leg_index,
                 conn.to.legoId,
-                conn.to.legIndex
+                conn.to.leg_index
               ]
             : [
                 conn.to.legoId,
-                conn.to.legIndex,
+                conn.to.leg_index,
                 conn.from.legoId,
-                conn.from.legIndex
+                conn.from.leg_index
               ];
         const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-        const fromPos = fromLego.style!.legStyles[conn.from.legIndex].position;
-        const toPos = toLego.style!.legStyles[conn.to.legIndex].position;
+        const fromPos = fromLego.style!.legStyles[conn.from.leg_index].position;
+        const toPos = toLego.style!.legStyles[conn.to.leg_index].position;
 
         // Use pre-computed maps for O(1) lookup
         const fromLegConnected = connectedLegsMap.has(
-          `${fromLego.instanceId}-${conn.from.legIndex}`
+          `${fromLego.instance_id}-${conn.from.leg_index}`
         );
         const toLegConnected = connectedLegsMap.has(
-          `${toLego.instanceId}-${conn.to.legIndex}`
+          `${toLego.instance_id}-${conn.to.leg_index}`
         );
 
         // Get pre-computed leg styles
         const fromLegData = legStylesMap.get(
-          `${fromLego.instanceId}-${conn.from.legIndex}`
+          `${fromLego.instance_id}-${conn.from.leg_index}`
         );
         const toLegData = legStylesMap.get(
-          `${toLego.instanceId}-${conn.to.legIndex}`
+          `${toLego.instance_id}-${conn.to.leg_index}`
         );
 
         if (!fromLegData || !toLegData) return null;
@@ -309,7 +309,7 @@ export const ConnectionsLayer: React.FC = () => {
     if (!fromLego) return null;
 
     // Calculate position using shared function with smart scaling
-    const fromPos = fromLego.style!.legStyles[legDragState.legIndex].position;
+    const fromPos = fromLego.style!.legStyles[legDragState.leg_index].position;
     // Calculate scale factor for smart sizing
     const fromBasePoint = new LogicalPoint(
       fromLego.logicalPosition.x,
@@ -326,7 +326,7 @@ export const ConnectionsLayer: React.FC = () => {
       legDragState.currentMouseWindowPoint
     );
 
-    const legStyle = fromLego.style!.legStyles[legDragState.legIndex];
+    const legStyle = fromLego.style!.legStyles[legDragState.leg_index];
     const baseControlPointDistance = 30;
     const controlPointDistance =
       baseControlPointDistance * Math.min(1, zoomLevel * 0.8 + 0.2);

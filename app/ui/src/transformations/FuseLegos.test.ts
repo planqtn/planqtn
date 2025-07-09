@@ -13,7 +13,7 @@ const testDroppedLegos = [
   new DroppedLego(
     {
       type_id: "lego1",
-      shortName: "L1",
+      short_name: "L1",
       name: "Lego 1",
       description: "Test Lego 1",
       parity_check_matrix: [[1, 0]],
@@ -26,7 +26,7 @@ const testDroppedLegos = [
   new DroppedLego(
     {
       type_id: "lego2",
-      shortName: "L2",
+      short_name: "L2",
       name: "Lego 2",
       description: "Test Lego 2",
       parity_check_matrix: [[1, 0]],
@@ -39,7 +39,7 @@ const testDroppedLegos = [
   new DroppedLego(
     {
       type_id: "stopper_x",
-      shortName: "X",
+      short_name: "X",
       name: "X-Phase Flip Stopper",
       description: "X-Phase Flip Stopper",
       parity_check_matrix: [[0, 1]],
@@ -55,7 +55,7 @@ const invalidDroppedLegos = [
   new DroppedLego(
     {
       type_id: "lego3",
-      shortName: "L3",
+      short_name: "L3",
       name: "Lego 3",
       description: "Test Lego 3",
       parity_check_matrix: [[1, 0]],
@@ -72,8 +72,8 @@ it("should successfully fuse two Z stopper legos into a single scalar one", asyn
   const fuseLegos = new FuseLegos(
     [
       new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 0 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 0 }
       )
     ],
     testDroppedLegos,
@@ -85,7 +85,7 @@ it("should successfully fuse two Z stopper legos into a single scalar one", asyn
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
   expect(fusedLego?.parity_check_matrix).toEqual([[1]]);
@@ -100,8 +100,8 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
   const fuseLegos = new FuseLegos(
     [
       new Connection(
-        { legoId: "instance2", legIndex: 0 },
-        { legoId: "stopper3", legIndex: 0 }
+        { legoId: "instance2", leg_index: 0 },
+        { legoId: "stopper3", leg_index: 0 }
       )
     ],
     testDroppedLegos,
@@ -111,21 +111,9 @@ it("should successfully fuse an X and Z stopper legos into a single scalar one",
   );
   const result = await fuseLegos.apply(testDroppedLegos.slice(1, 3));
 
-  console.log(
-    "result",
-    result.droppedLegos.map((l) => {
-      return {
-        instanceId: l.instanceId,
-        parity_check_matrix: l.parity_check_matrix
-          .map((row) => row.join(" "))
-          .join("\n")
-      };
-    })
-  );
-
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
 
@@ -152,7 +140,10 @@ it("should be able to fuse two independent legos with an external connection", a
   ];
   const fuseLegos = new FuseLegos(
     [
-      new Connection({ legoId: "5", legIndex: 0 }, { legoId: "6", legIndex: 0 })
+      new Connection(
+        { legoId: "5", leg_index: 0 },
+        { legoId: "6", leg_index: 0 }
+      )
     ],
     droppedLegos,
     () => {
@@ -163,7 +154,7 @@ it("should be able to fuse two independent legos with an external connection", a
 
   expect(result.droppedLegos).toHaveLength(2);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
 });
@@ -180,7 +171,7 @@ it("should tensor the identity stopper with a regular lego", async () => {
   const result = await fuseLegos.apply(droppedLegos);
   expect(result.droppedLegos).toHaveLength(1);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
   expect(fusedLego?.parity_check_matrix).toEqual([
@@ -195,7 +186,7 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
     new DroppedLego(
       {
         type_id: "scalar",
-        shortName: "S",
+        short_name: "S",
         name: "Scalar",
         description: "Scalar",
         parity_check_matrix: [[1]],
@@ -213,7 +204,7 @@ it("should be able to fuse a scalar lego a stopper and a regular lego", async ()
   const result = await fuseLegos.apply(droppedLegos);
   expect(result.droppedLegos).toHaveLength(1);
   const fusedLego = result.droppedLegos.find(
-    (l) => l.instanceId === "newInstanceId"
+    (l) => l.instance_id === "newInstanceId"
   );
   expect(fusedLego).toBeTruthy();
   expect(fusedLego?.parity_check_matrix).toEqual([

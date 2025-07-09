@@ -27,7 +27,7 @@ class LegoAnnotation:
     y: Optional[float] = None
     description: Optional[str] = None
     name: Optional[str] = None
-    shortName: Optional[str] = None
+    short_name: Optional[str] = None
 
 
 class Legos:
@@ -135,7 +135,7 @@ class Legos:
             {
                 "id": LegoType.T6.value,
                 "name": "[[6,0,3]] tensor",
-                "shortName": "T6",
+                "short_name": "T6",
                 "description": "[[6,0,3]] encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_603.tolist(),
                 "logical_legs": [4, 5],
@@ -144,7 +144,7 @@ class Legos:
             {
                 "id": LegoType.T5.value,
                 "name": "[[5,1,2]] tensor",
-                "shortName": "T5",
+                "short_name": "T5",
                 "description": "[[5,1,2]] encoding tensor",
                 "parity_check_matrix": cls.enconding_tensor_512.tolist(),
                 "logical_legs": [4],
@@ -153,7 +153,7 @@ class Legos:
             {
                 "id": LegoType.H.value,
                 "name": "Hadamard",
-                "shortName": "H",
+                "short_name": "H",
                 "description": "Hadamard tensor",
                 "parity_check_matrix": cls.h.tolist(),
                 "logical_legs": [],
@@ -162,7 +162,7 @@ class Legos:
             {
                 "id": LegoType.STOPPER_X.value,
                 "name": "X Stopper",
-                "shortName": "X",
+                "short_name": "X",
                 "description": "X-type stopper tensor",
                 "parity_check_matrix": cls.stopper_x.tolist(),
                 "logical_legs": [],
@@ -171,7 +171,7 @@ class Legos:
             {
                 "id": LegoType.STOPPER_Z.value,
                 "name": "Z Stopper",
-                "shortName": "Z",
+                "short_name": "Z",
                 "description": "Z-type stopper tensor",
                 "parity_check_matrix": cls.stopper_z.tolist(),
                 "logical_legs": [],
@@ -180,7 +180,7 @@ class Legos:
             {
                 "id": LegoType.STOPPER_I.value,
                 "name": "Identity Stopper",
-                "shortName": "I",
+                "short_name": "I",
                 "description": "Identity stopper tensor",
                 "parity_check_matrix": cls.stopper_i.tolist(),
                 "logical_legs": [],
@@ -189,7 +189,7 @@ class Legos:
             {
                 "id": LegoType.ZREP.value,
                 "name": "Z-Repetition Code",
-                "shortName": "ZREP3",
+                "short_name": "ZREP3",
                 "description": "Bitflip code, ZZ stabilizers",
                 "is_dynamic": True,
                 "parameters": {"d": 3},
@@ -200,7 +200,7 @@ class Legos:
             {
                 "id": LegoType.XREP.value,
                 "name": "X-Repetition Code",
-                "shortName": "XREP3",
+                "short_name": "XREP3",
                 "description": "Phase flip code, XX stabilizers",
                 "is_dynamic": True,
                 "parameters": {"d": 3},
@@ -211,7 +211,7 @@ class Legos:
             {
                 "id": LegoType.ID.value,
                 "name": "Identity",
-                "shortName": "I",
+                "short_name": "I",
                 "description": "Identity tensor",
                 "parity_check_matrix": cls.identity.tolist(),
                 "logical_legs": [],
@@ -220,7 +220,7 @@ class Legos:
             {
                 "id": "steane",
                 "name": "Steane Code",
-                "shortName": "STN",
+                "short_name": "STN",
                 "description": "Steane code encoding tensor",
                 # fmt: off
                 "parity_check_matrix": cls.steane_code_813_encoding_tensor.tolist(),
@@ -231,7 +231,7 @@ class Legos:
             {
                 "id": "832",
                 "name": "[[8,3,2]] encoding tensor",
-                "shortName": "[[8,3,2]]",
+                "short_name": "[[8,3,2]]",
                 "description": "[[8,3,2]] encoding tensor with all 3 logical legs",
                 # fmt: off
                 "parity_check_matrix": np.array([
@@ -254,7 +254,7 @@ class Legos:
             {
                 "id": "15qrm",
                 "name": "[[15,1,3]] QRM encoding tensor",
-                "shortName": "QRM15",
+                "short_name": "QRM15",
                 "description": "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
                 # fmt: off
                 "parity_check_matrix":  np.array([

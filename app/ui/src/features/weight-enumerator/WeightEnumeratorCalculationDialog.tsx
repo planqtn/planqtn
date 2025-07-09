@@ -36,13 +36,13 @@ const WeightEnumeratorCalculationDialog: React.FC<
     mainNetworkConnections
   );
   const [truncateLength, setTruncateLength] = useState<string>("");
-  // Use string keys for easy lookup: "instanceId-legIndex"
+  // Use string keys for easy lookup: "instance_id-leg_index"
   const externalKeys = useMemo(
-    () => externalLegs.map((l) => `${l.instanceId}-${l.legIndex}`),
+    () => externalLegs.map((l) => `${l.instance_id}-${l.leg_index}`),
     [externalLegs]
   );
   const danglingKeys = useMemo(
-    () => danglingLegs.map((l) => `${l.instanceId}-${l.legIndex}`),
+    () => danglingLegs.map((l) => `${l.instance_id}-${l.leg_index}`),
     [danglingLegs]
   );
 
@@ -101,10 +101,10 @@ const WeightEnumeratorCalculationDialog: React.FC<
   // Collect selected legs
   const selectedLegs: TensorNetworkLeg[] = [
     ...externalLegs.filter((l) =>
-      selectedExternal.has(`${l.instanceId}-${l.legIndex}`)
+      selectedExternal.has(`${l.instance_id}-${l.leg_index}`)
     ),
     ...danglingLegs.filter((l) =>
-      selectedDangling.has(`${l.instanceId}-${l.legIndex}`)
+      selectedDangling.has(`${l.instance_id}-${l.leg_index}`)
     )
   ];
 
@@ -192,7 +192,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                     overflowY="auto"
                   >
                     {externalLegs.map((leg) => {
-                      const key = `${leg.instanceId}-${leg.legIndex}`;
+                      const key = `${leg.instance_id}-${leg.leg_index}`;
                       return (
                         <Checkbox
                           key={key}
@@ -205,7 +205,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                             )
                           }
                         >
-                          {leg.instanceId} - {leg.legIndex}
+                          {leg.instance_id} - {leg.leg_index}
                         </Checkbox>
                       );
                     })}
@@ -248,7 +248,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                     overflowY="auto"
                   >
                     {danglingLegs.map((leg) => {
-                      const key = `${leg.instanceId}-${leg.legIndex}`;
+                      const key = `${leg.instance_id}-${leg.leg_index}`;
                       return (
                         <Checkbox
                           key={key}
@@ -261,7 +261,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
                             )
                           }
                         >
-                          {leg.instanceId} - {leg.legIndex}
+                          {leg.instance_id} - {leg.leg_index}
                         </Checkbox>
                       );
                     })}

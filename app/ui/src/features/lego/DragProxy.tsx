@@ -23,7 +23,7 @@ const SingleLegoDragProxy: React.FC<{
     if (!legoDragState || legoDragState.draggedLegoInstanceId === "")
       return null;
     return droppedLegos.find(
-      (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+      (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
     );
   }, [droppedLegos, legoDragState]);
 
@@ -45,7 +45,7 @@ const SingleLegoDragProxy: React.FC<{
 
   return (
     <div
-      key={`single-drag-proxy-${draggedLego.instanceId}`}
+      key={`single-drag-proxy-${draggedLego.instance_id}`}
       style={{
         position: "absolute",
         left: `${proxyCanvasPos.x - smartSize / 2}px`,
@@ -107,7 +107,7 @@ const GroupDragProxy: React.FC<{
   const draggedLegos = useMemo(() => {
     if (!groupDragState) return [];
     return droppedLegos.filter((lego) =>
-      groupDragState.legoInstanceIds.includes(lego.instanceId)
+      groupDragState.legoInstanceIds.includes(lego.instance_id)
     );
   }, [droppedLegos, groupDragState]);
 
@@ -132,7 +132,7 @@ const GroupDragProxy: React.FC<{
   return (
     <>
       {draggedLegos.map((lego: DroppedLego) => {
-        const originalPos = groupDragState.originalPositions[lego.instanceId];
+        const originalPos = groupDragState.originalPositions[lego.instance_id];
         if (!originalPos) return null; // Safety check for stale state
 
         // Calculate base proxy position in canvas coordinates
@@ -147,7 +147,7 @@ const GroupDragProxy: React.FC<{
 
         return (
           <div
-            key={`group-drag-proxy-${lego.instanceId}`}
+            key={`group-drag-proxy-${lego.instance_id}`}
             style={{
               position: "absolute",
               left: `${proxyCanvasPos.x - smartSize / 2}px`,

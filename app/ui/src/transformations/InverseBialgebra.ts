@@ -30,8 +30,8 @@ export function canDoInverseBialgebra(
     for (const xLego of xLegos) {
       const hasConnection = connections.some(
         (conn) =>
-          conn.containsLego(zLego.instanceId) &&
-          conn.containsLego(xLego.instanceId)
+          conn.containsLego(zLego.instance_id) &&
+          conn.containsLego(xLego.instance_id)
       );
       if (!hasConnection) return false;
     }
@@ -42,25 +42,25 @@ export function canDoInverseBialgebra(
     // Count external connections
     const externalConnections = connections.filter(
       (conn) =>
-        conn.containsLego(lego.instanceId) &&
+        conn.containsLego(lego.instance_id) &&
         !selectedLegos.some(
           (otherLego) =>
-            otherLego.instanceId !== lego.instanceId &&
-            conn.containsLego(otherLego.instanceId)
+            otherLego.instance_id !== lego.instance_id &&
+            conn.containsLego(otherLego.instance_id)
         )
     );
 
     // Count dangling legs
     const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
-      .filter((conn) => conn.containsLego(lego.instanceId))
+      .filter((conn) => conn.containsLego(lego.instance_id))
       .map((conn) =>
-        conn.from.legoId === lego.instanceId
-          ? conn.from.legIndex
-          : conn.to.legIndex
+        conn.from.legoId === lego.instance_id
+          ? conn.from.leg_index
+          : conn.to.leg_index
       );
     const danglingLegs = Array.from({ length: totalLegs }, (_, i) => i).filter(
-      (legIndex) => !connectedLegs.includes(legIndex)
+      (leg_index) => !connectedLegs.includes(leg_index)
     );
 
     // Check if there is exactly one external connection or dangling leg
@@ -86,19 +86,21 @@ export async function applyInverseBialgebra(
   // Get external connections for each partition
   const zExternalConns = connections.filter(
     (conn) =>
-      zLegos.some((lego) => conn.containsLego(lego.instanceId)) &&
+      zLegos.some((lego) => conn.containsLego(lego.instance_id)) &&
       !selectedLegos.some(
         (otherLego) =>
-          !zLegos.includes(otherLego) && conn.containsLego(otherLego.instanceId)
+          !zLegos.includes(otherLego) &&
+          conn.containsLego(otherLego.instance_id)
       )
   );
 
   const xExternalConns = connections.filter(
     (conn) =>
-      xLegos.some((lego) => conn.containsLego(lego.instanceId)) &&
+      xLegos.some((lego) => conn.containsLego(lego.instance_id)) &&
       !selectedLegos.some(
         (otherLego) =>
-          !xLegos.includes(otherLego) && conn.containsLego(otherLego.instanceId)
+          !xLegos.includes(otherLego) &&
+          conn.containsLego(otherLego.instance_id)
       )
   );
 
@@ -106,28 +108,28 @@ export async function applyInverseBialgebra(
   const zDanglingLegs = zLegos.flatMap((lego) => {
     const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
-      .filter((conn) => conn.containsLego(lego.instanceId))
+      .filter((conn) => conn.containsLego(lego.instance_id))
       .map((conn) =>
-        conn.from.legoId === lego.instanceId
-          ? conn.from.legIndex
-          : conn.to.legIndex
+        conn.from.legoId === lego.instance_id
+          ? conn.from.leg_index
+          : conn.to.leg_index
       );
     return Array.from({ length: totalLegs }, (_, i) => i)
-      .filter((legIndex) => !connectedLegs.includes(legIndex))
+      .filter((leg_index) => !connectedLegs.includes(leg_index))
       .map(() => true); // Convert to boolean array for counting
   });
 
   const xDanglingLegs = xLegos.flatMap((lego) => {
     const totalLegs = lego.numberOfLegs;
     const connectedLegs = connections
-      .filter((conn) => conn.containsLego(lego.instanceId))
+      .filter((conn) => conn.containsLego(lego.instance_id))
       .map((conn) =>
-        conn.from.legoId === lego.instanceId
-          ? conn.from.legIndex
-          : conn.to.legIndex
+        conn.from.legoId === lego.instance_id
+          ? conn.from.leg_index
+          : conn.to.leg_index
       );
     return Array.from({ length: totalLegs }, (_, i) => i)
-      .filter((legIndex) => !connectedLegs.includes(legIndex))
+      .filter((leg_index) => !connectedLegs.includes(leg_index))
       .map(() => true); // Convert to boolean array for counting
   });
 
@@ -138,7 +140,7 @@ export async function applyInverseBialgebra(
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
-    ...droppedLegos.map((l) => parseInt(l.instanceId))
+    ...droppedLegos.map((l) => parseInt(l.instance_id))
   );
 
   // Set positions and IDs
@@ -171,8 +173,8 @@ export async function applyInverseBialgebra(
   // Create connection between new legos (using their last legs)
   newConnections.push(
     new Connection(
-      { legoId: newZLego.instanceId, legIndex: zLegoLegs - 1 },
-      { legoId: newXLego.instanceId, legIndex: xLegoLegs - 1 }
+      { legoId: newZLego.instance_id, leg_index: zLegoLegs - 1 },
+      { legoId: newXLego.instance_id, leg_index: xLegoLegs - 1 }
     )
   );
 
@@ -180,13 +182,13 @@ export async function applyInverseBialgebra(
   zExternalConns.forEach((conn, index) => {
     // Find the external end that's not part of the Z partition
     const externalEnd = zLegos.some(
-      (lego) => lego.instanceId === conn.from.legoId
+      (lego) => lego.instance_id === conn.from.legoId
     )
       ? conn.to
       : conn.from;
     newConnections.push(
       new Connection(
-        { legoId: newZLego.instanceId, legIndex: index },
+        { legoId: newZLego.instance_id, leg_index: index },
         externalEnd
       )
     );
@@ -196,13 +198,13 @@ export async function applyInverseBialgebra(
   xExternalConns.forEach((conn, index) => {
     // Find the external end that's not part of the X partition
     const externalEnd = xLegos.some(
-      (lego) => lego.instanceId === conn.from.legoId
+      (lego) => lego.instance_id === conn.from.legoId
     )
       ? conn.to
       : conn.from;
     newConnections.push(
       new Connection(
-        { legoId: newXLego.instanceId, legIndex: index },
+        { legoId: newXLego.instance_id, leg_index: index },
         externalEnd
       )
     );
@@ -214,14 +216,14 @@ export async function applyInverseBialgebra(
   // Remove old legos and their connections
   const updatedDroppedLegos = droppedLegos
     .filter(
-      (lego) => !selectedLegos.some((l) => l.instanceId === lego.instanceId)
+      (lego) => !selectedLegos.some((l) => l.instance_id === lego.instance_id)
     )
     .concat(newLegos);
 
   const updatedConnections = connections
     .filter(
       (conn) =>
-        !selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
+        !selectedLegos.some((lego) => conn.containsLego(lego.instance_id))
     )
     .concat(newConnections);
 
@@ -233,7 +235,7 @@ export async function applyInverseBialgebra(
       data: {
         legosToRemove: selectedLegos,
         connectionsToRemove: connections.filter((conn) =>
-          selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
+          selectedLegos.some((lego) => conn.containsLego(lego.instance_id))
         ),
         legosToAdd: newLegos,
         connectionsToAdd: newConnections

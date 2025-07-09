@@ -51,8 +51,8 @@ export class LegoSvgRenderer {
 
     // Generate logical legs SVG
     const logicalLegsSvg = legStyles
-      .map((legStyle, legIndex) => {
-        const isLogical = lego.logical_legs.includes(legIndex);
+      .map((legStyle, leg_index) => {
+        const isLogical = lego.logical_legs.includes(leg_index);
         if (!isLogical) return "";
 
         const legColor = legStyle.color;
@@ -158,11 +158,11 @@ export class LegoSvgRenderer {
           <g transform="translate(-${size / 2}, -${size / 2})">
             <text x="${size / 2}" y="${size / 2 - 6}" font-size="12" font-weight="bold" 
                   text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
-              ${lego.shortName}
+              ${lego.short_name}
             </text>
             <text x="${size / 2}" y="${size / 2 + 6}" font-size="12" 
                   text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
-              ${lego.instanceId}
+              ${lego.instance_id}
             </text>
           </g>
         `;
@@ -171,7 +171,7 @@ export class LegoSvgRenderer {
           <g transform="translate(-${size / 2}, -${size / 2})">
             <text x="${size / 2}" y="${size / 2}" font-size="12" font-weight="bold" 
                   text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
-              ${lego.instanceId}
+              ${lego.instance_id}
             </text>
           </g>
         `;
@@ -182,15 +182,15 @@ export class LegoSvgRenderer {
         return `
           <text x="0" y="${yOffset}" font-size="10" font-weight="bold" 
                 text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
-            ${lego.shortName}
-            <tspan x="0" dy="12">${lego.instanceId}</tspan>
+            ${lego.short_name}
+            <tspan x="0" dy="12">${lego.instance_id}</tspan>
           </text>
         `;
       } else {
         return `
           <text x="0" y="${yOffset}" font-size="10" font-weight="bold" 
                 text-anchor="middle" dominant-baseline="middle" fill="${textColor}">
-            ${lego.instanceId}
+            ${lego.instance_id}
           </text>
         `;
       }
@@ -206,13 +206,13 @@ export class LegoSvgRenderer {
 
     // This is a simplified version - you might want to port the full logic from DroppedLegoDisplay
     return legStyles
-      .map((legStyle, legIndex) => {
+      .map((legStyle, leg_index) => {
         // Check if leg is connected
         const isLegConnected = connections.some(
           (c: Connection) =>
-            (c.from.legoId === lego.instanceId &&
-              c.from.legIndex === legIndex) ||
-            (c.to.legoId === lego.instanceId && c.to.legIndex === legIndex)
+            (c.from.legoId === lego.instance_id &&
+              c.from.leg_index === leg_index) ||
+            (c.to.legoId === lego.instance_id && c.to.leg_index === leg_index)
         );
 
         // Simple logic: show label if not connected or if not hiding connected legs
@@ -220,7 +220,7 @@ export class LegoSvgRenderer {
           return `
             <text x="${legStyle.position.labelX}" y="${legStyle.position.labelY}" font-size="12" fill="#666666" 
                   text-anchor="middle" dominant-baseline="middle">
-              ${legIndex}
+              ${leg_index}
             </text>
           `;
         }

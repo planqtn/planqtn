@@ -77,10 +77,10 @@ const StaticLegsLayer = memo<{
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
-      {legStyles.map((legStyle, legIndex) =>
-        shouldHideLeg[legIndex] ? null : (
+      {legStyles.map((legStyle, leg_index) =>
+        shouldHideLeg[leg_index] ? null : (
           <line
-            key={`static-leg-${legIndex}`}
+            key={`static-leg-${leg_index}`}
             x1={legStyle.position.startX}
             y1={legStyle.position.startY}
             x2={legStyle.position.endX}
@@ -218,7 +218,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
   ({ legoInstanceId, demoMode = false }) => {
     const lego = useCanvasStore(
       (state) =>
-        state.droppedLegos.find((l) => l.instanceId === legoInstanceId)!
+        state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
     );
 
     const canvasRef = useCanvasStore((state) => state.canvasRef);
@@ -246,14 +246,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     const legConnectionStates = useCanvasStore(
       useShallow((state) =>
-        lego ? state.legConnectionStates[lego.instanceId] || [] : []
+        lego ? state.legConnectionStates[lego.instance_id] || [] : []
       )
     );
 
     // Optimize store subscriptions to prevent unnecessary rerenders
     const legoConnections = useCanvasStore(
       useShallow((state) =>
-        lego ? state.legoConnectionMap[lego.instanceId] || [] : []
+        lego ? state.legoConnectionMap[lego.instance_id] || [] : []
       )
     );
 
@@ -265,10 +265,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const isThisLegoBeingDragged = useCanvasStore((state) => {
       if (state.legoDragState.draggedLegoInstanceId === "") return false;
       const draggedLego = state.droppedLegos.find(
-        (l) => l.instanceId === state.legoDragState.draggedLegoInstanceId
+        (l) => l.instance_id === state.legoDragState.draggedLegoInstanceId
       );
       return (
-        draggedLego?.instanceId === lego.instanceId &&
+        draggedLego?.instance_id === lego.instance_id &&
         state.legoDragState.draggingStage === DraggingStage.DRAGGING
       );
     });
@@ -278,7 +278,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       return (
         (lego &&
           state.tensorNetwork?.legos.some(
-            (l) => l.instanceId === lego.instanceId
+            (l) => l.instance_id === lego.instance_id
           )) ||
         false
       );
@@ -286,7 +286,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     const legHiddenStates = useCanvasStore(
       useShallow((state) =>
-        lego ? state.legHideStates[lego.instanceId] || [] : []
+        lego ? state.legHideStates[lego.instance_id] || [] : []
       )
     );
 
@@ -329,15 +329,15 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         conn.from.legoId < conn.to.legoId
           ? [
               conn.from.legoId,
-              conn.from.legIndex,
+              conn.from.leg_index,
               conn.to.legoId,
-              conn.to.legIndex
+              conn.to.leg_index
             ]
           : [
               conn.to.legoId,
-              conn.to.legIndex,
+              conn.to.leg_index,
               conn.from.legoId,
-              conn.from.legIndex
+              conn.from.leg_index
             ];
       return `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
     };
@@ -345,7 +345,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
     const handleLegMouseDown = (
       e: React.MouseEvent,
       legoId: string,
-      legIndex: number
+      leg_index: number
     ) => {
       if (!canvasRef) return;
 
@@ -354,18 +354,18 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
       storeHandleLegMouseDown(
         legoId,
-        legIndex,
+        leg_index,
         WindowPoint.fromMouseEvent(e as unknown as MouseEvent)
       );
     };
 
-    const handleLegClick = (legoId: string, legIndex: number) => {
-      storeHandleLegClick(legoId, legIndex);
+    const handleLegClick = (legoId: string, leg_index: number) => {
+      storeHandleLegClick(legoId, leg_index);
     };
 
     const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
       e.stopPropagation();
-      storeHandleLegMouseUp(lego.instanceId, i);
+      storeHandleLegMouseUp(lego.instance_id, i);
     };
 
     const isScalarLego = (lego: DroppedLego) => {
@@ -383,7 +383,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       e.preventDefault();
       e.stopPropagation();
       storeHandleLegoMouseDown(
-        lego.instanceId,
+        lego.instance_id,
         e.clientX,
         e.clientY,
         e.shiftKey
@@ -466,16 +466,16 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
                 {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
                 {lod.showLegs &&
-                  lego.style!.legStyles.map((legStyle, legIndex) => {
-                    const legColor = lego.style!.getLegColor(legIndex);
-                    const shouldHide = legHiddenStates[legIndex];
+                  lego.style!.legStyles.map((legStyle, leg_index) => {
+                    const legColor = lego.style!.getLegColor(leg_index);
+                    const shouldHide = legHiddenStates[leg_index];
 
                     if (legColor === "#A0AEC0" || shouldHide) {
                       return null;
                     }
 
                     return (
-                      <g key={`highlight-leg-${legIndex}`}>
+                      <g key={`highlight-leg-${leg_index}`}>
                         <line
                           x1={legStyle.position.startX}
                           y1={legStyle.position.startY}
@@ -494,18 +494,18 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
                 {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
                 {lod.showLegs &&
-                  lego.style!.legStyles.map((legStyle, legIndex) => {
-                    const isLogical = lego.logical_legs.includes(legIndex);
-                    const legColor = lego.style!.getLegColor(legIndex);
+                  lego.style!.legStyles.map((legStyle, leg_index) => {
+                    const isLogical = lego.logical_legs.includes(leg_index);
+                    const legColor = lego.style!.getLegColor(leg_index);
 
-                    const shouldHide = legHiddenStates[legIndex];
+                    const shouldHide = legHiddenStates[leg_index];
 
                     if (shouldHide) {
                       return null;
                     }
 
                     return (
-                      <g key={`interactive-leg-${legIndex}`}>
+                      <g key={`interactive-leg-${leg_index}`}>
                         {/* Logical leg interactive line - rendered on top for clicks */}
                         {isLogical && (
                           <line
@@ -531,7 +531,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleLegClick(lego.instanceId, legIndex);
+                              handleLegClick(lego.instance_id, leg_index);
                             }}
                           />
                         )}
@@ -552,7 +552,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                           }}
                           onMouseDown={(e) => {
                             e.stopPropagation();
-                            handleLegMouseDown(e, lego.instanceId, legIndex);
+                            handleLegMouseDown(e, lego.instance_id, leg_index);
                           }}
                           onMouseOver={(e) => {
                             const circle = e.target as SVGCircleElement;
@@ -566,7 +566,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                           }}
                           onMouseUp={(e) => {
                             e.stopPropagation();
-                            handleLegMouseUp(e, legIndex);
+                            handleLegMouseUp(e, leg_index);
                           }}
                         />
                       </g>
@@ -597,7 +597,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                               dominantBaseline="middle"
                               fill={isSelected ? "white" : "#000000"}
                             >
-                              {lego.shortName}
+                              {lego.short_name}
                             </text>
                             <text
                               x={size / 2}
@@ -607,7 +607,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                               dominantBaseline="middle"
                               fill={isSelected ? "white" : "#000000"}
                             >
-                              {lego.instanceId}
+                              {lego.instance_id}
                             </text>
                           </g>
                         ) : (
@@ -620,7 +620,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                             dominantBaseline="middle"
                             fill={isSelected ? "white" : "#000000"}
                           >
-                            {lego.instanceId}
+                            {lego.instance_id}
                           </text>
                         )}
                       </g>
@@ -637,13 +637,13 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                       >
                         {lod.showShortName && lego.style!.displayShortName ? (
                           <>
-                            {lego.shortName}
+                            {lego.short_name}
                             <tspan x="0" dy="12">
-                              {lego.instanceId}
+                              {lego.instance_id}
                             </tspan>
                           </>
                         ) : (
-                          lego.instanceId
+                          lego.instance_id
                         )}
                       </text>
                     )}
@@ -654,19 +654,19 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 {!isScalarLego(lego) &&
                   !demoMode &&
                   lod.showLegLabels &&
-                  lego.style!.legStyles.map((legStyle, legIndex) => {
+                  lego.style!.legStyles.map((legStyle, leg_index) => {
                     // If the leg is hidden, don't render the label
-                    if (legHiddenStates[legIndex]) return null;
+                    if (legHiddenStates[leg_index]) return null;
 
                     // Check if leg is connected using pre-calculated states
                     const isLegConnectedToSomething =
-                      legConnectionStates[legIndex] || false;
+                      legConnectionStates[leg_index] || false;
 
                     // If leg is not connected, always show the label
                     if (!isLegConnectedToSomething) {
                       return (
                         <text
-                          key={`${lego.instanceId}-label-${legIndex}`}
+                          key={`${lego.instance_id}-label-${leg_index}`}
                           x={legStyle.position.labelX}
                           y={legStyle.position.labelY}
                           fontSize="12"
@@ -675,7 +675,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                           dominantBaseline="middle"
                           style={{ pointerEvents: "none" }}
                         >
-                          {legIndex}
+                          {leg_index}
                         </text>
                       );
                     }
@@ -683,10 +683,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                     // Find the connected leg's style
                     const connection = legoConnections.find(
                       (c) =>
-                        (c.from.legoId === lego.instanceId &&
-                          c.from.legIndex === legIndex) ||
-                        (c.to.legoId === lego.instanceId &&
-                          c.to.legIndex === legIndex)
+                        (c.from.legoId === lego.instance_id &&
+                          c.from.leg_index === leg_index) ||
+                        (c.to.legoId === lego.instance_id &&
+                          c.to.leg_index === leg_index)
                     );
 
                     if (!connection) return null;
@@ -705,7 +705,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
                     return (
                       <text
-                        key={`${lego.instanceId}-label-${legIndex}`}
+                        key={`${lego.instance_id}-label-${leg_index}`}
                         x={legStyle.position.labelX}
                         y={legStyle.position.labelY}
                         fontSize="12"
@@ -714,7 +714,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                         dominantBaseline="middle"
                         style={{ pointerEvents: "none" }}
                       >
-                        {legIndex}
+                        {leg_index}
                       </text>
                     );
                   })}

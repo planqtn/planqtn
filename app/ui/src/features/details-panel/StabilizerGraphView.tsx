@@ -21,7 +21,7 @@ interface SimulationNode extends d3.SimulationNodeDatum {
   isStabilizer: boolean;
   stabilizerIndex?: number;
   type?: "X" | "Z";
-  legIndex?: number;
+  leg_index?: number;
 }
 
 interface SimulationLink extends d3.SimulationLinkDatum<SimulationNode> {
@@ -77,8 +77,8 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
       if (!stabilizerPoint) return;
 
       const stabilizerLegs = getStabilizerLegs(row);
-      stabilizerLegs.forEach((legIndex) => {
-        const legPoint = points[matrix.length + legIndex];
+      stabilizerLegs.forEach((leg_index) => {
+        const legPoint = points[matrix.length + leg_index];
         if (!legPoint || legPoint.isStabilizer) return;
 
         // Draw connection line
@@ -125,8 +125,8 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         ctx.fillText(point.stabilizerIndex!.toString(), point.x, point.y);
       } else {
         // Draw leg circle
-        const legIndex = index - matrix.length;
-        if (legIndex >= 0 && legIndex < legs.length) {
+        const leg_index = index - matrix.length;
+        if (leg_index >= 0 && leg_index < legs.length) {
           ctx.beginPath();
           ctx.arc(point.x, point.y, 20, 0, 2 * Math.PI);
           ctx.fillStyle = selectedPoints.has(index) ? "#e2e8f0" : "white";
@@ -141,7 +141,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(
-            `${legs[legIndex].instanceId}-${legs[legIndex].legIndex}`,
+            `${legs[leg_index].instance_id}-${legs[leg_index].leg_index}`,
             point.x,
             point.y
           );
@@ -161,7 +161,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
       isStabilizer: point.isStabilizer ?? false,
       stabilizerIndex: point.stabilizerIndex,
       type: point.type,
-      legIndex: (point as unknown as { legIndex: number }).legIndex
+      leg_index: (point as unknown as { leg_index: number }).leg_index
     }));
 
     // Create links between stabilizers and legs
@@ -170,10 +170,10 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
       const stabilizerLegs = getStabilizerLegs(row);
       const stabilizerWeight = stabilizerLegs.length;
 
-      stabilizerLegs.forEach((legIndex) => {
+      stabilizerLegs.forEach((leg_index) => {
         links.push({
           source: stabilizerIndex,
-          target: matrix.length + legIndex,
+          target: matrix.length + leg_index,
           weight: stabilizerWeight
         });
       });
@@ -302,7 +302,7 @@ export const StabilizerGraphView: React.FC<StabilizerGraphViewProps> = ({
         isStabilizer: false,
         stabilizerIndex: undefined,
         type: undefined as "X" | "Z" | undefined,
-        legIndex: index
+        leg_index: index
       };
     });
 

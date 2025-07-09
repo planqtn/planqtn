@@ -1,19 +1,19 @@
 from typing import Any, Dict, List
 
 from galois import GF2
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from planqtn.tensor_network import TensorNetwork
 
 
 class LegoPiece(BaseModel):
-    id: str
-    instanceId: str = ""
+    type_id: str
+    instance_id: str = ""
     name: str = ""
-    shortName: str
+    short_name: str
     description: str = ""
-    is_dynamic: bool = False
-    parameters: Dict[str, Any] = {}
+    is_dynamic: bool = Field(default=False)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
     parity_check_matrix: List[List[int]]
     logical_legs: List[int] = []
     gauge_legs: List[int] = []
@@ -25,13 +25,13 @@ class TensorNetworkRequest(BaseModel):
 
 
 class TensorNetworkLeg(BaseModel):
-    instanceId: str
-    legIndex: int
+    instance_id: str
+    leg_index: int
 
 
 class WeightEnumeratorCalculationArgs(TensorNetworkRequest):
     truncate_length: int | None = None
-    open_legs: List[TensorNetworkLeg] = []
+    open_legs: List[TensorNetworkLeg] = Field(default_factory=list)
 
 
 class WeightEnumeratorCalculationResult(BaseModel):
@@ -42,19 +42,18 @@ class WeightEnumeratorCalculationResult(BaseModel):
 
 class TannerRequest(BaseModel):
     matrix: List[List[int]]
-    start_node_index: int = 0
+    start_node_index: int = Field(default=0)
 
 
 class TensorNetworkResponse(BaseModel):
     legos: List[Dict[str, Any]]
     connections: List[Dict[str, Any]]
-    message: str = "Successfully created Tanner network"
 
     def to_tensor_network(self):
 
         nodes = [
             StabilizerCodeTensorEnumerator(
-                idx=lego["instanceId"], h=GF2(lego["parity_check_matrix"])
+                idx=lego["instance_id"], h=GF2(lego["parity_check_matrix"])
             )
             for lego in self.legos
         ]
@@ -64,8 +63,8 @@ class TensorNetworkResponse(BaseModel):
             tn.self_trace(
                 conn["from"]["legoId"],
                 conn["to"]["legoId"],
-                [conn["from"]["legIndex"]],
-                [conn["to"]["legIndex"]],
+                [conn["from"]["leg_index"]],
+                [conn["to"]["leg_index"]],
             )
 
         return tn
@@ -89,9 +88,9 @@ class TensorNetworkResponse(BaseModel):
             else:
                 lego_type = "generic"
             lego = {
-                "instanceId": str(i + start_node_index),
-                "id": lego_type,
-                "shortName": instance_id,
+                "instance_id": str(i + start_node_index),
+                "type_id": lego_type,
+                "short_name": instance_id,
                 "description": instance_id,
                 "x": (
                     piece.annotation.x
@@ -107,7 +106,7 @@ class TensorNetworkResponse(BaseModel):
                 "logical_legs": [],
                 "gauge_legs": [],
             }
-            # print("lego", lego["shortName"], "x", lego["x"], "y", lego["y"])
+            # print("lego", lego["short_name"], "x", lego["x"], "y", lego["y"])
             legos.append(lego)
             instance_id_to_idx[instance_id] = i + start_node_index
         # Add connections from the tensor network's traces
@@ -117,11 +116,11 @@ class TensorNetworkResponse(BaseModel):
                     {
                         "from": {
                             "legoId": str(instance_id_to_idx[node1]),
-                            "legIndex": tn.nodes[node1].legs.index(leg1),
+                            "leg_index": tn.nodes[node1].legs.index(leg1),
                         },
                         "to": {
                             "legoId": str(instance_id_to_idx[node2]),
-                            "legIndex": tn.nodes[node2].legs.index(leg2),
+                            "leg_index": tn.nodes[node2].legs.index(leg2),
                         },
                     }
                 )

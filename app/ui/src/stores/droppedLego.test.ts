@@ -7,7 +7,7 @@ describe("DroppedLego", () => {
       {
         type_id: "1",
         name: "Test Lego",
-        shortName: "TL",
+        short_name: "TL",
         description: "Test Lego",
         parity_check_matrix: [
           [1, 0],
@@ -22,7 +22,7 @@ describe("DroppedLego", () => {
 
     expect(lego.type_id).toBe("1");
     expect(lego.name).toBe("Test Lego");
-    expect(lego.shortName).toBe("TL");
+    expect(lego.short_name).toBe("TL");
     expect(lego.description).toBe("Test Lego");
     expect(lego.parity_check_matrix).toEqual([
       [1, 0],
@@ -37,7 +37,7 @@ describe("DroppedLego", () => {
       {
         type_id: "1",
         name: "Test Lego",
-        shortName: "TL",
+        short_name: "TL",
         description: "Test Lego",
         parity_check_matrix: [
           [1, 0],
@@ -50,13 +50,13 @@ describe("DroppedLego", () => {
       "1",
       {
         logicalPosition: new LogicalPoint(10, 10),
-        instanceId: "2"
+        instance_id: "2"
       }
     );
 
     expect(lego.type_id).toBe("1");
     expect(lego.name).toBe("Test Lego");
-    expect(lego.shortName).toBe("TL");
+    expect(lego.short_name).toBe("TL");
     expect(lego.description).toBe("Test Lego");
     expect(lego.selectedMatrixRows).toEqual([]);
     expect(lego.parity_check_matrix).toEqual([
@@ -68,16 +68,16 @@ describe("DroppedLego", () => {
     // we ignore the override for mandatory parameters passed to the constructor
     expect(lego.logicalPosition.x).toBe(0);
     expect(lego.logicalPosition.y).toBe(0);
-    expect(lego.instanceId).toBe("1");
+    expect(lego.instance_id).toBe("1");
 
     // However, when used with the with method, the override is applied
     const lego2 = lego.with({
       logicalPosition: new LogicalPoint(10, 10),
-      instanceId: "2"
+      instance_id: "2"
     });
     expect(lego2.logicalPosition.x).toBe(10);
     expect(lego2.logicalPosition.y).toBe(10);
-    expect(lego2.instanceId).toBe("2");
+    expect(lego2.instance_id).toBe("2");
   });
 
   it("should create a new lego with the correct properties when overridden with the with method", () => {
@@ -85,7 +85,7 @@ describe("DroppedLego", () => {
       {
         type_id: "1",
         name: "Test Lego",
-        shortName: "TL",
+        short_name: "TL",
         description: "Test Lego",
         parity_check_matrix: [
           [1, 0],
@@ -105,11 +105,11 @@ describe("DroppedLego", () => {
 
     const lego2 = lego.with({
       logicalPosition: new LogicalPoint(10, 10),
-      instanceId: "2"
+      instance_id: "2"
     });
     expect(lego2.logicalPosition.x).toBe(10);
     expect(lego2.logicalPosition.y).toBe(10);
-    expect(lego2.instanceId).toBe("2");
+    expect(lego2.instance_id).toBe("2");
     expect(lego2.selectedMatrixRows).toEqual([0, 1]);
   });
 });

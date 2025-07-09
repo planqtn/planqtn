@@ -7,19 +7,6 @@ export enum PauliOperator {
   I = "I"
 }
 
-export interface LegoServerPayload {
-  instanceId: string;
-  id: string;
-  name: string;
-  shortName: string;
-  description?: string;
-  is_dynamic?: boolean;
-  parameters?: Record<string, unknown>;
-  parity_check_matrix: number[][];
-  logical_legs: number[];
-  gauge_legs: number[];
-}
-
 export interface TaskUpdateIterationStatus {
   desc: string;
   total_size: number;

@@ -23,9 +23,9 @@ export class StabilizerCodeTensor {
     legToCol: Map<string, number>,
     leg: TensorNetworkLeg
   ): void {
-    legToCol.delete(`${leg.instanceId}:${leg.legIndex}`);
+    legToCol.delete(`${leg.instance_id}:${leg.leg_index}`);
     legToCol.forEach((value, key) => {
-      if (value > leg.legIndex) {
+      if (value > leg.leg_index) {
         legToCol.set(key, value - 1);
       }
     });
@@ -53,22 +53,22 @@ export class StabilizerCodeTensor {
 
     // Create a new leg to column mapping that includes both tensors
     const conjoinedLegToCol = new Map(
-      this.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i])
+      this.legs.map((leg, i) => [`${leg.instance_id}:${leg.leg_index}`, i])
     );
     other.legs.forEach((leg, i) => {
-      conjoinedLegToCol.set(`${leg.instanceId}:${leg.legIndex}`, this.n + i);
+      conjoinedLegToCol.set(`${leg.instance_id}:${leg.leg_index}`, this.n + i);
     });
 
     const otherLegToCol = new Map(
-      other.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i])
+      other.legs.map((leg, i) => [`${leg.instance_id}:${leg.leg_index}`, i])
     );
 
     // Perform initial conjoin
     let newH = conjoin(
       this.h,
       other.h,
-      conjoinedLegToCol.get(`${legs1[0].instanceId}:${legs1[0].legIndex}`)!,
-      otherLegToCol.get(`${legs2[0].instanceId}:${legs2[0].legIndex}`)!
+      conjoinedLegToCol.get(`${legs1[0].instance_id}:${legs1[0].leg_index}`)!,
+      otherLegToCol.get(`${legs2[0].instance_id}:${legs2[0].leg_index}`)!
     );
 
     // Remove the first pair of legs
@@ -78,8 +78,8 @@ export class StabilizerCodeTensor {
     for (let i = 1; i < legs1.length; i++) {
       newH = self_trace(
         newH,
-        conjoinedLegToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
-        conjoinedLegToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!
+        conjoinedLegToCol.get(`${legs1[i].instance_id}:${legs1[i].leg_index}`)!,
+        conjoinedLegToCol.get(`${legs2[i].instance_id}:${legs2[i].leg_index}`)!
       );
       this.removeLegs(conjoinedLegToCol, [legs1[i], legs2[i]]);
     }
@@ -90,14 +90,14 @@ export class StabilizerCodeTensor {
         (leg) =>
           !legs1.some(
             (l) =>
-              l.instanceId === leg.instanceId && l.legIndex === leg.legIndex
+              l.instance_id === leg.instance_id && l.leg_index === leg.leg_index
           )
       ),
       ...other.legs.filter(
         (leg) =>
           !legs2.some(
             (l) =>
-              l.instanceId === leg.instanceId && l.legIndex === leg.legIndex
+              l.instance_id === leg.instance_id && l.leg_index === leg.leg_index
           )
       )
     ];
@@ -114,15 +114,15 @@ export class StabilizerCodeTensor {
     }
 
     const legToCol = new Map(
-      this.legs.map((leg, i) => [`${leg.instanceId}:${leg.legIndex}`, i])
+      this.legs.map((leg, i) => [`${leg.instance_id}:${leg.leg_index}`, i])
     );
 
     let newH = this.h;
     for (let i = 0; i < legs1.length; i++) {
       newH = self_trace(
         newH,
-        legToCol.get(`${legs1[i].instanceId}:${legs1[i].legIndex}`)!,
-        legToCol.get(`${legs2[i].instanceId}:${legs2[i].legIndex}`)!
+        legToCol.get(`${legs1[i].instance_id}:${legs1[i].leg_index}`)!,
+        legToCol.get(`${legs2[i].instance_id}:${legs2[i].leg_index}`)!
       );
     }
     this.removeLegs(legToCol, [...legs1, ...legs2]);
@@ -134,7 +134,7 @@ export class StabilizerCodeTensor {
         (leg) =>
           ![...legs1, ...legs2].some(
             (l) =>
-              l.instanceId === leg.instanceId && l.legIndex === leg.legIndex
+              l.instance_id === leg.instance_id && l.leg_index === leg.leg_index
           )
       )
     );
@@ -145,8 +145,8 @@ export class StabilizerCodeTensor {
     const newLegs = [
       ...this.legs,
       ...other.legs.map((leg) => ({
-        instanceId: leg.instanceId,
-        legIndex: leg.legIndex
+        instance_id: leg.instance_id,
+        leg_index: leg.leg_index
       }))
     ];
 

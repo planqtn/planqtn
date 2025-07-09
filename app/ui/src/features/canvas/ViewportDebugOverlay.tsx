@@ -81,7 +81,7 @@ export const ViewportDebugOverlay: React.FC = () => {
 
   const visibleLegos = useVisibleLegoIds();
   const connectedLegos = useCanvasStore((state) => state.connectedLegos);
-  const connectedLegoIds = connectedLegos.map((c) => c.instanceId);
+  const connectedLegoIds = connectedLegos.map((c) => c.instance_id);
 
   const zoomLevel = viewport.zoomLevel;
 

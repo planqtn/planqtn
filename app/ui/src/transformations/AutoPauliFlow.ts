@@ -40,13 +40,13 @@ export function simpleAutoFlow(
     count++;
 
     for (const lego of tnLegos) {
-      if (lego.instanceId === changedLego?.instanceId) {
+      if (lego.instance_id === changedLego?.instance_id) {
         continue;
       }
       const neighborConns = connections.filter(
         (conn) =>
-          conn.from.legoId === lego.instanceId ||
-          conn.to.legoId === lego.instanceId
+          conn.from.legoId === lego.instance_id ||
+          conn.to.legoId === lego.instance_id
       );
 
       if (neighborConns.length === 0) {
@@ -55,23 +55,23 @@ export function simpleAutoFlow(
       for (const neighborConn of neighborConns) {
         const neighborLego = tnLegos.find(
           (l: DroppedLego) =>
-            (l.instanceId === neighborConn.from.legoId ||
-              l.instanceId === neighborConn.to.legoId) &&
-            l.instanceId != lego.instanceId
+            (l.instance_id === neighborConn.from.legoId ||
+              l.instance_id === neighborConn.to.legoId) &&
+            l.instance_id != lego.instance_id
         );
         if (!neighborLego) {
           continue;
         }
 
         const neighborLegIndex =
-          neighborConn.from.legoId == neighborLego.instanceId
-            ? neighborConn.from.legIndex
-            : neighborConn.to.legIndex;
+          neighborConn.from.legoId == neighborLego.instance_id
+            ? neighborConn.from.leg_index
+            : neighborConn.to.leg_index;
 
         const legoLegIndex =
-          neighborConn.from.legoId == lego.instanceId
-            ? neighborConn.from.legIndex
-            : neighborConn.to.legIndex;
+          neighborConn.from.legoId == lego.instance_id
+            ? neighborConn.from.leg_index
+            : neighborConn.to.leg_index;
 
         const legoLegHighlightOp = getHighlightOp(lego, legoLegIndex);
         const neighborLegHighlightOp = getHighlightOp(
@@ -85,7 +85,7 @@ export function simpleAutoFlow(
           neighborLegHighlightOp[0] === legoLegHighlightOp[0] &&
           neighborLegHighlightOp[1] === legoLegHighlightOp[1]
         ) {
-          seenLegos.add(lego.instanceId);
+          seenLegos.add(lego.instance_id);
           continue;
         }
         if (!isSimpleLego(lego)) {
@@ -124,17 +124,17 @@ export function simpleAutoFlow(
         if (newRows !== null) {
           // ensure the lego has not been changed already
           if (
-            !seenLegos.has(lego.instanceId) ||
+            !seenLegos.has(lego.instance_id) ||
             // lego can only be changed again if highlighting an unhighlighted lego
             (newRows?.length > 0 && lego.selectedMatrixRows.length === 0) ||
             // or can be changed again if neighbor of changedLego --> it has priority
             (lego.selectedMatrixRows.length > 0 &&
-              neighborLego.instanceId === changedLego?.instanceId &&
+              neighborLego.instance_id === changedLego?.instance_id &&
               newRows?.length > 0)
           ) {
-            tnLegos = updateLego(tnLegos, lego.instanceId, newRows);
-            updatedLegosMap.set(lego.instanceId, newRows);
-            seenLegos.add(lego.instanceId);
+            tnLegos = updateLego(tnLegos, lego.instance_id, newRows);
+            updatedLegosMap.set(lego.instance_id, newRows);
+            seenLegos.add(lego.instance_id);
             changed = true;
             updateNeeded = true;
           }
@@ -147,8 +147,8 @@ export function simpleAutoFlow(
     // Apply all changes at once to make sure all updates are done
     setDroppedLegos(
       droppedLegos.map((l) =>
-        updatedLegosMap.has(l.instanceId)
-          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instanceId)! })
+        updatedLegosMap.has(l.instance_id)
+          ? l.with({ selectedMatrixRows: updatedLegosMap.get(l.instance_id)! })
           : l
       )
     );
@@ -169,7 +169,7 @@ const updateLego = (
   newRows: number[]
 ): DroppedLego[] => {
   const updatedLegos = tnLegos.map((l) =>
-    l.instanceId === targetId ? l.with({ selectedMatrixRows: newRows }) : l
+    l.instance_id === targetId ? l.with({ selectedMatrixRows: newRows }) : l
   );
   return updatedLegos;
 };
@@ -177,10 +177,10 @@ const updateLego = (
 /**
  * Helper method to find the current highlight operation of the given lego at leg index.
  * @param lego
- * @param legIndex
+ * @param leg_index
  * @returns X and Z parts of the highlight operation
  */
-const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
+const getHighlightOp = (lego: DroppedLego, leg_index: number) => {
   const nLegoLegs = lego.numberOfLegs;
   const combinedRow = new Array(lego.parity_check_matrix[0].length).fill(0);
 
@@ -189,28 +189,28 @@ const getHighlightOp = (lego: DroppedLego, legIndex: number) => {
       combinedRow[idx] = (combinedRow[idx] + val) % 2;
     });
   }
-  const xPart = combinedRow[legIndex];
-  const zPart = combinedRow[legIndex + nLegoLegs];
+  const xPart = combinedRow[leg_index];
+  const zPart = combinedRow[leg_index + nLegoLegs];
   return [xPart, zPart];
 };
 
 /**
  * Helper method to find the X and Z rows in the parity check matrix that correspond to the given leg index.
  * @param lego
- * @param legIndex
+ * @param leg_index
  * @returns List of X and Z row indices
  */
 const findRowIndices = (
   lego: DroppedLego,
-  legIndex: number
+  leg_index: number
 ): { xRowIndices: number[]; zRowIndices: number[] } => {
   const nLegoLegs = lego.numberOfLegs;
   const xRowIndices: number[] = [];
   const zRowIndices: number[] = [];
 
   lego.parity_check_matrix.forEach((row, idx) => {
-    if (row[legIndex] === 1) xRowIndices.push(idx);
-    if (row[legIndex + nLegoLegs] === 1) zRowIndices.push(idx);
+    if (row[leg_index] === 1) xRowIndices.push(idx);
+    if (row[leg_index + nLegoLegs] === 1) zRowIndices.push(idx);
   });
 
   return { xRowIndices, zRowIndices };

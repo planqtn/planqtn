@@ -102,7 +102,7 @@ export class Legos {
       {
         type_id: LegoType.T6,
         name: "[[6,0,3]] tensor",
-        shortName: "T6",
+        short_name: "T6",
         description: "[[6,0,3]] encoding tensor",
         parity_check_matrix: this.encoding_tensor_603,
         logical_legs: [4, 5],
@@ -113,7 +113,7 @@ export class Legos {
       {
         type_id: LegoType.T5,
         name: "[[5,1,2]] tensor",
-        shortName: "T5",
+        short_name: "T5",
         description: "[[5,1,2]] encoding tensor",
         parity_check_matrix: this.encoding_tensor_512,
         logical_legs: [4],
@@ -124,7 +124,7 @@ export class Legos {
       {
         type_id: LegoType.H,
         name: "Hadamard",
-        shortName: "H",
+        short_name: "H",
         description: "Hadamard tensor",
         parity_check_matrix: this.h,
         logical_legs: [],
@@ -138,7 +138,7 @@ export class Legos {
       {
         type_id: LegoType.ZREP,
         name: "Z-Repetition Code",
-        shortName: "ZREP3",
+        short_name: "ZREP3",
         description: "Bitflip code, ZZ stabilizers",
         is_dynamic: true,
         parameters: { d: 3 },
@@ -149,7 +149,7 @@ export class Legos {
       {
         type_id: LegoType.XREP,
         name: "X-Repetition Code",
-        shortName: "XREP3",
+        short_name: "XREP3",
         description: "Phase flip code, XX stabilizers",
         is_dynamic: true,
         parameters: { d: 3 },
@@ -160,7 +160,7 @@ export class Legos {
       {
         type_id: LegoType.ID,
         name: "Identity",
-        shortName: "I",
+        short_name: "I",
         description: "Identity tensor",
         parity_check_matrix: this.identity,
         logical_legs: [],
@@ -171,7 +171,7 @@ export class Legos {
       {
         type_id: "steane",
         name: "Steane Code",
-        shortName: "STN",
+        short_name: "STN",
         description: "Steane code encoding tensor",
         parity_check_matrix: this.steane_code_813_encoding_tensor,
         logical_legs: [7],
@@ -182,7 +182,7 @@ export class Legos {
       {
         type_id: "832",
         name: "[[8,3,2]] code",
-        shortName: "[[8,3,2]]",
+        short_name: "[[8,3,2]]",
         description: "[[8,3,2]] encoding tensor with all 3 logical legs",
 
         parity_check_matrix: [
@@ -206,7 +206,7 @@ export class Legos {
       {
         type_id: "15qrm",
         name: "[[15,1,3]] QRM",
-        shortName: "QRM15",
+        short_name: "QRM15",
         description: "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
         // prettier-ignore
         parity_check_matrix: [
@@ -238,7 +238,7 @@ export class Legos {
     return {
       type_id: LegoType.STOPPER_I,
       name: "Identity Stopper",
-      shortName: "I",
+      short_name: "I",
       description: "Identity stopper tensor",
       parity_check_matrix: this.stopper_i_paulis,
       logical_legs: [],
@@ -251,7 +251,7 @@ export class Legos {
     return {
       type_id: LegoType.STOPPER_Z,
       name: "Z Stopper",
-      shortName: "Z",
+      short_name: "Z",
       description: "Z-type stopper tensor",
       parity_check_matrix: this.stopper_z_paulis,
       logical_legs: [],
@@ -264,7 +264,7 @@ export class Legos {
     return {
       type_id: LegoType.STOPPER_X,
       name: "X Stopper",
-      shortName: "X",
+      short_name: "X",
       description: "X-type stopper tensor",
       parity_check_matrix: this.stopper_x_paulis,
       logical_legs: [],
@@ -314,7 +314,7 @@ export class Legos {
   public static createDynamicLego(
     legoId: string,
     numLegs: number,
-    instanceId: string,
+    instance_id: string,
     logicalPosition: LogicalPoint
   ): DroppedLego {
     const data = this.getDynamicLego({
@@ -324,11 +324,11 @@ export class Legos {
       }
     });
 
-    return new DroppedLego(data, logicalPosition, instanceId);
+    return new DroppedLego(data, logicalPosition, instance_id);
   }
 }
 
-export function recognize_parity_check_matrix(h: GF2): string | null {
+export function recognize_parityCheckMatrix(h: GF2): string | null {
   // Get all available legos
   const legos = Legos.listAvailableLegos();
 

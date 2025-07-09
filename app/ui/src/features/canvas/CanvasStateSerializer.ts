@@ -2,12 +2,13 @@ import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
+import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
 
 interface CanvasState {
   canvasId: string;
   pieces: Array<{
     id: string;
-    instanceId: string;
+    instance_id: string;
     x: number;
     y: number;
     is_dynamic?: boolean;
@@ -50,10 +51,10 @@ export class CanvasStateSerializer {
       canvasId: this.canvasId,
       pieces: pieces.map((piece) => ({
         id: piece.type_id,
-        instanceId: piece.instanceId,
+        instance_id: piece.instance_id,
         x: piece.logicalPosition.x,
         y: piece.logicalPosition.y,
-        shortName: piece.shortName,
+        short_name: piece.short_name,
         is_dynamic: piece.is_dynamic,
         parameters: piece.parameters,
         parity_check_matrix: piece.parity_check_matrix,
@@ -77,7 +78,56 @@ export class CanvasStateSerializer {
     canvasId: string;
   }> {
     try {
+      // Validate the encoded state first
+      const validationResult = validateEncodedCanvasState(encoded);
+      if (!validationResult.isValid) {
+        console.error(
+          "Canvas state validation failed:",
+          validationResult.errors
+        );
+        throw new Error(
+          `Invalid canvas state: ${validationResult.errors?.join(", ")}`
+        );
+      }
+
       const decoded = JSON.parse(atob(encoded));
+      console.log("Decoded state:", decoded);
+
+      // Check if this is legacy format and convert if needed
+      const isLegacyFormat = decoded.pieces?.some(
+        (piece: Record<string, unknown>) =>
+          piece.instanceId !== undefined && piece.shortName !== undefined
+      );
+
+      if (isLegacyFormat) {
+        console.log("Converting legacy format to current format");
+        // Convert legacy format to current format
+        decoded.pieces = decoded.pieces.map(
+          (piece: Record<string, unknown>) => ({
+            ...piece,
+            instance_id: piece.instanceId,
+            short_name: piece.shortName,
+            type_id: piece.id
+          })
+        );
+
+        // Convert legacy connection format
+        if (decoded.connections) {
+          decoded.connections = decoded.connections.map(
+            (conn: Record<string, unknown>) => ({
+              from: {
+                legoId: (conn.from as Record<string, unknown>).legoId,
+                leg_index: (conn.from as Record<string, unknown>).legIndex
+              },
+              to: {
+                legoId: (conn.to as Record<string, unknown>).legoId,
+                leg_index: (conn.to as Record<string, unknown>).legIndex
+              }
+            })
+          );
+        }
+      }
+
       if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
         return {
           pieces: [],
@@ -99,7 +149,7 @@ export class CanvasStateSerializer {
       const reconstructedPieces = decoded.pieces.map(
         (piece: {
           id: string;
-          instanceId: string;
+          instance_id: string;
           x: number;
           y: number;
           is_dynamic?: boolean;
@@ -108,7 +158,7 @@ export class CanvasStateSerializer {
           logical_legs?: number[];
           gauge_legs?: number[];
           name?: string;
-          shortName?: string;
+          short_name?: string;
           description?: string;
           selectedMatrixRows?: number[];
         }) => {
@@ -118,7 +168,7 @@ export class CanvasStateSerializer {
             piece.parity_check_matrix.length === 0
           ) {
             throw new Error(
-              `Piece ${piece.instanceId} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`
+              `Piece ${piece.instance_id} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`
             );
           }
 
@@ -128,7 +178,7 @@ export class CanvasStateSerializer {
               {
                 type_id: piece.id,
                 name: piece.name || piece.id,
-                shortName: piece.shortName || piece.id,
+                short_name: piece.short_name || piece.id,
                 description: piece.description || "",
 
                 is_dynamic: piece.is_dynamic || false,
@@ -138,7 +188,7 @@ export class CanvasStateSerializer {
                 gauge_legs: piece.gauge_legs || []
               },
               new LogicalPoint(piece.x, piece.y),
-              piece.instanceId,
+              piece.instance_id,
               { selectedMatrixRows: piece.selectedMatrixRows || [] }
             );
           }
@@ -159,7 +209,7 @@ export class CanvasStateSerializer {
               },
 
               new LogicalPoint(piece.x, piece.y),
-              piece.instanceId,
+              piece.instance_id,
 
               { selectedMatrixRows: piece.selectedMatrixRows || [] }
             );
@@ -173,7 +223,7 @@ export class CanvasStateSerializer {
                 piece.parity_check_matrix || predefinedLego.parity_check_matrix
             },
             new LogicalPoint(piece.x, piece.y),
-            piece.instanceId,
+            piece.instance_id,
             { selectedMatrixRows: piece.selectedMatrixRows || [] }
           );
         }

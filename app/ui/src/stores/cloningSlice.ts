@@ -20,7 +20,9 @@ export const useCloningSlice: StateCreator<
     const connections = get().connections;
     const isSelected =
       tensorNetwork &&
-      tensorNetwork?.legos.some((l) => l.instanceId === clickedLego.instanceId);
+      tensorNetwork?.legos.some(
+        (l) => l.instance_id === clickedLego.instance_id
+      );
 
     const cloneOffset = new LogicalPoint(20, 20);
     // Check if we're cloning multiple legos
@@ -33,9 +35,9 @@ export const useCloningSlice: StateCreator<
     const instanceIdMap = new Map<string, string>();
     const newLegos = legosToClone.map((l, idx) => {
       const newId = String(startingId + idx);
-      instanceIdMap.set(l.instanceId, newId);
+      instanceIdMap.set(l.instance_id, newId);
       return l.with({
-        instanceId: newId,
+        instance_id: newId,
         logicalPosition: l.logicalPosition.plus(cloneOffset)
       });
     });
@@ -44,19 +46,19 @@ export const useCloningSlice: StateCreator<
     const newConnections = connections
       .filter(
         (conn) =>
-          legosToClone.some((l) => l.instanceId === conn.from.legoId) &&
-          legosToClone.some((l) => l.instanceId === conn.to.legoId)
+          legosToClone.some((l) => l.instance_id === conn.from.legoId) &&
+          legosToClone.some((l) => l.instance_id === conn.to.legoId)
       )
       .map(
         (conn) =>
           new Connection(
             {
               legoId: instanceIdMap.get(conn.from.legoId)!,
-              legIndex: conn.from.legIndex
+              leg_index: conn.from.leg_index
             },
             {
               legoId: instanceIdMap.get(conn.to.legoId)!,
-              legIndex: conn.to.legIndex
+              leg_index: conn.to.leg_index
             }
           )
       );
@@ -66,21 +68,21 @@ export const useCloningSlice: StateCreator<
     get().addConnections(newConnections);
 
     // Set up drag state for the group
-    const positions: { [instanceId: string]: LogicalPoint } = {};
+    const positions: { [instance_id: string]: LogicalPoint } = {};
     newLegos.forEach((l) => {
-      positions[l.instanceId] = l.logicalPosition;
+      positions[l.instance_id] = l.logicalPosition;
     });
 
     if (newLegos.length > 1) {
       get().setGroupDragState({
-        legoInstanceIds: newLegos.map((l) => l.instanceId),
+        legoInstanceIds: newLegos.map((l) => l.instance_id),
         originalPositions: positions
       });
     }
 
     get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
-      draggedLegoInstanceId: newLegos[0].instanceId,
+      draggedLegoInstanceId: newLegos[0].instance_id,
       startMouseWindowPoint: new WindowPoint(x, y),
       startLegoLogicalPoint: clickedLego.logicalPosition.plus(
         new LogicalPoint(20, 20)

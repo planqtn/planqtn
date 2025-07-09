@@ -21,7 +21,8 @@ export function canDoHopfRule(
   // Count connections between the two legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
+      conn.containsLego(lego1.instance_id) &&
+      conn.containsLego(lego2.instance_id)
   );
 
   // Must have more than one connection between them
@@ -46,19 +47,20 @@ export async function applyHopfRule(
   // Get all connections between the two legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(xLego.instanceId) && conn.containsLego(zLego.instanceId)
+      conn.containsLego(xLego.instance_id) &&
+      conn.containsLego(zLego.instance_id)
   );
 
   // Get external connections for each lego
   const xExternalConns = connections.filter(
     (conn) =>
-      conn.containsLego(xLego.instanceId) &&
-      !conn.containsLego(zLego.instanceId)
+      conn.containsLego(xLego.instance_id) &&
+      !conn.containsLego(zLego.instance_id)
   );
   const zExternalConns = connections.filter(
     (conn) =>
-      conn.containsLego(zLego.instanceId) &&
-      !conn.containsLego(xLego.instanceId)
+      conn.containsLego(zLego.instance_id) &&
+      !conn.containsLego(xLego.instance_id)
   );
 
   // Calculate new number of legs for each lego (current - 2 for each pair removed)
@@ -68,7 +70,7 @@ export async function applyHopfRule(
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
-    ...droppedLegos.map((l) => parseInt(l.instanceId))
+    ...droppedLegos.map((l) => parseInt(l.instance_id))
   );
 
   // Create new legos with reduced legs
@@ -103,8 +105,9 @@ export async function applyHopfRule(
     if (
       !connectionsToRemove.some(
         (conn) =>
-          (conn.from.legoId === xLego.instanceId && conn.from.legIndex === i) ||
-          (conn.to.legoId === xLego.instanceId && conn.to.legIndex === i)
+          (conn.from.legoId === xLego.instance_id &&
+            conn.from.leg_index === i) ||
+          (conn.to.legoId === xLego.instance_id && conn.to.leg_index === i)
       )
     ) {
       xLegMapping.set(i, nextXLegIndex++);
@@ -115,8 +118,9 @@ export async function applyHopfRule(
     if (
       !connectionsToRemove.some(
         (conn) =>
-          (conn.from.legoId === zLego.instanceId && conn.from.legIndex === i) ||
-          (conn.to.legoId === zLego.instanceId && conn.to.legIndex === i)
+          (conn.from.legoId === zLego.instance_id &&
+            conn.from.leg_index === i) ||
+          (conn.to.legoId === zLego.instance_id && conn.to.leg_index === i)
       )
     ) {
       zLegMapping.set(i, nextZLegIndex++);
@@ -126,22 +130,22 @@ export async function applyHopfRule(
   // Recreate external connections for X lego
   xExternalConns.forEach((conn) => {
     const oldLegIndex =
-      conn.from.legoId === xLego.instanceId
-        ? conn.from.legIndex
-        : conn.to.legIndex;
+      conn.from.legoId === xLego.instance_id
+        ? conn.from.leg_index
+        : conn.to.leg_index;
     const externalEnd =
-      conn.from.legoId === xLego.instanceId ? conn.to : conn.from;
+      conn.from.legoId === xLego.instance_id ? conn.to : conn.from;
     const newLegIndex = xLegMapping.get(oldLegIndex);
 
     if (newLegIndex !== undefined) {
       newConnections.push(
         new Connection(
-          conn.from.legoId === xLego.instanceId
-            ? { legoId: newXLego.instanceId, legIndex: newLegIndex }
+          conn.from.legoId === xLego.instance_id
+            ? { legoId: newXLego.instance_id, leg_index: newLegIndex }
             : externalEnd,
-          conn.from.legoId === xLego.instanceId
+          conn.from.legoId === xLego.instance_id
             ? externalEnd
-            : { legoId: newXLego.instanceId, legIndex: newLegIndex }
+            : { legoId: newXLego.instance_id, leg_index: newLegIndex }
         )
       );
     }
@@ -150,22 +154,22 @@ export async function applyHopfRule(
   // Recreate external connections for Z lego
   zExternalConns.forEach((conn) => {
     const oldLegIndex =
-      conn.from.legoId === zLego.instanceId
-        ? conn.from.legIndex
-        : conn.to.legIndex;
+      conn.from.legoId === zLego.instance_id
+        ? conn.from.leg_index
+        : conn.to.leg_index;
     const externalEnd =
-      conn.from.legoId === zLego.instanceId ? conn.to : conn.from;
+      conn.from.legoId === zLego.instance_id ? conn.to : conn.from;
     const newLegIndex = zLegMapping.get(oldLegIndex);
 
     if (newLegIndex !== undefined) {
       newConnections.push(
         new Connection(
-          conn.from.legoId === zLego.instanceId
-            ? { legoId: newZLego.instanceId, legIndex: newLegIndex }
+          conn.from.legoId === zLego.instance_id
+            ? { legoId: newZLego.instance_id, leg_index: newLegIndex }
             : externalEnd,
-          conn.from.legoId === zLego.instanceId
+          conn.from.legoId === zLego.instance_id
             ? externalEnd
-            : { legoId: newZLego.instanceId, legIndex: newLegIndex }
+            : { legoId: newZLego.instance_id, leg_index: newLegIndex }
         )
       );
     }
@@ -174,21 +178,21 @@ export async function applyHopfRule(
   // Recreate remaining internal connections between the legos (if any)
   remainingConnections.forEach((conn) => {
     const oldXLegIndex =
-      conn.from.legoId === xLego.instanceId
-        ? conn.from.legIndex
-        : conn.to.legIndex;
+      conn.from.legoId === xLego.instance_id
+        ? conn.from.leg_index
+        : conn.to.leg_index;
     const oldZLegIndex =
-      conn.from.legoId === zLego.instanceId
-        ? conn.from.legIndex
-        : conn.to.legIndex;
+      conn.from.legoId === zLego.instance_id
+        ? conn.from.leg_index
+        : conn.to.leg_index;
     const newXLegIndex = xLegMapping.get(oldXLegIndex);
     const newZLegIndex = zLegMapping.get(oldZLegIndex);
 
     if (newXLegIndex !== undefined && newZLegIndex !== undefined) {
       newConnections.push(
         new Connection(
-          { legoId: newXLego.instanceId, legIndex: newXLegIndex },
-          { legoId: newZLego.instanceId, legIndex: newZLegIndex }
+          { legoId: newXLego.instance_id, leg_index: newXLegIndex },
+          { legoId: newZLego.instance_id, leg_index: newZLegIndex }
         )
       );
     }
@@ -197,14 +201,14 @@ export async function applyHopfRule(
   // Remove old legos and their connections
   const updatedDroppedLegos = droppedLegos
     .filter(
-      (lego) => !selectedLegos.some((l) => l.instanceId === lego.instanceId)
+      (lego) => !selectedLegos.some((l) => l.instance_id === lego.instance_id)
     )
     .concat(newLegos);
 
   const updatedConnections = connections
     .filter(
       (conn) =>
-        !selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
+        !selectedLegos.some((lego) => conn.containsLego(lego.instance_id))
     )
     .concat(newConnections);
 
@@ -216,7 +220,7 @@ export async function applyHopfRule(
       data: {
         legosToRemove: selectedLegos,
         connectionsToRemove: connections.filter((conn) =>
-          selectedLegos.some((lego) => conn.containsLego(lego.instanceId))
+          selectedLegos.some((lego) => conn.containsLego(lego.instance_id))
         ),
         legosToAdd: newLegos,
         connectionsToAdd: newConnections

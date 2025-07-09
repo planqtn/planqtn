@@ -67,11 +67,11 @@ class WeightEnumeratorTask(
                 tn.self_trace(
                     conn["from"]["legoId"],
                     conn["to"]["legoId"],
-                    [conn["from"]["legIndex"]],
-                    [conn["to"]["legIndex"]],
+                    [conn["from"]["leg_index"]],
+                    [conn["to"]["leg_index"]],
                 )
 
-            open_legs = [(leg.instanceId, leg.legIndex) for leg in args.open_legs]
+            open_legs = [(leg.instance_id, leg.leg_index) for leg in args.open_legs]
 
             start = time.time()
             print("debug", self.debug)

@@ -1,0 +1,293 @@
+{
+  "legos": [
+    {
+      "instance_id": "1",
+      "type_id": "stopper_i",
+      "short_name": "q0.id",
+      "description": "q0.id",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [[0, 0]],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "2",
+      "type_id": "h",
+      "short_name": "q0.h0",
+      "description": "q0.h0",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 0, 0, 1],
+        [0, 1, 1, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "3",
+      "type_id": "x_rep_code",
+      "short_name": "q0.z",
+      "description": "q0.z",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 1, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "4",
+      "type_id": "h",
+      "short_name": "q0.h1",
+      "description": "q0.h1",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 0, 0, 1],
+        [0, 1, 1, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "5",
+      "type_id": "x_rep_code",
+      "short_name": "q0.x",
+      "description": "q0.x",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 1, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "6",
+      "type_id": "stopper_i",
+      "short_name": "q1.id",
+      "description": "q1.id",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [[0, 0]],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "7",
+      "type_id": "h",
+      "short_name": "q1.h0",
+      "description": "q1.h0",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 0, 0, 1],
+        [0, 1, 1, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "8",
+      "type_id": "x_rep_code",
+      "short_name": "q1.z",
+      "description": "q1.z",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 1, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "9",
+      "type_id": "h",
+      "short_name": "q1.h1",
+      "description": "q1.h1",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 0, 0, 1],
+        [0, 1, 1, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "10",
+      "type_id": "x_rep_code",
+      "short_name": "q1.x",
+      "description": "q1.x",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [1, 1, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "11",
+      "type_id": "z_rep_code",
+      "short_name": "x0",
+      "description": "x0",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [0, 0, 1, 1],
+        [1, 1, 0, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    },
+    {
+      "instance_id": "12",
+      "type_id": "z_rep_code",
+      "short_name": "z0",
+      "description": "z0",
+      "x": 0,
+      "y": 0,
+      "parity_check_matrix": [
+        [0, 0, 1, 1],
+        [1, 1, 0, 0]
+      ],
+      "logical_legs": [],
+      "gauge_legs": []
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "legoId": "1",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "2",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "2",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "3",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "4",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "3",
+        "leg_index": 1
+      }
+    },
+    {
+      "from": {
+        "legoId": "4",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "5",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "6",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "7",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "7",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "8",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "9",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "8",
+        "leg_index": 1
+      }
+    },
+    {
+      "from": {
+        "legoId": "9",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "10",
+        "leg_index": 0
+      }
+    },
+    {
+      "from": {
+        "legoId": "11",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "5",
+        "leg_index": 2
+      }
+    },
+    {
+      "from": {
+        "legoId": "11",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "10",
+        "leg_index": 2
+      }
+    },
+    {
+      "from": {
+        "legoId": "12",
+        "leg_index": 0
+      },
+      "to": {
+        "legoId": "3",
+        "leg_index": 2
+      }
+    },
+    {
+      "from": {
+        "legoId": "12",
+        "leg_index": 1
+      },
+      "to": {
+        "legoId": "8",
+        "leg_index": 2
+      }
+    }
+  ],
+  "message": "Successfully created Tanner network"
+}

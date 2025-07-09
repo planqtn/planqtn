@@ -55,8 +55,8 @@ def test_css_tanner_network_bell_state():
 
     # Count usage of each leg
     for conn in data["connections"]:
-        from_key = f"{conn['from']['legoId']}-{conn['from']['legIndex']}"
-        to_key = f"{conn['to']['legoId']}-{conn['to']['legIndex']}"
+        from_key = f"{conn['from']['legoId']}-{conn['from']['leg_index']}"
+        to_key = f"{conn['to']['legoId']}-{conn['to']['leg_index']}"
 
         leg_usage[from_key] = leg_usage.get(from_key, 0) + 1
         leg_usage[to_key] = leg_usage.get(to_key, 0) + 1

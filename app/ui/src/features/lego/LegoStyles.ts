@@ -123,7 +123,7 @@ export abstract class LegoStyle {
     );
   }
 
-  getLegHighlightPauliOperator = (legIndex: number) => {
+  getLegHighlightPauliOperator = (leg_index: number) => {
     // First check if there's a pushed leg
     const h = this.lego.parity_check_matrix;
     const num_legs = h[0].length / 2;
@@ -142,8 +142,8 @@ export abstract class LegoStyle {
       });
     }
 
-    const xPart = combinedRow[legIndex];
-    const zPart = combinedRow[legIndex + num_legs];
+    const xPart = combinedRow[leg_index];
+    const zPart = combinedRow[leg_index + num_legs];
 
     if (xPart === 1 && zPart === 0) return PauliOperator.X;
     if (xPart === 0 && zPart === 1) return PauliOperator.Z;
@@ -181,19 +181,19 @@ export abstract class LegoStyle {
   }
 
   private calculateLegStyle(
-    legIndex: number,
+    leg_index: number,
     forSvg: boolean = false
   ): LegStyle {
-    const isLogical = this.lego.logical_legs.includes(legIndex);
-    const isGauge = this.lego.gauge_legs.includes(legIndex);
+    const isLogical = this.lego.logical_legs.includes(leg_index);
+    const isGauge = this.lego.gauge_legs.includes(leg_index);
     const legCount = this.lego.numberOfLegs;
-    const highlightPauliOperator = this.getLegHighlightPauliOperator(legIndex);
+    const highlightPauliOperator = this.getLegHighlightPauliOperator(leg_index);
     const isHighlighted = highlightPauliOperator !== PauliOperator.I;
 
-    if (this.lego.instanceId === "14") {
+    if (this.lego.instance_id === "14") {
       console.log(
         "calculateLegStyle",
-        legIndex,
+        leg_index,
         forSvg,
         this.lego.selectedMatrixRows
       );
@@ -209,7 +209,7 @@ export abstract class LegoStyle {
       const sortedLogicalLegs = [...this.lego.logical_legs].sort(
         (a, b) => a - b
       );
-      const logicalIndex = sortedLogicalLegs.indexOf(legIndex);
+      const logicalIndex = sortedLogicalLegs.indexOf(leg_index);
 
       if (logicalLegsCount === 1) {
         // Single logical leg points straight up
@@ -256,7 +256,7 @@ export abstract class LegoStyle {
       };
     } else if (isGauge) {
       // For gauge legs, calculate angle from bottom
-      const angle = Math.PI + (2 * Math.PI * legIndex) / legCount;
+      const angle = Math.PI + (2 * Math.PI * leg_index) / legCount;
       return {
         angle,
         length: 40,
@@ -283,7 +283,7 @@ export abstract class LegoStyle {
         .sort((a, b) => a - b);
 
       // Find the index of the current leg in the physical legs array
-      const physicalIndex = physicalLegIndices.indexOf(legIndex);
+      const physicalIndex = physicalLegIndices.indexOf(leg_index);
 
       if (physicalLegsCount === 1) {
         // Single physical leg points straight down
@@ -354,8 +354,8 @@ export abstract class LegoStyle {
     }
   }
 
-  getLegColor(legIndex: number): string {
-    const legStyle = this.legStyles[legIndex];
+  getLegColor(leg_index: number): string {
+    const legStyle = this.legStyles[leg_index];
     return legStyle.color;
   }
 }
@@ -566,32 +566,32 @@ export class ScalarStyle extends LegoStyle {
   }
 }
 export function getLegoStyle(
-  id: string,
+  type_id: string,
   numLegs: number,
   lego: DroppedLego
 ): LegoStyle {
   if (numLegs === 0) {
-    return new ScalarStyle(id, lego);
-  } else if (id === "h") {
-    return new HadamardStyle(id, lego);
-  } else if (id === Z_REP_CODE || id === X_REP_CODE) {
+    return new ScalarStyle(type_id, lego);
+  } else if (type_id === "h") {
+    return new HadamardStyle(type_id, lego);
+  } else if (type_id === Z_REP_CODE || type_id === X_REP_CODE) {
     if (numLegs > 2) {
-      return new RepetitionCodeStyle(id, lego);
+      return new RepetitionCodeStyle(type_id, lego);
     } else if (numLegs === 2) {
-      return new IdentityStyle(id, lego);
+      return new IdentityStyle(type_id, lego);
     } else if (numLegs === 1) {
       return new StopperStyle(
-        id === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        type_id === Z_REP_CODE ? "stopper_z" : "stopper_x",
         lego
       );
     } else {
-      return new GenericStyle(id, lego);
+      return new GenericStyle(type_id, lego);
     }
-  } else if (id.includes("stopper")) {
-    return new StopperStyle(id, lego);
-  } else if (id === "identity") {
-    return new IdentityStyle(id, lego);
+  } else if (type_id.includes("stopper")) {
+    return new StopperStyle(type_id, lego);
+  } else if (type_id === "identity") {
+    return new IdentityStyle(type_id, lego);
   } else {
-    return new GenericStyle(id, lego);
+    return new GenericStyle(type_id, lego);
   }
 }

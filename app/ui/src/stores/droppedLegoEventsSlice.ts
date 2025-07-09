@@ -12,7 +12,7 @@ export interface DroppedLegoClickHandlerSlice {
     metaKey: boolean
   ) => void;
   handleLegoMouseDown: (
-    instanceId: string,
+    instance_id: string,
     x: number,
     y: number,
     shiftKey: boolean
@@ -44,19 +44,19 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
         // Handle Ctrl+click for toggling selection
         // Find the current version of the lego from droppedLegos to avoid stale state
         const currentLego = get().droppedLegos.find(
-          (l) => l.instanceId === lego.instanceId
+          (l) => l.instance_id === lego.instance_id
         );
         if (!currentLego) return;
 
         const tensorNetwork = get().tensorNetwork;
         if (tensorNetwork) {
           const isSelected = tensorNetwork.legos.some(
-            (l) => l.instanceId === currentLego.instanceId
+            (l) => l.instance_id === currentLego.instance_id
           );
           if (isSelected) {
             // Remove lego from tensor network
             const newLegos = tensorNetwork.legos.filter(
-              (l) => l.instanceId !== currentLego.instanceId
+              (l) => l.instance_id !== currentLego.instance_id
             );
 
             if (newLegos.length === 0) {
@@ -64,8 +64,8 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
             } else {
               const newConnections = tensorNetwork.connections.filter(
                 (conn) =>
-                  conn.from.legoId !== currentLego.instanceId &&
-                  conn.to.legoId !== currentLego.instanceId
+                  conn.from.legoId !== currentLego.instance_id &&
+                  conn.to.legoId !== currentLego.instance_id
               );
               get().setTensorNetwork(
                 new TensorNetwork({
@@ -79,8 +79,8 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
             const newLegos = [...tensorNetwork.legos, currentLego];
             const newConnections = get().connections.filter(
               (conn) =>
-                newLegos.some((l) => l.instanceId === conn.from.legoId) &&
-                newLegos.some((l) => l.instanceId === conn.to.legoId)
+                newLegos.some((l) => l.instance_id === conn.from.legoId) &&
+                newLegos.some((l) => l.instance_id === conn.to.legoId)
             );
 
             get().setTensorNetwork(
@@ -99,14 +99,14 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       } else {
         // Regular click behavior
         const isCurrentlySelected = get().tensorNetwork?.legos.some(
-          (l) => l.instanceId === lego.instanceId
+          (l) => l.instance_id === lego.instance_id
         );
 
         if (isCurrentlySelected && get().tensorNetwork?.legos.length === 1) {
           // Second click on same already selected lego - expand to connected component
           // Find the current version of the lego from droppedLegos to avoid stale state
           const currentLego = get().droppedLegos.find(
-            (l) => l.instanceId === lego.instanceId
+            (l) => l.instance_id === lego.instance_id
           );
           if (!currentLego) return;
 
@@ -123,7 +123,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
           // First click on unselected lego or clicking different lego - select just this lego
           // Find the current version of the lego from droppedLegos to avoid stale state
           const currentLego = get().droppedLegos.find(
-            (l) => l.instanceId === lego.instanceId
+            (l) => l.instance_id === lego.instance_id
           );
           if (!currentLego) return;
 
@@ -136,34 +136,34 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
   },
 
   handleLegoMouseDown: (
-    instanceId: string,
+    instance_id: string,
     x: number,
     y: number,
     shiftKey: boolean
   ) => {
     // Get lego from store instead of passed prop
-    const lego = get().droppedLegos.find((l) => l.instanceId === instanceId);
+    const lego = get().droppedLegos.find((l) => l.instance_id === instance_id);
     if (!lego) return;
 
     if (shiftKey) {
       get().handleClone(lego, x, y);
     } else {
       const isPartOfSelection = get().tensorNetwork?.legos.some(
-        (l) => l.instanceId === lego.instanceId
+        (l) => l.instance_id === lego.instance_id
       );
 
       if (isPartOfSelection && (get().tensorNetwork?.legos.length || 0) > 1) {
         // Dragging a selected lego - move the whole group
         const selectedLegos = get().tensorNetwork?.legos || [];
         const currentPositions: {
-          [instanceId: string]: LogicalPoint;
+          [instance_id: string]: LogicalPoint;
         } = {};
         selectedLegos.forEach((l) => {
-          currentPositions[l.instanceId] = l.logicalPosition;
+          currentPositions[l.instance_id] = l.logicalPosition;
         });
 
         get().setGroupDragState({
-          legoInstanceIds: selectedLegos.map((l) => l.instanceId),
+          legoInstanceIds: selectedLegos.map((l) => l.instance_id),
           originalPositions: currentPositions
         });
       } else {
@@ -176,7 +176,7 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
       // not dragging yet but the index is set, so we can start dragging when the mouse moves
       get().setLegoDragState({
         draggingStage: DraggingStage.MAYBE_DRAGGING,
-        draggedLegoInstanceId: lego.instanceId,
+        draggedLegoInstanceId: lego.instance_id,
         startMouseWindowPoint: new WindowPoint(x, y),
         startLegoLogicalPoint: lego.logicalPosition
       });

@@ -24,24 +24,24 @@ class CssTannerCodeTN(TensorNetwork):
             h0 = StabilizerCodeTensorEnumerator(
                 Legos.h,
                 idx=f"q{q}.h0",
-                annotation=LegoAnnotation(type="h", shortName=f"h0{q}"),
+                annotation=LegoAnnotation(type="h", short_name=f"h0{q}"),
             )
             h1 = StabilizerCodeTensorEnumerator(
                 Legos.h,
                 idx=f"q{q}.h1",
-                annotation=LegoAnnotation(type="h", shortName=f"h1{q}"),
+                annotation=LegoAnnotation(type="h", short_name=f"h1{q}"),
             )
 
             x = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_x_legs),
                 idx=f"q{q}.x",
-                annotation=LegoAnnotation(type="x_rep_code", shortName=f"x{q}"),
+                annotation=LegoAnnotation(type="x_rep_code", short_name=f"x{q}"),
             )
 
             z = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_z_legs),
                 idx=f"q{q}.z",
-                annotation=LegoAnnotation(type="x_rep_code", shortName=f"z{q}"),
+                annotation=LegoAnnotation(type="x_rep_code", short_name=f"z{q}"),
             )
 
             # leg numbering for the spiders: 0 for logical, 1 for physical,
@@ -51,7 +51,7 @@ class CssTannerCodeTN(TensorNetwork):
             i_stopper = StabilizerCodeTensorEnumerator(
                 Legos.stopper_i,
                 idx=f"q{q}.id",
-                annotation=LegoAnnotation(type="stopper_i", shortName=f"id{q}"),
+                annotation=LegoAnnotation(type="stopper_i", short_name=f"id{q}"),
             )
             q_tensors.append(i_stopper)
             q_tensors.append(h0)
@@ -101,7 +101,7 @@ class CssTannerCodeTN(TensorNetwork):
                 f"x{i}",
                 annotation=LegoAnnotation(
                     type="z_rep_code",
-                    shortName=f"x{i}",
+                    short_name=f"x{i}",
                 ),
             )
             # print(f"=== x tensor {g_tensor.idx} -> {qs} === ")
@@ -127,7 +127,7 @@ class CssTannerCodeTN(TensorNetwork):
                 f"z{i}",
                 annotation=LegoAnnotation(
                     type="z_rep_code",
-                    shortName=f"z{i}",
+                    short_name=f"z{i}",
                 ),
             )
             gz_tensors.append(g_tensor)

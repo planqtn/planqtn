@@ -82,8 +82,8 @@ export const createGlobalTensorNetworkStore: StateCreator<
       state.connectedLegos = droppedLegos.filter((lego) =>
         connections.some(
           (connection) =>
-            connection.from.legoId === lego.instanceId ||
-            connection.to.legoId === lego.instanceId
+            connection.from.legoId === lego.instance_id ||
+            connection.to.legoId === lego.instance_id
         )
       );
     });

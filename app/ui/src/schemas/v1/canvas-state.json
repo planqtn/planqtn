@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Canvas State Schema v1",
+  "description": "Schema for validating canvas state including dropped legos, connections, and display settings",
+  "type": "object",
+  "properties": {
+    "canvasId": {
+      "type": "string",
+      "description": "Unique identifier for the canvas",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "pieces": {
+      "type": "array",
+      "description": "Array of dropped lego pieces on the canvas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Type identifier for the lego piece"
+          },
+          "instance_id": {
+            "type": "string",
+            "description": "Unique instance identifier for the lego piece"
+          },
+          "x": {
+            "type": "number",
+            "description": "X coordinate of the lego piece in logical coordinates"
+          },
+          "y": {
+            "type": "number",
+            "description": "Y coordinate of the lego piece in logical coordinates"
+          },
+          "is_dynamic": {
+            "type": "boolean",
+            "description": "Whether the lego piece is dynamic (has parameters)"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Dynamic parameters for the lego piece",
+            "additionalProperties": true
+          },
+          "parity_check_matrix": {
+            "type": "array",
+            "description": "Parity check matrix for the lego piece",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "minItems": 1
+          },
+          "logical_legs": {
+            "type": "array",
+            "description": "Array of logical leg indices",
+            "items": {
+              "type": "number"
+            }
+          },
+          "gauge_legs": {
+            "type": "array",
+            "description": "Array of gauge leg indices",
+            "items": {
+              "type": "number"
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the lego piece"
+          },
+          "short_name": {
+            "type": "string",
+            "description": "Short display name of the lego piece"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the lego piece"
+          },
+          "selectedMatrixRows": {
+            "type": "array",
+            "description": "Array of selected matrix row indices",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": ["id", "instance_id", "x", "y", "parity_check_matrix"],
+        "additionalProperties": false
+      }
+    },
+    "connections": {
+      "type": "array",
+      "description": "Array of connections between lego pieces",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "object",
+            "properties": {
+              "legoId": {
+                "type": "string",
+                "description": "Instance ID of the source lego"
+              },
+              "leg_index": {
+                "type": "number",
+                "description": "Index of the source leg",
+                "minimum": 0
+              }
+            },
+            "required": ["legoId", "leg_index"],
+            "additionalProperties": false
+          },
+          "to": {
+            "type": "object",
+            "properties": {
+              "legoId": {
+                "type": "string",
+                "description": "Instance ID of the target lego"
+              },
+              "leg_index": {
+                "type": "number",
+                "description": "Index of the target leg",
+                "minimum": 0
+              }
+            },
+            "required": ["legoId", "leg_index"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["from", "to"],
+        "additionalProperties": false
+      }
+    },
+    "hideConnectedLegs": {
+      "type": "boolean",
+      "description": "Whether to hide legs that are connected to other legos"
+    }
+  },
+  "required": ["canvasId", "pieces", "connections", "hideConnectedLegs"],
+  "additionalProperties": false
+}

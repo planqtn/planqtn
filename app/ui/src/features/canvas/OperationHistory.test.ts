@@ -18,7 +18,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -69,7 +69,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -146,7 +146,7 @@ describe("OperationHistory", () => {
         {
           type_id: "hadamard",
           name: "Hadamard",
-          shortName: "H",
+          short_name: "H",
           description: "Hadamard Gate",
           parity_check_matrix: [
             [1, 0],
@@ -163,7 +163,7 @@ describe("OperationHistory", () => {
         {
           type_id: "z-rep",
           name: "Z-Rep Code",
-          shortName: "Z",
+          short_name: "Z",
           description: "Z-Repetition Code",
           parity_check_matrix: [
             [0, 0, 0, 1, 1, 0],
@@ -178,7 +178,7 @@ describe("OperationHistory", () => {
       );
 
       const zRep2: DroppedLego = zRep1.with({
-        instanceId: "2",
+        instance_id: "2",
         logicalPosition: new LogicalPoint(200, 0)
       });
 
@@ -187,21 +187,21 @@ describe("OperationHistory", () => {
         new Connection(
           {
             legoId: "hadamard",
-            legIndex: 0
+            leg_index: 0
           },
           {
             legoId: "1",
-            legIndex: 0
+            leg_index: 0
           }
         ),
         new Connection(
           {
             legoId: "1",
-            legIndex: 1
+            leg_index: 1
           },
           {
             legoId: "2",
-            legIndex: 0
+            leg_index: 0
           }
         )
       ];
@@ -215,7 +215,7 @@ describe("OperationHistory", () => {
 
       // Fuse operation
       const fusedLego: DroppedLego = zRep1.with({
-        instanceId: "fused",
+        instance_id: "fused",
         parity_check_matrix: [
           [1, 1, 1, 1, 0, 0, 0, 0],
           [0, 0, 0, 0, 1, 1, 0, 0],
@@ -235,11 +235,11 @@ describe("OperationHistory", () => {
             new Connection(
               {
                 legoId: "h1",
-                legIndex: 0
+                leg_index: 0
               },
               {
                 legoId: "fused",
-                legIndex: 0
+                leg_index: 0
               }
             )
           ]
@@ -255,11 +255,11 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0
+              leg_index: 0
             },
             {
               legoId: "fused",
-              legIndex: 0
+              leg_index: 0
             }
           )
         ],
@@ -267,12 +267,12 @@ describe("OperationHistory", () => {
       };
 
       const zRep1_2: DroppedLego = zRep1.with({
-        instanceId: "zRep12",
+        instance_id: "zRep12",
         logicalPosition: new LogicalPoint(150, 0)
       });
 
       const zRep2_2: DroppedLego = zRep2.with({
-        instanceId: "zRep22",
+        instance_id: "zRep22",
         logicalPosition: new LogicalPoint(250, 0)
       });
 
@@ -282,21 +282,21 @@ describe("OperationHistory", () => {
           new Connection(
             {
               legoId: "h1",
-              legIndex: 0
+              leg_index: 0
             },
             {
               legoId: "zRep12",
-              legIndex: 0
+              leg_index: 0
             }
           ),
           new Connection(
             {
               legoId: "zRep12",
-              legIndex: 2
+              leg_index: 2
             },
             {
               legoId: "zRep22",
-              legIndex: 2
+              leg_index: 2
             }
           )
         ],
@@ -347,7 +347,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -378,7 +378,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -412,8 +412,8 @@ describe("OperationHistory", () => {
 
     it("should undo a connect operation", () => {
       const connection: Connection = new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 1 }
       );
 
       const operation: Operation = {
@@ -441,7 +441,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -466,7 +466,7 @@ describe("OperationHistory", () => {
       const result = operationHistory.redo([], []);
 
       expect(result.droppedLegos).toHaveLength(1);
-      expect(result.droppedLegos[0].instanceId).toBe("instance1");
+      expect(result.droppedLegos[0].instance_id).toBe("instance1");
     });
 
     it("should redo a move operation", () => {
@@ -474,7 +474,7 @@ describe("OperationHistory", () => {
         {
           type_id: "lego1",
           name: "Test Lego",
-          shortName: "TL",
+          short_name: "TL",
           description: "Test Description",
           parity_check_matrix: [
             [1, 0],
@@ -509,8 +509,8 @@ describe("OperationHistory", () => {
 
     it("should redo a connect operation", () => {
       const connection: Connection = new Connection(
-        { legoId: "instance1", legIndex: 0 },
-        { legoId: "instance2", legIndex: 1 }
+        { legoId: "instance1", leg_index: 0 },
+        { legoId: "instance2", leg_index: 1 }
       );
 
       const operation: Operation = {

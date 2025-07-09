@@ -96,23 +96,24 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
       // Get the dragged lego BEFORE updating the array to avoid stale references
       const draggedLego = droppedLegos.find(
-        (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+        (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
       );
       if (!draggedLego) return;
 
       const legosToUpdate = droppedLegos.filter(
         (lego) =>
-          lego.instanceId === legoDragState.draggedLegoInstanceId ||
-          groupDragState?.legoInstanceIds.includes(lego.instanceId)
+          lego.instance_id === legoDragState.draggedLegoInstanceId ||
+          groupDragState?.legoInstanceIds.includes(lego.instance_id)
       );
 
       const updatedLegos = legosToUpdate.map((lego) => {
         if (
           groupDragState &&
-          groupDragState.legoInstanceIds.includes(lego.instanceId)
+          groupDragState.legoInstanceIds.includes(lego.instance_id)
         ) {
           // Move all selected legos together using canvas deltas
-          const originalPos = groupDragState.originalPositions[lego.instanceId];
+          const originalPos =
+            groupDragState.originalPositions[lego.instance_id];
           return {
             oldLego: lego,
             updatedLego: lego.with({
@@ -146,7 +147,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           const updatedNetworkLegos = updatedLegos
             .filter((update) =>
               groupDragState.legoInstanceIds.includes(
-                update.updatedLego.instanceId
+                update.updatedLego.instance_id
               )
             )
             .map((update) => update.updatedLego);
@@ -228,11 +229,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         );
         if (Math.abs(mouseDelta.x) > 1 || Math.abs(mouseDelta.y) > 1) {
           const draggedLego = droppedLegos.find(
-            (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+            (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
           );
           if (!draggedLego) return;
           const isPartOfSelection = tensorNetwork?.legos.some(
-            (l) => l.instanceId === draggedLego.instanceId
+            (l) => l.instance_id === draggedLego.instance_id
           );
           if (!isPartOfSelection) {
             setTensorNetwork(
@@ -290,7 +291,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
         // Check if the dragged lego is a stopper and handle stopper logic
         const draggedLego = droppedLegos.find(
-          (lego) => lego.instanceId === legoDragState.draggedLegoInstanceId
+          (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
         );
         if (!draggedLego) return;
 
@@ -404,7 +405,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
         // Check if this lego already has connections - if so, just do regular move
         const hasExistingConnections = connectedLegos.some(
-          (connectedLego) => connectedLego.instanceId === lego.instanceId
+          (connectedLego) => connectedLego.instance_id === lego.instance_id
         );
 
         if (hasExistingConnections || !closestConnection) {
@@ -415,13 +416,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         const repositionedLego = new DroppedLego(
           lego,
           dropPosition,
-          existingLegoToRemove?.instanceId || newInstanceId()
+          existingLegoToRemove?.instance_id || newInstanceId()
         );
 
         // Remove the original lego if we're moving an existing one
         const legosForCalculation = existingLegoToRemove
           ? droppedLegos.filter(
-              (l) => l.instanceId !== existingLegoToRemove.instanceId
+              (l) => l.instance_id !== existingLegoToRemove.instance_id
             )
           : droppedLegos;
 
@@ -457,7 +458,7 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           // If we're moving an existing stopper, remove it first
           const legosForCalculation = existingLegoToRemove
             ? droppedLegos.filter(
-                (lego) => lego.instanceId !== existingLegoToRemove.instanceId
+                (lego) => lego.instance_id !== existingLegoToRemove.instance_id
               )
             : droppedLegos;
 
@@ -465,13 +466,13 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           const stopperLego: DroppedLego = new DroppedLego(
             draggedLego,
             dropPosition,
-            existingLegoToRemove?.instanceId || newInstanceId()
+            existingLegoToRemove?.instance_id || newInstanceId()
           );
 
           const addStopper = new AddStopper(connections, legosForCalculation);
           const result = addStopper.apply(
             closestLeg.lego,
-            closestLeg.legIndex,
+            closestLeg.leg_index,
             stopperLego
           );
           setLegosAndConnections(result.droppedLegos, result.connections);

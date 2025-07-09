@@ -44,6 +44,7 @@ dev = [
     # Want to pin to avoid surprise pull request changes
     "black==25.1.0",
     "mypy==1.16.0",
+    "pydantic-to-typescript==2.0.0"
 ]
 
 [project.urls]

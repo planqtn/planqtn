@@ -34,7 +34,7 @@ interface BuildingBlocksPanelProps {
 const customLego: LegoPiece = {
   type_id: "custom",
   name: "Custom Lego",
-  shortName: "Custom",
+  short_name: "Custom",
   description:
     "Create a custom lego with specified parity check matrix and logical legs",
   parity_check_matrix: [

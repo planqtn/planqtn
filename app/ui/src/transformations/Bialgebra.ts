@@ -21,7 +21,8 @@ export function canDoBialgebra(
   // Count connections between the two selected legos
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
+      conn.containsLego(lego1.instance_id) &&
+      conn.containsLego(lego2.instance_id)
   );
   // There should be exactly one connection between them
   return connectionsBetween.length === 1;
@@ -39,17 +40,18 @@ export async function applyBialgebra(
   const [lego1, lego2] = legosToCommute;
   const connectionsBetween = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) && conn.containsLego(lego2.instanceId)
+      conn.containsLego(lego1.instance_id) &&
+      conn.containsLego(lego2.instance_id)
   );
   const connectionsToLego1 = connections.filter(
     (conn) =>
-      conn.containsLego(lego1.instanceId) &&
-      !conn.containsLego(lego2.instanceId)
+      conn.containsLego(lego1.instance_id) &&
+      !conn.containsLego(lego2.instance_id)
   );
   const connectionsToLego2 = connections.filter(
     (conn) =>
-      conn.containsLego(lego2.instanceId) &&
-      !conn.containsLego(lego1.instanceId)
+      conn.containsLego(lego2.instance_id) &&
+      !conn.containsLego(lego1.instance_id)
   );
 
   const n_legs_lego1 = lego1.numberOfLegs;
@@ -77,7 +79,7 @@ export async function applyBialgebra(
 
   // Get the maximum instance ID from existing legos
   const maxInstanceId = Math.max(
-    ...droppedLegos.map((l) => parseInt(l.instanceId))
+    ...droppedLegos.map((l) => parseInt(l.instance_id))
   );
 
   // Create first group of legos
@@ -114,12 +116,12 @@ export async function applyBialgebra(
       newConnections.push(
         new Connection(
           {
-            legoId: newLegos[i].instanceId,
-            legIndex: j
+            legoId: newLegos[i].instance_id,
+            leg_index: j
           },
           {
-            legoId: newLegos[n_group_1 + j].instanceId,
-            legIndex: i
+            legoId: newLegos[n_group_1 + j].instance_id,
+            leg_index: i
           }
         )
       );
@@ -129,20 +131,22 @@ export async function applyBialgebra(
   // Create connections for external legs
   connectionsToLego1.forEach((conn, index) => {
     const externalLegoId =
-      conn.from.legoId === lego1.instanceId ? conn.to.legoId : conn.from.legoId;
+      conn.from.legoId === lego1.instance_id
+        ? conn.to.legoId
+        : conn.from.legoId;
     const externalLegIndex =
-      conn.from.legoId === lego1.instanceId
-        ? conn.to.legIndex
-        : conn.from.legIndex;
+      conn.from.legoId === lego1.instance_id
+        ? conn.to.leg_index
+        : conn.from.leg_index;
 
     // Connect only one lego from the first group to each external lego
     newConnections.push(
       new Connection(
         {
-          legoId: newLegos[index].instanceId,
-          legIndex: n_group_2 // Always use the last leg index for external connections
+          legoId: newLegos[index].instance_id,
+          leg_index: n_group_2 // Always use the last leg index for external connections
         },
-        { legoId: externalLegoId, legIndex: externalLegIndex }
+        { legoId: externalLegoId, leg_index: externalLegIndex }
       )
     );
   });
@@ -150,20 +154,22 @@ export async function applyBialgebra(
   // Create external connections for the second group
   connectionsToLego2.forEach((conn, index) => {
     const externalLegoId =
-      conn.from.legoId === lego2.instanceId ? conn.to.legoId : conn.from.legoId;
+      conn.from.legoId === lego2.instance_id
+        ? conn.to.legoId
+        : conn.from.legoId;
     const externalLegIndex =
-      conn.from.legoId === lego2.instanceId
-        ? conn.to.legIndex
-        : conn.from.legIndex;
+      conn.from.legoId === lego2.instance_id
+        ? conn.to.leg_index
+        : conn.from.leg_index;
 
     // Connect only one lego from the second group to each external lego
     newConnections.push(
       new Connection(
         {
-          legoId: newLegos[n_group_1 + index].instanceId,
-          legIndex: n_group_1 // Always use the last leg index for external connections
+          legoId: newLegos[n_group_1 + index].instance_id,
+          leg_index: n_group_1 // Always use the last leg index for external connections
         },
-        { legoId: externalLegoId, legIndex: externalLegIndex }
+        { legoId: externalLegoId, leg_index: externalLegIndex }
       )
     );
   });
@@ -171,7 +177,7 @@ export async function applyBialgebra(
   // Remove old legos and connections
   const updatedDroppedLegos = droppedLegos
     .filter(
-      (lego) => !legosToCommute.some((l) => l.instanceId === lego.instanceId)
+      (lego) => !legosToCommute.some((l) => l.instance_id === lego.instance_id)
     )
     .concat(newLegos);
 
@@ -181,23 +187,23 @@ export async function applyBialgebra(
         !connectionsBetween.some(
           (c) =>
             c.from.legoId === conn.from.legoId &&
-            c.from.legIndex === conn.from.legIndex &&
+            c.from.leg_index === conn.from.leg_index &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex
+            c.to.leg_index === conn.to.leg_index
         ) &&
         !connectionsToLego1.some(
           (c) =>
             c.from.legoId === conn.from.legoId &&
-            c.from.legIndex === conn.from.legIndex &&
+            c.from.leg_index === conn.from.leg_index &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex
+            c.to.leg_index === conn.to.leg_index
         ) &&
         !connectionsToLego2.some(
           (c) =>
             c.from.legoId === conn.from.legoId &&
-            c.from.legIndex === conn.from.legIndex &&
+            c.from.leg_index === conn.from.leg_index &&
             c.to.legoId === conn.to.legoId &&
-            c.to.legIndex === conn.to.legIndex
+            c.to.leg_index === conn.to.leg_index
         )
     )
     .concat(newConnections);

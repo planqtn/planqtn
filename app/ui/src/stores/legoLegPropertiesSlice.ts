@@ -81,19 +81,19 @@ export const createLegoLegPropertiesSlice: StateCreator<
   // This is extracted from the original shouldHideLeg logic
   const calculateLegHideState = (
     lego: DroppedLego,
-    legIndex: number,
+    leg_index: number,
     connections: Connection[]
   ): boolean => {
     const isConnected = connections.some((connection) => {
       if (
-        connection.from.legoId === lego.instanceId &&
-        connection.from.legIndex === legIndex
+        connection.from.legoId === lego.instance_id &&
+        connection.from.leg_index === leg_index
       ) {
         return true;
       }
       if (
-        connection.to.legoId === lego.instanceId &&
-        connection.to.legIndex === legIndex
+        connection.to.legoId === lego.instance_id &&
+        connection.to.leg_index === leg_index
       ) {
         return true;
       }
@@ -102,7 +102,7 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
     if (!isConnected) return false;
 
-    const thisLegStyle = lego.style!.legStyles[legIndex];
+    const thisLegStyle = lego.style!.legStyles[leg_index];
     const isThisHighlighted = thisLegStyle.is_highlighted;
 
     // If this leg is not highlighted, hide it only if connected to a non-highlighted leg
@@ -110,28 +110,28 @@ export const createLegoLegPropertiesSlice: StateCreator<
       // Check if connected to a highlighted leg
       return !connections.some((conn) => {
         if (
-          conn.from.legoId === lego.instanceId &&
-          conn.from.legIndex === legIndex
+          conn.from.legoId === lego.instance_id &&
+          conn.from.leg_index === leg_index
         ) {
           // Get connected lego from store
           const connectedLego = get().droppedLegos.find(
-            (l) => l.instanceId === conn.to.legoId
+            (l) => l.instance_id === conn.to.legoId
           );
           return (
-            connectedLego?.style!.legStyles[conn.to.legIndex].is_highlighted ||
+            connectedLego?.style!.legStyles[conn.to.leg_index].is_highlighted ||
             false
           );
         }
         if (
-          conn.to.legoId === lego.instanceId &&
-          conn.to.legIndex === legIndex
+          conn.to.legoId === lego.instance_id &&
+          conn.to.leg_index === leg_index
         ) {
           // Get connected lego from store
           const connectedLego = get().droppedLegos.find(
-            (l) => l.instanceId === conn.from.legoId
+            (l) => l.instance_id === conn.from.legoId
           );
           return (
-            connectedLego?.style!.legStyles[conn.from.legIndex]
+            connectedLego?.style!.legStyles[conn.from.leg_index]
               .is_highlighted || false
           );
         }
@@ -142,27 +142,30 @@ export const createLegoLegPropertiesSlice: StateCreator<
     // If this leg is highlighted, hide it only if connected to a leg with the same highlight color
     return connections.some((conn) => {
       if (
-        conn.from.legoId === lego.instanceId &&
-        conn.from.legIndex === legIndex
+        conn.from.legoId === lego.instance_id &&
+        conn.from.leg_index === leg_index
       ) {
         // Get connected lego from store
         const connectedLego = get().droppedLegos.find(
-          (l) => l.instanceId === conn.to.legoId
+          (l) => l.instance_id === conn.to.legoId
         );
         const connectedStyle =
-          connectedLego?.style!.legStyles[conn.to.legIndex];
+          connectedLego?.style!.legStyles[conn.to.leg_index];
         return (
           connectedStyle?.is_highlighted &&
           connectedStyle.color === thisLegStyle.color
         );
       }
-      if (conn.to.legoId === lego.instanceId && conn.to.legIndex === legIndex) {
+      if (
+        conn.to.legoId === lego.instance_id &&
+        conn.to.leg_index === leg_index
+      ) {
         // Get connected lego from store
         const connectedLego = get().droppedLegos.find(
-          (l) => l.instanceId === conn.from.legoId
+          (l) => l.instance_id === conn.from.legoId
         );
         const connectedStyle =
-          connectedLego?.style!.legStyles[conn.from.legIndex];
+          connectedLego?.style!.legStyles[conn.from.leg_index];
         return (
           connectedStyle?.is_highlighted &&
           connectedStyle.color === thisLegStyle.color
@@ -235,16 +238,20 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
           // Only calculate hide states if the feature is enabled and lego doesn't always show legs
           if (hideConnectedLegs && !lego.alwaysShowLegs) {
-            for (let legIndex = 0; legIndex < lego.numberOfLegs; legIndex++) {
-              hideStates[legIndex] = calculateLegHideState(
+            for (
+              let leg_index = 0;
+              leg_index < lego.numberOfLegs;
+              leg_index++
+            ) {
+              hideStates[leg_index] = calculateLegHideState(
                 lego,
-                legIndex,
+                leg_index,
                 connections
               );
             }
           }
 
-          state.legHideStates[lego.instanceId] = hideStates;
+          state.legHideStates[lego.instance_id] = hideStates;
         });
       });
 
@@ -270,17 +277,21 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
           // Only calculate connection states if the feature is enabled and lego doesn't always show legs
           if (!lego.alwaysShowLegs) {
-            for (let legIndex = 0; legIndex < lego.numberOfLegs; legIndex++) {
-              connectionStates[legIndex] = connections.some((conn) => {
+            for (
+              let leg_index = 0;
+              leg_index < lego.numberOfLegs;
+              leg_index++
+            ) {
+              connectionStates[leg_index] = connections.some((conn) => {
                 if (
-                  conn.from.legoId === lego.instanceId &&
-                  conn.from.legIndex === legIndex
+                  conn.from.legoId === lego.instance_id &&
+                  conn.from.leg_index === leg_index
                 ) {
                   return true;
                 }
                 if (
-                  conn.to.legoId === lego.instanceId &&
-                  conn.to.legIndex === legIndex
+                  conn.to.legoId === lego.instance_id &&
+                  conn.to.leg_index === leg_index
                 ) {
                   return true;
                 }
@@ -289,7 +300,7 @@ export const createLegoLegPropertiesSlice: StateCreator<
             }
           }
 
-          state.legConnectionStates[lego.instanceId] = connectionStates;
+          state.legConnectionStates[lego.instance_id] = connectionStates;
         });
       });
     },
@@ -308,31 +319,31 @@ export const createLegoLegPropertiesSlice: StateCreator<
         // Calculate highlight states for each connection
         connections.forEach((conn) => {
           const fromLego = droppedLegos.find(
-            (l) => l.instanceId === conn.from.legoId
+            (l) => l.instance_id === conn.from.legoId
           );
           const toLego = droppedLegos.find(
-            (l) => l.instanceId === conn.to.legoId
+            (l) => l.instance_id === conn.to.legoId
           );
 
           if (!fromLego || !toLego) return;
 
-          const fromLegStyle = fromLego.style!.legStyles[conn.from.legIndex];
-          const toLegStyle = toLego.style!.legStyles[conn.to.legIndex];
+          const fromLegStyle = fromLego.style!.legStyles[conn.from.leg_index];
+          const toLegStyle = toLego.style!.legStyles[conn.to.leg_index];
 
           // Create a stable connection key
           const [firstId, firstLeg, secondId, secondLeg] =
             conn.from.legoId < conn.to.legoId
               ? [
                   conn.from.legoId,
-                  conn.from.legIndex,
+                  conn.from.leg_index,
                   conn.to.legoId,
-                  conn.to.legIndex
+                  conn.to.leg_index
                 ]
               : [
                   conn.to.legoId,
-                  conn.to.legIndex,
+                  conn.to.leg_index,
                   conn.from.legoId,
-                  conn.from.legIndex
+                  conn.from.leg_index
                 ];
           const connectionKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
@@ -358,17 +369,17 @@ export const createLegoLegPropertiesSlice: StateCreator<
         for (const lego of droppedLegos) {
           const newConnections = connections.filter(
             (conn) =>
-              conn.from.legoId === lego.instanceId ||
-              conn.to.legoId === lego.instanceId
+              conn.from.legoId === lego.instance_id ||
+              conn.to.legoId === lego.instance_id
           );
-          const prevConnections = state.legoConnectionMap[lego.instanceId];
+          const prevConnections = state.legoConnectionMap[lego.instance_id];
           // Only replace if changed (shallow compare)
           if (
             !prevConnections ||
             prevConnections.length !== newConnections.length ||
             prevConnections.some((c, i) => c !== newConnections[i])
           ) {
-            state.legoConnectionMap[lego.instanceId] = newConnections;
+            state.legoConnectionMap[lego.instance_id] = newConnections;
           }
           // else: keep the same array reference!
         }

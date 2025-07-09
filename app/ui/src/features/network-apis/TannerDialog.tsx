@@ -22,7 +22,7 @@ import { useState, useEffect } from "react";
 interface TannerDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (matrix: number[][], logicalLegs: number[]) => void;
+  onSubmit: (matrix: number[][], logical_legs: number[]) => void;
   title?: string;
   cssOnly?: boolean;
 }
@@ -46,7 +46,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   const [matrixText, setMatrixText] = useState("");
   const [error, setError] = useState("");
   const [useStabilizer, setUseStabilizer] = useState(true);
-  const [logicalLegs, setLogicalLegs] = useState<number[]>([]);
+  const [logical_legs, setLogicalLegs] = useState<number[]>([]);
   const [numLegs, setNumLegs] = useState(0);
 
   // Set default value when dialog opens
@@ -257,7 +257,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   const handleSubmit = () => {
     const matrix = validateMatrix(matrixText);
     if (matrix) {
-      onSubmit(matrix, logicalLegs);
+      onSubmit(matrix, logical_legs);
       onClose();
     } else {
       toast({
@@ -344,13 +344,13 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                   {Array.from({ length: numLegs }, (_, i) => (
                     <Checkbox
                       key={i}
-                      isChecked={logicalLegs.includes(i)}
+                      isChecked={logical_legs.includes(i)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setLogicalLegs([...logicalLegs, i]);
+                          setLogicalLegs([...logical_legs, i]);
                         } else {
                           setLogicalLegs(
-                            logicalLegs.filter((leg) => leg !== i)
+                            logical_legs.filter((leg) => leg !== i)
                           );
                         }
                       }}

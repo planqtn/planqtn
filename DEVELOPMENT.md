@@ -46,6 +46,8 @@ The PlanqTN Studio involves a couple of components:
 - the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud Run Service in the hosted version
 - the [API](#planqtn-api) is a web service to serve relatively fast, but non-JS implemented logic
 - the [Jobs](#planqtn-background-jobs) are are for executing long running computaitons
+- the [Edge functions](#planqtn-edge-functions)
+- the [Types](#planqtn-types)
 
 We use GCP Cloud Run for executing workloads and the API and we use Supabase for realtime messaging, database, authentication.
 It is important to understand the concepts of User context and Runtime context
@@ -291,6 +293,20 @@ To develop with these functions, locally it is recommended to use the reload fun
 ```
 find supabase -name '*.ts' | entr -r npx supabase functions deploy planqtn_job_run
 ```
+
+## PlanqTN Types
+
+PlanqTN Types define the data interface between different components. The following categories of types are used in both Python components and Typescript components and hence need careful consideration when changing them.
+
+- PlanqTN API calls request and response JSON objects
+- PlanqTN Database Schema:
+  - authentication and quotas
+  - PlanqTN Jobs task management
+    - task definitions and results
+    - progress report update JSON objects that are stored in a Supabase table
+- PlanqTN Studio encoded canvas state JSON objects - to export into JSON files, encoded URL state and copy-paste features
+
+At the moment these are a bit all over the place, but eventually we should have a nice centralized, automated way of keeping in sync the Python and the Typescript definitions. Track https://github.com/planqtn/planqtn/issues/112 for updates on this.
 
 # Reference for developer tools
 

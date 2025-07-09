@@ -12,7 +12,7 @@ describe("TensorNetwork", () => {
         {
           type_id: "encoding_tensor_602",
           name: "Encoding Tensor 602",
-          shortName: "602",
+          short_name: "602",
           description: "Encoding Tensor 602",
 
           parity_check_matrix: [
@@ -33,7 +33,7 @@ describe("TensorNetwork", () => {
         {
           type_id: "stopper_i",
           name: "Identity Stopper",
-          shortName: "I",
+          short_name: "I",
           description: "Identity Stopper",
 
           parity_check_matrix: [[0, 0]],
@@ -47,7 +47,7 @@ describe("TensorNetwork", () => {
         {
           type_id: "stopper_i",
           name: "Identity Stopper",
-          shortName: "I",
+          short_name: "I",
           description: "Identity Stopper",
 
           parity_check_matrix: [[0, 0]],
@@ -62,12 +62,12 @@ describe("TensorNetwork", () => {
     // Create the connections
     const connections: Connection[] = [
       new Connection(
-        { legoId: "stop1", legIndex: 0 },
-        { legoId: "0", legIndex: 4 }
+        { legoId: "stop1", leg_index: 0 },
+        { legoId: "0", leg_index: 4 }
       ),
       new Connection(
-        { legoId: "stop2", legIndex: 0 },
-        { legoId: "0", legIndex: 5 }
+        { legoId: "stop2", leg_index: 0 },
+        { legoId: "0", leg_index: 5 }
       )
     ];
 
@@ -100,7 +100,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -120,7 +120,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -140,7 +140,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -160,7 +160,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -180,7 +180,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -200,7 +200,7 @@ describe("TensorNetwork", () => {
           {
             type_id: "t5",
             name: "[[5,1,2]] tensor",
-            shortName: "T5",
+            short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
             parity_check_matrix: [
               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -219,36 +219,36 @@ describe("TensorNetwork", () => {
       ],
       connections: [
         new Connection(
-          { legoId: "5", legIndex: 0 },
-          { legoId: "6", legIndex: 3 }
+          { legoId: "5", leg_index: 0 },
+          { legoId: "6", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 0 },
-          { legoId: "5", legIndex: 3 }
+          { legoId: "4", leg_index: 0 },
+          { legoId: "5", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 2 },
-          { legoId: "3", legIndex: 3 }
+          { legoId: "4", leg_index: 2 },
+          { legoId: "3", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 1 },
-          { legoId: "3", legIndex: 0 }
+          { legoId: "4", leg_index: 1 },
+          { legoId: "3", leg_index: 0 }
         ),
         new Connection(
-          { legoId: "5", legIndex: 2 },
-          { legoId: "2", legIndex: 3 }
+          { legoId: "5", leg_index: 2 },
+          { legoId: "2", leg_index: 3 }
         ),
         new Connection(
-          { legoId: "6", legIndex: 1 },
-          { legoId: "1", legIndex: 0 }
+          { legoId: "6", leg_index: 1 },
+          { legoId: "1", leg_index: 0 }
         ),
         new Connection(
-          { legoId: "2", legIndex: 1 },
-          { legoId: "1", legIndex: 2 }
+          { legoId: "2", leg_index: 1 },
+          { legoId: "1", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 3 },
-          { legoId: "2", legIndex: 0 }
+          { legoId: "1", leg_index: 3 },
+          { legoId: "2", leg_index: 0 }
         )
       ]
     });
@@ -291,10 +291,10 @@ describe("TensorNetwork", () => {
       ])
     );
     expect(conjoined.legs).toEqual([
-      { instanceId: "1", legIndex: 0 },
-      { instanceId: "1", legIndex: 1 },
-      { instanceId: "2", legIndex: 0 },
-      { instanceId: "2", legIndex: 1 }
+      { instance_id: "1", leg_index: 0 },
+      { instance_id: "1", leg_index: 1 },
+      { instance_id: "2", leg_index: 0 },
+      { instance_id: "2", leg_index: 1 }
     ]);
   });
 });

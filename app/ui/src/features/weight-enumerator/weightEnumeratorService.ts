@@ -1,6 +1,6 @@
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork";
 import { getApiUrl } from "../../config/config";
-import { getAccessToken } from "../../lib/auth";
+import { getAccessToken } from "../auth/auth";
 import { config } from "../../config/config";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@chakra-ui/react";
@@ -78,10 +78,10 @@ export class WeightEnumeratorService {
           payload: {
             legos: tensorNetwork.legos.reduce(
               (acc, lego) => {
-                acc[lego.instanceId] = {
-                  instanceId: lego.instanceId,
-                  shortName: lego.shortName || "Generic Lego",
-                  name: lego.shortName || "Generic Lego",
+                acc[lego.instance_id] = {
+                  instance_id: lego.instance_id,
+                  short_name: lego.short_name || "Generic Lego",
+                  name: lego.short_name || "Generic Lego",
                   id: lego.type_id,
                   parity_check_matrix: lego.parity_check_matrix,
                   logical_legs: lego.logical_legs,

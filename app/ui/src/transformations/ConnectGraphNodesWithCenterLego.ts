@@ -22,7 +22,7 @@ export const applyConnectGraphNodes = async (
 }> => {
   // Get max instance ID
   const maxInstanceId = Math.max(
-    ...allLegos.map((l) => parseInt(l.instanceId))
+    ...allLegos.map((l) => parseInt(l.instance_id))
   );
   const numLegs = legos.length + 1;
 
@@ -44,11 +44,11 @@ export const applyConnectGraphNodes = async (
 
     // Find all connected legs
     connections.forEach((conn) => {
-      if (conn.from.legoId === lego.instanceId) {
-        connectedLegs.add(conn.from.legIndex);
+      if (conn.from.legoId === lego.instance_id) {
+        connectedLegs.add(conn.from.leg_index);
       }
-      if (conn.to.legoId === lego.instanceId) {
-        connectedLegs.add(conn.to.legIndex);
+      if (conn.to.legoId === lego.instance_id) {
+        connectedLegs.add(conn.to.leg_index);
       }
     });
 
@@ -73,7 +73,7 @@ export const applyConnectGraphNodes = async (
       return Legos.createDynamicLego(
         "z_rep_code",
         lego.numberOfLegs + 1,
-        lego.instanceId,
+        lego.instance_id,
         lego.logicalPosition
       );
     }
@@ -87,7 +87,7 @@ export const applyConnectGraphNodes = async (
         {
           type_id: "h",
           name: "Hadamard",
-          shortName: "H",
+          short_name: "H",
           description: "Hadamard",
           parity_check_matrix: [
             [1, 0, 0, 1],
@@ -110,12 +110,12 @@ export const applyConnectGraphNodes = async (
     ({ lego, danglingLeg }, index) => {
       return [
         new Connection(
-          { legoId: connectorLego.instanceId, legIndex: index },
-          { legoId: hadamardLegos[index].instanceId, legIndex: 0 }
+          { legoId: connectorLego.instance_id, leg_index: index },
+          { legoId: hadamardLegos[index].instance_id, leg_index: 0 }
         ),
         new Connection(
-          { legoId: hadamardLegos[index].instanceId, legIndex: 1 },
-          { legoId: lego.instanceId, legIndex: danglingLeg }
+          { legoId: hadamardLegos[index].instance_id, leg_index: 1 },
+          { legoId: lego.instance_id, leg_index: danglingLeg }
         )
       ];
     }
@@ -124,7 +124,7 @@ export const applyConnectGraphNodes = async (
   // Update state
   const updatedLegos = [
     ...allLegos.filter(
-      (l) => !legos.some((selected) => selected.instanceId === l.instanceId)
+      (l) => !legos.some((selected) => selected.instance_id === l.instance_id)
     ),
     ...newLegos,
     connectorLego,

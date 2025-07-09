@@ -1,5 +1,13 @@
 #!/bin/bash
 
-export PYTHONPATH=".."
+
+
+# ensure that this is ran from the ui directory
+if [ ! -f "./src/main.tsx" ]; then
+  echo "Please run this script from the app/ui directory"
+  exit 1
+fi
+
+export PYTHONPATH="`pwd`/../.."
 
 find . -type f -name '*.ts*' | entr -r $@

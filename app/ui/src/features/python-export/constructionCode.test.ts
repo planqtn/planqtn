@@ -29,7 +29,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
@@ -76,7 +76,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
@@ -95,7 +95,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "steane",
             name: "Steane Code",
-            shortName: "STN",
+            short_name: "STN",
             description: "Steane code encoding tensor",
             parity_check_matrix: [
               [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -117,7 +117,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "x_rep_code",
             name: "X-Repetition Code",
-            shortName: "XREP3",
+            short_name: "XREP3",
             description: "Phase flip code, XX stabilizers",
             is_dynamic: true,
             parameters: { d: 4 },
@@ -137,7 +137,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "z_rep_code",
             name: "Z-Repetition Code",
-            shortName: "ZREP3",
+            short_name: "ZREP3",
             description: "Bitflip code, ZZ stabilizers",
             is_dynamic: true,
             parameters: { d: 3 },
@@ -157,7 +157,7 @@ tn = TensorNetwork(nodes)
           {
             type_id: "stopper_x",
             name: "X Stopper",
-            shortName: "X",
+            short_name: "X",
             description: "X Stopper",
             parity_check_matrix: [[1, 0]],
             logical_legs: [],
@@ -169,20 +169,20 @@ tn = TensorNetwork(nodes)
       ],
       connections: [
         new Connection(
-          { legoId: "1", legIndex: 0 },
-          { legoId: "3", legIndex: 7 }
+          { legoId: "1", leg_index: 0 },
+          { legoId: "3", leg_index: 7 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 1 },
-          { legoId: "2", legIndex: 2 }
+          { legoId: "1", leg_index: 1 },
+          { legoId: "2", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "4", legIndex: 0 },
-          { legoId: "1", legIndex: 2 }
+          { legoId: "4", leg_index: 0 },
+          { legoId: "1", leg_index: 2 }
         ),
         new Connection(
-          { legoId: "1", legIndex: 3 },
-          { legoId: "5", legIndex: 0 }
+          { legoId: "1", leg_index: 3 },
+          { legoId: "5", leg_index: 0 }
         )
       ]
     });
@@ -191,6 +191,7 @@ tn = TensorNetwork(nodes)
 
     const python_script = code + "\n\n" + "print(tn.conjoin_nodes().h)";
     // Execute Python script and handle output
+    console.log("this file", process.env.PYTHONPATH);
     await new Promise<void>((resolve, reject) => {
       exec(`python3 -c '${python_script}'`, (error, stdout, stderr) => {
         if (error) {
@@ -211,7 +212,7 @@ tn = TensorNetwork(nodes)
           );
 
         // prettier-ignore
-        const expected_parity_check_matrix = [
+        const expected_parityCheckMatrix = [
             [1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1],
             [0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -226,7 +227,7 @@ tn = TensorNetwork(nodes)
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1]
         ];
 
-        expect(parity_check_matrix).toEqual(expected_parity_check_matrix);
+        expect(parity_check_matrix).toEqual(expected_parityCheckMatrix);
         resolve();
       });
     });
