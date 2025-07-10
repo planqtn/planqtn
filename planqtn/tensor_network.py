@@ -664,6 +664,7 @@ class TensorNetwork:
                 verbose=verbose,
                 progress_reporter=progress_reporter,
                 truncate_length=self.truncate_length,
+                open_legs=open_legs,
             )
 
         parity_check_enums = {}
@@ -716,6 +717,7 @@ class TensorNetwork:
             node2_pte = None if node_idx2 not in self.ptes else self.ptes[node_idx2]
 
             # print(f"PTEs: {node1_pte}, {node2_pte}")
+            # check that the length of the tensor is a power of 4
 
             if node1_pte == node2_pte:
                 # both nodes are in the same PTE!
