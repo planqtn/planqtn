@@ -74,8 +74,6 @@ class WeightEnumeratorTask(
             open_legs = [(leg.instance_id, leg.leg_index) for leg in args.open_legs]
 
             start = time.time()
-            print("debug", self.debug)
-            print("progress_reporter", progress_reporter)
             # Conjoin all nodes to get the final tensor network
             polynomial = tn.stabilizer_enumerator_polynomial(
                 verbose=self.debug,

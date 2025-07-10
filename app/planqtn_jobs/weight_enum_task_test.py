@@ -1,16 +1,13 @@
 import datetime
 import json
 import os
-import subprocess
 import uuid
 import threading
 import time
 import asyncio
-from pathlib import Path
-import postgrest
 import pytest
 import requests
-import supabase
+from planqtn.simple_poly import SimplePoly
 from planqtn_fixtures.job_debugger import JobDebugger
 from planqtn_fixtures.cloud_run import get_execution_details
 from planqtn_jobs.main import main
@@ -18,17 +15,123 @@ from planqtn_types.api_types import WeightEnumeratorCalculationResult
 from supabase import ClientOptions, create_client, Client
 from supabase.client import AsyncClient
 from planqtn_fixtures import *
-from google.cloud import run_v2
-from google.cloud.run_v2 import Execution, TaskTemplate, Container
-from google.longrunning import operations_pb2
-from google.api_core import operations_v1
-from google.api_core import grpc_helpers
-from google.protobuf import json_format
-from google.protobuf import any_pb2
-from google.cloud.run_v2.types.execution import Execution as ExecutionProto
+
 
 # Test data from weight_enum_task_test.py
 TEST_JSON = """{"legos":{"1":{"instance_id":"1","short_name":"STN","name":"STN","type_id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]},"2":{"instance_id":"2","short_name":"STN","name":"STN","type_id":"steane","parity_check_matrix":[[0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],[0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0],[1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0],[0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1]],"logical_legs":[7],"gauge_legs":[]}},"connections":[{"from":{"legoId":"1","leg_index":1},"to":{"legoId":"2","leg_index":5}}],"truncate_length":3,"open_legs":[{"instance_id":"1","leg_index":3},{"instance_id":"1","leg_index":6}]}"""
+TEST_JSON_SINGLE_LEGO_OPEN_LEGS = """{
+  "legos": {
+    "2": {
+      "instance_id": "2",
+      "short_name": "T6",
+      "name": "T6",
+      "type_id": "t6",
+      "parity_check_matrix": [
+        [
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "logical_legs": [
+        4,
+        5
+      ],
+      "gauge_legs": []
+    }
+  },
+  "connections": [],
+  "truncate_length": null,
+  "open_legs": [
+    {
+      "instance_id": "2",
+      "leg_index": 0
+    },
+    {
+      "instance_id": "2",
+      "leg_index": 1
+    }
+  ]
+}"""
 
 
 @pytest.fixture
@@ -74,17 +177,28 @@ YI: {3:2}""",
     assert isinstance(result, dict)
 
     res = WeightEnumeratorCalculationResult(**result)
-    assert res.stabilizer_polynomial == expected.stabilizer_polynomial
-    assert res.normalizer_polynomial == expected.normalizer_polynomial
+    assert res.stabilizer_polynomial == expected.stabilizer_polynomial, (
+        "Not equal, got:\n"
+        + res.stabilizer_polynomial
+        + "\n"
+        + expected.stabilizer_polynomial
+    )
+    assert res.normalizer_polynomial == expected.normalizer_polynomial, (
+        "Not equal, got:\n"
+        + res.normalizer_polynomial
+        + "\n"
+        + expected.normalizer_polynomial
+    )
     assert res.time > 0
 
 
-def test_main_without_progress_bar(temp_input_file, temp_output_file, monkeypatch):
+def test_main_without_progress_bar(temp_output_file, monkeypatch):
+    input_file = create_temp_file_with_data(TEST_JSON)
     """Test main.py without local progress bar."""
     # Mock sys.argv to simulate command line arguments
     monkeypatch.setattr(
         "sys.argv",
-        ["main.py", "--input-file", temp_input_file, "--output-file", temp_output_file],
+        ["main.py", "--input-file", input_file, "--output-file", temp_output_file],
     )
 
     # Run the main function
@@ -94,7 +208,54 @@ def test_main_without_progress_bar(temp_input_file, temp_output_file, monkeypatc
     validate_weight_enumerator_result_output_file(temp_output_file)
 
 
-def test_main_with_progress_bar(temp_input_file, temp_output_file, monkeypatch):
+# repro https://github.com/planqtn/planqtn/issues/70
+def test_open_legs_t6_code(temp_output_file, monkeypatch):
+    input_file = create_temp_file_with_data(TEST_JSON_SINGLE_LEGO_OPEN_LEGS)
+    """Test main.py with open legs."""
+    # Mock sys.argv to simulate command line arguments
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "main.py",
+            "--input-file",
+            input_file,
+            "--output-file",
+            temp_output_file,
+            "--debug",
+        ],
+    )
+
+    # Run the main function
+    main()
+
+    # Validate the result
+    validate_weight_enumerator_result_output_file(
+        temp_output_file,
+        expected=WeightEnumeratorCalculationResult(
+            stabilizer_polynomial="""II: {0:1, 3:2, 4:1}
+IZ: {2:1, 3:2, 4:1}
+ZI: {2:1, 3:2, 4:1}
+ZZ: {1:1, 2:1, 3:1, 4:1}
+IX: {2:1, 3:2, 4:1}
+IY: {3:2, 4:2}
+ZX: {3:2, 4:2}
+ZY: {2:1, 3:2, 4:1}
+XI: {2:1, 3:2, 4:1}
+XZ: {3:2, 4:2}
+YI: {3:2, 4:2}
+YZ: {2:1, 3:2, 4:1}
+XX: {1:1, 2:1, 3:1, 4:1}
+XY: {2:1, 3:2, 4:1}
+YX: {2:1, 3:2, 4:1}
+YY: {2:2, 3:2}""",
+            normalizer_polynomial="not supported for open legs yet",
+            time=0.01,
+        ),
+    )
+
+
+def test_main_with_progress_bar(temp_output_file, monkeypatch):
+    input_file = create_temp_file_with_data(TEST_JSON)
     """Test main.py with local progress bar."""
     # Mock sys.argv to simulate command line arguments
     monkeypatch.setattr(
@@ -102,7 +263,7 @@ def test_main_with_progress_bar(temp_input_file, temp_output_file, monkeypatch):
         [
             "main.py",
             "--input-file",
-            temp_input_file,
+            input_file,
             "--output-file",
             temp_output_file,
             "--local-progress-bar",
@@ -118,9 +279,7 @@ def test_main_with_progress_bar(temp_input_file, temp_output_file, monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.local_only_integration
-def test_main_with_task_store(
-    temp_input_file, temp_output_file, supabase_setup, monkeypatch
-):
+def test_main_with_task_store(temp_output_file, supabase_setup, monkeypatch):
     """Test main.py with task store integration."""
     # Create Supabase client with test user token
     supabase: Client = create_client(

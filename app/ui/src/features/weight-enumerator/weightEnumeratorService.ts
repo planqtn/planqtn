@@ -82,7 +82,7 @@ export class WeightEnumeratorService {
                   instance_id: lego.instance_id,
                   short_name: lego.short_name || "Generic Lego",
                   name: lego.short_name || "Generic Lego",
-                  id: lego.type_id,
+                  type_id: lego.type_id,
                   parity_check_matrix: lego.parity_check_matrix,
                   logical_legs: lego.logical_legs,
                   gauge_legs: lego.gauge_legs
