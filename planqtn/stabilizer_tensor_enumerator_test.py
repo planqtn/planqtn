@@ -431,3 +431,56 @@ def test_truncated_tensor_enumerator(truncate_length, expected_wep):
         )
         == expected_wep
     )
+
+
+def test_tensor_enumerator_with_open_legs():
+    h = Legos.steane_code_813_encoding_tensor
+    te = StabilizerCodeTensorEnumerator(h)
+    actual_wep = te.stabilizer_enumerator_polynomial(
+        open_legs=[0, 1], truncate_length=None
+    )
+    assert actual_wep == {
+        (0, 0, 0, 0): SimplePoly({0: 1, 4: 9, 6: 6}),
+        (0, 0, 0, 1): SimplePoly({3: 4, 5: 12}),
+        (0, 0, 1, 0): SimplePoly({3: 4, 5: 12}),
+        (0, 0, 1, 1): SimplePoly({2: 3, 6: 7, 4: 6}),
+        (0, 1, 0, 0): SimplePoly({3: 4, 5: 12}),
+        (0, 1, 0, 1): SimplePoly({3: 4, 5: 12}),
+        (0, 1, 1, 0): SimplePoly({4: 12, 6: 4}),
+        (0, 1, 1, 1): SimplePoly({4: 12, 6: 4}),
+        (1, 0, 0, 0): SimplePoly({3: 4, 5: 12}),
+        (1, 0, 0, 1): SimplePoly({4: 12, 6: 4}),
+        (1, 0, 1, 0): SimplePoly({3: 4, 5: 12}),
+        (1, 0, 1, 1): SimplePoly({4: 12, 6: 4}),
+        (1, 1, 0, 0): SimplePoly({2: 3, 4: 6, 6: 7}),
+        (1, 1, 0, 1): SimplePoly({4: 12, 6: 4}),
+        (1, 1, 1, 0): SimplePoly({4: 12, 6: 4}),
+        (1, 1, 1, 1): SimplePoly({2: 3, 4: 6, 6: 7}),
+    }
+
+
+def test_tensor_enumerator_with_open_legs_t6():
+    h = Legos.enconding_tensor_603
+    te = StabilizerCodeTensorEnumerator(h)
+    actual_wep = te.stabilizer_enumerator_polynomial(
+        open_legs=[0, 1], truncate_length=None
+    )
+    print(actual_wep)
+    assert actual_wep == {
+        (0, 0, 0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
+        (0, 0, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (0, 0, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (0, 0, 1, 1): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1, 0, 0): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (0, 1, 0, 1): SimplePoly({3: 2, 4: 2}),
+        (0, 1, 1, 0): SimplePoly({3: 2, 4: 2}),
+        (0, 1, 1, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0, 0, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 0, 0, 1): SimplePoly({3: 2, 4: 2}),
+        (1, 0, 1, 0): SimplePoly({3: 2, 4: 2}),
+        (1, 0, 1, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1, 0, 0): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 1, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (1, 1, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1, 1, 1): SimplePoly({2: 2, 3: 2}),
+    }

@@ -1186,3 +1186,31 @@ def test_single_node_truncate_length(truncate_length, expected_wep):
         )._dict
         == expected_wep
     )
+
+
+def test_single_node_with_open_legs_t6():
+    h = Legos.enconding_tensor_603
+    te = StabilizerCodeTensorEnumerator(idx="0", h=h)
+    tn = TensorNetwork(nodes=[te])
+    actual_wep = tn.stabilizer_enumerator_polynomial(
+        open_legs=[("0", 0), ("0", 1)], verbose=True
+    )
+    print(actual_wep)
+    assert actual_wep == {
+        (0, 0, 0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
+        (0, 0, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (0, 0, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (0, 0, 1, 1): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1, 0, 0): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (0, 1, 0, 1): SimplePoly({3: 2, 4: 2}),
+        (0, 1, 1, 0): SimplePoly({3: 2, 4: 2}),
+        (0, 1, 1, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0, 0, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 0, 0, 1): SimplePoly({3: 2, 4: 2}),
+        (1, 0, 1, 0): SimplePoly({3: 2, 4: 2}),
+        (1, 0, 1, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1, 0, 0): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 1, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (1, 1, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1, 1, 1): SimplePoly({2: 2, 3: 2}),
+    }
