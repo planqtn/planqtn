@@ -3,6 +3,7 @@ import { Connection } from "../stores/connectionStore";
 import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
 import { GF2 } from "./GF2";
 import { LogicalPoint } from "../types/coordinates.ts";
+import { Legos } from "../features/lego/Legos.ts";
 
 describe("TensorNetwork", () => {
   it("should correctly conjoin nodes after double tracing 602 with identity stoppers", () => {
@@ -296,5 +297,45 @@ describe("TensorNetwork", () => {
       { instance_id: "2", leg_index: 0 },
       { instance_id: "2", leg_index: 1 }
     ]);
+  });
+
+  // repro https://github.com/planqtn/planqtn/issues/118
+  it("should conjoin a free qubit with a regular lego", () => {
+    const zero = new GF2([[0]]);
+    const z3 = new GF2(Legos.z_rep_code(3));
+
+    const tn = new TensorNetwork({
+      legos: [
+        new DroppedLego(
+          {
+            type_id: "zero",
+            name: "Zero",
+            short_name: "0",
+            description: "Zero",
+            parity_check_matrix: zero.getMatrix(),
+            logical_legs: [],
+            gauge_legs: []
+          },
+          new LogicalPoint(0, 0),
+          "0"
+        ),
+        new DroppedLego(
+          {
+            type_id: "z_rep_code",
+            name: "Z Rep Code",
+            short_name: "Z3",
+            description: "Z Rep Code",
+            parity_check_matrix: z3.getMatrix(),
+            logical_legs: [],
+            gauge_legs: []
+          },
+          new LogicalPoint(0, 0),
+          "1"
+        )
+      ],
+      connections: []
+    });
+    const conjoined = tn.conjoin_nodes();
+    expect(conjoined.h).toEqual(new GF2([[0]]));
   });
 });

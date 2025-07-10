@@ -1186,3 +1186,17 @@ def test_single_node_truncate_length(truncate_length, expected_wep):
         )._dict
         == expected_wep
     )
+
+
+def test_tensor_product_with_scalar_0():
+    h1 = StabilizerCodeTensorEnumerator(GF2([[0]]), idx="0")
+    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), idx="1")
+    tn = TensorNetwork(nodes=[h1, h2])
+    assert np.array_equal(tn.conjoin_nodes().h, GF2([[0]]))
+
+
+def test_tensor_product_with_scalar_1():
+    h1 = StabilizerCodeTensorEnumerator(GF2([[1]]), idx="0")
+    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), idx="1")
+    tn = TensorNetwork(nodes=[h1, h2])
+    assert np.array_equal(tn.conjoin_nodes().h, GF2([[1, 0]]))
