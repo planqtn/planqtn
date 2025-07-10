@@ -192,6 +192,8 @@ class StabilizerCodeTensorEnumerator:
 
     def tensor_with(self, other):
         new_h = tensor_product(self.h, other.h)
+        if np.array_equal(new_h, GF2([[0]])):
+            return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=[])
         return StabilizerCodeTensorEnumerator(
             new_h, idx=self.idx, legs=self.legs + other.legs
         )

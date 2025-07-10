@@ -1,3 +1,4 @@
+import { Legos } from "../features/lego/Legos";
 import { GF2 } from "./GF2";
 import {
   block_diag,
@@ -251,10 +252,17 @@ describe("parity_check", () => {
     expect(result).toEqual(new GF2([[1, 0, 0, 0]]));
   });
 
-  it("should tensor product of scalar 0 with a regular lego should be 0", () => {
+  it("should tensor product of scalar 0 with a stopper lego should be 0", () => {
     const zero = new GF2([[0]]);
     const h2 = new GF2([[1, 0]]);
     const result = tensor_product(zero, h2);
+    expect(result).toEqual(new GF2([[0]]));
+  });
+
+  it("should tensor product of scalar 0 with a regular lego should be 0", () => {
+    const zero = new GF2([[0]]);
+    const z3 = new GF2(Legos.z_rep_code(3));
+    const result = tensor_product(zero, z3);
     expect(result).toEqual(new GF2([[0]]));
   });
 

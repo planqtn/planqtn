@@ -150,10 +150,16 @@ export class StabilizerCodeTensor {
       }))
     ];
 
-    return new StabilizerCodeTensor(
-      tensor_product(this.h, other.h),
-      this.idx,
-      newLegs
-    );
+    const newH = tensor_product(this.h, other.h);
+
+    if (
+      newH.shape[0] == 1 &&
+      newH.shape[1] == 1 &&
+      newH.getMatrix()[0][0] == 0
+    ) {
+      return new StabilizerCodeTensor(newH, this.idx, []);
+    }
+
+    return new StabilizerCodeTensor(newH, this.idx, newLegs);
   }
 }
