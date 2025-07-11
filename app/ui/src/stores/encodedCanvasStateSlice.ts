@@ -50,7 +50,11 @@ export const createEncodedCanvasStateSlice: StateCreator<
               connection.to.legoId === lego.instance_id
           )
         ),
-        hideConnectedLegs: result.hideConnectedLegs
+        hideConnectedLegs: result.hideConnectedLegs,
+        hideIds: result.hideIds,
+        hideTypeIds: result.hideTypeIds,
+        hideDanglingLegs: result.hideDanglingLegs,
+        hideLegLabels: result.hideLegLabels
       });
 
       // Initialize leg hide states for all legos
@@ -73,11 +77,23 @@ export const createEncodedCanvasStateSlice: StateCreator<
   },
 
   updateEncodedCanvasState: () => {
-    const { droppedLegos, connections } = get();
+    const {
+      droppedLegos,
+      connections,
+      hideConnectedLegs,
+      hideIds,
+      hideTypeIds,
+      hideDanglingLegs,
+      hideLegLabels
+    } = get();
     get().canvasStateSerializer.encode(
       droppedLegos,
       connections,
-      get().hideConnectedLegs
+      hideConnectedLegs,
+      hideIds,
+      hideTypeIds,
+      hideDanglingLegs,
+      hideLegLabels
     );
   },
   getEncodedCanvasState: () => get().encodedCanvasState,
