@@ -59,7 +59,12 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     selectionBox,
     setError,
     viewport,
-    canvasRef
+    canvasRef,
+    resizeState,
+    updateResize,
+    endResize,
+    suppressNextCanvasClick,
+    setSuppressNextCanvasClick
   } = useCanvasStore();
 
   const { canvasDragState, setCanvasDragState, resetCanvasDragState } =
@@ -181,6 +186,10 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleCanvasClick = (e: MouseEvent) => {
+      if (suppressNextCanvasClick) {
+        setSuppressNextCanvasClick(false);
+        return;
+      }
       // Clear selection when clicking on empty canvas
       if (e.target === e.currentTarget && tensorNetwork) {
         if (legoDragState?.draggingStage === DraggingStage.JUST_FINISHED) {
@@ -197,6 +206,17 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
         useDebugStore.getState().setDebugMousePos(mouseWindowPoint);
       }
+
+      // Handle resize if active
+      if (resizeState.isResizing) {
+        e.preventDefault();
+        const mouseLogicalPosition = viewport.fromWindowToLogical(
+          WindowPoint.fromMouseEvent(e)
+        );
+        updateResize(mouseLogicalPosition);
+        return;
+      }
+
       // Selection box dragging is now handled by SelectionManager
       if (selectionBox.isSelecting) return;
       if (canvasDragState?.isDragging) {
@@ -264,6 +284,12 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleMouseUp = async (e: MouseEvent) => {
+      // Handle resize end
+      if (resizeState.isResizing) {
+        endResize();
+        return;
+      }
+
       // If a leg is being dragged, we need to decide if we're dropping on a valid target or the canvas.
       if (legDragState?.isDragging) {
         const targetElement = e.target as HTMLElement;
@@ -607,7 +633,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setLegoDragState,
     setGroupDragState,
     addOperation,
-    addConnections
+    addConnections,
+    suppressNextCanvasClick,
+    setSuppressNextCanvasClick
   ]);
 
   return null;

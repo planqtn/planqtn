@@ -3,6 +3,7 @@ import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
+import { TensorNetwork } from "../lib/TensorNetwork";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
@@ -151,6 +152,10 @@ export class DroppedLego implements LegoPiece {
       return this.parity_check_matrix[0][0];
     }
     return null;
+  }
+
+  public clone(): DroppedLego {
+    return new DroppedLego(this, this.logicalPosition, this.instance_id);
   }
 }
 
@@ -359,25 +364,24 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.droppedLegos[index] = updatedLego;
+          state.droppedLegos[index] = updatedLego.clone();
         }
       });
 
       state.connectedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.connectedLegos[index] = updatedLego;
-        }
-      });
-
-      state.tensorNetwork?.legos.forEach((lego, index) => {
-        const updatedLego = updatesMap.get(lego.instance_id);
-        if (updatedLego) {
-          state.tensorNetwork!.legos[index] = updatedLego;
+          state.connectedLegos[index] = updatedLego.clone();
         }
       });
     });
     get().updateEncodedCanvasState();
+    get().setTensorNetwork(
+      new TensorNetwork({
+        legos: legos.map((lego) => lego.clone()),
+        connections: get().tensorNetwork!.connections
+      })
+    );
   },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {

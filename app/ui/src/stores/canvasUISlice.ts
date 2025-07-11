@@ -4,6 +4,7 @@ import { Connection } from "./connectionStore";
 import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
+import { DroppedLego } from "./droppedLegoStore";
 
 export interface SelectionBoxState {
   isSelecting: boolean;
@@ -21,6 +22,25 @@ export interface BoundingBox {
   maxY: number;
   width: number;
   height: number;
+}
+
+export interface ResizeState {
+  isResizing: boolean;
+  handleType: ResizeHandleType | null;
+  startBoundingBox: BoundingBox | null;
+  startMousePosition: LogicalPoint | null;
+  currentMousePosition: LogicalPoint | null;
+}
+
+export enum ResizeHandleType {
+  TOP_LEFT = "top-left",
+  TOP = "top",
+  TOP_RIGHT = "top-right",
+  RIGHT = "right",
+  BOTTOM_RIGHT = "bottom-right",
+  BOTTOM = "bottom",
+  BOTTOM_LEFT = "bottom-left",
+  LEFT = "left"
 }
 
 export class Viewport {
@@ -158,6 +178,27 @@ export interface CanvasUISlice {
 
   // Mouse wheel handling
   handleWheelEvent: (e: WheelEvent) => void;
+
+  // Resize functionality
+  resizeState: ResizeState;
+  setResizeState: (resizeState: ResizeState) => void;
+  updateResizeState: (updates: Partial<ResizeState>) => void;
+  startResize: (
+    handleType: ResizeHandleType,
+    mousePosition: LogicalPoint
+  ) => void;
+  updateResize: (mousePosition: LogicalPoint) => void;
+  endResize: () => void;
+  calculateNewBoundingBox: (
+    startBoundingBox: BoundingBox,
+    startMousePosition: LogicalPoint,
+    currentMousePosition: LogicalPoint,
+    handleType: ResizeHandleType
+  ) => BoundingBox | null;
+  resizeProxyLegos: DroppedLego[] | null;
+  setResizeProxyLegos: (legos: DroppedLego[] | null) => void;
+  suppressNextCanvasClick: boolean;
+  setSuppressNextCanvasClick: (val: boolean) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -356,6 +397,7 @@ export const createCanvasUISlice: StateCreator<
 
   calculateTensorNetworkBoundingBox: () => {
     const { tensorNetwork } = get();
+    const padding = 2;
 
     if (!tensorNetwork || tensorNetwork.legos.length === 0) return null;
 
@@ -368,10 +410,10 @@ export const createCanvasUISlice: StateCreator<
       const size = lego.style?.size || 40;
       const halfSize = size / 2;
 
-      minX = Math.min(minX, lego.logicalPosition.x - halfSize);
-      minY = Math.min(minY, lego.logicalPosition.y - halfSize);
-      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
-      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
+      minX = Math.min(minX, lego.logicalPosition.x - halfSize - padding);
+      minY = Math.min(minY, lego.logicalPosition.y - halfSize - padding);
+      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize + padding);
+      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize + padding);
     });
 
     return {
@@ -405,5 +447,191 @@ export const createCanvasUISlice: StateCreator<
       newZoomLevel,
       get().viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e))
     );
-  }
+  },
+
+  // Resize functionality
+  resizeState: {
+    isResizing: false,
+    handleType: null,
+    startBoundingBox: null,
+    startMousePosition: null,
+    currentMousePosition: null
+  },
+
+  setResizeState: (resizeState) =>
+    set((state) => {
+      state.resizeState = resizeState;
+    }),
+
+  updateResizeState: (updates) =>
+    set((state) => {
+      state.resizeState = { ...state.resizeState, ...updates };
+    }),
+
+  startResize: (handleType: ResizeHandleType, mousePosition: LogicalPoint) => {
+    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+    if (!currentBoundingBox) return;
+
+    set((state) => {
+      state.resizeState = {
+        isResizing: true,
+        handleType,
+        startBoundingBox: currentBoundingBox,
+        startMousePosition: mousePosition,
+        currentMousePosition: mousePosition
+      };
+    });
+  },
+
+  updateResize: (mousePosition: LogicalPoint) => {
+    const { resizeState } = get();
+    if (
+      !resizeState.isResizing ||
+      !resizeState.startBoundingBox ||
+      !resizeState.handleType
+    )
+      return;
+
+    set((state) => {
+      state.resizeState.currentMousePosition = mousePosition;
+    });
+
+    // Calculate new bounding box based on resize handle and mouse movement
+    const newBoundingBox = get().calculateNewBoundingBox(
+      resizeState.startBoundingBox,
+      resizeState.startMousePosition!,
+      mousePosition,
+      resizeState.handleType
+    );
+
+    if (newBoundingBox) {
+      // Instead of updating real legos, update the proxy legos
+      const { tensorNetwork } = get();
+      const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+      if (
+        !tensorNetwork ||
+        tensorNetwork.legos.length === 0 ||
+        !currentBoundingBox
+      ) {
+        set((state) => {
+          state.resizeProxyLegos = null;
+        });
+        return;
+      }
+      const proxyLegos = tensorNetwork.legos.map((lego) => {
+        const relativeX =
+          (lego.logicalPosition.x - currentBoundingBox.minX) /
+          currentBoundingBox.width;
+        const relativeY =
+          (lego.logicalPosition.y - currentBoundingBox.minY) /
+          currentBoundingBox.height;
+        const newX = newBoundingBox.minX + relativeX * newBoundingBox.width;
+        const newY = newBoundingBox.minY + relativeY * newBoundingBox.height;
+        return lego.with({ logicalPosition: new LogicalPoint(newX, newY) });
+      });
+      set((state) => {
+        state.resizeProxyLegos = proxyLegos;
+      });
+    } else {
+      set((state) => {
+        state.resizeProxyLegos = null;
+      });
+    }
+  },
+
+  endResize: () => {
+    const { resizeProxyLegos, moveDroppedLegos, tensorNetwork, addOperation } =
+      get();
+
+    if (resizeProxyLegos && tensorNetwork) {
+      // Prepare operation history
+      const oldLegos = tensorNetwork.legos;
+      const newLegos = resizeProxyLegos;
+
+      // Add operation history
+      addOperation({
+        type: "move",
+        data: {
+          legosToUpdate: oldLegos.map((oldLego, i) => ({
+            oldLego,
+            newLego: newLegos[i]
+          }))
+        }
+      });
+      moveDroppedLegos(newLegos);
+    }
+    set((state) => {
+      state.resizeState = {
+        isResizing: false,
+        handleType: null,
+        startBoundingBox: null,
+        startMousePosition: null,
+        currentMousePosition: null
+      };
+      state.resizeProxyLegos = null;
+    });
+    set({ suppressNextCanvasClick: true });
+  },
+
+  calculateNewBoundingBox: (
+    startBoundingBox: BoundingBox,
+    startMousePosition: LogicalPoint,
+    currentMousePosition: LogicalPoint,
+    handleType: ResizeHandleType
+  ): BoundingBox | null => {
+    const deltaX = currentMousePosition.x - startMousePosition.x;
+    const deltaY = currentMousePosition.y - startMousePosition.y;
+
+    const newBoundingBox = { ...startBoundingBox };
+
+    switch (handleType) {
+      case ResizeHandleType.TOP_LEFT:
+        newBoundingBox.minX += deltaX;
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.TOP:
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.TOP_RIGHT:
+        newBoundingBox.maxX += deltaX;
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.RIGHT:
+        newBoundingBox.maxX += deltaX;
+        break;
+      case ResizeHandleType.BOTTOM_RIGHT:
+        newBoundingBox.maxX += deltaX;
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.BOTTOM:
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.BOTTOM_LEFT:
+        newBoundingBox.minX += deltaX;
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.LEFT:
+        newBoundingBox.minX += deltaX;
+        break;
+    }
+
+    // Ensure minimum size
+    const minSize = 50;
+    if (newBoundingBox.width < minSize || newBoundingBox.height < minSize) {
+      return null;
+    }
+
+    return {
+      ...newBoundingBox,
+      width: newBoundingBox.maxX - newBoundingBox.minX,
+      height: newBoundingBox.maxY - newBoundingBox.minY
+    };
+  },
+  resizeProxyLegos: null,
+  setResizeProxyLegos: (legos) =>
+    set((state) => {
+      state.resizeProxyLegos = legos;
+    }),
+  suppressNextCanvasClick: false,
+  setSuppressNextCanvasClick: (val) => set({ suppressNextCanvasClick: val })
 });
