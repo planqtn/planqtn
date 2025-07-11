@@ -4,7 +4,7 @@ import { Connection } from "./connectionStore";
 import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
-import { TensorNetwork } from "../lib/TensorNetwork";
+import { DroppedLego } from "./droppedLegoStore";
 
 export interface SelectionBoxState {
   isSelecting: boolean;
@@ -189,13 +189,16 @@ export interface CanvasUISlice {
   ) => void;
   updateResize: (mousePosition: LogicalPoint) => void;
   endResize: () => void;
-  applyResizeToLegos: (newBoundingBox: BoundingBox) => void;
   calculateNewBoundingBox: (
     startBoundingBox: BoundingBox,
     startMousePosition: LogicalPoint,
     currentMousePosition: LogicalPoint,
     handleType: ResizeHandleType
   ) => BoundingBox | null;
+  resizeProxyLegos: DroppedLego[] | null;
+  setResizeProxyLegos: (legos: DroppedLego[] | null) => void;
+  suppressNextCanvasClick: boolean;
+  setSuppressNextCanvasClick: (val: boolean) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -394,6 +397,7 @@ export const createCanvasUISlice: StateCreator<
 
   calculateTensorNetworkBoundingBox: () => {
     const { tensorNetwork } = get();
+    const padding = 2;
 
     if (!tensorNetwork || tensorNetwork.legos.length === 0) return null;
 
@@ -406,10 +410,10 @@ export const createCanvasUISlice: StateCreator<
       const size = lego.style?.size || 40;
       const halfSize = size / 2;
 
-      minX = Math.min(minX, lego.logicalPosition.x - halfSize);
-      minY = Math.min(minY, lego.logicalPosition.y - halfSize);
-      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
-      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
+      minX = Math.min(minX, lego.logicalPosition.x - halfSize - padding);
+      minY = Math.min(minY, lego.logicalPosition.y - halfSize - padding);
+      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize + padding);
+      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize + padding);
     });
 
     return {
@@ -501,11 +505,61 @@ export const createCanvasUISlice: StateCreator<
     );
 
     if (newBoundingBox) {
-      get().applyResizeToLegos(newBoundingBox);
+      // Instead of updating real legos, update the proxy legos
+      const { tensorNetwork } = get();
+      const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+      if (
+        !tensorNetwork ||
+        tensorNetwork.legos.length === 0 ||
+        !currentBoundingBox
+      ) {
+        set((state) => {
+          state.resizeProxyLegos = null;
+        });
+        return;
+      }
+      const proxyLegos = tensorNetwork.legos.map((lego) => {
+        const relativeX =
+          (lego.logicalPosition.x - currentBoundingBox.minX) /
+          currentBoundingBox.width;
+        const relativeY =
+          (lego.logicalPosition.y - currentBoundingBox.minY) /
+          currentBoundingBox.height;
+        const newX = newBoundingBox.minX + relativeX * newBoundingBox.width;
+        const newY = newBoundingBox.minY + relativeY * newBoundingBox.height;
+        return lego.with({ logicalPosition: new LogicalPoint(newX, newY) });
+      });
+      set((state) => {
+        state.resizeProxyLegos = proxyLegos;
+      });
+    } else {
+      set((state) => {
+        state.resizeProxyLegos = null;
+      });
     }
   },
 
   endResize: () => {
+    const { resizeProxyLegos, moveDroppedLegos, tensorNetwork, addOperation } =
+      get();
+
+    if (resizeProxyLegos && tensorNetwork) {
+      // Prepare operation history
+      const oldLegos = tensorNetwork.legos;
+      const newLegos = resizeProxyLegos;
+
+      // Add operation history
+      addOperation({
+        type: "move",
+        data: {
+          legosToUpdate: oldLegos.map((oldLego, i) => ({
+            oldLego,
+            newLego: newLegos[i]
+          }))
+        }
+      });
+      moveDroppedLegos(newLegos);
+    }
     set((state) => {
       state.resizeState = {
         isResizing: false,
@@ -514,44 +568,9 @@ export const createCanvasUISlice: StateCreator<
         startMousePosition: null,
         currentMousePosition: null
       };
+      state.resizeProxyLegos = null;
     });
-  },
-
-  applyResizeToLegos: (newBoundingBox: BoundingBox) => {
-    const { tensorNetwork, moveDroppedLegos } = get();
-    if (!tensorNetwork || tensorNetwork.legos.length === 0) return;
-
-    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
-    if (!currentBoundingBox) return;
-
-    // Update legos in tensor network
-    const updatedLegos = tensorNetwork.legos.map((lego) => {
-      const relativeX =
-        (lego.logicalPosition.x - currentBoundingBox.minX) /
-        currentBoundingBox.width;
-      const relativeY =
-        (lego.logicalPosition.y - currentBoundingBox.minY) /
-        currentBoundingBox.height;
-
-      const newX = newBoundingBox.minX + relativeX * newBoundingBox.width;
-      const newY = newBoundingBox.minY + relativeY * newBoundingBox.height;
-
-      return lego.with({
-        logicalPosition: new LogicalPoint(newX, newY)
-      });
-    });
-
-    // Update the dropped legos store
-    moveDroppedLegos(updatedLegos);
-
-    // Update tensor network
-    const { setTensorNetwork } = get();
-    setTensorNetwork(
-      new TensorNetwork({
-        legos: updatedLegos,
-        connections: tensorNetwork.connections
-      })
-    );
+    set({ suppressNextCanvasClick: true });
   },
 
   calculateNewBoundingBox: (
@@ -607,5 +626,12 @@ export const createCanvasUISlice: StateCreator<
       width: newBoundingBox.maxX - newBoundingBox.minX,
       height: newBoundingBox.maxY - newBoundingBox.minY
     };
-  }
+  },
+  resizeProxyLegos: null,
+  setResizeProxyLegos: (legos) =>
+    set((state) => {
+      state.resizeProxyLegos = legos;
+    }),
+  suppressNextCanvasClick: false,
+  setSuppressNextCanvasClick: (val) => set({ suppressNextCanvasClick: val })
 });

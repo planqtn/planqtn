@@ -62,7 +62,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     canvasRef,
     resizeState,
     updateResize,
-    endResize
+    endResize,
+    suppressNextCanvasClick,
+    setSuppressNextCanvasClick
   } = useCanvasStore();
 
   const { canvasDragState, setCanvasDragState, resetCanvasDragState } =
@@ -184,6 +186,10 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleCanvasClick = (e: MouseEvent) => {
+      if (suppressNextCanvasClick) {
+        setSuppressNextCanvasClick(false);
+        return;
+      }
       // Clear selection when clicking on empty canvas
       if (e.target === e.currentTarget && tensorNetwork) {
         if (legoDragState?.draggingStage === DraggingStage.JUST_FINISHED) {
@@ -627,7 +633,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     setLegoDragState,
     setGroupDragState,
     addOperation,
-    addConnections
+    addConnections,
+    suppressNextCanvasClick,
+    setSuppressNextCanvasClick
   ]);
 
   return null;

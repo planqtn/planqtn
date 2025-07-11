@@ -5,6 +5,7 @@ import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
 import { WindowPoint } from "../../types/coordinates";
+import { DroppedLego } from "../../stores/droppedLegoStore";
 
 const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
@@ -105,6 +106,25 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
   );
 };
 
+function calculateBoundingBoxForLegos(
+  legos: DroppedLego[]
+): BoundingBox | null {
+  if (!legos || legos.length === 0) return null;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  legos.forEach((lego: DroppedLego) => {
+    const size = lego.style?.size || 40;
+    const halfSize = size / 2;
+    minX = Math.min(minX, lego.logicalPosition.x - halfSize);
+    minY = Math.min(minY, lego.logicalPosition.y - halfSize);
+    maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
+    maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
+  });
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
   const visibleLegoIds = useVisibleLegoIds();
@@ -117,9 +137,6 @@ export const LegosLayer: React.FC = () => {
     tensorNetwork && tensorNetwork.legos.length > 0
       ? calculateTensorNetworkBoundingBox()
       : null;
-  const tnBoundingBox = tnBoundingBoxLogical
-    ? viewport.fromLogicalToCanvasBB(tnBoundingBoxLogical)
-    : null;
   // Get drag state to hide dragged legos (proxy will show instead)
   const { dragState } = useCanvasStore(
     useShallow((state) => ({
@@ -209,29 +226,42 @@ export const LegosLayer: React.FC = () => {
       ));
   }, [visibleLegoIds, isDraggedLego, viewport]);
 
+  const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
+
+  const proxyBoundingBoxLogical = resizeProxyLegos
+    ? calculateBoundingBoxForLegos(resizeProxyLegos)
+    : null;
+  const boundingBoxLogical = proxyBoundingBoxLogical || tnBoundingBoxLogical;
+  const boundingBox = boundingBoxLogical
+    ? viewport.fromLogicalToCanvasBB(boundingBoxLogical)
+    : null;
+
   return (
     <>
-      {tensorNetwork && tnBoundingBox && (
+      {tensorNetwork && boundingBox && (
         <g>
           <rect
-            x={tnBoundingBox.minX}
-            y={tnBoundingBox.minY}
-            width={tnBoundingBox.width}
-            height={tnBoundingBox.height}
+            x={boundingBox.minX}
+            y={boundingBox.minY}
+            width={boundingBox.width}
+            height={boundingBox.height}
             fill="none"
             strokeWidth="2"
             stroke="blue"
           />
 
           {/* Resize handles */}
-          <ResizeHandles
-            boundingBox={tnBoundingBox}
-            onHandleMouseDown={handleResizeMouseDown}
-          />
+          {tensorNetwork.legos.length > 1 && (
+            <ResizeHandles
+              boundingBox={boundingBox}
+              onHandleMouseDown={handleResizeMouseDown}
+            />
+          )}
         </g>
       )}
 
-      {renderedLegos}
+      {/* Only render real legos if not resizing */}
+      {!resizeProxyLegos && renderedLegos}
     </>
   );
 };

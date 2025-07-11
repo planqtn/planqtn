@@ -287,6 +287,77 @@ const BuildingBlockDragProxy: React.FC<{
   );
 };
 
+const ResizeGroupProxy: React.FC<{
+  legos: DroppedLego[];
+  canvasRect: DOMRect | null;
+}> = ({ legos, canvasRect }) => {
+  const viewport = useCanvasStore((state) => state.viewport);
+  const zoomLevel = viewport.zoomLevel;
+  if (!canvasRect || !legos.length) return null;
+  return (
+    <>
+      {legos.map((lego) => {
+        const proxyCanvasPos = viewport.fromLogicalToCanvas(
+          lego.logicalPosition
+        );
+        const originalSize = lego.style!.size;
+        const smartSize = getSmartLegoSize(originalSize, zoomLevel);
+        return (
+          <div
+            key={`resize-group-proxy-${lego.instance_id}`}
+            style={{
+              position: "absolute",
+              left: `${proxyCanvasPos.x - smartSize / 2}px`,
+              top: `${proxyCanvasPos.y - smartSize / 2}px`,
+              width: `${smartSize}px`,
+              height: `${smartSize}px`,
+              opacity: 0.5,
+              border: "1.5px dashed #4A90E2",
+              background: "none",
+              pointerEvents: "none",
+              zIndex: 1000
+            }}
+          >
+            <svg
+              width={smartSize}
+              height={smartSize}
+              style={{ overflow: "visible" }}
+            >
+              {lego.style!.borderRadius === "full" ? (
+                <circle
+                  cx={smartSize / 2}
+                  cy={smartSize / 2}
+                  r={smartSize / 2}
+                  fill={lego.style!.getBackgroundColorForSvg()}
+                  stroke="#4A90E2"
+                  strokeWidth="2"
+                  style={{ strokeDasharray: "4,3" }}
+                />
+              ) : (
+                <rect
+                  x="2"
+                  y="2"
+                  width={smartSize - 4}
+                  height={smartSize - 4}
+                  rx={
+                    typeof lego.style!.borderRadius === "number"
+                      ? lego.style!.borderRadius
+                      : 0
+                  }
+                  fill={lego.style!.getBackgroundColorForSvg()}
+                  stroke="#4A90E2"
+                  strokeWidth="2"
+                  style={{ strokeDasharray: "4,3" }}
+                />
+              )}
+            </svg>
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 // Shared hook for mouse tracking with debug integration
 const useMouseTracking = (shouldTrack: boolean = true) => {
   const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
@@ -331,6 +402,7 @@ export const DragProxy: React.FC = () => {
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );
+  const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
 
   // Use shared mouse tracking - track when canvas lego or group dragging is happening
   // Building block dragging uses its own mouse tracking via dragover events
@@ -376,19 +448,26 @@ export const DragProxy: React.FC = () => {
         zIndex: 1000
       }}
     >
-      {/* Building block drag proxy */}
-      {buildingBlockDragState.isDragging && (
-        <BuildingBlockDragProxy canvasRef={canvasRef} />
-      )}
+      {/* Resize proxy takes precedence */}
+      {resizeProxyLegos && resizeProxyLegos.length > 0 ? (
+        <ResizeGroupProxy legos={resizeProxyLegos} canvasRect={canvasRect} />
+      ) : (
+        <>
+          {/* Building block drag proxy */}
+          {buildingBlockDragState.isDragging && (
+            <BuildingBlockDragProxy canvasRef={canvasRef} />
+          )}
 
-      {/* Group drag proxy */}
-      {groupDragState && (
-        <GroupDragProxy mousePos={mousePos} canvasRect={canvasRect} />
-      )}
+          {/* Group drag proxy */}
+          {groupDragState && (
+            <GroupDragProxy mousePos={mousePos} canvasRect={canvasRect} />
+          )}
 
-      {/* Single lego drag proxy - only show if not group dragging */}
-      {!groupDragState && (
-        <SingleLegoDragProxy mousePos={mousePos} canvasRect={canvasRect} />
+          {/* Single lego drag proxy - only show if not group dragging */}
+          {!groupDragState && (
+            <SingleLegoDragProxy mousePos={mousePos} canvasRect={canvasRect} />
+          )}
+        </>
       )}
     </div>
   );
