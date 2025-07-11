@@ -20,6 +20,10 @@ interface CanvasState {
   }>;
   connections: Array<Connection>;
   hideConnectedLegs: boolean;
+  hideIds: boolean;
+  hideTypeIds: boolean;
+  hideDanglingLegs: boolean;
+  hideLegLabels: boolean;
 }
 
 export class CanvasStateSerializer {
@@ -45,7 +49,11 @@ export class CanvasStateSerializer {
   public encode(
     pieces: DroppedLego[],
     connections: Connection[],
-    hideConnectedLegs: boolean
+    hideConnectedLegs: boolean,
+    hideIds: boolean = false,
+    hideTypeIds: boolean = false,
+    hideDanglingLegs: boolean = false,
+    hideLegLabels: boolean = false
   ): void {
     const state: CanvasState = {
       canvasId: this.canvasId,
@@ -63,7 +71,11 @@ export class CanvasStateSerializer {
         selectedMatrixRows: piece.selectedMatrixRows
       })),
       connections,
-      hideConnectedLegs
+      hideConnectedLegs,
+      hideIds,
+      hideTypeIds,
+      hideDanglingLegs,
+      hideLegLabels
     };
 
     const encoded = btoa(JSON.stringify(state));
@@ -75,6 +87,10 @@ export class CanvasStateSerializer {
     pieces: DroppedLego[];
     connections: Connection[];
     hideConnectedLegs: boolean;
+    hideIds: boolean;
+    hideTypeIds: boolean;
+    hideDanglingLegs: boolean;
+    hideLegLabels: boolean;
     canvasId: string;
   }> {
     try {
@@ -133,6 +149,10 @@ export class CanvasStateSerializer {
           pieces: [],
           connections: [],
           hideConnectedLegs: false,
+          hideIds: false,
+          hideTypeIds: false,
+          hideDanglingLegs: false,
+          hideLegLabels: false,
           canvasId: this.canvasId
         };
       }
@@ -235,6 +255,10 @@ export class CanvasStateSerializer {
           (conn: Connection) => new Connection(conn.from, conn.to)
         ),
         hideConnectedLegs: decoded.hideConnectedLegs || false,
+        hideIds: decoded.hideIds || false,
+        hideTypeIds: decoded.hideTypeIds || false,
+        hideDanglingLegs: decoded.hideDanglingLegs || false,
+        hideLegLabels: decoded.hideLegLabels || false,
         canvasId: this.canvasId
       };
     } catch (error) {

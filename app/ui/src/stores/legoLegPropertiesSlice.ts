@@ -77,12 +77,15 @@ export const createLegoLegPropertiesSlice: StateCreator<
   [],
   LegoLegPropertiesSlice
 > = (set, get) => {
-  // Helper function to calculate hide state for a single leg
-  // This is extracted from the original shouldHideLeg logic
-  const calculateLegHideState = (
+  // we know that connected legs should be hidden,
+  // but there are highilghts as well that need to be addressed
+  // also if the leg is dangling, it should be controlled by hideDanglingLegs
+  const shouldHideLeg = (
     lego: DroppedLego,
     leg_index: number,
-    connections: Connection[]
+    connections: Connection[],
+    hideDanglingLegs: boolean,
+    hideConnectedLegs: boolean
   ): boolean => {
     const isConnected = connections.some((connection) => {
       if (
@@ -100,7 +103,9 @@ export const createLegoLegPropertiesSlice: StateCreator<
       return false;
     });
 
-    if (!isConnected) return false;
+    if (!isConnected) return hideDanglingLegs;
+    // else connected
+    if (!hideConnectedLegs) return false;
 
     const thisLegStyle = lego.style!.legStyles[leg_index];
     const isThisHighlighted = thisLegStyle.is_highlighted;
@@ -225,7 +230,8 @@ export const createLegoLegPropertiesSlice: StateCreator<
     },
 
     updateAllLegHideStates: () => {
-      const { droppedLegos, connections, hideConnectedLegs } = get();
+      const { droppedLegos, connections, hideConnectedLegs, hideDanglingLegs } =
+        get();
 
       set((state) => {
         if (!state.legHideStates) {
@@ -237,16 +243,18 @@ export const createLegoLegPropertiesSlice: StateCreator<
           const hideStates = new Array(lego.numberOfLegs).fill(false);
 
           // Only calculate hide states if the feature is enabled and lego doesn't always show legs
-          if (hideConnectedLegs && !lego.alwaysShowLegs) {
+          if (!lego.alwaysShowLegs) {
             for (
               let leg_index = 0;
               leg_index < lego.numberOfLegs;
               leg_index++
             ) {
-              hideStates[leg_index] = calculateLegHideState(
+              hideStates[leg_index] = shouldHideLeg(
                 lego,
                 leg_index,
-                connections
+                connections,
+                hideDanglingLegs,
+                hideConnectedLegs
               );
             }
           }
