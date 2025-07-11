@@ -109,6 +109,7 @@ describe("Canvas State Validator", () => {
     it("should validate a correctly encoded canvas state", () => {
       const encoded = btoa(JSON.stringify(validCanvasState));
       const result = validateEncodedCanvasState(encoded);
+      console.log(result);
       expect(result.isValid).toBe(true);
     });
 
