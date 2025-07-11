@@ -54,7 +54,6 @@ import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
 import { DroppedLego } from "./stores/droppedLegoStore.ts";
-import { useSvgExport } from "./features/canvas/useSvgExport";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Memoized Left Panel Component
@@ -99,6 +98,7 @@ const LegoStudioView: React.FC = () => {
   const navigate = useNavigate();
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [fatalError, setFatalError] = useState<Error | null>(null);
+  const [canvasSvgRef, setCanvasSvgRef] = useState<SVGSVGElement | null>(null);
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
@@ -145,6 +145,7 @@ const LegoStudioView: React.FC = () => {
 
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
   const { canvasDragState } = useCanvasDragStateStore();
@@ -414,27 +415,37 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  // Use the SVG export hook
-  const { exportSvg } = useSvgExport({
-    onSuccess: (message) =>
+  const handleExportSvg = () => {
+    try {
+      const svgElement = canvasSvgRef?.cloneNode(true) as SVGSVGElement;
+      const svgString = svgElement.outerHTML;
+      const blob = new Blob([svgString], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quantum_lego_network.svg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast({
         title: "Export successful",
-        description: message,
+        description: "SVG file is being downloaded",
         status: "success",
         duration: 3000,
         isClosable: true
-      }),
-    onError: (message) =>
+      });
+    } catch (error) {
+      console.error("Error exporting SVG:", error);
       toast({
         title: "Export failed",
-        description: message,
+        description: "SVG file could not be generated/downloaded",
         status: "error",
         duration: 3000,
         isClosable: true
-      })
-  });
-
-  const handleExportSvg = exportSvg;
+      });
+    }
+  };
 
   function handleTitleKeyDown(
     event: React.KeyboardEvent<HTMLDivElement>
@@ -585,10 +596,31 @@ const LegoStudioView: React.FC = () => {
                     </Box>
                   </Box>
 
-                  <ConnectionsLayer />
-                  {/* Selection Manager */}
+                  <svg
+                    id="canvas-svg"
+                    xmlns="http://www.w3.org/2000/svg"
+                    ref={setCanvasSvgRef}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "none",
+                      userSelect: "none"
+                    }}
+                    viewBox={
+                      canvasRef
+                        ? `0 0 ${canvasRef?.current?.clientWidth} ${canvasRef?.current?.clientHeight}`
+                        : undefined
+                    }
+                  >
+                    <ConnectionsLayer />
+                    {/* Selection Manager */}
+                    <LegosLayer />
+                  </svg>
                   <SelectionManager ref={selectionManagerRef} />
-                  <LegosLayer />
+
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy />
 

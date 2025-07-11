@@ -67,7 +67,6 @@ export function getLegoBoundingBox(
 interface DroppedLegoDisplayProps {
   legoInstanceId: string;
   demoMode: boolean;
-  svgOnly?: boolean;
 }
 
 // Memoized component for static leg lines only
@@ -216,7 +215,7 @@ const LegoBodyLayer = memo<{
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ legoInstanceId, demoMode = false, svgOnly = false }) => {
+  ({ legoInstanceId, demoMode = false }) => {
     const lego = useCanvasStore(
       (state) =>
         state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
@@ -406,17 +405,16 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
             userSelect: "none",
             zIndex: 0,
             opacity: isThisLegoDragged ? 0.5 : 1,
-            filter:
-              isSelected && svgOnly
-                ? "drop-shadow(0px 0px 10px rgba(37, 0, 245, 0.5))"
-                : "none"
+            filter: isSelected
+              ? "drop-shadow(0px 0px 10px rgba(37, 0, 245, 0.5))"
+              : "none"
           }}
           className="lego-svg"
           transform={
             demoMode ? "" : `translate(${basePosition.x}, ${basePosition.y})`
           }
-          onClick={svgOnly ? undefined : handleLegoClick}
-          onMouseDown={svgOnly ? undefined : handleLegoMouseDown}
+          onClick={handleLegoClick}
+          onMouseDown={handleLegoMouseDown}
         >
           {lego.scalarValue !== null ? (
             <g>
