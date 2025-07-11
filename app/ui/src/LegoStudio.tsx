@@ -98,6 +98,7 @@ const LegoStudioView: React.FC = () => {
   const navigate = useNavigate();
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [fatalError, setFatalError] = useState<Error | null>(null);
+  const [canvasSvgRef, setCanvasSvgRef] = useState<SVGSVGElement | null>(null);
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
@@ -144,6 +145,7 @@ const LegoStudioView: React.FC = () => {
 
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
   const { canvasDragState } = useCanvasDragStateStore();
@@ -414,90 +416,35 @@ const LegoStudioView: React.FC = () => {
   };
 
   const handleExportSvg = () => {
-    // Get the canvas panel element
-    const canvasPanel = document.querySelector("#main-panel");
-    if (!canvasPanel) {
+    try {
+      const svgElement = canvasSvgRef?.cloneNode(true) as SVGSVGElement;
+      const svgString = svgElement.outerHTML;
+      const blob = new Blob([svgString], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quantum_lego_network.svg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export successful",
+        description: "SVG file is being downloaded",
+        status: "success",
+        duration: 3000,
+        isClosable: true
+      });
+    } catch (error) {
+      console.error("Error exporting SVG:", error);
       toast({
         title: "Export failed",
-        description: "Could not find the canvas panel",
+        description: "SVG file could not be generated/downloaded",
         status: "error",
         duration: 3000,
         isClosable: true
       });
-      return;
     }
-
-    // Create a new SVG element that will contain everything
-    const combinedSvg = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg"
-    );
-
-    // First, let's calculate the total bounding box
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    // Process all SVG elements in the canvas
-    const svgElements = canvasPanel.querySelectorAll("svg");
-    svgElements.forEach((svg) => {
-      // Skip SVGs that are marked as hidden
-      if (svg.style.display === "none") return;
-
-      const bbox = svg.getBBox();
-      if (bbox.width > 0 && bbox.height > 0) {
-        minX = Math.min(minX, bbox.x);
-        minY = Math.min(minY, bbox.y);
-        maxX = Math.max(maxX, bbox.x + bbox.width);
-        maxY = Math.max(maxY, bbox.y + bbox.height);
-      }
-    });
-
-    // Add some padding
-    const padding = 20;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-
-    // Set the combined SVG dimensions
-    const width = maxX - minX;
-    const height = maxY - minY;
-    combinedSvg.setAttribute("width", width.toString());
-    combinedSvg.setAttribute("height", height.toString());
-    combinedSvg.setAttribute("viewBox", `${minX} ${minY} ${width} ${height}`);
-
-    // Clone and transform all SVG elements
-    svgElements.forEach((svg) => {
-      if (svg.style.display === "none") return;
-
-      const clonedSvg = svg.cloneNode(true) as SVGElement;
-      // Remove any transform attributes that might interfere
-      clonedSvg.removeAttribute("transform");
-      combinedSvg.appendChild(clonedSvg);
-    });
-
-    // Convert to string
-    const svgContent = new XMLSerializer().serializeToString(combinedSvg);
-
-    // Create and trigger download
-    const blob = new Blob([svgContent], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "quantum_lego_network.svg";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export successful",
-      description: "SVG file has been downloaded",
-      status: "success",
-      duration: 3000,
-      isClosable: true
-    });
   };
 
   function handleTitleKeyDown(
@@ -649,10 +596,31 @@ const LegoStudioView: React.FC = () => {
                     </Box>
                   </Box>
 
-                  <ConnectionsLayer />
-                  {/* Selection Manager */}
+                  <svg
+                    id="canvas-svg"
+                    xmlns="http://www.w3.org/2000/svg"
+                    ref={setCanvasSvgRef}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "none",
+                      userSelect: "none"
+                    }}
+                    viewBox={
+                      canvasRef
+                        ? `0 0 ${canvasRef?.current?.clientWidth} ${canvasRef?.current?.clientHeight}`
+                        : undefined
+                    }
+                  >
+                    <ConnectionsLayer />
+                    {/* Selection Manager */}
+                    <LegosLayer />
+                  </svg>
                   <SelectionManager ref={selectionManagerRef} />
-                  <LegosLayer />
+
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy />
 

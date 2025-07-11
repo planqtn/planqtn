@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, Suspense } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
@@ -9,6 +9,7 @@ import {
   getLevelOfDetail
 } from "../../utils/coordinateTransforms";
 import { CanvasPoint, LogicalPoint } from "../../types/coordinates";
+import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 
 export const ConnectionsLayer: React.FC = () => {
   const connections = useCanvasStore((state) => state.connections);
@@ -18,6 +19,7 @@ export const ConnectionsLayer: React.FC = () => {
   const connectedLegos = useCanvasStore((state) => state.connectedLegos);
   const legDragState = useCanvasStore((state) => state.legDragState);
   const hoveredConnection = useCanvasStore((state) => state.hoveredConnection);
+  const visibleLegoIds = useVisibleLegoIds();
 
   // Get zoom level for smart scaling
   const viewport = useCanvasStore((state) => state.viewport);
@@ -94,206 +96,207 @@ export const ConnectionsLayer: React.FC = () => {
 
   // Memoize rendered connections with optimized calculations
   const renderedConnections = useMemo(() => {
-    return connections
+    return connections.map((conn) => {
+      const fromLego = legoMap.get(conn.from.legoId);
+      const toLego = legoMap.get(conn.to.legoId);
+      if (!fromLego || !toLego) return null;
+      if (
+        !visibleLegoIds.includes(conn.from.legoId) ||
+        !visibleLegoIds.includes(conn.to.legoId)
+      )
+        return null;
 
-      .map((conn) => {
-        const fromLego = legoMap.get(conn.from.legoId);
-        const toLego = legoMap.get(conn.to.legoId);
-        if (!fromLego || !toLego) return null;
+      // Create a stable key based on the connection's properties
+      const [firstId, firstLeg, secondId, secondLeg] =
+        conn.from.legoId < conn.to.legoId
+          ? [
+              conn.from.legoId,
+              conn.from.leg_index,
+              conn.to.legoId,
+              conn.to.leg_index
+            ]
+          : [
+              conn.to.legoId,
+              conn.to.leg_index,
+              conn.from.legoId,
+              conn.from.leg_index
+            ];
+      const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-        // Create a stable key based on the connection's properties
-        const [firstId, firstLeg, secondId, secondLeg] =
-          conn.from.legoId < conn.to.legoId
-            ? [
-                conn.from.legoId,
-                conn.from.leg_index,
-                conn.to.legoId,
-                conn.to.leg_index
-              ]
-            : [
-                conn.to.legoId,
-                conn.to.leg_index,
-                conn.from.legoId,
-                conn.from.leg_index
-              ];
-        const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
+      const fromPos = fromLego.style!.legStyles[conn.from.leg_index].position;
+      const toPos = toLego.style!.legStyles[conn.to.leg_index].position;
 
-        const fromPos = fromLego.style!.legStyles[conn.from.leg_index].position;
-        const toPos = toLego.style!.legStyles[conn.to.leg_index].position;
+      // Use pre-computed maps for O(1) lookup
+      const fromLegConnected = connectedLegsMap.has(
+        `${fromLego.instance_id}-${conn.from.leg_index}`
+      );
+      const toLegConnected = connectedLegsMap.has(
+        `${toLego.instance_id}-${conn.to.leg_index}`
+      );
 
-        // Use pre-computed maps for O(1) lookup
-        const fromLegConnected = connectedLegsMap.has(
-          `${fromLego.instance_id}-${conn.from.leg_index}`
-        );
-        const toLegConnected = connectedLegsMap.has(
-          `${toLego.instance_id}-${conn.to.leg_index}`
-        );
+      // Get pre-computed leg styles
+      const fromLegData = legStylesMap.get(
+        `${fromLego.instance_id}-${conn.from.leg_index}`
+      );
+      const toLegData = legStylesMap.get(
+        `${toLego.instance_id}-${conn.to.leg_index}`
+      );
 
-        // Get pre-computed leg styles
-        const fromLegData = legStylesMap.get(
-          `${fromLego.instance_id}-${conn.from.leg_index}`
-        );
-        const toLegData = legStylesMap.get(
-          `${toLego.instance_id}-${conn.to.leg_index}`
-        );
+      if (!fromLegData || !toLegData) return null;
 
-        if (!fromLegData || !toLegData) return null;
+      const { color: fromLegColor, isHighlighted: fromLegHighlighted } =
+        fromLegData;
+      const { isHighlighted: toLegHighlighted } = toLegData;
 
-        const { color: fromLegColor, isHighlighted: fromLegHighlighted } =
-          fromLegData;
-        const { isHighlighted: toLegHighlighted } = toLegData;
+      const fromOriginalSize = fromLego.style!.size;
+      const fromSmartSize = getSmartLegoSize(fromOriginalSize, zoomLevel);
+      const fromLod = getLevelOfDetail(fromSmartSize, zoomLevel);
+      const toOriginalSize = toLego.style!.size;
+      const toSmartSize = getSmartLegoSize(toOriginalSize, zoomLevel);
+      const toLod = getLevelOfDetail(toSmartSize, zoomLevel);
 
-        const fromOriginalSize = fromLego.style!.size;
-        const fromSmartSize = getSmartLegoSize(fromOriginalSize, zoomLevel);
-        const fromLod = getLevelOfDetail(fromSmartSize, zoomLevel);
-        const toOriginalSize = toLego.style!.size;
-        const toSmartSize = getSmartLegoSize(toOriginalSize, zoomLevel);
-        const toLod = getLevelOfDetail(toSmartSize, zoomLevel);
+      const fromShowLegs = fromLod.showLegs;
+      const toShowLegs = toLod.showLegs;
 
-        const fromShowLegs = fromLod.showLegs;
-        const toShowLegs = toLod.showLegs;
+      // Use the new connection highlight states from the store
+      const colorsMatch = useCanvasStore
+        .getState()
+        .getConnectionHighlightState(connKey);
 
-        // Use the new connection highlight states from the store
-        const colorsMatch = useCanvasStore
-          .getState()
-          .getConnectionHighlightState(connKey);
+      // Determine if legs should be hidden
+      const hideFromLeg =
+        !fromShowLegs ||
+        (hideConnectedLegs &&
+          fromLegConnected &&
+          !fromLego.alwaysShowLegs &&
+          (!fromLegHighlighted ? !toLegHighlighted : colorsMatch));
 
-        // Determine if legs should be hidden
-        const hideFromLeg =
-          !fromShowLegs ||
-          (hideConnectedLegs &&
-            fromLegConnected &&
-            !fromLego.alwaysShowLegs &&
-            (!fromLegHighlighted ? !toLegHighlighted : colorsMatch));
+      const hideToLeg =
+        !toShowLegs ||
+        (hideConnectedLegs &&
+          toLegConnected &&
+          !toLego.alwaysShowLegs &&
+          (!toLegHighlighted ? !fromLegHighlighted : colorsMatch));
 
-        const hideToLeg =
-          !toShowLegs ||
-          (hideConnectedLegs &&
-            toLegConnected &&
-            !toLego.alwaysShowLegs &&
-            (!toLegHighlighted ? !fromLegHighlighted : colorsMatch));
-
-        // Apply zoom transformations to connection points using new coordinate system
-        const fromPoint = viewport
-          .fromLogicalToCanvas(
-            new LogicalPoint(
-              fromLego.logicalPosition.x,
-              fromLego.logicalPosition.y
-            )
+      // Apply zoom transformations to connection points using new coordinate system
+      const fromPoint = viewport
+        .fromLogicalToCanvas(
+          new LogicalPoint(
+            fromLego.logicalPosition.x,
+            fromLego.logicalPosition.y
           )
-          .plus(
-            new CanvasPoint(fromPos.endX, fromPos.endY).factor(
-              hideFromLeg ? 0 : 1
-            )
-          );
-        const toPoint = viewport
-          .fromLogicalToCanvas(
-            new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
+        )
+        .plus(
+          new CanvasPoint(fromPos.endX, fromPos.endY).factor(
+            hideFromLeg ? 0 : 1
           )
-          .plus(
-            new CanvasPoint(toPos.endX, toPos.endY).factor(hideToLeg ? 0 : 1)
-          );
-
-        // Calculate control points for the curve - scale with zoom for better topology
-        const baseControlPointDistance = 30;
-        const controlPointDistance =
-          baseControlPointDistance * Math.min(1, zoomLevel * 0.8 + 0.2); // Scale control points
-        const cp1 = {
-          x: fromPoint.x + Math.cos(fromPos.angle) * controlPointDistance,
-          y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
-        };
-        const cp2 = {
-          x: toPoint.x + Math.cos(toPos.angle + Math.PI) * controlPointDistance,
-          y: toPoint.y + Math.sin(toPos.angle + Math.PI) * controlPointDistance
-        };
-
-        const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
-
-        // Calculate midpoint for warning icon
-        const midPoint = {
-          x: (fromPoint.x + toPoint.x) / 2,
-          y: (fromPoint.y + toPoint.y) / 2
-        };
-
-        const sharedColor = colorsMatch ? fromLegColor : "yellow";
-        const connectorColor = colorsMatch ? sharedColor : "yellow";
-
-        // Check if this connection is being hovered
-        const isHovered = isConnectionHovered(conn);
-
-        // Scale stroke width slightly with zoom for better visibility using central system
-        const strokeWidth = getZoomAwareStrokeWidth(2, zoomLevel);
-
-        return (
-          <g key={connKey}>
-            {/* Invisible wider path for easier clicking */}
-            <path
-              d={pathString}
-              stroke="transparent"
-              strokeWidth="10"
-              fill="none"
-              style={{
-                cursor: "pointer"
-              }}
-              onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
-              onMouseEnter={(e) => {
-                // Find and update the visible path
-                const visiblePath = e.currentTarget
-                  .nextSibling as SVGPathElement;
-                if (visiblePath) {
-                  visiblePath.style.stroke = connectorColor;
-                  visiblePath.style.strokeWidth = "3";
-                  visiblePath.style.filter =
-                    "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
-                }
-              }}
-              onMouseLeave={(e) => {
-                // Reset the visible path
-                const visiblePath = e.currentTarget
-                  .nextSibling as SVGPathElement;
-                if (visiblePath) {
-                  visiblePath.style.stroke = connectorColor;
-                  visiblePath.style.strokeWidth = "2";
-                  visiblePath.style.filter = "none";
-                }
-              }}
-            />
-            {/* Visible path */}
-            <path
-              d={pathString}
-              stroke={connectorColor}
-              strokeWidth={isHovered ? strokeWidth * 1.5 : strokeWidth}
-              fill="none"
-              style={{
-                pointerEvents: "none",
-                stroke: connectorColor,
-                filter: isHovered
-                  ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
-                  : "none"
-              }}
-            />
-            {/* Warning sign if operators don't match */}
-            {!colorsMatch && fromLod.showText && toLod.showText && (
-              <text
-                x={midPoint.x}
-                y={midPoint.y}
-                fontSize="16"
-                fill="#FF0000"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                style={{ pointerEvents: "none" }}
-              >
-                ⚠
-              </text>
-            )}
-          </g>
         );
-      })
-      .filter(Boolean);
+      const toPoint = viewport
+        .fromLogicalToCanvas(
+          new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
+        )
+        .plus(
+          new CanvasPoint(toPos.endX, toPos.endY).factor(hideToLeg ? 0 : 1)
+        );
+
+      // Calculate control points for the curve - scale with zoom for better topology
+      const baseControlPointDistance = 30;
+      const controlPointDistance =
+        baseControlPointDistance * Math.min(1, zoomLevel * 0.8 + 0.2); // Scale control points
+      const cp1 = {
+        x: fromPoint.x + Math.cos(fromPos.angle) * controlPointDistance,
+        y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
+      };
+      const cp2 = {
+        x: toPoint.x + Math.cos(toPos.angle + Math.PI) * controlPointDistance,
+        y: toPoint.y + Math.sin(toPos.angle + Math.PI) * controlPointDistance
+      };
+
+      const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
+
+      // Calculate midpoint for warning icon
+      const midPoint = {
+        x: (fromPoint.x + toPoint.x) / 2,
+        y: (fromPoint.y + toPoint.y) / 2
+      };
+
+      const sharedColor = colorsMatch ? fromLegColor : "yellow";
+      const connectorColor = colorsMatch ? sharedColor : "yellow";
+
+      // Check if this connection is being hovered
+      const isHovered = isConnectionHovered(conn);
+
+      // Scale stroke width slightly with zoom for better visibility using central system
+      const strokeWidth = getZoomAwareStrokeWidth(2, zoomLevel);
+
+      return (
+        <g key={connKey}>
+          {/* Invisible wider path for easier clicking */}
+          <path
+            d={pathString}
+            stroke="transparent"
+            strokeWidth="10"
+            fill="none"
+            style={{
+              cursor: "pointer"
+            }}
+            onDoubleClick={(e) => handleConnectionDoubleClick(e, conn)}
+            onMouseEnter={(e) => {
+              // Find and update the visible path
+              const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+              if (visiblePath) {
+                visiblePath.style.stroke = connectorColor;
+                visiblePath.style.strokeWidth = "3";
+                visiblePath.style.filter =
+                  "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
+              }
+            }}
+            onMouseLeave={(e) => {
+              // Reset the visible path
+              const visiblePath = e.currentTarget.nextSibling as SVGPathElement;
+              if (visiblePath) {
+                visiblePath.style.stroke = connectorColor;
+                visiblePath.style.strokeWidth = "2";
+                visiblePath.style.filter = "none";
+              }
+            }}
+          />
+          {/* Visible path */}
+          <path
+            d={pathString}
+            stroke={connectorColor}
+            strokeWidth={isHovered ? strokeWidth * 1.5 : strokeWidth}
+            fill="none"
+            style={{
+              pointerEvents: "none",
+              stroke: connectorColor,
+              filter: isHovered
+                ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
+                : "none"
+            }}
+          />
+          {/* Warning sign if operators don't match */}
+          {!colorsMatch && fromLod.showText && toLod.showText && (
+            <text
+              x={midPoint.x}
+              y={midPoint.y}
+              fontSize="16"
+              fill="#FF0000"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ pointerEvents: "none" }}
+            >
+              ⚠
+            </text>
+          )}
+        </g>
+      );
+    });
   }, [
     connections,
     legoMap,
     connectedLegsMap,
+    visibleLegoIds,
     legStylesMap,
     hideConnectedLegs,
     isConnectionHovered,
@@ -366,26 +369,13 @@ export const ConnectionsLayer: React.FC = () => {
   }, [legDragState, legoMap, zoomLevel, viewport]);
 
   return (
-    <Suspense fallback={<div>Loading connections...</div>}>
-      <svg
-        id="connections-svg"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-          userSelect: "none"
-        }}
-      >
-        {/* Existing connections */}
-        <g style={{ pointerEvents: "all" }}>{renderedConnections}</g>
+    <>
+      {/* Existing connections */}
+      <g style={{ pointerEvents: "all" }}>{renderedConnections}</g>
 
-        {/* Temporary line while dragging */}
-        {tempDragLine}
-      </svg>
-    </Suspense>
+      {/* Temporary line while dragging */}
+      {tempDragLine}
+    </>
   );
 };
 

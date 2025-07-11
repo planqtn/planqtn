@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
 import { DraggingStage } from "../../stores/legoDragState";
@@ -65,32 +65,18 @@ export const LegosLayer: React.FC = () => {
   return (
     <>
       {tensorNetwork && tnBoundingBox && (
-        <svg
-          id="tn-bounding-box"
-          style={{
-            position: "absolute",
-            top: tnBoundingBox.minY,
-            left: tnBoundingBox.minX,
-            width: tnBoundingBox.width,
-            height: tnBoundingBox.height,
-            zIndex: 1,
-            pointerEvents: "none"
-          }}
-        >
-          <rect
-            x={0}
-            y={0}
-            width={tnBoundingBox.width}
-            height={tnBoundingBox.height}
-            fill="none"
-            strokeWidth="2"
-            stroke="blue"
-          />
-        </svg>
+        <rect
+          x={tnBoundingBox.minX}
+          y={tnBoundingBox.minY}
+          width={tnBoundingBox.width}
+          height={tnBoundingBox.height}
+          fill="none"
+          strokeWidth="2"
+          stroke="blue"
+        />
       )}
-      <Suspense fallback={<div>Loading legos...</div>}>
-        {renderedLegos}
-      </Suspense>
+
+      {renderedLegos}
     </>
   );
 };
