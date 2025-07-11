@@ -4,6 +4,7 @@ import { Connection } from "./connectionStore";
 import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
+import { TensorNetwork } from "../lib/TensorNetwork";
 
 export interface SelectionBoxState {
   isSelecting: boolean;
@@ -21,6 +22,25 @@ export interface BoundingBox {
   maxY: number;
   width: number;
   height: number;
+}
+
+export interface ResizeState {
+  isResizing: boolean;
+  handleType: ResizeHandleType | null;
+  startBoundingBox: BoundingBox | null;
+  startMousePosition: LogicalPoint | null;
+  currentMousePosition: LogicalPoint | null;
+}
+
+export enum ResizeHandleType {
+  TOP_LEFT = "top-left",
+  TOP = "top",
+  TOP_RIGHT = "top-right",
+  RIGHT = "right",
+  BOTTOM_RIGHT = "bottom-right",
+  BOTTOM = "bottom",
+  BOTTOM_LEFT = "bottom-left",
+  LEFT = "left"
 }
 
 export class Viewport {
@@ -158,6 +178,24 @@ export interface CanvasUISlice {
 
   // Mouse wheel handling
   handleWheelEvent: (e: WheelEvent) => void;
+
+  // Resize functionality
+  resizeState: ResizeState;
+  setResizeState: (resizeState: ResizeState) => void;
+  updateResizeState: (updates: Partial<ResizeState>) => void;
+  startResize: (
+    handleType: ResizeHandleType,
+    mousePosition: LogicalPoint
+  ) => void;
+  updateResize: (mousePosition: LogicalPoint) => void;
+  endResize: () => void;
+  applyResizeToLegos: (newBoundingBox: BoundingBox) => void;
+  calculateNewBoundingBox: (
+    startBoundingBox: BoundingBox,
+    startMousePosition: LogicalPoint,
+    currentMousePosition: LogicalPoint,
+    handleType: ResizeHandleType
+  ) => BoundingBox | null;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -405,5 +443,169 @@ export const createCanvasUISlice: StateCreator<
       newZoomLevel,
       get().viewport.fromWindowToLogical(WindowPoint.fromMouseEvent(e))
     );
+  },
+
+  // Resize functionality
+  resizeState: {
+    isResizing: false,
+    handleType: null,
+    startBoundingBox: null,
+    startMousePosition: null,
+    currentMousePosition: null
+  },
+
+  setResizeState: (resizeState) =>
+    set((state) => {
+      state.resizeState = resizeState;
+    }),
+
+  updateResizeState: (updates) =>
+    set((state) => {
+      state.resizeState = { ...state.resizeState, ...updates };
+    }),
+
+  startResize: (handleType: ResizeHandleType, mousePosition: LogicalPoint) => {
+    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+    if (!currentBoundingBox) return;
+
+    set((state) => {
+      state.resizeState = {
+        isResizing: true,
+        handleType,
+        startBoundingBox: currentBoundingBox,
+        startMousePosition: mousePosition,
+        currentMousePosition: mousePosition
+      };
+    });
+  },
+
+  updateResize: (mousePosition: LogicalPoint) => {
+    const { resizeState } = get();
+    if (
+      !resizeState.isResizing ||
+      !resizeState.startBoundingBox ||
+      !resizeState.handleType
+    )
+      return;
+
+    set((state) => {
+      state.resizeState.currentMousePosition = mousePosition;
+    });
+
+    // Calculate new bounding box based on resize handle and mouse movement
+    const newBoundingBox = get().calculateNewBoundingBox(
+      resizeState.startBoundingBox,
+      resizeState.startMousePosition!,
+      mousePosition,
+      resizeState.handleType
+    );
+
+    if (newBoundingBox) {
+      get().applyResizeToLegos(newBoundingBox);
+    }
+  },
+
+  endResize: () => {
+    set((state) => {
+      state.resizeState = {
+        isResizing: false,
+        handleType: null,
+        startBoundingBox: null,
+        startMousePosition: null,
+        currentMousePosition: null
+      };
+    });
+  },
+
+  applyResizeToLegos: (newBoundingBox: BoundingBox) => {
+    const { tensorNetwork, moveDroppedLegos } = get();
+    if (!tensorNetwork || tensorNetwork.legos.length === 0) return;
+
+    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+    if (!currentBoundingBox) return;
+
+    // Update legos in tensor network
+    const updatedLegos = tensorNetwork.legos.map((lego) => {
+      const relativeX =
+        (lego.logicalPosition.x - currentBoundingBox.minX) /
+        currentBoundingBox.width;
+      const relativeY =
+        (lego.logicalPosition.y - currentBoundingBox.minY) /
+        currentBoundingBox.height;
+
+      const newX = newBoundingBox.minX + relativeX * newBoundingBox.width;
+      const newY = newBoundingBox.minY + relativeY * newBoundingBox.height;
+
+      return lego.with({
+        logicalPosition: new LogicalPoint(newX, newY)
+      });
+    });
+
+    // Update the dropped legos store
+    moveDroppedLegos(updatedLegos);
+
+    // Update tensor network
+    const { setTensorNetwork } = get();
+    setTensorNetwork(
+      new TensorNetwork({
+        legos: updatedLegos,
+        connections: tensorNetwork.connections
+      })
+    );
+  },
+
+  calculateNewBoundingBox: (
+    startBoundingBox: BoundingBox,
+    startMousePosition: LogicalPoint,
+    currentMousePosition: LogicalPoint,
+    handleType: ResizeHandleType
+  ): BoundingBox | null => {
+    const deltaX = currentMousePosition.x - startMousePosition.x;
+    const deltaY = currentMousePosition.y - startMousePosition.y;
+
+    const newBoundingBox = { ...startBoundingBox };
+
+    switch (handleType) {
+      case ResizeHandleType.TOP_LEFT:
+        newBoundingBox.minX += deltaX;
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.TOP:
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.TOP_RIGHT:
+        newBoundingBox.maxX += deltaX;
+        newBoundingBox.minY += deltaY;
+        break;
+      case ResizeHandleType.RIGHT:
+        newBoundingBox.maxX += deltaX;
+        break;
+      case ResizeHandleType.BOTTOM_RIGHT:
+        newBoundingBox.maxX += deltaX;
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.BOTTOM:
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.BOTTOM_LEFT:
+        newBoundingBox.minX += deltaX;
+        newBoundingBox.maxY += deltaY;
+        break;
+      case ResizeHandleType.LEFT:
+        newBoundingBox.minX += deltaX;
+        break;
+    }
+
+    // Ensure minimum size
+    const minSize = 50;
+    if (newBoundingBox.width < minSize || newBoundingBox.height < minSize) {
+      return null;
+    }
+
+    return {
+      ...newBoundingBox,
+      width: newBoundingBox.maxX - newBoundingBox.minX,
+      height: newBoundingBox.maxY - newBoundingBox.minY
+    };
   }
 });
