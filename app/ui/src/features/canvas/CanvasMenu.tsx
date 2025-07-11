@@ -59,6 +59,16 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
   const setHideConnectedLegs = useCanvasStore(
     (state) => state.setHideConnectedLegs
   );
+  const hideIds = useCanvasStore((state) => state.hideIds);
+  const setHideIds = useCanvasStore((state) => state.setHideIds);
+  const hideTypeIds = useCanvasStore((state) => state.hideTypeIds);
+  const setHideTypeIds = useCanvasStore((state) => state.setHideTypeIds);
+  const hideDanglingLegs = useCanvasStore((state) => state.hideDanglingLegs);
+  const hideLegLabels = useCanvasStore((state) => state.hideLegLabels);
+  const setHideLegLabels = useCanvasStore((state) => state.setHideLegLabels);
+  const setHideDanglingLegs = useCanvasStore(
+    (state) => state.setHideDanglingLegs
+  );
   return (
     <Box
       position="absolute"
@@ -116,6 +126,38 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                   isChecked={hideConnectedLegs}
                 >
                   Hide connected legs
+                </MenuItemOption>
+                <MenuItemOption
+                  onClick={() => {
+                    setHideIds(!hideIds);
+                  }}
+                  isChecked={hideIds}
+                >
+                  Hide IDs
+                </MenuItemOption>
+                <MenuItemOption
+                  onClick={() => {
+                    setHideTypeIds(!hideTypeIds);
+                  }}
+                  isChecked={hideTypeIds}
+                >
+                  Hide Type IDs
+                </MenuItemOption>
+                <MenuItemOption
+                  onClick={() => {
+                    setHideDanglingLegs(!hideDanglingLegs);
+                  }}
+                  isChecked={hideDanglingLegs}
+                >
+                  Hide Dangling Legs
+                </MenuItemOption>
+                <MenuItemOption
+                  onClick={() => {
+                    setHideLegLabels(!hideLegLabels);
+                  }}
+                  isChecked={hideLegLabels}
+                >
+                  Hide Leg Labels
                 </MenuItemOption>
                 <MenuItemOption
                   isChecked={isLegoPanelCollapsed}

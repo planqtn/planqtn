@@ -302,6 +302,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       [legHiddenStates]
     );
 
+    const hideIds = useCanvasStore((state) => state.hideIds);
+    const hideTypeIds = useCanvasStore((state) => state.hideTypeIds);
+    const hideDanglingLegs = useCanvasStore((state) => state.hideDanglingLegs);
+    const hideLegLabels = useCanvasStore((state) => state.hideLegLabels);
+
     // Early return AFTER all hooks are called
     if (!lego) return null;
 
@@ -575,7 +580,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 <g>
                   {numRegularLegs <= 2 ? (
                     <g transform={`translate(-${size / 2}, -${size / 2})`}>
-                      {lod.showShortName && lego.style!.displayShortName ? (
+                      {lod.showShortName &&
+                      lego.style!.displayShortName &&
+                      !hideTypeIds ? (
                         <g>
                           <text
                             x={size / 2}
@@ -599,7 +606,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                             {lego.instance_id}
                           </text>
                         </g>
-                      ) : (
+                      ) : !hideIds ? (
                         <text
                           x={size / 2}
                           y={size / 2}
@@ -611,7 +618,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                         >
                           {lego.instance_id}
                         </text>
-                      )}
+                      ) : null}
                     </g>
                   ) : (
                     <text
@@ -624,16 +631,20 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                       fill={isSelected ? "white" : "#000000"}
                       style={{ pointerEvents: "none" }}
                     >
-                      {lod.showShortName && lego.style!.displayShortName ? (
+                      {lod.showShortName &&
+                      lego.style!.displayShortName &&
+                      !hideTypeIds ? (
                         <>
                           {lego.short_name}
-                          <tspan x="0" dy="12">
-                            {lego.instance_id}
-                          </tspan>
+                          {!hideIds && (
+                            <tspan x="0" dy="12">
+                              {lego.instance_id}
+                            </tspan>
+                          )}
                         </>
-                      ) : (
+                      ) : !hideIds ? (
                         lego.instance_id
-                      )}
+                      ) : null}
                     </text>
                   )}
                 </g>
@@ -651,7 +662,14 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   const isLegConnectedToSomething =
                     legConnectionStates[leg_index] || false;
 
-                  // If leg is not connected, always show the label
+                  // If hideDanglingLegs is true and leg is not connected, skip rendering
+                  if (
+                    (hideDanglingLegs && !isLegConnectedToSomething) ||
+                    hideLegLabels
+                  )
+                    return null;
+
+                  // If leg is not connected, always show the label (unless hiding dangling legs)
                   if (!isLegConnectedToSomething) {
                     return (
                       <text

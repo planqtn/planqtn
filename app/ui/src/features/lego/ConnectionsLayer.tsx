@@ -200,7 +200,7 @@ export const ConnectionsLayer: React.FC = () => {
         );
 
       // Calculate control points for the curve - scale with zoom for better topology
-      const baseControlPointDistance = 30;
+      const baseControlPointDistance = 0;
       const controlPointDistance =
         baseControlPointDistance * Math.min(1, zoomLevel * 0.8 + 0.2); // Scale control points
       const cp1 = {

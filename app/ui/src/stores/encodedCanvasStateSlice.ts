@@ -7,10 +7,19 @@ export interface EncodedCanvasStateSlice {
   getCanvasId: () => string;
   encodedCanvasState: string;
   hideConnectedLegs: boolean;
+  hideIds: boolean;
+  hideTypeIds: boolean;
+  hideDanglingLegs: boolean;
+  hideLegLabels: boolean;
+
   decodeCanvasState: (encoded: string) => Promise<void>;
   updateEncodedCanvasState: () => void;
   getEncodedCanvasState: () => string;
   setHideConnectedLegs: (hideConnectedLegs: boolean) => void;
+  setHideIds: (hideIds: boolean) => void;
+  setHideTypeIds: (hideTypeIds: boolean) => void;
+  setHideDanglingLegs: (hideDanglingLegs: boolean) => void;
+  setHideLegLabels: (hideLegLabels: boolean) => void;
 }
 
 export const createEncodedCanvasStateSlice: StateCreator<
@@ -23,6 +32,10 @@ export const createEncodedCanvasStateSlice: StateCreator<
   getCanvasId: () => get().canvasStateSerializer.getCanvasId(),
   encodedCanvasState: "",
   hideConnectedLegs: true,
+  hideIds: false,
+  hideTypeIds: false,
+  hideDanglingLegs: false,
+  hideLegLabels: false,
 
   decodeCanvasState: async (encoded: string) => {
     try {
@@ -73,5 +86,18 @@ export const createEncodedCanvasStateSlice: StateCreator<
     // Update all leg hide states when the setting changes
     get().updateAllLegHideStates();
     get().updateEncodedCanvasState();
+  },
+  setHideIds: (hideIds: boolean) => {
+    set({ hideIds });
+  },
+  setHideTypeIds: (hideTypeIds: boolean) => {
+    set({ hideTypeIds });
+  },
+  setHideDanglingLegs: (hideDanglingLegs: boolean) => {
+    set({ hideDanglingLegs });
+    get().updateAllLegHideStates();
+  },
+  setHideLegLabels: (hideLegLabels: boolean) => {
+    set({ hideLegLabels });
   }
 });
