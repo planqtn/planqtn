@@ -6,7 +6,7 @@ import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 
 const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
-export const LegosLayer: React.FC = () => {
+export const LegosLayer: React.FC<{ svgOnly?: boolean }> = ({ svgOnly }) => {
   // Use the new coordinate system with virtualization
   const visibleLegoIds = useVisibleLegoIds();
   const viewport = useCanvasStore((state) => state.viewport);
@@ -58,6 +58,7 @@ export const LegosLayer: React.FC = () => {
           key={legoInstanceId}
           legoInstanceId={legoInstanceId}
           demoMode={false}
+          svgOnly={svgOnly}
         />
       ));
   }, [visibleLegoIds, isDraggedLego, viewport]);
@@ -88,9 +89,19 @@ export const LegosLayer: React.FC = () => {
           />
         </svg>
       )}
-      <Suspense fallback={<div>Loading legos...</div>}>
+      <svg
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+          userSelect: "none"
+        }}
+      >
         {renderedLegos}
-      </Suspense>
+      </svg>
     </>
   );
 };

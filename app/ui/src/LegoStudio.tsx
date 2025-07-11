@@ -54,6 +54,7 @@ import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
 import { DroppedLego } from "./stores/droppedLegoStore.ts";
+import { useSvgExport } from "./features/canvas/useSvgExport";
 // import PythonCodeModal from "./components/PythonCodeModal";
 
 // Memoized Left Panel Component
@@ -413,92 +414,27 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
-  const handleExportSvg = () => {
-    // Get the canvas panel element
-    const canvasPanel = document.querySelector("#main-panel");
-    if (!canvasPanel) {
+  // Use the SVG export hook
+  const { exportSvg } = useSvgExport({
+    onSuccess: (message) =>
+      toast({
+        title: "Export successful",
+        description: message,
+        status: "success",
+        duration: 3000,
+        isClosable: true
+      }),
+    onError: (message) =>
       toast({
         title: "Export failed",
-        description: "Could not find the canvas panel",
+        description: message,
         status: "error",
         duration: 3000,
         isClosable: true
-      });
-      return;
-    }
+      })
+  });
 
-    // Create a new SVG element that will contain everything
-    const combinedSvg = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg"
-    );
-
-    // First, let's calculate the total bounding box
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    // Process all SVG elements in the canvas
-    const svgElements = canvasPanel.querySelectorAll("svg");
-    svgElements.forEach((svg) => {
-      // Skip SVGs that are marked as hidden
-      if (svg.style.display === "none") return;
-
-      const bbox = svg.getBBox();
-      if (bbox.width > 0 && bbox.height > 0) {
-        minX = Math.min(minX, bbox.x);
-        minY = Math.min(minY, bbox.y);
-        maxX = Math.max(maxX, bbox.x + bbox.width);
-        maxY = Math.max(maxY, bbox.y + bbox.height);
-      }
-    });
-
-    // Add some padding
-    const padding = 20;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-
-    // Set the combined SVG dimensions
-    const width = maxX - minX;
-    const height = maxY - minY;
-    combinedSvg.setAttribute("width", width.toString());
-    combinedSvg.setAttribute("height", height.toString());
-    combinedSvg.setAttribute("viewBox", `${minX} ${minY} ${width} ${height}`);
-
-    // Clone and transform all SVG elements
-    svgElements.forEach((svg) => {
-      if (svg.style.display === "none") return;
-
-      const clonedSvg = svg.cloneNode(true) as SVGElement;
-      // Remove any transform attributes that might interfere
-      clonedSvg.removeAttribute("transform");
-      combinedSvg.appendChild(clonedSvg);
-    });
-
-    // Convert to string
-    const svgContent = new XMLSerializer().serializeToString(combinedSvg);
-
-    // Create and trigger download
-    const blob = new Blob([svgContent], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "quantum_lego_network.svg";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export successful",
-      description: "SVG file has been downloaded",
-      status: "success",
-      duration: 3000,
-      isClosable: true
-    });
-  };
+  const handleExportSvg = exportSvg;
 
   function handleTitleKeyDown(
     event: React.KeyboardEvent<HTMLDivElement>
