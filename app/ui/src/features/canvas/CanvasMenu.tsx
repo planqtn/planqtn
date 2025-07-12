@@ -195,8 +195,12 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                   onClick={() => {
                     const droppedLegos = useCanvasStore.getState().droppedLegos;
                     const clearedLegos = droppedLegos.map((lego) =>
-                      lego.with({ selectedMatrixRows: [] })
+                      lego.with({
+                        selectedMatrixRows: [],
+                        highlightedLegConstraints: []
+                      })
                     );
+                    useCanvasStore.getState().highlightTensorNetworkLegs([]);
                     setDroppedLegos(clearedLegos);
                   }}
                   isDisabled={

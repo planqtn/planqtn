@@ -69,6 +69,7 @@ export class TensorNetwork {
   public constructionCode?: string;
   public legOrdering?: TensorNetworkLeg[];
   private _signature?: string;
+  public highlightedLegs?: number[];
 
   constructor(data: {
     legos: DroppedLego[];
@@ -82,6 +83,7 @@ export class TensorNetwork {
     constructionCode?: string;
     legOrdering?: TensorNetworkLeg[];
     signature?: string;
+    highlightedLegs?: number[];
   }) {
     console.assert(data.legos, "legos is required");
     console.assert(data.connections, "connections is required");
@@ -98,6 +100,7 @@ export class TensorNetwork {
     this._signature =
       data.signature ||
       this.createNetworkSignature(data.legos, data.connections);
+    this.highlightedLegs = data.highlightedLegs;
   }
 
   public get legos() {

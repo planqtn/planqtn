@@ -12,6 +12,7 @@ import {
   Z_COLOR_LIGHT
 } from "../../lib/PauliColors";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { glob } from "fs";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";
@@ -187,17 +188,21 @@ export abstract class LegoStyle {
     const isLogical = this.lego.logical_legs.includes(leg_index);
     const isGauge = this.lego.gauge_legs.includes(leg_index);
     const legCount = this.lego.numberOfLegs;
-    const highlightPauliOperator = this.getLegHighlightPauliOperator(leg_index);
-    const isHighlighted = highlightPauliOperator !== PauliOperator.I;
+    const localHighlightPauliOperator =
+      this.getLegHighlightPauliOperator(leg_index);
+    const globalHighlightPauliOperator =
+      this.lego.highlightedLegConstraints.find(
+        (constraint) => constraint.legIndex === leg_index
+      )?.operator || PauliOperator.I;
 
-    if (this.lego.instance_id === "14") {
-      console.log(
-        "calculateLegStyle",
-        leg_index,
-        forSvg,
-        this.lego.selectedMatrixRows
-      );
-    }
+    const isHighlighted =
+      localHighlightPauliOperator !== PauliOperator.I ||
+      globalHighlightPauliOperator !== PauliOperator.I;
+
+    const highlightOperator =
+      globalHighlightPauliOperator === PauliOperator.I
+        ? localHighlightPauliOperator
+        : globalHighlightPauliOperator;
 
     // Calculate the number of each type of leg
     const logicalLegsCount = this.lego.logical_legs.length;
@@ -221,8 +226,8 @@ export abstract class LegoStyle {
           from: "center",
           startOffset: 0,
           color: forSvg
-            ? getPauliColor(highlightPauliOperator, true)
-            : getPauliColor(highlightPauliOperator),
+            ? getPauliColor(highlightOperator, true)
+            : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "logical",
           position: this.getLegPosition(60, -Math.PI / 2, LEG_LABEL_DISTANCE)
@@ -248,8 +253,8 @@ export abstract class LegoStyle {
         from: "center",
         startOffset: 0,
         color: forSvg
-          ? getPauliColor(highlightPauliOperator, true)
-          : getPauliColor(highlightPauliOperator),
+          ? getPauliColor(highlightOperator, true)
+          : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "logical",
         position: this.getLegPosition(60, angle, LEG_LABEL_DISTANCE)
@@ -265,8 +270,8 @@ export abstract class LegoStyle {
         from: "bottom",
         startOffset: 10,
         color: forSvg
-          ? getPauliColor(highlightPauliOperator, true)
-          : getPauliColor(highlightPauliOperator),
+          ? getPauliColor(highlightOperator, true)
+          : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "gauge",
         position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
@@ -290,13 +295,13 @@ export abstract class LegoStyle {
         return {
           angle: Math.PI / 2,
           length: 40,
-          width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
+          width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
           from: "center",
           startOffset: 0,
           color: forSvg
-            ? getPauliColor(highlightPauliOperator, true)
-            : getPauliColor(highlightPauliOperator),
+            ? getPauliColor(highlightOperator, true)
+            : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "physical",
           position: this.getLegPosition(40, Math.PI / 2, LEG_LABEL_DISTANCE)
@@ -309,13 +314,13 @@ export abstract class LegoStyle {
         return {
           angle,
           length: 40,
-          width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
+          width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
           from: "edge",
           startOffset: 0,
           color: forSvg
-            ? getPauliColor(highlightPauliOperator, true)
-            : getPauliColor(highlightPauliOperator),
+            ? getPauliColor(highlightOperator, true)
+            : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "physical",
           position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
@@ -340,13 +345,13 @@ export abstract class LegoStyle {
       return {
         angle,
         length: 40,
-        width: highlightPauliOperator === PauliOperator.I ? "1px" : "3px",
+        width: highlightOperator === PauliOperator.I ? "1px" : "3px",
         lineStyle: "solid",
         from: "edge",
         startOffset: 0,
         color: forSvg
-          ? getPauliColor(highlightPauliOperator, true)
-          : getPauliColor(highlightPauliOperator),
+          ? getPauliColor(highlightOperator, true)
+          : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "physical",
         position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)

@@ -129,6 +129,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
   const setError = useCanvasStore((state) => state.setError);
+  const highlightTensorNetworkLegs = useCanvasStore(
+    (state) => state.highlightTensorNetworkLegs
+  );
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -322,8 +325,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const handleMatrixRowSelection = useCallback(
     (selectedRows: number[]) => {
+      if (!tensorNetwork) return;
       setSelectedMatrixRows(selectedRows);
-      if (tensorNetwork?.legos.length == 1) {
+      if (tensorNetwork.legos.length == 1) {
         const lego = tensorNetwork.legos[0];
         const updatedLego = new DroppedLego(
           lego,
@@ -342,6 +346,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           connections,
           setDroppedLegos
         );
+      } else {
+        highlightTensorNetworkLegs(selectedRows);
       }
     },
     [tensorNetwork, droppedLegos, connections, updateDroppedLego]
@@ -1318,6 +1324,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       onMatrixChange={handleMultiLegoMatrixChange}
                       onLegOrderingChange={handleLegOrderingChange}
                       onRecalculate={calculateParityCheckMatrix}
+                      onRowSelectionChange={handleMatrixRowSelection}
                     />
                   )}
                   {tensorNetwork.signature &&

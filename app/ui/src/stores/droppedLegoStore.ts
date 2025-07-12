@@ -4,6 +4,7 @@ import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
 import { TensorNetwork } from "../lib/TensorNetwork";
+import { PauliOperator } from "../lib/types";
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
@@ -98,6 +99,10 @@ export class DroppedLego implements LegoPiece {
   public alwaysShowLegs: boolean;
   public style: LegoStyle;
   public logicalPosition: LogicalPoint;
+  public highlightedLegConstraints: {
+    legIndex: number;
+    operator: PauliOperator;
+  }[];
 
   constructor(
     lego: LegoPiece,
@@ -121,7 +126,7 @@ export class DroppedLego implements LegoPiece {
     this.instance_id = instance_id;
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
-
+    this.highlightedLegConstraints = overrides.highlightedLegConstraints || [];
     this.style = getLegoStyle(lego.type_id, this.numberOfLegs, this);
   }
 
@@ -138,6 +143,8 @@ export class DroppedLego implements LegoPiece {
         selectedMatrixRows:
           overrides.selectedMatrixRows || this.selectedMatrixRows,
         alwaysShowLegs: overrides.alwaysShowLegs ?? this.alwaysShowLegs,
+        highlightedLegConstraints:
+          overrides.highlightedLegConstraints || this.highlightedLegConstraints,
         ...overrides
       }
     );
