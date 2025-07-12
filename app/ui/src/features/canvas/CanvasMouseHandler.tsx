@@ -476,6 +476,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           droppedLegos,
           connections
         );
+
+        const hasExistingConnections =
+          existingLegoToRemove &&
+          connectedLegos.some(
+            (connectedLego) =>
+              connectedLego.instance_id === existingLegoToRemove.instance_id
+          );
+        if (hasExistingConnections) {
+          return false;
+        }
         if (!closestLeg) {
           return false;
         }
