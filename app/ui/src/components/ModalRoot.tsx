@@ -9,30 +9,20 @@ import WeightEnumeratorCalculationDialog from "../features/weight-enumerator/Wei
 import { NetworkService } from "../lib/networkService";
 import { CustomLegoService } from "../features/lego/customLegoService";
 import { RuntimeConfigService } from "../features/kernel/runtimeConfigService";
-import { WeightEnumeratorService } from "../features/weight-enumerator/weightEnumeratorService";
 import { useToast } from "@chakra-ui/react";
 import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
+import { useCanvasStore } from "../stores/canvasStateStore";
 
 interface ModalRootProps {
   // Weight enumerator dependencies
   currentUser: User | null;
   setError?: (error: string) => void;
-  weightEnumeratorCache?: Map<
-    string,
-    {
-      taskId: string;
-      polynomial: string;
-      normalizerPolynomial: string;
-      truncateLength: number | null;
-    }
-  >;
 }
 
 export const ModalRoot: React.FC<ModalRootProps> = ({
   currentUser,
-  setError,
-  weightEnumeratorCache
+  setError
 }) => {
   const {
     cssTannerDialog,
@@ -161,28 +151,16 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
   };
 
   const handleWeightEnumeratorSubmit = async (
-    truncateLength: number | null,
-    openLegs: TensorNetworkLeg[]
+    truncateLength?: number,
+    openLegs?: TensorNetworkLeg[]
   ) => {
-    if (
-      !weightEnumeratorState.subNetwork ||
-      !setError ||
-      !weightEnumeratorCache
-    ) {
+    if (!weightEnumeratorState.subNetwork || !setError) {
       return;
     }
 
-    await WeightEnumeratorService.calculateWeightEnumerator(
-      weightEnumeratorState.subNetwork,
-      truncateLength,
-      openLegs,
-      {
-        currentUser: currentUser!,
-        setError,
-        toast,
-        weightEnumeratorCache
-      }
-    );
+    await useCanvasStore
+      .getState()
+      .calculateWeightEnumerator(currentUser!, toast, truncateLength, openLegs);
   };
 
   return ReactDOM.createPortal(

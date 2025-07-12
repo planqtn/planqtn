@@ -60,47 +60,20 @@ export interface TensorNetworkLeg {
 export class TensorNetwork {
   private _legos: DroppedLego[];
   private _connections: Connection[];
-  public parity_check_matrix?: number[][];
-  public weightEnumerator?: string;
-  public normalizerPolynomial?: string;
-  public truncateLength?: number;
-  public isCalculatingWeightEnumerator?: boolean;
-  public taskId?: string;
-  public constructionCode?: string;
-  public legOrdering?: TensorNetworkLeg[];
-  private _signature?: string;
-  public highlightedLegs?: number[];
+  private _signature: string;
 
   constructor(data: {
     legos: DroppedLego[];
     connections: Connection[];
-    parity_check_matrix?: number[][];
-    weightEnumerator?: string;
-    normalizerPolynomial?: string;
-    truncateLength?: number;
-    isCalculatingWeightEnumerator?: boolean;
-    taskId?: string;
-    constructionCode?: string;
-    legOrdering?: TensorNetworkLeg[];
     signature?: string;
-    highlightedLegs?: number[];
   }) {
     console.assert(data.legos, "legos is required");
     console.assert(data.connections, "connections is required");
     this._legos = data.legos;
     this._connections = data.connections;
-    this.parity_check_matrix = data.parity_check_matrix;
-    this.weightEnumerator = data.weightEnumerator;
-    this.normalizerPolynomial = data.normalizerPolynomial;
-    this.truncateLength = data.truncateLength;
-    this.isCalculatingWeightEnumerator = data.isCalculatingWeightEnumerator;
-    this.taskId = data.taskId;
-    this.constructionCode = data.constructionCode;
-    this.legOrdering = data.legOrdering;
     this._signature =
       data.signature ||
       this.createNetworkSignature(data.legos, data.connections);
-    this.highlightedLegs = data.highlightedLegs;
   }
 
   public get legos() {
@@ -123,9 +96,9 @@ export class TensorNetwork {
   public with(overrides: Partial<TensorNetwork>): TensorNetwork {
     return new TensorNetwork({
       ...this,
-      legos: this._legos,
-      connections: this._connections,
-      signature: this._signature,
+      legos: this._legos || overrides.legos || [],
+      connections: this._connections || overrides.connections || [],
+      signature: this._signature || overrides.signature,
       ...overrides
     });
   }

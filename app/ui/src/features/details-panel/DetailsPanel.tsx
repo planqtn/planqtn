@@ -15,11 +15,10 @@ import { FaTable, FaCube } from "react-icons/fa";
 import {
   TaskUpdate,
   TaskUpdateIterationStatus,
-  Task,
-  ParityCheckMatrix
+  Task
 } from "../../lib/types.ts";
 import { Connection } from "../../stores/connectionStore";
-import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
+import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import {
   createHadamardLego,
   DroppedLego
@@ -81,42 +80,13 @@ interface DetailsPanelProps {
   handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>;
   toast: (props: UseToastOptions) => void;
   user?: User | null;
-  parityCheckMatrixCache: Map<string, ParityCheckMatrix>;
-  setParityCheckMatrixCache: React.Dispatch<
-    React.SetStateAction<Map<string, ParityCheckMatrix>>
-  >;
-  weightEnumeratorCache: Map<
-    string,
-    {
-      taskId: string;
-      polynomial: string;
-      normalizerPolynomial: string;
-      truncateLength: number | null;
-    }
-  >;
-  setWeightEnumeratorCache: React.Dispatch<
-    React.SetStateAction<
-      Map<
-        string,
-        {
-          taskId: string;
-          polynomial: string;
-          normalizerPolynomial: string;
-          truncateLength: number | null;
-        }
-      >
-    >
-  >;
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({
   fuseLegos,
   makeSpace,
   handlePullOutSameColoredLeg,
-  user,
-  parityCheckMatrixCache,
-  setParityCheckMatrixCache,
-  weightEnumeratorCache
+  user
 }) => {
   const connections = useCanvasStore((state) => state.connections);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
@@ -127,7 +97,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
   const addOperation = useCanvasStore((state) => state.addOperation);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const selectedRows = useCanvasStore((state) => state.selectedRows);
+  const listWeightEnumerators = useCanvasStore(
+    (state) => state.listWeightEnumerators
+  );
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
+  const setParityCheckMatrix = useCanvasStore(
+    (state) => state.setParityCheckMatrix
+  );
+  const getParityCheckMatrix = useCanvasStore(
+    (state) => state.getParityCheckMatrix
+  );
+
+  const parityCheckMatrix = useCanvasStore((state) => {
+    if (!state.tensorNetwork) return null;
+    return state.parityCheckMatrices[state.tensorNetwork.signature] || null;
+  });
+
   const setError = useCanvasStore((state) => state.setError);
   const highlightTensorNetworkLegs = useCanvasStore(
     (state) => state.highlightTensorNetworkLegs
@@ -135,7 +121,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const [, setSelectedMatrixRows] = useState<number[]>([]);
   const [task, setTask] = useState<Task | null>(null);
   const [taskUpdatesChannel, setTaskUpdatesChannel] =
     useState<RealtimeChannel | null>(null);
@@ -173,21 +158,9 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         leg_index: leg.leg_index
       }));
 
-      // Update the tensor network with the new matrix and leg ordering
-      setTensorNetwork(
-        tensorNetwork.with({
-          parity_check_matrix: result.h.getMatrix(),
-          legOrdering: legOrdering
-        })
-      );
-
-      setParityCheckMatrixCache((prev) => {
-        const newCache = new Map(prev);
-        newCache.set(tensorNetwork.signature!, {
-          matrix: result.h.getMatrix(),
-          legOrdering: legOrdering
-        });
-        return newCache;
+      setParityCheckMatrix(tensorNetwork.signature, {
+        matrix: result.h.getMatrix(),
+        legOrdering
       });
     } catch (error) {
       console.error("Error calculating parity check matrix:", error);
@@ -314,26 +287,26 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
 
   useEffect(() => {
     if (!tensorNetwork) return;
-
     const signature = tensorNetwork.signature!;
-    const cachedEnumerator = weightEnumeratorCache.get(signature);
-    const taskId = tensorNetwork.taskId || cachedEnumerator?.taskId;
+    // TODO: for now just support one weight enumerator per tensor network, but we are preparing for a list of them
+    const cachedEnumerator = listWeightEnumerators(signature)[0];
+    const taskId = cachedEnumerator?.taskId;
     if (taskId) {
       readAndUpdateTask(taskId);
     }
-  }, [tensorNetwork, tensorNetwork?.taskId]);
+  }, [tensorNetwork]);
 
   const handleMatrixRowSelection = useCallback(
-    (selectedRows: number[]) => {
+    (newSelectedRows: number[]) => {
       if (!tensorNetwork) return;
-      setSelectedMatrixRows(selectedRows);
+
       if (tensorNetwork.legos.length == 1) {
         const lego = tensorNetwork.legos[0];
         const updatedLego = new DroppedLego(
           lego,
           lego.logicalPosition,
           lego.instance_id,
-          { selectedMatrixRows: selectedRows }
+          { selectedMatrixRows: newSelectedRows }
         );
 
         updateDroppedLego(updatedLego.instance_id, updatedLego);
@@ -347,23 +320,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           setDroppedLegos
         );
       } else {
-        highlightTensorNetworkLegs(selectedRows);
+        highlightTensorNetworkLegs(newSelectedRows);
       }
     },
     [tensorNetwork, droppedLegos, connections, updateDroppedLego]
-  );
-
-  const handleLegOrderingChange = useCallback(
-    (newLegOrdering: TensorNetworkLeg[]) => {
-      if (tensorNetwork) {
-        // Update the tensor network state
-        setTensorNetwork(tensorNetwork.with({ legOrdering: newLegOrdering }));
-
-        // Note: We don't update the cache here since we only store the matrix,
-        // not the leg ordering. The leg ordering is stored in the tensor network.
-      }
-    },
-    [tensorNetwork, setTensorNetwork]
   );
 
   const handleLegoMatrixChange = useCallback(
@@ -394,21 +354,16 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     (newMatrix: number[][]) => {
       if (!tensorNetwork) return;
 
-      // Update the tensor network state
-      setTensorNetwork(tensorNetwork.with({ parity_check_matrix: newMatrix }));
+      const pcm = getParityCheckMatrix(tensorNetwork.signature)!;
 
       // Update the cache
       const signature = tensorNetwork.signature!;
-      setParityCheckMatrixCache((prev) => {
-        const newCache = new Map(prev);
-        newCache.set(signature, {
-          matrix: newMatrix,
-          legOrdering: tensorNetwork.legOrdering || []
-        });
-        return newCache;
+      setParityCheckMatrix(signature, {
+        matrix: newMatrix,
+        legOrdering: pcm.legOrdering
       });
     },
-    [tensorNetwork, setTensorNetwork, setParityCheckMatrixCache]
+    [tensorNetwork, setParityCheckMatrix]
   );
 
   // Memoized leg ordering for single lego
@@ -1216,7 +1171,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               <ParityCheckMatrixDisplay
                 matrix={tensorNetwork.legos[0].parity_check_matrix}
                 legOrdering={singleLegoLegOrdering}
-                selectedRows={tensorNetwork.legos[0].selectedMatrixRows || []}
+                selectedRows={selectedRows[tensorNetwork.signature] || []}
                 onRowSelectionChange={handleMatrixRowSelection}
                 onMatrixChange={handleLegoMatrixChange}
               />
@@ -1292,48 +1247,34 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 </VStack>
                 <Heading size="md">Network Details</Heading>
                 <VStack align="stretch" spacing={3}>
-                  {!tensorNetwork.parity_check_matrix &&
-                    !parityCheckMatrixCache.get(tensorNetwork.signature!) && (
-                      <Button
-                        onClick={calculateParityCheckMatrix}
-                        colorScheme="blue"
-                        size="sm"
-                        width="full"
-                        leftIcon={<Icon as={FaTable} />}
-                      >
-                        Calculate Parity Check Matrix
-                      </Button>
-                    )}
-                  {(tensorNetwork.parity_check_matrix ||
-                    (tensorNetwork &&
-                      parityCheckMatrixCache.get(
-                        tensorNetwork.signature!
-                      ))) && (
+                  {!parityCheckMatrix && (
+                    <Button
+                      onClick={calculateParityCheckMatrix}
+                      colorScheme="blue"
+                      size="sm"
+                      width="full"
+                      leftIcon={<Icon as={FaTable} />}
+                    >
+                      Calculate Parity Check Matrix
+                    </Button>
+                  )}
+                  {parityCheckMatrix && (
                     <ParityCheckMatrixDisplay
-                      matrix={
-                        tensorNetwork.parity_check_matrix ||
-                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
-                          .matrix
-                      }
+                      matrix={parityCheckMatrix.matrix}
                       title="Pauli stabilizers"
-                      legOrdering={
-                        tensorNetwork.legOrdering ||
-                        parityCheckMatrixCache.get(tensorNetwork.signature!)!
-                          .legOrdering
-                      }
+                      legOrdering={parityCheckMatrix.legOrdering}
                       onMatrixChange={handleMultiLegoMatrixChange}
-                      onLegOrderingChange={handleLegOrderingChange}
                       onRecalculate={calculateParityCheckMatrix}
                       onRowSelectionChange={handleMatrixRowSelection}
+                      selectedRows={selectedRows[tensorNetwork.signature] || []}
                     />
                   )}
                   {tensorNetwork.signature &&
-                  weightEnumeratorCache.get(tensorNetwork.signature) ? (
+                  listWeightEnumerators(tensorNetwork.signature)[0] ? (
                     <TaskDetailsDisplay
                       task={task}
                       taskId={
-                        tensorNetwork.taskId ||
-                        weightEnumeratorCache.get(tensorNetwork.signature!)
+                        listWeightEnumerators(tensorNetwork.signature)[0]
                           ?.taskId
                       }
                       iterationStatus={iterationStatus}

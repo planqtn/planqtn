@@ -12,7 +12,6 @@ import {
   Z_COLOR_LIGHT
 } from "../../lib/PauliColors";
 import { DroppedLego } from "../../stores/droppedLegoStore";
-import { glob } from "fs";
 
 export const Z_REP_CODE = "z_rep_code";
 export const X_REP_CODE = "x_rep_code";

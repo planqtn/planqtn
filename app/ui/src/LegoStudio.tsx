@@ -23,7 +23,6 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./features/canvas/SelectionManager.tsx";
-import { ParityCheckMatrix } from "./lib/types";
 
 import DetailsPanel from "./features/details-panel/DetailsPanel.tsx";
 import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
@@ -153,21 +152,6 @@ const LegoStudioView: React.FC = () => {
   const zoomLevel = viewport.zoomLevel;
 
   // Use centralized TensorNetwork store
-
-  const [parityCheckMatrixCache, setParityCheckMatrixCache] = useState<
-    Map<string, ParityCheckMatrix>
-  >(new Map());
-  const [weightEnumeratorCache, setWeightEnumeratorCache] = useState<
-    Map<
-      string,
-      {
-        taskId: string;
-        polynomial: string;
-        normalizerPolynomial: string;
-        truncateLength: number | null;
-      }
-    >
-  >(new Map());
 
   // Use modal store for network dialogs
   const {
@@ -650,10 +634,6 @@ const LegoStudioView: React.FC = () => {
                 ) => makeSpace(center, radius, skipLegos, legosToCheck)}
                 toast={toast}
                 user={currentUser}
-                parityCheckMatrixCache={parityCheckMatrixCache}
-                setParityCheckMatrixCache={setParityCheckMatrixCache}
-                weightEnumeratorCache={weightEnumeratorCache}
-                setWeightEnumeratorCache={setWeightEnumeratorCache}
               />
             </Panel>
           </PanelGroup>
@@ -682,11 +662,7 @@ const LegoStudioView: React.FC = () => {
           />
         )}
         {/* Network dialogs managed by ModalRoot */}
-        <ModalRoot
-          currentUser={currentUser}
-          setError={setError}
-          weightEnumeratorCache={weightEnumeratorCache}
-        />
+        <ModalRoot currentUser={currentUser} setError={setError} />
       </VStack>
 
       {showPythonCodeModal && (
