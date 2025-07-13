@@ -1,5 +1,3 @@
-import { TensorNetworkLeg } from "./TensorNetwork";
-
 export enum PauliOperator {
   X = "X",
   Z = "Z",
@@ -35,9 +33,4 @@ export interface Task {
   result: string | null;
   execution_id: string;
   job_type: string;
-}
-
-export interface ParityCheckMatrix {
-  matrix: number[][];
-  legOrdering: TensorNetworkLeg[];
 }

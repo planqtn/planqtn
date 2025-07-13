@@ -21,10 +21,7 @@ import { Connection } from "../../stores/connectionStore";
 interface WeightEnumeratorCalculationDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (
-    truncateLength: number | null,
-    openLegs: TensorNetworkLeg[]
-  ) => void;
+  onSubmit: (truncateLength?: number, openLegs?: TensorNetworkLeg[]) => void;
   subNetwork: TensorNetwork;
   mainNetworkConnections: Connection[];
 }
@@ -115,7 +112,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
 
   const handleSubmit = () => {
     if (truncateLength === "") {
-      onSubmit(null, selectedLegs);
+      onSubmit(undefined, selectedLegs);
     } else {
       const value = parseInt(truncateLength);
       if (isNaN(value) || value < 1) {

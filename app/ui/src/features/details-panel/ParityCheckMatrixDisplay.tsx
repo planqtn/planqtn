@@ -12,7 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
-import { LegReorderDialog } from "./LegReorderDialog.tsx";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FixedSizeList as List } from "react-window";
 import { Resizable } from "re-resizable";
@@ -224,7 +223,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   title,
   legOrdering,
   onMatrixChange,
-  onLegOrderingChange,
   onRecalculate,
   selectedRows = [],
   onRowSelectionChange,
@@ -233,7 +231,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [draggedRowIndex] = useState<number | null>(null);
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
-  const [isLegReorderDialogOpen, setIsLegReorderDialogOpen] = useState(false);
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const hasInitialized = useRef(false);
@@ -515,12 +512,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     [onRowSelectionChange, effectiveSelectedRows]
   );
 
-  const handleLegReorder = (newLegOrdering: TensorNetworkLeg[]) => {
-    if (onLegOrderingChange) {
-      onLegOrderingChange(newLegOrdering);
-    }
-  };
-
   const isScalar = matrix.length === 1 && matrix[0].length === 1;
 
   const copyMatrixAsNumpy = () => {
@@ -790,7 +781,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             >
               <path
                 d="M9 3L3 9M6 3L3 6M9 6L6 9"
-                stroke="#A0AEC0"
+                stroke={SVG_COLORS.I}
                 strokeWidth="1.5"
                 strokeLinecap="round"
               />
@@ -798,15 +789,6 @@ export const ParityCheckMatrixDisplay: React.FC<
           </Box>
         </Resizable>
       </Box>
-
-      {legOrdering && onLegOrderingChange && (
-        <LegReorderDialog
-          isOpen={isLegReorderDialogOpen}
-          onClose={() => setIsLegReorderDialogOpen(false)}
-          onSubmit={handleLegReorder}
-          legOrdering={legOrdering}
-        />
-      )}
     </Box>
   );
 };

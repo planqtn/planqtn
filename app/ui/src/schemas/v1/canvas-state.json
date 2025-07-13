@@ -134,34 +134,30 @@
     },
     "hideConnectedLegs": {
       "type": "boolean",
-      "description": "Whether to hide legs that are connected to other legos"
+      "description": "Whether to hide legs that are connected to other legos",
+      "default": false
     },
     "hideIds": {
       "type": "boolean",
-      "description": "Whether to hide lego instance IDs"
+      "description": "Whether to hide lego instance IDs",
+      "default": false
     },
     "hideTypeIds": {
       "type": "boolean",
-      "description": "Whether to hide lego type IDs and short names"
+      "description": "Whether to hide lego type IDs and short names",
+      "default": false
     },
     "hideDanglingLegs": {
       "type": "boolean",
-      "description": "Whether to hide labels for legs that are not connected"
+      "description": "Whether to hide labels for legs that are not connected",
+      "default": false
     },
     "hideLegLabels": {
       "type": "boolean",
-      "description": "Whether to hide all leg labels"
+      "description": "Whether to hide all leg labels",
+      "default": false
     }
   },
-  "required": [
-    "canvasId",
-    "pieces",
-    "connections",
-    "hideConnectedLegs",
-    "hideIds",
-    "hideTypeIds",
-    "hideDanglingLegs",
-    "hideLegLabels"
-  ],
+  "required": ["canvasId", "pieces", "connections"],
   "additionalProperties": false
 }
