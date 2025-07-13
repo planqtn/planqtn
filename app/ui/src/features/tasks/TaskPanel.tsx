@@ -206,8 +206,8 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         getApiUrl("cancelJob"),
         {
           task_uuid: taskId,
-          task_store_url: process.env.REACT_APP_USER_CONTEXT_URL,
-          task_store_anon_key: process.env.REACT_APP_USER_CONTEXT_ANON_KEY
+          task_store_url: import.meta.env.VITE_USER_CONTEXT_URL,
+          task_store_anon_key: import.meta.env.VITE_USER_CONTEXT_ANON_KEY
         },
         {
           headers: {

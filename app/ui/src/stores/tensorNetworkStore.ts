@@ -37,6 +37,13 @@ export class WeightEnumerator {
       this.openLegs.every((leg) => other.openLegs.includes(leg))
     );
   }
+
+  public with(data: Partial<WeightEnumerator>): WeightEnumerator {
+    return new WeightEnumerator({
+      ...this,
+      ...data
+    });
+  }
 }
 
 export interface ParityCheckMatrix {
@@ -283,7 +290,6 @@ export const useTensorNetworkSlice: StateCreator<
           })
         );
       }
-      console.log("updatedDroppedLegos", updatedDroppedLegosMap);
       updatedDroppedLegos = Array.from(updatedDroppedLegosMap.values());
     });
 
@@ -299,102 +305,99 @@ export const useTensorNetworkSlice: StateCreator<
     truncateLength?: number,
     openLegs?: TensorNetworkLeg[]
   ): Promise<void> => {
-    set(async (state) => {
-      if (!state.tensorNetwork) return;
+    const tensorNetwork = get().tensorNetwork;
+    if (!tensorNetwork) return;
 
-      const newEnumerator = new WeightEnumerator({
-        truncateLength: truncateLength,
-        openLegs: openLegs || []
+    const newEnumerator = new WeightEnumerator({
+      truncateLength: truncateLength,
+      openLegs: openLegs || []
+    });
+
+    const cachedEnumerator = get()
+      .listWeightEnumerators(tensorNetwork.signature)
+      .find((enumerator: WeightEnumerator) =>
+        enumerator.equalArgs(newEnumerator)
+      );
+
+    if (cachedEnumerator) {
+      // we already calculated this weight enumerator
+      toast({
+        title: "Weight enumerator already calculated",
+        description: `The weight enumerator has already been calculated. See task id: ${cachedEnumerator.taskId}`,
+        status: "info",
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token");
+      }
+
+      const response = await fetch(getApiUrl("planqtnJob"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          user_id: currentUser?.id,
+          request_time: new Date().toISOString(),
+          job_type: "weightenumerator",
+          task_store_url: config.userContextURL,
+          task_store_anon_key: config.userContextAnonKey,
+          payload: {
+            legos: tensorNetwork.legos.reduce(
+              (acc, lego) => {
+                acc[lego.instance_id] = {
+                  instance_id: lego.instance_id,
+                  short_name: lego.short_name || "Generic Lego",
+                  name: lego.short_name || "Generic Lego",
+                  type_id: lego.type_id,
+                  parity_check_matrix: lego.parity_check_matrix,
+                  logical_legs: lego.logical_legs,
+                  gauge_legs: lego.gauge_legs
+                };
+                return acc;
+              },
+              {} as Record<string, unknown>
+            ),
+            connections: tensorNetwork.connections,
+            truncate_length: truncateLength,
+            open_legs: openLegs || []
+          }
+        })
       });
 
-      const cachedEnumerator = get()
-        .listWeightEnumerators(state.tensorNetwork.signature)
-        .find((enumerator: WeightEnumerator) =>
-          enumerator.equalArgs(newEnumerator)
-        );
+      const data = await response.json();
 
-      if (cachedEnumerator) {
-        // we already calculated this weight enumerator
-        toast({
-          title: "Weight enumerator already calculated",
-          description: `The weight enumerator has already been calculated. See task id: ${cachedEnumerator.taskId}`,
-          status: "info",
-          duration: 5000,
-          isClosable: true
-        });
-        return;
+      if (data.status === "error") {
+        throw new Error(data.message);
       }
 
-      try {
-        const accessToken = await getAccessToken();
-        if (!accessToken) {
-          throw new Error("Failed to get access token");
-        }
+      const taskId = data.task_id;
 
-        const response = await fetch(getApiUrl("planqtnJob"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({
-            user_id: currentUser?.id,
-            request_time: new Date().toISOString(),
-            job_type: "weightenumerator",
-            task_store_url: config.userContextURL,
-            task_store_anon_key: config.userContextAnonKey,
-            payload: {
-              legos: state.tensorNetwork.legos.reduce(
-                (acc, lego) => {
-                  acc[lego.instance_id] = {
-                    instance_id: lego.instance_id,
-                    short_name: lego.short_name || "Generic Lego",
-                    name: lego.short_name || "Generic Lego",
-                    type_id: lego.type_id,
-                    parity_check_matrix: lego.parity_check_matrix,
-                    logical_legs: lego.logical_legs,
-                    gauge_legs: lego.gauge_legs
-                  };
-                  return acc;
-                },
-                {} as Record<string, unknown>
-              ),
-              connections: state.tensorNetwork.connections,
-              truncate_length: truncateLength,
-              open_legs: openLegs || []
-            }
-          })
-        });
+      get().setWeightEnumerator(
+        tensorNetwork.signature,
+        taskId,
+        newEnumerator.with({ taskId })
+      );
 
-        const data = await response.json();
-
-        if (data.status === "error") {
-          throw new Error(data.message);
-        }
-
-        const taskId = data.task_id;
-
-        state.setWeightEnumerator(
-          state.tensorNetwork.signature,
-          taskId,
-          newEnumerator
-        );
-
-        toast({
-          title: "Success starting the task!",
-          description: "Weight enumerator calculation has been started.",
-          status: "success",
-          duration: 5000,
-          isClosable: true
-        });
-      } catch (err) {
-        console.error("Error calculating weight enumerator:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error occurred";
-        get().setError(
-          `Failed to calculate weight enumerator: ${errorMessage}`
-        );
-      }
-    });
+      toast({
+        title: "Success starting the task!",
+        description: "Weight enumerator calculation has been started.",
+        status: "success",
+        duration: 5000,
+        isClosable: true
+      });
+    } catch (err) {
+      console.error("Error calculating weight enumerator:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      get().setError(`Failed to calculate weight enumerator: ${errorMessage}`);
+    }
   }
 });

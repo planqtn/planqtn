@@ -119,6 +119,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     (state) => state.highlightTensorNetworkLegs
   );
 
+  const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [task, setTask] = useState<Task | null>(null);
@@ -285,16 +286,20 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       });
   };
 
+  // TODO: for now just support one weight enumerator per tensor network, but we are preparing for a list of them
   useEffect(() => {
-    if (!tensorNetwork) return;
-    const signature = tensorNetwork.signature!;
-    // TODO: for now just support one weight enumerator per tensor network, but we are preparing for a list of them
-    const cachedEnumerator = listWeightEnumerators(signature)[0];
+    const cachedEnumerator =
+      weightEnumerators[tensorNetwork?.signature || ""]?.[0];
     const taskId = cachedEnumerator?.taskId;
+    console.log(
+      "details panel sees taskId for network",
+      cachedEnumerator,
+      taskId
+    );
     if (taskId) {
       readAndUpdateTask(taskId);
     }
-  }, [tensorNetwork]);
+  }, [tensorNetwork, weightEnumerators]);
 
   const handleMatrixRowSelection = useCallback(
     (newSelectedRows: number[]) => {
