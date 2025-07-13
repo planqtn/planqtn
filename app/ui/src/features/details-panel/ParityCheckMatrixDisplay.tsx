@@ -781,7 +781,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             >
               <path
                 d="M9 3L3 9M6 3L3 6M9 6L6 9"
-                stroke="#A0AEC0"
+                stroke={SVG_COLORS.I}
                 strokeWidth="1.5"
                 strokeLinecap="round"
               />

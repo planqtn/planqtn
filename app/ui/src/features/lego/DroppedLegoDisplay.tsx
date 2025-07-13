@@ -10,6 +10,7 @@ import {
 } from "../../utils/coordinateTransforms.ts";
 import { useShallow } from "zustand/react/shallow";
 import { WindowPoint } from "../../types/coordinates.ts";
+import { SVG_COLORS } from "../../lib/PauliColors.ts";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -85,7 +86,7 @@ const StaticLegsLayer = memo<{
             y1={legStyle.position.startY}
             x2={legStyle.position.endX}
             y2={legStyle.position.endY}
-            stroke="#A0AEC0" // Default gray color for static rendering
+            stroke={SVG_COLORS.I} // Default gray color for static rendering
             strokeWidth="2"
             strokeDasharray={
               legStyle.lineStyle === "dashed" ? "5,5" : undefined
@@ -464,7 +465,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   const legColor = lego.style!.getLegColor(leg_index);
                   const shouldHide = legHiddenStates[leg_index];
 
-                  if (legColor === "#A0AEC0" || shouldHide) {
+                  if (legColor === SVG_COLORS.I || shouldHide) {
                     return null;
                   }
 

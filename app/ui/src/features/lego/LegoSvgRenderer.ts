@@ -1,6 +1,7 @@
 import { LegStyle } from "./LegoStyles";
 import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { SVG_COLORS } from "../../lib/PauliColors";
 
 export interface LegoSvgOptions {
   demoMode?: boolean;
@@ -34,7 +35,7 @@ export class LegoSvgRenderer {
         const legColor = legStyle.color;
         return `
           <line x1="${legStyle.position.startX}" y1="${legStyle.position.startY}" x2="${legStyle.position.endX}" y2="${legStyle.position.endY}" 
-                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(legStyle.width)}" 
+                stroke="${legColor}" stroke-width="${legColor !== SVG_COLORS.I ? 4 : parseInt(legStyle.width)}" 
                 ${legStyle.lineStyle === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
           <circle cx="${legStyle.position.endX}" cy="${legStyle.position.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
         `;
@@ -58,7 +59,7 @@ export class LegoSvgRenderer {
         const legColor = legStyle.color;
         return `
           <line x1="${legStyle.position.startX}" y1="${legStyle.position.startY}" x2="${legStyle.position.endX}" y2="${legStyle.position.endY}" 
-                stroke="${legColor}" stroke-width="${legColor !== "#A0AEC0" ? 4 : parseInt(legStyle.width)}" 
+                stroke="${legColor}" stroke-width="${legColor !== SVG_COLORS.I ? 4 : parseInt(legStyle.width)}" 
                 ${legStyle.lineStyle === "dashed" ? 'stroke-dasharray="5,5"' : ""} />
           <circle cx="${legStyle.position.endX}" cy="${legStyle.position.endY}" r="5" fill="white" stroke="${legColor}" stroke-width="2" />
         `;
