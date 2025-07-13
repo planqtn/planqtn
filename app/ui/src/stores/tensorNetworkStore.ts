@@ -70,7 +70,7 @@ export interface TensorNetworkSlice {
     }[]
   >;
 
-  selectedRows: Record<string, number[]>;
+  selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
 
   /* Setters / Mutators */
 
@@ -122,7 +122,7 @@ export const useTensorNetworkSlice: StateCreator<
   // weight enumerators for each tensor network
   weightEnumerators: {},
   highlightedTensorNetworkLegs: {},
-  selectedRows: {},
+  selectedTensorNetworkParityCheckMatrixRows: {},
 
   getParityCheckMatrix: (networkSignature: string) => {
     return get().parityCheckMatrices[networkSignature] || null;
@@ -197,13 +197,12 @@ export const useTensorNetworkSlice: StateCreator<
     let updatedDroppedLegos: DroppedLego[] = [];
 
     set((state) => {
-      state.selectedRows[tensorNetwork.signature] = selectedRows;
+      state.selectedTensorNetworkParityCheckMatrixRows[
+        tensorNetwork.signature
+      ] = selectedRows;
       const parityCheckMatrix = get().getParityCheckMatrix(
         tensorNetwork.signature
       );
-      console.log("highlightTensorNetworkLegs", selectedRows);
-      console.log("h", parityCheckMatrix?.matrix);
-      console.log("legOrdering", parityCheckMatrix?.legOrdering);
 
       if (!parityCheckMatrix) return;
       const h = parityCheckMatrix.matrix;

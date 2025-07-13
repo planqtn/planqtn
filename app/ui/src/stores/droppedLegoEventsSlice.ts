@@ -26,7 +26,6 @@ export const useDroppedLegoClickHandlerSlice: StateCreator<
   DroppedLegoClickHandlerSlice
 > = (_, get) => ({
   handleLegoClick: (lego, ctrlKey, metaKey) => {
-    console.log("handleLegoClick", lego, ctrlKey, metaKey);
     // Get the current global drag state
     const currentDragState = get().legoDragState;
 

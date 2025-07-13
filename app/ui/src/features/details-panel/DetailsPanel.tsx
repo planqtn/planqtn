@@ -97,7 +97,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
   const addOperation = useCanvasStore((state) => state.addOperation);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
-  const selectedRows = useCanvasStore((state) => state.selectedRows);
+  const selectedTensorNetworkParityCheckMatrixRows = useCanvasStore(
+    (state) => state.selectedTensorNetworkParityCheckMatrixRows
+  );
+
   const listWeightEnumerators = useCanvasStore(
     (state) => state.listWeightEnumerators
   );
@@ -139,6 +142,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     onOpen: onLogsModalOpen,
     onClose: onLogsModalClose
   } = useDisclosure();
+
+  const lego =
+    tensorNetwork?.legos.length == 1 ? tensorNetwork?.legos[0] : null;
+  const legoSelectedRows = lego ? lego.selectedMatrixRows : [];
 
   const calculateParityCheckMatrix = async () => {
     if (!tensorNetwork) return;
@@ -1176,7 +1183,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               <ParityCheckMatrixDisplay
                 matrix={tensorNetwork.legos[0].parity_check_matrix}
                 legOrdering={singleLegoLegOrdering}
-                selectedRows={selectedRows[tensorNetwork.signature] || []}
+                selectedRows={legoSelectedRows}
                 onRowSelectionChange={handleMatrixRowSelection}
                 onMatrixChange={handleLegoMatrixChange}
               />
@@ -1271,7 +1278,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       onMatrixChange={handleMultiLegoMatrixChange}
                       onRecalculate={calculateParityCheckMatrix}
                       onRowSelectionChange={handleMatrixRowSelection}
-                      selectedRows={selectedRows[tensorNetwork.signature] || []}
+                      selectedRows={
+                        selectedTensorNetworkParityCheckMatrixRows[
+                          tensorNetwork.signature
+                        ] || []
+                      }
                     />
                   )}
                   {tensorNetwork.signature &&
