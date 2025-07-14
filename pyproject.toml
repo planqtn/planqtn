@@ -25,7 +25,6 @@ dependencies = [
     "scipy",
     "sympy",
     "pyzx",
-    "kahypar",
     "cotengra",
     "optuna",
     "attrs",
