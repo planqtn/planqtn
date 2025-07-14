@@ -35,8 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
-      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -217,48 +215,37 @@ jobs:
             licenses/cli-licenses-summary.txt
             licenses/deno-license-report.txt
 
-      # Create summary comment for PR
-      - name: Create license summary
-        if: github.event_name == 'pull_request'
+      # Create job summary with license check results
+      - name: Create license summary for job output
+        if: always()
         run: |
-          echo "## 📋 License Check Summary" > licenses/license-summary.md
-          echo "" >> licenses/license-summary.md
-          echo "### Python Dependencies" >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          head -20 licenses/python-licenses.txt >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          echo "" >> licenses/license-summary.md
-          echo "### UI Component Dependencies" >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          cat licenses/ui-licenses-summary.txt >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          echo "" >> licenses/license-summary.md
-          echo "### CLI Component Dependencies" >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          cat licenses/cli-licenses-summary.txt >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          echo "" >> licenses/license-summary.md
-          echo "### Deno Dependencies (Supabase Functions)" >> licenses/license-summary.md
-          echo '```' >> licenses/license-summary.md
-          if [ -f licenses/deno-license-report.txt ]; then head -30 licenses/deno-license-report.txt >> licenses/license-summary.md; else echo "No Deno dependencies found or check failed" >> licenses/license-summary.md; fi
-          echo '```' >> licenses/license-summary.md
-          echo "" >> licenses/license-summary.md
-          echo "📊 **Full license reports are available in the workflow artifacts**"
-
-      - name: Comment PR with license summary
-        uses: actions/github-script@v7
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('licenses/license-summary.md', 'utf8');
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            });
+          echo "## 📋 License Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Python Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -20 licenses/python-licenses.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### UI Component Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat licenses/ui-licenses-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### CLI Component Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat licenses/cli-licenses-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deno Dependencies (Supabase Functions)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f licenses/deno-license-report.txt ]; then 
+            head -30 licenses/deno-license-report.txt >> $GITHUB_STEP_SUMMARY
+          else 
+            echo "No Deno dependencies found or check failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Full license reports are available in the workflow artifacts**" >> $GITHUB_STEP_SUMMARY
 
       # Final success message
       - name: License check completed
