@@ -3,8 +3,29 @@ name: License Check
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "app/**/requirements.txt"
+      - "app/ui/package.json"
+      - "app/planqtn_cli/package.json"
+      - "app/supabase/functions/import_map.json"
+      - "app/supabase/functions/**/*.ts"
+      - "app/supabase/functions/shared/**/*.ts"
+      - "licenses/**"
+      - ".github/workflows/license-check.yml"
+
   pull_request:
     branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "app/**/requirements.txt"
+      - "app/ui/package.json"
+      - "app/planqtn_cli/package.json"
+      - "app/supabase/functions/import_map.json"
+      - "app/supabase/functions/**/*.ts"
+      - "app/supabase/functions/shared/**/*.ts"
+      - "licenses/**"
+      - ".github/workflows/license-check.yml"
   schedule:
     # Run weekly on Sundays at 2 AM UTC
     - cron: "0 2 * * 0"
@@ -48,8 +69,8 @@ jobs:
 
       - name: Generate Python license report
         run: |
-          pip-licenses --format=csv --output-file=python-licenses.csv
-          pip-licenses --format=plain --output-file=python-licenses.txt
+          pip-licenses --format=csv --output-file=licenses/python-licenses.csv
+          pip-licenses --format=plain --output-file=licenses/python-licenses.txt
 
       - name: Check Python licenses for Apache 2.0 compatibility
         run: |
