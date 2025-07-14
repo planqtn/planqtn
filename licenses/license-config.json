@@ -1,0 +1,158 @@
+{
+  "apache_2_compatible": {
+    "allowed": [
+      "MIT",
+      "MIT License",
+      "BSD",
+      "BSD License",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "Apache-2.0",
+      "Apache Software License",
+      "Apache License 2.0",
+      "ISC",
+      "ISC License (ISCL)",
+      "Unlicense",
+      "The Unlicense (Unlicense)",
+      "0BSD",
+      "CC0-1.0",
+      "Python Software Foundation License",
+      "PSF",
+      "PSF-2.0",
+      "HPND",
+      "CC-BY-4.0",
+      "WTFPL"
+    ],
+    "requires_review": [
+      "MPL-2.0",
+      "Mozilla Public License 2.0 (MPL 2.0)",
+      "MPL",
+      "UNKNOWN",
+      "Custom",
+      "Python-2.0",
+      "UNLICENSED"
+    ],
+    "prohibited": [
+      "GPL",
+      "GPL-2.0",
+      "GPL-3.0",
+      "LGPL",
+      "LGPL-2.1",
+      "LGPL-3.0",
+      "AGPL",
+      "AGPL-3.0",
+      "CDDL",
+      "CDDL-1.0",
+      "CDDL-1.1",
+      "EPL",
+      "EPL-1.0",
+      "EPL-2.0",
+      "EUPL",
+      "EUPL-1.1",
+      "EUPL-1.2",
+      "OSL",
+      "OSL-3.0",
+      "SSPL",
+      "SSPL-1.0",
+      "BUSL",
+      "BUSL-1.1"
+    ]
+  },
+  "exceptions": {
+    "tqdm": {
+      "reason": "Dual licensed MIT and MPL-2.0, can use under MIT",
+      "allowed_license": "MIT License"
+    },
+    "planqtn": {
+      "reason": "Own project, Apache 2.0 licensed",
+      "allowed_license": "Apache-2.0"
+    }
+  },
+  "manual_license_lookups": {
+    "alembic": {
+      "license_url": "https://raw.githubusercontent.com/sqlalchemy/alembic/main/LICENSE",
+      "license_type": "MIT License",
+      "reason": "Package metadata reports UNKNOWN but actual license is MIT",
+      "verified_date": "2025-07-14"
+    },
+    "attrs": {
+      "license_url": "https://raw.githubusercontent.com/python-attrs/attrs/main/LICENSE",
+      "license_type": "MIT License",
+      "reason": "Package metadata reports UNKNOWN but actual license is MIT",
+      "verified_date": "2025-07-14"
+    },
+    "click": {
+      "license_url": "https://raw.githubusercontent.com/pallets/click/main/LICENSE.txt",
+      "license_type": "BSD-3-Clause",
+      "reason": "Package metadata reports UNKNOWN but actual license is BSD-3-Clause",
+      "verified_date": "2025-07-14"
+    },
+    "pillow": {
+      "license_url": "https://raw.githubusercontent.com/python-pillow/Pillow/main/LICENSE",
+      "license_type": "HPND",
+      "reason": "Package metadata reports UNKNOWN but actual license is HPND (PIL Software License)",
+      "verified_date": "2025-07-14",
+      "note": "HPND is similar to MIT/BSD and generally compatible with Apache 2.0"
+    },
+    "typing-extensions": {
+      "license_url": "https://raw.githubusercontent.com/python/typing_extensions/main/LICENSE",
+      "license_type": "PSF-2.0",
+      "reason": "Package metadata reports UNKNOWN but actual license is Python Software Foundation License",
+      "verified_date": "2025-07-14"
+    },
+    "typing-inspection": {
+      "license_url": "https://raw.githubusercontent.com/ilevkivskyi/typing_inspect/master/LICENSE",
+      "license_type": "MIT License",
+      "reason": "Package metadata reports UNKNOWN but actual license is MIT",
+      "verified_date": "2025-07-14"
+    },
+    "urllib3": {
+      "license_url": "https://raw.githubusercontent.com/urllib3/urllib3/main/LICENSE.txt",
+      "license_type": "MIT License",
+      "reason": "Package metadata reports UNKNOWN but actual license is MIT",
+      "verified_date": "2025-07-14"
+    }
+  },
+  "deno_manual_license_lookups": {
+    "@supabase/supabase-js": {
+      "license_type": "MIT License",
+      "license_url": "https://raw.githubusercontent.com/supabase/supabase-js/master/LICENSE",
+      "reason": "Package metadata reports UNKNOWN but actual license is MIT",
+      "verified_date": "2025-07-14"
+    },
+    "cloudydeno/kubernetes-client": {
+      "license_type": "Apache-2.0",
+      "license_url": "https://raw.githubusercontent.com/cloudydeno/kubernetes-client/main/LICENSE",
+      "reason": "Package metadata reports UNKNOWN but actual license is Apache-2.0",
+      "verified_date": "2025-07-14"
+    },
+    "kubernetes_apis": {
+      "license_type": "Apache-2.0",
+      "license_url": "https://deno.land/x/kubernetes_apis@v0.5.4/LICENSE",
+      "reason": "Package metadata reports UNKNOWN but actual license is Apache-2.0",
+      "verified_date": "2025-07-14"
+    },
+    "std/encoding/base64": {
+      "license_type": "MIT License",
+      "license_url": "https://github.com/denoland/deno_std/blob/main/LICENSE",
+      "reason": "Deno standard library is MIT licensed",
+      "verified_date": "2025-07-14"
+    },
+    "npm:@supabase/supabase-js@2.50.0": {
+      "license_type": "MIT License",
+      "license_url": "https://raw.githubusercontent.com/supabase/supabase-js/master/LICENSE",
+      "reason": "ESM.sh package for supabase-js, actual license is MIT",
+      "verified_date": "2025-07-14"
+    },
+    "npm:@supabase/supabase-js@2.50.0": {
+      "license_type": "MIT License",
+      "license_url": "https://raw.githubusercontent.com/supabase/supabase-js/master/LICENSE",
+      "reason": "NPM package for supabase-js, actual license is MIT",
+      "verified_date": "2025-07-14"
+    }
+  },
+  "notes": {
+    "mozilla_public_license": "MPL-2.0 is a weak copyleft license. It's generally compatible with Apache 2.0 for most use cases, but requires source code of MPL-licensed files to remain available under MPL-2.0.",
+    "unknown_licenses": "Packages with UNKNOWN licenses should be investigated manually by checking their source repositories or package metadata."
+  }
+}

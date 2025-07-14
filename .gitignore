@@ -11,3 +11,5 @@ logs
 .config
 .vscode
 *.egg-info
+license_check_env
+skywalking-license-ey*
