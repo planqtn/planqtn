@@ -605,6 +605,10 @@ class TensorNetwork:
         contengra_params = {
             "minimize": "size",
             "parallel": False,
+            # kahypar is not installed by default, but if user has it they can use it by default
+            # otherwise, our default is greedy right now
+            "methods": ["kahypar", "greedy", "labels"],
+            "optlib": "optuna",
         }
         contengra_params.update(cotengra_opts)
         opt = ctg.HyperOptimizer(
