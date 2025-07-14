@@ -55,13 +55,24 @@ async function setupSupabase(
   // Run migrations
   console.log("\nRunning database migrations...");
   // console.log(`DATABASE_URL: postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`);
-  execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
-    }
-  });
+  try {
+    execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
+      }
+    });
+  } catch (error) {
+    console.log("Supabase failure for : ", error, "trying again with 5432");
+    execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+      }
+    });
+  }
 
   // Link and deploy Supabase functions
   console.log("\nLinking and deploying Supabase functions...");
@@ -1131,17 +1142,40 @@ async function checkCredentials(
   // Check Supabase credentials (needed for supabase and supabase-secrets phases)
   if (!skipPhases.supabase || !skipPhases["supabase-secrets"]) {
     console.log("Checking Supabase credentials...");
+
     try {
       // Test database connection using pg client
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
       // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres
-      const connectionString = `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`;
 
-      const client = new Client({ connectionString });
-      await client.connect();
-      await client.query("SELECT 1");
-      await client.end();
+      const connectionStrings = [
+        `@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
+        `@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+      ];
+
+      let finalError = null;
+
+      for (const connectionString of connectionStrings) {
+        try {
+          const client = new Client({
+            connectionString: `postgresql://postgres.${projectId}:${dbPassword}${connectionString}`
+          });
+          await client.connect();
+          await client.query("SELECT 1");
+          await client.end();
+          finalError = null;
+          console.log("Supabase credentials are valid.");
+          break;
+        } catch (error) {
+          console.log("Supabase failure for : ", error);
+          finalError = error;
+        }
+      }
+
+      if (finalError) {
+        throw finalError;
+      }
     } catch (error) {
       throw new Error(
         "Failed to verify Supabase credentials. Please ensure that you have the correct database credentials: " +

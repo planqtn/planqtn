@@ -1,0 +1,29 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+
+  paths-ignore:
+    - '**/node_modules/**'
+    - '**/.git/**'
+    - '**/.pytest_cache/**'
+    - '**/.mypy_cache/**'
+    - '**/dist/**'
+    - '**/.tmp/**'
+    - '**/__pycache__/**'
+    - '**/.coverage'
+    - '**/skywalking-license-eye-*/**'
+    - '**/*.tar.gz'
+    - '**/*.tgz'
+    - '**/*.tar.bz2'
+
+  comment: on-failure
+
+dependency:
+  files:
+    - pyproject.toml
+    - app/ui/package.json
+    - app/planqtn_cli/package.json
+    - app/package.json
+    - app/planqtn_api/requirements.txt
+    - app/planqtn_jobs/requirements.txt
+    - app/planqtn_types/requirements.txt

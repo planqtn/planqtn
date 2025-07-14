@@ -1,0 +1,11 @@
+├─ MIT: 620
+├─ ISC: 42
+├─ Apache-2.0: 23
+├─ BSD-3-Clause: 19
+├─ BSD-2-Clause: 9
+├─ 0BSD: 2
+├─ (MIT OR CC0-1.0): 2
+├─ Python-2.0: 1
+├─ CC-BY-4.0: 1
+└─ UNLICENSED: 1
+

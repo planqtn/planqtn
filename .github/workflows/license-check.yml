@@ -1,0 +1,253 @@
+name: License Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "app/**/requirements.txt"
+      - "app/ui/package.json"
+      - "app/planqtn_cli/package.json"
+      - "app/supabase/functions/import_map.json"
+      - "app/supabase/functions/**/*.ts"
+      - "app/supabase/functions/shared/**/*.ts"
+      - "licenses/**"
+      - ".github/workflows/license-check.yml"
+
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "app/**/requirements.txt"
+      - "app/ui/package.json"
+      - "app/planqtn_cli/package.json"
+      - "app/supabase/functions/import_map.json"
+      - "app/supabase/functions/**/*.ts"
+      - "app/supabase/functions/shared/**/*.ts"
+      - "licenses/**"
+      - ".github/workflows/license-check.yml"
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: "0 2 * * 0"
+
+jobs:
+  license-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v1.x
+
+      # Python License Checking
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
+          # Install main project dependencies
+          pip install -e .
+          # Install API dependencies
+          pip install -r app/planqtn_api/requirements.txt
+          # Install Jobs dependencies  
+          pip install -r app/planqtn_jobs/requirements.txt
+          # Install Types dependencies
+          pip install -r app/planqtn_types/requirements.txt
+
+      - name: Generate Python license report
+        run: |
+          pip-licenses --format=csv --output-file=licenses/python-licenses.csv
+          pip-licenses --format=plain --output-file=licenses/python-licenses.txt
+
+      - name: Check Python licenses for Apache 2.0 compatibility
+        run: |
+          python licenses/scripts/check_licenses.py
+
+      # npm License Checking - UI Component
+      - name: Install UI dependencies
+        run: |
+          cd app/ui
+          npm install
+
+      - name: Check UI licenses
+        run: |
+          cd app/ui
+          npm install -g license-checker
+          license-checker --csv --out ../../licenses/ui-licenses.csv
+          license-checker --summary > ../../licenses/ui-licenses-summary.txt
+
+      - name: Check UI licenses for Apache 2.0 compatibility
+        run: |
+          cd app/ui
+          node -e "
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+
+          // Get license summary
+          const summary = execSync('license-checker --summary', { encoding: 'utf8' });
+
+          // Known incompatible licenses
+          const incompatible = ['GPL', 'LGPL', 'AGPL', 'CDDL', 'EPL'];
+          const review = ['MPL', 'UNKNOWN', 'UNLICENSED'];
+
+          let hasIncompatible = false;
+          let hasReview = false;
+
+          const lines = summary.split('\n');
+          for (const line of lines) {
+              if (line.includes('├─') || line.includes('└─')) {
+                  const licensePart = line.split(': ')[0].replace(/[├─└│\s]/g, '');
+                  
+                  if (incompatible.some(inc => licensePart.includes(inc))) {
+                      console.log('❌ INCOMPATIBLE LICENSE FOUND:', licensePart);
+                      hasIncompatible = true;
+                  }
+                  
+                  if (review.some(rev => licensePart.includes(rev))) {
+                      console.log('⚠️  LICENSE NEEDS REVIEW:', licensePart);
+                      hasReview = true;
+                  }
+              }
+          }
+
+          if (hasIncompatible) {
+              console.log('❌ UI component has incompatible licenses!');
+              process.exit(1);
+          }
+
+          if (hasReview) {
+              console.log('⚠️  UI component has licenses that need review');
+          }
+
+          console.log('✅ UI license check completed successfully!');
+          "
+
+      # npm License Checking - CLI Component
+      - name: Install CLI dependencies
+        run: |
+          cd app/planqtn_cli
+          npm install
+
+      - name: Check CLI licenses
+        run: |
+          cd app/planqtn_cli
+          license-checker --csv --out ../../licenses/cli-licenses.csv
+          license-checker --summary > ../../licenses/cli-licenses-summary.txt
+
+      - name: Check CLI licenses for Apache 2.0 compatibility
+        run: |
+          cd app/planqtn_cli
+          node -e "
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+
+          // Get license summary
+          const summary = execSync('license-checker --summary', { encoding: 'utf8' });
+
+          // Known incompatible licenses
+          const incompatible = ['GPL', 'LGPL', 'AGPL', 'CDDL', 'EPL'];
+          const review = ['MPL', 'UNKNOWN', 'UNLICENSED'];
+
+          let hasIncompatible = false;
+          let hasReview = false;
+
+          const lines = summary.split('\n');
+          for (const line of lines) {
+              if (line.includes('├─') || line.includes('└─')) {
+                  const licensePart = line.split(': ')[0].replace(/[├─└│\s]/g, '');
+                  
+                  if (incompatible.some(inc => licensePart.includes(inc))) {
+                      console.log('❌ INCOMPATIBLE LICENSE FOUND:', licensePart);
+                      hasIncompatible = true;
+                  }
+                  
+                  if (review.some(rev => licensePart.includes(rev))) {
+                      console.log('⚠️  LICENSE NEEDS REVIEW:', licensePart);
+                      hasReview = true;
+                  }
+              }
+          }
+
+          if (hasIncompatible) {
+              console.log('❌ CLI component has incompatible licenses!');
+              process.exit(1);
+          }
+
+          if (hasReview) {
+              console.log('⚠️  CLI component has licenses that need review');
+          }
+
+          console.log('✅ CLI license check completed successfully!');
+          "
+
+      # Deno License Checking - Supabase Functions
+      - name: Check Deno dependencies
+        run: |
+          deno run --allow-net --allow-read --allow-write licenses/scripts/check_deno_licenses.ts
+
+      # Upload license reports as artifacts
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: license-reports
+          path: |
+            licenses/python-licenses.csv
+            licenses/python-licenses.txt
+            licenses/ui-licenses.csv
+            licenses/ui-licenses-summary.txt
+            licenses/cli-licenses.csv
+            licenses/cli-licenses-summary.txt
+            licenses/deno-license-report.txt
+
+      # Create job summary with license check results
+      - name: Create license summary for job output
+        if: always()
+        run: |
+          echo "## 📋 License Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Python Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat licenses/python-licenses.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### UI Component Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat licenses/ui-licenses-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### CLI Component Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat licenses/cli-licenses-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deno Dependencies (Supabase Functions)" >> $GITHUB_STEP_SUMMARY
+          if [ -f licenses/deno-license-report.txt ]; then 
+            tail -n +2 licenses/deno-license-report.txt >> $GITHUB_STEP_SUMMARY
+          else 
+            echo "No Deno dependencies found or check failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Full license reports are available in the workflow artifacts**" >> $GITHUB_STEP_SUMMARY
+
+      # Final success message
+      - name: License check completed
+        run: |
+          echo "🎉 License compatibility check completed successfully!"
+          echo "All dependencies appear to be compatible with Apache 2.0 license."
+          echo "Check the artifacts for detailed license reports."

@@ -4,7 +4,7 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { CloudRunClient } from "../shared/lib/cloud-run-client.ts";
 
@@ -24,8 +24,8 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "No authorization header" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -34,13 +34,10 @@ Deno.serve(async (req) => {
 
     // Validate the request
     if (!cancelJobRequest.task_uuid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid request body" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Initialize Supabase client
@@ -60,20 +57,20 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: `Failed to get task: ${taskError.message}` }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
     if (!task) {
       return new Response(
         JSON.stringify({
-          error: `Task ${cancelJobRequest.task_uuid} not found`,
+          error: `Task ${cancelJobRequest.task_uuid} not found`
         }),
         {
           status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -82,8 +79,8 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Task has no execution ID" }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -96,19 +93,19 @@ Deno.serve(async (req) => {
       .from("tasks")
       .update({
         state: 4, // cancelled
-        result: { error: "Task cancelled by user" },
+        result: { error: "Task cancelled by user" }
       })
       .eq("uuid", task.uuid);
 
     if (updateError) {
       return new Response(
         JSON.stringify({
-          error: `Failed to update task: ${updateError.message}`,
+          error: `Failed to update task: ${updateError.message}`
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -116,20 +113,19 @@ Deno.serve(async (req) => {
     const { error: taskUpdateError } = await supabase
       .from("task_updates")
       .update({
-        updates: { state: 4, result: { error: "Task cancelled by user" } },
+        updates: { state: 4, result: { error: "Task cancelled by user" } }
       })
       .eq("uuid", task.uuid);
 
     if (taskUpdateError) {
       return new Response(
         JSON.stringify({
-          error:
-            `Failed to send realtime task update: ${taskUpdateError.message}`,
+          error: `Failed to send realtime task update: ${taskUpdateError.message}`
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
       );
     }
 
@@ -137,19 +133,18 @@ Deno.serve(async (req) => {
       JSON.stringify({ message: "Job cancelled successfully" }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error
-      ? error.message
-      : "Unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
       JSON.stringify({ error: `Failed to cancel job: ${errorMessage}` }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   }
 });
