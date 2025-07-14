@@ -223,7 +223,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Python Dependencies" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          head -20 licenses/python-licenses.txt >> $GITHUB_STEP_SUMMARY
+          cat licenses/python-licenses.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### UI Component Dependencies" >> $GITHUB_STEP_SUMMARY
@@ -239,7 +239,7 @@ jobs:
           echo "### Deno Dependencies (Supabase Functions)" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           if [ -f licenses/deno-license-report.txt ]; then 
-            head -30 licenses/deno-license-report.txt >> $GITHUB_STEP_SUMMARY
+            head licenses/deno-license-report.txt >> $GITHUB_STEP_SUMMARY
           else 
             echo "No Deno dependencies found or check failed" >> $GITHUB_STEP_SUMMARY
           fi
