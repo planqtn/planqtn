@@ -1,6 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
-import time
+import importlib.util
+
 from typing_extensions import deprecated
 import cotengra as ctg
 
@@ -603,11 +604,14 @@ class TensorNetwork:
         )
 
         contengra_params = {
-            "minimize": "size",
+            "minimize": "combo",
             "parallel": False,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
-            "methods": ["kahypar", "greedy", "labels"],
+            "methods": [
+                "kahypar" if importlib.util.find_spec("kahypar") else "greedy",
+                "labels",
+            ],
             "optlib": "cmaes",
         }
         contengra_params.update(cotengra_opts)
