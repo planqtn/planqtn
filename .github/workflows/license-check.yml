@@ -226,12 +226,12 @@ jobs:
           echo "" >> licenses/license-summary.md
           echo "### UI Component Dependencies" >> licenses/license-summary.md
           echo '```' >> licenses/license-summary.md
-          cat ui-licenses-summary.txt >> licenses/license-summary.md
+          cat licenses/ui-licenses-summary.txt >> licenses/license-summary.md
           echo '```' >> licenses/license-summary.md
           echo "" >> licenses/license-summary.md
           echo "### CLI Component Dependencies" >> licenses/license-summary.md
           echo '```' >> licenses/license-summary.md
-          cat cli-licenses-summary.txt >> licenses/license-summary.md
+          cat licenses/cli-licenses-summary.txt >> licenses/license-summary.md
           echo '```' >> licenses/license-summary.md
           echo "" >> licenses/license-summary.md
           echo "### Deno Dependencies (Supabase Functions)" >> licenses/license-summary.md
