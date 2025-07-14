@@ -1164,7 +1164,7 @@ async function checkCredentials(
           await client.connect();
           await client.query("SELECT 1");
           await client.end();
-
+          finalError = null;
           console.log("Supabase credentials are valid.");
           break;
         } catch (error) {
