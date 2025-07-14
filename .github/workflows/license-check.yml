@@ -33,7 +33,10 @@ on:
 jobs:
   license-check:
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
