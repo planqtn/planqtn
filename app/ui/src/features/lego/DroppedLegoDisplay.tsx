@@ -66,9 +66,53 @@ export function getLegoBoundingBox(
   };
 }
 
+// New function for calculating body bounding box specifically
+export function getLegoBodyBoundingBox(
+  lego: DroppedLego,
+  demoMode: boolean,
+  zoomLevel: number = 1
+): {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+} {
+  // Use smart zoom size calculation
+  const originalSize = lego.style!.size;
+  const size = demoMode
+    ? originalSize
+    : getSmartLegoSize(originalSize, zoomLevel);
+
+  // Handle regular legos (non-SVG)
+  const numRegularLegs = lego.style!.legStyles.filter(
+    (leg) => leg.type !== "gauge"
+  ).length;
+
+  if (numRegularLegs <= 2) {
+    // Square/rectangle body
+    return {
+      top: -size / 2,
+      left: -size / 2,
+      width: size,
+      height: size
+    };
+  } else {
+    // Circular or polygonal body - all fit within a circle of radius size/2
+    const diameter = size;
+    return {
+      top: -diameter / 2,
+      left: -diameter / 2,
+      width: diameter,
+      height: diameter
+    };
+  }
+}
+
 interface DroppedLegoDisplayProps {
   legoInstanceId: string;
   demoLego?: DroppedLego;
+  forceSmartSizing?: boolean;
+  bodyOnly?: boolean;
 }
 
 // Memoized component for static leg lines only
@@ -298,7 +342,10 @@ const LegoBodyLayer = memo<{
     <>
       {/* Lego Body */}
       {numRegularLegs <= 2 ? (
-        <g transform={`translate(-${size / 2}, -${size / 2})`}>
+        <g
+          transform={`translate(-${size / 2}, -${size / 2})`}
+          id={`lego-${lego.instance_id}-body`}
+        >
           <rect
             x="0"
             y="0"
@@ -338,6 +385,7 @@ const LegoBodyLayer = memo<{
           {numRegularLegs > 8 ? (
             // Create a circle for many vertices
             <circle
+              id={`lego-${lego.instance_id}-body`}
               cx="0"
               cy="0"
               r={size / 2}
@@ -356,6 +404,7 @@ const LegoBodyLayer = memo<{
           ) : (
             // Create a polygon for 3-8 vertices
             <path
+              id={`lego-${lego.instance_id}-body`}
               d={
                 vertices.reduce((path, _, i) => {
                   const command = i === 0 ? "M" : "L";
@@ -402,6 +451,7 @@ const SvgLegoBodyLayer = memo<{
     <>
       {/* Custom SVG body */}
       <g
+        id={`lego-${lego.instance_id}-body`}
         transform={`scale(${size / originalSize})`}
         dangerouslySetInnerHTML={{ __html: svgBodyElement }}
       />
@@ -412,7 +462,7 @@ const SvgLegoBodyLayer = memo<{
 SvgLegoBodyLayer.displayName = "SvgLegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ legoInstanceId, demoLego }) => {
+  ({ legoInstanceId, demoLego, forceSmartSizing, bodyOnly = false }) => {
     const lego =
       demoLego ||
       useCanvasStore(
@@ -505,9 +555,10 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Now we can safely use lego without null checks
     const originalSize = lego.style!.size;
-    const smartSize = demoLego
-      ? originalSize
-      : getSmartLegoSize(originalSize, zoomLevel);
+    const smartSize =
+      demoLego && !forceSmartSizing
+        ? originalSize
+        : getSmartLegoSize(originalSize, zoomLevel);
     const size = smartSize;
 
     // Calculate level of detail based on effective size
@@ -618,7 +669,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           ) : (
             <>
               {/* Layer 1: Static leg lines (gray background) - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <StaticLegsLayer
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
@@ -628,7 +679,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <DynamicLegHighlightLayer
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
@@ -638,7 +689,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <LegEndpointLayer
                   lego={lego}
                   legStyles={lego.style!.legStyles}
@@ -665,7 +716,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Layer 1: Static leg lines (gray background) - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <StaticLegsLayer
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
@@ -675,7 +726,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <DynamicLegHighlightLayer
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
@@ -685,7 +736,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
-              {lod.showLegs && (
+              {!bodyOnly && lod.showLegs && (
                 <LegEndpointLayer
                   lego={lego}
                   legStyles={lego.style!.legStyles}
@@ -770,7 +821,8 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Leg Labels - dynamic visibility with LOD */}
-              {!isScalarLego(lego) &&
+              {!bodyOnly &&
+                !isScalarLego(lego) &&
                 !demoLego &&
                 lod.showLegLabels &&
                 lego.style!.legStyles.map((legStyle, leg_index) => {

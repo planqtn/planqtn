@@ -57,20 +57,59 @@ export abstract class SvgLegoStyle extends LegoStyle {
   }
 
   get size(): number {
-    // Extract size from SVG viewBox or use default
+    // Calculate size based on the bounding box of the lego-body group element
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(this.svgContent, "image/svg+xml");
       const svg = doc.documentElement;
+
+      // Find the lego-body group element
+      const legoBodyGroup = svg.querySelector('[data-role="lego-body"]');
+
+      if (legoBodyGroup) {
+        // Create a temporary SVG element to get accurate bounding box
+        const tempSvg = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "svg"
+        );
+        tempSvg.style.visibility = "hidden";
+        tempSvg.style.position = "absolute";
+        tempSvg.style.top = "-9999px";
+        tempSvg.style.left = "-9999px";
+
+        // Clone the lego-body group and add it to the temporary SVG
+        const clonedGroup = legoBodyGroup.cloneNode(true) as SVGElement;
+        tempSvg.appendChild(clonedGroup);
+
+        // Add to DOM to get accurate measurements
+        document.body.appendChild(tempSvg);
+
+        try {
+          // Get the bounding box of the lego-body group
+          const bbox = (clonedGroup as SVGGraphicsElement).getBBox();
+          const size = Math.max(bbox.width, bbox.height);
+
+          // Clean up
+          document.body.removeChild(tempSvg);
+
+          return size > 0 ? size : 30; // Fallback to default if size is invalid
+        } catch {
+          // Clean up on error
+          document.body.removeChild(tempSvg);
+          throw new Error("Could not get bounding box");
+        }
+      }
+
+      // Fallback to viewBox if lego-body group not found
       const viewBox = svg.getAttribute("viewBox");
       if (viewBox) {
         const [, , width, height] = viewBox.split(" ").map(Number);
         return Math.max(width, height);
       }
     } catch {
-      console.warn("Could not parse SVG size, using default");
+      console.warn("Could not calculate SVG size from bbox, using default");
     }
-    return 50; // Default size
+    return 30;
   }
 
   get borderRadius(): string {
