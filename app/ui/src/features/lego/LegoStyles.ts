@@ -65,12 +65,11 @@ export interface LegStyle {
   length: number;
   width: string;
   lineStyle: "solid" | "dashed";
-  from: "center" | "bottom" | "edge";
-  startOffset: number;
   color: string;
   is_highlighted: boolean;
   type: "logical" | "gauge" | "physical";
   position: LegPosition;
+  bodyOrder: "front" | "behind";
 }
 
 // Styling for a given lego. This contains calculated leg positions, colors for the legs etc.
@@ -78,10 +77,11 @@ export abstract class LegoStyle {
   public readonly legStyles: LegStyle[];
   constructor(
     protected readonly id: string,
-    protected readonly lego: DroppedLego
+    protected readonly lego: DroppedLego,
+    protected readonly overrideLegStyles?: LegStyle[]
   ) {
     this.legStyles =
-      lego.numberOfLegs > 0
+      overrideLegStyles || lego.numberOfLegs > 0
         ? Array(lego.numberOfLegs)
             .fill(0)
             .map((_, i) => {
@@ -180,13 +180,14 @@ export abstract class LegoStyle {
     };
   }
 
-  private calculateLegStyle(
-    leg_index: number,
-    forSvg: boolean = false
-  ): LegStyle {
+  protected calculateLegProps(leg_index: number): {
+    isLogical: boolean;
+    isGauge: boolean;
+    isHighlighted: boolean;
+    highlightOperator: PauliOperator;
+  } {
     const isLogical = this.lego.logical_legs.includes(leg_index);
     const isGauge = this.lego.gauge_legs.includes(leg_index);
-    const legCount = this.lego.numberOfLegs;
     const localHighlightPauliOperator =
       this.getLegHighlightPauliOperator(leg_index);
     const globalHighlightPauliOperator =
@@ -202,6 +203,23 @@ export abstract class LegoStyle {
       globalHighlightPauliOperator === PauliOperator.I
         ? localHighlightPauliOperator
         : globalHighlightPauliOperator;
+
+    return {
+      isLogical,
+      isGauge,
+      isHighlighted,
+      highlightOperator
+    };
+  }
+
+  private calculateLegStyle(
+    leg_index: number,
+    forSvg: boolean = false
+  ): LegStyle {
+    const { isLogical, isGauge, isHighlighted, highlightOperator } =
+      this.calculateLegProps(leg_index);
+
+    const legCount = this.lego.numberOfLegs;
 
     // Calculate the number of each type of leg
     const logicalLegsCount = this.lego.logical_legs.length;
@@ -222,14 +240,13 @@ export abstract class LegoStyle {
           length: 60,
           width: "3px",
           lineStyle: "solid",
-          from: "center",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "logical",
-          position: this.getLegPosition(60, -Math.PI / 2, LEG_LABEL_DISTANCE)
+          position: this.getLegPosition(60, -Math.PI / 2, LEG_LABEL_DISTANCE),
+          bodyOrder: "behind"
         };
       }
 
@@ -249,14 +266,13 @@ export abstract class LegoStyle {
         length: 60,
         width: "3px",
         lineStyle: "solid",
-        from: "center",
-        startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "logical",
-        position: this.getLegPosition(60, angle, LEG_LABEL_DISTANCE)
+        position: this.getLegPosition(60, angle, LEG_LABEL_DISTANCE),
+        bodyOrder: "behind"
       };
     } else if (isGauge) {
       // For gauge legs, calculate angle from bottom
@@ -266,14 +282,13 @@ export abstract class LegoStyle {
         length: 40,
         width: "2px",
         lineStyle: "dashed",
-        from: "bottom",
-        startOffset: 10,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "gauge",
-        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
+        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE),
+        bodyOrder: "behind"
       };
     } else {
       // For physical legs
@@ -296,14 +311,13 @@ export abstract class LegoStyle {
           length: 40,
           width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
-          from: "center",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "physical",
-          position: this.getLegPosition(40, Math.PI / 2, LEG_LABEL_DISTANCE)
+          position: this.getLegPosition(40, Math.PI / 2, LEG_LABEL_DISTANCE),
+          bodyOrder: "behind"
         };
       }
 
@@ -315,14 +329,13 @@ export abstract class LegoStyle {
           length: 40,
           width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
-          from: "edge",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
           is_highlighted: isHighlighted,
           type: "physical",
-          position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
+          position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE),
+          bodyOrder: "behind"
         };
       }
 
@@ -346,14 +359,13 @@ export abstract class LegoStyle {
         length: 40,
         width: highlightOperator === PauliOperator.I ? "1px" : "3px",
         lineStyle: "solid",
-        from: "edge",
-        startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
         is_highlighted: isHighlighted,
         type: "physical",
-        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE)
+        position: this.getLegPosition(40, angle, LEG_LABEL_DISTANCE),
+        bodyOrder: "behind"
       };
     }
   }
@@ -567,35 +579,5 @@ export class ScalarStyle extends LegoStyle {
 
   get selectedBorderColor(): string {
     return "blue.500";
-  }
-}
-export function getLegoStyle(
-  type_id: string,
-  numLegs: number,
-  lego: DroppedLego
-): LegoStyle {
-  if (numLegs === 0) {
-    return new ScalarStyle(type_id, lego);
-  } else if (type_id === "h") {
-    return new HadamardStyle(type_id, lego);
-  } else if (type_id === Z_REP_CODE || type_id === X_REP_CODE) {
-    if (numLegs > 2) {
-      return new RepetitionCodeStyle(type_id, lego);
-    } else if (numLegs === 2) {
-      return new IdentityStyle(type_id, lego);
-    } else if (numLegs === 1) {
-      return new StopperStyle(
-        type_id === Z_REP_CODE ? "stopper_z" : "stopper_x",
-        lego
-      );
-    } else {
-      return new GenericStyle(type_id, lego);
-    }
-  } else if (type_id.includes("stopper")) {
-    return new StopperStyle(type_id, lego);
-  } else if (type_id === "identity") {
-    return new IdentityStyle(type_id, lego);
-  } else {
-    return new GenericStyle(type_id, lego);
   }
 }

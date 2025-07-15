@@ -1,12 +1,13 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { getLegoStyle } from "./LegoStyles";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
-import { getSmartLegoSize } from "../../utils/coordinateTransforms";
 import { LogicalPoint, WindowPoint } from "../../types/coordinates.ts";
 import { useDebugStore } from "../../stores/debugStore.ts";
+import DroppedLegoDisplay, {
+  getLegoBodyBoundingBox
+} from "./DroppedLegoDisplay";
 
 // Separate handler for single lego drags
 const SingleLegoDragProxy: React.FC<{
@@ -18,6 +19,11 @@ const SingleLegoDragProxy: React.FC<{
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const zoomLevel = viewport.zoomLevel;
 
+  const mouseStartingGrabDeltaWindow =
+    legoDragState?.startMouseWindowPoint.minus(
+      viewport.fromLogicalToWindow(legoDragState?.startLegoLogicalPoint)
+    );
+
   // Memoize the dragged lego to prevent stale references
   const draggedLego = useMemo(() => {
     if (!legoDragState || legoDragState.draggedLegoInstanceId === "")
@@ -27,6 +33,42 @@ const SingleLegoDragProxy: React.FC<{
     );
   }, [droppedLegos, legoDragState]);
 
+  // Create a demo lego for the drag proxy - always call hooks, even if null
+  const demoLego = useMemo(() => {
+    if (!draggedLego) return null;
+    return draggedLego.with({
+      logicalPosition: new LogicalPoint(0, 0)
+    });
+  }, [draggedLego]);
+
+  const boundingBox = useMemo(() => {
+    if (!demoLego) return null;
+    return getLegoBodyBoundingBox(demoLego, false, zoomLevel);
+  }, [demoLego, zoomLevel]);
+
+  // Clone the SVG body element from the DOM
+  const clonedBodyElement = useMemo(() => {
+    if (!draggedLego) return null;
+
+    // First try to get the DOM element for the current lego
+    let bodyElement = document.getElementById(
+      `lego-${draggedLego.instance_id}-body`
+    );
+
+    // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+    if (!bodyElement) {
+      const cloneMapping = useCanvasStore.getState().cloneMapping;
+      const originalLegoId = cloneMapping.get(draggedLego.instance_id);
+      if (originalLegoId) {
+        bodyElement = document.getElementById(`lego-${originalLegoId}-body`);
+      }
+    }
+
+    if (!bodyElement) return null;
+    return bodyElement.cloneNode(true) as SVGElement;
+  }, [draggedLego]);
+
+  // Early returns after all hooks are called
   if (
     !legoDragState ||
     legoDragState.draggingStage !== DraggingStage.DRAGGING
@@ -34,61 +76,49 @@ const SingleLegoDragProxy: React.FC<{
     return null;
   }
 
-  if (!draggedLego || !canvasRect) return null;
+  if (!draggedLego || !canvasRect || !demoLego || !boundingBox) return null;
 
   // Apply zoom transformation to get screen position using new coordinate system
-  const proxyCanvasPos = viewport.fromWindowToCanvas(mousePos);
-
-  // Use smart sizing for consistency
-  const originalSize = draggedLego.style!.size;
-  const smartSize = getSmartLegoSize(originalSize, zoomLevel);
-
-  return (
-    <div
-      key={`single-drag-proxy-${draggedLego.instance_id}`}
-      style={{
-        position: "absolute",
-        left: `${proxyCanvasPos.x - smartSize / 2}px`,
-        top: `${proxyCanvasPos.y - smartSize / 2}px`,
-        width: `${smartSize}px`,
-        height: `${smartSize}px`,
-        opacity: 0.7,
-        transform: "scale(1.1)",
-        filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
-        transition: "none",
-        pointerEvents: "none",
-        zIndex: 1000
-      }}
-    >
-      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
-        {draggedLego.style!.borderRadius === "full" ? (
-          <circle
-            cx={smartSize / 2}
-            cy={smartSize / 2}
-            r={smartSize / 2}
-            fill={draggedLego.style!.getBackgroundColorForSvg()}
-            stroke={draggedLego.style!.getBorderColorForSvg()}
-            strokeWidth="2"
-          />
-        ) : (
-          <rect
-            x="2"
-            y="2"
-            width={smartSize - 4}
-            height={smartSize - 4}
-            rx={
-              typeof draggedLego.style!.borderRadius === "number"
-                ? draggedLego.style!.borderRadius
-                : 0
-            }
-            fill={draggedLego.style!.getBackgroundColorForSvg()}
-            stroke={draggedLego.style!.getBorderColorForSvg()}
-            strokeWidth="2"
-          />
-        )}
-      </svg>
-    </div>
+  const proxyCanvasPos = viewport.fromWindowToCanvas(
+    mousePos.minus(mouseStartingGrabDeltaWindow)
   );
+
+  // Use cloned DOM element if available, otherwise fall back to DroppedLegoDisplay
+  if (clonedBodyElement) {
+    return (
+      <div
+        key={`single-drag-proxy-${draggedLego.instance_id}`}
+        style={{
+          position: "absolute",
+          left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+          top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+          width: `${boundingBox.width}px`,
+          height: `${boundingBox.height}px`,
+          opacity: 0.7,
+          filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
+          transition: "none",
+          pointerEvents: "none",
+          zIndex: 1000,
+          border: "1px solid red"
+        }}
+      >
+        <svg
+          width={boundingBox.width}
+          height={boundingBox.height}
+          style={{ overflow: "visible" }}
+          viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+          ref={(svgRef) => {
+            if (svgRef && clonedBodyElement) {
+              svgRef.innerHTML = "";
+              svgRef.appendChild(clonedBodyElement.cloneNode(true));
+            }
+          }}
+        ></svg>
+      </div>
+    );
+  } else {
+    return null;
+  }
 };
 
 // Separate handler for group drags
@@ -140,59 +170,71 @@ const GroupDragProxy: React.FC<{
 
         // Apply zoom transformation to get screen position using new coordinate system
         const proxyCanvasPos = viewport.fromLogicalToCanvas(baseProxy);
+        // .minus(mouseStartingGrabDeltaWindow);
 
-        // Use smart sizing for consistency
-        const originalSize = lego.style!.size;
-        const smartSize = getSmartLegoSize(originalSize, zoomLevel);
+        // Create a demo lego for the drag proxy
+        const demoLego = lego.with({
+          logicalPosition: new LogicalPoint(0, 0)
+        });
+
+        const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
+
+        // Clone the SVG body element from the DOM
+        const bodyElement = (() => {
+          // First try to get the DOM element for the current lego
+          let bodyElement = document.getElementById(
+            `lego-${lego.instance_id}-body`
+          );
+
+          // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+          if (!bodyElement) {
+            console.log("no body element found for lego", lego.instance_id);
+            const cloneMapping = useCanvasStore.getState().cloneMapping;
+            const originalLegoId = cloneMapping.get(lego.instance_id);
+            if (originalLegoId) {
+              bodyElement = document.getElementById(
+                `lego-${originalLegoId}-body`
+              );
+            }
+          }
+
+          return bodyElement?.cloneNode(true) as SVGElement;
+        })();
+
+        if (!bodyElement) {
+          // Fallback to DroppedLegoDisplay for newly cloned legos
+          return null;
+        }
 
         return (
           <div
             key={`group-drag-proxy-${lego.instance_id}`}
             style={{
               position: "absolute",
-              left: `${proxyCanvasPos.x - smartSize / 2}px`,
-              top: `${proxyCanvasPos.y - smartSize / 2}px`,
-              width: `${smartSize}px`,
-              height: `${smartSize}px`,
+              left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+              top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+              width: `${boundingBox.width}px`,
+              height: `${boundingBox.height}px`,
               opacity: 0.7,
-              transform: "scale(1.1)",
               filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
               transition: "none",
               pointerEvents: "none",
-              zIndex: 1000
+              zIndex: 1000,
+              border: "1px solid red"
             }}
           >
             <svg
-              width={smartSize}
-              height={smartSize}
+              width={boundingBox.width}
+              height={boundingBox.height}
               style={{ overflow: "visible" }}
-            >
-              {lego.style!.borderRadius === "full" ? (
-                <circle
-                  cx={smartSize / 2}
-                  cy={smartSize / 2}
-                  r={smartSize / 2}
-                  fill={lego.style!.getBackgroundColorForSvg()}
-                  stroke={lego.style!.getBorderColorForSvg()}
-                  strokeWidth="2"
-                />
-              ) : (
-                <rect
-                  x="2"
-                  y="2"
-                  width={smartSize - 4}
-                  height={smartSize - 4}
-                  rx={
-                    typeof lego.style!.borderRadius === "number"
-                      ? lego.style!.borderRadius
-                      : 0
-                  }
-                  fill={lego.style!.getBackgroundColorForSvg()}
-                  stroke={lego.style!.getBorderColorForSvg()}
-                  strokeWidth="2"
-                />
-              )}
-            </svg>
+              viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              ref={(svgRef) => {
+                if (svgRef && bodyElement) {
+                  svgRef.innerHTML = "";
+                  svgRef.appendChild(bodyElement.cloneNode(true));
+                }
+              }}
+            ></svg>
           </div>
         );
       })}
@@ -229,16 +271,10 @@ const BuildingBlockDragProxy: React.FC<{
   if (!isMouseOverCanvas) return null;
 
   const lego = buildingBlockDragState.draggedLego;
-  const numLegs = lego.parity_check_matrix[0].length / 2;
 
-  const style = getLegoStyle(
-    lego.type_id,
-    numLegs,
-    new DroppedLego(lego, new LogicalPoint(0, 0), "dummy")
-  );
-
-  // Use smart sizing for building block drag proxy
-  const smartSize = getSmartLegoSize(style.size, zoomLevel);
+  // Create a demo lego for the drag proxy
+  const demoLego = new DroppedLego(lego, new LogicalPoint(0, 0), "dummy");
+  const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
 
   // Convert global mouse coordinates to canvas-relative coordinates (use buildingBlockDragState)
   const canvasX = buildingBlockDragState.mouseX - canvasRect.left;
@@ -248,10 +284,10 @@ const BuildingBlockDragProxy: React.FC<{
     <div
       style={{
         position: "absolute",
-        left: `${canvasX - smartSize / 2}px`,
-        top: `${canvasY - smartSize / 2}px`,
-        width: `${smartSize}px`,
-        height: `${smartSize}px`,
+        left: `${canvasX - boundingBox.width / 2}px`,
+        top: `${canvasY - boundingBox.height / 2}px`,
+        width: `${boundingBox.width}px`,
+        height: `${boundingBox.height}px`,
         opacity: 0.7,
         transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
@@ -260,28 +296,18 @@ const BuildingBlockDragProxy: React.FC<{
         zIndex: 1000
       }}
     >
-      <svg width={smartSize} height={smartSize} style={{ overflow: "visible" }}>
-        {style.borderRadius === "full" ? (
-          <circle
-            cx={smartSize / 2}
-            cy={smartSize / 2}
-            r={smartSize / 2}
-            fill={style.getBackgroundColorForSvg()}
-            stroke={style.getBorderColorForSvg()}
-            strokeWidth="2"
-          />
-        ) : (
-          <rect
-            x="2"
-            y="2"
-            width={smartSize - 4}
-            height={smartSize - 4}
-            rx={typeof style.borderRadius === "number" ? style.borderRadius : 0}
-            fill={style.getBackgroundColorForSvg()}
-            stroke={style.getBorderColorForSvg()}
-            strokeWidth="2"
-          />
-        )}
+      <svg
+        width={boundingBox.width}
+        height={boundingBox.height}
+        style={{ overflow: "visible" }}
+        viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+      >
+        <DroppedLegoDisplay
+          legoInstanceId="-1"
+          demoLego={demoLego}
+          forceSmartSizing={true}
+          bodyOnly={true}
+        />
       </svg>
     </div>
   );
@@ -300,17 +326,79 @@ const ResizeGroupProxy: React.FC<{
         const proxyCanvasPos = viewport.fromLogicalToCanvas(
           lego.logicalPosition
         );
-        const originalSize = lego.style!.size;
-        const smartSize = getSmartLegoSize(originalSize, zoomLevel);
+
+        // Create a demo lego for the resize proxy
+        const demoLego = lego.with({
+          logicalPosition: new LogicalPoint(0, 0)
+        });
+
+        const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
+
+        // Clone the SVG body element from the DOM
+        const clonedBodyElement = (() => {
+          // First try to get the DOM element for the current lego
+          let bodyElement = document.getElementById(
+            `lego-${lego.instance_id}-body`
+          );
+
+          // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+          if (!bodyElement) {
+            const cloneMapping = useCanvasStore.getState().cloneMapping;
+            const originalLegoId = cloneMapping.get(lego.instance_id);
+            if (originalLegoId) {
+              bodyElement = document.getElementById(
+                `lego-${originalLegoId}-body`
+              );
+            }
+          }
+
+          return bodyElement?.cloneNode(true) as SVGElement;
+        })();
+
+        if (!clonedBodyElement) {
+          // Fallback to DroppedLegoDisplay for newly cloned legos
+          return (
+            <div
+              key={`resize-group-proxy-fallback-${lego.instance_id}`}
+              style={{
+                position: "absolute",
+                left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+                top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+                width: `${boundingBox.width}px`,
+                height: `${boundingBox.height}px`,
+                opacity: 0.5,
+                border: "1.5px dashed #4A90E2",
+                background: "none",
+                pointerEvents: "none",
+                zIndex: 1000
+              }}
+            >
+              <svg
+                width={boundingBox.width}
+                height={boundingBox.height}
+                style={{ overflow: "visible" }}
+                viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              >
+                <DroppedLegoDisplay
+                  legoInstanceId={lego.instance_id}
+                  demoLego={demoLego}
+                  forceSmartSizing={true}
+                  bodyOnly={true}
+                />
+              </svg>
+            </div>
+          );
+        }
+
         return (
           <div
             key={`resize-group-proxy-${lego.instance_id}`}
             style={{
               position: "absolute",
-              left: `${proxyCanvasPos.x - smartSize / 2}px`,
-              top: `${proxyCanvasPos.y - smartSize / 2}px`,
-              width: `${smartSize}px`,
-              height: `${smartSize}px`,
+              left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+              top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+              width: `${boundingBox.width}px`,
+              height: `${boundingBox.height}px`,
               opacity: 0.5,
               border: "1.5px dashed #4A90E2",
               background: "none",
@@ -319,38 +407,17 @@ const ResizeGroupProxy: React.FC<{
             }}
           >
             <svg
-              width={smartSize}
-              height={smartSize}
+              width={boundingBox.width}
+              height={boundingBox.height}
               style={{ overflow: "visible" }}
-            >
-              {lego.style!.borderRadius === "full" ? (
-                <circle
-                  cx={smartSize / 2}
-                  cy={smartSize / 2}
-                  r={smartSize / 2}
-                  fill={lego.style!.getBackgroundColorForSvg()}
-                  stroke="#4A90E2"
-                  strokeWidth="2"
-                  style={{ strokeDasharray: "4,3" }}
-                />
-              ) : (
-                <rect
-                  x="2"
-                  y="2"
-                  width={smartSize - 4}
-                  height={smartSize - 4}
-                  rx={
-                    typeof lego.style!.borderRadius === "number"
-                      ? lego.style!.borderRadius
-                      : 0
-                  }
-                  fill={lego.style!.getBackgroundColorForSvg()}
-                  stroke="#4A90E2"
-                  strokeWidth="2"
-                  style={{ strokeDasharray: "4,3" }}
-                />
-              )}
-            </svg>
+              viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              ref={(svgRef) => {
+                if (svgRef && clonedBodyElement) {
+                  svgRef.innerHTML = "";
+                  svgRef.appendChild(clonedBodyElement.cloneNode(true));
+                }
+              }}
+            ></svg>
           </div>
         );
       })}

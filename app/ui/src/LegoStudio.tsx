@@ -599,9 +599,10 @@ const LegoStudioView: React.FC = () => {
                         : undefined
                     }
                   >
-                    <ConnectionsLayer />
+                    <ConnectionsLayer bodyOrder="behind" />
                     {/* Selection Manager */}
                     <LegosLayer />
+                    <ConnectionsLayer bodyOrder="front" />
                   </svg>
                   <SelectionManager ref={selectionManagerRef} />
 

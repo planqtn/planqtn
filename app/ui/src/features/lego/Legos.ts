@@ -8,7 +8,9 @@ export enum LegoType {
   ZREP = "z_rep_code",
   XREP = "x_rep_code",
   T6 = "t6",
+  T6_FLIPPED = "t6_flipped",
   T5 = "t5",
+  T5_FLIPPED = "t5_flipped",
   T5X = "t5x",
   T5Z = "t5z",
   STOPPER_X = "stopper_x",
@@ -111,10 +113,32 @@ export class Legos {
         parameters: {}
       },
       {
+        type_id: LegoType.T6_FLIPPED,
+        name: "[[6,0,3]] tensor flipped",
+        short_name: "T6F",
+        description: "[[6,0,3]] encoding tensor flipped",
+        parity_check_matrix: this.encoding_tensor_603,
+        logical_legs: [4, 5],
+        gauge_legs: [],
+        is_dynamic: false,
+        parameters: {}
+      },
+      {
         type_id: LegoType.T5,
-        name: "[[5,1,2]] tensor",
+        name: "[[5,1,2]] subspace tensor",
         short_name: "T5",
         description: "[[5,1,2]] encoding tensor",
+        parity_check_matrix: this.encoding_tensor_512,
+        logical_legs: [4],
+        gauge_legs: [],
+        is_dynamic: false,
+        parameters: {}
+      },
+      {
+        type_id: LegoType.T5_FLIPPED,
+        name: "[[5,1,2]] flipped subspace tensor",
+        short_name: "T5F",
+        description: "[[5,1,2]] flipped subspace tensor",
         parity_check_matrix: this.encoding_tensor_512,
         logical_legs: [4],
         gauge_legs: [],

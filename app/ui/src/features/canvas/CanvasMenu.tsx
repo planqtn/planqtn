@@ -208,8 +208,9 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                       .getState()
                       .droppedLegos.some(
                         (lego) =>
-                          lego.selectedMatrixRows &&
-                          lego.selectedMatrixRows.length > 0
+                          (lego.selectedMatrixRows &&
+                            lego.selectedMatrixRows.length > 0) ||
+                          lego.highlightedLegConstraints.length > 0
                       )
                   }
                 >

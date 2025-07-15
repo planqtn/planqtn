@@ -193,15 +193,15 @@ tn = TensorNetwork(nodes)
     // Execute Python script and handle output
     console.log("this file", process.env.PYTHONPATH);
     await new Promise<void>((resolve, reject) => {
-      exec(`python3 -c '${python_script}'`, (error, stdout, stderr) => {
+      exec(`python3 -c '${python_script}'`, (error, stdout) => {
         if (error) {
           reject(error);
           return;
         }
-        if (stderr) {
-          reject(new Error(stderr));
-          return;
-        }
+        // if (stderr) {
+        //   reject(new Error(stderr));
+        //   return;
+        // }
 
         // Parse the output into a matrix
         const parity_check_matrix = stdout

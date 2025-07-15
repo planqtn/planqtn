@@ -1,10 +1,56 @@
 import { StateCreator } from "zustand";
-import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
+import {
+  GenericStyle,
+  HadamardStyle,
+  IdentityStyle,
+  LegoStyle,
+  RepetitionCodeStyle,
+  ScalarStyle,
+  StopperStyle,
+  X_REP_CODE,
+  Z_REP_CODE
+} from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
-import { TensorNetwork } from "../lib/TensorNetwork";
 import { PauliOperator } from "../lib/types";
+import { SvgLegoStyle } from "../features/lego/SvgLegoStyle";
+
+export function getLegoStyle(
+  type_id: string,
+  numLegs: number,
+  lego: DroppedLego
+): LegoStyle {
+  // Check if this lego type has a custom SVG
+  if (SvgLegoStyle.supportedLegoTypes.includes(type_id)) {
+    return new SvgLegoStyle(type_id, lego);
+  }
+
+  if (numLegs === 0) {
+    return new ScalarStyle(type_id, lego);
+  } else if (type_id === "h") {
+    return new HadamardStyle(type_id, lego);
+  } else if (type_id === Z_REP_CODE || type_id === X_REP_CODE) {
+    if (numLegs > 2) {
+      return new RepetitionCodeStyle(type_id, lego);
+    } else if (numLegs === 2) {
+      return new IdentityStyle(type_id, lego);
+    } else if (numLegs === 1) {
+      return new StopperStyle(
+        type_id === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        lego
+      );
+    } else {
+      return new GenericStyle(type_id, lego);
+    }
+  } else if (type_id.includes("stopper")) {
+    return new StopperStyle(type_id, lego);
+  } else if (type_id === "identity") {
+    return new IdentityStyle(type_id, lego);
+  } else {
+    return new GenericStyle(type_id, lego);
+  }
+}
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
@@ -127,7 +173,8 @@ export class DroppedLego implements LegoPiece {
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
     this.highlightedLegConstraints = overrides.highlightedLegConstraints || [];
-    this.style = getLegoStyle(lego.type_id, this.numberOfLegs, this);
+    this.style =
+      overrides.style || getLegoStyle(lego.type_id, this.numberOfLegs, this);
   }
 
   public get numberOfLegs(): number {
@@ -162,7 +209,13 @@ export class DroppedLego implements LegoPiece {
   }
 
   public clone(): DroppedLego {
-    return new DroppedLego(this, this.logicalPosition, this.instance_id);
+    return new DroppedLego(this, this.logicalPosition, this.instance_id, {
+      style: this.style
+    });
+  }
+
+  public get isSvgLego(): boolean {
+    return this.style instanceof SvgLegoStyle;
   }
 }
 
@@ -371,24 +424,26 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.droppedLegos[index] = updatedLego.clone();
+          state.droppedLegos[index] = updatedLego;
         }
       });
 
       state.connectedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.connectedLegos[index] = updatedLego.clone();
+          state.connectedLegos[index] = updatedLego;
+        }
+      });
+      state.tensorNetwork?.legos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instance_id);
+        if (updatedLego) {
+          state.tensorNetwork!.legos[index] = updatedLego;
         }
       });
     });
+    get().updateAllLegHideStates();
+
     get().updateEncodedCanvasState();
-    get().setTensorNetwork(
-      new TensorNetwork({
-        legos: legos.map((lego) => lego.clone()),
-        connections: get().tensorNetwork!.connections
-      })
-    );
   },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {

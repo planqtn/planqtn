@@ -20,6 +20,7 @@ export interface LegoDragStateSlice {
   legoDragState: LegoDragState;
   setLegoDragState: (dragState: LegoDragState) => void;
   resetLegoDragState: (justFinished?: boolean) => void;
+  isDraggedLego: (legoInstanceId: string) => boolean;
 }
 
 const initialLegoDragState: LegoDragState = {
@@ -34,7 +35,7 @@ export const createLegoDragStateSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   LegoDragStateSlice
-> = (set) => ({
+> = (set, get) => ({
   legoDragState: initialLegoDragState,
 
   setLegoDragState: (dragState: LegoDragState) => {
@@ -52,5 +53,39 @@ export const createLegoDragStateSlice: StateCreator<
           }
         : initialLegoDragState;
     });
+
+    // Clear clone mapping when drag ends
+    get().clearCloneMapping();
+  },
+
+  // Check which legos are being dragged to hide them
+  isDraggedLego: (legoInstanceId: string) => {
+    const draggedIds = new Set<string>();
+
+    // Add individually dragged lego
+    if (get().legoDragState?.draggingStage === DraggingStage.DRAGGING) {
+      draggedIds.add(get().legoDragState.draggedLegoInstanceId);
+    }
+
+    // Add group dragged legos (selected legos)
+    if (
+      get().tensorNetwork?.legos &&
+      get().legoDragState?.draggingStage === DraggingStage.DRAGGING
+    ) {
+      get().tensorNetwork?.legos.forEach((lego) => {
+        draggedIds.add(lego.instance_id);
+      });
+    }
+
+    if (
+      get().groupDragState &&
+      get().legoDragState?.draggingStage === DraggingStage.DRAGGING
+    ) {
+      get().groupDragState?.legoInstanceIds.forEach((legoId) => {
+        draggedIds.add(legoId);
+      });
+    }
+
+    return draggedIds.has(legoInstanceId);
   }
 });

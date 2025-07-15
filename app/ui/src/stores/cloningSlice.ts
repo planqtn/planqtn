@@ -7,6 +7,8 @@ import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
+  cloneMapping: Map<string, string>; // new instance ID -> original instance ID
+  clearCloneMapping: () => void;
 }
 
 export const useCloningSlice: StateCreator<
@@ -14,7 +16,15 @@ export const useCloningSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   CloningSlice
-> = (_, get) => ({
+> = (set, get) => ({
+  cloneMapping: new Map(),
+
+  clearCloneMapping: () => {
+    set((state) => {
+      state.cloneMapping = new Map();
+    });
+  },
+
   handleClone: (clickedLego, x, y) => {
     const tensorNetwork = get().tensorNetwork;
     const connections = get().connections;
@@ -24,7 +34,7 @@ export const useCloningSlice: StateCreator<
         (l) => l.instance_id === clickedLego.instance_id
       );
 
-    const cloneOffset = new LogicalPoint(20, 20);
+    const cloneOffset = new LogicalPoint(1, 1);
     // Check if we're cloning multiple legos
     const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
@@ -40,6 +50,15 @@ export const useCloningSlice: StateCreator<
         instance_id: newId,
         logicalPosition: l.logicalPosition.plus(cloneOffset)
       });
+    });
+
+    // Store the reverse mapping (new ID -> original ID) for drag proxy use
+    set((state) => {
+      const cloneMapping = new Map();
+      instanceIdMap.forEach((newId, originalId) => {
+        cloneMapping.set(newId, originalId);
+      });
+      state.cloneMapping = cloneMapping;
     });
 
     // Clone connections between the selected legos
@@ -84,9 +103,7 @@ export const useCloningSlice: StateCreator<
       draggingStage: DraggingStage.MAYBE_DRAGGING,
       draggedLegoInstanceId: newLegos[0].instance_id,
       startMouseWindowPoint: new WindowPoint(x, y),
-      startLegoLogicalPoint: clickedLego.logicalPosition.plus(
-        new LogicalPoint(20, 20)
-      )
+      startLegoLogicalPoint: clickedLego.logicalPosition.plus(cloneOffset)
     });
 
     // Add to history

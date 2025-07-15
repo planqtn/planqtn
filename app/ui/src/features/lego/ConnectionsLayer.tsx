@@ -10,8 +10,11 @@ import {
 } from "../../utils/coordinateTransforms";
 import { CanvasPoint, LogicalPoint } from "../../types/coordinates";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
+import { DraggingStage } from "../../stores/legoDragState";
 
-export const ConnectionsLayer: React.FC = () => {
+export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
+  bodyOrder
+}) => {
   const connections = useCanvasStore((state) => state.connections);
   const hideConnectedLegs = useCanvasStore((state) => state.hideConnectedLegs);
   const addOperation = useCanvasStore((state) => state.addOperation);
@@ -20,6 +23,9 @@ export const ConnectionsLayer: React.FC = () => {
   const legDragState = useCanvasStore((state) => state.legDragState);
   const hoveredConnection = useCanvasStore((state) => state.hoveredConnection);
   const visibleLegoIds = useVisibleLegoIds();
+  const isDraggedLego = useCanvasStore((state) => state.isDraggedLego);
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
 
   // Get zoom level for smart scaling
   const viewport = useCanvasStore((state) => state.viewport);
@@ -106,6 +112,9 @@ export const ConnectionsLayer: React.FC = () => {
       )
         return null;
 
+      if (isDraggedLego(conn.from.legoId) || isDraggedLego(conn.to.legoId))
+        return null;
+
       // Create a stable key based on the connection's properties
       const [firstId, firstLeg, secondId, secondLeg] =
         conn.from.legoId < conn.to.legoId
@@ -123,8 +132,18 @@ export const ConnectionsLayer: React.FC = () => {
             ];
       const connKey = `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
 
-      const fromPos = fromLego.style!.legStyles[conn.from.leg_index].position;
-      const toPos = toLego.style!.legStyles[conn.to.leg_index].position;
+      const fromLegStyle = fromLego.style!.legStyles[conn.from.leg_index];
+      const toLegStyle = toLego.style!.legStyles[conn.to.leg_index];
+
+      const fromPos = fromLegStyle.position;
+      const toPos = toLegStyle.position;
+
+      const connectionBodyOrder =
+        fromLegStyle.bodyOrder == "front" || toLegStyle.bodyOrder == "front"
+          ? "front"
+          : "behind";
+
+      if (connectionBodyOrder != bodyOrder) return null;
 
       // Use pre-computed maps for O(1) lookup
       const fromLegConnected = connectedLegsMap.has(
@@ -187,20 +206,26 @@ export const ConnectionsLayer: React.FC = () => {
           )
         )
         .plus(
-          new CanvasPoint(fromPos.endX, fromPos.endY).factor(
-            hideFromLeg ? 0 : 1
-          )
+          hideFromLeg
+            ? new CanvasPoint(fromPos.startX, fromPos.startY).factor(
+                fromSmartSize / fromOriginalSize
+              )
+            : new CanvasPoint(fromPos.endX, fromPos.endY)
         );
+
       const toPoint = viewport
         .fromLogicalToCanvas(
           new LogicalPoint(toLego.logicalPosition.x, toLego.logicalPosition.y)
         )
         .plus(
-          new CanvasPoint(toPos.endX, toPos.endY).factor(hideToLeg ? 0 : 1)
+          hideToLeg
+            ? new CanvasPoint(toPos.startX, toPos.startY).factor(
+                toSmartSize / toOriginalSize
+              )
+            : new CanvasPoint(toPos.endX, toPos.endY)
         );
-
       // Calculate control points for the curve - scale with zoom for better topology
-      const baseControlPointDistance = 0;
+      const baseControlPointDistance = 25;
       const controlPointDistance =
         baseControlPointDistance * Math.min(1, zoomLevel * 0.8 + 0.2); // Scale control points
       const cp1 = {
@@ -208,8 +233,8 @@ export const ConnectionsLayer: React.FC = () => {
         y: fromPoint.y + Math.sin(fromPos.angle) * controlPointDistance
       };
       const cp2 = {
-        x: toPoint.x + Math.cos(toPos.angle + Math.PI) * controlPointDistance,
-        y: toPoint.y + Math.sin(toPos.angle + Math.PI) * controlPointDistance
+        x: toPoint.x + Math.cos(toPos.angle) * controlPointDistance,
+        y: toPoint.y + Math.sin(toPos.angle) * controlPointDistance
       };
 
       const pathString = `M ${fromPoint.x} ${fromPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toPoint.x} ${toPoint.y}`;
@@ -301,7 +326,9 @@ export const ConnectionsLayer: React.FC = () => {
     hideConnectedLegs,
     isConnectionHovered,
     zoomLevel,
-    viewport
+    viewport,
+    legoDragState.draggingStage === DraggingStage.DRAGGING,
+    groupDragState
   ]);
 
   // Memoize temporary drag line
@@ -323,7 +350,6 @@ export const ConnectionsLayer: React.FC = () => {
     const fromPoint = viewport
       .fromLogicalToCanvas(fromBasePoint)
       .plus(new CanvasPoint(fromPos.endX, fromPos.endY));
-    const legoCenter = viewport.fromLogicalToCanvas(fromBasePoint);
 
     const dragEndPoint = viewport.fromWindowToCanvas(
       legDragState.currentMouseWindowPoint
@@ -349,12 +375,6 @@ export const ConnectionsLayer: React.FC = () => {
 
     return (
       <g key="temp-drag-line">
-        <circle
-          cx={legoCenter.x}
-          cy={legoCenter.y}
-          r={5 * Math.min(1.2, Math.max(0.8, zoomLevel))}
-          fill="red"
-        />
         <path
           d={pathString}
           stroke="#3182CE"

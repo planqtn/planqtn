@@ -99,7 +99,7 @@ describe("TensorNetwork", () => {
       legos: [
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake", // fake type id to avoid parsing svg
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -119,7 +119,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake",
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -139,7 +139,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake",
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -159,7 +159,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake",
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -179,7 +179,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake",
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",
@@ -199,7 +199,7 @@ describe("TensorNetwork", () => {
         ),
         new DroppedLego(
           {
-            type_id: "t5",
+            type_id: "t5fake",
             name: "[[5,1,2]] tensor",
             short_name: "T5",
             description: "[[5,1,2]] encoding tensor",

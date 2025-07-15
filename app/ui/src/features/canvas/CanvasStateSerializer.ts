@@ -3,6 +3,7 @@ import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
 import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
+import { PauliOperator } from "../../lib/types";
 
 interface CanvasState {
   canvasId: string;
@@ -17,6 +18,10 @@ interface CanvasState {
     logical_legs?: number[];
     gauge_legs?: number[];
     selectedMatrixRows?: number[];
+    highlightedLegConstraints?: {
+      legIndex: number;
+      operator: PauliOperator;
+    }[];
   }>;
   connections: Array<Connection>;
   hideConnectedLegs: boolean;
@@ -68,7 +73,8 @@ export class CanvasStateSerializer {
         parity_check_matrix: piece.parity_check_matrix,
         logical_legs: piece.logical_legs,
         gauge_legs: piece.gauge_legs,
-        selectedMatrixRows: piece.selectedMatrixRows
+        selectedMatrixRows: piece.selectedMatrixRows,
+        highlightedLegConstraints: piece.highlightedLegConstraints
       })),
       connections,
       hideConnectedLegs,
@@ -79,7 +85,13 @@ export class CanvasStateSerializer {
     };
 
     const encoded = btoa(JSON.stringify(state));
-    // console.log("Encoding state:", state, "encoded", encoded);
+
+    console.log(
+      "Encoding state:",
+      state,
+      `encoded (${encoded.length} characters)`,
+      encoded
+    );
     window.history.replaceState(null, "", `#state=${encoded}`);
   }
 
@@ -181,6 +193,10 @@ export class CanvasStateSerializer {
           short_name?: string;
           description?: string;
           selectedMatrixRows?: number[];
+          highlightedLegConstraints?: {
+            legIndex: number;
+            operator: PauliOperator;
+          }[];
         }) => {
           const predefinedLego = legosList.find((l) => l.type_id === piece.id);
           if (
@@ -192,10 +208,15 @@ export class CanvasStateSerializer {
             );
           }
 
-          // For pieces not in lego list, construct from saved data
-          if (!predefinedLego) {
-            return new DroppedLego(
-              {
+          const legoPrototype = predefinedLego
+            ? {
+                ...predefinedLego,
+
+                is_dynamic: piece.is_dynamic || false,
+                parameters: piece.parameters || {},
+                parity_check_matrix: piece.parity_check_matrix || []
+              }
+            : {
                 type_id: piece.id,
                 name: piece.name || piece.id,
                 short_name: piece.short_name || piece.id,
@@ -206,45 +227,17 @@ export class CanvasStateSerializer {
                 parity_check_matrix: piece.parity_check_matrix || [],
                 logical_legs: piece.logical_legs || [],
                 gauge_legs: piece.gauge_legs || []
-              },
-              new LogicalPoint(piece.x, piece.y),
-              piece.instance_id,
-              { selectedMatrixRows: piece.selectedMatrixRows || [] }
-            );
-          }
-
-          // For dynamic legos, use the saved parameters and matrix
-          if (
-            piece.is_dynamic &&
-            piece.parameters &&
-            piece.parity_check_matrix
-          ) {
-            return new DroppedLego(
-              {
-                ...predefinedLego,
-                parameters: piece.parameters,
-                parity_check_matrix: piece.parity_check_matrix,
-                logical_legs: piece.logical_legs || [],
-                gauge_legs: piece.gauge_legs || []
-              },
-
-              new LogicalPoint(piece.x, piece.y),
-              piece.instance_id,
-
-              { selectedMatrixRows: piece.selectedMatrixRows || [] }
-            );
-          }
+              };
 
           // For regular legos, use the template
           return new DroppedLego(
-            {
-              ...predefinedLego,
-              parity_check_matrix:
-                piece.parity_check_matrix || predefinedLego.parity_check_matrix
-            },
+            legoPrototype,
             new LogicalPoint(piece.x, piece.y),
             piece.instance_id,
-            { selectedMatrixRows: piece.selectedMatrixRows || [] }
+            {
+              selectedMatrixRows: piece.selectedMatrixRows || [],
+              highlightedLegConstraints: piece.highlightedLegConstraints || []
+            }
           );
         }
       );

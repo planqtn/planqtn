@@ -94,12 +94,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       if (!mouseLogicalPoint) return;
 
       const logicalDelta = mouseLogicalPoint.minus(
-        legoDragState.startLegoLogicalPoint
+        viewport.fromWindowToLogical(legoDragState.startMouseWindowPoint)
       );
       const newLogicalPoint =
         legoDragState.startLegoLogicalPoint.plus(logicalDelta);
 
-      // Get the dragged lego BEFORE updating the array to avoid stale references
       const draggedLego = droppedLegos.find(
         (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
       );
@@ -371,6 +370,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     // Add handlers for stable drag enter/leave
     const handleCanvasDragEnter = (e: DragEvent) => {
       e.preventDefault();
+      // Fallback to transparent image if SVG not found
+      const dragImage = new Image();
+      dragImage.src =
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+      e.dataTransfer?.setDragImage(dragImage, 0, 0);
       // setBuildingBlockDragState((prev) => ({
       //   ...prev,
       //   dragEnterCounter: prev.dragEnterCounter + 1
