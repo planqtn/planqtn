@@ -11,6 +11,7 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { WindowPoint } from "../../types/coordinates.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
+import { SvgLegoStyle } from "./SvgLegoStyle.ts";
 
 const LEG_ENDPOINT_RADIUS = 5;
 
@@ -74,12 +75,13 @@ interface DroppedLegoDisplayProps {
 const StaticLegsLayer = memo<{
   legStyles: LegStyle[];
   shouldHideLeg: boolean[];
-}>(({ legStyles, shouldHideLeg }) => {
+  bodyOrder: "front" | "behind";
+}>(({ legStyles, shouldHideLeg, bodyOrder }) => {
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
       {legStyles.map((legStyle, leg_index) =>
-        shouldHideLeg[leg_index] ? null : (
+        shouldHideLeg[leg_index] || legStyle.bodyOrder !== bodyOrder ? null : (
           <line
             key={`static-leg-${leg_index}`}
             x1={legStyle.position.startX}
@@ -100,6 +102,176 @@ const StaticLegsLayer = memo<{
 });
 
 StaticLegsLayer.displayName = "StaticLegsLayer";
+
+const DynamicLegHighlightLayer = memo<{
+  legStyles: LegStyle[];
+  shouldHideLeg: boolean[];
+  bodyOrder: "front" | "behind";
+}>(({ legStyles, shouldHideLeg, bodyOrder }) => {
+  return (
+    <>
+      {legStyles.map((legStyle, leg_index) => {
+        const legColor = legStyle.color;
+        const shouldHide = shouldHideLeg[leg_index];
+
+        if (
+          legColor === SVG_COLORS.I ||
+          shouldHide ||
+          legStyle.bodyOrder !== bodyOrder
+        ) {
+          return null;
+        }
+
+        return (
+          <g key={`highlight-leg-${leg_index}`}>
+            <line
+              x1={legStyle.position.startX}
+              y1={legStyle.position.startY}
+              x2={legStyle.position.endX}
+              y2={legStyle.position.endY}
+              stroke={legColor}
+              strokeWidth={4}
+              strokeDasharray={
+                legStyle.lineStyle === "dashed" ? "5,5" : undefined
+              }
+              style={{ pointerEvents: "none" }}
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+});
+
+DynamicLegHighlightLayer.displayName = "DynamicLegHighlightLayer";
+
+const LegEndpointLayer = memo<{
+  lego: DroppedLego;
+  legStyles: LegStyle[];
+  shouldHideLeg: boolean[];
+  bodyOrder: "front" | "behind";
+}>(({ lego, legStyles, shouldHideLeg, bodyOrder }) => {
+  const canvasRef = useCanvasStore((state) => state.canvasRef);
+
+  const storeHandleLegMouseDown = useCanvasStore(
+    (state) => state.handleLegMouseDown
+  );
+  const storeHandleLegClick = useCanvasStore((state) => state.handleLegClick);
+  const storeHandleLegMouseUp = useCanvasStore(
+    (state) => state.handleLegMouseUp
+  );
+
+  const handleLegMouseDown = (
+    e: React.MouseEvent,
+    legoId: string,
+    leg_index: number
+  ) => {
+    if (!canvasRef) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    storeHandleLegMouseDown(
+      legoId,
+      leg_index,
+      WindowPoint.fromMouseEvent(e as unknown as MouseEvent)
+    );
+  };
+
+  const handleLegClick = (legoId: string, leg_index: number) => {
+    storeHandleLegClick(legoId, leg_index);
+  };
+
+  const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
+    e.stopPropagation();
+    storeHandleLegMouseUp(lego.instance_id, i);
+  };
+
+  return (
+    <>
+      {legStyles.map((legStyle, leg_index) => {
+        const isLogical = lego.logical_legs.includes(leg_index);
+        const legColor = legStyle.color;
+
+        const shouldHide = shouldHideLeg[leg_index];
+
+        if (shouldHide || legStyle.bodyOrder !== bodyOrder) {
+          return null;
+        }
+
+        return (
+          <g key={`interactive-leg-${leg_index}`}>
+            {/* Logical leg interactive line - rendered on top for clicks */}
+            {isLogical && (
+              <line
+                x1={legStyle.position.startX}
+                y1={legStyle.position.startY}
+                x2={legStyle.position.endX}
+                y2={legStyle.position.endY}
+                stroke="transparent"
+                strokeWidth={5}
+                onMouseOver={(e) => {
+                  e.stopPropagation();
+                  const line = e.target as SVGLineElement;
+                  line.style.stroke = legColor;
+                }}
+                onMouseOut={(e) => {
+                  e.stopPropagation();
+                  const line = e.target as SVGLineElement;
+                  line.style.stroke = "transparent";
+                }}
+                style={{
+                  cursor: "pointer",
+                  pointerEvents: "visibleStroke"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLegClick(lego.instance_id, leg_index);
+                }}
+              />
+            )}
+
+            {/* Draggable Endpoint */}
+            <circle
+              cx={legStyle.position.endX}
+              cy={legStyle.position.endY}
+              r={LEG_ENDPOINT_RADIUS}
+              className="leg-endpoint"
+              fill={"white"}
+              stroke={legColor}
+              strokeWidth="2"
+              style={{
+                cursor: "pointer",
+                pointerEvents: "all",
+                transition: "stroke 0.2s, fill 0.2s"
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleLegMouseDown(e, lego.instance_id, leg_index);
+              }}
+              onMouseOver={(e) => {
+                const circle = e.target as SVGCircleElement;
+                circle.style.stroke = legColor;
+                circle.style.fill = "rgb(235, 248, 255)";
+              }}
+              onMouseOut={(e) => {
+                const circle = e.target as SVGCircleElement;
+                circle.style.stroke = legColor;
+                circle.style.fill = "white";
+              }}
+              onMouseUp={(e) => {
+                e.stopPropagation();
+                handleLegMouseUp(e, leg_index);
+              }}
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+});
+
+LegEndpointLayer.displayName = "LegEndpointLayer";
 
 // Memoized component for lego body
 const LegoBodyLayer = memo<{
@@ -215,6 +387,32 @@ const LegoBodyLayer = memo<{
 
 LegoBodyLayer.displayName = "LegoBodyLayer";
 
+// Memoized component for SVG lego body
+const SvgLegoBodyLayer = memo<{
+  legoInstanceId: string;
+  size: number;
+  originalSize: number;
+  isSelected: boolean;
+}>(({ legoInstanceId, size, originalSize }) => {
+  const lego = useCanvasStore(
+    (state) => state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
+  );
+
+  const svgBodyElement = (lego.style as SvgLegoStyle).getSvgBodyElement();
+
+  return (
+    <>
+      {/* Custom SVG body */}
+      <g
+        transform={`scale(${size / originalSize})`}
+        dangerouslySetInnerHTML={{ __html: svgBodyElement }}
+      />
+    </>
+  );
+});
+
+SvgLegoBodyLayer.displayName = "SvgLegoBodyLayer";
+
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
   ({ legoInstanceId, demoMode = false }) => {
     const lego = useCanvasStore(
@@ -222,7 +420,9 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
         state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
     );
 
-    const canvasRef = useCanvasStore((state) => state.canvasRef);
+    // Check if this lego should use SVG-based rendering for the body
+    const isSvgLego = lego.isSvgLego;
+
     // Get zoom level for smart scaling
     const viewport = useCanvasStore((state) => state.viewport);
     const zoomLevel = viewport.zoomLevel;
@@ -236,14 +436,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       }
       return canvasPosition;
     }, [lego.logicalPosition, demoMode, canvasPosition]);
-
-    const storeHandleLegMouseDown = useCanvasStore(
-      (state) => state.handleLegMouseDown
-    );
-    const storeHandleLegClick = useCanvasStore((state) => state.handleLegClick);
-    const storeHandleLegMouseUp = useCanvasStore(
-      (state) => state.handleLegMouseUp
-    );
 
     const legConnectionStates = useCanvasStore(
       useShallow((state) =>
@@ -348,32 +540,6 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
       return `${firstId}-${firstLeg}-${secondId}-${secondLeg}`;
     };
 
-    const handleLegMouseDown = (
-      e: React.MouseEvent,
-      legoId: string,
-      leg_index: number
-    ) => {
-      if (!canvasRef) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      storeHandleLegMouseDown(
-        legoId,
-        leg_index,
-        WindowPoint.fromMouseEvent(e as unknown as MouseEvent)
-      );
-    };
-
-    const handleLegClick = (legoId: string, leg_index: number) => {
-      storeHandleLegClick(legoId, leg_index);
-    };
-
-    const handleLegMouseUp = (e: React.MouseEvent, i: number) => {
-      e.stopPropagation();
-      storeHandleLegMouseUp(lego.instance_id, i);
-    };
-
     const isScalarLego = (lego: DroppedLego) => {
       return (
         lego.parity_check_matrix.length === 1 &&
@@ -456,125 +622,73 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                 <StaticLegsLayer
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="behind"
                 />
               )}
 
               {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
-              {lod.showLegs &&
-                lego.style!.legStyles.map((legStyle, leg_index) => {
-                  const legColor = lego.style!.getLegColor(leg_index);
-                  const shouldHide = legHiddenStates[leg_index];
-
-                  if (legColor === SVG_COLORS.I || shouldHide) {
-                    return null;
-                  }
-
-                  return (
-                    <g key={`highlight-leg-${leg_index}`}>
-                      <line
-                        x1={legStyle.position.startX}
-                        y1={legStyle.position.startY}
-                        x2={legStyle.position.endX}
-                        y2={legStyle.position.endY}
-                        stroke={legColor}
-                        strokeWidth={4}
-                        strokeDasharray={
-                          legStyle.lineStyle === "dashed" ? "5,5" : undefined
-                        }
-                        style={{ pointerEvents: "none" }}
-                      />
-                    </g>
-                  );
-                })}
+              {lod.showLegs && (
+                <DynamicLegHighlightLayer
+                  legStyles={lego.style!.legStyles}
+                  shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="behind"
+                />
+              )}
 
               {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
-              {lod.showLegs &&
-                lego.style!.legStyles.map((legStyle, leg_index) => {
-                  const isLogical = lego.logical_legs.includes(leg_index);
-                  const legColor = lego.style!.getLegColor(leg_index);
-
-                  const shouldHide = legHiddenStates[leg_index];
-
-                  if (shouldHide) {
-                    return null;
-                  }
-
-                  return (
-                    <g key={`interactive-leg-${leg_index}`}>
-                      {/* Logical leg interactive line - rendered on top for clicks */}
-                      {isLogical && (
-                        <line
-                          x1={legStyle.position.startX}
-                          y1={legStyle.position.startY}
-                          x2={legStyle.position.endX}
-                          y2={legStyle.position.endY}
-                          stroke="transparent"
-                          strokeWidth={5}
-                          onMouseOver={(e) => {
-                            e.stopPropagation();
-                            const line = e.target as SVGLineElement;
-                            line.style.stroke = legColor;
-                          }}
-                          onMouseOut={(e) => {
-                            e.stopPropagation();
-                            const line = e.target as SVGLineElement;
-                            line.style.stroke = "transparent";
-                          }}
-                          style={{
-                            cursor: "pointer",
-                            pointerEvents: "visibleStroke"
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLegClick(lego.instance_id, leg_index);
-                          }}
-                        />
-                      )}
-
-                      {/* Draggable Endpoint */}
-                      <circle
-                        cx={legStyle.position.endX}
-                        cy={legStyle.position.endY}
-                        r={LEG_ENDPOINT_RADIUS}
-                        className="leg-endpoint"
-                        fill={"white"}
-                        stroke={legColor}
-                        strokeWidth="2"
-                        style={{
-                          cursor: "pointer",
-                          pointerEvents: "all",
-                          transition: "stroke 0.2s, fill 0.2s"
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          handleLegMouseDown(e, lego.instance_id, leg_index);
-                        }}
-                        onMouseOver={(e) => {
-                          const circle = e.target as SVGCircleElement;
-                          circle.style.stroke = legColor;
-                          circle.style.fill = "rgb(235, 248, 255)";
-                        }}
-                        onMouseOut={(e) => {
-                          const circle = e.target as SVGCircleElement;
-                          circle.style.stroke = legColor;
-                          circle.style.fill = "white";
-                        }}
-                        onMouseUp={(e) => {
-                          e.stopPropagation();
-                          handleLegMouseUp(e, leg_index);
-                        }}
-                      />
-                    </g>
-                  );
-                })}
+              {lod.showLegs && (
+                <LegEndpointLayer
+                  lego={lego}
+                  legStyles={lego.style!.legStyles}
+                  shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="behind"
+                />
+              )}
 
               {/* Layer 4: Lego body */}
-              <LegoBodyLayer
-                lego={lego}
-                size={size}
-                numRegularLegs={numRegularLegs}
-                isSelected={isSelected || false}
-              />
+              {isSvgLego ? (
+                <SvgLegoBodyLayer
+                  legoInstanceId={legoInstanceId}
+                  size={size}
+                  originalSize={originalSize}
+                  isSelected={isSelected || false}
+                />
+              ) : (
+                <LegoBodyLayer
+                  lego={lego}
+                  size={size}
+                  numRegularLegs={numRegularLegs}
+                  isSelected={isSelected || false}
+                />
+              )}
+
+              {/* Layer 1: Static leg lines (gray background) - with LOD */}
+              {lod.showLegs && (
+                <StaticLegsLayer
+                  legStyles={lego.style!.legStyles}
+                  shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="front"
+                />
+              )}
+
+              {/* Layer 2: Dynamic leg highlights (colored lines behind lego body) - with LOD */}
+              {lod.showLegs && (
+                <DynamicLegHighlightLayer
+                  legStyles={lego.style!.legStyles}
+                  shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="front"
+                />
+              )}
+
+              {/* Layer 3: Interactive leg endpoints and logical leg interactions - with LOD */}
+              {lod.showLegs && (
+                <LegEndpointLayer
+                  lego={lego}
+                  legStyles={lego.style!.legStyles}
+                  shouldHideLeg={staticShouldHideLeg}
+                  bodyOrder="front"
+                />
+              )}
 
               {/* Text content - selection-aware with LOD */}
               {!demoMode && lod.showText && (

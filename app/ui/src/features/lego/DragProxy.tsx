@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { getLegoStyle } from "./LegoStyles";
-import { DroppedLego } from "../../stores/droppedLegoStore";
+import { DroppedLego, getLegoStyle } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";

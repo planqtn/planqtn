@@ -1,10 +1,64 @@
 import { StateCreator } from "zustand";
-import { getLegoStyle, LegoStyle } from "../features/lego/LegoStyles";
+import {
+  GenericStyle,
+  HadamardStyle,
+  IdentityStyle,
+  LegoStyle,
+  RepetitionCodeStyle,
+  ScalarStyle,
+  StopperStyle,
+  X_REP_CODE,
+  Z_REP_CODE
+} from "../features/lego/LegoStyles";
 import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { PauliOperator } from "../lib/types";
+import {
+  SvgLegoStyle,
+  T6FlippedSvgLegoStyle,
+  T6SvgLegoStyle
+} from "../features/lego/SvgLegoStyle";
+
+export function getLegoStyle(
+  type_id: string,
+  numLegs: number,
+  lego: DroppedLego
+): LegoStyle {
+  // Check if this lego type has a custom SVG
+  if (type_id === "t6") {
+    return new T6SvgLegoStyle(type_id, lego);
+  }
+  if (type_id === "t6_flipped") {
+    return new T6FlippedSvgLegoStyle(type_id, lego);
+  }
+
+  if (numLegs === 0) {
+    return new ScalarStyle(type_id, lego);
+  } else if (type_id === "h") {
+    return new HadamardStyle(type_id, lego);
+  } else if (type_id === Z_REP_CODE || type_id === X_REP_CODE) {
+    if (numLegs > 2) {
+      return new RepetitionCodeStyle(type_id, lego);
+    } else if (numLegs === 2) {
+      return new IdentityStyle(type_id, lego);
+    } else if (numLegs === 1) {
+      return new StopperStyle(
+        type_id === Z_REP_CODE ? "stopper_z" : "stopper_x",
+        lego
+      );
+    } else {
+      return new GenericStyle(type_id, lego);
+    }
+  } else if (type_id.includes("stopper")) {
+    return new StopperStyle(type_id, lego);
+  } else if (type_id === "identity") {
+    return new IdentityStyle(type_id, lego);
+  } else {
+    return new GenericStyle(type_id, lego);
+  }
+}
 
 export function recalculateLegoStyle(lego: DroppedLego): void {
   lego.style = getLegoStyle(lego.type_id, lego.numberOfLegs, lego);
@@ -163,6 +217,10 @@ export class DroppedLego implements LegoPiece {
 
   public clone(): DroppedLego {
     return new DroppedLego(this, this.logicalPosition, this.instance_id);
+  }
+
+  public get isSvgLego(): boolean {
+    return this.style instanceof SvgLegoStyle;
   }
 }
 
