@@ -12,8 +12,8 @@ export abstract class SvgLegoStyle extends LegoStyle {
 
   abstract getSvgContent(): string;
 
-  constructor(id: string, lego: DroppedLego) {
-    super(id, lego);
+  constructor(id: string, lego: DroppedLego, overrideLegStyles?: LegStyle[]) {
+    super(id, lego, overrideLegStyles);
     this.svgContent = this.getSvgContent();
     this.svgData = SvgLegoParser.parseSvgFile(this.svgContent);
 
@@ -40,7 +40,6 @@ export abstract class SvgLegoStyle extends LegoStyle {
         width:
           !isLogical && highlightOperator === PauliOperator.I ? "1px" : "3px",
         lineStyle: "solid",
-        from: leg.from,
         startOffset: leg.startOffset,
         color: getPauliColor(highlightOperator, true),
         is_highlighted: isHighlighted,

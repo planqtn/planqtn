@@ -79,10 +79,11 @@ export abstract class LegoStyle {
   public readonly legStyles: LegStyle[];
   constructor(
     protected readonly id: string,
-    protected readonly lego: DroppedLego
+    protected readonly lego: DroppedLego,
+    protected readonly overrideLegStyles?: LegStyle[]
   ) {
     this.legStyles =
-      lego.numberOfLegs > 0
+      overrideLegStyles || lego.numberOfLegs > 0
         ? Array(lego.numberOfLegs)
             .fill(0)
             .map((_, i) => {

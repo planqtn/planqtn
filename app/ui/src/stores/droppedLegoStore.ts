@@ -13,7 +13,6 @@ import {
 import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
-import { TensorNetwork } from "../lib/TensorNetwork";
 import { PauliOperator } from "../lib/types";
 import {
   SvgLegoStyle,
@@ -181,7 +180,8 @@ export class DroppedLego implements LegoPiece {
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
     this.alwaysShowLegs = overrides.alwaysShowLegs || false;
     this.highlightedLegConstraints = overrides.highlightedLegConstraints || [];
-    this.style = getLegoStyle(lego.type_id, this.numberOfLegs, this);
+    this.style =
+      overrides.style || getLegoStyle(lego.type_id, this.numberOfLegs, this);
   }
 
   public get numberOfLegs(): number {
@@ -216,7 +216,9 @@ export class DroppedLego implements LegoPiece {
   }
 
   public clone(): DroppedLego {
-    return new DroppedLego(this, this.logicalPosition, this.instance_id);
+    return new DroppedLego(this, this.logicalPosition, this.instance_id, {
+      style: this.style
+    });
   }
 
   public get isSvgLego(): boolean {
@@ -439,14 +441,16 @@ export const createLegoSlice: StateCreator<
           state.connectedLegos[index] = updatedLego.clone();
         }
       });
+      state.tensorNetwork?.legos.forEach((lego, index) => {
+        const updatedLego = updatesMap.get(lego.instance_id);
+        if (updatedLego) {
+          state.tensorNetwork!.legos[index] = updatedLego.clone();
+        }
+      });
     });
+    get().updateAllLegHideStates();
+
     get().updateEncodedCanvasState();
-    get().setTensorNetwork(
-      new TensorNetwork({
-        legos: legos.map((lego) => lego.clone()),
-        connections: get().tensorNetwork!.connections
-      })
-    );
   },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
