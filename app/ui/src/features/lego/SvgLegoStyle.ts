@@ -48,7 +48,6 @@ export class SvgLegoStyle extends LegoStyle {
         width:
           !isLogical && highlightOperator === PauliOperator.I ? "1px" : "3px",
         lineStyle: "solid",
-        startOffset: leg.startOffset,
         color: getPauliColor(highlightOperator, true),
         is_highlighted: isHighlighted,
         type: leg.type,

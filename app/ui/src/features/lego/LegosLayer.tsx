@@ -1,15 +1,11 @@
 import React, { useMemo, useRef } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
-import {
-  createLegoDragStateSlice,
-  DraggingStage
-} from "../../stores/legoDragState";
+import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
 import { WindowPoint } from "../../types/coordinates";
 import { DroppedLego } from "../../stores/droppedLegoStore";
-import { useGroupDragStateSlice } from "../../stores/groupDragState";
 
 const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 

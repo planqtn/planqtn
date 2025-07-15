@@ -23,7 +23,6 @@ export interface SvgLegoData {
     labelY: number;
     lineStyle: "solid" | "dashed";
     width: string;
-    startOffset: number;
     lineElement?: string; // SVG line element as string
     bodyOrder: "front" | "behind";
   }>;
@@ -181,7 +180,6 @@ export class SvgLegoParser {
         labelY,
         lineStyle: "solid",
         width: "1px",
-        startOffset: 0,
         lineElement,
         bodyOrder
       });
@@ -219,7 +217,6 @@ export class SvgLegoParser {
         ),
         width: leg.width,
         lineStyle: leg.lineStyle,
-        startOffset: leg.startOffset,
         color: getPauliColor(PauliOperator.I), // Default color, will be updated by highlighting logic
         is_highlighted: false,
         type: leg.type,

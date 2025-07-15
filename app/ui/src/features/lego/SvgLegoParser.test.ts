@@ -24,8 +24,7 @@ describe("SvgLegoParser", () => {
           labelY: -55,
           lineStyle: "solid",
           width: "1px",
-          from: "center",
-          startOffset: 0
+          bodyOrder: "front"
         },
         {
           index: 1,
@@ -38,8 +37,7 @@ describe("SvgLegoParser", () => {
           labelY: 55,
           lineStyle: "solid",
           width: "1px",
-          from: "center",
-          startOffset: 0
+          bodyOrder: "front"
         }
       ],
       colors: {
@@ -83,8 +81,7 @@ describe("SvgLegoParser", () => {
           labelY: -55,
           lineStyle: "solid",
           width: "1px",
-          from: "center",
-          startOffset: 0
+          bodyOrder: "front"
         }
       ],
       colors: {

@@ -65,8 +65,6 @@ export interface LegStyle {
   length: number;
   width: string;
   lineStyle: "solid" | "dashed";
-  from: "center" | "bottom" | "edge";
-  startOffset: number;
   color: string;
   is_highlighted: boolean;
   type: "logical" | "gauge" | "physical";
@@ -242,8 +240,6 @@ export abstract class LegoStyle {
           length: 60,
           width: "3px",
           lineStyle: "solid",
-          from: "center",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
@@ -270,8 +266,6 @@ export abstract class LegoStyle {
         length: 60,
         width: "3px",
         lineStyle: "solid",
-        from: "center",
-        startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
@@ -288,8 +282,6 @@ export abstract class LegoStyle {
         length: 40,
         width: "2px",
         lineStyle: "dashed",
-        from: "bottom",
-        startOffset: 10,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
@@ -319,8 +311,6 @@ export abstract class LegoStyle {
           length: 40,
           width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
-          from: "center",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
@@ -339,8 +329,6 @@ export abstract class LegoStyle {
           length: 40,
           width: highlightOperator === PauliOperator.I ? "1px" : "3px",
           lineStyle: "solid",
-          from: "edge",
-          startOffset: 0,
           color: forSvg
             ? getPauliColor(highlightOperator, true)
             : getPauliColor(highlightOperator),
@@ -371,8 +359,6 @@ export abstract class LegoStyle {
         length: 40,
         width: highlightOperator === PauliOperator.I ? "1px" : "3px",
         lineStyle: "solid",
-        from: "edge",
-        startOffset: 0,
         color: forSvg
           ? getPauliColor(highlightOperator, true)
           : getPauliColor(highlightOperator),
