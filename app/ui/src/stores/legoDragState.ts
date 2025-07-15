@@ -34,7 +34,7 @@ export const createLegoDragStateSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   LegoDragStateSlice
-> = (set) => ({
+> = (set, get) => ({
   legoDragState: initialLegoDragState,
 
   setLegoDragState: (dragState: LegoDragState) => {
@@ -52,5 +52,8 @@ export const createLegoDragStateSlice: StateCreator<
           }
         : initialLegoDragState;
     });
+
+    // Clear clone mapping when drag ends
+    get().clearCloneMapping();
   }
 });

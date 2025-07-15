@@ -7,6 +7,8 @@ import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
+  cloneMapping: Map<string, string>; // new instance ID -> original instance ID
+  clearCloneMapping: () => void;
 }
 
 export const useCloningSlice: StateCreator<
@@ -14,7 +16,15 @@ export const useCloningSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   CloningSlice
-> = (_, get) => ({
+> = (set, get) => ({
+  cloneMapping: new Map(),
+
+  clearCloneMapping: () => {
+    set((state) => {
+      state.cloneMapping = new Map();
+    });
+  },
+
   handleClone: (clickedLego, x, y) => {
     const tensorNetwork = get().tensorNetwork;
     const connections = get().connections;
@@ -40,6 +50,15 @@ export const useCloningSlice: StateCreator<
         instance_id: newId,
         logicalPosition: l.logicalPosition.plus(cloneOffset)
       });
+    });
+
+    // Store the reverse mapping (new ID -> original ID) for drag proxy use
+    set((state) => {
+      const cloneMapping = new Map();
+      instanceIdMap.forEach((newId, originalId) => {
+        cloneMapping.set(newId, originalId);
+      });
+      state.cloneMapping = cloneMapping;
     });
 
     // Clone connections between the selected legos

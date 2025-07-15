@@ -6,6 +6,7 @@ import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
 import { WindowPoint } from "../../types/coordinates";
 import { DroppedLego } from "../../stores/droppedLegoStore";
+import { useGroupDragStateSlice } from "../../stores/groupDragState";
 
 const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
@@ -128,6 +129,7 @@ function calculateBoundingBoxForLegos(
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
   const visibleLegoIds = useVisibleLegoIds();
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
   const viewport = useCanvasStore((state) => state.viewport);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const calculateTensorNetworkBoundingBox = useCanvasStore(
@@ -211,8 +213,18 @@ export const LegosLayer: React.FC = () => {
       });
     }
 
+    if (groupDragState) {
+      groupDragState.legoInstanceIds.forEach((legoId) => {
+        draggedIds.add(legoId);
+      });
+    }
+
     return (legoId: string) => draggedIds.has(legoId);
-  }, [dragState?.draggingStage === DraggingStage.DRAGGING]);
+  }, [
+    dragState?.draggingStage === DraggingStage.DRAGGING,
+    groupDragState,
+    tensorNetwork?.legos
+  ]);
 
   const renderedLegos = useMemo(() => {
     return visibleLegoIds

@@ -49,9 +49,21 @@ const SingleLegoDragProxy: React.FC<{
   // Clone the SVG body element from the DOM
   const clonedBodyElement = useMemo(() => {
     if (!draggedLego) return null;
-    const bodyElement = document.getElementById(
+
+    // First try to get the DOM element for the current lego
+    let bodyElement = document.getElementById(
       `lego-${draggedLego.instance_id}-body`
     );
+
+    // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+    if (!bodyElement) {
+      const cloneMapping = useCanvasStore.getState().cloneMapping;
+      const originalLegoId = cloneMapping.get(draggedLego.instance_id);
+      if (originalLegoId) {
+        bodyElement = document.getElementById(`lego-${originalLegoId}-body`);
+      }
+    }
+
     if (!bodyElement) return null;
     return bodyElement.cloneNode(true) as SVGElement;
   }, [draggedLego]);
@@ -64,51 +76,49 @@ const SingleLegoDragProxy: React.FC<{
     return null;
   }
 
-  if (
-    !draggedLego ||
-    !canvasRect ||
-    !demoLego ||
-    !boundingBox ||
-    !clonedBodyElement
-  )
-    return null;
+  if (!draggedLego || !canvasRect || !demoLego || !boundingBox) return null;
 
   // Apply zoom transformation to get screen position using new coordinate system
   const proxyCanvasPos = viewport.fromWindowToCanvas(
     mousePos.minus(mouseStartingGrabDeltaWindow)
   );
 
-  return (
-    <div
-      key={`single-drag-proxy-${draggedLego.instance_id}`}
-      style={{
-        position: "absolute",
-        left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
-        top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
-        width: `${boundingBox.width}px`,
-        height: `${boundingBox.height}px`,
-        opacity: 0.7,
-        filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
-        transition: "none",
-        pointerEvents: "none",
-        zIndex: 1000,
-        border: "1px solid red"
-      }}
-    >
-      <svg
-        width={boundingBox.width}
-        height={boundingBox.height}
-        style={{ overflow: "visible" }}
-        viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
-        ref={(svgRef) => {
-          if (svgRef && clonedBodyElement) {
-            svgRef.innerHTML = "";
-            svgRef.appendChild(clonedBodyElement.cloneNode(true));
-          }
+  // Use cloned DOM element if available, otherwise fall back to DroppedLegoDisplay
+  if (clonedBodyElement) {
+    return (
+      <div
+        key={`single-drag-proxy-${draggedLego.instance_id}`}
+        style={{
+          position: "absolute",
+          left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+          top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+          width: `${boundingBox.width}px`,
+          height: `${boundingBox.height}px`,
+          opacity: 0.7,
+          filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
+          transition: "none",
+          pointerEvents: "none",
+          zIndex: 1000,
+          border: "1px solid red"
         }}
-      ></svg>
-    </div>
-  );
+      >
+        <svg
+          width={boundingBox.width}
+          height={boundingBox.height}
+          style={{ overflow: "visible" }}
+          viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+          ref={(svgRef) => {
+            if (svgRef && clonedBodyElement) {
+              svgRef.innerHTML = "";
+              svgRef.appendChild(clonedBodyElement.cloneNode(true));
+            }
+          }}
+        ></svg>
+      </div>
+    );
+  } else {
+    return null;
+  }
 };
 
 // Separate handler for group drags
@@ -175,11 +185,30 @@ const GroupDragProxy: React.FC<{
         const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
 
         // Clone the SVG body element from the DOM
-        const clonedBodyElement = document
-          .getElementById(`lego-${lego.instance_id}-body`)
-          ?.cloneNode(true) as SVGElement;
+        const clonedBodyElement = (() => {
+          // First try to get the DOM element for the current lego
+          let bodyElement = document.getElementById(
+            `lego-${lego.instance_id}-body`
+          );
 
-        if (!clonedBodyElement) return null;
+          // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+          if (!bodyElement) {
+            const cloneMapping = useCanvasStore.getState().cloneMapping;
+            const originalLegoId = cloneMapping.get(lego.instance_id);
+            if (originalLegoId) {
+              bodyElement = document.getElementById(
+                `lego-${originalLegoId}-body`
+              );
+            }
+          }
+
+          return bodyElement?.cloneNode(true) as SVGElement;
+        })();
+
+        if (!clonedBodyElement) {
+          // Fallback to DroppedLegoDisplay for newly cloned legos
+          return null;
+        }
 
         return (
           <div
@@ -191,11 +220,11 @@ const GroupDragProxy: React.FC<{
               width: `${boundingBox.width}px`,
               height: `${boundingBox.height}px`,
               opacity: 0.7,
-              transform: "scale(1.1)",
               filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
               transition: "none",
               pointerEvents: "none",
-              zIndex: 1000
+              zIndex: 1000,
+              border: "1px solid red"
             }}
           >
             <svg
@@ -310,11 +339,60 @@ const ResizeGroupProxy: React.FC<{
         const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
 
         // Clone the SVG body element from the DOM
-        const clonedBodyElement = document
-          .getElementById(`lego-${lego.instance_id}-body`)
-          ?.cloneNode(true) as SVGElement;
+        const clonedBodyElement = (() => {
+          // First try to get the DOM element for the current lego
+          let bodyElement = document.getElementById(
+            `lego-${lego.instance_id}-body`
+          );
 
-        if (!clonedBodyElement) return null;
+          // If not found, check if this is a cloned lego and try to use the original lego's DOM element
+          if (!bodyElement) {
+            const cloneMapping = useCanvasStore.getState().cloneMapping;
+            const originalLegoId = cloneMapping.get(lego.instance_id);
+            if (originalLegoId) {
+              bodyElement = document.getElementById(
+                `lego-${originalLegoId}-body`
+              );
+            }
+          }
+
+          return bodyElement?.cloneNode(true) as SVGElement;
+        })();
+
+        if (!clonedBodyElement) {
+          // Fallback to DroppedLegoDisplay for newly cloned legos
+          return (
+            <div
+              key={`resize-group-proxy-fallback-${lego.instance_id}`}
+              style={{
+                position: "absolute",
+                left: `${proxyCanvasPos.x - boundingBox.width / 2}px`,
+                top: `${proxyCanvasPos.y - boundingBox.height / 2}px`,
+                width: `${boundingBox.width}px`,
+                height: `${boundingBox.height}px`,
+                opacity: 0.5,
+                border: "1.5px dashed #4A90E2",
+                background: "none",
+                pointerEvents: "none",
+                zIndex: 1000
+              }}
+            >
+              <svg
+                width={boundingBox.width}
+                height={boundingBox.height}
+                style={{ overflow: "visible" }}
+                viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              >
+                <DroppedLegoDisplay
+                  legoInstanceId={lego.instance_id}
+                  demoLego={demoLego}
+                  forceSmartSizing={true}
+                  bodyOnly={true}
+                />
+              </svg>
+            </div>
+          );
+        }
 
         return (
           <div
