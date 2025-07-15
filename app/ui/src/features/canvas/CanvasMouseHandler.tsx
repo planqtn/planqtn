@@ -94,12 +94,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       if (!mouseLogicalPoint) return;
 
       const logicalDelta = mouseLogicalPoint.minus(
-        legoDragState.startLegoLogicalPoint
+        viewport.fromWindowToLogical(legoDragState.startMouseWindowPoint)
       );
       const newLogicalPoint =
         legoDragState.startLegoLogicalPoint.plus(logicalDelta);
 
-      // Get the dragged lego BEFORE updating the array to avoid stale references
       const draggedLego = droppedLegos.find(
         (lego) => lego.instance_id === legoDragState.draggedLegoInstanceId
       );

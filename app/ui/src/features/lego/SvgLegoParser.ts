@@ -23,7 +23,6 @@ export interface SvgLegoData {
     labelY: number;
     lineStyle: "solid" | "dashed";
     width: string;
-    from: "center" | "bottom" | "edge";
     startOffset: number;
     lineElement?: string; // SVG line element as string
     bodyOrder: "front" | "behind";
@@ -39,10 +38,7 @@ export interface SvgLegoData {
 export class SvgLegoParser {
   static parseSvgFile(svgContent: string): SvgLegoData {
     const parser = new DOMParser();
-    console.log(svgContent);
     const doc = parser.parseFromString(svgContent, "image/svg+xml");
-
-    console.log(doc.documentElement.outerHTML);
 
     if (doc.documentElement.nodeName !== "svg") {
       throw new Error("Invalid SVG file");
@@ -143,23 +139,6 @@ export class SvgLegoParser {
           | "gauge"
           | "physical") || "physical";
 
-      const cx = parseFloat(endpoint.getAttribute("cx") || "0");
-      const cy = parseFloat(endpoint.getAttribute("cy") || "0");
-
-      // Calculate start position (usually center, but could be customized)
-      const startX = 0; // Center of lego
-      const startY = 0;
-
-      // End position is the endpoint position
-      const endX = cx;
-      const endY = cy;
-
-      // Calculate label position (15 units away from endpoint)
-      const angle = Math.atan2(endY - startY, endX - startX);
-      const labelDistance = 15;
-      const labelX = endX + labelDistance * Math.cos(angle);
-      const labelY = endY + labelDistance * Math.sin(angle);
-
       // Look for corresponding leg line element
       const legLine = svg.querySelector(
         `[data-role="leg-line"][data-leg-index="${index}"]`
@@ -170,6 +149,20 @@ export class SvgLegoParser {
           `Leg line element not found for leg index ${index} in ${svg.outerHTML}`
         );
       }
+
+      // Calculate start position (usually center, but could be customized)
+      const startX = parseFloat(legLine.getAttribute("x1") || "0");
+      const startY = parseFloat(legLine.getAttribute("y1") || "0");
+
+      // End position is the endpoint position
+      const endX = parseFloat(legLine.getAttribute("x2") || "0");
+      const endY = parseFloat(legLine.getAttribute("y2") || "0");
+
+      // Calculate label position (15 units away from endpoint)
+      const angle = Math.atan2(endY - startY, endX - startX);
+      const labelDistance = 15;
+      const labelX = endX + labelDistance * Math.cos(angle);
+      const labelY = endY + labelDistance * Math.sin(angle);
 
       const lineElement = legLine ? legLine.outerHTML : undefined;
 
@@ -188,7 +181,6 @@ export class SvgLegoParser {
         labelY,
         lineStyle: "solid",
         width: "1px",
-        from: "center",
         startOffset: 0,
         lineElement,
         bodyOrder
@@ -227,7 +219,6 @@ export class SvgLegoParser {
         ),
         width: leg.width,
         lineStyle: leg.lineStyle,
-        from: leg.from,
         startOffset: leg.startOffset,
         color: getPauliColor(PauliOperator.I), // Default color, will be updated by highlighting logic
         is_highlighted: false,

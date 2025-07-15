@@ -221,7 +221,6 @@ export const LegosLayer: React.FC = () => {
         <DroppedLegoDisplay
           key={legoInstanceId}
           legoInstanceId={legoInstanceId}
-          demoMode={false}
         />
       ));
   }, [visibleLegoIds, isDraggedLego, viewport]);

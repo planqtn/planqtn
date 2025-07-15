@@ -68,7 +68,7 @@ export function getLegoBoundingBox(
 
 interface DroppedLegoDisplayProps {
   legoInstanceId: string;
-  demoMode: boolean;
+  demoLego?: DroppedLego;
 }
 
 // Memoized component for static leg lines only
@@ -76,7 +76,8 @@ const StaticLegsLayer = memo<{
   legStyles: LegStyle[];
   shouldHideLeg: boolean[];
   bodyOrder: "front" | "behind";
-}>(({ legStyles, shouldHideLeg, bodyOrder }) => {
+  scaleStart: number;
+}>(({ legStyles, shouldHideLeg, bodyOrder, scaleStart }) => {
   return (
     <>
       {/* Static leg lines - rendered first, conditionally hidden */}
@@ -84,8 +85,8 @@ const StaticLegsLayer = memo<{
         shouldHideLeg[leg_index] || legStyle.bodyOrder !== bodyOrder ? null : (
           <line
             key={`static-leg-${leg_index}`}
-            x1={legStyle.position.startX}
-            y1={legStyle.position.startY}
+            x1={legStyle.position.startX * scaleStart}
+            y1={legStyle.position.startY * scaleStart}
             x2={legStyle.position.endX}
             y2={legStyle.position.endY}
             stroke={SVG_COLORS.I} // Default gray color for static rendering
@@ -107,7 +108,8 @@ const DynamicLegHighlightLayer = memo<{
   legStyles: LegStyle[];
   shouldHideLeg: boolean[];
   bodyOrder: "front" | "behind";
-}>(({ legStyles, shouldHideLeg, bodyOrder }) => {
+  scaleStart: number;
+}>(({ legStyles, shouldHideLeg, bodyOrder, scaleStart }) => {
   return (
     <>
       {legStyles.map((legStyle, leg_index) => {
@@ -125,8 +127,8 @@ const DynamicLegHighlightLayer = memo<{
         return (
           <g key={`highlight-leg-${leg_index}`}>
             <line
-              x1={legStyle.position.startX}
-              y1={legStyle.position.startY}
+              x1={legStyle.position.startX * scaleStart}
+              y1={legStyle.position.startY * scaleStart}
               x2={legStyle.position.endX}
               y2={legStyle.position.endY}
               stroke={legColor}
@@ -389,15 +391,11 @@ LegoBodyLayer.displayName = "LegoBodyLayer";
 
 // Memoized component for SVG lego body
 const SvgLegoBodyLayer = memo<{
-  legoInstanceId: string;
+  lego: DroppedLego;
   size: number;
   originalSize: number;
   isSelected: boolean;
-}>(({ legoInstanceId, size, originalSize }) => {
-  const lego = useCanvasStore(
-    (state) => state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
-  );
-
+}>(({ lego, size, originalSize }) => {
   const svgBodyElement = (lego.style as SvgLegoStyle).getSvgBodyElement();
 
   return (
@@ -414,11 +412,13 @@ const SvgLegoBodyLayer = memo<{
 SvgLegoBodyLayer.displayName = "SvgLegoBodyLayer";
 
 export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
-  ({ legoInstanceId, demoMode = false }) => {
-    const lego = useCanvasStore(
-      (state) =>
-        state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
-    );
+  ({ legoInstanceId, demoLego }) => {
+    const lego =
+      demoLego ||
+      useCanvasStore(
+        (state) =>
+          state.droppedLegos.find((l) => l.instance_id === legoInstanceId)!
+      );
 
     // Check if this lego should use SVG-based rendering for the body
     const isSvgLego = lego.isSvgLego;
@@ -431,11 +431,11 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Use smart zoom position for calculations with central coordinate system
     const basePosition = useMemo(() => {
-      if (demoMode) {
+      if (demoLego) {
         return { x: lego.logicalPosition.x, y: lego.logicalPosition.y };
       }
       return canvasPosition;
-    }, [lego.logicalPosition, demoMode, canvasPosition]);
+    }, [lego.logicalPosition, demoLego, canvasPosition]);
 
     const legConnectionStates = useCanvasStore(
       useShallow((state) =>
@@ -505,7 +505,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
     // Now we can safely use lego without null checks
     const originalSize = lego.style!.size;
-    const smartSize = demoMode
+    const smartSize = demoLego
       ? originalSize
       : getSmartLegoSize(originalSize, zoomLevel);
     const size = smartSize;
@@ -570,7 +570,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           id={`lego-${lego.instance_id}`}
           style={{
             overflow: "visible",
-            pointerEvents: "all",
+            pointerEvents: demoLego ? "none" : "all",
             width: `${size}px`,
             height: `${size}px`,
             cursor: isThisLegoDragged ? "grabbing" : "grab",
@@ -583,7 +583,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
           }}
           className="lego-svg"
           transform={
-            demoMode ? "" : `translate(${basePosition.x}, ${basePosition.y})`
+            demoLego ? "" : `translate(${basePosition.x}, ${basePosition.y})`
           }
           onClick={handleLegoClick}
           onMouseDown={handleLegoMouseDown}
@@ -623,6 +623,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="behind"
+                  scaleStart={size / originalSize}
                 />
               )}
 
@@ -632,6 +633,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="behind"
+                  scaleStart={size / originalSize}
                 />
               )}
 
@@ -648,7 +650,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               {/* Layer 4: Lego body */}
               {isSvgLego ? (
                 <SvgLegoBodyLayer
-                  legoInstanceId={legoInstanceId}
+                  lego={lego}
                   size={size}
                   originalSize={originalSize}
                   isSelected={isSelected || false}
@@ -668,6 +670,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="front"
+                  scaleStart={size / originalSize}
                 />
               )}
 
@@ -677,6 +680,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   legStyles={lego.style!.legStyles}
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="front"
+                  scaleStart={size / originalSize}
                 />
               )}
 
@@ -691,7 +695,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
               )}
 
               {/* Text content - selection-aware with LOD */}
-              {!demoMode && lod.showText && (
+              {!demoLego && lod.showText && (
                 <g>
                   {numRegularLegs <= 2 ? (
                     <g transform={`translate(-${size / 2}, -${size / 2})`}>
@@ -767,7 +771,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
 
               {/* Leg Labels - dynamic visibility with LOD */}
               {!isScalarLego(lego) &&
-                !demoMode &&
+                !demoLego &&
                 lod.showLegLabels &&
                 lego.style!.legStyles.map((legStyle, leg_index) => {
                   // If the leg is hidden, don't render the label

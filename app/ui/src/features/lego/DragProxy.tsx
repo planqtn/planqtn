@@ -52,7 +52,6 @@ const SingleLegoDragProxy: React.FC<{
         width: `${smartSize}px`,
         height: `${smartSize}px`,
         opacity: 0.7,
-        transform: "scale(1.1)",
         filter: "drop-shadow(2px 2px 4px rgba(0,0,0,0.3))",
         transition: "none",
         pointerEvents: "none",

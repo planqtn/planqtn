@@ -15,11 +15,12 @@ import {
   Icon
 } from "@chakra-ui/react";
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
-import { getLegoBoundingBox } from "../lego/DroppedLegoDisplay.tsx";
+import DroppedLegoDisplay, {
+  getLegoBoundingBox
+} from "../lego/DroppedLegoDisplay.tsx";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
 import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lego/Legos.ts";
-import { LegoSvgRenderer } from "../lego/LegoSvgRenderer.ts";
 import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
@@ -93,6 +94,9 @@ const LegoListItem = memo<LegoListItemProps>(
             alignItems="center"
             minH="80px"
             justifyContent="space-between"
+            style={{
+              pointerEvents: "all"
+            }}
           >
             <Box
               display="flex"
@@ -101,20 +105,22 @@ const LegoListItem = memo<LegoListItemProps>(
               width="50px"
               height="50px"
               flex="1"
+              style={{
+                pointerEvents: "none"
+              }}
             >
               <svg
+                className="demo-svg"
                 width={Math.min(boundingBox.width * 0.3, 40)}
                 height={Math.min(boundingBox.height * 0.3, 40)}
                 viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
                 style={{
-                  overflow: "visible"
+                  overflow: "visible",
+                  pointerEvents: "none"
                 }}
-                dangerouslySetInnerHTML={{
-                  __html: LegoSvgRenderer.renderLegoAsSVG(demoLego, {
-                    demoMode: true
-                  })
-                }}
-              />
+              >
+                <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
+              </svg>
             </Box>
             <Box height="14px" display="flex" alignItems="center">
               {lego.is_dynamic && (
@@ -142,11 +148,14 @@ const LegoListItem = memo<LegoListItemProps>(
         p={3}
         borderRadius="md"
         _hover={{ bg: "gray.50" }}
-        cursor="move"
+        cursor="grab"
         draggable
         onDragStart={(e) => handleDragStart(e, lego)}
         border="1px solid"
         borderColor="gray.200"
+        style={{
+          pointerEvents: "all"
+        }}
       >
         <HStack spacing={4} align="center">
           <Box
@@ -156,20 +165,24 @@ const LegoListItem = memo<LegoListItemProps>(
             width="60px"
             height="60px"
             flexShrink={0}
+            cursor="grab"
+            style={{
+              pointerEvents: "none"
+            }}
           >
             <svg
-              width={Math.min(boundingBox.width * 0.4, 50)}
-              height={Math.min(boundingBox.height * 0.4, 50)}
+              className="demo-svg"
+              width={Math.min(boundingBox.width * 0.3, 40)}
+              height={Math.min(boundingBox.height * 0.3, 40)}
+              cursor="grab"
               viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
               style={{
-                overflow: "visible"
+                overflow: "visible",
+                pointerEvents: "all"
               }}
-              dangerouslySetInnerHTML={{
-                __html: LegoSvgRenderer.renderLegoAsSVG(demoLego, {
-                  demoMode: true
-                })
-              }}
-            />
+            >
+              <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
+            </svg>
           </Box>
           <VStack align="start" spacing={1} flex={1}>
             <Text fontWeight="bold" fontSize="sm" color="gray.800">
@@ -247,11 +260,29 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
 
     const handleDragStart = useCallback(
       (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
-        // Hide the default drag ghost by setting a transparent image
-        const dragImage = new Image();
-        dragImage.src =
-          "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-        e.dataTransfer.setDragImage(dragImage, 0, 0);
+        console.log("handleDragStart", e.target, lego);
+
+        // Find the SVG element with class "demo-svg" within the drag target
+        const svgElement = (e.target as HTMLElement).querySelector(
+          ".demo-svg"
+        ) as SVGElement;
+
+        if (svgElement) {
+          // Use the SVG element as the drag image
+          // Center the drag image by using half of its dimensions as offset
+          const rect = svgElement.getBoundingClientRect();
+          e.dataTransfer.setDragImage(
+            svgElement,
+            rect.width / 2,
+            rect.height / 2
+          );
+        } else {
+          // Fallback to transparent image if SVG not found
+          const dragImage = new Image();
+          dragImage.src =
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+          e.dataTransfer.setDragImage(dragImage, 0, 0);
+        }
 
         const logicalPosition = new LogicalPoint(0, 0);
 
