@@ -431,20 +431,20 @@ export const createLegoSlice: StateCreator<
       state.droppedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.droppedLegos[index] = updatedLego.clone();
+          state.droppedLegos[index] = updatedLego;
         }
       });
 
       state.connectedLegos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.connectedLegos[index] = updatedLego.clone();
+          state.connectedLegos[index] = updatedLego;
         }
       });
       state.tensorNetwork?.legos.forEach((lego, index) => {
         const updatedLego = updatesMap.get(lego.instance_id);
         if (updatedLego) {
-          state.tensorNetwork!.legos[index] = updatedLego.clone();
+          state.tensorNetwork!.legos[index] = updatedLego;
         }
       });
     });
