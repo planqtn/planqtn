@@ -5,16 +5,24 @@ import { PauliOperator } from "../../lib/types";
 import { getPauliColor } from "../../lib/PauliColors";
 import t6_svg from "./svg-legos/t6-svg";
 import t6_flipped_svg from "./svg-legos/t6-flipped-svg";
+import t5_flipped_svg from "./svg-legos/t5-flipped-svg";
+import t5_svg from "./svg-legos/t5-svg";
 
-export abstract class SvgLegoStyle extends LegoStyle {
+export class SvgLegoStyle extends LegoStyle {
   public readonly svgData: SvgLegoData;
   private svgContent: string;
 
-  abstract getSvgContent(): string;
+  public static supportedLegoTypes = ["t5", "t5_flipped", "t6", "t6_flipped"];
+  public static svgContentMap: Record<string, string> = {
+    t5: t5_svg,
+    t5_flipped: t5_flipped_svg,
+    t6: t6_svg,
+    t6_flipped: t6_flipped_svg
+  };
 
   constructor(id: string, lego: DroppedLego, overrideLegStyles?: LegStyle[]) {
     super(id, lego, overrideLegStyles);
-    this.svgContent = this.getSvgContent();
+    this.svgContent = SvgLegoStyle.svgContentMap[id];
     this.svgData = SvgLegoParser.parseSvgFile(this.svgContent);
 
     // Build legStyles using SVG geometry and app logic for color/highlight
@@ -178,17 +186,5 @@ export abstract class SvgLegoStyle extends LegoStyle {
   // Method to get text positioning data
   getTextData() {
     return this.svgData.text;
-  }
-}
-
-export class T6SvgLegoStyle extends SvgLegoStyle {
-  getSvgContent(): string {
-    return t6_svg;
-  }
-}
-
-export class T6FlippedSvgLegoStyle extends SvgLegoStyle {
-  getSvgContent(): string {
-    return t6_flipped_svg;
   }
 }

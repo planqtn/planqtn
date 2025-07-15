@@ -34,7 +34,7 @@ export const useCloningSlice: StateCreator<
         (l) => l.instance_id === clickedLego.instance_id
       );
 
-    const cloneOffset = new LogicalPoint(20, 20);
+    const cloneOffset = new LogicalPoint(1, 1);
     // Check if we're cloning multiple legos
     const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
@@ -103,9 +103,7 @@ export const useCloningSlice: StateCreator<
       draggingStage: DraggingStage.MAYBE_DRAGGING,
       draggedLegoInstanceId: newLegos[0].instance_id,
       startMouseWindowPoint: new WindowPoint(x, y),
-      startLegoLogicalPoint: clickedLego.logicalPosition.plus(
-        new LogicalPoint(20, 20)
-      )
+      startLegoLogicalPoint: clickedLego.logicalPosition.plus(cloneOffset)
     });
 
     // Add to history

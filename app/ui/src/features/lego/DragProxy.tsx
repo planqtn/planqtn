@@ -131,11 +131,6 @@ const GroupDragProxy: React.FC<{
   const viewport = useCanvasStore((state) => state.viewport);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
 
-  const mouseStartingGrabDeltaWindow =
-    legoDragState?.startMouseWindowPoint.minus(
-      viewport.fromLogicalToWindow(legoDragState?.startLegoLogicalPoint)
-    );
-
   const zoomLevel = viewport.zoomLevel;
 
   // Memoize dragged legos to prevent stale references
@@ -185,7 +180,7 @@ const GroupDragProxy: React.FC<{
         const boundingBox = getLegoBodyBoundingBox(demoLego, false, zoomLevel);
 
         // Clone the SVG body element from the DOM
-        const clonedBodyElement = (() => {
+        const bodyElement = (() => {
           // First try to get the DOM element for the current lego
           let bodyElement = document.getElementById(
             `lego-${lego.instance_id}-body`
@@ -193,6 +188,7 @@ const GroupDragProxy: React.FC<{
 
           // If not found, check if this is a cloned lego and try to use the original lego's DOM element
           if (!bodyElement) {
+            console.log("no body element found for lego", lego.instance_id);
             const cloneMapping = useCanvasStore.getState().cloneMapping;
             const originalLegoId = cloneMapping.get(lego.instance_id);
             if (originalLegoId) {
@@ -205,7 +201,7 @@ const GroupDragProxy: React.FC<{
           return bodyElement?.cloneNode(true) as SVGElement;
         })();
 
-        if (!clonedBodyElement) {
+        if (!bodyElement) {
           // Fallback to DroppedLegoDisplay for newly cloned legos
           return null;
         }
@@ -233,9 +229,9 @@ const GroupDragProxy: React.FC<{
               style={{ overflow: "visible" }}
               viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
               ref={(svgRef) => {
-                if (svgRef && clonedBodyElement) {
+                if (svgRef && bodyElement) {
                   svgRef.innerHTML = "";
-                  svgRef.appendChild(clonedBodyElement.cloneNode(true));
+                  svgRef.appendChild(bodyElement.cloneNode(true));
                 }
               }}
             ></svg>

@@ -61,23 +61,23 @@ export const t6_flipped_svg = `<svg
      id="body"
      data-role="lego-body"
      transform="translate(31.462383,11.542112)">
-    <path
-       style="display:inline;fill:#4299e1;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+    <path 
+       style="display:inline;fill:#f78f8f;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m -42.616151,14.413195 10.986557,-26.052721 37.6971843,7.6735578 z"
        id="path853"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#4299e1;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#f78f8f;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m -68.992356,-19.118256 37.362762,7.47873 10.759783,-26.138493 z"
        id="path853-5"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#f56565;fill-opacity:1;stroke:none;stroke-width:0.865761;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#98c8ee;fill-opacity:1;stroke:none;stroke-width:0.865761;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 6.0675903,-3.9659682 -31.629594,-11.639526 -20.869811,-37.778019 Z"
        id="path853-9"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#f56565;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#98c8ee;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M -31.629594,-11.639526 -42.616151,14.413195 -68.992356,-19.118256 Z"
        id="path853-9-7"
        sodipodi:nodetypes="cccc" />

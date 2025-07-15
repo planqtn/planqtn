@@ -10,6 +10,7 @@ import {
 } from "../../utils/coordinateTransforms";
 import { CanvasPoint, LogicalPoint } from "../../types/coordinates";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
+import { DraggingStage } from "../../stores/legoDragState";
 
 export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
   bodyOrder
@@ -22,6 +23,9 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
   const legDragState = useCanvasStore((state) => state.legDragState);
   const hoveredConnection = useCanvasStore((state) => state.hoveredConnection);
   const visibleLegoIds = useVisibleLegoIds();
+  const isDraggedLego = useCanvasStore((state) => state.isDraggedLego);
+  const legoDragState = useCanvasStore((state) => state.legoDragState);
+  const groupDragState = useCanvasStore((state) => state.groupDragState);
 
   // Get zoom level for smart scaling
   const viewport = useCanvasStore((state) => state.viewport);
@@ -106,6 +110,9 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
         !visibleLegoIds.includes(conn.from.legoId) ||
         !visibleLegoIds.includes(conn.to.legoId)
       )
+        return null;
+
+      if (isDraggedLego(conn.from.legoId) || isDraggedLego(conn.to.legoId))
         return null;
 
       // Create a stable key based on the connection's properties
@@ -319,7 +326,9 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
     hideConnectedLegs,
     isConnectionHovered,
     zoomLevel,
-    viewport
+    viewport,
+    legoDragState.draggingStage === DraggingStage.DRAGGING,
+    groupDragState
   ]);
 
   // Memoize temporary drag line
@@ -341,7 +350,6 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
     const fromPoint = viewport
       .fromLogicalToCanvas(fromBasePoint)
       .plus(new CanvasPoint(fromPos.endX, fromPos.endY));
-    const legoCenter = viewport.fromLogicalToCanvas(fromBasePoint);
 
     const dragEndPoint = viewport.fromWindowToCanvas(
       legDragState.currentMouseWindowPoint

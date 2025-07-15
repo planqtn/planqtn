@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
+export const t5_flipped_svg = `<svg
+   xmlns:planqtn_type_id="t5-flipped"
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -12,7 +12,7 @@
    viewBox="-80 -90 160 180"
    version="1.1"
    id="svg16"
-   sodipodi:docname="t6-flipped.svg"
+   sodipodi:docname="t5-flipped.svg"
    inkscape:version="1.0.2-2 (e86c870879, 2021-01-15)">
   <metadata
      id="metadata22">
@@ -22,7 +22,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -60,24 +60,24 @@
   <g
      id="body"
      data-role="lego-body"
-     transform="translate(31.462383,11.542112)">
-    <path
-       style="display:inline;fill:#4299e1;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     transform="translate(31.462383,11.542112)"> 
+    <path 
+       style="display:inline;fill:#f78f8f;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m -42.616151,14.413195 10.986557,-26.052721 37.6971843,7.6735578 z"
        id="path853"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#4299e1;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#f78f8f;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m -68.992356,-19.118256 37.362762,7.47873 10.759783,-26.138493 z"
        id="path853-5"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#f56565;fill-opacity:1;stroke:none;stroke-width:0.865761;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#98c8ee;fill-opacity:1;stroke:none;stroke-width:0.865761;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 6.0675903,-3.9659682 -31.629594,-11.639526 -20.869811,-37.778019 Z"
        id="path853-9"
        sodipodi:nodetypes="cccc" />
     <path
-       style="display:inline;fill:#f56565;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:#98c8ee;fill-opacity:1;stroke:none;stroke-width:0.83326;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M -31.629594,-11.639526 -42.616151,14.413195 -68.992356,-19.118256 Z"
        id="path853-9-7"
        sodipodi:nodetypes="cccc" />
@@ -109,9 +109,7 @@
      fill="#000000"
      id="t6"
      style="display:inline;overflow:visible"
-     data-role="short-name">T6<tspan
-   x="-9.9773674"
-   id="tspan1208-5" /></text>
+     data-role="short-name">T5</text>
   <text
      x="4.8626704"
      y="10.319951"
@@ -179,17 +177,6 @@
      style="overflow:visible"
      data-role="leg-label"
      data-leg-index="4">4</text>
-  <text
-     x="0.23882839"
-     y="75.532089"
-     font-size="12px"
-     fill="#666666"
-     text-anchor="middle"
-     dominant-baseline="middle"
-     id="leg5"
-     style="overflow:visible"
-     data-role="leg-label"
-     data-leg-index="5">5</text>
   <!-- Leg lines -->
   <line
      data-role="leg-line"
@@ -256,19 +243,6 @@
      stroke-width="1"
      id="line4"
      style="fill:#000000;fill-opacity:1" />
-  <line
-     data-role="leg-line"
-     data-leg-index="5"
-     data-leg-type="logical"
-     data-leg-body-order="behind"
-     x1="-0.28059795"
-     y1="-0.14029895"
-     x2="-0.28059795"
-     y2="59.869232"
-     stroke="#666666"
-     stroke-width="1"
-     id="line5"
-     style="fill:#000000;fill-opacity:1" />
   <!-- Leg endpoints -->
   <circle
      data-role="leg-endpoint"
@@ -330,18 +304,6 @@
      style="display:inline;stroke:#a0aec0;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      data-leg-index="4"
      r="5" />
-  <circle
-     data-role="leg-endpoint"
-     data-leg-index="5"
-     data-leg-type="logical"
-     cx="-0.28059795"
-     cy="59.869232"
-     r="5"
-     fill="#ffffff"
-     stroke="#808080"
-     stroke-width="2"
-     id="circle8-3-4-7-5"
-     style="display:inline;stroke:#a0aec0;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
   <!-- Test circle for center of the lego -->
   <circle
      cx="0"
@@ -352,3 +314,5 @@
      strokeWidth="1"
      id="circle3262" />
 </svg>
+`;
+export default t5_flipped_svg;

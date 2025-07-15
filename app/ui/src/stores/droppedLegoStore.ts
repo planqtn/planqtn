@@ -14,11 +14,7 @@ import { CanvasStore } from "./canvasStateStore";
 import { LogicalPoint } from "../types/coordinates";
 import { Legos } from "../features/lego/Legos";
 import { PauliOperator } from "../lib/types";
-import {
-  SvgLegoStyle,
-  T6FlippedSvgLegoStyle,
-  T6SvgLegoStyle
-} from "../features/lego/SvgLegoStyle";
+import { SvgLegoStyle } from "../features/lego/SvgLegoStyle";
 
 export function getLegoStyle(
   type_id: string,
@@ -26,11 +22,8 @@ export function getLegoStyle(
   lego: DroppedLego
 ): LegoStyle {
   // Check if this lego type has a custom SVG
-  if (type_id === "t6") {
-    return new T6SvgLegoStyle(type_id, lego);
-  }
-  if (type_id === "t6_flipped") {
-    return new T6FlippedSvgLegoStyle(type_id, lego);
+  if (SvgLegoStyle.supportedLegoTypes.includes(type_id)) {
+    return new SvgLegoStyle(type_id, lego);
   }
 
   if (numLegs === 0) {
