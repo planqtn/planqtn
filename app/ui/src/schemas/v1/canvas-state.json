@@ -83,6 +83,23 @@
             "items": {
               "type": "number"
             }
+          },
+          "highlightedLegConstraints": {
+            "type": "array",
+            "description": "Array of highlighted leg constraints",
+            "items": {
+              "type": "object",
+              "properties": {
+                "legIndex": {
+                  "type": "number"
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": ["X", "Y", "Z", "I"]
+                }
+              },
+              "required": ["legIndex", "operator"]
+            }
           }
         },
         "required": ["id", "instance_id", "x", "y", "parity_check_matrix"],
