@@ -189,18 +189,30 @@ const LegoStudioView: React.FC = () => {
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
 
-  // Add title effect at the top
+  // Add title and canvasId effect at the top
   useEffect(() => {
     console.log("location/navigate changed", location);
     const params = new URLSearchParams(location.search);
     let title = params.get("title");
+    let canvasId = params.get("canvasId");
+    let needsUpdate = false;
 
     if (!title) {
       // Generate a new random title if none exists
       title = `PlanqTN - ${randomPlankterName()}`;
-      // Update URL with the new title
+      needsUpdate = true;
+    }
+
+    if (!canvasId) {
+      // Generate a new unique canvasId if none exists
+      canvasId = `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
       const newParams = new URLSearchParams(params);
       newParams.set("title", title);
+      newParams.set("canvasId", canvasId);
       navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, {
         replace: true
       });
@@ -210,30 +222,21 @@ const LegoStudioView: React.FC = () => {
     setCurrentTitle(title);
   }, [location, navigate]);
 
-  const handleTitleChange = (newTitle: string) => {
-    if (newTitle.trim()) {
-      const params = new URLSearchParams(location.search);
-      params.set("title", newTitle);
-      navigate(`${location.pathname}?${params.toString()}${location.hash}`, {
-        replace: true
-      });
-      document.title = newTitle;
-      setCurrentTitle(newTitle);
-    }
-  };
-
-  // Add a new effect to handle initial URL state
+  // Handle URL state decoding for sharing feature
   useEffect(() => {
-    console.log("decodeCanvasState changed", decodeCanvasState);
     const handleHashChange = async () => {
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const stateParam = hashParams.get("state");
       if (stateParam) {
         try {
           await decodeCanvasState(stateParam);
+          // Clear the state parameter from URL after successful decoding
+          // so it gets persisted normally and doesn't stay in the URL
+          hashParams.delete("state");
+          const newHash = hashParams.toString();
+          const newUrl = `${window.location.pathname}${window.location.search}${newHash ? `#${newHash}` : ""}`;
+          window.history.replaceState(null, "", newUrl);
         } catch (error) {
-          // Clear the invalid state from the URL
-          // window.history.replaceState(null, '', window.location.pathname + window.location.search)
           // Ensure error is an Error object
           setFatalError(
             error instanceof Error ? error : new Error(String(error))
@@ -251,6 +254,25 @@ const LegoStudioView: React.FC = () => {
     // Cleanup
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [decodeCanvasState]);
+
+  const handleTitleChange = (newTitle: string) => {
+    if (newTitle.trim()) {
+      const params = new URLSearchParams(location.search);
+      params.set("title", newTitle);
+      // Preserve the canvasId when updating title
+      if (!params.get("canvasId")) {
+        params.set(
+          "canvasId",
+          `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        );
+      }
+      navigate(`${location.pathname}?${params.toString()}${location.hash}`, {
+        replace: true
+      });
+      document.title = newTitle;
+      setCurrentTitle(newTitle);
+    }
+  };
 
   useEffect(() => {
     if (!userContextSupabase) {

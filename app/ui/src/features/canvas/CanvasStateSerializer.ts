@@ -4,8 +4,19 @@ import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
 import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
 import { PauliOperator } from "../../lib/types";
+import { CanvasStore } from "../../stores/canvasStateStore";
 
-interface CanvasState {
+export interface RehydratedCanvasState {
+  canvasId: string;
+  droppedLegos: DroppedLego[];
+  connections: Connection[];
+  hideConnectedLegs: boolean;
+  hideIds: boolean;
+  hideTypeIds: boolean;
+  hideDanglingLegs: boolean;
+  hideLegLabels: boolean;
+}
+export interface SerializableCanvasState {
   canvasId: string;
   pieces: Array<{
     id: string;
@@ -51,18 +62,12 @@ export class CanvasStateSerializer {
     );
   }
 
-  public encode(
-    pieces: DroppedLego[],
-    connections: Connection[],
-    hideConnectedLegs: boolean,
-    hideIds: boolean = false,
-    hideTypeIds: boolean = false,
-    hideDanglingLegs: boolean = false,
-    hideLegLabels: boolean = false
-  ): void {
-    const state: CanvasState = {
+  public toSerializableCanvasState(
+    store: CanvasStore
+  ): SerializableCanvasState {
+    const state: SerializableCanvasState = {
       canvasId: this.canvasId,
-      pieces: pieces.map((piece) => ({
+      pieces: store.droppedLegos.map((piece) => ({
         id: piece.type_id,
         instance_id: piece.instance_id,
         x: piece.logicalPosition.x,
@@ -76,35 +81,18 @@ export class CanvasStateSerializer {
         selectedMatrixRows: piece.selectedMatrixRows,
         highlightedLegConstraints: piece.highlightedLegConstraints
       })),
-      connections,
-      hideConnectedLegs,
-      hideIds,
-      hideTypeIds,
-      hideDanglingLegs,
-      hideLegLabels
+      connections: store.connections,
+      hideConnectedLegs: store.hideConnectedLegs,
+      hideIds: store.hideIds,
+      hideTypeIds: store.hideTypeIds,
+      hideDanglingLegs: store.hideDanglingLegs,
+      hideLegLabels: store.hideLegLabels
     };
 
-    const encoded = btoa(JSON.stringify(state));
-
-    console.log(
-      "Encoding state:",
-      state,
-      `encoded (${encoded.length} characters)`,
-      encoded
-    );
-    window.history.replaceState(null, "", `#state=${encoded}`);
+    return state;
   }
 
-  public async decode(encoded: string): Promise<{
-    pieces: DroppedLego[];
-    connections: Connection[];
-    hideConnectedLegs: boolean;
-    hideIds: boolean;
-    hideTypeIds: boolean;
-    hideDanglingLegs: boolean;
-    hideLegLabels: boolean;
-    canvasId: string;
-  }> {
+  public async decode(encoded: string): Promise<RehydratedCanvasState> {
     try {
       // Validate the encoded state first
       const validationResult = validateEncodedCanvasState(encoded);
@@ -119,7 +107,6 @@ export class CanvasStateSerializer {
       }
 
       const decoded = JSON.parse(atob(encoded));
-      console.log("Decoded state:", decoded);
 
       // Check if this is legacy format and convert if needed
       const isLegacyFormat = decoded.pieces?.some(
@@ -158,7 +145,7 @@ export class CanvasStateSerializer {
 
       if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
         return {
-          pieces: [],
+          droppedLegos: [],
           connections: [],
           hideConnectedLegs: false,
           hideIds: false,
@@ -241,9 +228,8 @@ export class CanvasStateSerializer {
           );
         }
       );
-      // console.log("Reconstructed pieces:", reconstructedPieces, "connections", decoded.connections);
       return {
-        pieces: reconstructedPieces,
+        droppedLegos: reconstructedPieces,
         connections: decoded.connections.map(
           (conn: Connection) => new Connection(conn.from, conn.to)
         ),

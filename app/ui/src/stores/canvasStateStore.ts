@@ -2,6 +2,9 @@ import { create, StateCreator } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { createLegoSlice, DroppedLegosSlice } from "./droppedLegoStore";
 import { ConnectionSlice, createConnectionsSlice } from "./connectionStore";
+import { Viewport } from "./canvasUISlice";
+import { LogicalPoint, WindowPoint } from "../types/coordinates";
+import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
 import {
   createEncodedCanvasStateSlice,
   EncodedCanvasStateSlice
@@ -12,7 +15,11 @@ import {
   createOperationHistorySlice,
   OperationHistorySlice
 } from "./operationHistoryStateSlice";
-import { createLegoDragStateSlice, LegoDragStateSlice } from "./legoDragState";
+import {
+  createLegoDragStateSlice,
+  LegoDragStateSlice,
+  DraggingStage
+} from "./legoDragState";
 import {
   TensorNetworkSlice,
   useTensorNetworkSlice as useTensorNetworkSlice
@@ -37,6 +44,28 @@ import {
   createCanvasEventHandlingSlice
 } from "./canvasEventHandlingSlice";
 import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
+import { persist } from "zustand/middleware";
+import { SerializableCanvasState } from "../features/canvas/CanvasStateSerializer";
+
+// Helper function to get canvasId from URL
+const getCanvasIdFromUrl = (): string => {
+  const params = new URLSearchParams(window.location.search);
+  const canvasId = params.get("canvasId");
+  if (!canvasId) {
+    // Generate a new canvasId if none exists (fallback)
+    const newCanvasId = `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newParams = new URLSearchParams(params);
+    newParams.set("canvasId", newCanvasId);
+    // Update URL with the new canvasId
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?${newParams.toString()}${window.location.hash}`
+    );
+    return newCanvasId;
+  }
+  return canvasId;
+};
 
 export interface CanvasStore
   extends DroppedLegosSlice,
@@ -68,7 +97,7 @@ export interface GlobalTensorNetworkSlice {
 
 export const createGlobalTensorNetworkStore: StateCreator<
   CanvasStore,
-  [["zustand/immer", never]],
+  [["zustand/immer", never], never],
   [],
   GlobalTensorNetworkSlice
 > = (set, get) => ({
@@ -94,7 +123,6 @@ export const createGlobalTensorNetworkStore: StateCreator<
 
     get().setHoveredConnection(null);
     get().setTensorNetwork(null);
-    get().updateEncodedCanvasState();
   },
   getLegosAndConnections: () => {
     return { droppedLegos: get().droppedLegos, connections: get().connections };
@@ -102,21 +130,142 @@ export const createGlobalTensorNetworkStore: StateCreator<
 });
 
 export const useCanvasStore = create<CanvasStore>()(
-  immer<CanvasStore>((...a) => ({
-    ...createConnectionsSlice(...a),
-    ...createLegoSlice(...a),
-    ...createEncodedCanvasStateSlice(...a),
-    ...createGlobalTensorNetworkStore(...a),
-    ...createOperationHistorySlice(...a),
-    ...createLegoDragStateSlice(...a),
-    ...useTensorNetworkSlice(...a),
-    ...useDroppedLegoClickHandlerSlice(...a),
-    ...useGroupDragStateSlice(...a),
-    ...useCloningSlice(...a),
-    ...useLegoLegEventsSlice(...a),
-    ...useLegDragStateStore(...a),
-    ...createLegoLegPropertiesSlice(...a),
-    ...createCanvasEventHandlingSlice(...a),
-    ...createCanvasUISlice(...a)
-  }))
+  persist(
+    immer((...a) => ({
+      ...createConnectionsSlice(...a),
+      ...createLegoSlice(...a),
+      ...createEncodedCanvasStateSlice(...a),
+      ...createGlobalTensorNetworkStore(...a),
+      ...createOperationHistorySlice(...a),
+      ...createLegoDragStateSlice(...a),
+      ...useTensorNetworkSlice(...a),
+      ...useDroppedLegoClickHandlerSlice(...a),
+      ...useGroupDragStateSlice(...a),
+      ...useCloningSlice(...a),
+      ...useLegoLegEventsSlice(...a),
+      ...useLegDragStateStore(...a),
+      ...createLegoLegPropertiesSlice(...a),
+      ...createCanvasEventHandlingSlice(...a),
+      ...createCanvasUISlice(...a)
+    })),
+    {
+      name: `canvas-state-${getCanvasIdFromUrl()}`,
+      partialize: (state: CanvasStore) => {
+        // Use the existing CanvasStateSerializer to handle serialization properly
+        return {
+          ...state.canvasStateSerializer.toSerializableCanvasState(state),
+          viewport: {
+            ...state.viewport,
+            canvasRef: null
+          }
+        };
+      },
+      onRehydrateStorage: () => (state: CanvasStore | undefined) => {
+        if (!state) return;
+
+        // Use the CanvasStateSerializer to properly decode the state
+        const serializer =
+          state.canvasStateSerializer || new CanvasStateSerializer();
+
+        try {
+          // The state here is the serialized canvas state from partialize
+          const serializedState = state as unknown as SerializableCanvasState;
+
+          console.log("serializedState", serializedState);
+          // Encode the state to the format the decoder expects
+          const encodedState = btoa(
+            JSON.stringify({
+              canvasId: serializedState.canvasId,
+              pieces: serializedState.pieces,
+              connections: serializedState.connections,
+              hideConnectedLegs: serializedState.hideConnectedLegs,
+              hideIds: serializedState.hideIds,
+              hideTypeIds: serializedState.hideTypeIds,
+              hideDanglingLegs: serializedState.hideDanglingLegs,
+              hideLegLabels: serializedState.hideLegLabels
+            })
+          );
+
+          // Decode using the serializer to properly reconstruct DroppedLego objects
+          serializer
+            .decode(encodedState)
+            .then((decodedState) => {
+              // Update the state with properly reconstructed objects
+              state.droppedLegos = decodedState.droppedLegos;
+              state.connections = decodedState.connections;
+
+              state.hideConnectedLegs = decodedState.hideConnectedLegs;
+              state.hideIds = decodedState.hideIds;
+              state.hideTypeIds = decodedState.hideTypeIds;
+              state.hideDanglingLegs = decodedState.hideDanglingLegs;
+              state.hideLegLabels = decodedState.hideLegLabels;
+              state.updateAllLegConnectionStates();
+              state.updateAllLegHideStates();
+              state.updateLegoConnectionMap();
+              state.updateConnectedLegos();
+            })
+            .catch((error) => {
+              console.error("Error decoding persisted canvas state:", error);
+              // Fall back to empty state if decoding fails
+              state.droppedLegos = [];
+              state.connectedLegos = [];
+              state.connections = [];
+            });
+        } catch (error) {
+          console.error("Error during state rehydration:", error);
+          // Fall back to empty state if encoding fails
+          state.droppedLegos = [];
+          state.connectedLegos = [];
+          state.connections = [];
+        }
+
+        // Restore Viewport class instance
+        if (state.viewport && typeof state.viewport === "object") {
+          const viewportData = state.viewport as {
+            screenWidth?: number;
+            screenHeight?: number;
+            zoomLevel?: number;
+            logicalPanOffset?: { x: number; y: number };
+          };
+          state.viewport = new Viewport(
+            viewportData.screenWidth || 800,
+            viewportData.screenHeight || 600,
+            viewportData.zoomLevel || 1,
+            viewportData.logicalPanOffset
+              ? new LogicalPoint(
+                  viewportData.logicalPanOffset.x,
+                  viewportData.logicalPanOffset.y
+                )
+              : new LogicalPoint(0, 0),
+            null // Canvas ref will be set when UI components mount
+          );
+        }
+
+        // Reset transient UI states to their initial values
+        state.legoDragState = {
+          draggingStage: DraggingStage.NOT_DRAGGING,
+          draggedLegoInstanceId: "",
+          startMouseWindowPoint: new WindowPoint(0, 0),
+          startLegoLogicalPoint: new LogicalPoint(0, 0)
+        };
+        state.legDragState = null;
+        state.groupDragState = null;
+        state.selectionBox = {
+          isSelecting: false,
+          startX: 0,
+          startY: 0,
+          currentX: 0,
+          currentY: 0,
+          justFinished: false
+        };
+        state.hoveredConnection = null;
+        state.error = null;
+        state.canvasRef = null;
+        state.tensorNetwork = null;
+
+        // Recreate class instances that lose methods during serialization
+        state.canvasStateSerializer = serializer;
+      }
+    }
+  )
 );

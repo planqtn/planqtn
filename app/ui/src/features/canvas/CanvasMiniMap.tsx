@@ -299,7 +299,7 @@ export const CanvasMiniMap: React.FC = () => {
 
   // Zoom control handlers
   const handleZoomIn = useCallback(() => {
-    const newZoomLevel = Math.min(zoomLevel * 1.2, 9);
+    const newZoomLevel = Math.min(zoomLevel * 1.05, 9);
     let centerPoint;
     if (
       droppedLegoBoundingBox &&
@@ -327,7 +327,7 @@ export const CanvasMiniMap: React.FC = () => {
   }, [zoomLevel, viewport, setZoomToMouse, droppedLegoBoundingBox]);
 
   const handleZoomOut = useCallback(() => {
-    const newZoomLevel = Math.max(zoomLevel * 0.8, 0.04);
+    const newZoomLevel = Math.max(zoomLevel * 0.95, 0.04);
     let centerPoint;
     if (
       droppedLegoBoundingBox &&

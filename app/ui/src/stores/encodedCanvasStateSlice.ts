@@ -13,7 +13,6 @@ export interface EncodedCanvasStateSlice {
   hideLegLabels: boolean;
 
   decodeCanvasState: (encoded: string) => Promise<void>;
-  updateEncodedCanvasState: () => void;
   getEncodedCanvasState: () => string;
   setHideConnectedLegs: (hideConnectedLegs: boolean) => void;
   setHideIds: (hideIds: boolean) => void;
@@ -41,9 +40,9 @@ export const createEncodedCanvasStateSlice: StateCreator<
     try {
       const result = await get().canvasStateSerializer.decode(encoded);
       set({
-        droppedLegos: result.pieces,
+        droppedLegos: result.droppedLegos,
         connections: result.connections,
-        connectedLegos: result.pieces.filter((lego) =>
+        connectedLegos: result.droppedLegos.filter((lego) =>
           result.connections.some(
             (connection) =>
               connection.from.legoId === lego.instance_id ||
@@ -58,7 +57,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
       });
 
       // Initialize leg hide states for all legos
-      result.pieces.forEach((lego) => {
+      result.droppedLegos.forEach((lego) => {
         get().initializeLegHideStates(lego.instance_id, lego.numberOfLegs);
         get().initializeLegConnectionStates(
           lego.instance_id,
@@ -76,32 +75,11 @@ export const createEncodedCanvasStateSlice: StateCreator<
     }
   },
 
-  updateEncodedCanvasState: () => {
-    const {
-      droppedLegos,
-      connections,
-      hideConnectedLegs,
-      hideIds,
-      hideTypeIds,
-      hideDanglingLegs,
-      hideLegLabels
-    } = get();
-    get().canvasStateSerializer.encode(
-      droppedLegos,
-      connections,
-      hideConnectedLegs,
-      hideIds,
-      hideTypeIds,
-      hideDanglingLegs,
-      hideLegLabels
-    );
-  },
   getEncodedCanvasState: () => get().encodedCanvasState,
   setHideConnectedLegs: (hideConnectedLegs: boolean) => {
     set({ hideConnectedLegs });
     // Update all leg hide states when the setting changes
     get().updateAllLegHideStates();
-    get().updateEncodedCanvasState();
   },
   setHideIds: (hideIds: boolean) => {
     set({ hideIds });
