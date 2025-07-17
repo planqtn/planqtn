@@ -6,6 +6,7 @@ export interface EncodedCanvasStateSlice {
   canvasStateSerializer: CanvasStateSerializer;
   getCanvasId: () => string;
   encodedCanvasState: string;
+  title: string;
   hideConnectedLegs: boolean;
   hideIds: boolean;
   hideTypeIds: boolean;
@@ -15,6 +16,7 @@ export interface EncodedCanvasStateSlice {
   decodeCanvasState: (encoded: string) => Promise<void>;
   rehydrateCanvasState: (jsonString: string) => Promise<void>;
   getEncodedCanvasState: () => string;
+  setTitle: (title: string) => void;
   setHideConnectedLegs: (hideConnectedLegs: boolean) => void;
   setHideIds: (hideIds: boolean) => void;
   setHideTypeIds: (hideTypeIds: boolean) => void;
@@ -31,6 +33,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
   canvasStateSerializer: new CanvasStateSerializer(),
   getCanvasId: () => get().canvasStateSerializer.getCanvasId(),
   encodedCanvasState: "",
+  title: "",
   hideConnectedLegs: true,
   hideIds: false,
   hideTypeIds: false,
@@ -54,6 +57,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
               connection.to.legoId === lego.instance_id
           )
         ),
+        title: result.title,
         hideConnectedLegs: result.hideConnectedLegs,
         hideIds: result.hideIds,
         hideTypeIds: result.hideTypeIds,
@@ -79,29 +83,40 @@ export const createEncodedCanvasStateSlice: StateCreator<
       // Update all leg hide states based on the loaded connections
       get().updateAllLegHideStates();
     } catch (error) {
-      console.error("Failed to decode canvas state:", error);
-      if (error instanceof Error) console.log(error.stack);
-      // Create a new error with a user-friendly message
+      console.error("Error rehydrating canvas state:", error);
       throw error;
     }
   },
 
-  getEncodedCanvasState: () => get().encodedCanvasState,
+  getEncodedCanvasState: () => {
+    const serialized =
+      get().canvasStateSerializer.toSerializableCanvasState(get());
+    return btoa(JSON.stringify(serialized));
+  },
+
+  setTitle: (title: string) => {
+    set({ title });
+  },
+
   setHideConnectedLegs: (hideConnectedLegs: boolean) => {
     set({ hideConnectedLegs });
     // Update all leg hide states when the setting changes
     get().updateAllLegHideStates();
   },
+
   setHideIds: (hideIds: boolean) => {
     set({ hideIds });
   },
+
   setHideTypeIds: (hideTypeIds: boolean) => {
     set({ hideTypeIds });
   },
+
   setHideDanglingLegs: (hideDanglingLegs: boolean) => {
     set({ hideDanglingLegs });
     get().updateAllLegHideStates();
   },
+
   setHideLegLabels: (hideLegLabels: boolean) => {
     set({ hideLegLabels });
   }

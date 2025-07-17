@@ -6,6 +6,7 @@ import {
 
 describe("Canvas State Validator", () => {
   const validCanvasState = {
+    title: "Test Canvas",
     canvasId: "12345678-1234-1234-1234-123456789abc",
     pieces: [
       {
@@ -48,6 +49,7 @@ describe("Canvas State Validator", () => {
   };
 
   const validCanvasStateWithArrays = {
+    title: "Test Canvas",
     canvasId: "12345678-1234-1234-1234-123456789abc",
     pieces: [
       {
@@ -463,11 +465,19 @@ describe("Canvas State Validator", () => {
 
   describe("isCanvasState", () => {
     it("should return true for valid canvas state", () => {
-      expect(isCanvasState(validCanvasState)).toBe(true);
+      const result = isCanvasState(validCanvasState);
+      if (!result) {
+        console.log(result);
+      }
+      expect(result).toBe(true);
     });
 
     it("should return true for valid canvas state with arrays", () => {
-      expect(isCanvasState(validCanvasStateWithArrays)).toBe(true);
+      const result = isCanvasState(validCanvasStateWithArrays);
+      if (!result) {
+        console.log(result);
+      }
+      expect(result).toBe(true);
     });
 
     it("should return false for invalid canvas state", () => {

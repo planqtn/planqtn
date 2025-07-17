@@ -99,6 +99,7 @@ describe("CanvasStateSerializer", () => {
     const baseStore = {
       droppedLegos: [mockLego],
       connections: [mockConnection],
+      title: "Test Canvas",
       hideConnectedLegs: false,
       hideIds: false,
       hideTypeIds: false,
@@ -122,6 +123,7 @@ describe("CanvasStateSerializer", () => {
 
       expect(result).toEqual({
         canvasId: expect.any(String),
+        title: "Test Canvas",
         pieces: [
           {
             id: "h",
@@ -301,6 +303,7 @@ describe("CanvasStateSerializer", () => {
     it("should rehydrate a basic canvas state", async () => {
       const canvasStateString = JSON.stringify({
         canvasId: "test-canvas-id",
+        title: "Test Canvas Title",
         pieces: [
           {
             id: "h",
@@ -346,6 +349,7 @@ describe("CanvasStateSerializer", () => {
       const result = await serializer.rehydrate(canvasStateString);
 
       expect(result.canvasId).toBe("test-canvas-id");
+      expect(result.title).toBe("Test Canvas Title");
       expect(result.droppedLegos).toHaveLength(1);
       expect(result.droppedLegos[0].type_id).toBe("h");
       expect(result.droppedLegos[0].instance_id).toBe("lego-1");
@@ -362,12 +366,14 @@ describe("CanvasStateSerializer", () => {
       expect(result.droppedLegos).toHaveLength(0);
       expect(result.connections).toHaveLength(0);
       expect(result.hideConnectedLegs).toBe(false);
+      expect(result.title).toBe("");
       expect(result.canvasId).toBe(serializer.getCanvasId());
     });
 
     it("should rehydrate complex canvas state with arrays", async () => {
       const canvasStateString = JSON.stringify({
         canvasId: "complex-canvas-id",
+        title: "Complex Test Canvas",
         pieces: [
           {
             id: "steane_code",
@@ -455,6 +461,7 @@ describe("CanvasStateSerializer", () => {
       const result = await serializer.rehydrate(canvasStateString);
 
       expect(result.canvasId).toBe("complex-canvas-id");
+      expect(result.title).toBe("Complex Test Canvas");
       expect(result.droppedLegos).toHaveLength(1);
       expect(result.droppedLegos[0].selectedMatrixRows).toEqual([0, 1]);
       expect(result.droppedLegos[0].highlightedLegConstraints).toEqual([
@@ -486,6 +493,7 @@ describe("CanvasStateSerializer", () => {
     it("should handle legacy format conversion", async () => {
       const legacyCanvasStateString = JSON.stringify({
         canvasId: "legacy-canvas-id",
+        title: "Legacy Test Canvas",
         pieces: [
           {
             id: "h",
@@ -518,6 +526,7 @@ describe("CanvasStateSerializer", () => {
       const result = await serializer.rehydrate(legacyCanvasStateString);
 
       expect(result.canvasId).toBe("legacy-canvas-id");
+      expect(result.title).toBe("Legacy Test Canvas");
       expect(result.droppedLegos).toHaveLength(1);
       expect(result.droppedLegos[0].instance_id).toBe("lego-1");
       expect(result.droppedLegos[0].short_name).toBe("H");
@@ -529,6 +538,7 @@ describe("CanvasStateSerializer", () => {
     it("should throw error when piece has no parity check matrix", async () => {
       const invalidCanvasStateString = JSON.stringify({
         canvasId: "invalid-canvas-id",
+        title: "Invalid Test Canvas",
         pieces: [
           {
             id: "h",
@@ -556,6 +566,7 @@ describe("CanvasStateSerializer", () => {
     it("should handle custom dynamic lego not in predefined list", async () => {
       const canvasStateString = JSON.stringify({
         canvasId: "custom-canvas-id",
+        title: "Custom Lego Test Canvas",
         pieces: [
           {
             id: "custom_lego",
@@ -598,6 +609,7 @@ describe("CanvasStateSerializer", () => {
     it("should decode base64 encoded canvas state", async () => {
       const canvasState = {
         canvasId: "encoded-canvas-id",
+        title: "Encoded Test Canvas",
         pieces: [
           {
             id: "h",
@@ -624,6 +636,7 @@ describe("CanvasStateSerializer", () => {
       const result = await serializer.decode(encoded);
 
       expect(result.canvasId).toBe("encoded-canvas-id");
+      expect(result.title).toBe("Encoded Test Canvas");
       expect(result.droppedLegos).toHaveLength(1);
       expect(result.droppedLegos[0].type_id).toBe("h");
     });
@@ -659,6 +672,7 @@ describe("CanvasStateSerializer", () => {
 
       const mockStore = createMockCanvasStore({
         droppedLegos: [mockLego],
+        title: "Round Trip Test Canvas",
         hideConnectedLegs: true,
         hideIds: true,
         parityCheckMatrices: {
@@ -685,6 +699,7 @@ describe("CanvasStateSerializer", () => {
 
       // Verify key properties are preserved
       expect(deserialized.droppedLegos).toHaveLength(1);
+      expect(deserialized.title).toBe("Round Trip Test Canvas");
       expect(deserialized.droppedLegos[0].type_id).toBe("steane_code");
       expect(deserialized.droppedLegos[0].instance_id).toBe("lego-1");
       expect(deserialized.droppedLegos[0].logicalPosition.x).toBe(100);
@@ -743,6 +758,7 @@ describe("CanvasStateSerializer", () => {
     it("should preserve canvas ID from rehydrated state", async () => {
       const canvasStateString = JSON.stringify({
         canvasId: "preserved-canvas-id",
+        title: "Preserved Canvas",
         pieces: [],
         connections: [],
         hideConnectedLegs: false,
@@ -754,7 +770,36 @@ describe("CanvasStateSerializer", () => {
 
       const result = await serializer.rehydrate(canvasStateString);
       expect(result.canvasId).toBe("preserved-canvas-id");
+      expect(result.title).toBe("Preserved Canvas");
       expect(serializer.getCanvasId()).toBe("preserved-canvas-id");
+    });
+  });
+
+  describe("tensornetwork property management", () => {
+    it("should handle undefined tensornetwork properties when rehydrating", async () => {
+      const canvasStateString = JSON.stringify({
+        canvasId: "tensornetwork-canvas-id",
+        title: "TensorNetwork Test Canvas",
+        pieces: [],
+        connections: [],
+        hideConnectedLegs: false,
+        hideIds: false,
+        hideTypeIds: false,
+        hideDanglingLegs: false,
+        hideLegLabels: false,
+        viewport: {
+          screenWidth: 800,
+          screenHeight: 600,
+          zoomLevel: 1,
+          logicalPanOffset: { x: 0, y: 0 }
+        }
+      });
+
+      const result = await serializer.rehydrate(canvasStateString);
+      expect(result.highlightedTensorNetworkLegs).toEqual({});
+      expect(result.selectedTensorNetworkParityCheckMatrixRows).toEqual({});
+      expect(result.parityCheckMatrices).toEqual({});
+      expect(result.weightEnumerators).toEqual({});
     });
   });
 });

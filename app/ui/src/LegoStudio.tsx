@@ -29,7 +29,6 @@ import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
 import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { randomPlankterName } from "./lib/RandomPlankterNames";
-import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./features/auth/UserMenu.tsx";
 
 import { userContextSupabase } from "./config/supabaseClient.ts";
@@ -93,8 +92,6 @@ const LeftPanel = memo<{
 LeftPanel.displayName = "LeftPanel";
 
 const LegoStudioView: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [fatalError, setFatalError] = useState<Error | null>(null);
   const [canvasSvgRef, setCanvasSvgRef] = useState<SVGSVGElement | null>(null);
@@ -185,6 +182,8 @@ const LegoStudioView: React.FC = () => {
     (state) => state.setPendingDropPosition
   );
   const setError = useCanvasStore((state) => state.setError);
+  const title = useCanvasStore((state) => state.title);
+  const setTitle = useCanvasStore((state) => state.setTitle);
 
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
@@ -233,38 +232,19 @@ const LegoStudioView: React.FC = () => {
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
 
-  // Add title and canvasId effect at the top
+  // Initialize title from store or set a default
   useEffect(() => {
-    console.log("location/navigate changed", location);
-    const params = new URLSearchParams(location.search);
-    let title = params.get("title");
-    let canvasId = params.get("canvasId");
-    let needsUpdate = false;
-
     if (!title) {
-      // Generate a new random title if none exists
-      title = `PlanqTN - ${randomPlankterName()}`;
-      needsUpdate = true;
+      // Generate a new random title if none exists in store
+      const newTitle = `PlanqTN - ${randomPlankterName()}`;
+      setTitle(newTitle);
+      document.title = newTitle;
+      setCurrentTitle(newTitle);
+    } else {
+      document.title = title;
+      setCurrentTitle(title);
     }
-
-    if (!canvasId) {
-      // Generate a new unique canvasId if none exists
-      canvasId = `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-      const newParams = new URLSearchParams(params);
-      newParams.set("title", title);
-      newParams.set("canvasId", canvasId);
-      navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, {
-        replace: true
-      });
-    }
-
-    document.title = title;
-    setCurrentTitle(title);
-  }, [location, navigate]);
+  }, [title, setTitle]);
 
   // Cleanup old canvas states on component mount
   useEffect(() => {
@@ -306,18 +286,7 @@ const LegoStudioView: React.FC = () => {
 
   const handleTitleChange = (newTitle: string) => {
     if (newTitle.trim()) {
-      const params = new URLSearchParams(location.search);
-      params.set("title", newTitle);
-      // Preserve the canvasId when updating title
-      if (!params.get("canvasId")) {
-        params.set(
-          "canvasId",
-          `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        );
-      }
-      navigate(`${location.pathname}?${params.toString()}${location.hash}`, {
-        replace: true
-      });
+      setTitle(newTitle);
       document.title = newTitle;
       setCurrentTitle(newTitle);
     }

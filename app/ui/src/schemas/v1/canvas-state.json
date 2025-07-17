@@ -9,6 +9,12 @@
       "description": "Unique identifier for the canvas",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
+    "title": {
+      "type": "string",
+      "description": "Title of the canvas",
+      "minLength": 1,
+      "maxLength": 200
+    },
     "pieces": {
       "type": "array",
       "description": "Array of dropped lego pieces on the canvas",
@@ -388,6 +394,6 @@
       }
     }
   },
-  "required": ["canvasId", "pieces", "connections"],
+  "required": ["canvasId", "title", "pieces", "connections"],
   "additionalProperties": false
 }

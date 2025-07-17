@@ -34,6 +34,7 @@ export interface SerializedLego {
 
 export interface RehydratedCanvasState {
   canvasId: string;
+  title: string;
   droppedLegos: DroppedLego[];
   connections: Connection[];
   hideConnectedLegs: boolean;
@@ -55,6 +56,7 @@ export interface RehydratedCanvasState {
 }
 export interface SerializableCanvasState {
   canvasId: string;
+  title: string;
   pieces: Array<SerializedLego>;
   connections: Array<Connection>;
   hideConnectedLegs: boolean;
@@ -103,6 +105,7 @@ export class CanvasStateSerializer {
   ): SerializableCanvasState {
     const state: SerializableCanvasState = {
       canvasId: this.canvasId,
+      title: store.title, // Assuming store.title is available
       pieces: store.droppedLegos.map((piece) => ({
         id: piece.type_id,
         instance_id: piece.instance_id,
@@ -153,6 +156,7 @@ export class CanvasStateSerializer {
       hideDanglingLegs: false,
       hideLegLabels: false,
       canvasId: this.canvasId,
+      title: "", // Initialize title
       viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), null),
       parityCheckMatrices: {},
       weightEnumerators: {},
@@ -226,35 +230,48 @@ export class CanvasStateSerializer {
       );
 
       result.viewport = decodedViewport;
-      result.parityCheckMatrices = Object.fromEntries(
-        rawCanvasStateObj.parityCheckMatrices.map(
-          (item: { key: string; value: ParityCheckMatrix }) => [
-            item.key,
-            item.value
-          ]
-        )
-      );
-      result.weightEnumerators = Object.fromEntries(
-        rawCanvasStateObj.weightEnumerators.map(
-          (item: { key: string; value: WeightEnumerator[] }) => [
-            item.key,
-            item.value
-          ]
-        )
-      );
-      result.highlightedTensorNetworkLegs = Object.fromEntries(
-        rawCanvasStateObj.highlightedTensorNetworkLegs.map(
-          (item: {
-            key: string;
-            value: { leg: TensorNetworkLeg; operator: PauliOperator }[];
-          }) => [item.key, item.value]
-        )
-      );
-      result.selectedTensorNetworkParityCheckMatrixRows = Object.fromEntries(
-        rawCanvasStateObj.selectedTensorNetworkParityCheckMatrixRows.map(
-          (item: { key: string; value: number[] }) => [item.key, item.value]
-        )
-      );
+      result.parityCheckMatrices = rawCanvasStateObj.parityCheckMatrices
+        ? Object.fromEntries(
+            rawCanvasStateObj.parityCheckMatrices.map(
+              (item: { key: string; value: ParityCheckMatrix }) => [
+                item.key,
+                item.value
+              ]
+            )
+          )
+        : {};
+      result.weightEnumerators = rawCanvasStateObj.weightEnumerators
+        ? Object.fromEntries(
+            rawCanvasStateObj.weightEnumerators.map(
+              (item: { key: string; value: WeightEnumerator[] }) => [
+                item.key,
+                item.value
+              ]
+            )
+          )
+        : {};
+      result.highlightedTensorNetworkLegs =
+        rawCanvasStateObj.highlightedTensorNetworkLegs
+          ? Object.fromEntries(
+              rawCanvasStateObj.highlightedTensorNetworkLegs.map(
+                (item: {
+                  key: string;
+                  value: { leg: TensorNetworkLeg; operator: PauliOperator }[];
+                }) => [item.key, item.value]
+              )
+            )
+          : {};
+      result.selectedTensorNetworkParityCheckMatrixRows =
+        rawCanvasStateObj.selectedTensorNetworkParityCheckMatrixRows
+          ? Object.fromEntries(
+              rawCanvasStateObj.selectedTensorNetworkParityCheckMatrixRows.map(
+                (item: { key: string; value: number[] }) => [
+                  item.key,
+                  item.value
+                ]
+              )
+            )
+          : {};
       result.hideConnectedLegs = rawCanvasStateObj.hideConnectedLegs || false;
       result.hideIds = rawCanvasStateObj.hideIds || false;
       result.hideTypeIds = rawCanvasStateObj.hideTypeIds || false;
@@ -266,6 +283,11 @@ export class CanvasStateSerializer {
         this.canvasId = rawCanvasStateObj.canvasId;
       }
       result.canvasId = this.canvasId;
+
+      // Preserve the title from the decoded state if it exists
+      if (rawCanvasStateObj.title) {
+        result.title = rawCanvasStateObj.title;
+      }
 
       if (
         !rawCanvasStateObj.pieces ||
