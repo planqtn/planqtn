@@ -149,6 +149,31 @@
         "additionalProperties": false
       }
     },
+    "viewport": {
+      "type": "object",
+      "properties": {
+        "screenWidth": {
+          "type": "number"
+        },
+        "screenHeight": {
+          "type": "number"
+        },
+        "zoomLevel": {
+          "type": "number"
+        },
+        "logicalPanOffset": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
     "hideConnectedLegs": {
       "type": "boolean",
       "description": "Whether to hide legs that are connected to other legos",

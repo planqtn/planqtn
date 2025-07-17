@@ -5,6 +5,7 @@ import { Legos } from "../lego/Legos";
 import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
 import { PauliOperator } from "../../lib/types";
 import { CanvasStore } from "../../stores/canvasStateStore";
+import { Viewport } from "../../stores/canvasUISlice";
 
 export interface RehydratedCanvasState {
   canvasId: string;
@@ -15,6 +16,7 @@ export interface RehydratedCanvasState {
   hideTypeIds: boolean;
   hideDanglingLegs: boolean;
   hideLegLabels: boolean;
+  viewport: Viewport;
 }
 export interface SerializableCanvasState {
   canvasId: string;
@@ -40,6 +42,7 @@ export interface SerializableCanvasState {
   hideTypeIds: boolean;
   hideDanglingLegs: boolean;
   hideLegLabels: boolean;
+  viewport: Viewport;
 }
 
 export class CanvasStateSerializer {
@@ -86,7 +89,8 @@ export class CanvasStateSerializer {
       hideIds: store.hideIds,
       hideTypeIds: store.hideTypeIds,
       hideDanglingLegs: store.hideDanglingLegs,
-      hideLegLabels: store.hideLegLabels
+      hideLegLabels: store.hideLegLabels,
+      viewport: store.viewport.with({ canvasRef: null })
     };
 
     return state;
@@ -152,7 +156,14 @@ export class CanvasStateSerializer {
           hideTypeIds: false,
           hideDanglingLegs: false,
           hideLegLabels: false,
-          canvasId: this.canvasId
+          canvasId: this.canvasId,
+          viewport: new Viewport(
+            decoded.viewport.screenWidth,
+            decoded.viewport.screenHeight,
+            decoded.viewport.zoomLevel,
+            decoded.viewport.logicalPanOffset,
+            null
+          )
         };
       }
 
@@ -238,7 +249,17 @@ export class CanvasStateSerializer {
         hideTypeIds: decoded.hideTypeIds || false,
         hideDanglingLegs: decoded.hideDanglingLegs || false,
         hideLegLabels: decoded.hideLegLabels || false,
-        canvasId: this.canvasId
+        canvasId: this.canvasId,
+        viewport: new Viewport(
+          decoded.viewport?.screenWidth || 800,
+          decoded.viewport?.screenHeight || 600,
+          decoded.viewport?.zoomLevel || 1,
+          new LogicalPoint(
+            decoded.viewport?.logicalPanOffset?.x || 0,
+            decoded.viewport?.logicalPanOffset?.y || 0
+          ),
+          null
+        )
       };
     } catch (error) {
       console.error("Error decoding canvas state:", error);

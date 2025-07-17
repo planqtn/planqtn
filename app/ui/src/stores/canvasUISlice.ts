@@ -151,6 +151,7 @@ export interface CanvasUISlice {
   selectionBox: SelectionBoxState;
   setSelectionBox: (selectionBox: SelectionBoxState) => void;
   updateSelectionBox: (updates: Partial<SelectionBoxState>) => void;
+  clearSelectionBox: () => void;
   hoveredConnection: Connection | null;
   setHoveredConnection: (hoveredConnection: Connection | null) => void;
   setError: (error: string | null) => void;
@@ -215,6 +216,18 @@ export const createCanvasUISlice: StateCreator<
     currentX: 0,
     currentY: 0,
     justFinished: false
+  },
+  clearSelectionBox: () => {
+    set({
+      selectionBox: {
+        isSelecting: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        justFinished: false
+      }
+    });
   },
   setSelectionBox: (selectionBox) =>
     set((state) => {

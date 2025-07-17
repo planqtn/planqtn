@@ -53,7 +53,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
         hideIds: result.hideIds,
         hideTypeIds: result.hideTypeIds,
         hideDanglingLegs: result.hideDanglingLegs,
-        hideLegLabels: result.hideLegLabels
+        hideLegLabels: result.hideLegLabels,
+        viewport: result.viewport
       });
 
       // Initialize leg hide states for all legos
