@@ -13,6 +13,7 @@ export interface EncodedCanvasStateSlice {
   hideLegLabels: boolean;
 
   decodeCanvasState: (encoded: string) => Promise<void>;
+  rehydrateCanvasState: (jsonString: string) => Promise<void>;
   getEncodedCanvasState: () => string;
   setHideConnectedLegs: (hideConnectedLegs: boolean) => void;
   setHideIds: (hideIds: boolean) => void;
@@ -35,10 +36,14 @@ export const createEncodedCanvasStateSlice: StateCreator<
   hideTypeIds: false,
   hideDanglingLegs: false,
   hideLegLabels: false,
-
   decodeCanvasState: async (encoded: string) => {
+    get().rehydrateCanvasState(atob(encoded));
+  },
+
+  rehydrateCanvasState: async (jsonString: string) => {
     try {
-      const result = await get().canvasStateSerializer.decode(encoded);
+      const result = await get().canvasStateSerializer.rehydrate(jsonString);
+      console.log("rehydration result", result);
       set({
         droppedLegos: result.droppedLegos,
         connections: result.connections,
@@ -54,7 +59,12 @@ export const createEncodedCanvasStateSlice: StateCreator<
         hideTypeIds: result.hideTypeIds,
         hideDanglingLegs: result.hideDanglingLegs,
         hideLegLabels: result.hideLegLabels,
-        viewport: result.viewport
+        viewport: result.viewport,
+        parityCheckMatrices: result.parityCheckMatrices,
+        weightEnumerators: result.weightEnumerators,
+        highlightedTensorNetworkLegs: result.highlightedTensorNetworkLegs,
+        selectedTensorNetworkParityCheckMatrixRows:
+          result.selectedTensorNetworkParityCheckMatrixRows
       });
 
       // Initialize leg hide states for all legos

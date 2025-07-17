@@ -1,11 +1,36 @@
 import { Connection } from "../../stores/connectionStore";
-import { DroppedLego } from "../../stores/droppedLegoStore";
+import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore";
 import { LogicalPoint } from "../../types/coordinates";
 import { Legos } from "../lego/Legos";
-import { validateEncodedCanvasState } from "../../schemas/v1/canvas-state-validator";
+import { validateCanvasStateString } from "../../schemas/v1/canvas-state-validator";
 import { PauliOperator } from "../../lib/types";
 import { CanvasStore } from "../../stores/canvasStateStore";
 import { Viewport } from "../../stores/canvasUISlice";
+import {
+  ParityCheckMatrix,
+  WeightEnumerator
+} from "../../stores/tensorNetworkStore";
+import { TensorNetworkLeg } from "../../lib/TensorNetwork";
+
+export interface SerializedLego {
+  id: string;
+  name?: string;
+  short_name?: string;
+  description?: string;
+  instance_id: string;
+  x: number;
+  y: number;
+  is_dynamic?: boolean;
+  parameters?: Record<string, unknown>;
+  parity_check_matrix?: number[][];
+  logical_legs?: number[];
+  gauge_legs?: number[];
+  selectedMatrixRows?: number[];
+  highlightedLegConstraints?: {
+    legIndex: number;
+    operator: PauliOperator;
+  }[];
+}
 
 export interface RehydratedCanvasState {
   canvasId: string;
@@ -17,25 +42,20 @@ export interface RehydratedCanvasState {
   hideDanglingLegs: boolean;
   hideLegLabels: boolean;
   viewport: Viewport;
+  parityCheckMatrices: Record<string, ParityCheckMatrix>;
+  weightEnumerators: Record<string, WeightEnumerator[]>;
+  highlightedTensorNetworkLegs: Record<
+    string,
+    {
+      leg: TensorNetworkLeg;
+      operator: PauliOperator;
+    }[]
+  >;
+  selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
 }
 export interface SerializableCanvasState {
   canvasId: string;
-  pieces: Array<{
-    id: string;
-    instance_id: string;
-    x: number;
-    y: number;
-    is_dynamic?: boolean;
-    parameters?: Record<string, unknown>;
-    parity_check_matrix?: number[][];
-    logical_legs?: number[];
-    gauge_legs?: number[];
-    selectedMatrixRows?: number[];
-    highlightedLegConstraints?: {
-      legIndex: number;
-      operator: PauliOperator;
-    }[];
-  }>;
+  pieces: Array<SerializedLego>;
   connections: Array<Connection>;
   hideConnectedLegs: boolean;
   hideIds: boolean;
@@ -43,6 +63,19 @@ export interface SerializableCanvasState {
   hideDanglingLegs: boolean;
   hideLegLabels: boolean;
   viewport: Viewport;
+  parityCheckMatrices: { key: string; value: ParityCheckMatrix }[];
+  weightEnumerators: { key: string; value: WeightEnumerator[] }[];
+  highlightedTensorNetworkLegs: {
+    key: string;
+    value: {
+      leg: TensorNetworkLeg;
+      operator: PauliOperator;
+    }[];
+  }[];
+  selectedTensorNetworkParityCheckMatrixRows: {
+    key: string;
+    value: number[];
+  }[];
 }
 
 export class CanvasStateSerializer {
@@ -90,16 +123,50 @@ export class CanvasStateSerializer {
       hideTypeIds: store.hideTypeIds,
       hideDanglingLegs: store.hideDanglingLegs,
       hideLegLabels: store.hideLegLabels,
-      viewport: store.viewport.with({ canvasRef: null })
+      viewport: store.viewport.with({ canvasRef: null }),
+      parityCheckMatrices: Object.entries(store.parityCheckMatrices).map(
+        ([key, value]) => ({ key, value })
+      ),
+      weightEnumerators: Object.entries(store.weightEnumerators).map(
+        ([key, value]) => ({ key, value })
+      ),
+      highlightedTensorNetworkLegs: Object.entries(
+        store.highlightedTensorNetworkLegs
+      ).map(([key, value]) => ({ key, value })),
+      selectedTensorNetworkParityCheckMatrixRows: Object.entries(
+        store.selectedTensorNetworkParityCheckMatrixRows
+      ).map(([key, value]) => ({ key, value }))
     };
 
     return state;
   }
 
-  public async decode(encoded: string): Promise<RehydratedCanvasState> {
+  public async rehydrate(
+    canvasStateString: string
+  ): Promise<RehydratedCanvasState> {
+    const result: RehydratedCanvasState = {
+      droppedLegos: [],
+      connections: [],
+      hideConnectedLegs: false,
+      hideIds: false,
+      hideTypeIds: false,
+      hideDanglingLegs: false,
+      hideLegLabels: false,
+      canvasId: this.canvasId,
+      viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), null),
+      parityCheckMatrices: {},
+      weightEnumerators: {},
+      highlightedTensorNetworkLegs: {},
+      selectedTensorNetworkParityCheckMatrixRows: {}
+    };
+
+    if (canvasStateString === "") {
+      return result;
+    }
+
     try {
       // Validate the encoded state first
-      const validationResult = validateEncodedCanvasState(encoded);
+      const validationResult = validateCanvasStateString(canvasStateString);
       if (!validationResult.isValid) {
         console.error(
           "Canvas state validation failed:",
@@ -110,10 +177,10 @@ export class CanvasStateSerializer {
         );
       }
 
-      const decoded = JSON.parse(atob(encoded));
+      const rawCanvasStateObj = JSON.parse(canvasStateString);
 
       // Check if this is legacy format and convert if needed
-      const isLegacyFormat = decoded.pieces?.some(
+      const isLegacyFormat = rawCanvasStateObj.pieces?.some(
         (piece: Record<string, unknown>) =>
           piece.instanceId !== undefined && piece.shortName !== undefined
       );
@@ -121,7 +188,7 @@ export class CanvasStateSerializer {
       if (isLegacyFormat) {
         console.log("Converting legacy format to current format");
         // Convert legacy format to current format
-        decoded.pieces = decoded.pieces.map(
+        rawCanvasStateObj.pieces = rawCanvasStateObj.pieces.map(
           (piece: Record<string, unknown>) => ({
             ...piece,
             instance_id: piece.instanceId,
@@ -131,8 +198,8 @@ export class CanvasStateSerializer {
         );
 
         // Convert legacy connection format
-        if (decoded.connections) {
-          decoded.connections = decoded.connections.map(
+        if (rawCanvasStateObj.connections) {
+          rawCanvasStateObj.connections = rawCanvasStateObj.connections.map(
             (conn: Record<string, unknown>) => ({
               from: {
                 legoId: (conn.from as Record<string, unknown>).legoId,
@@ -147,66 +214,83 @@ export class CanvasStateSerializer {
         }
       }
 
-      if (!decoded.pieces || !Array.isArray(decoded.pieces)) {
-        return {
-          droppedLegos: [],
-          connections: [],
-          hideConnectedLegs: false,
-          hideIds: false,
-          hideTypeIds: false,
-          hideDanglingLegs: false,
-          hideLegLabels: false,
-          canvasId: this.canvasId,
-          viewport: new Viewport(
-            decoded.viewport.screenWidth,
-            decoded.viewport.screenHeight,
-            decoded.viewport.zoomLevel,
-            decoded.viewport.logicalPanOffset,
-            null
-          )
-        };
-      }
+      const decodedViewport = new Viewport(
+        rawCanvasStateObj.viewport?.screenWidth || 800,
+        rawCanvasStateObj.viewport?.screenHeight || 600,
+        rawCanvasStateObj.viewport?.zoomLevel || 1,
+        new LogicalPoint(
+          rawCanvasStateObj.viewport?.logicalPanOffset?.x || 0,
+          rawCanvasStateObj.viewport?.logicalPanOffset?.y || 0
+        ),
+        null
+      );
+
+      result.viewport = decodedViewport;
+      result.parityCheckMatrices = Object.fromEntries(
+        rawCanvasStateObj.parityCheckMatrices.map(
+          (item: { key: string; value: ParityCheckMatrix }) => [
+            item.key,
+            item.value
+          ]
+        )
+      );
+      result.weightEnumerators = Object.fromEntries(
+        rawCanvasStateObj.weightEnumerators.map(
+          (item: { key: string; value: WeightEnumerator[] }) => [
+            item.key,
+            item.value
+          ]
+        )
+      );
+      result.highlightedTensorNetworkLegs = Object.fromEntries(
+        rawCanvasStateObj.highlightedTensorNetworkLegs.map(
+          (item: {
+            key: string;
+            value: { leg: TensorNetworkLeg; operator: PauliOperator }[];
+          }) => [item.key, item.value]
+        )
+      );
+      result.selectedTensorNetworkParityCheckMatrixRows = Object.fromEntries(
+        rawCanvasStateObj.selectedTensorNetworkParityCheckMatrixRows.map(
+          (item: { key: string; value: number[] }) => [item.key, item.value]
+        )
+      );
+      result.hideConnectedLegs = rawCanvasStateObj.hideConnectedLegs || false;
+      result.hideIds = rawCanvasStateObj.hideIds || false;
+      result.hideTypeIds = rawCanvasStateObj.hideTypeIds || false;
+      result.hideDanglingLegs = rawCanvasStateObj.hideDanglingLegs || false;
+      result.hideLegLabels = rawCanvasStateObj.hideLegLabels || false;
 
       // Preserve the canvas ID from the decoded state if it exists
-      if (decoded.canvasId) {
-        this.canvasId = decoded.canvasId;
+      if (rawCanvasStateObj.canvasId) {
+        this.canvasId = rawCanvasStateObj.canvasId;
+      }
+      result.canvasId = this.canvasId;
+
+      if (
+        !rawCanvasStateObj.pieces ||
+        !Array.isArray(rawCanvasStateObj.pieces)
+      ) {
+        return result;
       }
 
       // Fetch legos if not already loaded
       const legosList = Legos.listAvailableLegos();
 
       // Reconstruct dropped legos with full lego information
-      const reconstructedPieces = decoded.pieces.map(
-        (piece: {
-          id: string;
-          instance_id: string;
-          x: number;
-          y: number;
-          is_dynamic?: boolean;
-          parameters?: Record<string, unknown>;
-          parity_check_matrix: number[][];
-          logical_legs?: number[];
-          gauge_legs?: number[];
-          name?: string;
-          short_name?: string;
-          description?: string;
-          selectedMatrixRows?: number[];
-          highlightedLegConstraints?: {
-            legIndex: number;
-            operator: PauliOperator;
-          }[];
-        }) => {
+      const reconstructedPieces = rawCanvasStateObj.pieces.map(
+        (piece: SerializedLego) => {
           const predefinedLego = legosList.find((l) => l.type_id === piece.id);
           if (
             !piece.parity_check_matrix ||
             piece.parity_check_matrix.length === 0
           ) {
             throw new Error(
-              `Piece ${piece.instance_id} (of type ${piece.id}) has no parity check matrix. Full state:\n${atob(encoded)}`
+              `Piece ${piece.instance_id} (of type ${piece.id}) has no parity check matrix. Full state:\n${canvasStateString}`
             );
           }
 
-          const legoPrototype = predefinedLego
+          const legoPrototype: LegoPiece = predefinedLego
             ? {
                 ...predefinedLego,
 
@@ -239,32 +323,20 @@ export class CanvasStateSerializer {
           );
         }
       );
-      return {
-        droppedLegos: reconstructedPieces,
-        connections: decoded.connections.map(
-          (conn: Connection) => new Connection(conn.from, conn.to)
-        ),
-        hideConnectedLegs: decoded.hideConnectedLegs || false,
-        hideIds: decoded.hideIds || false,
-        hideTypeIds: decoded.hideTypeIds || false,
-        hideDanglingLegs: decoded.hideDanglingLegs || false,
-        hideLegLabels: decoded.hideLegLabels || false,
-        canvasId: this.canvasId,
-        viewport: new Viewport(
-          decoded.viewport?.screenWidth || 800,
-          decoded.viewport?.screenHeight || 600,
-          decoded.viewport?.zoomLevel || 1,
-          new LogicalPoint(
-            decoded.viewport?.logicalPanOffset?.x || 0,
-            decoded.viewport?.logicalPanOffset?.y || 0
-          ),
-          null
-        )
-      };
+      result.droppedLegos = reconstructedPieces;
+      result.connections = rawCanvasStateObj.connections.map(
+        (conn: Connection) => new Connection(conn.from, conn.to)
+      );
+
+      return result;
     } catch (error) {
       console.error("Error decoding canvas state:", error);
       throw error; // Re-throw the error instead of returning empty state
     }
+  }
+
+  public async decode(encoded: string): Promise<RehydratedCanvasState> {
+    return this.rehydrate(atob(encoded));
   }
 
   public getCanvasId(): string {

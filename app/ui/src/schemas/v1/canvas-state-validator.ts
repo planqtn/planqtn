@@ -1,6 +1,6 @@
 import Ajv from "ajv";
 import canvasStateSchema from "./canvas-state.json";
-import { validateEncodedLegacyCanvasState } from "../legacy/canvas-state-validator";
+import { validateLegacyCanvasState } from "../legacy/canvas-state-validator";
 
 // Initialize Ajv validator
 const ajv = new Ajv({
@@ -43,6 +43,47 @@ export function validateCanvasStateV1(
 }
 
 /**
+ * Validates a JSON canvas state string with fallback to legacy schema
+ * @param canvasStateString - JSON canvas state string
+ * @returns Validation result with success status and any errors
+ */
+export function validateCanvasStateString(
+  canvasStateString: string
+): CanvasStateValidationResult {
+  try {
+    const parsedCanvasStateObj = JSON.parse(canvasStateString);
+
+    // First try v1 schema validation
+    const v1Result = validateCanvasStateV1(parsedCanvasStateObj);
+    if (v1Result.isValid) {
+      return v1Result;
+    }
+    console.log("v1 failed...", v1Result);
+
+    // If v1 validation fails, try legacy schema validation
+    const legacyResult = validateLegacyCanvasState(parsedCanvasStateObj);
+    if (legacyResult.isValid) {
+      console.warn(
+        "Canvas state validated against legacy schema. Consider updating to v1 format."
+      );
+      return { isValid: true };
+    }
+
+    console.log("legacy failed...", legacyResult);
+
+    // If both fail, return the v1 errors
+    return v1Result;
+  } catch (error) {
+    return {
+      isValid: false,
+      errors: [
+        `Failed to validate canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
+      ]
+    };
+  }
+}
+
+/**
  * Validates a base64 encoded canvas state string with fallback to legacy schema
  * @param encodedState - Base64 encoded canvas state string
  * @returns Validation result with success status and any errors
@@ -51,30 +92,12 @@ export function validateEncodedCanvasState(
   encodedState: string
 ): CanvasStateValidationResult {
   try {
-    const decoded = JSON.parse(atob(encodedState));
-
-    // First try v1 schema validation
-    const v1Result = validateCanvasStateV1(decoded);
-    if (v1Result.isValid) {
-      return v1Result;
-    }
-
-    // If v1 validation fails, try legacy schema validation
-    const legacyResult = validateEncodedLegacyCanvasState(encodedState);
-    if (legacyResult.isValid) {
-      console.warn(
-        "Canvas state validated against legacy schema. Consider updating to v1 format."
-      );
-      return { isValid: true };
-    }
-
-    // If both fail, return the v1 errors
-    return v1Result;
+    return validateCanvasStateString(atob(encodedState));
   } catch (error) {
     return {
       isValid: false,
       errors: [
-        `Failed to decode base64 string: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to validate base64 encoded canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
       ]
     };
   }

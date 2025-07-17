@@ -81,7 +81,7 @@ export class Viewport {
       overrides.screenHeight || this.screenHeight,
       overrides.zoomLevel || this.zoomLevel,
       overrides.logicalPanOffset || this.logicalPanOffset,
-      overrides.canvasRef || this.canvasRef
+      overrides.canvasRef === undefined ? this.canvasRef : overrides.canvasRef
     );
   }
 

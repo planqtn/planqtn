@@ -39,7 +39,6 @@ import {
 } from "./canvasEventHandlingSlice";
 import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
 import { persist } from "zustand/middleware";
-import { SerializableCanvasState } from "../features/canvas/CanvasStateSerializer";
 
 // Helper function to get canvasId from URL
 const getCanvasIdFromUrl = (): string => {
@@ -146,12 +145,15 @@ export const useCanvasStore = create<CanvasStore>()(
       name: `canvas-state-${getCanvasIdFromUrl()}`,
       partialize: (state: CanvasStore) => {
         // Use the existing CanvasStateSerializer to handle serialization properly
+        const serializableCanvasState =
+          state.canvasStateSerializer.toSerializableCanvasState(state);
+        console.log(
+          "hello serialize please",
+          serializableCanvasState.viewport,
+          serializableCanvasState
+        );
         return {
-          ...state.canvasStateSerializer.toSerializableCanvasState(state),
-          viewport: {
-            ...state.viewport,
-            canvasRef: null
-          },
+          jsonState: JSON.stringify(serializableCanvasState),
           _timestamp: Date.now()
         };
       },
@@ -164,25 +166,10 @@ export const useCanvasStore = create<CanvasStore>()(
 
         try {
           // The state here is the serialized canvas state from partialize
-          const serializedState = state as unknown as SerializableCanvasState;
-
-          console.log("serializedState", serializedState);
-          // Encode the state to the format the decoder expects
-          const encodedState = btoa(
-            JSON.stringify({
-              canvasId: serializedState.canvasId,
-              pieces: serializedState.pieces,
-              connections: serializedState.connections,
-              hideConnectedLegs: serializedState.hideConnectedLegs,
-              hideIds: serializedState.hideIds,
-              hideTypeIds: serializedState.hideTypeIds,
-              hideDanglingLegs: serializedState.hideDanglingLegs,
-              hideLegLabels: serializedState.hideLegLabels,
-              viewport: serializedState.viewport
-            })
-          );
-
-          state.decodeCanvasState(encodedState);
+          const jsonStateString =
+            (state as unknown as { jsonState: string }).jsonState || "";
+          console.log("jsonStateString", jsonStateString);
+          state.rehydrateCanvasState(jsonStateString);
         } catch (error) {
           console.error("Error during state rehydration:", error);
           // Fall back to empty state if encoding fails
