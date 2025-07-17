@@ -418,6 +418,6 @@
       }
     }
   },
-  "required": ["title", "pieces", "connections"],
+  "required": ["pieces", "connections"],
   "additionalProperties": false
 }

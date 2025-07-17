@@ -360,6 +360,31 @@ describe("CanvasStateSerializer", () => {
       expect(result.viewport.screenWidth).toBe(800);
     });
 
+    it("should rehydrate a canvas state without a title", async () => {
+      const canvasStateString = JSON.stringify({
+        pieces: [],
+        connections: [],
+        hideConnectedLegs: false,
+        hideIds: false,
+        hideTypeIds: false,
+        hideDanglingLegs: false,
+        hideLegLabels: false,
+        viewport: {
+          screenWidth: 800,
+          screenHeight: 600,
+          zoomLevel: 1,
+          logicalPanOffset: { x: 0, y: 0 }
+        }
+      });
+
+      const result = await serializer.rehydrate(canvasStateString);
+
+      expect(result.title).toBe("");
+      expect(result.droppedLegos).toHaveLength(0);
+      expect(result.connections).toHaveLength(0);
+      expect(result.viewport.screenWidth).toBe(800);
+    });
+
     it("should handle empty canvas state", async () => {
       const result = await serializer.rehydrate("");
 
