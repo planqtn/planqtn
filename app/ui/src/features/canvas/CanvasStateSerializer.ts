@@ -246,7 +246,7 @@ export class CanvasStateSerializer {
             rawCanvasStateObj.weightEnumerators.map(
               (item: { key: string; value: WeightEnumerator[] }) => [
                 item.key,
-                item.value
+                item.value.map((value) => new WeightEnumerator(value))
               ]
             )
           )

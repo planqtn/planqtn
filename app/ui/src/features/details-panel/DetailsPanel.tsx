@@ -65,6 +65,7 @@ import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay.tsx";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
+import { WeightEnumerator } from "../../stores/tensorNetworkStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
 
@@ -123,17 +124,13 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   );
 
   const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
+  const setWeightEnumerator = useCanvasStore(
+    (state) => state.setWeightEnumerator
+  );
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const [task, setTask] = useState<Task | null>(null);
-  const [taskUpdatesChannel, setTaskUpdatesChannel] =
-    useState<RealtimeChannel | null>(null);
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
   const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null);
-  const [waitingForTaskUpdate, setWaitingForTaskUpdate] = useState(false);
-  const [iterationStatus, setIterationStatus] = useState<
-    Array<TaskUpdateIterationStatus>
-  >([]);
 
   const [taskLogs, setTaskLogs] = useState<string>("");
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -142,6 +139,18 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     onOpen: onLogsModalOpen,
     onClose: onLogsModalClose
   } = useDisclosure();
+
+  // State for tracking multiple tasks
+  const [tasks, setTasks] = useState<Map<string, Task>>(new Map());
+  const [taskUpdatesChannels, setTaskUpdatesChannels] = useState<
+    Map<string, RealtimeChannel>
+  >(new Map());
+  const [waitingForTaskUpdates, setWaitingForTaskUpdates] = useState<
+    Map<string, boolean>
+  >(new Map());
+  const [iterationStatuses, setIterationStatuses] = useState<
+    Map<string, Array<TaskUpdateIterationStatus>>
+  >(new Map());
 
   const lego =
     tensorNetwork?.legos.length == 1 ? tensorNetwork?.legos[0] : null;
@@ -177,8 +186,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const subscribeToTaskUpdates = (taskId: string) => {
-    setIterationStatus([]);
-    setWaitingForTaskUpdate(false);
+    setIterationStatuses((prev) => new Map(prev.set(taskId, [])));
+    setWaitingForTaskUpdates((prev) => new Map(prev.set(taskId, false)));
 
     console.log("Subscribing to task updates", taskId, "and user", user?.id);
     if (!user) {
@@ -207,10 +216,29 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
               console.log("Task cancelled, unsubscribing from updates");
               try {
                 await channel.unsubscribe();
-                setTask((prev) => (prev ? { ...prev, state: 4 } : null));
-                setTaskUpdatesChannel(null);
-                setIterationStatus([]);
-                setWaitingForTaskUpdate(false);
+                setTasks((prev) => {
+                  const newTasks = new Map(prev);
+                  const task = newTasks.get(taskId);
+                  if (task) {
+                    newTasks.set(taskId, { ...task, state: 4 });
+                  }
+                  return newTasks;
+                });
+                setTaskUpdatesChannels((prev) => {
+                  const newChannels = new Map(prev);
+                  newChannels.delete(taskId);
+                  return newChannels;
+                });
+                setIterationStatuses((prev) => {
+                  const newStatuses = new Map(prev);
+                  newStatuses.delete(taskId);
+                  return newStatuses;
+                });
+                setWaitingForTaskUpdates((prev) => {
+                  const newWaiting = new Map(prev);
+                  newWaiting.delete(taskId);
+                  return newWaiting;
+                });
               } catch (error) {
                 console.error("Error unsubscribing from channel:", error);
               }
@@ -223,14 +251,23 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 "Setting iteration status:",
                 updates.iteration_status
               );
-              setIterationStatus(updates.iteration_status);
-              setWaitingForTaskUpdate(false);
+              setIterationStatuses(
+                (prev) => new Map(prev.set(taskId, updates.iteration_status))
+              );
+              setWaitingForTaskUpdates(
+                (prev) => new Map(prev.set(taskId, false))
+              );
             }
             if (updates?.state !== undefined) {
               console.log("Setting task state:", updates.state);
-              setTask((prev) =>
-                prev ? { ...prev, state: updates.state } : null
-              );
+              setTasks((prev) => {
+                const newTasks = new Map(prev);
+                const task = newTasks.get(taskId);
+                if (task) {
+                  newTasks.set(taskId, { ...task, state: updates.state });
+                }
+                return newTasks;
+              });
 
               if (updates.state !== 0 && updates.state !== 1) {
                 readAndUpdateTask(taskId);
@@ -243,7 +280,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         console.log("Subscription status:", status);
         if (status === "SUBSCRIBED") {
           console.log("Task updates subscribed");
-          setTaskUpdatesChannel(channel);
+          setTaskUpdatesChannels((prev) => new Map(prev.set(taskId, channel)));
         }
       });
     return () => {
@@ -253,9 +290,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   };
 
   const readAndUpdateTask = async (taskId: string) => {
-    if (!userContextSupabase) {
+    if (!userContextSupabase || !tensorNetwork) {
       return;
     }
+
     userContextSupabase
       .from("tasks")
       .select("*")
@@ -268,24 +306,80 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
           console.log("Task:", data);
           if (data.length > 0) {
             const task = data[0] as Task;
-            setTask(task);
+            setTasks((prev) => new Map(prev.set(taskId, task)));
+
             if (task.state === 0 || task.state === 1) {
               console.log("Setting up subscription for task:", taskId);
               subscribeToTaskUpdates(taskId);
             } else {
-              if (taskUpdatesChannel) {
+              const existingChannel = taskUpdatesChannels.get(taskId);
+              if (existingChannel) {
                 console.log(
                   "Unsubscribing from task updates for task:",
                   taskId
                 );
-                await taskUpdatesChannel.unsubscribe();
-                setTaskUpdatesChannel(null);
-                setIterationStatus([]);
-                setWaitingForTaskUpdate(false);
+                await existingChannel.unsubscribe();
+                setTaskUpdatesChannels((prev) => {
+                  const newChannels = new Map(prev);
+                  newChannels.delete(taskId);
+                  return newChannels;
+                });
+                setIterationStatuses((prev) => {
+                  const newStatuses = new Map(prev);
+                  newStatuses.delete(taskId);
+                  return newStatuses;
+                });
+                setWaitingForTaskUpdates((prev) => {
+                  const newWaiting = new Map(prev);
+                  newWaiting.delete(taskId);
+                  return newWaiting;
+                });
               } else {
                 console.log(
                   "No task updates channel found, so not unsubscribing"
                 );
+              }
+
+              // If task succeeded and has a result, cache it in the weight enumerator
+              if (
+                task.state === 2 &&
+                task.result &&
+                task.job_type === "weightenumerator"
+              ) {
+                try {
+                  const result = JSON.parse(task.result);
+                  const currentEnumerator = weightEnumerators[
+                    tensorNetwork.signature
+                  ]?.find((enumerator) => enumerator.taskId === taskId);
+
+                  if (
+                    currentEnumerator &&
+                    !currentEnumerator.polynomial &&
+                    result.polynomial
+                  ) {
+                    // Create a new WeightEnumerator instance with the result
+                    const updatedEnumerator = new WeightEnumerator({
+                      taskId: currentEnumerator.taskId,
+                      polynomial: result.polynomial,
+                      normalizerPolynomial: result.normalizer_polynomial,
+                      truncateLength: currentEnumerator.truncateLength,
+                      openLegs: currentEnumerator.openLegs
+                    });
+
+                    setWeightEnumerator(
+                      tensorNetwork.signature,
+                      taskId,
+                      updatedEnumerator
+                    );
+
+                    console.log(
+                      "Cached weight enumerator result for task:",
+                      taskId
+                    );
+                  }
+                } catch (parseError) {
+                  console.error("Error parsing task result:", parseError);
+                }
               }
             }
           }
@@ -293,20 +387,32 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       });
   };
 
-  // TODO: for now just support one weight enumerator per tensor network, but we are preparing for a list of them
+  // Handle all weight enumerators for the current tensor network
   useEffect(() => {
-    const cachedEnumerator =
-      weightEnumerators[tensorNetwork?.signature || ""]?.[0];
-    const taskId = cachedEnumerator?.taskId;
+    if (!tensorNetwork?.signature) return;
+
+    const allEnumerators = weightEnumerators[tensorNetwork.signature] || [];
     console.log(
-      "details panel sees taskId for network",
-      cachedEnumerator,
-      taskId
+      "details panel sees all weight enumerators for network",
+      allEnumerators.length,
+      allEnumerators
     );
-    if (taskId) {
-      readAndUpdateTask(taskId);
-    }
-  }, [tensorNetwork, weightEnumerators]);
+
+    allEnumerators.forEach((enumerator) => {
+      if (enumerator.taskId) {
+        // Only fetch task details if we don't already have the result cached
+        if (!enumerator.polynomial) {
+          readAndUpdateTask(enumerator.taskId);
+        }
+      }
+    });
+  }, [
+    tensorNetwork?.signature,
+    JSON.stringify(
+      weightEnumerators[tensorNetwork?.signature || ""]?.map((e) => e.taskId) ||
+        []
+    )
+  ]);
 
   const handleMatrixRowSelection = useCallback(
     (newSelectedRows: number[]) => {
@@ -1000,15 +1106,35 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
         }
       );
       console.log("Task cancellation requested:", taskId);
-      if (taskUpdatesChannel) {
+      const taskChannel = taskUpdatesChannels.get(taskId);
+      if (taskChannel) {
         console.log("Unsubscribing from task updates");
-        await taskUpdatesChannel.unsubscribe();
+        await taskChannel.unsubscribe();
         console.log("Task updates unsubscribed");
       }
-      setTaskUpdatesChannel(null);
-      setIterationStatus([]);
-      setWaitingForTaskUpdate(false);
-      setTask((prev) => (prev ? { ...prev, state: 4 } : null));
+      setTaskUpdatesChannels((prev) => {
+        const newChannels = new Map(prev);
+        newChannels.delete(taskId);
+        return newChannels;
+      });
+      setIterationStatuses((prev) => {
+        const newStatuses = new Map(prev);
+        newStatuses.delete(taskId);
+        return newStatuses;
+      });
+      setWaitingForTaskUpdates((prev) => {
+        const newWaiting = new Map(prev);
+        newWaiting.delete(taskId);
+        return newWaiting;
+      });
+      setTasks((prev) => {
+        const newTasks = new Map(prev);
+        const task = newTasks.get(taskId);
+        if (task) {
+          newTasks.set(taskId, { ...task, state: 4 });
+        }
+        return newTasks;
+      });
     } catch (err) {
       const error = err as AxiosError<{
         message: string;
@@ -1286,19 +1412,68 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     />
                   )}
                   {tensorNetwork.signature &&
-                  listWeightEnumerators(tensorNetwork.signature)[0] ? (
-                    <TaskDetailsDisplay
-                      task={task}
-                      taskId={
-                        listWeightEnumerators(tensorNetwork.signature)[0]
-                          ?.taskId
-                      }
-                      iterationStatus={iterationStatus}
-                      waitingForTaskUpdate={waitingForTaskUpdate}
-                      taskUpdatesChannel={taskUpdatesChannel}
-                      onCancelTask={handleCancelTask}
-                      onViewLogs={fetchTaskLogs}
-                    />
+                  listWeightEnumerators(tensorNetwork.signature).length > 0 ? (
+                    <VStack align="stretch" spacing={3}>
+                      <Heading size="sm">Weight Enumerator Tasks</Heading>
+                      {listWeightEnumerators(tensorNetwork.signature).map(
+                        (enumerator, index) => {
+                          const taskId = enumerator.taskId;
+                          if (!taskId) return null;
+
+                          const task = tasks.get(taskId) || null;
+                          const taskIterationStatus =
+                            iterationStatuses.get(taskId) || [];
+                          const isWaitingForUpdate =
+                            waitingForTaskUpdates.get(taskId) || false;
+                          const taskChannel =
+                            taskUpdatesChannels.get(taskId) || null;
+
+                          return (
+                            <Box
+                              key={taskId}
+                              p={3}
+                              borderWidth={1}
+                              borderRadius="md"
+                              bg={bgColor}
+                            >
+                              <VStack align="stretch" spacing={2}>
+                                <Text fontSize="sm" fontWeight="medium">
+                                  Task #{index + 1}
+                                  {enumerator.truncateLength &&
+                                    ` (truncate: ${enumerator.truncateLength})`}
+                                  {enumerator.openLegs.length > 0 &&
+                                    ` (${enumerator.openLegs.length} open legs)`}
+                                </Text>
+                                {enumerator.polynomial ? (
+                                  <VStack align="stretch" spacing={1}>
+                                    <Text
+                                      fontSize="sm"
+                                      color="green.500"
+                                      fontWeight="medium"
+                                    >
+                                      ✓ Completed
+                                    </Text>
+                                    <Text fontSize="xs" color="gray.600">
+                                      Result cached
+                                    </Text>
+                                  </VStack>
+                                ) : (
+                                  <TaskDetailsDisplay
+                                    task={task}
+                                    taskId={taskId}
+                                    iterationStatus={taskIterationStatus}
+                                    waitingForTaskUpdate={isWaitingForUpdate}
+                                    taskUpdatesChannel={taskChannel}
+                                    onCancelTask={handleCancelTask}
+                                    onViewLogs={fetchTaskLogs}
+                                  />
+                                )}
+                              </VStack>
+                            </Box>
+                          );
+                        }
+                      )}
+                    </VStack>
                   ) : null}
                 </VStack>
               </VStack>
