@@ -65,7 +65,6 @@ import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay.tsx";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
-import { WeightEnumerator } from "../../stores/tensorNetworkStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
 
@@ -352,29 +351,47 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                     tensorNetwork.signature
                   ]?.find((enumerator) => enumerator.taskId === taskId);
 
+                  console.log("Task result for", taskId, ":", result);
+                  console.log("Current enumerator:", currentEnumerator);
+                  console.log(
+                    "Has polynomial:",
+                    !!currentEnumerator?.polynomial
+                  );
+                  console.log(
+                    "Result has stabilizer_polynomial:",
+                    !!result.stabilizer_polynomial
+                  );
+
                   if (
                     currentEnumerator &&
                     !currentEnumerator.polynomial &&
-                    result.polynomial
+                    result.stabilizer_polynomial
                   ) {
-                    // Create a new WeightEnumerator instance with the result
-                    const updatedEnumerator = new WeightEnumerator({
-                      taskId: currentEnumerator.taskId,
-                      polynomial: result.polynomial,
-                      normalizerPolynomial: result.normalizer_polynomial,
-                      truncateLength: currentEnumerator.truncateLength,
-                      openLegs: currentEnumerator.openLegs
-                    });
-
+                    // Update the weight enumerator with the result using the store method
                     setWeightEnumerator(
                       tensorNetwork.signature,
                       taskId,
-                      updatedEnumerator
+                      currentEnumerator.with({
+                        polynomial: result.stabilizer_polynomial,
+                        normalizerPolynomial: result.normalizer_polynomial
+                      })
                     );
 
                     console.log(
                       "Cached weight enumerator result for task:",
                       taskId
+                    );
+                  } else {
+                    console.log(
+                      "Skipping update for task",
+                      taskId,
+                      "because:",
+                      {
+                        hasCurrentEnumerator: !!currentEnumerator,
+                        hasPolynomial: !!currentEnumerator?.polynomial,
+                        hasResultStabilizerPolynomial:
+                          !!result.stabilizer_polynomial
+                      }
                     );
                   }
                 } catch (parseError) {
@@ -1444,18 +1461,54 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                                   {enumerator.openLegs.length > 0 &&
                                     ` (${enumerator.openLegs.length} open legs)`}
                                 </Text>
+
                                 {enumerator.polynomial ? (
-                                  <VStack align="stretch" spacing={1}>
-                                    <Text
-                                      fontSize="sm"
-                                      color="green.500"
-                                      fontWeight="medium"
-                                    >
-                                      ✓ Completed
-                                    </Text>
-                                    <Text fontSize="xs" color="gray.600">
-                                      Result cached
-                                    </Text>
+                                  <VStack align="stretch" spacing={2}>
+                                    {/* Display the polynomial results */}
+                                    <VStack align="stretch" spacing={1}>
+                                      <Text fontSize="sm" fontWeight="medium">
+                                        Stabilizer Weight Enumerator Polynomial
+                                      </Text>
+                                      <Box
+                                        p={2}
+                                        borderWidth={1}
+                                        borderRadius="md"
+                                        bg="gray.50"
+                                        maxH="200px"
+                                        overflowY="auto"
+                                      >
+                                        <Text fontFamily="mono" fontSize="xs">
+                                          {enumerator.polynomial}
+                                        </Text>
+                                      </Box>
+
+                                      {enumerator.normalizerPolynomial && (
+                                        <>
+                                          <Text
+                                            fontSize="sm"
+                                            fontWeight="medium"
+                                          >
+                                            Normalizer Weight Enumerator
+                                            Polynomial
+                                          </Text>
+                                          <Box
+                                            p={2}
+                                            borderWidth={1}
+                                            borderRadius="md"
+                                            bg="gray.50"
+                                            maxH="200px"
+                                            overflowY="auto"
+                                          >
+                                            <Text
+                                              fontFamily="mono"
+                                              fontSize="xs"
+                                            >
+                                              {enumerator.normalizerPolynomial}
+                                            </Text>
+                                          </Box>
+                                        </>
+                                      )}
+                                    </VStack>
                                   </VStack>
                                 ) : (
                                   <TaskDetailsDisplay

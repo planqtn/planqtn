@@ -138,6 +138,73 @@ describe("Weight Enumerator Store Behavior", () => {
     expect(enumerators[0].normalizerPolynomial).toBe("1 + x");
   });
 
+  it("should update existing weight enumerator with partial results using with() method", () => {
+    const networkSignature = "test-network";
+    const taskId = "test-task";
+
+    // Create initial enumerator without results
+    const initialEnumerator = new WeightEnumerator({
+      taskId: taskId,
+      polynomial: undefined,
+      normalizerPolynomial: undefined,
+      truncateLength: 10,
+      openLegs: []
+    });
+
+    // Add to store
+    store.setWeightEnumerator(networkSignature, taskId, initialEnumerator);
+
+    // Verify initial state
+    let found = store.getWeightEnumerator(networkSignature, taskId);
+    expect(found?.polynomial).toBeUndefined();
+    expect(found?.normalizerPolynomial).toBeUndefined();
+
+    // Update with results using with() method
+    const updatedEnumerator = initialEnumerator.with({
+      polynomial: "x^2 + y^2 + z^2",
+      normalizerPolynomial: "1 + x + y"
+    });
+    store.setWeightEnumerator(networkSignature, taskId, updatedEnumerator);
+
+    // Verify results were updated
+    found = store.getWeightEnumerator(networkSignature, taskId);
+    expect(found?.polynomial).toBe("x^2 + y^2 + z^2");
+    expect(found?.normalizerPolynomial).toBe("1 + x + y");
+
+    // Verify other properties remain unchanged
+    expect(found?.taskId).toBe(taskId);
+    expect(found?.truncateLength).toBe(10);
+    expect(found?.openLegs).toEqual([]);
+  });
+
+  it("should handle partial updates with setWeightEnumerator", () => {
+    const networkSignature = "test-network";
+    const taskId = "test-task";
+
+    // Create initial enumerator with some results
+    const initialEnumerator = new WeightEnumerator({
+      taskId: taskId,
+      polynomial: "existing-poly",
+      normalizerPolynomial: undefined,
+      truncateLength: 5,
+      openLegs: []
+    });
+
+    // Add to store
+    store.setWeightEnumerator(networkSignature, taskId, initialEnumerator);
+
+    // Update only normalizer polynomial
+    const updatedEnumerator = initialEnumerator.with({
+      normalizerPolynomial: "new-norm-poly"
+    });
+    store.setWeightEnumerator(networkSignature, taskId, updatedEnumerator);
+
+    // Verify only normalizer was updated
+    const found = store.getWeightEnumerator(networkSignature, taskId);
+    expect(found?.polynomial).toBe("existing-poly"); // Unchanged
+    expect(found?.normalizerPolynomial).toBe("new-norm-poly"); // Updated
+  });
+
   it("should handle multiple tensor network signatures independently", () => {
     const networkSignature1 = "network-1";
     const networkSignature2 = "network-2";

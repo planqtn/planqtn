@@ -31,7 +31,7 @@ interface ShareModalProps {
 }
 
 // Node.js default max header size is 8KB
-const MAX_URL_LENGTH = 8192;
+const MAX_URL_LENGTH = 2000;
 
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const [shareUrl, setShareUrl] = useState<string>("");
@@ -171,9 +171,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const urlLengthPercent = (urlLength / MAX_URL_LENGTH) * 100;
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB"];
+    if (bytes === 0) return "0 chars";
+    const k = 1000;
+    const sizes = ["chars", "K chars", "M chars"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
@@ -208,10 +208,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
                   <Box>
                     <AlertTitle>URL Too Long!</AlertTitle>
                     <AlertDescription>
-                      The URL is {formatBytes(urlLength)} which exceeds the
-                      maximum header size limit of {formatBytes(MAX_URL_LENGTH)}
-                      . This may cause issues with some servers. Consider using
-                      JSON download instead.
+                      The URL is {formatBytes(urlLength)} which exceeds 2000
+                      characters. This may cause issues with some browsers, and
+                      is hard to share in Slack for example. Consider using JSON
+                      download instead.
                     </AlertDescription>
                   </Box>
                 </Alert>
@@ -237,9 +237,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
                   colorScheme={isUrlTooLong ? "orange" : "blue"}
                   isLoading={isGenerating}
                   loadingText="Generating"
-                  isDisabled={isUrlTooLong}
                 >
-                  {isUrlTooLong ? "Too Long" : "Copy"}
+                  Copy
                 </Button>
               </HStack>
 
