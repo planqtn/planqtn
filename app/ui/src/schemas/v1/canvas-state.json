@@ -6,8 +6,7 @@
   "properties": {
     "canvasId": {
       "type": "string",
-      "description": "Unique identifier for the canvas",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      "description": "Unique identifier for the canvas"
     },
     "title": {
       "type": "string",
@@ -392,8 +391,33 @@
         "required": ["key", "value"],
         "additionalProperties": false
       }
+    },
+    "parity_check_matrix_table": {
+      "type": "array",
+      "description": "Array of parity check matrix tables keyed by identifier",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique identifier for the parity check matrix table"
+          },
+          "value": {
+            "type": "array",
+            "description": "Array of parity check matrix tables",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": ["key", "value"],
+        "additionalProperties": false
+      }
     }
   },
-  "required": ["canvasId", "title", "pieces", "connections"],
+  "required": ["title", "pieces", "connections"],
   "additionalProperties": false
 }

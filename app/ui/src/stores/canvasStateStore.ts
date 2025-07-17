@@ -147,11 +147,7 @@ export const useCanvasStore = create<CanvasStore>()(
         // Use the existing CanvasStateSerializer to handle serialization properly
         const serializableCanvasState =
           state.canvasStateSerializer.toSerializableCanvasState(state);
-        console.log(
-          "hello serialize please",
-          serializableCanvasState.viewport,
-          serializableCanvasState
-        );
+
         return {
           jsonState: JSON.stringify(serializableCanvasState),
           _timestamp: Date.now()

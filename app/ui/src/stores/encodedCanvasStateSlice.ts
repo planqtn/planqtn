@@ -1,5 +1,8 @@
 import { StateCreator } from "zustand";
-import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
+import {
+  CanvasStateSerializer,
+  CompressedCanvasState
+} from "../features/canvas/CanvasStateSerializer";
 import { CanvasStore, getCanvasIdFromUrl } from "./canvasStateStore";
 import * as LZString from "lz-string";
 
@@ -42,11 +45,31 @@ export const createEncodedCanvasStateSlice: StateCreator<
   hideLegLabels: false,
   decodeCanvasState: async (encoded: string) => {
     try {
-      // Try to decode as lz-string compressed format first (new format)
+      // Try to decode as compressed format first (new format)
       const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
       if (decompressed) {
-        get().rehydrateCanvasState(decompressed);
-        return;
+        try {
+          // Try to parse as compressed array format
+          const parsedData = JSON.parse(decompressed);
+          if (Array.isArray(parsedData) && parsedData.length >= 7) {
+            // This is the new compressed format
+            const serializer = get().canvasStateSerializer;
+            const standardFormat = serializer.fromCompressedCanvasState(
+              parsedData as CompressedCanvasState
+            );
+            const jsonString = JSON.stringify(standardFormat);
+            get().rehydrateCanvasState(jsonString);
+            return;
+          } else {
+            // This is legacy JSON format with lz-string compression
+            get().rehydrateCanvasState(decompressed);
+            return;
+          }
+        } catch {
+          // If JSON parsing fails, treat as raw string
+          get().rehydrateCanvasState(decompressed);
+          return;
+        }
       }
     } catch (error) {
       console.log(

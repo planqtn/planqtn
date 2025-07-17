@@ -23,7 +23,7 @@ import {
 } from "@chakra-ui/react";
 import { FiCopy, FiDownload, FiShare2, FiAlertTriangle } from "react-icons/fi";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import * as LZString from "lz-string";
+import { CompressedCanvasState } from "../canvas/CanvasStateSerializer";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -43,22 +43,29 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   );
   const title = useCanvasStore((state) => state.title);
 
-  // Create a sharing-specific serialization that excludes canvasId and uses compression
+  // Create a sharing-specific serialization using compressed format
   const getEncodedCanvasStateForSharing = () => {
     const store = useCanvasStore.getState();
-    const serialized = canvasStateSerializer.toSerializableCanvasState(store);
 
-    // Remove canvasId from the serialized state for sharing
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { canvasId, ...sharingState } = serialized;
+    // Use the new compressed format for maximum efficiency
+    const compressed = canvasStateSerializer.toCompressedCanvasState(store);
 
-    // First stringify the state
-    const jsonString = JSON.stringify(sharingState);
+    // Remove canvasId from the compressed state for sharing (index 0)
+    const sharingCompressed: CompressedCanvasState = [
+      compressed[0], // title
+      compressed[1], // pieces
+      compressed[2], // connections
+      compressed[3], // boolean flags
+      compressed[4], // viewport
+      compressed[5], // parity_check_matrix_table
+      compressed[6], // parityCheckMatrices (optional)
+      compressed[7], // weightEnumerators (optional)
+      compressed[8], // highlightedTensorNetworkLegs (optional)
+      compressed[9] // selectedTensorNetworkParityCheckMatrixRows (optional)
+    ];
 
-    // Then compress it using lz-string
-    const compressed = LZString.compressToEncodedURIComponent(jsonString);
-
-    return compressed;
+    // Encode the compressed state for URL sharing
+    return canvasStateSerializer.encodeCompressedForUrl(sharingCompressed);
   };
 
   const generateShareUrl = async () => {
@@ -66,7 +73,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     try {
       const encodedState = getEncodedCanvasStateForSharing();
       const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set("state", encodedState);
+      currentUrl.hash = `state=${encodedState}`;
+      currentUrl.searchParams.delete("canvasId");
       const newShareUrl = currentUrl.toString();
       setShareUrl(newShareUrl);
 
