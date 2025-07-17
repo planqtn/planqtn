@@ -245,6 +245,18 @@ describe("Canvas State Validator", () => {
       expect(result.errors).toBeUndefined();
     });
 
+    it("should validate a correct canvas state without a title", () => {
+      const result = validateCanvasStateV1({
+        ...validCanvasState,
+        title: undefined
+      });
+      if (!result.isValid) {
+        console.log(result);
+      }
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
+
     it("should validate canvas state with non-trivial array values", () => {
       const result = validateCanvasStateV1(validCanvasStateWithArrays);
       expect(result.isValid).toBe(true);
