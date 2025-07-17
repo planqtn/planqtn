@@ -1,4 +1,7 @@
-import { CanvasStateSerializer } from "./CanvasStateSerializer";
+import {
+  CanvasStateSerializer,
+  CompressedCanvasState
+} from "./CanvasStateSerializer";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { Connection } from "../../stores/connectionStore";
 import { LogicalPoint } from "../../types/coordinates";
@@ -759,6 +762,607 @@ describe("CanvasStateSerializer", () => {
       expect(result.selectedTensorNetworkParityCheckMatrixRows).toEqual({});
       expect(result.parityCheckMatrices).toEqual({});
       expect(result.weightEnumerators).toEqual({});
+    });
+  });
+
+  describe("compressed format serialization", () => {
+    it("should convert to compressed format", () => {
+      const mockStore = createMockCanvasStore({
+        title: "Compressed Test Canvas",
+        hideConnectedLegs: true,
+        hideIds: false,
+        hideTypeIds: true,
+        hideDanglingLegs: false,
+        hideLegLabels: true
+      });
+
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      expect(compressed).toHaveLength(6); // Basic required fields
+      expect(compressed[0]).toBe("Compressed Test Canvas"); // title
+      expect(compressed[1]).toHaveLength(1); // pieces array
+      expect(compressed[2]).toHaveLength(1); // connections array
+      expect(compressed[3]).toBe(21); // boolean flags (1 + 4 + 16 = 21)
+      expect(compressed[4]).toEqual([800, 600, 1, 0, 0]); // viewport
+      expect(compressed[5]).toHaveLength(1); // matrix table
+
+      // Check piece structure
+      const piece = compressed[1][0];
+      expect(piece[0]).toBe("h"); // type_id
+      expect(piece[1]).toBe("lego-1"); // instance_id
+      expect(piece[2]).toBe(100); // x
+      expect(piece[3]).toBe(200); // y
+      expect(piece[4]).toBe("pcm_0"); // matrix id
+
+      // Check connection structure
+      const connection = compressed[2][0];
+      expect(connection).toEqual(["lego-1", 0, "lego-2", 1]);
+
+      // Check matrix table
+      expect(compressed[5][0]).toEqual([
+        "pcm_0",
+        [
+          [1, 0],
+          [0, 1]
+        ]
+      ]);
+    });
+
+    it("should handle complex compressed state with optional fields", () => {
+      const lego = new DroppedLego(
+        {
+          type_id: "steane_code",
+          name: "Steane Code",
+          short_name: "[[7,1,3]]",
+          description: "CSS quantum error correcting code",
+          parity_check_matrix: [
+            [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [2, 3],
+          is_dynamic: true,
+          parameters: { threshold: 0.1 }
+        },
+        new LogicalPoint(150.123, 250.789),
+        "steane-1",
+        {
+          selectedMatrixRows: [0, 1],
+          highlightedLegConstraints: [
+            { legIndex: 0, operator: PauliOperator.X },
+            { legIndex: 1, operator: PauliOperator.Z }
+          ]
+        }
+      );
+
+      const mockStore = createMockCanvasStore({
+        droppedLegos: [lego],
+        connections: [],
+        parityCheckMatrices: {
+          "matrix-1": {
+            matrix: [
+              [1, 0, 1],
+              [0, 1, 1]
+            ],
+            legOrdering: [
+              { instance_id: "steane-1", leg_index: 0 },
+              { instance_id: "steane-1", leg_index: 1 }
+            ]
+          }
+        },
+        weightEnumerators: {
+          "enum-1": [
+            new WeightEnumerator({
+              taskId: "test-task",
+              polynomial: "1 + 7*x^3",
+              openLegs: [{ instance_id: "steane-1", leg_index: 0 }]
+            })
+          ]
+        }
+      });
+
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      expect(compressed).toHaveLength(8); // Has optional fields
+
+      // Check piece with all optional fields
+      const piece = compressed[1][0];
+      expect(piece[5]).toEqual([0, 1]); // logical_legs
+      expect(piece[6]).toEqual([2, 3]); // gauge_legs
+      expect(piece[7]).toBe("[[7,1,3]]"); // short_name
+      expect(piece[8]).toBe(true); // is_dynamic
+      expect(piece[9]).toEqual({ threshold: 0.1 }); // parameters
+      expect(piece[10]).toEqual([0, 1]); // selectedMatrixRows
+      expect(piece[11]).toEqual([
+        { legIndex: 0, operator: PauliOperator.X },
+        { legIndex: 1, operator: PauliOperator.Z }
+      ]); // highlightedLegConstraints
+
+      // Check rounded coordinates
+      expect(piece[2]).toBe(150.12); // x rounded to 2 decimals
+      expect(piece[3]).toBe(250.79); // y rounded to 2 decimals
+
+      // Check optional complex fields
+      expect(compressed[6]).toBeDefined(); // parityCheckMatrices
+      expect(compressed[7]).toBeDefined(); // weightEnumerators
+    });
+
+    it("should handle matrix deduplication in compressed format", () => {
+      const sharedMatrix = [
+        [1, 0, 1],
+        [0, 1, 1]
+      ];
+
+      const lego1 = new DroppedLego(
+        {
+          type_id: "lego_a",
+          name: "Lego A",
+          short_name: "A",
+          description: "First lego",
+          parity_check_matrix: sharedMatrix,
+          logical_legs: [0],
+          gauge_legs: [],
+          is_dynamic: false,
+          parameters: {}
+        },
+        new LogicalPoint(100, 200),
+        "lego-1"
+      );
+
+      const lego2 = new DroppedLego(
+        {
+          type_id: "lego_b",
+          name: "Lego B",
+          short_name: "B",
+          description: "Second lego",
+          parity_check_matrix: sharedMatrix, // Same matrix
+          logical_legs: [0],
+          gauge_legs: [],
+          is_dynamic: false,
+          parameters: {}
+        },
+        new LogicalPoint(300, 400),
+        "lego-2"
+      );
+
+      const mockStore = createMockCanvasStore({
+        droppedLegos: [lego1, lego2],
+        connections: []
+      });
+
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      // Should have only one matrix entry in the table
+      expect(compressed[5]).toHaveLength(1);
+      expect(compressed[5][0]).toEqual(["pcm_0", sharedMatrix]);
+
+      // Both pieces should reference the same matrix ID
+      expect(compressed[1][0][4]).toBe("pcm_0");
+      expect(compressed[1][1][4]).toBe("pcm_0");
+    });
+  });
+
+  describe("compressed format deserialization", () => {
+    it("should convert from compressed format to serializable state", () => {
+      const compressed: CompressedCanvasState = [
+        "Compressed Test", // title
+        [
+          // pieces
+          [
+            "h", // type_id
+            "lego-1", // instance_id
+            100, // x
+            200, // y
+            "pcm_0", // matrix_id
+            [0, 1], // logical_legs
+            [], // gauge_legs
+            "H" // short_name
+          ]
+        ],
+        [
+          // connections
+          ["lego-1", 0, "lego-2", 1]
+        ],
+        5, // boolean flags (hideConnectedLegs=true, hideIds=false, hideTypeIds=true)
+        [800, 600, 1.5, 50, -25], // viewport
+        [
+          [
+            "pcm_0",
+            [
+              [1, 0],
+              [0, 1]
+            ]
+          ]
+        ] // matrix table
+      ];
+
+      const result = serializer.fromCompressedCanvasState(compressed);
+
+      expect(result.title).toBe("Compressed Test");
+      expect(result.pieces).toHaveLength(1);
+      expect(result.connections).toHaveLength(1);
+      expect(result.hideConnectedLegs).toBe(true);
+      expect(result.hideIds).toBe(false);
+      expect(result.hideTypeIds).toBe(true);
+      expect(result.hideDanglingLegs).toBe(false);
+      expect(result.hideLegLabels).toBe(false);
+
+      // Check piece
+      const piece = result.pieces[0];
+      expect(piece.id).toBe("h");
+      expect(piece.instance_id).toBe("lego-1");
+      expect(piece.x).toBe(100);
+      expect(piece.y).toBe(200);
+      expect(piece.parity_check_matrix).toEqual([
+        [1, 0],
+        [0, 1]
+      ]);
+      expect(piece.logical_legs).toEqual([0, 1]);
+      expect(piece.gauge_legs).toEqual([]);
+      expect(piece.short_name).toBe("H");
+      expect(piece.is_dynamic).toBe(false);
+      expect(piece.parameters).toEqual({});
+
+      // Check connection
+      expect(result.connections[0].from.legoId).toBe("lego-1");
+      expect(result.connections[0].from.leg_index).toBe(0);
+      expect(result.connections[0].to.legoId).toBe("lego-2");
+      expect(result.connections[0].to.leg_index).toBe(1);
+
+      // Check viewport
+      expect(result.viewport.screenWidth).toBe(800);
+      expect(result.viewport.screenHeight).toBe(600);
+      expect(result.viewport.zoomLevel).toBe(1.5);
+      expect(result.viewport.logicalPanOffset.x).toBe(50);
+      expect(result.viewport.logicalPanOffset.y).toBe(-25);
+    });
+
+    it("should handle compressed format with all optional fields", () => {
+      const compressed: CompressedCanvasState = [
+        "Complex Compressed", // title
+        [
+          // pieces
+          [
+            "steane_code", // type_id
+            "steane-1", // instance_id
+            150, // x
+            250, // y
+            "pcm_0", // matrix_id
+            [0, 1], // logical_legs
+            [2, 3], // gauge_legs
+            "[[7,1,3]]", // short_name
+            true, // is_dynamic
+            { threshold: 0.1 }, // parameters
+            [0, 1], // selectedMatrixRows
+            [{ legIndex: 0, operator: PauliOperator.X }] // highlightedLegConstraints
+          ]
+        ],
+        [], // connections
+        31, // all boolean flags true (1+2+4+8+16)
+        [1200, 800, 2.0, 100, 50], // viewport
+        [
+          [
+            "pcm_0",
+            [
+              [1, 0, 1],
+              [0, 1, 1]
+            ]
+          ]
+        ], // matrix table
+        [
+          // parityCheckMatrices
+          [
+            "matrix-1",
+            {
+              matrix: [
+                [1, 0],
+                [0, 1]
+              ],
+              legOrdering: [{ instance_id: "steane-1", leg_index: 0 }]
+            }
+          ]
+        ],
+        [
+          // weightEnumerators
+          [
+            "enum-1",
+            [
+              new WeightEnumerator({
+                taskId: "test-task",
+                polynomial: "1 + x^2",
+                openLegs: [{ instance_id: "steane-1", leg_index: 0 }]
+              })
+            ]
+          ]
+        ]
+      ];
+
+      const result = serializer.fromCompressedCanvasState(compressed);
+
+      expect(result.title).toBe("Complex Compressed");
+      expect(result.hideConnectedLegs).toBe(true);
+      expect(result.hideIds).toBe(true);
+      expect(result.hideTypeIds).toBe(true);
+      expect(result.hideDanglingLegs).toBe(true);
+      expect(result.hideLegLabels).toBe(true);
+
+      // Check piece with all optional fields
+      const piece = result.pieces[0];
+      expect(piece.is_dynamic).toBe(true);
+      expect(piece.parameters).toEqual({ threshold: 0.1 });
+      expect(piece.selectedMatrixRows).toEqual([0, 1]);
+      expect(piece.highlightedLegConstraints).toEqual([
+        { legIndex: 0, operator: PauliOperator.X }
+      ]);
+
+      // Check optional complex fields
+      expect(result.parityCheckMatrices).toHaveLength(1);
+      expect(result.weightEnumerators).toHaveLength(1);
+    });
+
+    it("should handle minimal compressed format", () => {
+      const compressed: CompressedCanvasState = [
+        "", // empty title
+        [], // no pieces
+        [], // no connections
+        0, // no boolean flags
+        [800, 600, 1, 0, 0], // default viewport
+        [] // no matrices
+      ];
+
+      const result = serializer.fromCompressedCanvasState(compressed);
+
+      expect(result.title).toBe("");
+      expect(result.pieces).toHaveLength(0);
+      expect(result.connections).toHaveLength(0);
+      expect(result.hideConnectedLegs).toBe(false);
+      expect(result.hideIds).toBe(false);
+      expect(result.hideTypeIds).toBe(false);
+      expect(result.hideDanglingLegs).toBe(false);
+      expect(result.hideLegLabels).toBe(false);
+      expect(result.parityCheckMatrices).toHaveLength(0);
+      expect(result.weightEnumerators).toHaveLength(0);
+    });
+  });
+
+  describe("URL compression", () => {
+    it("should encode and decode compressed state for URL", () => {
+      const mockStore = createMockCanvasStore({
+        title: "URL Test Canvas"
+      });
+
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+      const encoded = serializer.encodeCompressedForUrl(compressed);
+      const decoded = serializer.decodeCompressedFromUrl(encoded);
+
+      // Should be able to round-trip (with some type normalization)
+      expect(decoded[0]).toBe("URL Test Canvas"); // title preserved
+      expect(decoded[1]).toHaveLength(1); // pieces array preserved
+      expect(decoded[2]).toHaveLength(1); // connections array preserved
+      // Note: Some undefined values may become null during JSON serialization
+    });
+
+    it("should handle complex state in URL compression", () => {
+      const lego = new DroppedLego(
+        {
+          type_id: "complex_lego",
+          name: "Complex Lego",
+          short_name: "COMPLEX",
+          description: "A complex lego for URL testing",
+          parity_check_matrix: [
+            [1, 1, 0, 1, 0],
+            [0, 1, 1, 0, 1],
+            [1, 0, 1, 1, 0]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [2, 3, 4],
+          is_dynamic: true,
+          parameters: {
+            threshold: 0.05,
+            iterations: 100,
+            method: "advanced"
+          }
+        },
+        new LogicalPoint(123.456, 789.012),
+        "complex-1",
+        {
+          selectedMatrixRows: [0, 2],
+          highlightedLegConstraints: [
+            { legIndex: 0, operator: PauliOperator.X },
+            { legIndex: 1, operator: PauliOperator.Y },
+            { legIndex: 2, operator: PauliOperator.Z }
+          ]
+        }
+      );
+
+      const mockStore = createMockCanvasStore({
+        droppedLegos: [lego],
+        title: "Complex URL Test",
+        hideConnectedLegs: true,
+        hideIds: true,
+        hideTypeIds: false,
+        hideDanglingLegs: true,
+        hideLegLabels: false,
+        parityCheckMatrices: {
+          "complex-matrix": {
+            matrix: [
+              [1, 0, 1, 0, 1],
+              [0, 1, 0, 1, 0]
+            ],
+            legOrdering: [
+              { instance_id: "complex-1", leg_index: 0 },
+              { instance_id: "complex-1", leg_index: 1 },
+              { instance_id: "complex-1", leg_index: 2 },
+              { instance_id: "complex-1", leg_index: 3 },
+              { instance_id: "complex-1", leg_index: 4 }
+            ]
+          }
+        }
+      });
+
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+      const encoded = serializer.encodeCompressedForUrl(compressed);
+      const decoded = serializer.decodeCompressedFromUrl(encoded);
+
+      expect(decoded).toEqual(compressed);
+
+      // Verify the encoded string is reasonably compact and URL-safe
+      expect(encoded).toMatch(/^[A-Za-z0-9\-_.!~*'()+/]*$/); // URL-safe characters (LZ-String base64-like)
+      expect(encoded.length).toBeLessThan(JSON.stringify(compressed).length); // Should be compressed
+    });
+
+    it("should throw error on invalid compressed URL data", () => {
+      expect(() => {
+        serializer.decodeCompressedFromUrl("invalid-compressed-data");
+      }).toThrow("Failed to decompress canvas state from URL");
+    });
+
+    it("should handle empty compressed state in URL format", () => {
+      const minimal: CompressedCanvasState = [
+        "",
+        [],
+        [],
+        0,
+        [800, 600, 1, 0, 0],
+        []
+      ];
+
+      const encoded = serializer.encodeCompressedForUrl(minimal);
+      const decoded = serializer.decodeCompressedFromUrl(encoded);
+
+      expect(decoded).toEqual(minimal);
+    });
+  });
+
+  describe("compressed format round-trip", () => {
+    it("should maintain state consistency through compress -> decompress cycle", () => {
+      // Create a comprehensive mock store
+      const lego1 = new DroppedLego(
+        {
+          type_id: "hadamard",
+          name: "Hadamard Gate",
+          short_name: "H",
+          description: "Hadamard gate",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [],
+          is_dynamic: false,
+          parameters: {}
+        },
+        new LogicalPoint(100, 200),
+        "h-1"
+      );
+
+      const lego2 = new DroppedLego(
+        {
+          type_id: "steane_code",
+          name: "Steane Code",
+          short_name: "[[7,1,3]]",
+          description: "CSS quantum error correcting code",
+          parity_check_matrix: [
+            [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [2, 3],
+          is_dynamic: true,
+          parameters: { threshold: 0.1 }
+        },
+        new LogicalPoint(300, 400),
+        "steane-1",
+        {
+          selectedMatrixRows: [0],
+          highlightedLegConstraints: [
+            { legIndex: 0, operator: PauliOperator.Z }
+          ]
+        }
+      );
+
+      const connection = new Connection(
+        { legoId: "h-1", leg_index: 1 },
+        { legoId: "steane-1", leg_index: 0 }
+      );
+
+      const mockStore = createMockCanvasStore({
+        droppedLegos: [lego1, lego2],
+        connections: [connection],
+        title: "Round Trip Compressed Test",
+        hideConnectedLegs: false,
+        hideIds: true,
+        hideTypeIds: false,
+        hideDanglingLegs: true,
+        hideLegLabels: false
+      });
+
+      // Compress
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      // Decompress
+      const decompressed = serializer.fromCompressedCanvasState(compressed);
+
+      // Verify key properties are preserved
+      expect(decompressed.title).toBe("Round Trip Compressed Test");
+      expect(decompressed.pieces).toHaveLength(2);
+      expect(decompressed.connections).toHaveLength(1);
+      expect(decompressed.hideConnectedLegs).toBe(false);
+      expect(decompressed.hideIds).toBe(true);
+      expect(decompressed.hideTypeIds).toBe(false);
+      expect(decompressed.hideDanglingLegs).toBe(true);
+      expect(decompressed.hideLegLabels).toBe(false);
+
+      // Check piece preservation
+      const hadamardPiece = decompressed.pieces.find(
+        (p) => p.id === "hadamard"
+      );
+      const steanePiece = decompressed.pieces.find(
+        (p) => p.id === "steane_code"
+      );
+
+      expect(hadamardPiece).toBeDefined();
+      expect(hadamardPiece!.instance_id).toBe("h-1");
+      expect(hadamardPiece!.x).toBe(100);
+      expect(hadamardPiece!.y).toBe(200);
+      expect(hadamardPiece!.is_dynamic).toBe(false);
+
+      expect(steanePiece).toBeDefined();
+      expect(steanePiece!.instance_id).toBe("steane-1");
+      expect(steanePiece!.x).toBe(300);
+      expect(steanePiece!.y).toBe(400);
+      expect(steanePiece!.is_dynamic).toBe(true);
+      expect(steanePiece!.parameters).toEqual({ threshold: 0.1 });
+      expect(steanePiece!.selectedMatrixRows).toEqual([0]);
+      expect(steanePiece!.highlightedLegConstraints).toEqual([
+        { legIndex: 0, operator: PauliOperator.Z }
+      ]);
+
+      // Check connection preservation
+      expect(decompressed.connections[0].from.legoId).toBe("h-1");
+      expect(decompressed.connections[0].from.leg_index).toBe(1);
+      expect(decompressed.connections[0].to.legoId).toBe("steane-1");
+      expect(decompressed.connections[0].to.leg_index).toBe(0);
+    });
+
+    it("should handle full compression pipeline: store -> compressed -> URL -> compressed -> store", async () => {
+      const mockStore = createMockCanvasStore({
+        title: "Full Pipeline Test"
+      });
+
+      // Full pipeline
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+      const urlEncoded = serializer.encodeCompressedForUrl(compressed);
+      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
+      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+      const rehydrated = await serializer.rehydrate(JSON.stringify(finalState));
+
+      // Verify end-to-end preservation
+      expect(rehydrated.title).toBe("Full Pipeline Test");
+      expect(rehydrated.droppedLegos).toHaveLength(1);
+      expect(rehydrated.droppedLegos[0].type_id).toBe("h");
+      expect(rehydrated.droppedLegos[0].instance_id).toBe("lego-1");
+      expect(rehydrated.connections).toHaveLength(1);
     });
   });
 });
