@@ -20,6 +20,12 @@ export interface ModalState {
   // Runtime config dialog
   runtimeConfigDialog: boolean;
 
+  // Share dialog
+  shareDialog: boolean;
+
+  // Import canvas dialog
+  importCanvasDialog: boolean;
+
   // Other modals can be added here later
   dynamicLegoDialog: boolean;
   weightEnumeratorDialog: boolean;
@@ -91,6 +97,14 @@ interface ModalStore extends ModalState {
   ) => void;
   closeRuntimeConfigDialog: () => void;
 
+  // Share dialog actions
+  openShareDialog: () => void;
+  closeShareDialog: () => void;
+
+  // Import canvas dialog actions
+  openImportCanvasDialog: () => void;
+  closeImportCanvasDialog: () => void;
+
   // Weight enumerator dialog actions
   openWeightEnumeratorDialog: (
     subNetwork: TensorNetwork,
@@ -113,6 +127,8 @@ const initialState: ModalState = {
   dynamicLegoDialog: false,
   authDialog: false,
   runtimeConfigDialog: false,
+  shareDialog: false,
+  importCanvasDialog: false,
   weightEnumeratorDialog: false,
   pythonCodeModal: false
 };
@@ -205,6 +221,14 @@ export const useModalStore = create<ModalStore>((set) => ({
       runtimeConfigDialog: false,
       runtimeConfigState: { isLocal: false, initialConfig: undefined }
     }),
+
+  // Share dialog actions
+  openShareDialog: () => set({ shareDialog: true }),
+  closeShareDialog: () => set({ shareDialog: false }),
+
+  // Import canvas dialog actions
+  openImportCanvasDialog: () => set({ importCanvasDialog: true }),
+  closeImportCanvasDialog: () => set({ importCanvasDialog: false }),
 
   // Weight enumerator dialog actions
   openWeightEnumeratorDialog: (

@@ -1,6 +1,7 @@
 import { StateCreator } from "zustand";
 import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
-import { CanvasStore } from "./canvasStateStore";
+import { CanvasStore, getCanvasIdFromUrl } from "./canvasStateStore";
+import * as LZString from "lz-string";
 
 export interface EncodedCanvasStateSlice {
   canvasStateSerializer: CanvasStateSerializer;
@@ -30,7 +31,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
   [],
   EncodedCanvasStateSlice
 > = (set, get) => ({
-  canvasStateSerializer: new CanvasStateSerializer(),
+  canvasStateSerializer: new CanvasStateSerializer(getCanvasIdFromUrl()),
   getCanvasId: () => get().canvasStateSerializer.getCanvasId(),
   encodedCanvasState: "",
   title: "",
@@ -40,7 +41,28 @@ export const createEncodedCanvasStateSlice: StateCreator<
   hideDanglingLegs: false,
   hideLegLabels: false,
   decodeCanvasState: async (encoded: string) => {
-    get().rehydrateCanvasState(atob(encoded));
+    try {
+      // Try to decode as lz-string compressed format first (new format)
+      const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
+      if (decompressed) {
+        get().rehydrateCanvasState(decompressed);
+        return;
+      }
+    } catch (error) {
+      console.log(
+        "Failed to decode as lz-string, trying legacy base64 format",
+        error
+      );
+    }
+
+    try {
+      // Fall back to legacy base64 format for backward compatibility
+      const decoded = atob(encoded);
+      get().rehydrateCanvasState(decoded);
+    } catch (error) {
+      console.error("Failed to decode canvas state:", error);
+      throw new Error("Invalid canvas state format");
+    }
   },
 
   rehydrateCanvasState: async (jsonString: string) => {
@@ -91,7 +113,9 @@ export const createEncodedCanvasStateSlice: StateCreator<
   getEncodedCanvasState: () => {
     const serialized =
       get().canvasStateSerializer.toSerializableCanvasState(get());
-    return btoa(JSON.stringify(serialized));
+    const jsonString = JSON.stringify(serialized);
+    // Use lz-string compression for better compression ratio
+    return LZString.compressToEncodedURIComponent(jsonString);
   },
 
   setTitle: (title: string) => {

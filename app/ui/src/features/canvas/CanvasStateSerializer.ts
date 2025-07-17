@@ -81,11 +81,11 @@ export interface SerializableCanvasState {
 }
 
 export class CanvasStateSerializer {
-  private canvasId: string;
+  public canvasId: string;
 
-  constructor() {
+  constructor(canvasId?: string) {
     // Generate a unique canvas ID if not already set
-    this.canvasId = this.generateCanvasId();
+    this.canvasId = canvasId || this.generateCanvasId();
   }
 
   private generateCanvasId(): string {

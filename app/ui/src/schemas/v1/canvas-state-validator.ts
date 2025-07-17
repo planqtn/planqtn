@@ -1,5 +1,7 @@
 import Ajv from "ajv";
-import canvasStateSchema from "./canvas-state.json";
+import * as LZString from "lz-string";
+
+import canvasStateSchemaV1 from "./canvas-state.json";
 import { validateLegacyCanvasState } from "../legacy/canvas-state-validator";
 
 // Initialize Ajv validator
@@ -9,7 +11,7 @@ const ajv = new Ajv({
 });
 
 // Add the schema to Ajv
-const validateCanvasState = ajv.compile(canvasStateSchema);
+const validateCanvasState = ajv.compile(canvasStateSchemaV1);
 
 export interface CanvasStateValidationResult {
   isValid: boolean;
@@ -84,20 +86,37 @@ export function validateCanvasStateString(
 }
 
 /**
- * Validates a base64 encoded canvas state string with fallback to legacy schema
- * @param encodedState - Base64 encoded canvas state string
+ * Validates an encoded canvas state string with fallback to legacy schema
+ * Supports both lz-string compressed and base64 encoded formats
+ * @param encodedState - Encoded canvas state string (lz-string or base64)
  * @returns Validation result with success status and any errors
  */
 export function validateEncodedCanvasState(
   encodedState: string
 ): CanvasStateValidationResult {
   try {
-    return validateCanvasStateString(atob(encodedState));
+    // Try to decode as lz-string compressed format first (new format)
+    const decompressed =
+      LZString.decompressFromEncodedURIComponent(encodedState);
+    if (decompressed) {
+      return validateCanvasStateString(decompressed);
+    }
+  } catch (error) {
+    console.log(
+      "Failed to validate as lz-string, trying legacy base64 format",
+      error
+    );
+  }
+
+  try {
+    // Fall back to legacy base64 format for backward compatibility
+    const decoded = atob(encodedState);
+    return validateCanvasStateString(decoded);
   } catch (error) {
     return {
       isValid: false,
       errors: [
-        `Failed to validate base64 encoded canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to validate encoded canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
       ]
     };
   }

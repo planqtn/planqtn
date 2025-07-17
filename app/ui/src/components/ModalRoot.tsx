@@ -6,6 +6,8 @@ import LoadingModal from "./LoadingModal";
 import AuthDialog from "../features/auth/AuthDialog";
 import { RuntimeConfigDialog } from "../features/kernel/RuntimeConfigDialog";
 import WeightEnumeratorCalculationDialog from "../features/weight-enumerator/WeightEnumeratorCalculationDialog";
+import { ShareModal } from "../features/sharing/ShareModal";
+import { ImportCanvasModal } from "../features/canvas/ImportCanvasModal";
 import { NetworkService } from "../lib/networkService";
 import { CustomLegoService } from "../features/lego/customLegoService";
 import { RuntimeConfigService } from "../features/kernel/runtimeConfigService";
@@ -32,6 +34,8 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     customLegoDialog,
     authDialog,
     runtimeConfigDialog,
+    shareDialog,
+    importCanvasDialog,
     weightEnumeratorDialog,
     loadingState,
     customLegoState,
@@ -44,6 +48,8 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     closeCustomLegoDialog,
     closeAuthDialog,
     closeRuntimeConfigDialog,
+    closeShareDialog,
+    closeImportCanvasDialog,
     closeWeightEnumeratorDialog
   } = useModalStore();
 
@@ -228,6 +234,19 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onSubmit={handleRuntimeConfigSubmit}
           isLocal={runtimeConfigState.isLocal}
           initialConfig={runtimeConfigState.initialConfig}
+        />
+      )}
+
+      {/* Share Dialog */}
+      {shareDialog && (
+        <ShareModal isOpen={shareDialog} onClose={closeShareDialog} />
+      )}
+
+      {/* Import Canvas Dialog */}
+      {importCanvasDialog && (
+        <ImportCanvasModal
+          isOpen={importCanvasDialog}
+          onClose={closeImportCanvasDialog}
         />
       )}
 

@@ -41,12 +41,12 @@ import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
 import { persist } from "zustand/middleware";
 
 // Helper function to get canvasId from URL
-const getCanvasIdFromUrl = (): string => {
+export const getCanvasIdFromUrl = (): string => {
   const params = new URLSearchParams(window.location.search);
   const canvasId = params.get("canvasId");
   if (!canvasId) {
     // Generate a new canvasId if none exists (fallback)
-    const newCanvasId = `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newCanvasId = crypto.randomUUID();
     const newParams = new URLSearchParams(params);
     newParams.set("canvasId", newCanvasId);
     // Update URL with the new canvasId
@@ -161,9 +161,20 @@ export const useCanvasStore = create<CanvasStore>()(
         if (!state) return;
 
         // Use the CanvasStateSerializer to properly decode the state
-        const serializer =
-          state.canvasStateSerializer || new CanvasStateSerializer();
+        const canvasId = getCanvasIdFromUrl();
 
+        // Create a new serializer with the canvasId from URL
+        const serializer = new CanvasStateSerializer(canvasId);
+
+        console.log(
+          "canvasId from url",
+          canvasId,
+          "from serializer",
+          serializer.canvasId,
+
+          "state.getCanvasId()",
+          state.getCanvasId()
+        );
         try {
           // The state here is the serialized canvas state from partialize
           const jsonStateString =
