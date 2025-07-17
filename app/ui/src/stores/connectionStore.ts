@@ -67,7 +67,6 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
-    get().updateEncodedCanvasState();
   },
 
   addConnections: (newConnections) => {
@@ -83,7 +82,6 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
-    get().updateEncodedCanvasState();
   },
 
   removeConnections: (connectionsToRemove) => {
@@ -101,7 +99,6 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
-    get().updateEncodedCanvasState();
   },
 
   isLegConnected: (legoId, leg_index) => {

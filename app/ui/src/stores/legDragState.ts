@@ -13,6 +13,7 @@ export interface LegDragState {
 export interface LegDragStateSlice {
   legDragState: LegDragState | null;
   setLegDragState: (legDragState: LegDragState | null) => void;
+  clearLegDragState: () => void;
 }
 
 export const useLegDragStateStore: StateCreator<
@@ -26,6 +27,11 @@ export const useLegDragStateStore: StateCreator<
   setLegDragState: (legDragState: LegDragState | null) => {
     set({
       legDragState: legDragState
+    });
+  },
+  clearLegDragState: () => {
+    set({
+      legDragState: null
     });
   }
 });

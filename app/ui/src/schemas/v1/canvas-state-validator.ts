@@ -1,6 +1,8 @@
 import Ajv from "ajv";
-import canvasStateSchema from "./canvas-state.json";
-import { validateEncodedLegacyCanvasState } from "../legacy/canvas-state-validator";
+import * as LZString from "lz-string";
+
+import canvasStateSchemaV1 from "./canvas-state.json";
+import { validateLegacyCanvasState } from "../legacy/canvas-state-validator";
 
 // Initialize Ajv validator
 const ajv = new Ajv({
@@ -9,7 +11,7 @@ const ajv = new Ajv({
 });
 
 // Add the schema to Ajv
-const validateCanvasState = ajv.compile(canvasStateSchema);
+const validateCanvasState = ajv.compile(canvasStateSchemaV1);
 
 export interface CanvasStateValidationResult {
   isValid: boolean;
@@ -43,24 +45,25 @@ export function validateCanvasStateV1(
 }
 
 /**
- * Validates a base64 encoded canvas state string with fallback to legacy schema
- * @param encodedState - Base64 encoded canvas state string
+ * Validates a JSON canvas state string with fallback to legacy schema
+ * @param canvasStateString - JSON canvas state string
  * @returns Validation result with success status and any errors
  */
-export function validateEncodedCanvasState(
-  encodedState: string
+export function validateCanvasStateString(
+  canvasStateString: string
 ): CanvasStateValidationResult {
   try {
-    const decoded = JSON.parse(atob(encodedState));
+    const parsedCanvasStateObj = JSON.parse(canvasStateString);
 
     // First try v1 schema validation
-    const v1Result = validateCanvasStateV1(decoded);
+    const v1Result = validateCanvasStateV1(parsedCanvasStateObj);
     if (v1Result.isValid) {
       return v1Result;
     }
+    console.log("v1 failed...", v1Result);
 
     // If v1 validation fails, try legacy schema validation
-    const legacyResult = validateEncodedLegacyCanvasState(encodedState);
+    const legacyResult = validateLegacyCanvasState(parsedCanvasStateObj);
     if (legacyResult.isValid) {
       console.warn(
         "Canvas state validated against legacy schema. Consider updating to v1 format."
@@ -68,13 +71,52 @@ export function validateEncodedCanvasState(
       return { isValid: true };
     }
 
+    console.log("legacy failed...", legacyResult);
+
     // If both fail, return the v1 errors
     return v1Result;
   } catch (error) {
     return {
       isValid: false,
       errors: [
-        `Failed to decode base64 string: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to validate canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
+      ]
+    };
+  }
+}
+
+/**
+ * Validates an encoded canvas state string with fallback to legacy schema
+ * Supports both lz-string compressed and base64 encoded formats
+ * @param encodedState - Encoded canvas state string (lz-string or base64)
+ * @returns Validation result with success status and any errors
+ */
+export function validateEncodedCanvasState(
+  encodedState: string
+): CanvasStateValidationResult {
+  try {
+    // Try to decode as lz-string compressed format first (new format)
+    const decompressed =
+      LZString.decompressFromEncodedURIComponent(encodedState);
+    if (decompressed) {
+      return validateCanvasStateString(decompressed);
+    }
+  } catch (error) {
+    console.log(
+      "Failed to validate as lz-string, trying legacy base64 format",
+      error
+    );
+  }
+
+  try {
+    // Fall back to legacy base64 format for backward compatibility
+    const decoded = atob(encodedState);
+    return validateCanvasStateString(decoded);
+  } catch (error) {
+    return {
+      isValid: false,
+      errors: [
+        `Failed to validate encoded canvas state string: ${error instanceof Error ? error.message : "Unknown error"}`
       ]
     };
   }

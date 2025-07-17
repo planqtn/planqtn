@@ -21,6 +21,7 @@ export interface LegoDragStateSlice {
   setLegoDragState: (dragState: LegoDragState) => void;
   resetLegoDragState: (justFinished?: boolean) => void;
   isDraggedLego: (legoInstanceId: string) => boolean;
+  clearLegoDragState: () => void;
 }
 
 const initialLegoDragState: LegoDragState = {
@@ -37,6 +38,11 @@ export const createLegoDragStateSlice: StateCreator<
   LegoDragStateSlice
 > = (set, get) => ({
   legoDragState: initialLegoDragState,
+  clearLegoDragState: () => {
+    set({
+      legoDragState: initialLegoDragState
+    });
+  },
 
   setLegoDragState: (dragState: LegoDragState) => {
     set((state) => {

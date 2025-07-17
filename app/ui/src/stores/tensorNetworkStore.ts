@@ -34,7 +34,11 @@ export class WeightEnumerator {
     return (
       this.truncateLength === other.truncateLength &&
       this.openLegs.length === other.openLegs.length &&
-      this.openLegs.every((leg) => other.openLegs.includes(leg))
+      this.openLegs.every(
+        (leg, i) =>
+          leg.instance_id === other.openLegs[i].instance_id &&
+          leg.leg_index === other.openLegs[i].leg_index
+      )
     );
   }
 
@@ -138,9 +142,15 @@ export const useTensorNetworkSlice: StateCreator<
     );
   },
   deleteWeightEnumerator: (networkSignature: string, taskId: string) => {
-    get().weightEnumerators[networkSignature]?.filter(
-      (enumerator) => enumerator.taskId !== taskId
-    );
+    set((state) => {
+      const arr = state.weightEnumerators[networkSignature];
+      if (arr) {
+        state.weightEnumerators[networkSignature] = arr.filter(
+          (enumerator) => enumerator.taskId !== taskId
+        );
+      }
+      return state;
+    });
   },
 
   getLegoHighlightedLegConstraints: (leg: DroppedLego) => {
@@ -174,7 +184,7 @@ export const useTensorNetworkSlice: StateCreator<
       const index = weightEnumerators?.findIndex(
         (enumerator) => enumerator.taskId === taskId
       );
-      if (weightEnumerators && index !== undefined) {
+      if (weightEnumerators && index !== undefined && index !== -1) {
         weightEnumerators[index] = weightEnumerator;
       } else if (weightEnumerators) {
         weightEnumerators.push(weightEnumerator);

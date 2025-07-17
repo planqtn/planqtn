@@ -3,6 +3,8 @@ import {
   Editable,
   EditableInput,
   EditablePreview,
+  Icon,
+  Tooltip,
   useColorModeValue,
   useToast,
   VStack
@@ -29,7 +31,6 @@ import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
 import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { randomPlankterName } from "./lib/RandomPlankterNames";
-import { useLocation, useNavigate } from "react-router-dom";
 import { UserMenu } from "./features/auth/UserMenu.tsx";
 
 import { userContextSupabase } from "./config/supabaseClient.ts";
@@ -49,6 +50,7 @@ import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
+import { FiShare2 } from "react-icons/fi";
 import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
@@ -93,14 +95,56 @@ const LeftPanel = memo<{
 LeftPanel.displayName = "LeftPanel";
 
 const LegoStudioView: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [fatalError, setFatalError] = useState<Error | null>(null);
   const [canvasSvgRef, setCanvasSvgRef] = useState<SVGSVGElement | null>(null);
 
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
+
+  // Cleanup function to remove old canvas states
+  const cleanupOldCanvasStates = useCallback(async () => {
+    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+    try {
+      // Find all canvas state keys
+      const keysToCheck = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("canvas-state-")) {
+          keysToCheck.push(key);
+        }
+      }
+
+      // Check each key and remove if older than a month
+      for (const key of keysToCheck) {
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+
+            // Check if it has a timestamp and if it's old
+            if (parsed.state && parsed.state._timestamp) {
+              if (parsed.state._timestamp < oneMonthAgo) {
+                localStorage.removeItem(key);
+                console.log(`Removed old canvas state: ${key}`);
+              }
+            } else {
+              // Remove states without timestamp (old format)
+              localStorage.removeItem(key);
+              console.log(`Removed canvas state without timestamp: ${key}`);
+            }
+          }
+        } catch {
+          // If we can't parse the stored data, remove it
+          localStorage.removeItem(key);
+          console.log(`Removed corrupted canvas state: ${key}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error during canvas state cleanup:", error);
+    }
+  }, []);
 
   const decodeCanvasState = useCanvasStore((state) => state.decodeCanvasState);
   const handleDynamicLegoSubmit = useCanvasStore(
@@ -141,6 +185,8 @@ const LegoStudioView: React.FC = () => {
     (state) => state.setPendingDropPosition
   );
   const setError = useCanvasStore((state) => state.setError);
+  const title = useCanvasStore((state) => state.title);
+  const setTitle = useCanvasStore((state) => state.setTitle);
 
   const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
@@ -159,7 +205,8 @@ const LegoStudioView: React.FC = () => {
     closeLoadingModal,
     openAuthDialog,
     openRuntimeConfigDialog,
-    openWeightEnumeratorDialog
+    openWeightEnumeratorDialog,
+    openShareDialog
   } = useModalStore();
 
   const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
@@ -189,51 +236,40 @@ const LegoStudioView: React.FC = () => {
   // Inside the App component, add this line near the other hooks
   const toast = useToast();
 
-  // Add title effect at the top
+  // Initialize title from store or set a default
   useEffect(() => {
-    console.log("location/navigate changed", location);
-    const params = new URLSearchParams(location.search);
-    let title = params.get("title");
-
     if (!title) {
-      // Generate a new random title if none exists
-      title = `PlanqTN - ${randomPlankterName()}`;
-      // Update URL with the new title
-      const newParams = new URLSearchParams(params);
-      newParams.set("title", title);
-      navigate(`${location.pathname}?${newParams.toString()}${location.hash}`, {
-        replace: true
-      });
-    }
-
-    document.title = title;
-    setCurrentTitle(title);
-  }, [location, navigate]);
-
-  const handleTitleChange = (newTitle: string) => {
-    if (newTitle.trim()) {
-      const params = new URLSearchParams(location.search);
-      params.set("title", newTitle);
-      navigate(`${location.pathname}?${params.toString()}${location.hash}`, {
-        replace: true
-      });
+      // Generate a new random title if none exists in store
+      const newTitle = `PlanqTN - ${randomPlankterName()}`;
+      setTitle(newTitle);
       document.title = newTitle;
       setCurrentTitle(newTitle);
+    } else {
+      document.title = title;
+      setCurrentTitle(title);
     }
-  };
+  }, [title, setTitle]);
 
-  // Add a new effect to handle initial URL state
+  // Cleanup old canvas states on component mount
   useEffect(() => {
-    console.log("decodeCanvasState changed", decodeCanvasState);
+    cleanupOldCanvasStates();
+  }, [cleanupOldCanvasStates]);
+
+  // Handle URL state decoding for sharing feature
+  useEffect(() => {
     const handleHashChange = async () => {
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const stateParam = hashParams.get("state");
       if (stateParam) {
         try {
           await decodeCanvasState(stateParam);
+          // Clear the state parameter from URL after successful decoding
+          // so it gets persisted normally and doesn't stay in the URL
+          hashParams.delete("state");
+          const newHash = hashParams.toString();
+          const newUrl = `${window.location.pathname}${window.location.search}${newHash ? `#${newHash}` : ""}`;
+          window.history.replaceState(null, "", newUrl);
         } catch (error) {
-          // Clear the invalid state from the URL
-          // window.history.replaceState(null, '', window.location.pathname + window.location.search)
           // Ensure error is an Error object
           setFatalError(
             error instanceof Error ? error : new Error(String(error))
@@ -251,6 +287,14 @@ const LegoStudioView: React.FC = () => {
     // Cleanup
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [decodeCanvasState]);
+
+  const handleTitleChange = (newTitle: string) => {
+    if (newTitle.trim()) {
+      setTitle(newTitle);
+      document.title = newTitle;
+      setCurrentTitle(newTitle);
+    }
+  };
 
   useEffect(() => {
     if (!userContextSupabase) {
@@ -564,6 +608,27 @@ const LegoStudioView: React.FC = () => {
                     display="flex"
                     gap={2}
                   >
+                    {/* Share button */}
+                    <Tooltip label="Share canvas" placement="bottom">
+                      <Box
+                        bg="transparent"
+                        borderRadius="md"
+                        px={2}
+                        py={2}
+                        opacity={0.8}
+                        _hover={{
+                          opacity: 1,
+                          bg: useColorModeValue("gray.100", "gray.700")
+                        }}
+                        transition="opacity 0.2s"
+                        cursor="pointer"
+                        onClick={openShareDialog}
+                        alignItems="center"
+                        display="flex"
+                      >
+                        <Icon as={FiShare2} boxSize={5} />
+                      </Box>
+                    </Tooltip>
                     {/* User menu */}
                     <Box
                       bg="transparent"

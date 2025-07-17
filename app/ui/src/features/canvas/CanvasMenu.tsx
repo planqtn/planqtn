@@ -13,9 +13,10 @@ import {
   HStack,
   Text
 } from "@chakra-ui/react";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical, FiUpload } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { useModalStore } from "../../stores/modalStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
 import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
@@ -69,6 +70,9 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
   const setHideDanglingLegs = useCanvasStore(
     (state) => state.setHideDanglingLegs
   );
+
+  const { openImportCanvasDialog } = useModalStore();
+
   return (
     <Box
       position="absolute"
@@ -88,6 +92,13 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
             </MenuButton>
             {isOpen && (
               <MenuList>
+                <MenuItem
+                  onClick={openImportCanvasDialog}
+                  icon={<Icon as={FiUpload} />}
+                >
+                  New from JSON file...
+                </MenuItem>
+                <MenuDivider />
                 <MenuItem
                   onClick={() => {
                     const tensorNetwork =

@@ -2,6 +2,7 @@ import { create, StateCreator } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { createLegoSlice, DroppedLegosSlice } from "./droppedLegoStore";
 import { ConnectionSlice, createConnectionsSlice } from "./connectionStore";
+import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
 import {
   createEncodedCanvasStateSlice,
   EncodedCanvasStateSlice
@@ -37,6 +38,27 @@ import {
   createCanvasEventHandlingSlice
 } from "./canvasEventHandlingSlice";
 import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
+import { persist } from "zustand/middleware";
+
+// Helper function to get canvasId from URL
+export const getCanvasIdFromUrl = (): string => {
+  const params = new URLSearchParams(window.location.search);
+  const canvasId = params.get("canvasId");
+  if (!canvasId) {
+    // Generate a new canvasId if none exists (fallback)
+    const newCanvasId = crypto.randomUUID();
+    const newParams = new URLSearchParams(params);
+    newParams.set("canvasId", newCanvasId);
+    // Update URL with the new canvasId
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?${newParams.toString()}${window.location.hash}`
+    );
+    return newCanvasId;
+  }
+  return canvasId;
+};
 
 export interface CanvasStore
   extends DroppedLegosSlice,
@@ -68,7 +90,7 @@ export interface GlobalTensorNetworkSlice {
 
 export const createGlobalTensorNetworkStore: StateCreator<
   CanvasStore,
-  [["zustand/immer", never]],
+  [["zustand/immer", never], never],
   [],
   GlobalTensorNetworkSlice
 > = (set, get) => ({
@@ -94,7 +116,6 @@ export const createGlobalTensorNetworkStore: StateCreator<
 
     get().setHoveredConnection(null);
     get().setTensorNetwork(null);
-    get().updateEncodedCanvasState();
   },
   getLegosAndConnections: () => {
     return { droppedLegos: get().droppedLegos, connections: get().connections };
@@ -102,21 +123,81 @@ export const createGlobalTensorNetworkStore: StateCreator<
 });
 
 export const useCanvasStore = create<CanvasStore>()(
-  immer<CanvasStore>((...a) => ({
-    ...createConnectionsSlice(...a),
-    ...createLegoSlice(...a),
-    ...createEncodedCanvasStateSlice(...a),
-    ...createGlobalTensorNetworkStore(...a),
-    ...createOperationHistorySlice(...a),
-    ...createLegoDragStateSlice(...a),
-    ...useTensorNetworkSlice(...a),
-    ...useDroppedLegoClickHandlerSlice(...a),
-    ...useGroupDragStateSlice(...a),
-    ...useCloningSlice(...a),
-    ...useLegoLegEventsSlice(...a),
-    ...useLegDragStateStore(...a),
-    ...createLegoLegPropertiesSlice(...a),
-    ...createCanvasEventHandlingSlice(...a),
-    ...createCanvasUISlice(...a)
-  }))
+  persist(
+    immer((...a) => ({
+      ...createConnectionsSlice(...a),
+      ...createLegoSlice(...a),
+      ...createEncodedCanvasStateSlice(...a),
+      ...createGlobalTensorNetworkStore(...a),
+      ...createOperationHistorySlice(...a),
+      ...createLegoDragStateSlice(...a),
+      ...useTensorNetworkSlice(...a),
+      ...useDroppedLegoClickHandlerSlice(...a),
+      ...useGroupDragStateSlice(...a),
+      ...useCloningSlice(...a),
+      ...useLegoLegEventsSlice(...a),
+      ...useLegDragStateStore(...a),
+      ...createLegoLegPropertiesSlice(...a),
+      ...createCanvasEventHandlingSlice(...a),
+      ...createCanvasUISlice(...a)
+    })),
+    {
+      name: `canvas-state-${getCanvasIdFromUrl()}`,
+      partialize: (state: CanvasStore) => {
+        // Use the existing CanvasStateSerializer to handle serialization properly
+        const serializableCanvasState =
+          state.canvasStateSerializer.toSerializableCanvasState(state);
+
+        return {
+          jsonState: JSON.stringify(serializableCanvasState),
+          _timestamp: Date.now()
+        };
+      },
+      onRehydrateStorage: () => (state: CanvasStore | undefined) => {
+        if (!state) return;
+
+        // Use the CanvasStateSerializer to properly decode the state
+        const canvasId = getCanvasIdFromUrl();
+
+        // Create a new serializer with the canvasId from URL
+        const serializer = new CanvasStateSerializer(canvasId);
+
+        console.log(
+          "canvasId from url",
+          canvasId,
+          "from serializer",
+          serializer.canvasId,
+
+          "state.getCanvasId()",
+          state.getCanvasId()
+        );
+        try {
+          // The state here is the serialized canvas state from partialize
+          const jsonStateString =
+            (state as unknown as { jsonState: string }).jsonState || "";
+          console.log("jsonStateString", jsonStateString);
+          state.rehydrateCanvasState(jsonStateString);
+        } catch (error) {
+          console.error("Error during state rehydration:", error);
+          // Fall back to empty state if encoding fails
+          state.droppedLegos = [];
+          state.connectedLegos = [];
+          state.connections = [];
+        }
+
+        // Reset transient UI states to their initial values
+        state.clearLegoDragState();
+        state.clearLegDragState();
+        state.clearGroupDragState();
+        state.clearSelectionBox();
+        state.hoveredConnection = null;
+        state.error = null;
+        state.canvasRef = null;
+        state.tensorNetwork = null;
+
+        // Recreate class instances that lose methods during serialization
+        state.canvasStateSerializer = serializer;
+      }
+    }
+  )
 );
