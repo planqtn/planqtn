@@ -10,7 +10,11 @@
 - [`planqtn` on Pypi](https://pypi.org/planqtn): the official PlanqTN Python library
 - [docs.planqtn.com](https://docs.planqtn.com): Documentation for both PlanqTN Studio and the Python library
 
-Welcome to PlanqTN!
+# Public preview
+
+You are looking at a soft-launch preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around end of July/early Aug of 2025. Check out the issues for the [milestone](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%222025.1.0%20-%20The%20first%20release%22).
+
+# Welcome to PlanqTN!
 
 PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313), but we also integrate with features that automate tensor network contraction with Cotengra and take a unified approach to quantum LEGO, ZX-calculus and graph states. Here's a list of features and whether it's supported in the lib and/or the studio:
 
@@ -131,10 +135,6 @@ Please consider dropping in for
 - our mailing list for development questions (not yet setup)
 
 To get started with contributions, check out [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), and follow the [DEVELOPMENT.md](./DEVELOPMENT.md) for setup, developer workflows, and design concepts.
-
-# Soft launch preview notice
-
-You are looking at a soft-launch preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around end of July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
 
 # License
 

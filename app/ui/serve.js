@@ -83,8 +83,21 @@ const env = process.env.VITE_ENV;
 const entryPointFile = env === "TEASER" ? "teaser.html" : env === "DOWN" ? "down.html" : "index.html";
 
 app.use(express.static(path.join(__dirname, "dist"), {index: [entryPointFile]}));
-app.use(history());
 
+// Serve docs folder - this must come before history fallback
+app.use('/docs', express.static(path.join(__dirname, "dist", "docs"), {
+  extensions: ['html'],
+  index: ['index.html']
+}));
+
+// Custom 404 handler for docs routes
+app.use('/docs', (req, res) => {
+  const docs404Path = path.join(__dirname, "dist", "docs", "404.html");  
+  res.sendFile(docs404Path);
+   
+});
+
+app.use(history());
 
 console.log("entryPointFile", entryPointFile);
 

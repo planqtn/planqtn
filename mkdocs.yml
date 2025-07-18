@@ -1,5 +1,5 @@
 site_name: PlanqTN Documentation
-site_url: !ENV READTHEDOCS_CANONICAL_URL
+site_url: https://planqtn.com/docs
 theme:
   name: material
   palette:
@@ -42,7 +42,6 @@ theme:
     - navigation.top
     - navigation.tracking
     - search.highlight
-    - search.share
     - search.suggest
     - toc.follow
   font:
@@ -61,10 +60,19 @@ theme:
     top: material/arrow-up
 nav:
   - Home: index.md
-  - PlanqTN:
+  - Tutorials: tutorials/index.md
+  - Docs:
       - Library: planqtn/index.md
+      - Reference: planqtn/reference.md
       - Studio: planqtn-studio/index.md
-  - Tutorials:
-      - Tutorials: tutorials/index.md
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 plugins:
   - mkdocstrings
+  - search

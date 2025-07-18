@@ -105,6 +105,24 @@ export function setupUiCommand(program: Command) {
             }
           }
         );
+
+        // wait for the ui to be ready
+        await runCommand(
+          "docker",
+          [
+            "compose",
+            "--env-file",
+            path.join(cfgDir, "ui", ".env"),
+            "-f",
+            uiComposePath,
+            "logs",
+            "-f",
+            "planqtn-ui"
+          ],
+          {
+            verbose: true
+          }
+        );
       }
     }
   );
