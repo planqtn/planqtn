@@ -1,7 +1,7 @@
 # Architecture
 
 <p align="center">
-<img src="fig/architecture.png" width="100%"></img>
+<img src="docs/fig/architecture.png" width="100%"></img>
 </p>
 
 PlanqTN features largely live in the user's browser. However, for background jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs and the PlaqnTN API features. Key points to understand about the architecture:
@@ -78,7 +78,7 @@ hack/htn ui start --dev
 This should give you a http://localhost:5173 URL for the UI.
 The UI needs a User Context for authentication user content presistence in Supabase, so when it doesn't have it setup you'll see a "User context unavailable" warning next to the User menu.
 
-<img src="fig/user_context_unavailable.png"/>
+<img src="docs/fig/user_context_unavailable.png"/>
 
 This is okay if you don't want to develop anything related to authentication / tasks / API calls.
 
@@ -339,9 +339,9 @@ npm install --include-dev
 
 - note down the database password (though you can reset it from your dashboard)
 - your project ref (which is in the `[project-ref].supabase.co` in the "Connect" menu point)
-  <img src="fig/supabase_connect.png">
+  <img src="docs/fig/supabase_connect.png">
 - Get the `service_role` key and `anon_key` from your personal Supabase project via Project Settings/API Keys, click Reveal for the service role key:
-  <img src="fig/supabase_connect3.png">
+  <img src="docs/fig/supabase_connect3.png">
 
 ### 2. Personal GCP setup for running workloads
 
