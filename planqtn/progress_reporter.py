@@ -7,6 +7,8 @@ from typing import Any, Dict, Generator, Iterable
 
 import attr
 from tqdm import tqdm
+from typing import Optional, TextIO
+from contextlib import _GeneratorContextManager
 
 
 @attr.s
@@ -19,25 +21,25 @@ class IterationState:
     duration: float | None = attr.ib(default=None)
     avg_time_per_item: float | None = attr.ib(default=None)
 
-    def update(self, current_item: int = None):
+    def update(self, current_item: int | None = None) -> None:
         if current_item is None:
             current_item = self.current_item + 1
         self.current_item = current_item
         self.duration = time.time() - self.start_time
         self._update_avg_time_per_item()
 
-    def _update_avg_time_per_item(self):
+    def _update_avg_time_per_item(self) -> None:
         if self.current_item == 0:
             self.avg_time_per_item = None
-        else:
+        elif self.current_item is not None and self.duration is not None:
             self.avg_time_per_item = self.duration / self.current_item
 
-    def end(self):
+    def end(self) -> None:
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
         self._update_avg_time_per_item()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Iteration(desc={self.desc}, current_item={self.current_item}, total_size={self.total_size}, duration={self.duration}, avg_time_per_item={self.avg_time_per_item}), start_time={self.start_time}, end_time={self.end_time}"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -56,12 +58,12 @@ class IterationState:
 class IterationStateEncoder(json.JSONEncoder):
     """Custom JSON encoder for IterationState objects."""
 
-    def default(self, obj):
+    def default(self, obj: Any) -> Any:
         if isinstance(obj, IterationState):
             return obj.to_dict()
         return super().default(obj)
 
-    def __call__(self, obj):
+    def __call__(self, obj: Any) -> Any:
         return self.encode(obj)
 
 
@@ -69,24 +71,24 @@ class ProgressReporter(abc.ABC):
 
     def __init__(
         self,
-        sub_reporter: "ProgressReporter" = None,
+        sub_reporter: Optional["ProgressReporter"] = None,
         iteration_report_frequency: float = 0.0,
     ):
         self.sub_reporter = sub_reporter
-        self.iterator_stack = []
+        self.iterator_stack: list[IterationState] = []
         self.iteration_report_frequency = iteration_report_frequency
 
-    def __enter__(self):
+    def __enter__(self) -> "ProgressReporter":
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         pass
 
     @abc.abstractmethod
-    def handle_result(self, result: Dict[str, Any]):
+    def handle_result(self, result: Dict[str, Any]) -> None:
         pass
 
-    def log_result(self, result: Dict[str, Any]):
+    def log_result(self, result: Dict[str, Any]) -> None:
         # Convert IterationState to dict in the result
         serializable_result = {}
         for key, value in result.items():
@@ -142,21 +144,24 @@ class ProgressReporter(abc.ABC):
         )
         self.iterator_stack.pop()
 
-    def enter_phase(self, desc: str):
+    def enter_phase(self, desc: str) -> _GeneratorContextManager[Any, None, None]:
         @contextlib.contextmanager
-        def phase_iterator():
+        def phase_iterator() -> Generator[Any, None, None]:
             for i, item in enumerate(self.iterate(["item"], desc, total_size=1)):
                 yield item
 
         return phase_iterator()
 
-    def exit_phase(self):
+    def exit_phase(self) -> None:
         self.iterator_stack.pop()
 
 
 class TqdmProgressReporter(ProgressReporter):
     def __init__(
-        self, file=sys.stdout, mininterval=None, sub_reporter: "ProgressReporter" = None
+        self,
+        file: TextIO = sys.stdout,
+        mininterval: float | None = None,
+        sub_reporter: Optional["ProgressReporter"] = None,
     ):
         super().__init__(sub_reporter)
         self.file = file
@@ -181,11 +186,11 @@ class TqdmProgressReporter(ProgressReporter):
             yield item
         t.close()
 
-    def handle_result(self, result: Dict[str, Any]):
+    def handle_result(self, result: Dict[str, Any]) -> None:
         pass
 
 
 class DummyProgressReporter(ProgressReporter):
 
-    def handle_result(self, result: Dict[str, Any]):
+    def handle_result(self, result: Dict[str, Any]) -> None:
         pass

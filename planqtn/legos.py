@@ -64,7 +64,8 @@ class Legos:
     )
     # fmt: on
 
-    def z_rep_code(d=3):
+    @staticmethod
+    def z_rep_code(d: int = 3) -> GF2:
         gens = []
         for i in range(d - 1):
             g = GF2.Zeros(2 * d)
@@ -75,7 +76,8 @@ class Legos:
         gens.append(g)
         return GF2(gens)
 
-    def x_rep_code(d=3):
+    @staticmethod
+    def x_rep_code(d: int = 3) -> GF2:
         gens = []
         for i in range(d - 1):
             g = GF2.Zeros(2 * d)

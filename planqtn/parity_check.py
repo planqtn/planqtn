@@ -6,7 +6,7 @@ from scipy.linalg import block_diag
 from planqtn.linalg import gauss
 
 
-def sstr(h):
+def sstr(h: GF2) -> str:
     r, n = h.shape
     n //= 2
     return "\n".join(
@@ -17,16 +17,16 @@ def sstr(h):
     )
 
 
-def sprint(h, end="\n"):
+def sprint(h: GF2, end: str = "\n") -> None:
     print(sstr(h), end=end)
 
 
-def bring_col_to_front(h, col, target_col):
+def bring_col_to_front(h: GF2, col: int, target_col: int) -> None:
     for c in range(col - 1, target_col - 1, -1):
         h[:, [c, c + 1]] = h[:, [c + 1, c]]
 
 
-def _normalize_emtpy_matrices_to_zero(h):
+def _normalize_emtpy_matrices_to_zero(h: GF2) -> GF2:
     if len(h) == 0 or h.shape == (0, 0) or h.shape == (1, 0):
         h = GF2([[0]])
     return h
@@ -111,7 +111,7 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     x1, x2, z1, z2 = legs = [leg1, leg2, leg1 + n, leg2 + n]
 
-    mx = gauss(h, col_subset=legs)
+    mx: GF2 = gauss(h, col_subset=legs)
 
     pivot_rows = [np.flatnonzero(mx[:, leg]).tolist() for leg in legs]
 
@@ -155,11 +155,9 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
             return GF2([[0]])
         return GF2([[1]])
 
-    kept_rows = np.array(kept_rows)
-    if kept_rows.size == 0:
-
+    if len(kept_rows) == 0:
         return GF2([GF2.Zeros(len(kept_cols))])
-    mx = mx[kept_rows][:, kept_cols]
+    mx = mx[np.array(kept_rows)][:, kept_cols]
 
     # print("after removals:")
     # print(mx)
@@ -168,5 +166,5 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     for row in range(len(mx)):
         if np.count_nonzero(mx[row]) == 0:
             kept_rows.remove(row)
-    mx = mx[kept_rows]
+    mx = mx[np.array(kept_rows)]
     return mx

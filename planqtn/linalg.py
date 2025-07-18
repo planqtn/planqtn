@@ -5,7 +5,7 @@ from typing import Iterable, Optional, List
 
 
 def gauss(
-    mx: GF2, noswaps: bool = False, col_subset: Optional[Iterable[int]] = None
+    mx: GF2, noswaps: bool = False, col_subset: Iterable[int] | None = None
 ) -> GF2:
     """GF2 matrix Gauss elimination."""
     res: GF2 = deepcopy(mx)
