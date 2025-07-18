@@ -6,7 +6,11 @@
 
 Welcome to PlanqTN!
 
-PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313), but we also integrate with features that automate tensor network contraction with Cotengra and take a unified approach to quantum LEGO, ZX-calculus and graph states. Here's a list of features and whether it's supported in the lib and/or the studio:
+PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313), but we also integrate with features that automate tensor network contraction with Cotengra and take a unified approach to quantum LEGO, ZX-calculus and graph states.
+
+# Features
+
+Here's a list of features and whether it's supported in the lib and/or the studio:
 
 - create a tensor network from smaller encoding tensors with predefined Pauli stabilizers (lib, studio)
 - create a custom lego based on parity check matrix (lib, studio)
@@ -51,11 +55,22 @@ Python library:
 
 - Docs: [planqtn library](planqtn/index.md)
 - Install: `pip install planqtn`
-- Github: [github.com/planqtn/planqtn](github.com/planqtn/planqtn)
+- Github: [github.com/planqtn/planqtn](https://github.com/planqtn/planqtn)
 - on Pypi pypi.org/planqtn Documentation of the Python library `planqtn`
 
 Python Studio:
 
 - Docs: [PlanqTN Studio](planqtn-studio/index.md)
 - Site: [planqtn.com](https://planqtn.com)
-- Github: [github.com/planqtn/planqtn](github.com/planqtn/planqtn)
+- Github: [github.com/planqtn/planqtn](https://github.com/planqtn/planqtn)
+
+# Contributing
+
+PlanqTN is an open source project and we would love to see contributions from you!
+
+Please consider dropping in for
+
+- our bi-weekly community call (not yet setup)
+- our mailing list for development questions (not yet setup)
+
+To get started with contributions, check out [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), and follow the [DEVELOPMENT.md](https://github.com/planqtn/planqtn/blob/main/DEVELOPMENT.md) for setup, developer workflows, and design concepts.
