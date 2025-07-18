@@ -4,15 +4,73 @@
 <img src="docs/fig/planqtn_logo.png" width="300"></img>
 </p>
 
-Welcome to the PlanqTN!
+**Links**
 
-PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313).
+- [planqtn.com](https://planqtn.com): PlanqtN Studio
+- [`planqtn` on Pypi](https://pypi.org/planqtn): the official PlanqTN Python library
+- [docs.planqtn.com](https://docs.planqtn.com): Documentation for both PlanqTN Studio and the Python library
 
-## Getting started
+Welcome to PlanqTN!
+
+PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://planqtn.com)](https://planqtn.com), an interactive studio to create, manipulate and analyze tensor network base quantum error correcting codes. The features are an implementation of the [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332) and the [quantum LEGO expansion pack: enumerators from tensor networks by Cao, Gullans, Lackey and Wang](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.030313), but we also integrate with features that automate tensor network contraction with Cotengra and take a unified approach to quantum LEGO, ZX-calculus and graph states. Here's a list of features and whether it's supported in the lib and/or the studio:
+
+- create a tensor network from smaller encoding tensors with predefined Pauli stabilizers (lib, studio)
+- create a custom lego based on parity check matrix (lib, studio)
+- calculate Pauli stabilizers (parity check matrix) of a tensor network (lib, studio)
+- calculate coset weight enumerators (lib)
+- weight enumerator polynomial calculations (lib, studio):
+  - brute force scalar weight enumerator polynomial (WEP) for a single tensor
+  - tensor WEP for a single tensor with specified open legs
+  - truncated WEP - only calculate up to a certain weight, this speeds up the contraction significantly, making the tensors very sparse
+  - MacWilliams dual (normalizer WEP) for scalar WEP
+  - using [Cotengra](https://cotengra.readthedocs.io/) calculate a hyperoptimized contraction schedule for any tensornetwork based on our own stabilizer code specific cost function (publication pending)
+  - fuse legos into a single lego
+- operator pushing and matching (studio)
+  - highlighting tensor network stabilizer legs (dangling legs)
+  - highlight local stabilizers on individual tensors
+- ZX calculus transformations on Z and X repetition code legos (studio)
+  - fuse rule
+  - bialgebra and inverse bialgebra rule
+  - unfuse:
+    - pull out a leg of the same color
+    - unfuse to legs
+    - unfuse to two legos
+  - change color by adding Hadamard legos on legs
+- Graph state transformations - Z-repetition code legos are graph nodes that need to be connected through links with a Hadamard lego on it (studio)
+  - create complete graph from nodes
+  - connect nodes with a central node
+- Zero installation calculations (studio): PlanqTN Studio is deployed as a cloud native architecture on Google Cloud and Supabase, and you can run small calculations for free, forever!
+- Other cool PlanqTN Studio only features:
+  - an infinitely sized canvas with zoom and panning
+  - resize groups of legos
+  - export tensor network as Python code
+  - export parity check matrices as numpy array
+  - export parity check matrix for qdistrnd for distance calculations
+  - run multiple jobs in parallel
+  - Share canvases as JSON or URL
+  - spin up and connect to a local kernel using Docker, with Kubernetes and Supabase to run jobs only limited by your resources
+
+At the moment PlanqTN is nascent and has rough edges, a lot more features are planned including logical operators, non-Pauli symmetries, operator pushing, more graph state transformations, representing parameterized code families, a public database to share tensor network constructions and weight enumerators. If you have more ideas, open an issue, we'd love to hear it!
+
+If building tools like this sounds like fun to you, please consider [contributing](#contributing)!
+
+## Getting started with PlanqTN Studio
 
 The idea with PlanqTN Tensor Studio is that you can start to explore the framework via small examples, including calculating weight enumerators and distance for small networks.
 
-If you want to get started with the Python library then simply
+As a demo, let's create the [Steane code](https://errorcorrectionzoo.org/c/steane) out of two `[[6,0,3]]` tensors!
+
+1. Navigate to [planqtn.com](https://planqtn.com). No need to register, unless you want to calculate weight enumerators, which we won't need for this tutorial!
+2. Grab two pieces of the `[[6,0,3]]` tensors on to the canvas
+   <video src="docs/fig/drag_603s.mp4">
+3. Connect the two logicals legs and calculate the parity check matrix - we can already see that this is the [[8,0,4]] encoding tensor of the Steane code.
+   <video src="docs/fig/steane_tutorial_connect_logicals.mp4">
+4. Add in an "identity stopper" to any of the legs to get the subspace parity check matrix
+   <video src="docs/fig/steane_tutorial_identity_stopper.mp4">
+
+Well done, now you've used the quantum LEGO framework, created a topological code via a generalized concatenation procedure!
+
+## Getting started with PlnanqTN Python Library
 
 1. Create a virtualenv
 2. Install `planqtn`
@@ -57,47 +115,25 @@ print(wep)
 
 ```
 
-# Tutorials
-
-If you want to go deeper, check out these tutorials to get started:
-
-1. What is tensornetwork quantum error correction? (TODO: video)
-2. Follow the getting started started Notebook for the `planqtn` Python library (TODO)
-
-# Advanced workflows
-
-If you want to go beyond the small examples and start to explore even beyond what's available on the public instance of PlanqtTN Tensor Studio, we do have options for you:
-
-1. You can generate Python code to take out (TODO: link) your constructed code, and can immediately start to use it in `planqtn`
-2. You can spin up your own local kernel using your own resources with the UI (TODO: documentation)
-
 # Contributing
 
 PlanqTN is an open source project and we would love to see contributions from you!
 
 Please consider dropping in for
 
-- our bi-weekly community call (TODO)
-- our mailing list for development questions (TODO)
+- our bi-weekly community call (not yet setup)
+- our mailing list for development questions (not yet setup)
 
 To get started with contributions, check out [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), and follow the [DEVELOPMENT.md](./DEVELOPMENT.md) for setup, developer workflows, and design concepts.
 
 # Private preview notice
 
-You are looking at a private preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around mid-July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
+You are looking at a private preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around end of July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
 
 The project has the following main parts:
 
 1. PlanqTN library for weight enumerators, under the [planqtn](./planqtn) folder
 2. the PlanqTN Tensor Studio under [app](./app) folder
-
-!WARNING!
-
-There are many breaking changes expected in the library and the app, including significant design changes. Exciting times!
-
-### Install instructions for the planqtn library only
-
-!WARNING! this will change soon the planqtn! + we'll publish to PyPi.
 
 # License
 
