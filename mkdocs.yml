@@ -1,5 +1,5 @@
 site_name: PlanqTN Documentation
-site_url: https://planqtn.github.io/planqtn-docs/
+site_url: !ENV READTHEDOCS_CANONICAL_URL
 theme:
   name: material
   palette:

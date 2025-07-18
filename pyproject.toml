@@ -45,11 +45,6 @@ dev = [
     "mypy==1.16.0",
     "pydantic-to-typescript==2.0.0"
 ]
-docs=[
-  "mkdocs-material",    
-  "mkdocstrings[python]",
-  "mkdocs",
-]
 
 [project.urls]
 Homepage = "https://github.com/planqtn/planqtn"

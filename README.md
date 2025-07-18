@@ -6,7 +6,7 @@
 
 **Links**
 
-- [planqtn.com](https://planqtn.com): PlanqtN Studio
+- [planqtn.com](https://planqtn.com): PlanqTN Studio
 - [`planqtn` on Pypi](https://pypi.org/planqtn): the official PlanqTN Python library
 - [docs.planqtn.com](https://docs.planqtn.com): Documentation for both PlanqTN Studio and the Python library
 
@@ -18,6 +18,8 @@ PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://pl
 - create a custom lego based on parity check matrix (lib, studio)
 - calculate Pauli stabilizers (parity check matrix) of a tensor network (lib, studio)
 - calculate coset weight enumerators (lib)
+- tensor network constructions:
+  - compass codes
 - weight enumerator polynomial calculations (lib, studio):
   - brute force scalar weight enumerator polynomial (WEP) for a single tensor
   - tensor WEP for a single tensor with specified open legs
@@ -25,9 +27,10 @@ PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://pl
   - MacWilliams dual (normalizer WEP) for scalar WEP
   - using [Cotengra](https://cotengra.readthedocs.io/) calculate a hyperoptimized contraction schedule for any tensornetwork based on our own stabilizer code specific cost function (publication pending)
   - fuse legos into a single lego
-- operator pushing and matching (studio)
+- manual operator pushing and matching (studio)
   - highlighting tensor network stabilizer legs (dangling legs)
   - highlight local stabilizers on individual tensors
+  - automated Pauli flow highlighting for simple neighboring legos
 - ZX calculus transformations on Z and X repetition code legos (studio)
   - fuse rule
   - bialgebra and inverse bialgebra rule
@@ -39,18 +42,21 @@ PlanqTN is the `planqtn` python library and a [PlanqTN Tensor Studio (https://pl
 - Graph state transformations - Z-repetition code legos are graph nodes that need to be connected through links with a Hadamard lego on it (studio)
   - create complete graph from nodes
   - connect nodes with a central node
-- Zero installation calculations (studio): PlanqTN Studio is deployed as a cloud native architecture on Google Cloud and Supabase, and you can run small calculations for free, forever!
+- Zero installation calculations (studio): PlanqTN Studio is ReactJS app deployed on a cloud native architecture using Google Cloud and Supabase, and you can run small calculations for free, forever!
 - Other cool PlanqTN Studio only features:
+  - an interactive parity check matrix that supports drag and dropping of generators to combine them into new generators, sorting generators by CSS type or stabilizer weight
   - an infinitely sized canvas with zoom and panning
   - resize groups of legos
   - export tensor network as Python code
   - export parity check matrices as numpy array
   - export parity check matrix for qdistrnd for distance calculations
-  - run multiple jobs in parallel
-  - Share canvases as JSON or URL
+  - run any number of WEP calculation jobs in parallel
+  - Share canvases as JSON or as a PlanqTN Studio URL
   - spin up and connect to a local kernel using Docker, with Kubernetes and Supabase to run jobs only limited by your resources
+  - monhtly quotas on job and API calls
+  - deployment tools and streamlined developer experience - if you want to run your own instance, feel free to do it!
 
-At the moment PlanqTN is nascent and has rough edges, a lot more features are planned including logical operators, non-Pauli symmetries, operator pushing, more graph state transformations, representing parameterized code families, a public database to share tensor network constructions and weight enumerators. If you have more ideas, open an issue, we'd love to hear it!
+At the moment PlanqTN is nascent and has rough edges, a lot more features are planned including calculating logical operators and their represenatatives, handling non-Pauli symmetries, operator pushing, more graph state and ZX calculus transformations, a visual language representing parameterized code families, a public database to share tensor network constructions and weight enumerators, GPU accelerated WEP calculations and more. If you have more ideas and can't find an existing issue covering it, open an Github issue, we'd love to hear it!
 
 If building tools like this sounds like fun to you, please consider [contributing](#contributing)!
 
@@ -126,14 +132,9 @@ Please consider dropping in for
 
 To get started with contributions, check out [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), and follow the [DEVELOPMENT.md](./DEVELOPMENT.md) for setup, developer workflows, and design concepts.
 
-# Private preview notice
+# Soft launch preview notice
 
-You are looking at a private preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around end of July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
-
-The project has the following main parts:
-
-1. PlanqTN library for weight enumerators, under the [planqtn](./planqtn) folder
-2. the PlanqTN Tensor Studio under [app](./app) folder
+You are looking at a soft-launch preview of PlanqTN. We are before the v0.1.0 public release, which is scheduled around end of July 2025. Check out the issues for the [milestone](https://github.com/balopat/tnqec/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%22v0.1%20-%20first%20public%20release%22).
 
 # License
 
