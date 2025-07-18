@@ -1,7 +1,7 @@
 [![Unitary Foundation](https://img.shields.io/badge/Supported%20By-UNITARY%20FOUNDATION-brightgreen.svg?style=for-the-badge)](https://unitary.foundation)
 
 <p align="center">
-<img src="fig/planqtn_logo.png" width="300"></img>
+<img src="docs/fig/planqtn_logo.png" width="300"></img>
 </p>
 
 Welcome to the PlanqTN!
