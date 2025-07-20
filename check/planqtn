@@ -12,9 +12,11 @@ set -e
 
 export PYTHONPATH="."
 
-black planqtn --check
+black planqtn/** --check
+mypy planqtn
+pylint planqtn
 pytest planqtn
 
-mypy planqtn
+
 
 echo "All checks passed"

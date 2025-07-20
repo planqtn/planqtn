@@ -1,14 +1,13 @@
 import numpy as np
-from planqtn.tensor_network import PAULI_X, TensorNetwork
+from planqtn.tensor_network import TensorNetwork
 from planqtn.legos import LegoAnnotation, LegoType, Legos
 from planqtn.tensor_network import (
-    PAULI_I,
     StabilizerCodeTensorEnumerator,
 )
 
 
 class StabilizerMeasurementStatePrepTN(TensorNetwork):
-    def __init__(self, parity_check_matrix):
+    def __init__(self, parity_check_matrix: np.ndarray):
         if parity_check_matrix.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {parity_check_matrix}")
 
@@ -22,7 +21,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
             weight = np.count_nonzero(parity_check_matrix[i])
             check = StabilizerCodeTensorEnumerator(
                 h=Legos.z_rep_code(weight + 2),
-                idx=f"check{i}",
+                tensor_id=f"check{i}",
                 annotation=LegoAnnotation(
                     type=LegoType.ZREP,
                     description="check{i}",
@@ -33,7 +32,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
             )
             x_state_prep = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_x,
-                idx=f"x_state_prep{i}",
+                tensor_id=f"x_state_prep{i}",
                 annotation=LegoAnnotation(
                     type=LegoType.STOPPER_X,
                     description="xsp{i}",
@@ -45,7 +44,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
             check_stoppers.append(x_state_prep)
             x_meas = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_x,
-                idx=f"x_meas{i}",
+                tensor_id=f"x_meas{i}",
                 annotation=LegoAnnotation(
                     type=LegoType.STOPPER_X,
                     description=f"xmeas{i}",
@@ -58,18 +57,18 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
 
             traces.append(
                 (
-                    x_state_prep.idx,
-                    check.idx,
-                    [(x_state_prep.idx, 0)],
-                    [(check.idx, 0)],
+                    x_state_prep.tensor_id,
+                    check.tensor_id,
+                    [(x_state_prep.tensor_id, 0)],
+                    [(check.tensor_id, 0)],
                 )
             )
             traces.append(
                 (
-                    x_meas.idx,
-                    check.idx,
-                    [(x_meas.idx, 0)],
-                    [(check.idx, 1)],
+                    x_meas.tensor_id,
+                    check.tensor_id,
+                    [(x_meas.tensor_id, 0)],
+                    [(check.tensor_id, 1)],
                 )
             )
             checks.append(check)
@@ -82,7 +81,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
         for q in range(n):
             q_logical_id = StabilizerCodeTensorEnumerator(
                 h=Legos.stopper_i,
-                idx=f"ql{q}",
+                tensor_id=f"ql{q}",
                 annotation=LegoAnnotation(
                     type=LegoType.STOPPER_I,
                     description="stopper_i",
@@ -92,7 +91,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                 ),
             )
             q_tensors.append(q_logical_id)
-            physical_leg = (q_logical_id.idx, (q_logical_id.idx, 0))
+            physical_leg = (q_logical_id.tensor_id, (q_logical_id.tensor_id, 0))
             for i in range(r):
                 op = tuple(parity_check_matrix[i, (q, q + n)])
 
@@ -102,7 +101,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                 if op == (1, 0):
                     x_check = StabilizerCodeTensorEnumerator(
                         h=Legos.x_rep_code(3),
-                        idx=f"q{q}.x{i}",
+                        tensor_id=f"q{q}.x{i}",
                         annotation=LegoAnnotation(
                             type=LegoType.XREP,
                             description="x",
@@ -116,27 +115,27 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     traces.append(
                         (
                             physical_leg[0],
-                            x_check.idx,
+                            x_check.tensor_id,
                             [physical_leg[1]],
-                            [(x_check.idx, 0)],
+                            [(x_check.tensor_id, 0)],
                         )
                     )
 
                     traces.append(
                         (
-                            x_check.idx,
-                            checks[i].idx,
-                            [(x_check.idx, 1)],
-                            [next_check_legs[i]],
+                            x_check.tensor_id,
+                            checks[i].tensor_id,
+                            [(x_check.tensor_id, 1)],
+                            [(checks[i].tensor_id, next_check_legs[i])],
                         )
                     )
                     next_check_legs[i] += 1
-                    physical_leg = (x_check.idx, (x_check.idx, 2))
+                    physical_leg = (x_check.tensor_id, (x_check.tensor_id, 2))
 
                 elif op == (0, 1):
                     z_check = StabilizerCodeTensorEnumerator(
                         h=Legos.z_rep_code(3),
-                        idx=f"q{q}.z{i}",
+                        tensor_id=f"q{q}.z{i}",
                         annotation=LegoAnnotation(
                             type=LegoType.ZREP,
                             description="z",
@@ -150,14 +149,14 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     traces.append(
                         (
                             physical_leg[0],
-                            z_check.idx,
+                            z_check.tensor_id,
                             [physical_leg[1]],
-                            [(z_check.idx, 0)],
+                            [(z_check.tensor_id, 0)],
                         )
                     )
                     h = StabilizerCodeTensorEnumerator(
                         h=Legos.h,
-                        idx=f"q{q}.hz{i}",
+                        tensor_id=f"q{q}.hz{i}",
                         annotation=LegoAnnotation(
                             type=LegoType.H,
                             description="h",
@@ -170,28 +169,30 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
 
                     traces.append(
                         (
-                            z_check.idx,
-                            h.idx,
-                            [(z_check.idx, 1)],
-                            [(h.idx, 0)],
+                            z_check.tensor_id,
+                            h.tensor_id,
+                            [(z_check.tensor_id, 1)],
+                            [(h.tensor_id, 0)],
                         )
                     )
                     traces.append(
                         (
-                            h.idx,
-                            checks[i].idx,
-                            [(h.idx, 1)],
-                            [next_check_legs[i]],
+                            h.tensor_id,
+                            checks[i].tensor_id,
+                            [(h.tensor_id, 1)],
+                            [(checks[i].tensor_id, next_check_legs[i])],
                         )
                     )
                     next_check_legs[i] += 1
-                    physical_leg = (z_check.idx, (z_check.idx, 2))
+                    physical_leg = (z_check.tensor_id, (z_check.tensor_id, 2))
 
                 else:
                     raise ValueError("Y stabilizer is not implemented yet...")
 
         super().__init__(
-            nodes={n.idx: n for n in q_tensors + checks + op_tensors + check_stoppers}
+            nodes={
+                n.tensor_id: n for n in q_tensors + checks + op_tensors + check_stoppers
+            }
         )
 
         for t in traces:

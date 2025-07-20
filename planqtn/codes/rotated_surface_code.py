@@ -1,26 +1,27 @@
 from galois import GF2
-from planqtn.tensor_network import TensorNetwork
+from planqtn.tensor_network import TensorNetwork, TensorId, TensorLeg
 from planqtn.legos import Legos
 from planqtn.tensor_network import (
     PAULI_X,
     PAULI_Z,
     StabilizerCodeTensorEnumerator,
 )
+from typing import Callable, Dict, Optional, Tuple
 
 
 class RotatedSurfaceCodeTN(TensorNetwork):
     def __init__(
         self,
         d: int,
-        lego=lambda i: Legos.enconding_tensor_512,
-        coset_error=None,
-        truncate_length=None,
+        lego: Callable[[TensorId], GF2] = lambda i: Legos.enconding_tensor_512,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
     ):
 
-        nodes = {
+        nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = {
             (r, c): StabilizerCodeTensorEnumerator(
                 lego((r, c)),
-                idx=(r, c),
+                tensor_id=(r, c),
             )
             # col major ordering
             for r in range(d)
@@ -86,12 +87,13 @@ class RotatedSurfaceCodeTN(TensorNetwork):
         self.n = d * d
         self.d = d
 
-        self.set_coset(coset_error=coset_error)
+        if coset_error is not None:
+            self.set_coset(coset_error=coset_error)
 
-    def qubit_to_node_and_leg(self, q):
+    def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         # col major ordering
         node = (q % self.d, q // self.d)
         return node, (node, 4)
 
-    def n_qubits(self):
+    def n_qubits(self) -> int:
         return self.n

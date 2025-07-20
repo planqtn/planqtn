@@ -5,16 +5,19 @@ from planqtn.tensor_network import (
     PAULI_X,
     PAULI_Z,
     StabilizerCodeTensorEnumerator,
+    TensorId,
+    TensorLeg,
 )
+from typing import Callable, Optional, Tuple
 
 
 class SurfaceCodeTN(TensorNetwork):
     def __init__(
         self,
         d: int,
-        lego=lambda i: Legos.enconding_tensor_512,
-        coset_error=None,
-        truncate_length=None,
+        lego: Callable[[TensorId], GF2] = lambda i: Legos.enconding_tensor_512,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
     ):
 
         if d < 2:
@@ -33,7 +36,7 @@ class SurfaceCodeTN(TensorNetwork):
 
         super().__init__(
             [
-                StabilizerCodeTensorEnumerator(lego((r, c)), idx=(r, c))
+                StabilizerCodeTensorEnumerator(lego((r, c)), tensor_id=(r, c))
                 for r in range(last_row + 1)
                 for c in range(r % 2, last_col + 1, 2)
             ],
@@ -151,8 +154,8 @@ class SurfaceCodeTN(TensorNetwork):
             coset_error = GF2.Zeros(2 * self.n)
         self.set_coset(coset_error)
 
-    def qubit_to_node_and_leg(self, q: int):
+    def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         return self._q_to_node[q], (self._q_to_node[q], 4)
 
-    def n_qubits(self):
+    def n_qubits(self) -> int:
         return self.n

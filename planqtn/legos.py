@@ -1,8 +1,9 @@
 import enum
-from galois import GF2
-import numpy as np
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import attrs
+import numpy as np
+from galois import GF2
 
 
 class LegoType(enum.Enum):
@@ -64,7 +65,8 @@ class Legos:
     )
     # fmt: on
 
-    def z_rep_code(d=3):
+    @staticmethod
+    def z_rep_code(d: int = 3) -> GF2:
         gens = []
         for i in range(d - 1):
             g = GF2.Zeros(2 * d)
@@ -75,7 +77,8 @@ class Legos:
         gens.append(g)
         return GF2(gens)
 
-    def x_rep_code(d=3):
+    @staticmethod
+    def x_rep_code(d: int = 3) -> GF2:
         gens = []
         for i in range(d - 1):
             g = GF2.Zeros(2 * d)
@@ -257,6 +260,7 @@ class Legos:
                 "short_name": "QRM15",
                 "description": "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
                 # fmt: off
+                # pylint: disable=line-too-long
                 "parity_check_matrix":  np.array([
                         [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

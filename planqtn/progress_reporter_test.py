@@ -1,10 +1,7 @@
 from io import StringIO
 from typing import Any, Dict
 
-import pytest
-from tqdm import tqdm
 from planqtn.progress_reporter import (
-    IterationState,
     ProgressReporter,
     TqdmProgressReporter,
 )

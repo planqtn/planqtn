@@ -1,32 +1,20 @@
-from copy import deepcopy
-import sys
-from galois import GF, GF2
 import numpy as np
 import pytest
-import scipy
-import sympy
-import os
+from galois import GF2
 
-from planqtn.codes.surface_code import SurfaceCodeTN
 from planqtn.legos import Legos
-from planqtn.linalg import gauss
-from planqtn.parity_check import conjoin, sprint, sstr, tensor_product
+from planqtn.parity_check import tensor_product
+from planqtn.pauli import Pauli
 from planqtn.progress_reporter import TqdmProgressReporter
-from planqtn.symplectic import weight
+from planqtn.symplectic import sslice, weight
 from planqtn.tensor_network import (
     PAULI_I,
     PAULI_X,
-    PAULI_Y,
     PAULI_Z,
     SimplePoly,
-    TensorNetwork,
     StabilizerCodeTensorEnumerator,
-    sconcat,
-    sslice,
+    TensorNetwork,
 )
-
-from sympy.abc import w, z
-from sympy import Poly
 
 
 def test_trace_two_422_codes_into_steane_via_tensornetwork():
@@ -48,10 +36,10 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork():
         ]
     )
 
-    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=0).trace_with_stopper(
+    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0).trace_with_stopper(
         PAULI_I, 0
     )
-    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=1)
+    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
 
     tn = TensorNetwork(nodes=[t1, t2])
     tn.self_trace(0, 1, [4], [4])
@@ -59,7 +47,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork():
 
     assert {6: 42, 4: 21, 0: 1} == tn.stabilizer_enumerator_polynomial(
         verbose=True
-    )._dict
+    ).dict
 
 
 def test_step_by_step_to_d2_surface_code():
@@ -81,13 +69,13 @@ def test_step_by_step_to_d2_surface_code():
     )
 
     t0 = (
-        StabilizerCodeTensorEnumerator(enc_tens_512, idx=0)
+        StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=0)
         .trace_with_stopper(PAULI_Z, 3)
         .trace_with_stopper(PAULI_X, 0)
     )
 
     t1 = (
-        StabilizerCodeTensorEnumerator(enc_tens_512, idx=1)
+        StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=1)
         .trace_with_stopper(PAULI_Z, 0)
         .trace_with_stopper(PAULI_X, 3)
     )
@@ -109,9 +97,6 @@ def test_step_by_step_to_d2_surface_code():
             weight(stabilizer, [1, 2]),
         )
 
-    brute_force_wep = h_pte.scalar_stabilizer_enumerator()
-    print(brute_force_wep)
-
     ### Checking PartiallyTracedEnumerator equivalence
 
     pte = t0.trace_with(
@@ -131,7 +116,7 @@ def test_step_by_step_to_d2_surface_code():
         print(k, "->", sub_wep, sub_wep * SimplePoly({weight(GF2(k)): 1}))
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == total_wep._dict
+    assert brute_force_wep == total_wep.dict
 
     ### Checking TensorNetwork equivalence
 
@@ -145,7 +130,7 @@ def test_step_by_step_to_d2_surface_code():
     ################ NODE 2 ###################
 
     t2 = (
-        StabilizerCodeTensorEnumerator(enc_tens_512, idx=2)
+        StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=2)
         .trace_with_stopper(PAULI_X, 1)
         .trace_with_stopper(PAULI_Z, 2)
     )
@@ -172,9 +157,6 @@ def test_step_by_step_to_d2_surface_code():
             weight(stabilizer, [1, 2]),
         )
 
-    brute_force_wep = h_pte.scalar_stabilizer_enumerator()
-    print(brute_force_wep)
-
     ### Checking PartiallyTracedEnumerator equivalence
 
     pte = pte.trace_with(
@@ -199,7 +181,7 @@ def test_step_by_step_to_d2_surface_code():
         )
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == dict(total_wep._dict)
+    assert brute_force_wep == dict(total_wep.dict)
 
     ### Checking TensorNetwork equivalence
 
@@ -214,7 +196,7 @@ def test_step_by_step_to_d2_surface_code():
     ################ NODE 3 ###################
 
     t3 = (
-        StabilizerCodeTensorEnumerator(enc_tens_512, idx=3)
+        StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=3)
         .trace_with_stopper(PAULI_X, 2)
         .trace_with_stopper(PAULI_Z, 1)
     )
@@ -237,9 +219,6 @@ def test_step_by_step_to_d2_surface_code():
     print("H pte (t0,t1,t2,t3)")
     print(h_pte.h)
     print(h_pte.legs)
-
-    brute_force_wep = h_pte.scalar_stabilizer_enumerator()
-    print(brute_force_wep)
 
     ### Checking PartiallyTracedEnumerator equivalence
 
@@ -265,7 +244,7 @@ def test_step_by_step_to_d2_surface_code():
         )
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == dict(total_wep._dict)
+    assert brute_force_wep == dict(total_wep.dict)
 
     assert np.array_equal(
         h_pte.h,
@@ -312,10 +291,10 @@ def test_double_trace_422():
         ]
     )
     nodes = [
-        StabilizerCodeTensorEnumerator(enc_tens_422, idx=0)
+        StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0)
         .trace_with_stopper(PAULI_I, 4)
         .trace_with_stopper(PAULI_I, 5),
-        StabilizerCodeTensorEnumerator(enc_tens_422, idx=1)
+        StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
         .trace_with_stopper(PAULI_I, 4)
         .trace_with_stopper(PAULI_I, 5),
     ]
@@ -328,46 +307,6 @@ def test_double_trace_422():
     print(wep)
 
     assert wep == {4: 3, 0: 1}
-
-
-def test_construction_code():
-    # Add the parent directory to Python path to find planqtn package
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    tn = SurfaceCodeTN(3)
-    code = tn.construction_code()
-
-    print(code)
-
-    # Split the code into imports and construction
-    code_lines = code.split("\n")
-
-    construction_lines = [
-        line
-        for line in code_lines
-        if not (line.startswith("from") or line.startswith("import"))
-    ]
-
-    import_lines = [
-        line
-        for line in code_lines
-        if line.startswith("from") or line.startswith("import")
-    ]
-
-    exec("\n".join(import_lines))
-
-    # Create a namespace with required imports
-    namespace = {
-        "GF2": GF2,
-        "TensorNetwork": TensorNetwork,
-        "StabilizerCodeTensorEnumerator": StabilizerCodeTensorEnumerator,
-    }
-
-    # Execute construction code in the namespace
-    exec("\n".join(construction_lines), namespace)
-    tn_from_code = namespace["tn"]
-
-    assert tn_from_code == tn
 
 
 def test_temporarily_disjoint_nodes():
@@ -383,16 +322,16 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469569037-dtap10r8u",
+            tensor_id="encoding_tensor_512-1741469569037-dtap10r8u",
         )
     )
     nodes["stopper_x-1741469771579-66rik1482"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469771579-66rik1482",
+        tensor_id="stopper_x-1741469771579-66rik1482",
     )
     nodes["stopper_z-1741469873935-7x8lepkz0"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469873935-7x8lepkz0",
+        tensor_id="stopper_z-1741469873935-7x8lepkz0",
     )
     nodes["encoding_tensor_512-1741469573383-vywzti2i7"] = (
         StabilizerCodeTensorEnumerator(
@@ -404,7 +343,7 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469573383-vywzti2i7",
+            tensor_id="encoding_tensor_512-1741469573383-vywzti2i7",
         )
     )
     nodes["encoding_tensor_512-1741469806847-zh6tym4ir"] = (
@@ -417,12 +356,12 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469806847-zh6tym4ir",
+            tensor_id="encoding_tensor_512-1741469806847-zh6tym4ir",
         )
     )
     nodes["stopper_x-1741469775700-mqqxo9prq"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469775700-mqqxo9prq",
+        tensor_id="stopper_x-1741469775700-mqqxo9prq",
     )
     nodes["encoding_tensor_512-1741469792957-3buy4eynz"] = (
         StabilizerCodeTensorEnumerator(
@@ -434,7 +373,7 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469792957-3buy4eynz",
+            tensor_id="encoding_tensor_512-1741469792957-3buy4eynz",
         )
     )
     nodes["encoding_tensor_512-1741469808602-uoj183v5a"] = (
@@ -447,12 +386,12 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469808602-uoj183v5a",
+            tensor_id="encoding_tensor_512-1741469808602-uoj183v5a",
         )
     )
     nodes["stopper_z-1741469888356-0g4nnrhvn"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469888356-0g4nnrhvn",
+        tensor_id="stopper_z-1741469888356-0g4nnrhvn",
     )
     nodes["encoding_tensor_512-1741469811429-2iso8lzh2"] = (
         StabilizerCodeTensorEnumerator(
@@ -464,16 +403,16 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469811429-2iso8lzh2",
+            tensor_id="encoding_tensor_512-1741469811429-2iso8lzh2",
         )
     )
     nodes["stopper_x-1741469797022-mxbutnmk4"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469797022-mxbutnmk4",
+        tensor_id="stopper_x-1741469797022-mxbutnmk4",
     )
     nodes["stopper_z-1741469886390-bi1budt2m"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469886390-bi1budt2m",
+        tensor_id="stopper_z-1741469886390-bi1budt2m",
     )
     nodes["encoding_tensor_512-1741469809666-boitky627"] = (
         StabilizerCodeTensorEnumerator(
@@ -485,7 +424,7 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469809666-boitky627",
+            tensor_id="encoding_tensor_512-1741469809666-boitky627",
         )
     )
     nodes["encoding_tensor_512-1741469812426-63xr66brk"] = (
@@ -498,20 +437,20 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469812426-63xr66brk",
+            tensor_id="encoding_tensor_512-1741469812426-63xr66brk",
         )
     )
     nodes["stopper_x-1741469821306-v1lj0052l"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469821306-v1lj0052l",
+        tensor_id="stopper_x-1741469821306-v1lj0052l",
     )
     nodes["stopper_z-1741469890980-mrvl1054y"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469890980-mrvl1054y",
+        tensor_id="stopper_z-1741469890980-mrvl1054y",
     )
     nodes["stopper_z-1741469892323-ur5jgaa88"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469892323-ur5jgaa88",
+        tensor_id="stopper_z-1741469892323-ur5jgaa88",
     )
     nodes["encoding_tensor_512-1741469813386-3cidseuj5"] = (
         StabilizerCodeTensorEnumerator(
@@ -523,20 +462,20 @@ def test_temporarily_disjoint_nodes():
                     [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
                 ]
             ),
-            idx="encoding_tensor_512-1741469813386-3cidseuj5",
+            tensor_id="encoding_tensor_512-1741469813386-3cidseuj5",
         )
     )
     nodes["stopper_x-1741469823864-5miztfum6"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469823864-5miztfum6",
+        tensor_id="stopper_x-1741469823864-5miztfum6",
     )
     nodes["stopper_x-1741469826392-9ruhud11d"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0]]),
-        idx="stopper_x-1741469826392-9ruhud11d",
+        tensor_id="stopper_x-1741469826392-9ruhud11d",
     )
     nodes["stopper_z-1741469893043-9dwerhtds"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 1]]),
-        idx="stopper_z-1741469893043-9dwerhtds",
+        tensor_id="stopper_z-1741469893043-9dwerhtds",
     )
 
     # Create TensorNetwork
@@ -692,7 +631,7 @@ def test_temporarily_disjoint_nodes():
     assert node.h.shape == (8, 18)
 
     we = node.stabilizer_enumerator_polynomial()
-    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+    assert we.dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 def test_double_trace_602_identity_stopper_to_422():
@@ -709,15 +648,15 @@ def test_double_trace_602_identity_stopper_to_422():
                 [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
             ]
         ),
-        idx="0",
+        tensor_id="0",
     )
     nodes["stop1"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 0]]),
-        idx="stop1",
+        tensor_id="stop1",
     )
     nodes["stop2"] = StabilizerCodeTensorEnumerator(
         h=GF2([[0, 0]]),
-        idx="stop2",
+        tensor_id="stop2",
     )
 
     print(nodes["stop1"].stabilizer_enumerator_polynomial())
@@ -744,14 +683,14 @@ def test_double_trace_602_identity_stopper_to_422():
 
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True, progress_reporter=TqdmProgressReporter()
-    )._dict == {0: 1, 4: 3}
+    ).dict == {0: 1, 4: 3}
 
 
 def test_tensor_product_of_legos():
     tn = TensorNetwork(
         [
-            StabilizerCodeTensorEnumerator(idx=0, h=Legos.enconding_tensor_512),
-            StabilizerCodeTensorEnumerator(idx=1, h=Legos.enconding_tensor_512),
+            StabilizerCodeTensorEnumerator(tensor_id=0, h=Legos.enconding_tensor_512),
+            StabilizerCodeTensorEnumerator(tensor_id=1, h=Legos.enconding_tensor_512),
         ],
         truncate_length=None,
     )
@@ -770,13 +709,13 @@ def test_twisted_toric_code():
         # fmt: off
         h=GF2([[1, 1, 1, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1, 1, 1, 1, 0], [1, 1, 0, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 1, 1, 0, 1]]),
         # fmt: on
-        idx="1",
+        tensor_id="1",
     )
     nodes["34"] = StabilizerCodeTensorEnumerator(
         # fmt: off
         h=GF2([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1], [0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1], [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]),
         # fmt: on
-        idx="34",
+        tensor_id="34",
     )
 
     # Create TensorNetwork
@@ -799,11 +738,11 @@ def test_quadruple_trace_422_into_422():
     nodes = {}
     nodes["18"] = StabilizerCodeTensorEnumerator(
         h=Legos.enconding_tensor_512,
-        idx="18",
+        tensor_id="18",
     )
     nodes["19"] = StabilizerCodeTensorEnumerator(
         h=Legos.enconding_tensor_512,
-        idx="19",
+        tensor_id="19",
     )
 
     # Create TensorNetwork
@@ -820,7 +759,7 @@ def test_quadruple_trace_422_into_422():
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
-    )._dict == {0: 1, 2: 3}
+    ).dict == {0: 1, 2: 3}
 
 
 def test_two_bell_states():
@@ -833,7 +772,7 @@ def test_two_bell_states():
                         [0, 0, 1, 1],
                     ]
                 ),
-                idx="0",
+                tensor_id="0",
             ),
             "1": StabilizerCodeTensorEnumerator(
                 h=GF2(
@@ -842,14 +781,14 @@ def test_two_bell_states():
                         [0, 0, 1, 1],
                     ]
                 ),
-                idx="1",
+                tensor_id="1",
             ),
         }
     )
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
-    )._dict == {0: 1, 2: 6, 4: 9}
+    ).dict == {0: 1, 2: 6, 4: 9}
 
 
 def test_two_512_tensor_merge_step_by_step():
@@ -867,11 +806,11 @@ def test_two_512_tensor_merge_step_by_step():
         nodes = {}
         nodes["1"] = StabilizerCodeTensorEnumerator(
             h=Legos.enconding_tensor_512,
-            idx="1",
+            tensor_id="1",
         )
         nodes["2"] = StabilizerCodeTensorEnumerator(
             h=Legos.enconding_tensor_512,
-            idx="2",
+            tensor_id="2",
         )
 
         tn = TensorNetwork(nodes, truncate_length=None)
@@ -899,7 +838,7 @@ def test_two_512_tensor_merge_step_by_step():
             str(conjoined_wep)
             if isinstance(conjoined_wep, SimplePoly)
             else "\n".join(
-                sorted([f"{sstr(GF2([k]))}: {v}" for k, v in conjoined_wep.items()])
+                sorted([f"{Pauli.to_str(*k)}: {v}" for k, v in conjoined_wep.items()])
             )
         )
         print(f"conjoined_wep_str: {conjoined_wep_str}")
@@ -915,7 +854,7 @@ def test_two_512_tensor_merge_step_by_step():
             str(tn_wep)
             if isinstance(tn_wep, SimplePoly)
             else "\n".join(
-                sorted([f"{sstr(GF2([k]))}: {v}" for k, v in tn_wep.items()])
+                sorted([f"{Pauli.to_str(*k)}: {v}" for k, v in tn_wep.items()])
             )
         )
         # with open(f"step_{i}_wep.txt", "w") as f:
@@ -933,7 +872,7 @@ def test_disconnected_networks():
     nodes = {}
     nodes["25"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
-        idx="25",
+        tensor_id="25",
     )
     nodes["27"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -944,7 +883,7 @@ def test_disconnected_networks():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="27",
+        tensor_id="27",
     )
     nodes["31"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -955,7 +894,7 @@ def test_disconnected_networks():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="31",
+        tensor_id="31",
     )
 
     # Create TensorNetwork
@@ -968,7 +907,7 @@ def test_disconnected_networks():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}
+    assert wep.dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}
 
 
 def test_disconnected_networks_truncate_length():
@@ -976,7 +915,7 @@ def test_disconnected_networks_truncate_length():
     nodes = {}
     nodes["25"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
-        idx="25",
+        tensor_id="25",
     )
     nodes["27"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -987,7 +926,7 @@ def test_disconnected_networks_truncate_length():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="27",
+        tensor_id="27",
     )
     nodes["31"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -998,7 +937,7 @@ def test_disconnected_networks_truncate_length():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="31",
+        tensor_id="31",
     )
 
     # Create TensorNetwork
@@ -1011,7 +950,7 @@ def test_disconnected_networks_truncate_length():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {
+    assert wep.dict == {
         0: 1,
     }
 
@@ -1025,7 +964,7 @@ def test_disconnected_networks_truncate_length():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {0: 1, 2: 12}
+    assert wep.dict == {0: 1, 2: 12}
 
 
 @pytest.mark.parametrize(
@@ -1060,10 +999,10 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
         ]
     )
 
-    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=0).trace_with_stopper(
+    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0).trace_with_stopper(
         PAULI_I, 0
     )
-    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=1)
+    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
 
     tn = TensorNetwork(nodes=[t1, t2], truncate_length=truncate_length)
     tn.self_trace(0, 1, [4], [4])
@@ -1073,7 +1012,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
         expected_wep
         == tn.stabilizer_enumerator_polynomial(
             verbose=True,
-        )._dict
+        ).dict
     )
 
 
@@ -1089,7 +1028,7 @@ def test_truncate_length_example():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="46",
+        tensor_id="46",
     )
     nodes["47"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -1100,7 +1039,7 @@ def test_truncate_length_example():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="47",
+        tensor_id="47",
     )
     nodes["53"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -1111,7 +1050,7 @@ def test_truncate_length_example():
                 [1, 1, 1, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="53",
+        tensor_id="53",
     )
     nodes["59"] = StabilizerCodeTensorEnumerator(
         h=GF2(
@@ -1121,19 +1060,19 @@ def test_truncate_length_example():
                 [0, 1, 0, 1, 0, 0, 0, 0],
             ]
         ),
-        idx="59",
+        tensor_id="59",
     )
     nodes["60"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        idx="60",
+        tensor_id="60",
     )
     nodes["61"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        idx="61",
+        tensor_id="61",
     )
     nodes["62"] = StabilizerCodeTensorEnumerator(
         h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        idx="62",
+        tensor_id="62",
     )
 
     # Create TensorNetwork
@@ -1153,7 +1092,7 @@ def test_truncate_length_example():
 
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
-    )._dict == {0: 1, 2: 1, 4: 2}
+    ).dict == {0: 1, 2: 1, 4: 2}
 
 
 @pytest.mark.parametrize(
@@ -1173,7 +1112,7 @@ def test_single_node_truncate_length(truncate_length, expected_wep):
     nodes = {
         "1": StabilizerCodeTensorEnumerator(
             h=Legos.enconding_tensor_603,
-            idx="1",
+            tensor_id="1",
         ),
     }
 
@@ -1183,48 +1122,48 @@ def test_single_node_truncate_length(truncate_length, expected_wep):
     assert (
         tn.stabilizer_enumerator_polynomial(
             verbose=True,
-        )._dict
+        ).dict
         == expected_wep
     )
 
 
 def test_tensor_product_with_scalar_0():
-    h1 = StabilizerCodeTensorEnumerator(GF2([[0]]), idx="0")
-    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), idx="1")
+    h1 = StabilizerCodeTensorEnumerator(GF2([[0]]), tensor_id="0")
+    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), tensor_id="1")
     tn = TensorNetwork(nodes=[h1, h2])
     assert np.array_equal(tn.conjoin_nodes().h, GF2([[0]]))
 
 
 def test_tensor_product_with_scalar_1():
-    h1 = StabilizerCodeTensorEnumerator(GF2([[1]]), idx="0")
-    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), idx="1")
+    h1 = StabilizerCodeTensorEnumerator(GF2([[1]]), tensor_id="0")
+    h2 = StabilizerCodeTensorEnumerator(GF2([[1, 0]]), tensor_id="1")
     tn = TensorNetwork(nodes=[h1, h2])
     assert np.array_equal(tn.conjoin_nodes().h, GF2([[1, 0]]))
 
 
 def test_single_node_with_open_legs_t6():
     h = Legos.enconding_tensor_603
-    te = StabilizerCodeTensorEnumerator(idx="0", h=h)
+    te = StabilizerCodeTensorEnumerator(tensor_id="0", h=h)
     tn = TensorNetwork(nodes=[te])
     actual_wep = tn.stabilizer_enumerator_polynomial(
         open_legs=[("0", 0), ("0", 1)], verbose=True
     )
     print(actual_wep)
     assert actual_wep == {
-        (0, 0, 0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
-        (0, 0, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (0, 0, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (0, 0, 1, 1): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
-        (0, 1, 0, 0): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (0, 1, 0, 1): SimplePoly({3: 2, 4: 2}),
-        (0, 1, 1, 0): SimplePoly({3: 2, 4: 2}),
-        (0, 1, 1, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (1, 0, 0, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 0, 0, 1): SimplePoly({3: 2, 4: 2}),
-        (1, 0, 1, 0): SimplePoly({3: 2, 4: 2}),
-        (1, 0, 1, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1, 0, 0): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
-        (1, 1, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (1, 1, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1, 1, 1): SimplePoly({2: 2, 3: 2}),
+        (0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
+        (0, 2): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (2, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (2, 2): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (0, 3): SimplePoly({3: 2, 4: 2}),
+        (2, 1): SimplePoly({3: 2, 4: 2}),
+        (2, 3): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 2): SimplePoly({3: 2, 4: 2}),
+        (3, 0): SimplePoly({3: 2, 4: 2}),
+        (3, 2): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 3): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (3, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (3, 3): SimplePoly({2: 2, 3: 2}),
     }

@@ -1,6 +1,6 @@
 from galois import GF2
 import numpy as np
-from planqtn.symplectic import omega, symp_to_str, weight
+from planqtn.symplectic import omega, symp_to_str, weight, sympl_to_pauli_repr
 
 
 def test_weight():
@@ -39,3 +39,19 @@ def test_omega():
             ]
         ),
     )
+
+
+def test_to_pauli_repr():
+    # I
+    assert sympl_to_pauli_repr((0, 0)) == (0,)
+    # X
+    assert sympl_to_pauli_repr((1, 0)) == (1,)
+    # Z
+    assert sympl_to_pauli_repr((0, 1)) == (2,)
+    # Y
+    assert sympl_to_pauli_repr((1, 1)) == (3,)
+
+    assert sympl_to_pauli_repr((0, 0, 0, 0)) == (0, 0)
+    assert sympl_to_pauli_repr((1, 0, 0, 0)) == (1, 0)
+    assert sympl_to_pauli_repr((0, 1, 0, 0)) == (0, 1)
+    assert sympl_to_pauli_repr((0, 1, 0, 1)) == (0, 3)

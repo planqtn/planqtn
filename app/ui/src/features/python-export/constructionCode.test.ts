@@ -55,7 +55,7 @@ from galois import GF2
 
 # Create nodes
 nodes = {
-    "7": StabilizerCodeTensorEnumerator(idx="7", h=GF2([
+    "7": StabilizerCodeTensorEnumerator(tensor_id="7", h=GF2([
             [1, 1, 0, 0, 0, 0],
             [0, 1, 1, 0, 0, 0],
             [0, 0, 0, 1, 1, 1],

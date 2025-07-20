@@ -53,7 +53,7 @@ class TensorNetworkResponse(BaseModel):
 
         nodes = [
             StabilizerCodeTensorEnumerator(
-                idx=lego["instance_id"], h=GF2(lego["parity_check_matrix"])
+                tensor_id=lego["instance_id"], h=GF2(lego["parity_check_matrix"])
             )
             for lego in self.legos
         ]

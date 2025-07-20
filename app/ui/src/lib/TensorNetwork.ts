@@ -145,7 +145,7 @@ export class TensorNetwork {
         row.map((val: number) => `${val}`).join(", ")
       );
       code.push(
-        `    "${lego.instance_id}": StabilizerCodeTensorEnumerator(idx="${lego.instance_id}", h=GF2([`
+        `    "${lego.instance_id}": StabilizerCodeTensorEnumerator(tensor_id="${lego.instance_id}", h=GF2([`
       );
       for (const row of matrix) {
         code.push(`            [${row}],`);

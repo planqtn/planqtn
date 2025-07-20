@@ -1,6 +1,5 @@
 from galois import GF2
 import numpy as np
-import pytest
 
 from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.legos import Legos
@@ -74,7 +73,6 @@ def test_rsc3_x_and_z_coset_wep():
             ((0, q), PAULI_Y) for q in set(x_error_bits).intersection(set(z_error_bits))
         ],
     )
-    print(scalar.scalar_stabilizer_enumerator())
 
     tn = RotatedSurfaceCodeTN(
         d=3,
@@ -103,19 +101,18 @@ def test_d3_rotated_surface_code():
     )
 
     scalar = StabilizerCodeTensorEnumerator(rsc)
-    print(scalar.scalar_stabilizer_enumerator())
 
     tn = RotatedSurfaceCodeTN(d=3)
 
     we = tn.stabilizer_enumerator_polynomial()
-    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+    assert we.dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 def test_d3_creation():
     tn = RotatedSurfaceCodeTN(3)
 
     nodes = [
-        StabilizerCodeTensorEnumerator(Legos.enconding_tensor_512, idx=i)
+        StabilizerCodeTensorEnumerator(Legos.enconding_tensor_512, tensor_id=i)
         for i in range(9)
     ]
 
@@ -140,7 +137,7 @@ def test_d3_creation():
     nodes[8] = nodes[8].trace_with_stopper(PAULI_Z, 2)
 
     for idx, node in tn.nodes.items():
-        assert node.idx == idx
+        assert node.tensor_id == idx
         node_seq = idx[0] * 3 + idx[1]
         print(node.h)
         print(nodes[node_seq].h)
