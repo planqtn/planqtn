@@ -8,7 +8,7 @@ from planqtn.tensor_network import (
 
 
 class StabilizerMeasurementStatePrepTN(TensorNetwork):
-    def __init__(self, parity_check_matrix):
+    def __init__(self, parity_check_matrix: np.ndarray):
         if parity_check_matrix.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {parity_check_matrix}")
 
@@ -127,7 +127,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                             x_check.tensor_id,
                             checks[i].tensor_id,
                             [(x_check.tensor_id, 1)],
-                            [next_check_legs[i]],
+                            [(checks[i].tensor_id, next_check_legs[i])],
                         )
                     )
                     next_check_legs[i] += 1
@@ -181,7 +181,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                             h.tensor_id,
                             checks[i].tensor_id,
                             [(h.tensor_id, 1)],
-                            [next_check_legs[i]],
+                            [(checks[i].tensor_id, next_check_legs[i])],
                         )
                     )
                     next_check_legs[i] += 1

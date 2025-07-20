@@ -1,19 +1,28 @@
 import numpy as np
-from planqtn.tensor_network import TensorNetwork
+from planqtn.tensor_network import TensorNetwork, Trace
 from planqtn.legos import LegoAnnotation, Legos
 from planqtn.tensor_network import (
     PAULI_I,
     StabilizerCodeTensorEnumerator,
 )
+from typing import Optional, List
+from galois import GF2
+from planqtn.legos import LegoType
 
 
 class CssTannerCodeTN(TensorNetwork):
-    def __init__(self, hx, hz):
+    def __init__(
+        self,
+        hx: np.ndarray,
+        hz: np.ndarray,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
+    ):
         rx, n = hx.shape
         rz = hz.shape[0]
 
-        q_tensors = []
-        traces = []
+        q_tensors: List[StabilizerCodeTensorEnumerator] = []
+        traces: List[Trace] = []
 
         for q in range(n):
             x_stabs = np.nonzero(hx[:, q])[0]
@@ -24,24 +33,24 @@ class CssTannerCodeTN(TensorNetwork):
             h0 = StabilizerCodeTensorEnumerator(
                 Legos.h,
                 tensor_id=f"q{q}.h0",
-                annotation=LegoAnnotation(type="h", short_name=f"h0{q}"),
+                annotation=LegoAnnotation(type=LegoType.H, short_name=f"h0{q}"),
             )
             h1 = StabilizerCodeTensorEnumerator(
                 Legos.h,
                 tensor_id=f"q{q}.h1",
-                annotation=LegoAnnotation(type="h", short_name=f"h1{q}"),
+                annotation=LegoAnnotation(type=LegoType.H, short_name=f"h1{q}"),
             )
 
             x = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_x_legs),
                 tensor_id=f"q{q}.x",
-                annotation=LegoAnnotation(type="x_rep_code", short_name=f"x{q}"),
+                annotation=LegoAnnotation(type=LegoType.XREP, short_name=f"x{q}"),
             )
 
             z = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_z_legs),
                 tensor_id=f"q{q}.z",
-                annotation=LegoAnnotation(type="x_rep_code", short_name=f"z{q}"),
+                annotation=LegoAnnotation(type=LegoType.ZREP, short_name=f"z{q}"),
             )
 
             # leg numbering for the spiders: 0 for logical, 1 for physical,
@@ -51,7 +60,7 @@ class CssTannerCodeTN(TensorNetwork):
             i_stopper = StabilizerCodeTensorEnumerator(
                 Legos.stopper_i,
                 tensor_id=f"q{q}.id",
-                annotation=LegoAnnotation(type="stopper_i", short_name=f"id{q}"),
+                annotation=LegoAnnotation(type=LegoType.STOPPER_I, short_name=f"id{q}"),
             )
             q_tensors.append(i_stopper)
             q_tensors.append(h0)
@@ -71,36 +80,36 @@ class CssTannerCodeTN(TensorNetwork):
                 (
                     h0.tensor_id,
                     z.tensor_id,
-                    [1],
-                    [(f"q{q}.z", 0)],
+                    [(h0.tensor_id, 1)],
+                    [(z.tensor_id, 0)],
                 )
             )
             traces.append(
                 (
                     h1.tensor_id,
                     z.tensor_id,
-                    [0],
-                    [(f"q{q}.z", 1)],
+                    [(h1.tensor_id, 0)],
+                    [(z.tensor_id, 1)],
                 )
             )
             traces.append(
                 (
                     h1.tensor_id,
                     x.tensor_id,
-                    [(f"q{q}.h1", 1)],
-                    [(f"q{q}.x", 0)],
+                    [(h1.tensor_id, 1)],
+                    [(x.tensor_id, 0)],
                 )
             )
 
         q_legs = [2] * n
         gx_tensors = []
         for i, gx in enumerate(hx):
-            qs = np.nonzero(gx)[0]
+            qs = np.nonzero(gx)[0].astype(int)
             g_tensor = StabilizerCodeTensorEnumerator(
                 Legos.z_rep_code(len(qs)),
                 f"x{i}",
                 annotation=LegoAnnotation(
-                    type="z_rep_code",
+                    type=LegoType.ZREP,
                     short_name=f"x{i}",
                 ),
             )
@@ -111,9 +120,9 @@ class CssTannerCodeTN(TensorNetwork):
                 traces.append(
                     (
                         g_tensor.tensor_id,
-                        f"q{q}.x",
-                        [g_leg],
-                        [(f"q{q}.x", q_legs[q])],
+                        x.tensor_id,
+                        [(g_tensor.tensor_id, g_leg)],
+                        [(x.tensor_id, q_legs[q])],
                     )
                 )
                 q_legs[q] += 1
@@ -121,23 +130,24 @@ class CssTannerCodeTN(TensorNetwork):
         q_legs = [2] * n
 
         for i, gz in enumerate(hz):
-            qs = np.nonzero(gz)[0]
+            qs = np.nonzero(gz)[0].astype(int)
             g_tensor = StabilizerCodeTensorEnumerator(
                 Legos.z_rep_code(len(qs)),
                 f"z{i}",
                 annotation=LegoAnnotation(
-                    type="z_rep_code",
+                    type=LegoType.ZREP,
                     short_name=f"z{i}",
                 ),
             )
             gz_tensors.append(g_tensor)
             for g_leg, q in enumerate(qs):
+                z_tensor_id = f"q{q}.z"
                 traces.append(
                     (
                         g_tensor.tensor_id,
-                        f"q{q}.z",
-                        [g_leg],
-                        [(f"q{q}.z", q_legs[q])],
+                        z_tensor_id,
+                        [(g_tensor.tensor_id, g_leg)],
+                        [(z_tensor_id, q_legs[q])],
                     )
                 )
                 q_legs[q] += 1

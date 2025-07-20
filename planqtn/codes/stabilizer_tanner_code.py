@@ -8,7 +8,7 @@ from planqtn.tensor_network import (
 
 
 class StabilizerTannerCodeTN(TensorNetwork):
-    def __init__(self, h):
+    def __init__(self, h: np.ndarray):
         if h.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {h}")
 

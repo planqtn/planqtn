@@ -3,16 +3,18 @@ import numpy as np
 from planqtn.legos import Legos
 from planqtn.codes.surface_code import SurfaceCodeTN
 from planqtn.tensor_network import PAULI_X, PAULI_Z
+from typing import Callable, Optional
+from planqtn.tensor_network import TensorId
 
 
 class CompassCodeTN(SurfaceCodeTN):
     def __init__(
         self,
-        coloring,
+        coloring: np.ndarray,
         *,
-        lego=lambda node: Legos.enconding_tensor_512,
-        coset_error: GF2 = None,
-        truncate_length: int = None,
+        lego: Callable[[TensorId], GF2] = lambda node: Legos.enconding_tensor_512,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
     ):
         """Creates a square compass code based on the coloring.
 
@@ -25,14 +27,15 @@ class CompassCodeTN(SurfaceCodeTN):
         gauge_idxs = [
             (r, c) for r in range(1, 2 * d - 1, 2) for c in range(1, 2 * d - 1, 2)
         ]
-        for n, color in zip(gauge_idxs, np.reshape(coloring, (d - 1) ** 2)):
-            self.nodes[n] = self.nodes[n].trace_with_stopper(
+        for tensor_id, color in zip(gauge_idxs, np.reshape(coloring, (d - 1) ** 2)):
+            self.nodes[tensor_id] = self.nodes[tensor_id].trace_with_stopper(
                 PAULI_Z if color == 2 else PAULI_X, 4
             )
 
         self._q_to_node = [(2 * r, 2 * c) for c in range(d) for r in range(d)]
         self.n = d * d
         self.coloring = coloring
-        if coset_error is None:
-            coset_error = GF2.Zeros(2 * self.n)
-        self.set_coset(coset_error if coset_error is not None else [])
+
+        self.set_coset(
+            coset_error if coset_error is not None else GF2.Zeros(2 * self.n)
+        )

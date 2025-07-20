@@ -5,7 +5,18 @@ import importlib.util
 from typing_extensions import deprecated
 import cotengra as ctg
 
-from typing import Any, Callable, Iterable, List, Dict, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Dict,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    Sequence,
+)
 from galois import GF2
 import numpy as np
 import sympy
@@ -221,8 +232,8 @@ class TensorNetwork:
         self,
         node_idx1: TensorId,
         node_idx2: TensorId,
-        join_legs1: List[TensorLeg],
-        join_legs2: List[TensorLeg],
+        join_legs1: Sequence[int | TensorLeg],
+        join_legs2: Sequence[int | TensorLeg],
     ) -> None:
         if self._wep is not None:
             raise ValueError(

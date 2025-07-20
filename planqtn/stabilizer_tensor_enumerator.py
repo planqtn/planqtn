@@ -14,7 +14,7 @@ from planqtn.simple_poly import SimplePoly
 from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
 
 
-TensorId = str | int
+TensorId = str | int | Tuple[int, int]
 TensorLeg = Tuple[TensorId, int]
 TensorEnumerator = Dict[Tuple[int, ...], SimplePoly]
 
