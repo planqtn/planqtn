@@ -43,9 +43,9 @@ def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
 
     if isinstance(indices, list | np.ndarray):
         if len(indices) == 0:
-            return tuple([])
+            return GF2([])
         indices = np.array(indices)
-        return tuple(np.concatenate([op[indices], op[indices + n]]))
+        return GF2(np.concatenate([op[indices], op[indices + n]]))
     elif isinstance(indices, slice):
         x = slice(
             0 if indices.start is None else indices.start,
@@ -53,7 +53,7 @@ def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
         )
 
         z = slice(x.start + n, x.stop + n)
-        return tuple(np.concatenate([op[x], op[z]]))
+        return GF2(np.concatenate([op[x], op[z]]))
 
 
 def replace_with_op_on_indices(indices: List[int], op: GF2, target: GF2) -> GF2:

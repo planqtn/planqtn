@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Iterable, List, Optional, Tuple, Union, Dict
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import sympy
@@ -221,7 +221,7 @@ class StabilizerCodeTensorEnumerator:
         )
 
     def self_trace(
-        self, legs1: List[int | TensorLeg], legs2: List[int | TensorLeg]
+        self, legs1: Sequence[int | TensorLeg], legs2: Sequence[int | TensorLeg]
     ) -> "StabilizerCodeTensorEnumerator":
         assert len(legs1) == len(legs2)
         legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
@@ -245,8 +245,8 @@ class StabilizerCodeTensorEnumerator:
     def conjoin(
         self,
         other: "StabilizerCodeTensorEnumerator",
-        legs1: List[int | TensorLeg],
-        legs2: List[int | TensorLeg],
+        legs1: Sequence[int | TensorLeg],
+        legs2: Sequence[int | TensorLeg],
     ) -> "StabilizerCodeTensorEnumerator":
         """Creates a new brute force tensor enumerator by conjoining two of them.
 
