@@ -12,7 +12,7 @@ set -e
 
 export PYTHONPATH="."
 
-black planqtn --check
+black planqtn/** --check
 pytest planqtn
 
 mypy planqtn
