@@ -891,9 +891,6 @@ class TensorNetwork:
                 progress_reporter=progress_reporter,
                 verbose=verbose,
             )
-            # self._wep = SimplePoly()
-            # for k, sub_wep in pte.tensor.items():
-            #     self._wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
         else:
             self._wep = pte.tensor[()]
             if verbose:
@@ -955,7 +952,7 @@ class _PartiallyTracedEnumerator:
 
     def ordered_key_tensor(
         self,
-        open_legs: List[TensorLeg],
+        open_legs: Sequence[TensorLeg],
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
     ) -> TensorEnumerator:

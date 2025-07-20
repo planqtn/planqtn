@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Any
+from typing import Optional, Tuple, Any, Sequence
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
 from planqtn.tensor_network import (
     TensorNetwork,
@@ -43,7 +43,7 @@ class SingleNodeTensorNetwork(TensorNetwork):
 
     def stabilizer_enumerator_polynomial(
         self,
-        open_legs: List[TensorLeg] = [],
+        open_legs: Sequence[TensorLeg] = (),
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
