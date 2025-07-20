@@ -15,8 +15,6 @@ class CssTannerCodeTN(TensorNetwork):
         self,
         hx: np.ndarray,
         hz: np.ndarray,
-        coset_error: Optional[GF2] = None,
-        truncate_length: Optional[int] = None,
     ):
         rx, n = hx.shape
         rz = hz.shape[0]
@@ -50,7 +48,7 @@ class CssTannerCodeTN(TensorNetwork):
             z = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_z_legs),
                 tensor_id=f"q{q}.z",
-                annotation=LegoAnnotation(type=LegoType.ZREP, short_name=f"z{q}"),
+                annotation=LegoAnnotation(type=LegoType.XREP, short_name=f"z{q}"),
             )
 
             # leg numbering for the spiders: 0 for logical, 1 for physical,
@@ -117,12 +115,13 @@ class CssTannerCodeTN(TensorNetwork):
 
             gx_tensors.append(g_tensor)
             for g_leg, q in enumerate(qs):
+                x_tensor_id = f"q{q}.x"
                 traces.append(
                     (
                         g_tensor.tensor_id,
-                        x.tensor_id,
+                        x_tensor_id,
                         [(g_tensor.tensor_id, g_leg)],
-                        [(x.tensor_id, q_legs[q])],
+                        [(x_tensor_id, q_legs[q])],
                     )
                 )
                 q_legs[q] += 1

@@ -4,6 +4,7 @@ from typing import Any, Dict, TextIO
 
 from galois import GF2
 from sympy import symbols
+from planqtn.pauli import Pauli
 from planqtn_jobs.task import SupabaseCredentials, SupabaseTaskStore, Task, TaskDetails
 from planqtn_types.api_types import (
     WeightEnumeratorCalculationArgs,
@@ -11,7 +12,6 @@ from planqtn_types.api_types import (
 )
 from planqtn.progress_reporter import ProgressReporter
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from planqtn.symplectic import symp_to_str
 from planqtn.tensor_network import TensorNetwork
 
 
@@ -106,12 +106,9 @@ class WeightEnumeratorTask(
             # Convert the polynomial to a string representation
             if open_legs:
 
-                def format_pauli(pauli):
-                    return symp_to_str(pauli)
-
                 polynomial_str = "\n".join(
                     [
-                        f"{format_pauli(pauli)}: {str(wep)}"
+                        f"{Pauli.to_str(*pauli)}: {str(wep)}"
                         for pauli, wep in polynomial.items()
                     ]
                 )
