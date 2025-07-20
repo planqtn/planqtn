@@ -1,9 +1,9 @@
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 from galois import GF2
 import numpy as np
 
 
-def weight(op: GF2, skip_indices: List[int] = []) -> int:
+def weight(op: GF2, skip_indices: Sequence[int] = ()) -> int:
     """Calculate the weight of a symplectic operator."""
     n = len(op) // 2
     x_inds = np.array([i for i in range(n) if i not in skip_indices])
@@ -35,7 +35,7 @@ def omega(n: int) -> GF2:
 
 def sympl_to_pauli_repr(op: GF2) -> Tuple[int, ...]:
     n = len(op) // 2
-    return tuple([2 * int(op[i + n]) + int(op[i]) for i in range(n)])
+    return tuple(2 * int(op[i + n]) + int(op[i]) for i in range(n))
 
 
 def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
@@ -46,7 +46,8 @@ def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
             return GF2([])
         indices = np.array(indices)
         return GF2(np.concatenate([op[indices], op[indices + n]]))
-    elif isinstance(indices, slice):
+
+    if isinstance(indices, slice):
         x = slice(
             0 if indices.start is None else indices.start,
             n if indices.stop is None else indices.stop,
@@ -54,6 +55,8 @@ def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
 
         z = slice(x.start + n, x.stop + n)
         return GF2(np.concatenate([op[x], op[z]]))
+
+    raise ValueError(f"Invalid indices: {indices}")
 
 
 def replace_with_op_on_indices(indices: List[int], op: GF2, target: GF2) -> GF2:

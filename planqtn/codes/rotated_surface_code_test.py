@@ -1,6 +1,5 @@
 from galois import GF2
 import numpy as np
-import pytest
 
 from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.legos import Legos
@@ -106,7 +105,7 @@ def test_d3_rotated_surface_code():
     tn = RotatedSurfaceCodeTN(d=3)
 
     we = tn.stabilizer_enumerator_polynomial()
-    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+    assert we.dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 def test_d3_creation():

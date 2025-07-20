@@ -2,7 +2,6 @@ import numpy as np
 from planqtn.tensor_network import PAULI_X, TensorNetwork
 from planqtn.legos import Legos
 from planqtn.tensor_network import (
-    PAULI_I,
     StabilizerCodeTensorEnumerator,
 )
 

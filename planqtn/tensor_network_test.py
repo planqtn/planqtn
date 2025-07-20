@@ -1,33 +1,20 @@
-from copy import deepcopy
-import sys
-from galois import GF, GF2
 import numpy as np
 import pytest
-import scipy
-import sympy
-import os
+from galois import GF2
 
-from planqtn.codes.surface_code import SurfaceCodeTN
 from planqtn.legos import Legos
-from planqtn.linalg import gauss
-from planqtn.parity_check import conjoin, sprint, sstr, tensor_product
+from planqtn.parity_check import tensor_product
+from planqtn.pauli import Pauli
 from planqtn.progress_reporter import TqdmProgressReporter
-from planqtn.symplectic import weight
+from planqtn.symplectic import sslice, weight
 from planqtn.tensor_network import (
     PAULI_I,
     PAULI_X,
-    PAULI_Y,
     PAULI_Z,
     SimplePoly,
-    TensorNetwork,
     StabilizerCodeTensorEnumerator,
-    sconcat,
-    sslice,
+    TensorNetwork,
 )
-from planqtn.pauli import Pauli
-
-from sympy.abc import w, z
-from sympy import Poly
 
 
 def test_trace_two_422_codes_into_steane_via_tensornetwork():
@@ -60,7 +47,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork():
 
     assert {6: 42, 4: 21, 0: 1} == tn.stabilizer_enumerator_polynomial(
         verbose=True
-    )._dict
+    ).dict
 
 
 def test_step_by_step_to_d2_surface_code():
@@ -129,7 +116,7 @@ def test_step_by_step_to_d2_surface_code():
         print(k, "->", sub_wep, sub_wep * SimplePoly({weight(GF2(k)): 1}))
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == total_wep._dict
+    assert brute_force_wep == total_wep.dict
 
     ### Checking TensorNetwork equivalence
 
@@ -194,7 +181,7 @@ def test_step_by_step_to_d2_surface_code():
         )
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == dict(total_wep._dict)
+    assert brute_force_wep == dict(total_wep.dict)
 
     ### Checking TensorNetwork equivalence
 
@@ -257,7 +244,7 @@ def test_step_by_step_to_d2_surface_code():
         )
         total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
 
-    assert brute_force_wep == dict(total_wep._dict)
+    assert brute_force_wep == dict(total_wep.dict)
 
     assert np.array_equal(
         h_pte.h,
@@ -644,7 +631,7 @@ def test_temporarily_disjoint_nodes():
     assert node.h.shape == (8, 18)
 
     we = node.stabilizer_enumerator_polynomial()
-    assert we._dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
+    assert we.dict == {8: 129, 6: 100, 4: 22, 2: 4, 0: 1}
 
 
 def test_double_trace_602_identity_stopper_to_422():
@@ -696,7 +683,7 @@ def test_double_trace_602_identity_stopper_to_422():
 
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True, progress_reporter=TqdmProgressReporter()
-    )._dict == {0: 1, 4: 3}
+    ).dict == {0: 1, 4: 3}
 
 
 def test_tensor_product_of_legos():
@@ -772,7 +759,7 @@ def test_quadruple_trace_422_into_422():
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
-    )._dict == {0: 1, 2: 3}
+    ).dict == {0: 1, 2: 3}
 
 
 def test_two_bell_states():
@@ -801,7 +788,7 @@ def test_two_bell_states():
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
-    )._dict == {0: 1, 2: 6, 4: 9}
+    ).dict == {0: 1, 2: 6, 4: 9}
 
 
 def test_two_512_tensor_merge_step_by_step():
@@ -920,7 +907,7 @@ def test_disconnected_networks():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}
+    assert wep.dict == {0: 1, 2: 12, 4: 54, 6: 108, 8: 81}
 
 
 def test_disconnected_networks_truncate_length():
@@ -963,7 +950,7 @@ def test_disconnected_networks_truncate_length():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {
+    assert wep.dict == {
         0: 1,
     }
 
@@ -977,7 +964,7 @@ def test_disconnected_networks_truncate_length():
         verbose=True,
         progress_reporter=TqdmProgressReporter(),
     )
-    assert wep._dict == {0: 1, 2: 12}
+    assert wep.dict == {0: 1, 2: 12}
 
 
 @pytest.mark.parametrize(
@@ -1025,7 +1012,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
         expected_wep
         == tn.stabilizer_enumerator_polynomial(
             verbose=True,
-        )._dict
+        ).dict
     )
 
 
@@ -1105,7 +1092,7 @@ def test_truncate_length_example():
 
     assert tn.stabilizer_enumerator_polynomial(
         verbose=True,
-    )._dict == {0: 1, 2: 1, 4: 2}
+    ).dict == {0: 1, 2: 1, 4: 2}
 
 
 @pytest.mark.parametrize(
@@ -1135,7 +1122,7 @@ def test_single_node_truncate_length(truncate_length, expected_wep):
     assert (
         tn.stabilizer_enumerator_polynomial(
             verbose=True,
-        )._dict
+        ).dict
         == expected_wep
     )
 

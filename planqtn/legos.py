@@ -1,8 +1,9 @@
 import enum
-from galois import GF2
-import numpy as np
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import attrs
+import numpy as np
+from galois import GF2
 
 
 class LegoType(enum.Enum):
@@ -259,6 +260,7 @@ class Legos:
                 "short_name": "QRM15",
                 "description": "[[15,1,3]] Quantum Reed-Muller code encoding tensor",
                 # fmt: off
+                # pylint: disable=line-too-long
                 "parity_check_matrix":  np.array([
                         [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

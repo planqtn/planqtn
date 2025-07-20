@@ -1,32 +1,19 @@
+import importlib.util
 from collections import defaultdict
 from copy import deepcopy
-import importlib.util
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
 
-from typing_extensions import deprecated
 import cotengra as ctg
-
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Dict,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    Sequence,
-)
-from galois import GF2
 import numpy as np
-import sympy
-from tqdm import tqdm
+from galois import GF2
 
-from planqtn.legos import LegoAnnotation, Legos
-from planqtn.linalg import gauss
-from planqtn.parity_check import conjoin, self_trace, sprint, sstr, tensor_product
+from planqtn.parity_check import sprint
 from planqtn.pauli import Pauli
-from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
+from planqtn.progress_reporter import (
+    DummyProgressReporter,
+    ProgressReporter,
+    TqdmProgressReporter,
+)
 from planqtn.simple_poly import SimplePoly
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
@@ -35,9 +22,6 @@ from planqtn.stabilizer_tensor_enumerator import (
     _index_leg,
     _index_legs,
 )
-from planqtn.symplectic import omega, sconcat, sslice, weight
-from planqtn.progress_reporter import TqdmProgressReporter
-
 
 PAULI_I = GF2([0, 0])
 PAULI_X = GF2([1, 0])
@@ -64,7 +48,8 @@ class TensorNetwork:
             for k, v in nodes.items():
                 if k != v.tensor_id:
                     raise ValueError(
-                        f"Nodes dict passed in with inconsitent indexing, {k} != {v.tensor_id} for {v}."
+                        f"Nodes dict passed in with inconsitent indexing, "
+                        f"{k} != {v.tensor_id} for {v}."
                     )
             self.nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = nodes
         else:
@@ -181,7 +166,9 @@ class TensorNetwork:
     def set_coset(self, coset_error: GF2 | Tuple[List[int], List[int]]) -> None:
         """Sets the coset_error to the tensornetwork.
 
-        The coset_error should follow the qubit numbering defined in tn.qubit_to_node_and_leg which maps the index to a node ID.
+        The coset_error should follow the qubit numbering defined in
+        `tn.qubit_to_node_and_leg` which maps the index to a node ID.
+
         There are two possible ways to pass the coset_error:
         - a tuple of two lists of qubit indices, one for the Z errors and one for the X errors
         - a GF2 array of length 2 * self.n_qubits()
@@ -237,7 +224,8 @@ class TensorNetwork:
     ) -> None:
         if self._wep is not None:
             raise ValueError(
-                "Tensor network weight enumerator is already traced no new tracing schedule is allowed."
+                "Tensor network weight enumerator is already traced no new tracing schedule is "
+                "allowed."
             )
         join_legs1_indexed = _index_legs(node_idx1, join_legs1)
         join_legs2_indexed = _index_legs(node_idx2, join_legs2)
@@ -258,14 +246,13 @@ class TensorNetwork:
         #         print(f"n{n} -> n{n}_{leg}")
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
-            for leg1, leg2 in zip(join_legs1, join_legs2):
+            for _ in zip(join_legs1, join_legs2):
                 print(f"n{node_idx1} -> n{node_idx2} ")
 
     def _cotengra_tree_from_traces(
         self,
         free_legs: List[TensorLeg],
         leg_indices: Dict[TensorLeg, str],
-        index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
     ) -> ctg.ContractionTree:
         inputs, output, size_dict, input_names = self._prep_cotengra_inputs(
             leg_indices, free_legs, True
@@ -278,11 +265,12 @@ class TensorNetwork:
             for i, term in enumerate(terms):
                 if node_id in term:
                     return i
-            assert (
-                False
-            ), "This should not happen, nodes should be always present in at least one of the terms."
+            assert False, (
+                "This should not happen, nodes should be always present in at least one of the "
+                "terms."
+            )
 
-        for node_idx1, node_idx2, join_legs1, join_legs2 in self.traces:
+        for node_idx1, node_idx2, _, _ in self.traces:
             i, j = sorted([idx(node_idx1), idx(node_idx2)])
             # print((node_idx1, node_idx2), f"=> {i,j}", terms)
             if i == j:
@@ -300,7 +288,6 @@ class TensorNetwork:
         cotengra: bool = False,
         each_step: bool = False,
         details: bool = False,
-        progress_reporter: ProgressReporter = TqdmProgressReporter(),
         **cotengra_opts: Any,
     ) -> Tuple[ctg.ContractionTree, int]:
         free_legs, leg_indices, index_to_legs = self._collect_legs()
@@ -326,13 +313,11 @@ class TensorNetwork:
                 **cotengra_opts,
             )
         else:
-            tree = self._cotengra_tree_from_traces(
-                free_legs, leg_indices, index_to_legs
-            )
+            tree = self._cotengra_tree_from_traces(free_legs, leg_indices)
 
         new_tn.legs_left_to_join = deepcopy(self.legs_left_to_join)
 
-        pte_nodes: Dict[TensorId, int] = dict()
+        pte_nodes: Dict[TensorId, int] = {}
         max_pte_legs = 0
         print(
             "========================== ======= === === === == ==============================="
@@ -344,7 +329,8 @@ class TensorNetwork:
             "========================== ======= === === === == ==============================="
         )
         print(
-            f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
+            f"    Total legs to trace: "
+            f"{sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
         )
         pte_leg_numbers: Dict[TensorId, int] = defaultdict(int)
 
@@ -377,23 +363,22 @@ class TensorNetwork:
                     print(f"MERGE of {pte_nodes[node_idx1]} and {pte_nodes[node_idx2]}")
                 removed_pte = pte_nodes[node_idx2]
                 merged_pte = pte_nodes[node_idx1]
-                for node_idx in pte_nodes.keys():
-                    if pte_nodes[node_idx] == removed_pte:
+                for node_idx, pte_node in pte_nodes.items():
+                    if pte_node == removed_pte:
                         pte_nodes[node_idx] = merged_pte
 
             if details:
                 print(f"    pte nodes: {pte_nodes}")
             if each_step:
                 print(
-                    f"    Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
+                    f"    Total legs to trace: "
+                    f"{sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
                 )
 
             pte_leg_numbers = defaultdict(int)
 
-            for node_idx in pte_nodes.keys():
-                pte_leg_numbers[pte_nodes[node_idx]] += len(
-                    new_tn.legs_left_to_join[node_idx]
-                )
+            for node_idx, pte_node in pte_nodes.items():
+                pte_leg_numbers[pte_node] += len(new_tn.legs_left_to_join[node_idx])
 
             if each_step:
                 print(f"     PTEs num tracable legs: {dict(pte_leg_numbers)}")
@@ -409,7 +394,8 @@ class TensorNetwork:
             print(f"pte nodes: {pte_nodes}")
 
         print(
-            f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
+            f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} "
+            f"and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
         )
         print(
             f"Total legs to trace: {sum(len(legs) for legs in new_tn.legs_left_to_join.values())}"
@@ -556,7 +542,8 @@ class TensorNetwork:
                 # Print the indices for each node
                 for leg in node.legs:
                     print(
-                        f"  Leg {leg}: Index {leg_indices[leg]} {'OPEN' if leg in free_legs else 'traced'}"
+                        f"  Leg {leg}: Index {leg_indices[leg]} "
+                        f"{'OPEN' if leg in free_legs else 'traced'}"
                     )
         if verbose:
             print(input_names)
@@ -583,7 +570,7 @@ class TensorNetwork:
 
         # We convert the tree back to a list of traces
         traces = []
-        for parent, l, r in tree.traverse():
+        for _, l, r in tree.traverse():
             # at each step we have to find the nodes that share indices in the two merged subsets
             new_traces = legs_to_contract(l, r)
             traces += new_traces
@@ -620,7 +607,7 @@ class TensorNetwork:
         if self._cot_traces is not None:
             return self._cot_traces, self._cot_tree
 
-        inputs, output, size_dict, input_names = self._prep_cotengra_inputs(
+        inputs, output, size_dict, _ = self._prep_cotengra_inputs(
             leg_indices, free_legs, verbose
         )
 
@@ -654,24 +641,27 @@ class TensorNetwork:
 
     def stabilizer_enumerator_polynomial(
         self,
-        open_legs: List[TensorLeg] = [],
+        open_legs: Sequence[TensorLeg] = (),
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
     ) -> TensorEnumerator:
         """Returns the reduced stabilizer enumerator polynomial for the tensor network.
 
-        If open_legs is not empty, then the returned tensor enumerator polynomial is a dictionary of tensor keys to SimplePoly objects.
+        If open_legs is not empty, then the returned tensor enumerator polynomial is a dictionary of
+        tensor keys to SimplePoly objects.
 
         Args:
-            open_legs: List[TensorLeg] = []
-            The legs that are open in the tensor network.
-            verbose: bool = False
-            If True, print verbose output.
-            progress_reporter: ProgressReporter = DummyProgressReporter()
-            The progress reporter to use.
-            cotengra: bool = True
-            If True, use cotengra to contract the tensor network.
+            open_legs: The legs that are open in the tensor network. If empty, the result is a
+                       scalar weightenumerator polynomial of type `SimplePoly`,otherwise it is a
+                       dictionary of `TensorEnumeratorKey` keys to `SimplePoly` objects.
+            verbose: If True, print verbose output.
+            progress_reporter: The progress reporter to use, defaults to no progress reporting
+                              (`DummyProgressReporter`), can be set to `TqdmProgressReporter` for
+                              progress reporting on the console, or any other custom
+                              `ProgressReporter` subclass.
+            cotengra: If True, use cotengra to contract the tensor network, otherwise use the order
+                      the traces were constructed.
 
         Returns:
             TensorEnumerator: The reduced stabilizer enumerator polynomial for the tensor network.
@@ -757,7 +747,8 @@ class TensorNetwork:
                     f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
                 )
                 print(
-                    f"Total legs left to join: {sum(len(legs) for legs in self.legs_left_to_join.values())}"
+                    f"Total legs left to join: "
+                    f"{sum(len(legs) for legs in self.legs_left_to_join.values())}"
                 )
             node1_pte = self.ptes[node_idx1]
             node2_pte = self.ptes[node_idx2]
@@ -840,7 +831,8 @@ class TensorNetwork:
                     f"PTE nodes: {node1_pte.nodes if node1_pte is not None else None}"
                 )
                 print(
-                    f"PTE tracable legs: {node1_pte.tracable_legs if node1_pte is not None else None}"
+                    f"PTE tracable legs: "
+                    f"{node1_pte.tracable_legs if node1_pte is not None else None}"
                 )
             if verbose:
                 print("PTE tensor: ")
@@ -920,7 +912,7 @@ class TensorNetwork:
             verbose=verbose, progress_reporter=progress_reporter
         )
         assert isinstance(wep, SimplePoly)
-        return wep._dict
+        return wep.dict
 
     def set_truncate_length(self, truncate_length: int) -> None:
         self.truncate_length = truncate_length
@@ -976,7 +968,8 @@ class _PartiallyTracedEnumerator:
             print(f"open_legs: {open_legs}, tracable_legs: {self.tracable_legs}")
             print(f"index: {index}")
 
-        reindex = lambda key: tuple(key[i] for i in index)
+        def reindex(key: TensorEnumeratorKey) -> TensorEnumeratorKey:
+            return tuple(key[i] for i in index)
 
         return {
             reindex(k): v
@@ -1028,17 +1021,12 @@ class _PartiallyTracedEnumerator:
     ) -> "_PartiallyTracedEnumerator":
         assert len(join_legs1) == len(join_legs2)
 
-        wep: Dict[TensorEnumeratorKey, SimplePoly] = defaultdict(lambda: SimplePoly())
+        wep: Dict[TensorEnumeratorKey, SimplePoly] = defaultdict(SimplePoly)
         open_legs1 = [leg for leg in self.tracable_legs if leg not in join_legs1]
-
         open_legs2 = [leg for leg in pte2.tracable_legs if leg not in join_legs2]
 
-        # print(f"traceable legs: {self.tracable_legs} <- {open_legs}")
         join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
-
-        # print(f"join indices1: {join_indices1}")
         join_indices2 = [pte2.tracable_legs.index(leg) for leg in join_legs2]
-        # print(f"join indices2: {join_indices2}")
 
         kept_indices1 = [
             i for i, leg in enumerate(self.tracable_legs) if leg in open_legs1
@@ -1046,11 +1034,19 @@ class _PartiallyTracedEnumerator:
         kept_indices2 = [
             i for i, leg in enumerate(pte2.tracable_legs) if leg in open_legs2
         ]
-        # print(f"kept indices: {kept_indices}")
+
+        if verbose:
+            print(
+                f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements,"
+                f"legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}"
+            )
 
         for k1 in progress_reporter.iterate(
             iterable=self.tensor.keys(),
-            desc=f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements, legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}",
+            desc=(
+                f"PTE merge: {len(self.tensor)} x {len(pte2.tensor)} elements,"
+                f"legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}"
+            ),
             total_size=len(list(self.tensor.keys())),
         ):
             for k2 in pte2.tensor.keys():
@@ -1067,14 +1063,6 @@ class _PartiallyTracedEnumerator:
                     k2[i] for i in kept_indices2
                 )
 
-                # assert len(key[0]) == 2 * (
-                #     len(open_legs1) + len(open_legs2)
-                # ), f"key length: {len(key[0])} != 2*({len(open_legs1)}  + {len(open_legs2)}) = {2 * (
-                #     len(open_legs1) + len(open_legs2)
-                # )}"
-                # print(f"key: {key}")
-                # print(f"wep1: {wep1}")
-                # print(f"wep2: {wep2}")
                 wep[key].add_inplace(wep1 * wep2)
                 self.truncate_if_needed(key, wep)
 
@@ -1126,7 +1114,10 @@ class _PartiallyTracedEnumerator:
 
         for old_key in progress_reporter.iterate(
             iterable=self.tensor.keys(),
-            desc=f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)} elements",
+            desc=(
+                f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)}"
+                "elements"
+            ),
             total_size=len(list(self.tensor.keys())),
         ):
             if not all(
@@ -1150,7 +1141,7 @@ class _PartiallyTracedEnumerator:
             wep[key].add_inplace(wep1)
 
             self.truncate_if_needed(key, wep)
-        tracable_legs = [(tensor_id, leg) for tensor_id, leg in open_legs]
+        tracable_legs = list(open_legs)
 
         return _PartiallyTracedEnumerator(
             self.nodes,

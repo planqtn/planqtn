@@ -1,8 +1,6 @@
 from galois import GF2
 import numpy as np
-import pytest
 from planqtn.codes.compass_code import CompassCodeTN
-from planqtn.codes.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.legos import Legos
 from planqtn.simple_poly import SimplePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
@@ -111,7 +109,7 @@ def test_compass_truncated_coset_wep():
 
     wep_full = tn.stabilizer_enumerator_polynomial(cotengra=False)
     assert (
-        wep_full._dict[2] == wep._dict[2]
+        wep_full.dict[2] == wep.dict[2]
     ), f"Not equal, got: {wep} vs expected {wep_full}"
 
     # pytest.fail(f"Debug, got:\n{wep} vs {wep_full}")

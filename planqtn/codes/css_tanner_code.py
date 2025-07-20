@@ -2,11 +2,9 @@ import numpy as np
 from planqtn.tensor_network import TensorNetwork, Trace
 from planqtn.legos import LegoAnnotation, Legos
 from planqtn.tensor_network import (
-    PAULI_I,
     StabilizerCodeTensorEnumerator,
 )
-from typing import Optional, List
-from galois import GF2
+from typing import List
 from planqtn.legos import LegoType
 
 

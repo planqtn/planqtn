@@ -1,14 +1,13 @@
 import abc
 import contextlib
+import json
 import sys
 import time
-import json
-from typing import Any, Dict, Generator, Iterable
+from contextlib import _GeneratorContextManager
+from typing import Any, Dict, Generator, Iterable, Optional, TextIO
 
 import attr
 from tqdm import tqdm
-from typing import Optional, TextIO
-from contextlib import _GeneratorContextManager
 
 
 @attr.s
@@ -40,7 +39,12 @@ class IterationState:
         self._update_avg_time_per_item()
 
     def __repr__(self) -> str:
-        return f"Iteration(desc={self.desc}, current_item={self.current_item}, total_size={self.total_size}, duration={self.duration}, avg_time_per_item={self.avg_time_per_item}), start_time={self.start_time}, end_time={self.end_time}"
+        return (
+            f"Iteration(desc={self.desc}, current_item={self.current_item}, "
+            f"total_size={self.total_size}, duration={self.duration}, "
+            f"avg_time_per_item={self.avg_time_per_item}), "
+            f"start_time={self.start_time}, end_time={self.end_time}"
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the IterationState to a dictionary for JSON serialization."""
@@ -58,13 +62,13 @@ class IterationState:
 class IterationStateEncoder(json.JSONEncoder):
     """Custom JSON encoder for IterationState objects."""
 
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, IterationState):
-            return obj.to_dict()
-        return super().default(obj)
+    def default(self, o: Any) -> Any:
+        if isinstance(o, IterationState):
+            return o.to_dict()
+        return super().default(o)
 
-    def __call__(self, obj: Any) -> Any:
-        return self.encode(obj)
+    def __call__(self, o: Any) -> Any:
+        return self.encode(o)
 
 
 class ProgressReporter(abc.ABC):
@@ -147,8 +151,7 @@ class ProgressReporter(abc.ABC):
     def enter_phase(self, desc: str) -> _GeneratorContextManager[Any, None, None]:
         @contextlib.contextmanager
         def phase_iterator() -> Generator[Any, None, None]:
-            for i, item in enumerate(self.iterate(["item"], desc, total_size=1)):
-                yield item
+            yield from self.iterate(["item"], desc, total_size=1)
 
         return phase_iterator()
 
@@ -182,8 +185,7 @@ class TqdmProgressReporter(ProgressReporter):
                 else 2 if total_size > 1e5 else 0.1
             ),
         )
-        for item in t:
-            yield item
+        yield from t
         t.close()
 
     def handle_result(self, result: Dict[str, Any]) -> None:

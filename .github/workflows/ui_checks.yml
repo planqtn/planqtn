@@ -1,18 +1,20 @@
-name: UI Checks
+name: UI & Docs Checks
 run-name: ${{ github.actor }} is checking the UI
 on:
   pull_request:
     paths:
       - "app/ui/**"
       - "check/ui**"
+      - "planqtn/**"
       - ".github/workflows/ui_checks.yml"
   push:
     paths:
       - "app/ui/**"
       - "check/ui**"
+      - "planqtn/**"
       - ".github/workflows/ui_checks.yml"
 jobs:
-  UI-checks:
+  UI-docs-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v4

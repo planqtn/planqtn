@@ -1,6 +1,4 @@
 from typing import List, Optional, Tuple, Any
-from galois import GF2
-import numpy as np
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
 from planqtn.tensor_network import (
     TensorNetwork,
@@ -33,7 +31,6 @@ class SingleNodeTensorNetwork(TensorNetwork):
         cotengra: bool = False,
         each_step: bool = False,
         details: bool = False,
-        progress_reporter: ProgressReporter = DummyProgressReporter(),
         **cotengra_opts: Any,
     ) -> Tuple[ctg.ContractionTree, int]:
         if details:

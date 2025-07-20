@@ -1,14 +1,13 @@
 from galois import GF2
 import numpy as np
 import scipy
-from scipy.linalg import block_diag
 
 from planqtn.linalg import gauss
 
 
 def sstr(h: GF2) -> str:
-    r, n = h.shape
-    n //= 2
+    n = h.shape[1] // 2
+
     return "\n".join(
         "".join("_1"[int(b)] for b in row[:n])
         + "|"
@@ -109,7 +108,7 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     r, n = h.shape
     n //= 2
 
-    x1, x2, z1, z2 = legs = [leg1, leg2, leg1 + n, leg2 + n]
+    legs = [leg1, leg2, leg1 + n, leg2 + n]
 
     mx: GF2 = gauss(h, col_subset=legs)
 
@@ -121,26 +120,29 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
 
     # interpret the self trace as measuring ZZ and XX
 
-    # measuring ZZ - if x1 and x2 are the same then we have nothing to do, ZZ commutes with all generators
-    # otherwise we have to pick one of them to be the main row, the other will be removed
+    # measuring ZZ - if x1 and x2 are the same then we have nothing to do, ZZ commutes with
+    # all generators otherwise we have to pick one of them to be the main row, the other will be
+    # removed
     if pivot_rows[0] != pivot_rows[1] and pivot_rows[0] != -1 and pivot_rows[1] != -1:
         mx[pivot_rows[0]] += mx[pivot_rows[1]]
         kept_rows.remove(pivot_rows[1])
-    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two legs match with
-    # any combination of the generators, thus we'll remove the offending remaining row
+    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the
+    # two legs match with any combination of the generators, thus we'll remove the offending
+    # remaining row
     elif pivot_rows[0] == -1 and pivot_rows[1] != -1:
         kept_rows.remove(pivot_rows[1])
     elif pivot_rows[0] != -1 and pivot_rows[1] == -1:
         kept_rows.remove(pivot_rows[0])
 
-    # measuring XX - if z1 and z2 are the same then we have nothing to do, XX commutes with all generators
-    # otherwise we have to pick one of them to be the main row, the other will be removed
+    # measuring XX - if z1 and z2 are the same then we have nothing to do, XX commutes with all
+    # generators otherwise we have to pick one of them to be the main row, the other will be removed
     if pivot_rows[2] != pivot_rows[3] and pivot_rows[2] != -1 and pivot_rows[3] != -1:
         mx[pivot_rows[2]] += mx[pivot_rows[3]]
         kept_rows.remove(pivot_rows[3])
 
-    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two legs match with
-    # any combination of the generators, thus we'll remove the offending remaining row
+    # now, if one of the legs is all zero (pivot row is -1 for those), then we can't make the two
+    # legs match with any combination of the generators, thus we'll remove the offending
+    # remaining row
     elif pivot_rows[2] == -1 and pivot_rows[3] != -1:
         kept_rows.remove(pivot_rows[3])
 
@@ -150,7 +152,8 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     kept_cols = np.array([col for col in range(2 * n) if col not in legs])
 
     if len(kept_cols) == 0:
-        # we have a scalar lego, if there were no rows left, then we have 0, otherwise we normalize to 1
+        # we have a scalar lego, if there were no rows left, then we have 0, otherwise we
+        # normalize to 1
         if len(kept_rows) == 0:
             return GF2([[0]])
         return GF2([[1]])
@@ -163,8 +166,8 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     # print(mx)
     mx = gauss(mx, noswaps=True)
     kept_rows = list(range(len(mx)))
-    for row in range(len(mx)):
-        if np.count_nonzero(mx[row]) == 0:
-            kept_rows.remove(row)
+    for row_idx, row in enumerate(mx):
+        if np.count_nonzero(row) == 0:
+            kept_rows.remove(row_idx)
     mx = mx[np.array(kept_rows)]
     return mx

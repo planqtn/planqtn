@@ -5,7 +5,6 @@ import numpy as np
 import sympy
 
 from galois import GF2
-from tqdm import tqdm
 from planqtn.legos import LegoAnnotation
 from planqtn.linalg import gauss
 from planqtn.parity_check import conjoin, self_trace, tensor_product
@@ -42,23 +41,19 @@ def _index_legs(
 class SimpleStabilizerCollector:
     def __init__(
         self,
-        k: int,
-        n: int,
         coset: GF2,
         open_cols: List[int],
         verbose: bool = False,
         truncate_length: Optional[int] = None,
     ):
-        self.k = k
-        self.n = n
         self.coset = coset
         self.tensor_wep = SimplePoly()
-        self.skip_indices = open_cols
+        self.open_cols = open_cols
         self.verbose = verbose
         self.truncate_length = truncate_length
 
     def collect(self, stabilizer: GF2) -> None:
-        stab_weight = weight(stabilizer + self.coset, skip_indices=self.skip_indices)
+        stab_weight = weight(stabilizer + self.coset, skip_indices=self.open_cols)
         if self.truncate_length is not None and stab_weight > self.truncate_length:
             return
         # print(f"simple {stabilizer + self.coset} => {stab_weight}")
@@ -71,29 +66,25 @@ class SimpleStabilizerCollector:
 class TensorElementCollector:
     def __init__(
         self,
-        k: int,
-        n: int,
         coset: GF2,
         open_cols: List[int],
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
     ):
-        self.k = k
-        self.n = n
         self.coset = coset
         self.simple = len(open_cols) == 0
-        self.skip_indices = open_cols
+        self.open_cols = open_cols
         self.verbose = verbose
         self.progress_reporter = progress_reporter
         self.matching_stabilizers: List[GF2] = []
-        self.tensor_wep: TensorEnumerator = defaultdict(lambda: SimplePoly())
+        self.tensor_wep: TensorEnumerator = defaultdict(SimplePoly)
         self.truncate_length = truncate_length
 
     def collect(self, stabilizer: GF2) -> None:
         if (
             self.truncate_length is not None
-            and weight(stabilizer + self.coset, skip_indices=self.skip_indices)
+            and weight(stabilizer + self.coset, skip_indices=self.open_cols)
             > self.truncate_length
         ):
             return
@@ -106,22 +97,23 @@ class TensorElementCollector:
             desc="Collecting stabilizers",
             total_size=len(self.matching_stabilizers),
         ):
-            stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
+            stab_weight = weight(s + self.coset, skip_indices=self.open_cols)
             # print(f"tensor {s + self.coset} => {stab_weight}")
-            key = sympl_to_pauli_repr(sslice(s, self.skip_indices))
+            key = sympl_to_pauli_repr(sslice(s, self.open_cols))
             self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
 
 class StabilizerCodeTensorEnumerator:
     """Tensor enumerator for a stabilizer code.
 
-    Instances of StabilizerCodeTensorEnumerator always have a parity check matrix. It supports self-tracing, as well as
-    tensor product, and conjoining of with other StabilizerCodeTensorEnumerators.
+    Instances of StabilizerCodeTensorEnumerator always have a parity check matrix. It supports
+    self-tracing, as well as tensor product, and conjoining of with other
+    `StabilizerCodeTensorEnumerator` instances.
 
-    The class also supports the enumeration of the scalar stabilizer weight enumerator of the code via brute force.
-    There can be legs left open, in which case the weight enumerator becomes a tensor weight enumerator.
-    Weight truncation is supported for approximate enumeration.
-    Coset support is represented by coset_flipped_legs.
+    The class also supports the enumeration of the scalar stabilizer weight enumerator of the code
+    via brute force. There can be legs left open, in which case the weight enumerator becomes a
+    tensor weight enumerator. Weight truncation is supported for approximate enumeration.
+    Coset support is represented by `coset_flipped_legs`.
     """
 
     def __init__(
@@ -173,9 +165,9 @@ class StabilizerCodeTensorEnumerator:
         return f"TensorEnum({self.tensor_id})"
 
     def set_tensor_id(self, tensor_id: TensorId) -> None:
-        for l in range(len(self.legs)):
-            if self.legs[l][0] == self.tensor_id:
-                self.legs[l] = (tensor_id, self.legs[l][1])
+        for l, leg in enumerate(self.legs):
+            if leg[0] == self.tensor_id:
+                self.legs[l] = (tensor_id, leg[1])
         self.tensor_id = tensor_id
 
     def _key(self, e: GF2) -> Tuple[int, ...]:
@@ -258,8 +250,6 @@ class StabilizerCodeTensorEnumerator:
         legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
         legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, legs2)
 
-        n2 = other.n
-
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
         # for example 2 3 4 | 2 4 8 will become
         # as legs2_offset = 5
@@ -287,7 +277,7 @@ class StabilizerCodeTensorEnumerator:
 
     def _brute_force_stabilizer_enumerator_from_parity(
         self,
-        open_legs: List[TensorLeg] = [],
+        open_legs: Sequence[TensorLeg] = (),
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
@@ -297,7 +287,8 @@ class StabilizerCodeTensorEnumerator:
         invalid_legs = self.validate_legs(open_legs)
         if len(invalid_legs) > 0:
             raise ValueError(
-                f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node {self.tensor_id} with legs:\n{self.legs}"
+                f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node "
+                f"{self.tensor_id} with legs:\n{self.legs}"
             )
 
         open_cols = [self.legs.index(leg) for leg in open_legs]
@@ -311,13 +302,9 @@ class StabilizerCodeTensorEnumerator:
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
                 coset[self.legs.index(leg)] = pauli[0]
                 coset[self.legs.index(leg) + self.n] = pauli[1]
-                # print(
-                #     f"brute force - node {self.tensor_id} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
-                # )
+
         collector = (
             SimpleStabilizerCollector(
-                self.k,
-                self.n,
                 coset,
                 open_cols,
                 verbose,
@@ -325,8 +312,6 @@ class StabilizerCodeTensorEnumerator:
             )
             if open_cols == []
             else TensorElementCollector(
-                self.k,
-                self.n,
                 coset,
                 open_cols,
                 verbose,
@@ -341,15 +326,17 @@ class StabilizerCodeTensorEnumerator:
 
         for i in progress_reporter.iterate(
             iterable=range(2**r),
-            desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.tensor_id} - {r} generators",
+            desc=(
+                f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor "
+                f"{self.tensor_id} - {r} generators"
+            ),
             total_size=2**r,
         ):
             picked_generators = GF2(list(np.binary_repr(i, width=r)), dtype=int)
             if r == 0:
                 if i > 0:
                     continue
-                else:
-                    stabilizer = GF2.Zeros(self.n * 2)
+                stabilizer = GF2.Zeros(self.n * 2)
             else:
                 stabilizer = picked_generators @ h_reduced
 
@@ -359,7 +346,7 @@ class StabilizerCodeTensorEnumerator:
 
     def stabilizer_enumerator_polynomial(
         self,
-        open_legs: List[TensorLeg] = [],
+        open_legs: Sequence[TensorLeg] = (),
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
@@ -367,7 +354,8 @@ class StabilizerCodeTensorEnumerator:
         """Stabilizer enumerator polynomial.
 
         If open_legs left empty, it gives the scalar stabilizer enumerator polynomial.
-        If open_legs is not empty, then the result is a sparse tensor, with non-zero values on the open_legs.
+        If open_legs is not empty, then the result is a sparse tensor, with non-zero values on
+        the open_legs.
         """
         wep = self._brute_force_stabilizer_enumerator_from_parity(
             open_legs=open_legs,

@@ -1,7 +1,8 @@
 from copy import deepcopy
-from galois import GF2
+from typing import Iterable
+
 import numpy as np
-from typing import Iterable, Optional, List
+from galois import GF2
 
 
 def gauss(
@@ -59,12 +60,8 @@ def gauss(
 
 
 def gauss_row_augmented(mx: GF2) -> GF2:
-    (rows, cols) = mx.shape
     res: GF2 = deepcopy(mx)
-    n = rows
-    aug = GF2(np.hstack([res, GF2.Identity(n)]))
-    a = gauss(aug)
-    return a
+    return gauss(GF2(np.hstack([res, GF2.Identity(mx.shape[0])])))
 
 
 def right_kernel(mx: GF2) -> GF2:
@@ -75,8 +72,7 @@ def right_kernel(mx: GF2) -> GF2:
     if len(zero_rows) == 0:
         # an invertible matrix will have the trivial nullspace
         return GF2([GF2.Zeros(cols)])
-    else:
-        return GF2(a[zero_rows, rows:])
+    return GF2(a[zero_rows, rows:])
 
 
 def invert(mx: GF2) -> GF2:

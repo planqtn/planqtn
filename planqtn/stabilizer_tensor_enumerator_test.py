@@ -23,8 +23,8 @@ def test_stopper_weight_enumerators(h, expected_wep):
         tensor_id="stopper-test",
     )
     assert (
-        te.stabilizer_enumerator_polynomial()._dict == expected_wep
-    ), f"For {h}, expected {expected_wep}, got {te.stabilizer_enumerator_polynomial()._dict}"
+        te.stabilizer_enumerator_polynomial().dict == expected_wep
+    ), f"For {h}, expected {expected_wep}, got {te.stabilizer_enumerator_polynomial().dict}"
 
 
 def test_stoppers_in_different_order():
@@ -228,7 +228,7 @@ def test_trace_two_422_codes_into_steane():
 
     assert {6: 42, 4: 21, 0: 1} == t3.trace_with_stopper(
         PAULI_I, 0
-    ).stabilizer_enumerator_polynomial()._dict
+    ).stabilizer_enumerator_polynomial().dict
 
 
 def test_steane_logical_legs():
@@ -292,14 +292,14 @@ def test_422_logical_legs_enumerator():
         .trace_with_stopper(PAULI_I, 5)
     )
 
-    assert {4: 3, 0: 1} == tensorwe_on_log_legs.stabilizer_enumerator_polynomial()._dict
+    assert {4: 3, 0: 1} == tensorwe_on_log_legs.stabilizer_enumerator_polynomial().dict
 
 
 def test_conjoin_to_scalar():
     joint = StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=0).conjoin(
         StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=1), [0], [0]
     )
-    wep = joint.stabilizer_enumerator_polynomial()._dict
+    wep = joint.stabilizer_enumerator_polynomial().dict
     assert wep == {0: 1}
 
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
@@ -320,7 +320,7 @@ def test_conjoin_to_scalar():
         .conjoin(stopper_2, [(0, 1)], [(2, 0)])
     )
 
-    wep = joint.stabilizer_enumerator_polynomial()._dict
+    wep = joint.stabilizer_enumerator_polynomial().dict
 
     assert wep == {0: 1}
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
@@ -332,7 +332,7 @@ def tensor_with_scalar():
         StabilizerCodeTensorEnumerator(GF2([PAULI_I]))
         .tensor_with(StabilizerCodeTensorEnumerator(GF2([[5]])))
         .stabilizer_enumerator_polynomial()
-        ._dict
+        .dict
     )
 
     assert wep == {0: 1}
@@ -355,7 +355,7 @@ def test_truncated_scalar_enumerator(truncate_length, expected_wep):
     h = Legos.steane_code_813_encoding_tensor
     te = StabilizerCodeTensorEnumerator(h)
     assert (
-        te.stabilizer_enumerator_polynomial(truncate_length=truncate_length)._dict
+        te.stabilizer_enumerator_polynomial(truncate_length=truncate_length).dict
         == expected_wep
     )
 

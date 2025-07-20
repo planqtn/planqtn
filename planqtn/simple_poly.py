@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 from typing import Dict, Tuple, Union, Any, Generator, Optional, Callable, List
 
 from sympy import Poly, symbols
@@ -56,17 +54,17 @@ class MonomialPowersPoly:
         self,
         d: Union[Dict[Tuple[int, ...] | MonomialPowers, int], "MonomialPowersPoly"],
     ) -> None:
-        self._dict: Dict[MonomialPowers, int] = dict()
+        self.dict: Dict[MonomialPowers, int] = {}
         self.num_vars = 2
         assert d is not None
         if isinstance(d, MonomialPowersPoly):
-            self._dict.update(d._dict)
+            self.dict.update(d.dict)
             self.num_vars = d.num_vars
         elif isinstance(d, dict):
             if len(d) > 0:
                 first_key = list(d.keys())[0]
                 self.num_vars = len(first_key)
-                self._dict.update(
+                self.dict.update(
                     {MonomialPowers(key): value for key, value in d.items()}
                 )
         else:
@@ -74,15 +72,15 @@ class MonomialPowersPoly:
 
     def _subs(self, fun: Callable[[Any, int], None]) -> None:
         assert self.num_vars == 2
-        for k, v in self._dict.items():
+        for k, v in self.dict.items():
             fun(k, v)
 
-    def _to_sympy(self, vars: List[Any]) -> Poly:
+    def to_sympy(self, variables: List[Any]) -> Poly:
         assert self.num_vars == 2
 
-        res = Poly(0, *vars)
-        for k, v in self._dict.items():
-            res += Poly(v * vars[0] ** k[0] * vars[1] ** k[1])
+        res = Poly(0, *variables)
+        for k, v in self.dict.items():
+            res += Poly(v * variables[0] ** k[0] * variables[1] ** k[1])
         return res
 
     @staticmethod
@@ -98,117 +96,114 @@ class MonomialPowersPoly:
         self, n: Union[int, float, "MonomialPowersPoly"]
     ) -> "MonomialPowersPoly":
         if isinstance(n, (int, float)):
-            return MonomialPowersPoly({k: int(n * v) for k, v in self._dict.items()})
+            return MonomialPowersPoly({k: int(n * v) for k, v in self.dict.items()})
         raise TypeError(f"Cannot multiply MonomialPowersPoly by {type(n)}")
 
 
 class SimplePoly:
     def __init__(self, d: Optional[Union["SimplePoly", Dict[int, int]]] = None) -> None:
-        self._dict: Dict[int, int] = dict()
+        self.dict: Dict[int, int] = {}
         self.num_vars = 1
         if isinstance(d, SimplePoly):
-            self._dict.update(d._dict)
+            self.dict.update(d.dict)
         elif d is not None and isinstance(d, dict):
-            self._dict.update(d)
+            self.dict.update(d)
             if len(d) > 0:
-                first_key = list(self._dict.keys())[0]
+                first_key = list(self.dict.keys())[0]
                 assert isinstance(first_key, int)
         elif d is not None:
             raise ValueError(f"Unrecognized type: {type(d)}")
 
     def is_scalar(self) -> bool:
-        return len(self._dict) == 1 and set(self._dict.keys()) == {0}
+        return len(self.dict) == 1 and set(self.dict.keys()) == {0}
 
     def add_inplace(self, other: "SimplePoly") -> None:
         assert other.num_vars == self.num_vars
-        for k, v in other._dict.items():
-            self._dict[k] = self._dict.get(k, 0) + v
+        for k, v in other.dict.items():
+            self.dict[k] = self.dict.get(k, 0) + v
 
     def __add__(self, other: "SimplePoly") -> "SimplePoly":
         assert other.num_vars == self.num_vars
-        res = SimplePoly(self._dict)
-        for k, v in other._dict.items():
-            res._dict[k] = res._dict.get(k, 0) + v
+        res = SimplePoly(self.dict)
+        for k, v in other.dict.items():
+            res.dict[k] = res.dict.get(k, 0) + v
         return res
 
     def minw(self) -> Tuple[Any, int]:
-        min_w = min(self._dict.keys())
-        min_coeff = self._dict[min_w]
+        min_w = min(self.dict.keys())
+        min_coeff = self.dict[min_w]
         return min_w, min_coeff
 
     def leading_order_poly(self) -> "SimplePoly":
-        min_w = min(self._dict.keys())
-        min_coeff = self._dict[min_w]
+        min_w = min(self.dict.keys())
+        min_coeff = self.dict[min_w]
         return SimplePoly({min_w: min_coeff})
 
     def __getitem__(self, i: Any) -> int:
-        return self._dict.get(i, 0)
+        return self.dict.get(i, 0)
 
     def items(self) -> Generator[Tuple[Any, int], None, None]:
-        yield from self._dict.items()
+        yield from self.dict.items()
 
     def __len__(self) -> int:
-        return len(self._dict)
+        return len(self.dict)
 
     def normalize(self, verbose: bool = False) -> "SimplePoly":
 
-        if 0 in self._dict and self._dict[0] > 1:
+        if 0 in self.dict and self.dict[0] > 1:
             if verbose:
-                print(f"normalizing WEP by 1/{self._dict[0]}")
-            return self / self._dict[0]
+                print(f"normalizing WEP by 1/{self.dict[0]}")
+            return self / self.dict[0]
         return self
 
     def __str__(self) -> str:
         return (
             "{"
-            + ", ".join(
-                [f"{w}:{self._dict[w]}" for w in sorted(list(self._dict.keys()))]
-            )
+            + ", ".join([f"{w}:{self.dict[w]}" for w in sorted(list(self.dict.keys()))])
             + "}"
         )
 
     def __repr__(self) -> str:
-        return f"SimplePoly({repr(self._dict)})"
+        return f"SimplePoly({repr(self.dict)})"
 
-    def __truediv__(self, n: Union[int, float]) -> "SimplePoly":
-        if isinstance(n, (int, float)):
-            # TODO: is this really a good idea to always keep coeffs integer?
-            return SimplePoly({k: int(v // n) for k, v in self._dict.items()})
+    def __truediv__(self, n: int) -> "SimplePoly":
+        if isinstance(n, int):
+            return SimplePoly({k: int(v // n) for k, v in self.dict.items()})
         raise TypeError(f"Cannot divide SimplePoly by {type(n)}")
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, (int, float)):
-            return self._dict[0] == value
+            return self.dict[0] == value
         if isinstance(value, SimplePoly):
-            return self._dict == value._dict
+            return self.dict == value.dict
         return False
 
     def __hash__(self) -> int:
-        return hash(self._dict)
+        return hash(self.dict)
 
     def __mul__(self, n: Union[int, float, "SimplePoly"]) -> "SimplePoly":
         if isinstance(n, (int, float)):
-            return SimplePoly({k: int(n * v) for k, v in self._dict.items()})
-        elif isinstance(n, SimplePoly):
+            return SimplePoly({k: int(n * v) for k, v in self.dict.items()})
+        if isinstance(n, SimplePoly):
             res = SimplePoly()
-            for d1, coeff1 in self._dict.items():
-                for d2, coeff2 in n._dict.items():
-                    res._dict[d1 + d2] = res._dict.get(d1 + d2, 0) + coeff1 * coeff2
+            for d1, coeff1 in self.dict.items():
+                for d2, coeff2 in n.dict.items():
+                    res.dict[d1 + d2] = res.dict.get(d1 + d2, 0) + coeff1 * coeff2
             return res
         raise TypeError(f"Cannot multiply SimplePoly by {type(n)}")
 
     def _homogenize(self, n: int) -> "MonomialPowersPoly":
         """Homogenize a polynomial in n variables to a polynomial in 2 variables.
 
-        From the single A(z) => A(w,z) = w**n A(z/n), thus the first element of the monomial keys is w (the dual weight),
-        the second is z (which is still the actual weight).
+        From the single A(z) => A(w,z) = w**n A(z/n), thus the first element of the monomial keys is
+        w (the dual weight), the second is z (which is still the actual weight).
         """
         return MonomialPowersPoly(
-            {MonomialPowers((n - k, k)): v for k, v in self._dict.items()}
+            {MonomialPowers((n - k, k)): v for k, v in self.dict.items()}
         )
 
     def truncate_inplace(self, n: int) -> None:
-        self._dict = {k: v for k, v in self._dict.items() if k <= n}
+        self.dict = {k: v for k, v in self.dict.items() if k <= n}
 
     def macwilliams_dual(
         self, n: int, k: int, to_normalizer: bool = True
@@ -224,7 +219,7 @@ class SimplePoly:
         factors = [4**k, 2**k] if to_normalizer else [2**k, 4**k]
         homogenized: MonomialPowersPoly = self._homogenize(n) * factors[0]
         z, w = symbols("w z")
-        sp_homogenized = homogenized._to_sympy([w, z])
+        sp_homogenized = homogenized.to_sympy([w, z])
 
         sympy_substituted = Poly(
             sp_homogenized.subs({w: (w + 3 * z) / 2, z: (w - z) / 2}).simplify()
@@ -239,7 +234,7 @@ class SimplePoly:
 
         single_var_dict = {}
 
-        for key, value in monomial_powers_substituted._dict.items():
+        for key, value in monomial_powers_substituted.dict.items():
             assert key[1] not in single_var_dict
             single_var_dict[key[1]] = value
 
