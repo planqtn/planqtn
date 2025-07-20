@@ -20,7 +20,7 @@ class RotatedSurfaceCodeTN(TensorNetwork):
         nodes = {
             (r, c): StabilizerCodeTensorEnumerator(
                 lego((r, c)),
-                idx=(r, c),
+                tensor_id=(r, c),
             )
             # col major ordering
             for r in range(d)

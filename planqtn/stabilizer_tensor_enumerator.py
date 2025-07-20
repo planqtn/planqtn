@@ -11,11 +11,12 @@ from planqtn.linalg import gauss
 from planqtn.parity_check import conjoin, self_trace, tensor_product
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
 from planqtn.simple_poly import SimplePoly
-from planqtn.symplectic import omega, sslice, weight
+from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
 
 
-TensorLeg = Tuple[str, int]
-TensorEnumerator = Dict[Tuple[GF2, ...], SimplePoly]
+TensorId = str | int
+TensorLeg = Tuple[TensorId, int]
+TensorEnumerator = Dict[Tuple[int, ...], SimplePoly]
 
 
 def is_tensor_leg(leg: int | TensorLeg) -> bool:
@@ -27,13 +28,15 @@ def is_tensor_leg(leg: int | TensorLeg) -> bool:
     )
 
 
-def _index_leg(idx: str, leg: int | TensorLeg) -> TensorLeg:
-    return (idx, leg) if isinstance(leg, int) else leg
+def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:
+    return (tensor_id, leg) if isinstance(leg, int) else leg
 
 
-def _index_legs(idx: str, legs: Iterable[int | TensorLeg]) -> List[TensorLeg]:
+def _index_legs(
+    tensor_id: TensorId, legs: Iterable[int | TensorLeg]
+) -> List[TensorLeg]:
 
-    return [_index_leg(idx, leg) for leg in legs]
+    return [_index_leg(tensor_id, leg) for leg in legs]
 
 
 class SimpleStabilizerCollector:
@@ -105,7 +108,7 @@ class TensorElementCollector:
         ):
             stab_weight = weight(s + self.coset, skip_indices=self.skip_indices)
             # print(f"tensor {s + self.coset} => {stab_weight}")
-            key = tuple(sslice(s, self.skip_indices).tolist())
+            key = sympl_to_pauli_repr(sslice(s, self.skip_indices))
             self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
 
 
@@ -124,7 +127,7 @@ class StabilizerCodeTensorEnumerator:
     def __init__(
         self,
         h: GF2,
-        idx: str = "0",
+        tensor_id: TensorId = 0,
         legs: Optional[List[TensorLeg]] = None,
         coset_flipped_legs: Optional[List[Tuple[Tuple[Any, int], GF2]]] = None,
         annotation: Optional[LegoAnnotation] = None,
@@ -133,7 +136,7 @@ class StabilizerCodeTensorEnumerator:
         self.h = h
         self.annotation = annotation
 
-        self.idx = idx
+        self.tensor_id = tensor_id
         if len(self.h.shape) == 1:
             self.n = self.h.shape[0] // 2
             self.k = self.n - 1
@@ -141,7 +144,9 @@ class StabilizerCodeTensorEnumerator:
             self.n = self.h.shape[1] // 2
             self.k = self.n - self.h.shape[0]
 
-        self.legs = [(self.idx, leg) for leg in range(self.n)] if legs is None else legs
+        self.legs = (
+            [(self.tensor_id, leg) for leg in range(self.n)] if legs is None else legs
+        )
         # print(f"Legs: {self.legs} because n = {self.n}, {self.h.shape}")
         assert (
             len(self.legs) == self.n
@@ -162,16 +167,16 @@ class StabilizerCodeTensorEnumerator:
             # print(f"Coset flipped legs validated. Setting to {self.coset_flipped_legs}")
 
     def __str__(self) -> str:
-        return f"TensorEnum({self.idx})"
+        return f"TensorEnum({self.tensor_id})"
 
     def __repr__(self) -> str:
-        return f"TensorEnum({self.idx})"
+        return f"TensorEnum({self.tensor_id})"
 
-    def set_idx(self, idx: str) -> None:
+    def set_tensor_id(self, tensor_id: TensorId) -> None:
         for l in range(len(self.legs)):
-            if self.legs[l][0] == self.idx:
-                self.legs[l] = (idx, self.legs[l][1])
-        self.idx = idx
+            if self.legs[l][0] == self.tensor_id:
+                self.legs[l] = (tensor_id, self.legs[l][1])
+        self.tensor_id = tensor_id
 
     def _key(self, e: GF2) -> Tuple[int, ...]:
         return tuple(e.astype(np.uint8).tolist())
@@ -200,7 +205,7 @@ class StabilizerCodeTensorEnumerator:
     ) -> "StabilizerCodeTensorEnumerator":
 
         return StabilizerCodeTensorEnumerator(
-            self.h, self.idx, self.legs, coset_flipped_legs
+            self.h, self.tensor_id, self.legs, coset_flipped_legs
         )
 
     def tensor_with(
@@ -208,17 +213,19 @@ class StabilizerCodeTensorEnumerator:
     ) -> "StabilizerCodeTensorEnumerator":
         new_h = tensor_product(self.h, other.h)
         if np.array_equal(new_h, GF2([[0]])):
-            return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=[])
+            return StabilizerCodeTensorEnumerator(
+                new_h, tensor_id=self.tensor_id, legs=[]
+            )
         return StabilizerCodeTensorEnumerator(
-            new_h, idx=self.idx, legs=self.legs + other.legs
+            new_h, tensor_id=self.tensor_id, legs=self.legs + other.legs
         )
 
     def self_trace(
         self, legs1: List[int | TensorLeg], legs2: List[int | TensorLeg]
     ) -> "StabilizerCodeTensorEnumerator":
         assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.idx, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(self.idx, legs2)
+        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
+        legs2_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs2)
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
 
         new_h = self.h
@@ -231,7 +238,9 @@ class StabilizerCodeTensorEnumerator:
             for leg in self.legs
             if leg not in legs1_indexed and leg not in legs2_indexed
         ]
-        return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=new_legs)
+        return StabilizerCodeTensorEnumerator(
+            new_h, tensor_id=self.tensor_id, legs=new_legs
+        )
 
     def conjoin(
         self,
@@ -243,11 +252,11 @@ class StabilizerCodeTensorEnumerator:
 
         The legs of the other will become the legs of the new one.
         """
-        if self.idx == other.idx:
+        if self.tensor_id == other.tensor_id:
             return self.self_trace(legs1, legs2)
         assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.idx, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(other.idx, legs2)
+        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
+        legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, legs2)
 
         n2 = other.n
 
@@ -272,7 +281,9 @@ class StabilizerCodeTensorEnumerator:
         new_legs = [leg for leg in self.legs if leg not in legs1_indexed]
         new_legs += [leg for leg in other.legs if leg not in legs2_indexed]
 
-        return StabilizerCodeTensorEnumerator(new_h, idx=self.idx, legs=new_legs)
+        return StabilizerCodeTensorEnumerator(
+            new_h, tensor_id=self.tensor_id, legs=new_legs
+        )
 
     def _brute_force_stabilizer_enumerator_from_parity(
         self,
@@ -282,11 +293,11 @@ class StabilizerCodeTensorEnumerator:
         truncate_length: Optional[int] = None,
     ) -> Union[TensorEnumerator, SimplePoly]:
 
-        open_legs = _index_legs(self.idx, open_legs)
+        open_legs = _index_legs(self.tensor_id, open_legs)
         invalid_legs = self.validate_legs(open_legs)
         if len(invalid_legs) > 0:
             raise ValueError(
-                f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node {self.idx} with legs:\n{self.legs}"
+                f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node {self.tensor_id} with legs:\n{self.legs}"
             )
 
         open_cols = [self.legs.index(leg) for leg in open_legs]
@@ -301,7 +312,7 @@ class StabilizerCodeTensorEnumerator:
                 coset[self.legs.index(leg)] = pauli[0]
                 coset[self.legs.index(leg) + self.n] = pauli[1]
                 # print(
-                #     f"brute force - node {self.idx} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
+                #     f"brute force - node {self.tensor_id} leg: {leg} index: {self.legs.index(leg)} - {pauli}"
                 # )
         collector = (
             SimpleStabilizerCollector(
@@ -330,7 +341,7 @@ class StabilizerCodeTensorEnumerator:
 
         for i in progress_reporter.iterate(
             iterable=range(2**r),
-            desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.idx} - {r} generators",
+            desc=f"Brute force WEP calc for [[{self.n}, {self.k}]] tensor {self.tensor_id} - {r} generators",
             total_size=2**r,
         ):
             picked_generators = GF2(list(np.binary_repr(i, width=r)), dtype=int)
@@ -370,7 +381,7 @@ class StabilizerCodeTensorEnumerator:
         self, stopper: GF2, traced_leg: int | TensorLeg
     ) -> "StabilizerCodeTensorEnumerator":
         res = self.conjoin(
-            StabilizerCodeTensorEnumerator(GF2([stopper]), idx="stopper"),
+            StabilizerCodeTensorEnumerator(GF2([stopper]), tensor_id="stopper"),
             [traced_leg],
             [0],
         )

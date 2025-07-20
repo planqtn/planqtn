@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from galois import GF2
 import numpy as np
 
@@ -33,14 +33,19 @@ def omega(n: int) -> GF2:
     )
 
 
+def sympl_to_pauli_repr(op: GF2) -> Tuple[int, ...]:
+    n = len(op) // 2
+    return tuple([2 * int(op[i + n]) + int(op[i]) for i in range(n)])
+
+
 def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
     n = len(op) // 2
 
     if isinstance(indices, list | np.ndarray):
         if len(indices) == 0:
-            return GF2([])
+            return tuple([])
         indices = np.array(indices)
-        return GF2(np.concatenate([op[indices], op[indices + n]]))
+        return tuple(np.concatenate([op[indices], op[indices + n]]))
     elif isinstance(indices, slice):
         x = slice(
             0 if indices.start is None else indices.start,
@@ -48,7 +53,7 @@ def sslice(op: GF2, indices: List[int] | slice | np.ndarray) -> GF2:
         )
 
         z = slice(x.start + n, x.stop + n)
-        return GF2(np.concatenate([op[x], op[z]]))
+        return tuple(np.concatenate([op[x], op[z]]))
 
 
 def replace_with_op_on_indices(indices: List[int], op: GF2, target: GF2) -> GF2:
@@ -65,9 +70,9 @@ def replace_with_op_on_indices(indices: List[int], op: GF2, target: GF2) -> GF2:
     return res
 
 
-def sconcat(*ops: GF2) -> GF2:
+def sconcat(*ops: Tuple[int, ...]) -> Tuple[int, ...]:
     ns = [len(op) // 2 for op in ops]
-    return GF2(
+    return tuple(
         np.hstack(
             [  # X part
                 np.concatenate([op[:n] for n, op in zip(ns, ops)]).astype(np.int8),

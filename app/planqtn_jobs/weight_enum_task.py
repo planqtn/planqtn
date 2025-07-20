@@ -56,7 +56,7 @@ class WeightEnumeratorTask(
                 # Convert the parity check matrix to numpy array
                 h = GF2(lego.parity_check_matrix)
                 nodes[instance_id] = StabilizerCodeTensorEnumerator(
-                    h=h, idx=instance_id
+                    h=h, tensor_id=instance_id
                 )
 
             # Create TensorNetwork instance

@@ -10,7 +10,7 @@ from planqtn.tensor_network import (
 
 class SingleNodeTensorNetwork(TensorNetwork):
     def __init__(self, node: StabilizerCodeTensorEnumerator, truncate_length=None):
-        self.node_idx = node.idx
+        self.node_idx = node.tensor_id
         super().__init__([node], truncate_length)
 
     @property

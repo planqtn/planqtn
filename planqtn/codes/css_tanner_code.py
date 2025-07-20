@@ -23,24 +23,24 @@ class CssTannerCodeTN(TensorNetwork):
 
             h0 = StabilizerCodeTensorEnumerator(
                 Legos.h,
-                idx=f"q{q}.h0",
+                tensor_id=f"q{q}.h0",
                 annotation=LegoAnnotation(type="h", short_name=f"h0{q}"),
             )
             h1 = StabilizerCodeTensorEnumerator(
                 Legos.h,
-                idx=f"q{q}.h1",
+                tensor_id=f"q{q}.h1",
                 annotation=LegoAnnotation(type="h", short_name=f"h1{q}"),
             )
 
             x = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_x_legs),
-                idx=f"q{q}.x",
+                tensor_id=f"q{q}.x",
                 annotation=LegoAnnotation(type="x_rep_code", short_name=f"x{q}"),
             )
 
             z = StabilizerCodeTensorEnumerator(
                 Legos.x_rep_code(2 + n_z_legs),
-                idx=f"q{q}.z",
+                tensor_id=f"q{q}.z",
                 annotation=LegoAnnotation(type="x_rep_code", short_name=f"z{q}"),
             )
 
@@ -50,7 +50,7 @@ class CssTannerCodeTN(TensorNetwork):
             # I -> h0 -> Z [leg0  (legs to Z check 2...n_z_legs) leg1] -> h1 -> X[leg0  (legs to X check 2...n_x_legs) -> dangling physical leg 1] -> x
             i_stopper = StabilizerCodeTensorEnumerator(
                 Legos.stopper_i,
-                idx=f"q{q}.id",
+                tensor_id=f"q{q}.id",
                 annotation=LegoAnnotation(type="stopper_i", short_name=f"id{q}"),
             )
             q_tensors.append(i_stopper)
@@ -61,32 +61,32 @@ class CssTannerCodeTN(TensorNetwork):
 
             traces.append(
                 (
-                    i_stopper.idx,
-                    h0.idx,
+                    i_stopper.tensor_id,
+                    h0.tensor_id,
                     [(f"q{q}.id", 0)],
                     [(f"q{q}.h0", 0)],
                 )
             )
             traces.append(
                 (
-                    h0.idx,
-                    z.idx,
+                    h0.tensor_id,
+                    z.tensor_id,
                     [1],
                     [(f"q{q}.z", 0)],
                 )
             )
             traces.append(
                 (
-                    h1.idx,
-                    z.idx,
+                    h1.tensor_id,
+                    z.tensor_id,
                     [0],
                     [(f"q{q}.z", 1)],
                 )
             )
             traces.append(
                 (
-                    h1.idx,
-                    x.idx,
+                    h1.tensor_id,
+                    x.tensor_id,
                     [(f"q{q}.h1", 1)],
                     [(f"q{q}.x", 0)],
                 )
@@ -110,7 +110,7 @@ class CssTannerCodeTN(TensorNetwork):
             for g_leg, q in enumerate(qs):
                 traces.append(
                     (
-                        g_tensor.idx,
+                        g_tensor.tensor_id,
                         f"q{q}.x",
                         [g_leg],
                         [(f"q{q}.x", q_legs[q])],
@@ -134,7 +134,7 @@ class CssTannerCodeTN(TensorNetwork):
             for g_leg, q in enumerate(qs):
                 traces.append(
                     (
-                        g_tensor.idx,
+                        g_tensor.tensor_id,
                         f"q{q}.z",
                         [g_leg],
                         [(f"q{q}.z", q_legs[q])],

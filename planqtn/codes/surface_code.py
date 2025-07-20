@@ -33,7 +33,7 @@ class SurfaceCodeTN(TensorNetwork):
 
         super().__init__(
             [
-                StabilizerCodeTensorEnumerator(lego((r, c)), idx=(r, c))
+                StabilizerCodeTensorEnumerator(lego((r, c)), tensor_id=(r, c))
                 for r in range(last_row + 1)
                 for c in range(r % 2, last_col + 1, 2)
             ],

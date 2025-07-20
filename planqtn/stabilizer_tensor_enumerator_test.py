@@ -20,7 +20,7 @@ from planqtn.tensor_network import PAULI_I, PAULI_X, PAULI_Z
 def test_stopper_weight_enumerators(h, expected_wep):
     te = StabilizerCodeTensorEnumerator(
         h=h,
-        idx="stopper-test",
+        tensor_id="stopper-test",
     )
     assert (
         te.stabilizer_enumerator_polynomial()._dict == expected_wep
@@ -41,7 +41,7 @@ def test_stoppers_in_different_order():
             # fmt: on
         ]
     )
-    t1 = StabilizerCodeTensorEnumerator(enc_tens_512, idx=1).trace_with_stopper(
+    t1 = StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=1).trace_with_stopper(
         PAULI_Z, 0
     )
     assert np.array_equal(
@@ -98,7 +98,7 @@ def test_open_legged_enumerator():
     )
 
     t1 = (
-        StabilizerCodeTensorEnumerator(enc_tens_422, idx=5)
+        StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=5)
         .trace_with_stopper(PAULI_I, 4)
         .trace_with_stopper(PAULI_I, 5)
     )
@@ -106,10 +106,10 @@ def test_open_legged_enumerator():
     t2 = t1.stabilizer_enumerator_polynomial(open_legs=[0, 1])
 
     assert t2 == {
-        (0, 0, 0, 0): SimplePoly({0: 1}),
-        (0, 0, 1, 1): SimplePoly({2: 1}),
-        (1, 1, 0, 0): SimplePoly({2: 1}),
-        (1, 1, 1, 1): SimplePoly({2: 1}),
+        (0, 0): SimplePoly({0: 1}),
+        (2, 2): SimplePoly({2: 1}),
+        (1, 1): SimplePoly({2: 1}),
+        (3, 3): SimplePoly({2: 1}),
     }, f"not equal:\n{t2}"
 
 
@@ -201,8 +201,8 @@ def test_trace_two_422_codes_into_steane():
         ]
     )
 
-    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=1)
-    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, idx=2)
+    t1 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
+    t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=2)
 
     # we join the two tensors via the tracked legs (4,4)
     t3 = t2.conjoin(t1, [4, 5], [4, 5])
@@ -228,7 +228,7 @@ def test_trace_two_422_codes_into_steane():
 
     assert {6: 42, 4: 21, 0: 1} == t3.trace_with_stopper(
         PAULI_I, 0
-    ).scalar_stabilizer_enumerator()
+    ).stabilizer_enumerator_polynomial()._dict
 
 
 def test_steane_logical_legs():
@@ -260,9 +260,11 @@ def test_steane_logical_legs():
 
     steane_parity = GF2(scipy.linalg.block_diag(h, h))
 
-    we = StabilizerCodeTensorEnumerator(steane_parity).scalar_stabilizer_enumerator()
+    we = StabilizerCodeTensorEnumerator(
+        steane_parity
+    ).stabilizer_enumerator_polynomial()
 
-    assert we == tensorwe_on_log_legs.scalar_stabilizer_enumerator()
+    assert we == tensorwe_on_log_legs.stabilizer_enumerator_polynomial()
 
 
 def test_422_logical_legs_enumerator():
@@ -290,23 +292,23 @@ def test_422_logical_legs_enumerator():
         .trace_with_stopper(PAULI_I, 5)
     )
 
-    assert {4: 3, 0: 1} == tensorwe_on_log_legs.scalar_stabilizer_enumerator()
+    assert {4: 3, 0: 1} == tensorwe_on_log_legs.stabilizer_enumerator_polynomial()._dict
 
 
 def test_conjoin_to_scalar():
-    joint = StabilizerCodeTensorEnumerator(GF2([PAULI_X]), idx=0).conjoin(
-        StabilizerCodeTensorEnumerator(GF2([PAULI_X]), idx=1), [0], [0]
+    joint = StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=0).conjoin(
+        StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=1), [0], [0]
     )
-    wep = joint.scalar_stabilizer_enumerator()
+    wep = joint.stabilizer_enumerator_polynomial()._dict
     assert wep == {0: 1}
 
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
 
-    stopper_1 = StabilizerCodeTensorEnumerator(idx=1, h=GF2([PAULI_I]))
-    stopper_2 = StabilizerCodeTensorEnumerator(idx=2, h=GF2([PAULI_I]))
+    stopper_1 = StabilizerCodeTensorEnumerator(tensor_id=1, h=GF2([PAULI_I]))
+    stopper_2 = StabilizerCodeTensorEnumerator(tensor_id=2, h=GF2([PAULI_I]))
     joint = (
         StabilizerCodeTensorEnumerator(
-            idx=0,
+            tensor_id=0,
             h=GF2(
                 [
                     [1, 1, 0, 0],
@@ -318,7 +320,7 @@ def test_conjoin_to_scalar():
         .conjoin(stopper_2, [(0, 1)], [(2, 0)])
     )
 
-    wep = joint.scalar_stabilizer_enumerator()
+    wep = joint.stabilizer_enumerator_polynomial()._dict
 
     assert wep == {0: 1}
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
@@ -329,7 +331,8 @@ def tensor_with_scalar():
     wep = (
         StabilizerCodeTensorEnumerator(GF2([PAULI_I]))
         .tensor_with(StabilizerCodeTensorEnumerator(GF2([[5]])))
-        .scalar_stabilizer_enumerator()
+        .stabilizer_enumerator_polynomial()
+        ._dict
     )
 
     assert wep == {0: 1}
@@ -363,61 +366,61 @@ def test_truncated_scalar_enumerator(truncate_length, expected_wep):
         (
             None,
             {
-                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
         (
             1,
             {
-                (0, 0): SimplePoly({0: 1}),
+                (0,): SimplePoly({0: 1}),
             },
         ),
         (
             3,
             {
-                (0, 0): SimplePoly({0: 1}),
-                (1, 0): SimplePoly({3: 7}),
-                (1, 1): SimplePoly({3: 7}),
-                (0, 1): SimplePoly({3: 7}),
+                (0,): SimplePoly({0: 1}),
+                (1,): SimplePoly({3: 7}),
+                (2,): SimplePoly({3: 7}),
+                (3,): SimplePoly({3: 7}),
             },
         ),
         (
             4,
             {
-                (0, 0): SimplePoly({0: 1, 4: 21}),
-                (1, 0): SimplePoly({3: 7}),
-                (1, 1): SimplePoly({3: 7}),
-                (0, 1): SimplePoly({3: 7}),
+                (0,): SimplePoly({0: 1, 4: 21}),
+                (1,): SimplePoly({3: 7}),
+                (2,): SimplePoly({3: 7}),
+                (3,): SimplePoly({3: 7}),
             },
         ),
         (
             5,
             {
-                (0, 0): SimplePoly({0: 1, 4: 21}),
-                (1, 0): SimplePoly({3: 7, 5: 42}),
-                (1, 1): SimplePoly({3: 7, 5: 42}),
-                (0, 1): SimplePoly({3: 7, 5: 42}),
+                (0,): SimplePoly({0: 1, 4: 21}),
+                (1,): SimplePoly({3: 7, 5: 42}),
+                (2,): SimplePoly({3: 7, 5: 42}),
+                (3,): SimplePoly({3: 7, 5: 42}),
             },
         ),
         (
             7,
             {
-                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
         (
             9,
             {
-                (0, 0): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1, 0): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (1, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (0, 1): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
+                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
     ],
@@ -439,23 +442,24 @@ def test_tensor_enumerator_with_open_legs():
     actual_wep = te.stabilizer_enumerator_polynomial(
         open_legs=[0, 1], truncate_length=None
     )
+    print(actual_wep)
     assert actual_wep == {
-        (0, 0, 0, 0): SimplePoly({0: 1, 4: 9, 6: 6}),
-        (0, 0, 0, 1): SimplePoly({3: 4, 5: 12}),
-        (0, 0, 1, 0): SimplePoly({3: 4, 5: 12}),
-        (0, 0, 1, 1): SimplePoly({2: 3, 6: 7, 4: 6}),
-        (0, 1, 0, 0): SimplePoly({3: 4, 5: 12}),
-        (0, 1, 0, 1): SimplePoly({3: 4, 5: 12}),
-        (0, 1, 1, 0): SimplePoly({4: 12, 6: 4}),
-        (0, 1, 1, 1): SimplePoly({4: 12, 6: 4}),
-        (1, 0, 0, 0): SimplePoly({3: 4, 5: 12}),
-        (1, 0, 0, 1): SimplePoly({4: 12, 6: 4}),
-        (1, 0, 1, 0): SimplePoly({3: 4, 5: 12}),
-        (1, 0, 1, 1): SimplePoly({4: 12, 6: 4}),
-        (1, 1, 0, 0): SimplePoly({2: 3, 4: 6, 6: 7}),
-        (1, 1, 0, 1): SimplePoly({4: 12, 6: 4}),
-        (1, 1, 1, 0): SimplePoly({4: 12, 6: 4}),
-        (1, 1, 1, 1): SimplePoly({2: 3, 4: 6, 6: 7}),
+        (0, 0): SimplePoly({0: 1, 4: 9, 6: 6}),
+        (0, 2): SimplePoly({3: 4, 5: 12}),
+        (2, 0): SimplePoly({3: 4, 5: 12}),
+        (2, 2): SimplePoly({2: 3, 6: 7, 4: 6}),
+        (0, 1): SimplePoly({3: 4, 5: 12}),
+        (0, 3): SimplePoly({3: 4, 5: 12}),
+        (2, 1): SimplePoly({4: 12, 6: 4}),
+        (2, 3): SimplePoly({4: 12, 6: 4}),
+        (1, 0): SimplePoly({3: 4, 5: 12}),
+        (1, 2): SimplePoly({4: 12, 6: 4}),
+        (3, 0): SimplePoly({3: 4, 5: 12}),
+        (3, 2): SimplePoly({4: 12, 6: 4}),
+        (1, 1): SimplePoly({2: 3, 4: 6, 6: 7}),
+        (1, 3): SimplePoly({4: 12, 6: 4}),
+        (3, 1): SimplePoly({4: 12, 6: 4}),
+        (3, 3): SimplePoly({2: 3, 4: 6, 6: 7}),
     }
 
 
@@ -467,20 +471,20 @@ def test_tensor_enumerator_with_open_legs_t6():
     )
     print(actual_wep)
     assert actual_wep == {
-        (0, 0, 0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
-        (0, 0, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (0, 0, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (0, 0, 1, 1): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
-        (0, 1, 0, 0): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (0, 1, 0, 1): SimplePoly({3: 2, 4: 2}),
-        (0, 1, 1, 0): SimplePoly({3: 2, 4: 2}),
-        (0, 1, 1, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (1, 0, 0, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 0, 0, 1): SimplePoly({3: 2, 4: 2}),
-        (1, 0, 1, 0): SimplePoly({3: 2, 4: 2}),
-        (1, 0, 1, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1, 0, 0): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
-        (1, 1, 0, 1): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (1, 1, 1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1, 1, 1): SimplePoly({2: 2, 3: 2}),
+        (0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
+        (0, 2): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (2, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (2, 2): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (0, 3): SimplePoly({3: 2, 4: 2}),
+        (2, 1): SimplePoly({3: 2, 4: 2}),
+        (2, 3): SimplePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 2): SimplePoly({3: 2, 4: 2}),
+        (3, 0): SimplePoly({3: 2, 4: 2}),
+        (3, 2): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 3): SimplePoly({3: 2, 2: 1, 4: 1}),
+        (3, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
+        (3, 3): SimplePoly({2: 2, 3: 2}),
     }
