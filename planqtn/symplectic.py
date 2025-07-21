@@ -45,10 +45,10 @@ def omega(n: int) -> GF2:
     """Create a symplectic operator for the omega matrix over GF(2).
 
     For n the omega matrix is:
-    [0 I_n]
-    [I_n 0]
+    [0 `I_n`]
+    [`I_n` 0]
 
-    where I_n is the n x n identity matrix.
+    where `I_n` is the n x n identity matrix.
 
     Args:
         n: The number of qubits.
