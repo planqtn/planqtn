@@ -1,4 +1,4 @@
 # .pylintrc
 [MASTER]
 ignore-paths=^.*_test.py$
-disable=missing-module-docstring,missing-function-docstring,missing-class-docstring,fixme,too-many-lines,too-many-return-statements,too-many-locals,too-many-positional-arguments,too-many-instance-attributes,too-many-branches,too-many-arguments,too-many-statements
+disable=fixme,too-many-lines,too-many-return-statements,too-many-locals,too-many-positional-arguments,too-many-instance-attributes,too-many-branches,too-many-arguments,too-many-statements

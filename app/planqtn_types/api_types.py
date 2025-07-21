@@ -110,7 +110,7 @@ class TensorNetworkResponse(BaseModel):
             legos.append(lego)
             instance_id_to_idx[instance_id] = i + start_node_index
         # Add connections from the tensor network's traces
-        for node1, node2, legs1, legs2 in tn.traces:
+        for node1, node2, legs1, legs2 in tn._traces:
             for leg1, leg2 in zip(legs1, legs2):
                 connections.append(
                     {

@@ -1,3 +1,18 @@
+"""Stabilizer tensor enumerator module.
+
+The unit of the tensor network is a stabilizer code encoding tensor (quantum lego), represented by
+the `StabilizerCodeTensorEnumerator` defined by a parity check matrix.
+
+The main methods are:
+- `stabilizer_enumerator_polynomial`: Brute force calculation of the stabilizer enumerator
+    polynomial for the stabilizer code.
+- `trace_with_stopper`: Traces the lego leg with a stopper.
+- `conjoin`: Conjoins two lego pieces into a new lego piece.
+- `self_trace`: Traces a leg with itself.
+- `with_coset_flipped_legs`: Adds coset flipped legs to the lego piece.
+- `tensor_with`: Tensor product of two lego pieces.
+"""
+
 from collections import defaultdict
 from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, Dict
 
@@ -18,15 +33,6 @@ TensorLeg = Tuple[TensorId, int]
 TensorEnumerator = Dict[Tuple[int, ...], SimplePoly]
 
 
-def is_tensor_leg(leg: int | TensorLeg) -> bool:
-    return (
-        isinstance(leg, tuple)
-        and len(leg) == 2
-        and isinstance(leg[0], str)
-        and isinstance(leg[1], int)
-    )
-
-
 def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:
     return (tensor_id, leg) if isinstance(leg, int) else leg
 
@@ -38,7 +44,7 @@ def _index_legs(
     return [_index_leg(tensor_id, leg) for leg in legs]
 
 
-class SimpleStabilizerCollector:
+class _SimpleStabilizerCollector:
     def __init__(
         self,
         coset: GF2,
@@ -52,6 +58,7 @@ class SimpleStabilizerCollector:
         self.verbose = verbose
         self.truncate_length = truncate_length
 
+    # pylint: disable=missing-function-docstring
     def collect(self, stabilizer: GF2) -> None:
         stab_weight = weight(stabilizer + self.coset, skip_indices=self.open_cols)
         if self.truncate_length is not None and stab_weight > self.truncate_length:
@@ -59,11 +66,12 @@ class SimpleStabilizerCollector:
         # print(f"simple {stabilizer + self.coset} => {stab_weight}")
         self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
 
+    # pylint: disable=missing-function-docstring
     def finalize(self) -> None:
         self.tensor_wep = self.tensor_wep.normalize(verbose=self.verbose)
 
 
-class TensorElementCollector:
+class _TensorElementCollector:
     def __init__(
         self,
         coset: GF2,
@@ -81,6 +89,7 @@ class TensorElementCollector:
         self.tensor_wep: TensorEnumerator = defaultdict(SimplePoly)
         self.truncate_length = truncate_length
 
+    # pylint: disable=missing-function-docstring
     def collect(self, stabilizer: GF2) -> None:
         if (
             self.truncate_length is not None
@@ -90,6 +99,7 @@ class TensorElementCollector:
             return
         self.matching_stabilizers.append(stabilizer)
 
+    # pylint: disable=missing-function-docstring
     def finalize(self) -> None:
 
         for s in self.progress_reporter.iterate(
@@ -165,6 +175,14 @@ class StabilizerCodeTensorEnumerator:
         return f"TensorEnum({self.tensor_id})"
 
     def set_tensor_id(self, tensor_id: TensorId) -> None:
+        """Set the tensor ID and update all legs to use the new ID.
+
+        Updates the tensor_id attribute and modifies all legs that reference
+        the old tensor_id to use the new one.
+
+        Args:
+            tensor_id: New tensor ID to assign to this tensor.
+        """
         for l, leg in enumerate(self.legs):
             if leg[0] == self.tensor_id:
                 self.legs[l] = (tensor_id, leg[1])
@@ -174,6 +192,17 @@ class StabilizerCodeTensorEnumerator:
         return tuple(e.astype(np.uint8).tolist())
 
     def is_stabilizer(self, op: GF2) -> bool:
+        """Check if an operator is a stabilizer of this code.
+
+        Determines whether the given operator commutes with all stabilizers
+        of the code by checking if op * omega * h^T = 0.
+
+        Args:
+            op: Operator to check (as GF2 vector).
+
+        Returns:
+            bool: True if op is a stabilizer, False otherwise.
+        """
         return 0 == np.count_nonzero(op @ omega(self.n) @ self.h.T)
 
     def _remove_leg(self, legs: Dict[TensorLeg, int], leg: TensorLeg) -> None:
@@ -189,13 +218,24 @@ class StabilizerCodeTensorEnumerator:
         for leg in legs_to_remove:
             self._remove_leg(legs, leg)
 
-    def validate_legs(self, legs: List[TensorLeg]) -> List[TensorLeg]:
+    def _validate_legs(self, legs: List[TensorLeg]) -> List[TensorLeg]:
         return [leg for leg in legs if not leg in self.legs]
 
     def with_coset_flipped_legs(
         self, coset_flipped_legs: List[Tuple[TensorLeg, GF2]]
     ) -> "StabilizerCodeTensorEnumerator":
+        """Create a new tensor enumerator with coset-flipped legs.
 
+        Creates a copy of this tensor enumerator with the specified coset-flipped
+        legs. This is used for coset weight enumerator calculations.
+
+        Args:
+            coset_flipped_legs: List of (leg, coset_error) pairs specifying
+                which legs have coset errors applied.
+
+        Returns:
+            StabilizerCodeTensorEnumerator: New tensor enumerator with coset-flipped legs.
+        """
         return StabilizerCodeTensorEnumerator(
             self.h, self.tensor_id, self.legs, coset_flipped_legs
         )
@@ -203,6 +243,18 @@ class StabilizerCodeTensorEnumerator:
     def tensor_with(
         self, other: "StabilizerCodeTensorEnumerator"
     ) -> "StabilizerCodeTensorEnumerator":
+        """Create the tensor product with another tensor enumerator.
+
+        Computes the tensor product of this tensor with another tensor enumerator.
+        The resulting tensor has the combined parity check matrix and all legs
+        from both tensors.
+
+        Args:
+            other: The other tensor enumerator to tensor with.
+
+        Returns:
+            StabilizerCodeTensorEnumerator: The tensor product of the two tensors.
+        """
         new_h = tensor_product(self.h, other.h)
         if np.array_equal(new_h, GF2([[0]])):
             return StabilizerCodeTensorEnumerator(
@@ -215,6 +267,21 @@ class StabilizerCodeTensorEnumerator:
     def self_trace(
         self, legs1: Sequence[int | TensorLeg], legs2: Sequence[int | TensorLeg]
     ) -> "StabilizerCodeTensorEnumerator":
+        """Perform self-tracing by contracting pairs of legs within this tensor.
+
+        Contracts pairs of legs within the same tensor, effectively performing
+        a partial trace operation. The legs are paired up and contracted together.
+
+        Args:
+            legs1: First set of legs to contract (must match length of legs2).
+            legs2: Second set of legs to contract (must match length of legs1).
+
+        Returns:
+            StabilizerCodeTensorEnumerator: New tensor with contracted legs removed.
+
+        Raises:
+            AssertionError: If legs1 and legs2 have different lengths.
+        """
         assert len(legs1) == len(legs2)
         legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
         legs2_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs2)
@@ -240,9 +307,19 @@ class StabilizerCodeTensorEnumerator:
         legs1: Sequence[int | TensorLeg],
         legs2: Sequence[int | TensorLeg],
     ) -> "StabilizerCodeTensorEnumerator":
-        """Creates a new brute force tensor enumerator by conjoining two of them.
+        """Creates a new tensor enumerator by conjoining two of them.
 
-        The legs of the other will become the legs of the new one.
+        Creates a new tensor enumerator by contracting the specified legs between
+        this tensor and another tensor. The legs of the other tensor will become
+        the legs of the new tensor.
+
+        Args:
+            other: The other tensor enumerator to conjoin with.
+            legs1: Legs from this tensor to contract.
+            legs2: Legs from the other tensor to contract.
+
+        Returns:
+            StabilizerCodeTensorEnumerator: The conjoined tensor enumerator.
         """
         if self.tensor_id == other.tensor_id:
             return self.self_trace(legs1, legs2)
@@ -284,7 +361,7 @@ class StabilizerCodeTensorEnumerator:
     ) -> Union[TensorEnumerator, SimplePoly]:
 
         open_legs = _index_legs(self.tensor_id, open_legs)
-        invalid_legs = self.validate_legs(open_legs)
+        invalid_legs = self._validate_legs(open_legs)
         if len(invalid_legs) > 0:
             raise ValueError(
                 f"Can't leave legs open for tensor: {invalid_legs}, they don't exist on node "
@@ -304,14 +381,14 @@ class StabilizerCodeTensorEnumerator:
                 coset[self.legs.index(leg) + self.n] = pauli[1]
 
         collector = (
-            SimpleStabilizerCollector(
+            _SimpleStabilizerCollector(
                 coset,
                 open_cols,
                 verbose,
                 truncate_length=truncate_length,
             )
             if open_cols == []
-            else TensorElementCollector(
+            else _TensorElementCollector(
                 coset,
                 open_cols,
                 verbose,
@@ -351,11 +428,20 @@ class StabilizerCodeTensorEnumerator:
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
     ) -> Union[TensorEnumerator, SimplePoly]:
-        """Stabilizer enumerator polynomial.
+        """Compute the stabilizer enumerator polynomial.
 
-        If open_legs left empty, it gives the scalar stabilizer enumerator polynomial.
-        If open_legs is not empty, then the result is a sparse tensor, with non-zero values on
-        the open_legs.
+        If open_legs is empty, returns the scalar stabilizer enumerator polynomial.
+        If open_legs is not empty, returns a sparse tensor with non-zero values on
+        the open legs.
+
+        Args:
+            open_legs: List of legs to leave open.
+            verbose: Whether to print verbose output.
+            progress_reporter: Progress reporter to use.
+            truncate_length: Maximum weight to truncate the enumerator at.
+
+        Returns:
+            Union[TensorEnumerator, SimplePoly]: The stabilizer enumerator polynomial.
         """
         wep = self._brute_force_stabilizer_enumerator_from_parity(
             open_legs=open_legs,
@@ -368,6 +454,18 @@ class StabilizerCodeTensorEnumerator:
     def trace_with_stopper(
         self, stopper: GF2, traced_leg: int | TensorLeg
     ) -> "StabilizerCodeTensorEnumerator":
+        """Trace this tensor with a stopper tensor on the specified leg.
+
+        Contracts this tensor with a stopper tensor (representing a measurement
+        or boundary condition) on the specified leg.
+
+        Args:
+            stopper: The stopper tensor to contract with (as GF2 matrix).
+            traced_leg: The leg to contract with the stopper.
+
+        Returns:
+            StabilizerCodeTensorEnumerator: New tensor with the stopper contraction applied.
+        """
         res = self.conjoin(
             StabilizerCodeTensorEnumerator(GF2([stopper]), tensor_id="stopper"),
             [traced_leg],

@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 import time
-from typing import Any, Dict, Optional, TextIO
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 import supabase
