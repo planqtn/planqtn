@@ -18,8 +18,8 @@ def test_d3_rsc_with_merged_ptes():
     tn = RotatedSurfaceCodeTN(d=3)
     tn_single_pte = RotatedSurfaceCodeTN(d=3)
 
-    print(tn.traces)
-    tn.traces = [
+    print(tn._traces)
+    tn._traces = [
         # starting a PTE island with the bottom right corner
         ((2, 1), (2, 2), [((2, 1), 3)], [((2, 2), 0)]),
         ((1, 2), (2, 2), [((1, 2), 2)], [((2, 2), 3)]),
@@ -42,7 +42,7 @@ def test_d3_rsc_with_merged_ptes():
     wep2 = tn_single_pte.stabilizer_enumerator_polynomial(
         cotengra=False,
     )
-    print(tn_single_pte.traces)
+    print(tn_single_pte._traces)
     assert wep == wep2, f"Not eq: {wep} vs {wep2}"
 
 
@@ -150,7 +150,7 @@ def test_d3_creation():
             + str(nodes[node_seq].h)
         )
 
-    assert tn.traces == [
+    assert tn._traces == [
         ((0, 0), (0, 1), [((0, 0), 2)], [((0, 1), 1)]),
         ((0, 0), (1, 0), [((0, 0), 1)], [((1, 0), 0)]),
         ((1, 0), (1, 1), [((1, 0), 3)], [((1, 1), 0)]),
@@ -163,10 +163,10 @@ def test_d3_creation():
         ((2, 0), (2, 1), [((2, 0), 2)], [((2, 1), 1)]),
         ((2, 1), (2, 2), [((2, 1), 3)], [((2, 2), 0)]),
         ((1, 2), (2, 2), [((1, 2), 2)], [((2, 2), 3)]),
-    ], "Traces are not equal, got:\n" + "\n".join(str(tr) for tr in tn.traces)
+    ], "Traces are not equal, got:\n" + "\n".join(str(tr) for tr in tn._traces)
 
-    print(tn.legs_left_to_join)
-    assert tn.legs_left_to_join == {
+    print(tn._legs_left_to_join)
+    assert tn._legs_left_to_join == {
         (0, 0): [((0, 0), 2), ((0, 0), 1)],
         (1, 0): [((1, 0), 0), ((1, 0), 3), ((1, 0), 2)],
         (2, 0): [((2, 0), 3), ((2, 0), 2)],
@@ -176,7 +176,7 @@ def test_d3_creation():
         (0, 2): [((0, 2), 0), ((0, 2), 1)],
         (1, 2): [((1, 2), 1), ((1, 2), 0), ((1, 2), 2)],
         (2, 2): [((2, 2), 0), ((2, 2), 3)],
-    }, "Legs to trace are not equal, got:\n" + str(tn.legs_left_to_join)
+    }, "Legs to trace are not equal, got:\n" + str(tn._legs_left_to_join)
 
 
 def test_d5_rotated_surface_code():

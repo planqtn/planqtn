@@ -15,6 +15,7 @@ export PYTHONPATH="."
 black planqtn/** --check
 mypy planqtn
 pylint planqtn
+darglint2 planqtn
 pytest planqtn
 
 

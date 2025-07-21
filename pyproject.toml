@@ -47,6 +47,7 @@ dev = [
     "scipy-stubs",
     "types-tqdm",
     "pylint==3.3.7",
+    "darglint2",
 ]
 
 [project.urls]

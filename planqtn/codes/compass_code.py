@@ -16,9 +16,16 @@ class CompassCodeTN(SurfaceCodeTN):
         coset_error: Optional[GF2] = None,
         truncate_length: Optional[int] = None,
     ):
-        """Creates a square compass code based on the coloring.
+        """Create a square compass code based on the coloring.
 
-        Uses the dual doubled surface code equivalence described by Cao & Lackey in the expansion pack paper.
+        Creates a compass code using the dual doubled surface code equivalence
+        described by Cao & Lackey in the expansion pack paper.
+
+        Args:
+            coloring: Array specifying the coloring pattern for the compass code.
+            lego: Function that returns the lego tensor for each node.
+            coset_error: Optional coset error for weight enumerator calculations.
+            truncate_length: Optional maximum weight for truncating enumerators.
         """
         # See d3_compass_code_numbering.png for numbering - for an (r,c) qubit in the compass code,
         # the (2r, 2c) is the coordinate of the lego in the dual surface code.

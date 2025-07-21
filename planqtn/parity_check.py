@@ -1,3 +1,5 @@
+"""Symplectic parity check matrix utilities."""
+
 from galois import GF2
 import numpy as np
 import scipy
@@ -6,6 +8,18 @@ from planqtn.linalg import gauss
 
 
 def sstr(h: GF2) -> str:
+    """Convert a parity check matrix to a string representation.
+
+    Creates a human-readable string representation of a parity check matrix
+    where X and Z parts are separated by a '|' character. Uses '_' for 0
+    and '1' for 1 to make the pattern more visible.
+
+    Args:
+        h: Parity check matrix in GF2.
+
+    Returns:
+        str: String representation of the matrix.
+    """
     n = h.shape[1] // 2
 
     return "\n".join(
@@ -17,10 +31,28 @@ def sstr(h: GF2) -> str:
 
 
 def sprint(h: GF2, end: str = "\n") -> None:
+    """Print a symplectic matrix in string format.
+
+    Prints the string representation of the symplectic matrix to stdout.
+
+    Args:
+        h: Parity check matrix in GF2.
+        end: String to append at the end (default: newline).
+    """
     print(sstr(h), end=end)
 
 
 def bring_col_to_front(h: GF2, col: int, target_col: int) -> None:
+    """Move a column to a target position by swapping adjacent columns.
+
+    Moves the specified column to the target position by performing
+    adjacent column swaps. This operation modifies the matrix in-place.
+
+    Args:
+        h: Parity check matrix to modify.
+        col: Index of the column to move.
+        target_col: Target position for the column.
+    """
     for c in range(col - 1, target_col - 1, -1):
         h[:, [c, c + 1]] = h[:, [c + 1, c]]
 
@@ -95,7 +127,20 @@ def tensor_product(h1: GF2, h2: GF2) -> GF2:
 
 
 def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
-    """Conjoins two parity check matrices via single trace on one leg."""
+    """Conjoin two parity check matrices via single trace on one leg.
+
+    Creates the tensor product of two parity check matrices and then performs
+    a single trace operation between the specified legs.
+
+    Args:
+        h1: First parity check matrix.
+        h2: Second parity check matrix.
+        leg1: Leg from the first matrix to contract (default: 0).
+        leg2: Leg from the second matrix to contract (default: 0).
+
+    Returns:
+        GF2: The conjoined parity check matrix.
+    """
     h1 = _normalize_emtpy_matrices_to_zero(h1)
     h2 = _normalize_emtpy_matrices_to_zero(h2)
     n1 = h1.shape[1] // 2
@@ -105,6 +150,20 @@ def conjoin(h1: GF2, h2: GF2, leg1: int = 0, leg2: int = 0) -> GF2:
 
 
 def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
+    """Perform self-tracing by contracting two legs within a parity check matrix.
+
+    Contracts two legs within the same parity check matrix, effectively performing
+    a partial trace operation. This corresponds to measuring ZZ and XX operators
+    on the specified legs.
+
+    Args:
+        h: Parity check matrix to trace.
+        leg1: First leg to contract (default: 0).
+        leg2: Second leg to contract (default: 1).
+
+    Returns:
+        GF2: New parity check matrix with contracted legs removed.
+    """
     r, n = h.shape
     n //= 2
 

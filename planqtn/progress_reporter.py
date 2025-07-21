@@ -1,3 +1,20 @@
+"""Progress reporter interface and implementations for calculations.
+
+The main class is `ProgressReporter` which is an abstract base class for all progress reporters.
+
+The main methods are:
+- `iterate`: Iterates over an iterable and reports progress on every item.
+- `enter_phase`: Starts a new phase.
+- `exit_phase`: Ends the current phase.
+
+The main implementations are:
+- `TqdmProgressReporter`: A progress reporter that uses tqdm to report progress.
+- `DummyProgressReporter`: A progress reporter that does nothing.
+
+This is the main mechanism for reporting progress back to PlanqTN Studio UI from the backend jobs
+in realtime.
+"""
+
 import abc
 import contextlib
 import json
@@ -12,6 +29,22 @@ from tqdm import tqdm
 
 @attr.s
 class IterationState:
+    """State tracking information for a single iteration phase.
+
+    This class tracks the progress and timing information for a single iteration
+    or calculation phase. It maintains statistics like current progress, timing,
+    and performance metrics that can be used for progress reporting and analysis.
+
+    Attributes:
+        desc: Description of the current iteration phase.
+        total_size: Total number of items to process in this iteration.
+        current_item: Current item being processed (0-indexed).
+        start_time: Timestamp when the iteration started.
+        end_time: Timestamp when the iteration ended (None if not finished).
+        duration: Total duration of the iteration in seconds (None if not finished).
+        avg_time_per_item: Average time per item in seconds (None if no items processed).
+    """
+
     desc: str = attr.ib()
     total_size: int = attr.ib()
     current_item: int = attr.ib(default=0)
@@ -21,6 +54,15 @@ class IterationState:
     avg_time_per_item: float | None = attr.ib(default=None)
 
     def update(self, current_item: int | None = None) -> None:
+        """Update the iteration state with progress information.
+
+        Updates the current item count, recalculates duration, and updates
+        the average time per item. If no current_item is provided, increments
+        the current item by 1.
+
+        Args:
+            current_item: New current item index. If None, increments by 1.
+        """
         if current_item is None:
             current_item = self.current_item + 1
         self.current_item = current_item
@@ -34,6 +76,11 @@ class IterationState:
             self.avg_time_per_item = self.duration / self.current_item
 
     def end(self) -> None:
+        """Mark the iteration as completed.
+
+        Sets the end time and calculates the final duration and average time
+        per item statistics.
+        """
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
         self._update_avg_time_per_item()
@@ -47,7 +94,12 @@ class IterationState:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the IterationState to a dictionary for JSON serialization."""
+        """Convert the IterationState to a dictionary for JSON serialization.
+
+        Returns:
+            Dict[str, Any]: Dictionary representation of the iteration state
+                suitable for JSON serialization.
+        """
         return {
             "desc": self.desc,
             "total_size": self.total_size,
@@ -60,24 +112,68 @@ class IterationState:
 
 
 class IterationStateEncoder(json.JSONEncoder):
-    """Custom JSON encoder for IterationState objects."""
+    """Custom JSON encoder for IterationState objects.
+
+    This encoder extends the standard JSON encoder to handle IterationState
+    objects by converting them to dictionaries using their to_dict() method.
+    This enables JSON serialization of progress reporting data.
+    """
 
     def default(self, o: Any) -> Any:
+        """Convert IterationState objects to dictionaries for JSON serialization.
+
+        Args:
+            o: Object to encode.
+
+        Returns:
+            Any: Dictionary representation if o is an IterationState,
+                 otherwise delegates to parent class.
+        """
         if isinstance(o, IterationState):
             return o.to_dict()
         return super().default(o)
 
-    def __call__(self, o: Any) -> Any:
+    def __call__(self, o: Any) -> str:
+        """Encode an object to JSON string.
+
+        Args:
+            o: Object to encode.
+
+        Returns:
+            str: JSON string representation of the object.
+        """
         return self.encode(o)
 
 
 class ProgressReporter(abc.ABC):
+    """Abstract base class for progress reporting in calculations.
+
+    This class provides a framework for reporting progress during long-running
+    calculations. It supports nested iteration phases and can be composed with
+    other progress reporters. The main mechanism for reporting progress back to
+    PlanqTN Studio UI from backend jobs in realtime.
+
+    Subclasses should implement the `handle_result` method to define how progress
+    information is processed (e.g., displayed, logged, or sent to a UI).
+
+    Attributes:
+        sub_reporter: Optional nested progress reporter for composition.
+        iterator_stack: Stack of active iteration states for nested phases.
+        iteration_report_frequency: Minimum time interval between progress reports.
+    """
 
     def __init__(
         self,
         sub_reporter: Optional["ProgressReporter"] = None,
         iteration_report_frequency: float = 0.0,
     ):
+        """Initialize the progress reporter.
+
+        Args:
+            sub_reporter: Optional nested progress reporter for composition.
+            iteration_report_frequency: Minimum time interval between progress
+                reports in seconds. If 0.0, reports on every iteration.
+        """
         self.sub_reporter = sub_reporter
         self.iterator_stack: list[IterationState] = []
         self.iteration_report_frequency = iteration_report_frequency
@@ -90,9 +186,29 @@ class ProgressReporter(abc.ABC):
 
     @abc.abstractmethod
     def handle_result(self, result: Dict[str, Any]) -> None:
-        pass
+        """Handle progress result data.
+
+        This hook method must be implemented by subclasses to define how progress
+        information is processed. The result dictionary contains iteration state
+        and metadata about the current progress.
+
+        Args:
+            result: Dictionary containing progress information including:
+                - iteration: IterationState object or dict
+                - level: Nesting level of the current iteration
+                - Additional metadata specific to the implementation
+        """
 
     def log_result(self, result: Dict[str, Any]) -> None:
+        """Log progress result and propagate to sub-reporter.
+
+        Converts IterationState objects to dictionaries for serialization,
+        calls the handle_result method, and propagates the result to any
+        nested sub-reporter.
+
+        Args:
+            result: Dictionary containing progress information.
+        """
         # Convert IterationState to dict in the result
         serializable_result = {}
         for key, value in result.items():
@@ -108,9 +224,24 @@ class ProgressReporter(abc.ABC):
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
     ) -> Generator[Any, None, None]:
-        """Starts a new iteration.
+        """Start a new iteration phase with progress reporting.
 
-        Returns an iterator (generator) over the iterable and reports progress on every item.
+        Creates a generator that yields items from the iterable while tracking
+        progress and reporting it at regular intervals. The iteration state is
+        maintained on a stack to support nested iterations.
+
+        Args:
+            iterable: The iterable to iterate over.
+            desc: Description of the iteration phase.
+            total_size: Total number of items to process.
+
+        Yields:
+            Items from the iterable.
+
+        Example:
+            # Iterate over a list with progress reporting
+            for item in progress_reporter.iterate(items, "Processing items", len(items)):
+                process_item(item)
         """
 
         bottom_iterator_state = IterationState(
@@ -149,6 +280,23 @@ class ProgressReporter(abc.ABC):
         self.iterator_stack.pop()
 
     def enter_phase(self, desc: str) -> _GeneratorContextManager[Any, None, None]:
+        """Enter a new calculation phase with progress tracking.
+
+        Creates a context manager for tracking a single-step phase. This is
+        useful for marking the beginning and end of calculation phases that
+        don't involve iteration but should still be tracked for progress reporting.
+
+        Args:
+            desc: Description of the phase.
+
+        Returns:
+            Context manager that can be used with 'with' statement.
+
+        Example:
+            with progress_reporter.enter_phase("Initializing"):
+                initialize_system()
+        """
+
         @contextlib.contextmanager
         def phase_iterator() -> Generator[Any, None, None]:
             yield from self.iterate(["item"], desc, total_size=1)
@@ -156,16 +304,42 @@ class ProgressReporter(abc.ABC):
         return phase_iterator()
 
     def exit_phase(self) -> None:
+        """Exit the current calculation phase.
+
+        Removes the current iteration state from the stack, effectively
+        ending the current phase. This is typically called automatically
+        when using the context manager from enter_phase().
+        """
         self.iterator_stack.pop()
 
 
 class TqdmProgressReporter(ProgressReporter):
+    """Progress reporter that displays progress using tqdm progress bars.
+
+    This implementation uses the tqdm library to display progress bars in the
+    terminal. It's useful for command-line applications and provides visual
+    feedback during long-running calculations.
+
+    Attributes:
+        file: Output stream for the progress bars (default: sys.stdout).
+        mininterval: Minimum time interval between progress bar updates.
+    """
+
     def __init__(
         self,
         file: TextIO = sys.stdout,
         mininterval: float | None = None,
         sub_reporter: Optional["ProgressReporter"] = None,
     ):
+        """Initialize the tqdm progress reporter.
+
+        Args:
+            file: Output stream for progress bars (default: sys.stdout).
+            mininterval: Minimum time interval between updates in seconds.
+                If None, uses 2 seconds for large iterations (>100k items)
+                or 0.1 seconds for smaller ones.
+            sub_reporter: Optional nested progress reporter for composition.
+        """
         super().__init__(sub_reporter)
         self.file = file
         self.mininterval = mininterval
@@ -173,6 +347,19 @@ class TqdmProgressReporter(ProgressReporter):
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
     ) -> Generator[Any, None, None]:
+        """Iterate with tqdm progress bar display.
+
+        Overrides the parent iterate method to wrap the iteration with a tqdm
+        progress bar that provides visual feedback in the terminal.
+
+        Args:
+            iterable: The iterable to iterate over.
+            desc: Description for the progress bar.
+            total_size: Total number of items to process.
+
+        Yields:
+            Items from the iterable.
+        """
         t = tqdm(
             desc=desc,
             total=total_size,
@@ -189,10 +376,31 @@ class TqdmProgressReporter(ProgressReporter):
         t.close()
 
     def handle_result(self, result: Dict[str, Any]) -> None:
-        pass
+        """Handle progress result (no-op for tqdm reporter).
+
+        The tqdm reporter doesn't need to handle results separately since
+        the progress is displayed through the tqdm progress bar.
+
+        Args:
+            result: Progress result dictionary (ignored).
+        """
 
 
 class DummyProgressReporter(ProgressReporter):
+    """A no-op progress reporter that does nothing.
+
+    This implementation provides a null progress reporter that can be used
+    when progress reporting is not needed. It implements all required methods
+    but performs no actual reporting, making it useful as a default or for
+    testing purposes or creating a silent mode for scripts to run.
+    """
 
     def handle_result(self, result: Dict[str, Any]) -> None:
-        pass
+        """Handle progress result (no-op for dummy reporter).
+
+        The dummy reporter ignores all progress results, making it useful
+        when progress reporting is not needed.
+
+        Args:
+            result: Progress result dictionary (ignored).
+        """
