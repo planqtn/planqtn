@@ -13,7 +13,8 @@ export PYTHONPATH=`pwd`
 
 echo "Running doctest"
 set -e
-find . -name '*.md' | xargs -I {} python -m doctest -v {}
+find docs -name '*.md' | xargs -I {} python -m doctest {}
+python -m doctest README.md
 set +e
 
 

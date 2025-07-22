@@ -4,10 +4,10 @@ The main class is `ProgressReporter` which is an abstract base class for all pro
 
 The main methods are:
 
-- [iterate](planqtn.progress_reporter.ProgressReporter.iterate): Iterates over an iterable and
+- [iterate][planqtn.progress_reporter.ProgressReporter.iterate]: Iterates over an iterable and
     reports progress on every item.
-- [enter_phase](planqtn.progress_reporter.ProgressReporter.enter_phase): Starts a new phase.
-- [exit_phase](planqtn.progress_reporter.ProgressReporter.exit_phase): Ends the current phase.
+- [enter_phase][planqtn.progress_reporter.ProgressReporter.enter_phase]: Starts a new phase.
+- [exit_phase][planqtn.progress_reporter.ProgressReporter.exit_phase]: Ends the current phase.
 
 The main implementations are:
 
