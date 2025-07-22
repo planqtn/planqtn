@@ -29,13 +29,14 @@ class CssTannerCodeTN(TensorNetwork):
         hx: np.ndarray,
         hz: np.ndarray,
     ):
-        _, n = hx.shape
+        _, self.n = hx.shape
         _ = hz.shape[0]  # rz, but not used
 
         q_tensors: List[StabilizerCodeTensorEnumerator] = []
         traces: List[Trace] = []
+        self.q_to_leg_and_node: List[Tuple[TensorId, TensorLeg]] = []
 
-        for q in range(n):
+        for q in range(self.n):
             x_stabs = np.nonzero(hx[:, q])[0]
             n_x_legs = len(x_stabs)
             z_stabs = np.nonzero(hz[:, q])[0]
@@ -113,7 +114,7 @@ class CssTannerCodeTN(TensorNetwork):
                 )
             )
 
-        q_legs = [2] * n
+        q_legs = [2] * self.n
         gx_tensors = []
         for i, gx in enumerate(hx):
             qs = np.nonzero(gx)[0].astype(int)
@@ -140,7 +141,7 @@ class CssTannerCodeTN(TensorNetwork):
                 )
                 q_legs[q] += 1
         gz_tensors = []
-        q_legs = [2] * n
+        q_legs = [2] * self.n
 
         for i, gz in enumerate(hz):
             qs = np.nonzero(gz)[0].astype(int)
@@ -175,9 +176,7 @@ class CssTannerCodeTN(TensorNetwork):
         Returns:
             int: Total number of qubits represented by this tensor network.
         """
-        # The number of qubits is determined by the number of columns in hx
-        first_node = list(self.nodes.values())[0]
-        return int(first_node.h.shape[1] // 2)
+        return self.n
 
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         """Map a qubit index to its corresponding node and leg.
@@ -188,6 +187,4 @@ class CssTannerCodeTN(TensorNetwork):
         Returns:
             Tuple[TensorId, TensorLeg]: Node ID and leg that represent the qubit.
         """
-        # For CSS Tanner codes, qubits are represented by the id stopper tensors
-        # Each qubit q corresponds to the tensor with ID f"q{q}.id"
-        return f"q{q}.id", (f"q{q}.id", 0)
+        return f"q{q}.x", (f"q{q}.x", 1)
