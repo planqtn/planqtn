@@ -2,6 +2,8 @@ site_name: PlanqTN Documentation
 site_url: https://planqtn.com/docs
 theme:
   name: material
+  logo: fig/planqtn_logo.png
+  favicon: fig/favicon.ico
   palette:
     # Light mode
     - media: "(prefers-color-scheme: light)"
@@ -59,10 +61,21 @@ theme:
     share: material/share-variant
     top: material/arrow-up
 nav:
-  - Home: index.md
-  - Tutorials: tutorials/index.md
-  - Python API: planqtn/reference.md
-  - Studio: planqtn-studio/index.md
+  - Home:
+      - Welcome to PlanqTN!: index.md
+      - Features: features.md
+      - Contributing: contributing.md
+  - Python API:
+      - index: planqtn/index.md
+      - API Reference: planqtn/reference.md
+  - PlanqTN Studio:
+      - index: planqtn-studio/index.md
+      - Build tensor networks: planqtn-studio/build.md
+      - Transform tensor networks: planqtn-studio/transform.md
+      - Analyze tensor networks: planqtn-studio/analyze.md
+      - Share tensor networks: planqtn-studio/share.md
+  - FAQ: faq.md
+
 markdown_extensions:
   # Python Markdown
   - abbr
@@ -96,13 +109,5 @@ markdown_extensions:
       custom_checkbox: true
   - pymdownx.tilde
 plugins:
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            docstring_options:
-              show_root_heading: true
-              trim_doctest_flags: true
-              heading_level: 2
-              heading_slug_separator: "-"
+  - mkdocstrings
   - search

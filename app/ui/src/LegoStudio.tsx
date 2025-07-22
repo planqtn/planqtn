@@ -50,7 +50,7 @@ import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
-import { FiShare2 } from "react-icons/fi";
+import { FiShare2, FiFileText } from "react-icons/fi";
 import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 
@@ -608,6 +608,27 @@ const LegoStudioView: React.FC = () => {
                     display="flex"
                     gap={2}
                   >
+                    {/* Documentation button */}
+                    <Tooltip label="Documentation" placement="bottom">
+                      <Box
+                        bg="transparent"
+                        borderRadius="md"
+                        px={2}
+                        py={2}
+                        opacity={0.8}
+                        _hover={{
+                          opacity: 1,
+                          bg: useColorModeValue("gray.100", "gray.700")
+                        }}
+                        transition="opacity 0.2s"
+                        cursor="pointer"
+                        onClick={() => window.open("/docs", "_blank")}
+                        alignItems="center"
+                        display="flex"
+                      >
+                        <Icon as={FiFileText} boxSize={5} />
+                      </Box>
+                    </Tooltip>
                     {/* Share button */}
                     <Tooltip label="Share canvas" placement="bottom">
                       <Box
