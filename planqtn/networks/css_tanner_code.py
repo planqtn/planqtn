@@ -29,8 +29,8 @@ class CssTannerCodeTN(TensorNetwork):
         hx: np.ndarray,
         hz: np.ndarray,
     ):
-        _, self.n = hx.shape
-        _ = hz.shape[0]  # rz, but not used
+        self.n: int = hx.shape[1]
+        self.r: int = hz.shape[0]  # rz, but not used
 
         q_tensors: List[StabilizerCodeTensorEnumerator] = []
         traces: List[Trace] = []
