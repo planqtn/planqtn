@@ -24,13 +24,13 @@ from planqtn.legos import LegoAnnotation
 from planqtn.linalg import gauss
 from planqtn.parity_check import conjoin, self_trace, tensor_product
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
-from planqtn.simple_poly import SimplePoly
+from planqtn.poly import UnivariatePoly
 from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
 
 
 TensorId = str | int | Tuple[int, int]
 TensorLeg = Tuple[TensorId, int]
-TensorEnumerator = Dict[Tuple[int, ...], SimplePoly]
+TensorEnumerator = Dict[Tuple[int, ...], UnivariatePoly]
 
 
 def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:
@@ -53,7 +53,7 @@ class _SimpleStabilizerCollector:
         truncate_length: Optional[int] = None,
     ):
         self.coset = coset
-        self.tensor_wep = SimplePoly()
+        self.tensor_wep = UnivariatePoly()
         self.open_cols = open_cols
         self.verbose = verbose
         self.truncate_length = truncate_length
@@ -64,7 +64,7 @@ class _SimpleStabilizerCollector:
         if self.truncate_length is not None and stab_weight > self.truncate_length:
             return
         # print(f"simple {stabilizer + self.coset} => {stab_weight}")
-        self.tensor_wep.add_inplace(SimplePoly({stab_weight: 1}))
+        self.tensor_wep.add_inplace(UnivariatePoly({stab_weight: 1}))
 
     # pylint: disable=missing-function-docstring
     def finalize(self) -> None:
@@ -86,7 +86,7 @@ class _TensorElementCollector:
         self.verbose = verbose
         self.progress_reporter = progress_reporter
         self.matching_stabilizers: List[GF2] = []
-        self.tensor_wep: TensorEnumerator = defaultdict(SimplePoly)
+        self.tensor_wep: TensorEnumerator = defaultdict(UnivariatePoly)
         self.truncate_length = truncate_length
 
     # pylint: disable=missing-function-docstring
@@ -110,21 +110,11 @@ class _TensorElementCollector:
             stab_weight = weight(s + self.coset, skip_indices=self.open_cols)
             # print(f"tensor {s + self.coset} => {stab_weight}")
             key = sympl_to_pauli_repr(sslice(s, self.open_cols))
-            self.tensor_wep[key].add_inplace(SimplePoly({stab_weight: 1}))
+            self.tensor_wep[key].add_inplace(UnivariatePoly({stab_weight: 1}))
 
 
 class StabilizerCodeTensorEnumerator:
-    """Tensor enumerator for a stabilizer code.
-
-    Instances of StabilizerCodeTensorEnumerator always have a parity check matrix. It supports
-    self-tracing, as well as tensor product, and conjoining of with other
-    `StabilizerCodeTensorEnumerator` instances.
-
-    The class also supports the enumeration of the scalar stabilizer weight enumerator of the code
-    via brute force. There can be legs left open, in which case the weight enumerator becomes a
-    tensor weight enumerator. Weight truncation is supported for approximate enumeration.
-    Coset support is represented by `coset_flipped_legs`.
-    """
+    """Tensor enumerator for a stabilizer code."""
 
     def __init__(
         self,
@@ -134,7 +124,28 @@ class StabilizerCodeTensorEnumerator:
         coset_flipped_legs: Optional[List[Tuple[Tuple[Any, int], GF2]]] = None,
         annotation: Optional[LegoAnnotation] = None,
     ):
+        """Construct a stabilizer code tensor enumerator.
 
+        A `StabilizerCodeTensorEnumerator` is basically an object oriented wrapper around
+        a parity check matrix. It supports self-tracing, as well as tensor product, and conjoining
+        of with other `StabilizerCodeTensorEnumerator` instances. As such, it is the building block
+        of tensor networks in the [TensorNetwork][planqtn.tensor_network.TensorNetwork] class.
+
+        The class also supports the enumeration of the scalar stabilizer weight enumerator of the
+        code via brute force. There can be legs left open, in which case the weight enumerator
+        becomes a tensor weight enumerator. Weight truncation is supported for approximate
+        enumeration. Coset support is represented by `coset_flipped_legs`.
+
+        Args:
+            h: The parity check matrix.
+            tensor_id: The ID of the tensor.
+            legs: The legs of the tensor.
+            coset_flipped_legs: The coset flipped legs of the tensor.
+            annotation: The annotation of the tensor for hints for visualization in PlanqTN Studio.
+
+        Raises:
+            AssertionError: If the legs are not valid.
+        """
         self.h = h
         self.annotation = annotation
 
@@ -154,7 +165,7 @@ class StabilizerCodeTensorEnumerator:
             len(self.legs) == self.n
         ), f"Number of legs {len(self.legs)} != qubit count {self.n} for h: {self.h}"
         # a dict is a wonky tensor - TODO: rephrase this to proper tensor
-        self._stabilizer_enums: Dict[sympy.Tuple, SimplePoly] = {}
+        self._stabilizer_enums: Dict[sympy.Tuple, UnivariatePoly] = {}
 
         self.coset_flipped_legs = []
         if coset_flipped_legs is not None:
@@ -219,7 +230,7 @@ class StabilizerCodeTensorEnumerator:
             self._remove_leg(legs, leg)
 
     def _validate_legs(self, legs: List[TensorLeg]) -> List[TensorLeg]:
-        return [leg for leg in legs if not leg in self.legs]
+        return [leg for leg in legs if leg not in self.legs]
 
     def with_coset_flipped_legs(
         self, coset_flipped_legs: List[Tuple[TensorLeg, GF2]]
@@ -358,7 +369,7 @@ class StabilizerCodeTensorEnumerator:
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
-    ) -> Union[TensorEnumerator, SimplePoly]:
+    ) -> Union[TensorEnumerator, UnivariatePoly]:
 
         open_legs = _index_legs(self.tensor_id, open_legs)
         invalid_legs = self._validate_legs(open_legs)
@@ -427,9 +438,11 @@ class StabilizerCodeTensorEnumerator:
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         truncate_length: Optional[int] = None,
-    ) -> Union[TensorEnumerator, SimplePoly]:
+    ) -> Union[TensorEnumerator, UnivariatePoly]:
         """Compute the stabilizer enumerator polynomial.
 
+        Note that this is a brute force method, and is not efficient for large codes, use it with
+        the [planqtn.progress_reporter.TqdmProgressReporter][] to get time estimates.
         If open_legs is empty, returns the scalar stabilizer enumerator polynomial.
         If open_legs is not empty, returns a sparse tensor with non-zero values on
         the open legs.
@@ -441,7 +454,7 @@ class StabilizerCodeTensorEnumerator:
             truncate_length: Maximum weight to truncate the enumerator at.
 
         Returns:
-            Union[TensorEnumerator, SimplePoly]: The stabilizer enumerator polynomial.
+            wep: The stabilizer weight enumerator polynomial.
         """
         wep = self._brute_force_stabilizer_enumerator_from_parity(
             open_legs=open_legs,
@@ -460,14 +473,14 @@ class StabilizerCodeTensorEnumerator:
         or boundary condition) on the specified leg.
 
         Args:
-            stopper: The stopper tensor to contract with (as GF2 matrix).
+            stopper: The stopper tensor to contract with (as a 1x2 GF2 matrix).
             traced_leg: The leg to contract with the stopper.
 
         Returns:
             StabilizerCodeTensorEnumerator: New tensor with the stopper contraction applied.
         """
         res = self.conjoin(
-            StabilizerCodeTensorEnumerator(GF2([stopper]), tensor_id="stopper"),
+            StabilizerCodeTensorEnumerator(stopper, tensor_id="stopper"),
             [traced_leg],
             [0],
         )

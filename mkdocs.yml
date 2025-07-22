@@ -61,10 +61,8 @@ theme:
 nav:
   - Home: index.md
   - Tutorials: tutorials/index.md
-  - Docs:
-      - Library: planqtn/index.md
-      - Reference: planqtn/reference.md
-      - Studio: planqtn-studio/index.md
+  - Python API: planqtn/reference.md
+  - Studio: planqtn-studio/index.md
 markdown_extensions:
   # Python Markdown
   - abbr

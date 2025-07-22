@@ -1,0 +1,8 @@
+[flake8]
+docstring-convention = google
+# Optionally, add specific docstring-related error codes to ignore or select:
+; # ignore = D203,D204
+ignore = E231,D105,E741,W503
+
+exclude=*_test.py
+max-line-length = 100

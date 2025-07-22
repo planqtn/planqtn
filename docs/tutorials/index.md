@@ -40,38 +40,20 @@ code via a generalized concatenation procedure!
 pip install planqtn
 ```
 
-3. Try generating a generic tensor network for any CSS codes and calculating the
-   weight enumerator polynomial for it:
+3. Generating a universal network for any CSS code and calculating the weight
+   enumerator polynomial for it:
 
 ```python
-from galois import GF2
-
-from planqtn.networks import CssTannerCodeTN
-from planqtn.progress_reporter import TqdmProgressReporter
-
-hz = GF2(
-    [
-        [1, 1, 0, 1, 1, 0, 1, 1, 0],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 1, 0, 1, 1],
-    ]
-)
-
-hx = GF2(
-    [
-        [1, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 1, 1, 0, 1, 1, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 1, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 1],
-    ]
-)
-
-tn = CssTannerCodeTN(hx, hz)
-
-wep = tn.stabilizer_enumerator_polynomial(
-    progress_reporter=TqdmProgressReporter(), verbose=False
-)
-print(wep)
+>>> from galois import GF2
+>>> from planqtn.networks import StabilizerTannerCodeTN
+>>> h_5qubit = GF2([
+... [1, 0, 0, 1, 0, 0, 1, 1, 0, 0],
+... [1, 0, 1, 0, 0, 0, 0, 0, 1, 1],
+... [0, 0, 1, 0, 1, 1, 1, 0, 0, 0],
+... [0, 1, 0, 0, 1, 0, 0, 1, 1, 0]
+... ])
+>>> tn = StabilizerTannerCodeTN(h_5qubit)
+>>> tn.stabilizer_enumerator_polynomial()
+UnivariatePoly({0: 1, 4: 15})
 
 ```

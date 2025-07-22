@@ -1,6 +1,7 @@
 from galois import GF2
 import numpy as np
-from planqtn.parity_check import conjoin, self_trace, sprint, tensor_product
+from planqtn.parity_check import conjoin, self_trace, tensor_product
+from planqtn.symplectic import sprint
 from planqtn.tensor_network import StabilizerCodeTensorEnumerator
 
 

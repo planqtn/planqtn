@@ -6,6 +6,7 @@ from typing import Optional
 import attrs
 import numpy as np
 from galois import GF2
+from planqtn.pauli import Pauli
 
 
 class LegoType(enum.Enum):
@@ -23,10 +24,10 @@ class LegoType(enum.Enum):
         T5: [[5,1,2]] subspace tensor.
         T5X: X-component of [[5,1,2]] tensor.
         T5Z: Z-component of [[5,1,2]] tensor.
-        STOPPER_X: X-type stopper tensor, the |+> state.
-        STOPPER_Z: Z-type stopper tensor, the |0> state.
-        STOPPER_Y: Y-type stopper tensor, the |+i> state.
-        STOPPER_I: Identity stopper tensor, "free qubit" subspace. Creates subspace legos.
+        STOPPER_X: X-type stopper tensor, the |+> state, the Pauli X operator.
+        STOPPER_Z: Z-type stopper tensor, the |0> state, the Pauli Z operator.
+        STOPPER_Y: Y-type stopper tensor, the |+i> state, the Pauli Y operator.
+        STOPPER_I: Identity stopper tensor, "free qubit" subspace. Creates subspace legos, Pauli I.
         ID: Identity tensor, or the Bell-state.
     """
 
@@ -77,21 +78,34 @@ class Legos:
     or operation with its associated parity check matrix.
 
     The class includes various types of tensors:
-    - Encoding tensors for specific quantum codes ([[6,0,3]], [[5,1,2]], etc.)
+
+    - Encoding tensors for specific quantum codes (`[[6,0,3]]`, `[[5,1,2]]`, etc.)
     - Repetition codes for basic error correction
     - Stopper tensors for terminating tensor networks
     - Identity and Hadamard operations
     - Well-known codes like the Steane code and Quantum Reed-Muller codes
 
     Example:
-        # Get a Z-repetition code with distance 3
-        z_rep_matrix = Legos.z_rep_code(d=3)
+        ```python
+        >>> from planqtn.symplectic import sprint
+        >>> # Get the Hadamard tensor
+        >>> Legos.h
+        GF([[1, 0, 0, 1],
+            [0, 1, 1, 0]], order=2)
+        >>> # Get the stopper_x tensor
+        >>> Legos.stopper_x
+        GF([[1, 0]], order=2)
+        >>> # Get the stopper_z tensor
+        >>> Legos.stopper_z
+        GF([[0, 1]], order=2)
+        >>> # Get a Z-repetition code with distance 3
+        >>> # and print it in a nice symplectic format
+        >>> sprint(Legos.z_rep_code(d=3))
+        ___|11_
+        ___|_11
+        111|___
 
-        # Get the Hadamard tensor
-        hadamard_matrix = Legos.h
-
-        # List all available legos
-        available_legos = Legos.list_available_legos()
+        ```
     """
 
     enconding_tensor_603 = GF2(
@@ -114,16 +128,15 @@ class Legos:
 
     # fmt: off
     steane_code_813_encoding_tensor = GF2([
-            [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
-        ]
-    )
+        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+    ])
     # fmt: on
 
     @staticmethod
@@ -139,10 +152,6 @@ class Legos:
 
         Returns:
             GF2: Parity check matrix for the Z-repetition code.
-
-        Example:
-            # Create a distance-3 Z-repetition code
-            matrix = Legos.z_rep_code(d=3)
         """
         gens = []
         for i in range(d - 1):
@@ -167,10 +176,6 @@ class Legos:
 
         Returns:
             GF2: Parity check matrix for the X-repetition code.
-
-        Example:
-            # Create a distance-3 X-repetition code
-            matrix = Legos.x_rep_code(d=3)
         """
         gens = []
         for i in range(d - 1):
@@ -188,8 +193,9 @@ class Legos:
             [0, 0, 1, 1],
         ]
     )
+    """the identity tensor is the Bell state, the |00> + |11> state"""
 
-    enconding_tensor_512 = GF2(
+    encoding_tensor_512 = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
@@ -197,20 +203,24 @@ class Legos:
             [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
         ]
     )
+    """the [[5,1,2]] subspace tensor of the [[4,2,2]] code, i.e. with the logical leg, leg 5 traced
+    out with the identity stopper from the [[6,0,3]] encoding tensor."""
 
-    enconding_tensor_512_x = GF2(
+    encoding_tensor_512_x = GF2(
         [
             [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
             [1, 1, 0, 0, 1, 0, 0, 0, 0, 0],
         ]
     )
+    """the X-only version of the [planqtn.Legos.encoding_tensor_512][]"""
 
-    enconding_tensor_512_z = GF2(
+    encoding_tensor_512_z = GF2(
         [
             [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
             [0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
         ]
     )
+    """the Z-only version of the [planqtn.Legos.encoding_tensor_512][]"""
 
     h = GF2(
         [
@@ -218,8 +228,17 @@ class Legos:
             [0, 1, 1, 0],
         ]
     )
+    """the Hadamard tensor"""
 
-    stopper_x = GF2([[1, 0]])
-    stopper_z = GF2([[0, 1]])
-    stopper_y = GF2([[1, 1]])
-    stopper_i = GF2([[0, 0]])
+    stopper_x = GF2([Pauli.X.to_gf2()])
+    """the X-type stopper tensor, the |+> state, corresponds to the Pauli X operator."""
+
+    stopper_z = GF2([Pauli.Z.to_gf2()])
+    """the Z-type stopper tensor, the |0> state, corresponds to the Pauli Z operator."""
+
+    stopper_y = GF2([Pauli.Y.to_gf2()])
+    """the Y-type stopper tensor, the |+i> state, corresponds to the Pauli Y operator."""
+
+    stopper_i = GF2([Pauli.I.to_gf2()])
+    """the identity stopper tensor, which is the free qubit subspace, corresponds to the
+    Pauli I operator."""

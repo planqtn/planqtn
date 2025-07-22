@@ -35,7 +35,7 @@ jobs:
         run: |
           pip install --upgrade uv
           pip install -r docs/requirements.txt
-          uv pip install -r pyproject.toml --system
+          uv pip install -r pyproject.toml --all-extras --system
       - name: Run tests
         run: |
-          check/ui
+          check/ui-and-docs

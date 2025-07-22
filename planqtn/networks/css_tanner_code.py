@@ -1,5 +1,11 @@
-"""The `css_tanner_code` module contains the `CssTannerCodeTN` class,
-which implements a tensor network representation of CSS codes using Tanner graph structure.
+"""The `css_tanner_code` module.
+
+It contains the `CssTannerCodeTN` class, which implements a tensor network
+representation of CSS codes using Tanner graph structure based on Fig 6 of the following work:
+
+Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
+“Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 """
 
 from typing import List, Tuple
@@ -18,10 +24,6 @@ class CssTannerCodeTN(TensorNetwork):
     This class constructs a tensor network from X and Z parity check matrices (Hx and Hz),
     representing a CSS code. The tensor network connects qubit tensors to check tensors
     according to the non-zero entries in the parity check matrices.
-
-    Args:
-        hx: X-type parity check matrix.
-        hz: Z-type parity check matrix.
     """
 
     def __init__(
@@ -29,6 +31,12 @@ class CssTannerCodeTN(TensorNetwork):
         hx: np.ndarray,
         hz: np.ndarray,
     ):
+        """Construct a CSS code tensor network from X and Z parity check matrices.
+
+        Args:
+            hx: X-type parity check matrix.
+            hz: Z-type parity check matrix.
+        """
         self.n: int = hx.shape[1]
         self.r: int = hz.shape[0]  # rz, but not used
 

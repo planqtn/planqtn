@@ -1,5 +1,7 @@
-"""The `compass_code` module contains the `CompassCodeDualSurfaceCodeLayoutTN` class,
-which implements a tensor network representation of compass codes using dual surface code layout.
+"""The `compass_code` module.
+
+It contains the `CompassCodeDualSurfaceCodeLayoutTN` class, which implements a tensor network
+representation of compass codes using dual surface code layout.
 """
 
 from typing import Callable, Optional
@@ -7,7 +9,6 @@ from galois import GF2
 import numpy as np
 from planqtn.legos import Legos
 from planqtn.networks.surface_code import SurfaceCodeTN
-from planqtn.tensor_network import PAULI_X, PAULI_Z
 from planqtn.tensor_network import TensorId
 
 
@@ -29,7 +30,7 @@ class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
         self,
         coloring: np.ndarray,
         *,
-        lego: Callable[[TensorId], GF2] = lambda node: Legos.enconding_tensor_512,
+        lego: Callable[[TensorId], GF2] = lambda node: Legos.encoding_tensor_512,
         coset_error: Optional[GF2] = None,
         truncate_length: Optional[int] = None,
     ):
@@ -53,7 +54,7 @@ class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
         ]
         for tensor_id, color in zip(gauge_idxs, np.reshape(coloring, (d - 1) ** 2)):
             self.nodes[tensor_id] = self.nodes[tensor_id].trace_with_stopper(
-                PAULI_Z if color == 2 else PAULI_X, 4
+                Legos.stopper_z if color == 2 else Legos.stopper_x, 4
             )
 
         self._q_to_node = [(2 * r, 2 * c) for c in range(d) for r in range(d)]

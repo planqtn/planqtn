@@ -14,16 +14,16 @@ export PYTHONPATH="."
 
 echo "Running black"
 black planqtn/** --check
+echo "Running flake8"
+flake8 planqtn
 rm -rf .mypy_cache
 echo Running `mypy --version`
 mypy planqtn
 echo "Running pylint"
 pylint planqtn
-echo "Running darglint2"
-darglint2 planqtn
+echo "Running doctest for planqtn"
+find planqtn -name '*.py' | xargs python -m doctest -v
 echo "Running pytest"
 pytest planqtn
-echo "Running doctest"
-find planqtn -name '*.py' | xargs python -m doctest
 
 echo "All checks passed"

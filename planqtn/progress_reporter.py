@@ -237,13 +237,7 @@ class ProgressReporter(abc.ABC):
 
         Yields:
             Items from the iterable.
-
-        Example:
-            # Iterate over a list with progress reporting
-            for item in progress_reporter.iterate(items, "Processing items", len(items)):
-                process_item(item)
         """
-
         bottom_iterator_state = IterationState(
             desc, start_time=time.time(), total_size=total_size
         )

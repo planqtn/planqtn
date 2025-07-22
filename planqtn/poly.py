@@ -6,31 +6,40 @@ from sympy import Poly, symbols
 import sympy
 
 
-class MonomialPowers:
-    """A class for representing monomial powers in multivariate polynomials.
+class Monomial:
+    """A class for representing variable powers in a monomial.
 
-    This class represents the powers of variables in a monomial term. For example,
+    This class represents the powers of variables in a monomial. For example,
     in the monomial x^2 * y^3 * z^1, the powers would be represented as (2, 3, 1).
 
     Attributes:
         powers: Tuple of integers representing the power of each variable.
 
     Example:
-        # Create monomial powers for x^2 * y^3
-        mp = MonomialPowers((2, 3))
+        ```python
+        >>> # Create the monomial for x^2 * y^3
+        >>> mp = Monomial((2, 3))
 
-        # Add two monomial powers (component-wise addition)
-        result = mp + MonomialPowers((1, 1))  # Results in (3, 4)
+        >>> # Add two monomials (component-wise addition)
+        >>> mp + Monomial((1, 1))  # Results in (3, 4)
+        Monomial((3, 4))
+
+        ```
     """
 
-    def __init__(self, powers: Tuple[int, ...] | "MonomialPowers") -> None:
+    def __init__(self, powers: Tuple[int, ...] | "Monomial") -> None:
+        """Construct a monomial powers.
+
+        Args:
+            powers: The powers of the monomial.
+        """
         self.powers: Tuple[int, ...] = (
             powers if isinstance(powers, tuple) else powers.powers
         )
 
-    def __add__(self, other: "MonomialPowers") -> "MonomialPowers":
+    def __add__(self, other: "Monomial") -> "Monomial":
         assert len(self.powers) == len(other.powers)
-        return MonomialPowers(
+        return Monomial(
             tuple(self.powers[i] + other.powers[i] for i in range(len(self.powers)))
         )
 
@@ -41,20 +50,20 @@ class MonomialPowers:
         return self.powers[n]
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, MonomialPowers):
+        if not isinstance(other, Monomial):
             return NotImplemented
         return self.powers == other.powers
 
-    def __lt__(self, other: "MonomialPowers") -> bool:
+    def __lt__(self, other: "Monomial") -> bool:
         return self.powers < other.powers
 
-    def __gt__(self, other: "MonomialPowers") -> bool:
+    def __gt__(self, other: "Monomial") -> bool:
         return self.powers > other.powers
 
-    def __le__(self, other: "MonomialPowers") -> bool:
+    def __le__(self, other: "Monomial") -> bool:
         return self.powers <= other.powers
 
-    def __ge__(self, other: "MonomialPowers") -> bool:
+    def __ge__(self, other: "Monomial") -> bool:
         return self.powers >= other.powers
 
     def __hash__(self) -> int:
@@ -64,49 +73,47 @@ class MonomialPowers:
         return str(self.powers)
 
     def __repr__(self) -> str:
-        return f"MonomialPowers({self.powers})"
+        return f"Monomial({self.powers})"
 
 
-class MonomialPowersPoly:
-    """A polynomial class using MonomialPowers as keys for multivariate polynomials.
+class BivariatePoly:
+    """A class for bivariate integer polynomials.
 
-    This class represents multivariate polynomials where each term is stored as
-    a dictionary mapping MonomialPowers to coefficients. It's designed for
-    bivariate polynomials (2 variables) and provides conversion to/from sympy
-    polynomials.
-
-    Attributes:
-        dict: Dictionary mapping MonomialPowers to integer coefficients.
-        num_vars: Number of variables in the polynomial (typically 2).
-
-    Example:
-        # Create a polynomial: 3x^2*y + 2x*y^3
-        poly = MonomialPowersPoly({
-            MonomialPowers((2, 1)): 3,
-            MonomialPowers((1, 3)): 2
-        })
-
-        # Convert to sympy polynomial
-        sympy_poly = poly.to_sympy([x, y])
+    The keys are [Monomial][planqtn.poly.Monomial] and the values are integer coefficients.
     """
 
     def __init__(
         self,
-        d: Union[Dict[Tuple[int, ...] | MonomialPowers, int], "MonomialPowersPoly"],
+        d: Union[Dict[Tuple[int, ...] | Monomial, int], "BivariatePoly"],
     ) -> None:
-        self.dict: Dict[MonomialPowers, int] = {}
+        """Construct a bivariate polynomial.
+
+        This class represents bivariate polynomials where each term is stored as
+        a dictionary mapping [Monomial][planqtn.poly.Monomial] to coefficients.
+        It provides conversion to/from sympy polynomials. This is used mainly for the MacWilliams
+        dual computation.
+
+        Attributes:
+            dict: Dictionary mapping [Monomial][planqtn.poly.Monomial] to integer
+                  coefficients.
+
+        Args:
+            d: The dictionary of monomials and coefficients.
+
+        Raises:
+            ValueError: If the input is not a dictionary or a BivariatePoly.
+        """
+        self.dict: Dict[Monomial, int] = {}
         self.num_vars = 2
         assert d is not None
-        if isinstance(d, MonomialPowersPoly):
+        if isinstance(d, BivariatePoly):
             self.dict.update(d.dict)
             self.num_vars = d.num_vars
         elif isinstance(d, dict):
             if len(d) > 0:
                 first_key = list(d.keys())[0]
                 self.num_vars = len(first_key)
-                self.dict.update(
-                    {MonomialPowers(key): value for key, value in d.items()}
-                )
+                self.dict.update({Monomial(key): value for key, value in d.items()})
         else:
             raise ValueError(f"Unrecognized type: {type(d)}")
 
@@ -135,8 +142,8 @@ class MonomialPowersPoly:
         return res
 
     @staticmethod
-    def from_sympy(poly: sympy.Poly) -> "MonomialPowersPoly":
-        """Convert a sympy Poly to a MonomialPowersPoly.
+    def from_sympy(poly: sympy.Poly) -> "BivariatePoly":
+        """Convert a sympy Poly to a BivariatePoly.
 
         For bivariate polynomials, the keys are (i, j) representing w^i * z^j
         where w and z are the two variables.
@@ -145,55 +152,70 @@ class MonomialPowersPoly:
             poly: The sympy polynomial to convert.
 
         Returns:
-            MonomialPowersPoly: The converted polynomial.
+            BivariatePoly: The converted polynomial.
 
         Raises:
             AssertionError: If the polynomial is not bivariate (2 variables).
         """
         assert len(poly.gens) == 2
-        return MonomialPowersPoly(poly.as_dict())
+        return BivariatePoly(poly.as_dict())
 
-    def __mul__(
-        self, n: Union[int, float, "MonomialPowersPoly"]
-    ) -> "MonomialPowersPoly":
+    def __mul__(self, n: Union[int, float, "BivariatePoly"]) -> "BivariatePoly":
         if isinstance(n, (int, float)):
-            return MonomialPowersPoly({k: int(n * v) for k, v in self.dict.items()})
-        raise TypeError(f"Cannot multiply MonomialPowersPoly by {type(n)}")
+            return BivariatePoly({k: int(n * v) for k, v in self.dict.items()})
+        raise TypeError(f"Cannot multiply BivariatePoly by {type(n)}")
 
 
-class SimplePoly:
-    """A simple univariate polynomial class for weight enumerator polynomials.
+class UnivariatePoly:
+    """A class for univariate integer polynomials."""
 
-    This class represents univariate polynomials as a dictionary mapping
-    powers to coefficients. It's specifically designed for weight enumerator
-    polynomials used in coding theory, where coefficients are typically integers.
+    def __init__(
+        self, d: Optional[Union["UnivariatePoly", Dict[int, int]]] = None
+    ) -> None:
+        """Construct a univariate integer polynomial.
 
-    The class provides basic polynomial operations like addition, multiplication,
-    normalization, and MacWilliams dual computation. It also supports truncation
-    and homogenization for bivariate polynomials.
+        This class represents univariate polynomials as a dictionary mapping
+        powers to coefficients. It's specifically designed for weight enumerator
+        polynomials, where coefficients are typically integers.
 
-    Attributes:
-        dict: Dictionary mapping integer powers to integer coefficients.
-        num_vars: Number of variables (always 1 for univariate).
+        The class provides basic polynomial operations like addition, multiplication,
+        normalization, and MacWilliams dual computation. It also supports truncation
+        and homogenization for bivariate polynomials.
 
-    Example:
-        # Create a polynomial: 1 + 3x + 2x^2
-        poly = SimplePoly({0: 1, 1: 3, 2: 2})
+        Attributes:
+            dict: Dictionary mapping integer powers to integer coefficients.
+            num_vars: Number of variables (always 1 for univariate).
 
-        # Add polynomials
-        result = poly + SimplePoly({1: 1, 3: 1})
+        Raises:
+            ValueError: If the input is not a dictionary or a UnivariatePoly.
 
-        # Multiply by scalar
-        scaled = poly * 2
+        Example:
+            ```python
 
-        # Get minimum weight term
-        min_weight, coeff = poly.minw()
-    """
+            >>> # Create a polynomial: 1 + 3x + 2x^2
+            >>> poly = UnivariatePoly({0: 1, 1: 3, 2: 2})
 
-    def __init__(self, d: Optional[Union["SimplePoly", Dict[int, int]]] = None) -> None:
+            >>> # Add polynomials
+            >>> result = poly + UnivariatePoly({1: 1, 3: 1})
+
+            >>> # Multiply by scalar
+            >>> scaled = poly * 2
+
+            >>> # Get minimum weight term
+            >>> min_weight, coeff = poly.minw()
+            >>> min_weight
+            0
+            >>> coeff
+            1
+
+            ```
+
+        Args:
+            d: The dictionary of powers and coefficients.
+        """
         self.dict: Dict[int, int] = {}
         self.num_vars = 1
-        if isinstance(d, SimplePoly):
+        if isinstance(d, UnivariatePoly):
             self.dict.update(d.dict)
         elif d is not None and isinstance(d, dict):
             self.dict.update(d)
@@ -211,7 +233,7 @@ class SimplePoly:
         """
         return len(self.dict) == 1 and set(self.dict.keys()) == {0}
 
-    def add_inplace(self, other: "SimplePoly") -> None:
+    def add_inplace(self, other: "UnivariatePoly") -> None:
         """Add another polynomial to this one in-place.
 
         Args:
@@ -224,9 +246,9 @@ class SimplePoly:
         for k, v in other.dict.items():
             self.dict[k] = self.dict.get(k, 0) + v
 
-    def __add__(self, other: "SimplePoly") -> "SimplePoly":
+    def __add__(self, other: "UnivariatePoly") -> "UnivariatePoly":
         assert other.num_vars == self.num_vars
-        res = SimplePoly(self.dict)
+        res = UnivariatePoly(self.dict)
         for k, v in other.dict.items():
             res.dict[k] = res.dict.get(k, 0) + v
         return res
@@ -241,15 +263,15 @@ class SimplePoly:
         min_coeff = self.dict[min_w]
         return min_w, min_coeff
 
-    def leading_order_poly(self) -> "SimplePoly":
+    def leading_order_poly(self) -> "UnivariatePoly":
         """Get the polynomial containing only the minimum weight term.
 
         Returns:
-            SimplePoly: A new polynomial with only the minimum weight term.
+            UnivariatePoly: A new polynomial with only the minimum weight term.
         """
         min_w = min(self.dict.keys())
         min_coeff = self.dict[min_w]
-        return SimplePoly({min_w: min_coeff})
+        return UnivariatePoly({min_w: min_coeff})
 
     def __getitem__(self, i: Any) -> int:
         return self.dict.get(i, 0)
@@ -265,14 +287,14 @@ class SimplePoly:
     def __len__(self) -> int:
         return len(self.dict)
 
-    def normalize(self, verbose: bool = False) -> "SimplePoly":
+    def normalize(self, verbose: bool = False) -> "UnivariatePoly":
         """Normalize the polynomial by dividing by the constant term if it's greater than 1.
 
         Args:
             verbose: If True, print normalization information.
 
         Returns:
-            SimplePoly: The normalized polynomial.
+            UnivariatePoly: The normalized polynomial.
         """
         if 0 in self.dict and self.dict[0] > 1:
             if verbose:
@@ -288,35 +310,35 @@ class SimplePoly:
         )
 
     def __repr__(self) -> str:
-        return f"SimplePoly({repr(self.dict)})"
+        return f"UnivariatePoly({repr(self.dict)})"
 
-    def __truediv__(self, n: int) -> "SimplePoly":
+    def __truediv__(self, n: int) -> "UnivariatePoly":
         if isinstance(n, int):
-            return SimplePoly({k: int(v // n) for k, v in self.dict.items()})
-        raise TypeError(f"Cannot divide SimplePoly by {type(n)}")
+            return UnivariatePoly({k: int(v // n) for k, v in self.dict.items()})
+        raise TypeError(f"Cannot divide UnivariatePoly by {type(n)}")
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, (int, float)):
             return self.dict[0] == value
-        if isinstance(value, SimplePoly):
+        if isinstance(value, UnivariatePoly):
             return self.dict == value.dict
         return False
 
     def __hash__(self) -> int:
         return hash(self.dict)
 
-    def __mul__(self, n: Union[int, float, "SimplePoly"]) -> "SimplePoly":
+    def __mul__(self, n: Union[int, float, "UnivariatePoly"]) -> "UnivariatePoly":
         if isinstance(n, (int, float)):
-            return SimplePoly({k: int(n * v) for k, v in self.dict.items()})
-        if isinstance(n, SimplePoly):
-            res = SimplePoly()
+            return UnivariatePoly({k: int(n * v) for k, v in self.dict.items()})
+        if isinstance(n, UnivariatePoly):
+            res = UnivariatePoly()
             for d1, coeff1 in self.dict.items():
                 for d2, coeff2 in n.dict.items():
                     res.dict[d1 + d2] = res.dict.get(d1 + d2, 0) + coeff1 * coeff2
             return res
-        raise TypeError(f"Cannot multiply SimplePoly by {type(n)}")
+        raise TypeError(f"Cannot multiply UnivariatePoly by {type(n)}")
 
-    def _homogenize(self, n: int) -> "MonomialPowersPoly":
+    def _homogenize(self, n: int) -> "BivariatePoly":
         """Homogenize a univariate polynomial to a bivariate polynomial.
 
         Converts A(z) to A(w,z) = w^n * A(z/w), where w represents the dual weight
@@ -326,11 +348,9 @@ class SimplePoly:
             n: The degree of homogenization.
 
         Returns:
-            MonomialPowersPoly: The homogenized bivariate polynomial.
+            BivariatePoly: The homogenized bivariate polynomial.
         """
-        return MonomialPowersPoly(
-            {MonomialPowers((n - k, k)): v for k, v in self.dict.items()}
-        )
+        return BivariatePoly({Monomial((n - k, k)): v for k, v in self.dict.items()})
 
     def truncate_inplace(self, n: int) -> None:
         """Truncate the polynomial to terms with power <= n in-place.
@@ -342,7 +362,7 @@ class SimplePoly:
 
     def macwilliams_dual(
         self, n: int, k: int, to_normalizer: bool = True
-    ) -> "SimplePoly":
+    ) -> "UnivariatePoly":
         """Convert this weight enumerator polynomial to its MacWilliams dual.
 
         The MacWilliams duality theorem relates the weight enumerator polynomial
@@ -357,10 +377,10 @@ class SimplePoly:
                           This affects the normalization factors.
 
         Returns:
-            SimplePoly: The MacWilliams dual weight enumerator polynomial.
+            UnivariatePoly: The MacWilliams dual weight enumerator polynomial.
         """
         factors = [4**k, 2**k] if to_normalizer else [2**k, 4**k]
-        homogenized: MonomialPowersPoly = self._homogenize(n) * factors[0]
+        homogenized: BivariatePoly = self._homogenize(n) * factors[0]
         z, w = symbols("w z")
         sp_homogenized = homogenized.to_sympy([w, z])
 
@@ -371,7 +391,7 @@ class SimplePoly:
             z,
         )
 
-        monomial_powers_substituted: MonomialPowersPoly = MonomialPowersPoly.from_sympy(
+        monomial_powers_substituted: BivariatePoly = BivariatePoly.from_sympy(
             sympy_substituted
         )
 
@@ -381,4 +401,4 @@ class SimplePoly:
             assert key[1] not in single_var_dict
             single_var_dict[key[1]] = value
 
-        return SimplePoly(single_var_dict)
+        return UnivariatePoly(single_var_dict)

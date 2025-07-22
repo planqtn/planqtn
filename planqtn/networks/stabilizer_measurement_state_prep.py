@@ -1,5 +1,13 @@
-"""The `stabilizer_measurement_state_prep` module contains the `StabilizerMeasurementStatePrepTN`
-class, a universal tensor network layout based on stabilizer measurement state preparation circuits.
+"""The `stabilizer_measurement_state_prep` module.
+
+It contains the `StabilizerMeasurementStatePrepTN`class, a universal tensor network layout based
+on stabilizer measurement state preparation circuits.
+
+The construction is based on the following work:
+
+Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
+“Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 """
 
 from typing import List, Tuple
@@ -13,13 +21,27 @@ from planqtn.tensor_network import TensorId, TensorLeg
 
 
 class StabilizerMeasurementStatePrepTN(TensorNetwork):
-    """A universal tensor network layout based on stabilizer measurement state preparation circuits.
+    """Measurement-based state preparation circuit layout.
 
-    Args:
-        parity_check_matrix: The parity check matrix of the stabilizer code.
+    A universal tensor network layout based on the measurement-based state preparation
+    circuit layout described in the following work:
+
+    Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
+    “Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+    PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
     """
 
     def __init__(self, parity_check_matrix: np.ndarray):
+        """Construct a stabilizer measurement state preparation tensor network.
+
+        Args:
+            parity_check_matrix: The parity check matrix of the stabilizer code.
+
+        Raises:
+            ValueError: If the parity check matrix is not symplectic.
+            NotImplementedError: If Y stabilizers are in the parity check matrix.
+                It is not implemented yet.
+        """
         self.parity_check_matrix = parity_check_matrix
         if parity_check_matrix.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {parity_check_matrix}")
@@ -202,7 +224,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
                     physical_leg = (z_check.tensor_id, (z_check.tensor_id, 2))
 
                 else:
-                    raise ValueError("Y stabilizer is not implemented yet...")
+                    raise NotImplementedError("Y stabilizer is not implemented yet...")
             self.q_to_leg_and_node.append(physical_leg)
 
         super().__init__(
@@ -223,4 +245,12 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
         return int(self.parity_check_matrix.shape[1] // 2)
 
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
+        """Map a qubit index to its corresponding node and leg.
+
+        Args:
+            q: Global qubit index.
+
+        Returns:
+            Tuple[TensorId, TensorLeg]: Node ID and leg that represent the qubit.
+        """
         return self.q_to_leg_and_node[q]

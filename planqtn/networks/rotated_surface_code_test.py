@@ -3,13 +3,9 @@ import numpy as np
 
 from planqtn.networks.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.legos import Legos
-from planqtn.simple_poly import SimplePoly
-from planqtn.tensor_network import (
-    PAULI_X,
-    PAULI_Y,
-    PAULI_Z,
-    StabilizerCodeTensorEnumerator,
-)
+from planqtn.poly import UnivariatePoly
+from planqtn.tensor_network import StabilizerCodeTensorEnumerator
+from planqtn.pauli import Pauli
 
 
 def test_d3_rsc_with_merged_ptes():
@@ -66,11 +62,12 @@ def test_rsc3_x_and_z_coset_wep():
     scalar = StabilizerCodeTensorEnumerator(
         rsc,
         coset_flipped_legs=[
-            ((0, q), PAULI_X) for q in x_error_bits if q not in z_error_bits
+            ((0, q), Pauli.X.to_gf2()) for q in x_error_bits if q not in z_error_bits
         ]
-        + [((0, q), PAULI_Z) for q in z_error_bits if q not in x_error_bits]
+        + [((0, q), Pauli.Z.to_gf2()) for q in z_error_bits if q not in x_error_bits]
         + [
-            ((0, q), PAULI_Y) for q in set(x_error_bits).intersection(set(z_error_bits))
+            ((0, q), Pauli.Y.to_gf2())
+            for q in set(x_error_bits).intersection(set(z_error_bits))
         ],
     )
 
@@ -112,29 +109,29 @@ def test_d3_creation():
     tn = RotatedSurfaceCodeTN(3)
 
     nodes = [
-        StabilizerCodeTensorEnumerator(Legos.enconding_tensor_512, tensor_id=i)
+        StabilizerCodeTensorEnumerator(Legos.encoding_tensor_512, tensor_id=i)
         for i in range(9)
     ]
 
     # top Z boundary
-    nodes[0] = nodes[0].trace_with_stopper(PAULI_X, 3)
-    nodes[1] = nodes[1].trace_with_stopper(PAULI_X, 0)
-    nodes[2] = nodes[2].trace_with_stopper(PAULI_X, 3)
+    nodes[0] = nodes[0].trace_with_stopper(Legos.stopper_x, 3)
+    nodes[1] = nodes[1].trace_with_stopper(Legos.stopper_x, 0)
+    nodes[2] = nodes[2].trace_with_stopper(Legos.stopper_x, 3)
 
     # bottom Z boundary
-    nodes[6] = nodes[6].trace_with_stopper(PAULI_X, 1)
-    nodes[7] = nodes[7].trace_with_stopper(PAULI_X, 2)
-    nodes[8] = nodes[8].trace_with_stopper(PAULI_X, 1)
+    nodes[6] = nodes[6].trace_with_stopper(Legos.stopper_x, 1)
+    nodes[7] = nodes[7].trace_with_stopper(Legos.stopper_x, 2)
+    nodes[8] = nodes[8].trace_with_stopper(Legos.stopper_x, 1)
 
     # left X boundary
-    nodes[0] = nodes[0].trace_with_stopper(PAULI_Z, 0)
-    nodes[3] = nodes[3].trace_with_stopper(PAULI_Z, 1)
-    nodes[6] = nodes[6].trace_with_stopper(PAULI_Z, 0)
+    nodes[0] = nodes[0].trace_with_stopper(Legos.stopper_z, 0)
+    nodes[3] = nodes[3].trace_with_stopper(Legos.stopper_z, 1)
+    nodes[6] = nodes[6].trace_with_stopper(Legos.stopper_z, 0)
 
     # right X boundary
-    nodes[2] = nodes[2].trace_with_stopper(PAULI_Z, 2)
-    nodes[5] = nodes[5].trace_with_stopper(PAULI_Z, 3)
-    nodes[8] = nodes[8].trace_with_stopper(PAULI_Z, 2)
+    nodes[2] = nodes[2].trace_with_stopper(Legos.stopper_z, 2)
+    nodes[5] = nodes[5].trace_with_stopper(Legos.stopper_z, 3)
+    nodes[8] = nodes[8].trace_with_stopper(Legos.stopper_z, 2)
 
     for idx, node in tn.nodes.items():
         assert node.tensor_id == idx
@@ -182,7 +179,7 @@ def test_d3_creation():
 def test_d5_rotated_surface_code():
     # pytest.skip()
     rsc5_enum = (
-        SimplePoly(
+        UnivariatePoly(
             {
                 0: 4,
                 4: 288,
@@ -209,9 +206,9 @@ def test_d5_rotated_surface_code():
 
 
 def test_d5_rotated_surface_code_x_only():
-    tn = RotatedSurfaceCodeTN(d=5, lego=lambda i: Legos.enconding_tensor_512_x)
+    tn = RotatedSurfaceCodeTN(d=5, lego=lambda i: Legos.encoding_tensor_512_x)
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             12: 1154,
             14: 937,
@@ -230,11 +227,11 @@ def test_d5_rotated_surface_code_x_only():
 
 def test_d5_rsc_z_coset():
     tn = RotatedSurfaceCodeTN(
-        d=5, lego=lambda i: Legos.enconding_tensor_512_z, coset_error=((), (11, 21, 22))
+        d=5, lego=lambda i: Legos.encoding_tensor_512_z, coset_error=((), (11, 21, 22))
     )
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
 
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             3: 6,
             5: 30,
@@ -254,12 +251,12 @@ def test_d5_rsc_z_coset_group26():
 
     tn = RotatedSurfaceCodeTN(
         d=5,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=((), (0, 1, 3, 20, 22)),
     )
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
 
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             5: 35,
             7: 124,
@@ -275,11 +272,11 @@ def test_d5_rsc_z_coset_group26():
 
 def test_d3_rsc_z_coset():
     tn = RotatedSurfaceCodeTN(
-        d=3, lego=lambda i: Legos.enconding_tensor_512_z, coset_error=((), (0, 5))
+        d=3, lego=lambda i: Legos.encoding_tensor_512_z, coset_error=((), (0, 5))
     )
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     print(we)
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             2: 1,
             4: 10,
@@ -290,11 +287,11 @@ def test_d3_rsc_z_coset():
 
 def test_d3_rsc_z_coset_reset():
     # this is to ensure that the coset can be set multiple times (I had a bug with this)
-    tn = RotatedSurfaceCodeTN(d=3, lego=lambda i: Legos.enconding_tensor_512_z)
+    tn = RotatedSurfaceCodeTN(d=3, lego=lambda i: Legos.encoding_tensor_512_z)
     tn.set_coset(((), (1,)))
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     print(we)
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             1: 2,
             3: 3,
@@ -307,7 +304,7 @@ def test_d3_rsc_z_coset_reset():
 
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     print(we)
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             2: 1,
             4: 10,

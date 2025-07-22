@@ -2,7 +2,7 @@ from galois import GF2
 import numpy as np
 from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
 from planqtn.legos import Legos
-from planqtn.simple_poly import SimplePoly
+from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
 
@@ -42,11 +42,11 @@ def test_compass_code_z_coset_weight_enumerator_weight1():
     )
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         coloring,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
     )
     wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
-    assert wep == SimplePoly({5: 9, 3: 4, 7: 2, 1: 1}), f"Not equal, got:\n{wep}"
+    assert wep == UnivariatePoly({5: 9, 3: 4, 7: 2, 1: 1}), f"Not equal, got:\n{wep}"
 
 
 def test_compass_code_z_coset_weight_enumerator_weight2():
@@ -58,11 +58,11 @@ def test_compass_code_z_coset_weight_enumerator_weight2():
     )
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         coloring,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=GF2([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]),
     )
     wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
-    assert wep == SimplePoly({4: 10, 6: 5, 2: 1}), f"Not equal, got:\n{wep}"
+    assert wep == UnivariatePoly({4: 10, 6: 5, 2: 1}), f"Not equal, got:\n{wep}"
 
 
 def test_compass_d3_rsc_z_coset():
@@ -74,13 +74,13 @@ def test_compass_d3_rsc_z_coset():
     )
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         coloring,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=((), (0, 5)),
     )
 
     we = tn.stabilizer_enumerator_polynomial(cotengra=False)
     print(we)
-    assert we == SimplePoly(
+    assert we == UnivariatePoly(
         {
             2: 1,
             4: 10,
@@ -98,7 +98,7 @@ def test_compass_truncated_coset_wep():
     )
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         coloring,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=((), (0, 8)),
         truncate_length=2,
     )
@@ -116,9 +116,9 @@ def test_compass_truncated_coset_wep():
 
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         coloring,
-        lego=lambda i: Legos.enconding_tensor_512_z,
+        lego=lambda i: Legos.encoding_tensor_512_z,
         coset_error=((), (4,)),
         truncate_length=1,
     )
     wep = tn.stabilizer_enumerator_polynomial(verbose=True, cotengra=False)
-    assert wep == SimplePoly({1: 1}), f"Not equal, got:\n{wep}"
+    assert wep == UnivariatePoly({1: 1}), f"Not equal, got:\n{wep}"

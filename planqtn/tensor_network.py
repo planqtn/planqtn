@@ -1,14 +1,16 @@
-"""The `tensor_network` module mainly contains `TensorNetwork` and all contraction logic.
+"""The `tensor_network` module.
 
-The main class is `TensorNetwork` which contains all the logic for contracting a tensor network.
-_PartiallyTracedEnumerator_ is a helper class for `TensorNetwork` that contains the logic for
-contracting a partially traced tensor network.
+It contains the [`TensorNetwork`][planqtn.TensorNetwork] class which contains all the
+logic for contracting a tensor network to calculate weight enumerator polynomials.
 
 The main methods are:
-- `self_trace`: Sets up a contraction between two nodes in the tensornetwork and corresponding legs.
-- `stabilizer_enumerator_polynomial`: Returns the reduced stabilizer enumerator polynomial for the
-    tensor network.
-- `conjoin_nodes`: Conjoins two nodes in the tensor network into a single stabilizer code tensor.
+
+- [`self_trace`][planqtn.TensorNetwork.self_trace]: Sets up a contraction between
+    two nodes in the tensornetwork and corresponding legs.
+- [`stabilizer_enumerator_polynomial`][planqtn.TensorNetwork.stabilizer_enumerator_polynomial]:
+   Returns the reduced stabilizer enumerator polynomial for the tensor network.
+- [`conjoin_nodes`][planqtn.TensorNetwork.conjoin_nodes]: Conjoins two nodes in the
+    tensor network into a single stabilizer code tensor.
 """
 
 import importlib.util
@@ -20,14 +22,14 @@ import cotengra as ctg
 import numpy as np
 from galois import GF2
 
-from planqtn.parity_check import sprint
+from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (
     DummyProgressReporter,
     ProgressReporter,
     TqdmProgressReporter,
 )
-from planqtn.simple_poly import SimplePoly
+from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     TensorId,
@@ -36,56 +38,13 @@ from planqtn.stabilizer_tensor_enumerator import (
     _index_legs,
 )
 
-PAULI_I = GF2([0, 0])
-PAULI_X = GF2([1, 0])
-PAULI_Z = GF2([0, 1])
-PAULI_Y = GF2([1, 1])
-
-
 TensorEnumeratorKey = Tuple[int, ...]
-TensorEnumerator = Dict[TensorEnumeratorKey, SimplePoly] | SimplePoly
+TensorEnumerator = Dict[TensorEnumeratorKey, UnivariatePoly] | UnivariatePoly
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
 class TensorNetwork:
-    """A tensor network for contracting stabilizer code tensor enumerators.
-
-    This class represents a tensor network composed of StabilizerCodeTensorEnumerator
-    nodes that can be contracted together to compute stabilizer enumerator polynomials.
-    The network supports both manual trace specification and automatic contraction
-    optimization using the cotengra library.
-
-    The tensor network maintains a collection of nodes (tensors) and traces (contraction
-    operations between nodes). It can compute weight enumerator polynomials for
-    stabilizer codes by contracting the network according to the specified traces.
-
-    Attributes:
-        nodes: Dictionary mapping tensor IDs to StabilizerCodeTensorEnumerator objects.
-        truncate_length: Optional maximum length for truncating enumerator polynomials.
-
-    Example:
-        Put together a tensor network from stabilizer code tensors and compute the weight enumerator
-        polynomial.
-
-        ```python
-        >>> from planqtn.tensor_network import TensorNetwork
-        >>> from planqtn.legos import Legos
-        >>> from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-        >>> # Create tensor network from stabilizer code tensors
-        >>> nodes = [StabilizerCodeTensorEnumerator(tensor_id="z0", h=Legos.z_rep_code(3)),
-        ...          StabilizerCodeTensorEnumerator(tensor_id="x1", h=Legos.x_rep_code(3)),
-        ...          StabilizerCodeTensorEnumerator(tensor_id="z2", h=Legos.z_rep_code(3))]
-        >>> tn = TensorNetwork(nodes)
-        >>> # Add traces to define contraction pattern
-        >>> tn.self_trace("z0", "x1", [0], [0])
-        >>> tn.self_trace("x1", "z2", [1], [0])
-        >>> # Compute weight enumerator polynomial
-        >>> wep = tn.stabilizer_enumerator_polynomial()
-        >>> print(wep)
-        {0:1, 2:2, 3:8, 4:13, 5:8}
-
-        ```
-    """
+    """A tensor network for contracting stabilizer code tensor enumerators."""
 
     def __init__(
         self,
@@ -95,7 +54,27 @@ class TensorNetwork:
         ],
         truncate_length: Optional[int] = None,
     ):
+        """Construct a tensor network.
 
+        This class represents a tensor network composed of
+        [`StabilizerCodeTensorEnumerator`][planqtn.StabilizerCodeTensorEnumerator]
+        nodes that can be contracted together to compute stabilizer enumerator polynomials.
+        The trace ordering can be left to use the original manual ordering or use automated,
+        hyperoptimized contraction ordering using the `cotengra` library.
+
+        The tensor network maintains a collection of nodes (tensors) and traces (contraction
+        operations between nodes). It can compute weight enumerator polynomials for
+        stabilizer codes by contracting the network according to the specified traces.
+
+        Args:
+            nodes: Dictionary mapping tensor IDs to
+                [`StabilizerCodeTensorEnumerator`][planqtn.StabilizerCodeTensorEnumerator] objects.
+            truncate_length: Optional maximum length for truncating enumerator polynomials.
+
+        Raises:
+            ValueError: If the nodes have inconsistent indexing.
+            ValueError: If there are colliding index values in the nodes.
+        """
         if isinstance(nodes, dict):
             for k, v in nodes.items():
                 if k != v.tensor_id:
@@ -125,18 +104,6 @@ class TensorNetwork:
         self.truncate_length: Optional[int] = truncate_length
 
     def __eq__(self, other: object) -> bool:
-        """Compare two TensorNetworks for equality.
-
-        Two tensor networks are equal if they have the same nodes with identical
-        parity check matrices, legs, and coset-flipped legs, and the same trace
-        operations.
-
-        Args:
-            other: Object to compare with.
-
-        Returns:
-            bool: True if the tensor networks are equal, False otherwise.
-        """
         if not isinstance(other, TensorNetwork):
             return False
 
@@ -171,14 +138,6 @@ class TensorNetwork:
         return True
 
     def __hash__(self) -> int:
-        """Generate hash for TensorNetwork.
-
-        Creates a hash based on the nodes and traces of the tensor network.
-        The hash combines the hashes of all nodes and traces.
-
-        Returns:
-            int: Hash value for the tensor network.
-        """
         # Hash the nodes
         nodes_hash = 0
         for idx in sorted(self.nodes.keys()):
@@ -217,12 +176,14 @@ class TensorNetwork:
         Args:
             q: Global qubit index.
 
-        Returns: # noqa: DAR202
-            Tuple[TensorId, TensorLeg]: Node ID and leg that represent the qubit.
+        Returns:
+            node_id: Node ID and leg that represent the qubit.
+            leg: Leg that represent the qubit.
+
 
         Raises:
             NotImplementedError: This method must be implemented by subclasses.
-        """
+        """  # noqa: DAR202
         raise NotImplementedError(
             f"qubit_to_node_and_leg() is not implemented for {type(self)}!"
         )
@@ -233,12 +194,12 @@ class TensorNetwork:
         Returns the total number of qubits represented by this tensor network. This is an abstract
         method that must be implemented by subclasses that have a representation for qubits.
 
-        Returns:# noqa: DAR202
+        Returns:
             int: Total number of qubits.
 
         Raises:
             NotImplementedError: This method must be implemented by subclasses.
-        """
+        """  # noqa: DAR202
         raise NotImplementedError(f"n_qubits() is not implemented for {type(self)}")
 
     def _reset_wep(self, keep_cot: bool = False) -> None:
@@ -478,7 +439,7 @@ class TensorNetwork:
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn._traces:
             if each_step:
                 print(
-                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                    f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
                 )
 
             for leg in join_legs1:
@@ -684,7 +645,7 @@ class TensorNetwork:
         verbose: bool = False,
     ) -> Tuple[List[Tuple[str, ...]], List[str], Dict[str, int], List[str]]:
         inputs = []
-        output: List[str] = []  #  tuple(leg_indices[leg] for leg in free_legs)
+        output: List[str] = []
         size_dict = {leg: 2 for leg in leg_indices.values()}
 
         input_names = []
@@ -803,12 +764,12 @@ class TensorNetwork:
         """Returns the reduced stabilizer enumerator polynomial for the tensor network.
 
         If open_legs is not empty, then the returned tensor enumerator polynomial is a dictionary of
-        tensor keys to SimplePoly objects.
+        tensor keys to UnivariatePoly objects.
 
         Args:
             open_legs: The legs that are open in the tensor network. If empty, the result is a
-                       scalar weightenumerator polynomial of type `SimplePoly`,otherwise it is a
-                       dictionary of `TensorEnumeratorKey` keys to `SimplePoly` objects.
+                       scalar weightenumerator polynomial of type `UnivariatePoly`,otherwise it is a
+                       dictionary of `TensorEnumeratorKey` keys to `UnivariatePoly` objects.
             verbose: If True, print verbose output.
             progress_reporter: The progress reporter to use, defaults to no progress reporting
                               (`DummyProgressReporter`), can be set to `TqdmProgressReporter` for
@@ -884,7 +845,7 @@ class TensorNetwork:
                 progress_reporter=progress_reporter,
                 truncate_length=self.truncate_length,
             )
-            if isinstance(tensor, SimplePoly):
+            if isinstance(tensor, UnivariatePoly):
                 tensor = {(): tensor}
             self._ptes[node_idx] = _PartiallyTracedEnumerator(
                 nodes={node_idx},
@@ -898,7 +859,7 @@ class TensorNetwork:
         ):
             if verbose:
                 print(
-                    f"==== trace { node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                    f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
                 )
                 print(
                     f"Total legs left to join: "
@@ -991,7 +952,7 @@ class TensorNetwork:
             if verbose:
                 print("PTE tensor: ")
             for k in list(node1_pte.tensor.keys() if node1_pte is not None else []):
-                v = node1_pte.tensor[k] if node1_pte is not None else SimplePoly()
+                v = node1_pte.tensor[k] if node1_pte is not None else UnivariatePoly()
                 # if not 0 in v:
                 #     continue
                 if verbose:
@@ -1016,7 +977,7 @@ class TensorNetwork:
         if len(set(self._ptes.values())) > 1:
             if verbose:
                 print(
-                    f"tensoring { len(set(self._ptes.values()))} disjoint PTEs: {self._ptes}"
+                    f"tensoring {len(set(self._ptes.values()))} disjoint PTEs: {self._ptes}"
                 )
 
             pte_list = list(set(self._ptes.values()))
@@ -1075,7 +1036,7 @@ class TensorNetwork:
         wep = self.stabilizer_enumerator_polynomial(
             verbose=verbose, progress_reporter=progress_reporter
         )
-        assert isinstance(wep, SimplePoly)
+        assert isinstance(wep, UnivariatePoly)
         return wep.dict
 
     def set_truncate_length(self, truncate_length: int) -> None:
@@ -1096,12 +1057,12 @@ class _PartiallyTracedEnumerator:
         self,
         nodes: Set[TensorId],
         tracable_legs: List[TensorLeg],
-        tensor: Dict[TensorEnumeratorKey, SimplePoly],
+        tensor: Dict[TensorEnumeratorKey, UnivariatePoly],
         truncate_length: Optional[int],
     ):
         self.nodes: Set[TensorId] = nodes
         self.tracable_legs: List[TensorLeg] = tracable_legs
-        self.tensor: Dict[TensorEnumeratorKey, SimplePoly] = tensor
+        self.tensor: Dict[TensorEnumeratorKey, UnivariatePoly] = tensor
 
         tensor_key_length = (
             len(list(self.tensor.keys())[0]) if len(self.tensor) > 0 else 0
@@ -1193,7 +1154,7 @@ class _PartiallyTracedEnumerator:
             print(f"with {other}")
             for k, v in other.tensor.items():
                 print(f"{k}: {v}")
-        new_tensor: Dict[TensorEnumeratorKey, SimplePoly] = {}
+        new_tensor: Dict[TensorEnumeratorKey, UnivariatePoly] = {}
         for k1 in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=f"PTE tensor product: {len(self.tensor)} x {len(other.tensor)} elements",
@@ -1237,7 +1198,7 @@ class _PartiallyTracedEnumerator:
         """
         assert len(join_legs1) == len(join_legs2)
 
-        wep: Dict[TensorEnumeratorKey, SimplePoly] = defaultdict(SimplePoly)
+        wep: Dict[TensorEnumeratorKey, UnivariatePoly] = defaultdict(UnivariatePoly)
         open_legs1 = [leg for leg in self.tracable_legs if leg not in join_legs1]
         open_legs2 = [leg for leg in pte2.tracable_legs if leg not in join_legs2]
 
@@ -1320,7 +1281,7 @@ class _PartiallyTracedEnumerator:
         """
         assert len(join_legs1) == len(join_legs2)
 
-        wep: Dict[TensorEnumeratorKey, SimplePoly] = defaultdict(SimplePoly)
+        wep: Dict[TensorEnumeratorKey, UnivariatePoly] = defaultdict(UnivariatePoly)
         open_legs = [
             leg
             for leg in self.tracable_legs
@@ -1382,7 +1343,7 @@ class _PartiallyTracedEnumerator:
         )
 
     def truncate_if_needed(
-        self, key: TensorEnumeratorKey, wep: Dict[TensorEnumeratorKey, SimplePoly]
+        self, key: TensorEnumeratorKey, wep: Dict[TensorEnumeratorKey, UnivariatePoly]
     ) -> None:
         """Truncate the weight enumerator polynomial if it exceeds the truncation length.
 

@@ -11,6 +11,12 @@ fi
 
 export PYTHONPATH=`pwd`
 
+echo "Running doctest"
+set -e
+find . -name '*.md' | xargs python -m doctest
+set +e
+
+
 cd app/ui
 
 # Check formatting

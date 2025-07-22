@@ -79,7 +79,7 @@ you have more ideas, open an issue, we'd love to hear it!
 If building tools like this sounds like fun to you, please consider
 [contributing](#contributing)! Python library:
 
--   Docs: [planqtn library](planqtn/index.md)
+-   Docs: [planqtn library](planqtn/reference.md)
 -   Install: `pip install planqtn`
 -   Github: [github.com/planqtn/planqtn](https://github.com/planqtn/planqtn)
 -   on Pypi pypi.org/planqtn Documentation of the Python library `planqtn`

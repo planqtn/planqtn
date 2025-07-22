@@ -8,13 +8,12 @@ from planqtn.pauli import Pauli
 from planqtn.progress_reporter import TqdmProgressReporter
 from planqtn.symplectic import sslice, weight
 from planqtn.tensor_network import (
-    PAULI_I,
-    PAULI_X,
-    PAULI_Z,
-    SimplePoly,
+    UnivariatePoly,
     StabilizerCodeTensorEnumerator,
     TensorNetwork,
 )
+
+from planqtn.pauli import Pauli
 
 
 def test_trace_two_422_codes_into_steane_via_tensornetwork():
@@ -37,7 +36,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork():
     )
 
     t1 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0).trace_with_stopper(
-        PAULI_I, 0
+        Legos.stopper_i, 0
     )
     t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
 
@@ -70,14 +69,14 @@ def test_step_by_step_to_d2_surface_code():
 
     t0 = (
         StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=0)
-        .trace_with_stopper(PAULI_Z, 3)
-        .trace_with_stopper(PAULI_X, 0)
+        .trace_with_stopper(Legos.stopper_z, 3)
+        .trace_with_stopper(Legos.stopper_x, 0)
     )
 
     t1 = (
         StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=1)
-        .trace_with_stopper(PAULI_Z, 0)
-        .trace_with_stopper(PAULI_X, 3)
+        .trace_with_stopper(Legos.stopper_z, 0)
+        .trace_with_stopper(Legos.stopper_x, 3)
     )
 
     ### Getting Conjoined Parities brute force WEP
@@ -110,11 +109,11 @@ def test_step_by_step_to_d2_surface_code():
     assert pte.nodes == {0, 1}
     assert pte.tracable_legs == [(0, 1), (0, 4), (1, 2), (1, 4)]
 
-    total_wep = SimplePoly()
+    total_wep = UnivariatePoly()
     for k, sub_wep in pte.tensor.items():
 
-        print(k, "->", sub_wep, sub_wep * SimplePoly({weight(GF2(k)): 1}))
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
+        print(k, "->", sub_wep, sub_wep * UnivariatePoly({weight(GF2(k)): 1}))
+        total_wep.add_inplace(sub_wep * UnivariatePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == total_wep.dict
 
@@ -131,8 +130,8 @@ def test_step_by_step_to_d2_surface_code():
 
     t2 = (
         StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=2)
-        .trace_with_stopper(PAULI_X, 1)
-        .trace_with_stopper(PAULI_Z, 2)
+        .trace_with_stopper(Legos.stopper_x, 1)
+        .trace_with_stopper(Legos.stopper_z, 2)
     )
 
     ### Getting Conjoined Parities brute force WEP
@@ -170,16 +169,16 @@ def test_step_by_step_to_d2_surface_code():
     assert pte.nodes == {0, 1, 2}
     assert pte.tracable_legs == [(0, 4), (1, 2), (1, 4), (2, 3), (2, 4)]
 
-    total_wep = SimplePoly()
+    total_wep = UnivariatePoly()
     for k, sub_wep in pte.tensor.items():
 
         print(
             k,
             "->",
             sub_wep,
-            sub_wep * SimplePoly({weight(GF2(k)): 1}),
+            sub_wep * UnivariatePoly({weight(GF2(k)): 1}),
         )
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
+        total_wep.add_inplace(sub_wep * UnivariatePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == dict(total_wep.dict)
 
@@ -197,8 +196,8 @@ def test_step_by_step_to_d2_surface_code():
 
     t3 = (
         StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=3)
-        .trace_with_stopper(PAULI_X, 2)
-        .trace_with_stopper(PAULI_Z, 1)
+        .trace_with_stopper(Legos.stopper_x, 2)
+        .trace_with_stopper(Legos.stopper_z, 1)
     )
 
     ### Getting Conjoined Parities brute force WEP
@@ -233,16 +232,16 @@ def test_step_by_step_to_d2_surface_code():
     assert pte.nodes == {0, 1, 2, 3}
     assert pte.tracable_legs == [(0, 4), (1, 4), (2, 4), (3, 4)]
 
-    total_wep = SimplePoly()
+    total_wep = UnivariatePoly()
     for k, sub_wep in pte.tensor.items():
 
         print(
             k,
             "->",
             sub_wep,
-            sub_wep * SimplePoly({weight(GF2(k)): 1}),
+            sub_wep * UnivariatePoly({weight(GF2(k)): 1}),
         )
-        total_wep.add_inplace(sub_wep * SimplePoly({weight(GF2(k)): 1}))
+        total_wep.add_inplace(sub_wep * UnivariatePoly({weight(GF2(k)): 1}))
 
     assert brute_force_wep == dict(total_wep.dict)
 
@@ -292,11 +291,11 @@ def test_double_trace_422():
     )
     nodes = [
         StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0)
-        .trace_with_stopper(PAULI_I, 4)
-        .trace_with_stopper(PAULI_I, 5),
+        .trace_with_stopper(Legos.stopper_i, 4)
+        .trace_with_stopper(Legos.stopper_i, 5),
         StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
-        .trace_with_stopper(PAULI_I, 4)
-        .trace_with_stopper(PAULI_I, 5),
+        .trace_with_stopper(Legos.stopper_i, 4)
+        .trace_with_stopper(Legos.stopper_i, 5),
     ]
 
     tn = TensorNetwork(nodes)
@@ -689,8 +688,8 @@ def test_double_trace_602_identity_stopper_to_422():
 def test_tensor_product_of_legos():
     tn = TensorNetwork(
         [
-            StabilizerCodeTensorEnumerator(tensor_id=0, h=Legos.enconding_tensor_512),
-            StabilizerCodeTensorEnumerator(tensor_id=1, h=Legos.enconding_tensor_512),
+            StabilizerCodeTensorEnumerator(tensor_id=0, h=Legos.encoding_tensor_512),
+            StabilizerCodeTensorEnumerator(tensor_id=1, h=Legos.encoding_tensor_512),
         ],
         truncate_length=None,
     )
@@ -698,7 +697,7 @@ def test_tensor_product_of_legos():
 
     assert np.array_equal(
         conjoined.h,
-        tensor_product(Legos.enconding_tensor_512, Legos.enconding_tensor_512),
+        tensor_product(Legos.encoding_tensor_512, Legos.encoding_tensor_512),
     )
 
 
@@ -737,11 +736,11 @@ def test_twisted_toric_code():
 def test_quadruple_trace_422_into_422():
     nodes = {}
     nodes["18"] = StabilizerCodeTensorEnumerator(
-        h=Legos.enconding_tensor_512,
+        h=Legos.encoding_tensor_512,
         tensor_id="18",
     )
     nodes["19"] = StabilizerCodeTensorEnumerator(
-        h=Legos.enconding_tensor_512,
+        h=Legos.encoding_tensor_512,
         tensor_id="19",
     )
 
@@ -805,11 +804,11 @@ def test_two_512_tensor_merge_step_by_step():
     for i in range(len(traces) + 1):
         nodes = {}
         nodes["1"] = StabilizerCodeTensorEnumerator(
-            h=Legos.enconding_tensor_512,
+            h=Legos.encoding_tensor_512,
             tensor_id="1",
         )
         nodes["2"] = StabilizerCodeTensorEnumerator(
-            h=Legos.enconding_tensor_512,
+            h=Legos.encoding_tensor_512,
             tensor_id="2",
         )
 
@@ -836,7 +835,7 @@ def test_two_512_tensor_merge_step_by_step():
         )
         conjoined_wep_str = (
             str(conjoined_wep)
-            if isinstance(conjoined_wep, SimplePoly)
+            if isinstance(conjoined_wep, UnivariatePoly)
             else "\n".join(
                 sorted([f"{Pauli.to_str(*k)}: {v}" for k, v in conjoined_wep.items()])
             )
@@ -852,7 +851,7 @@ def test_two_512_tensor_merge_step_by_step():
 
         tn_wep_str = (
             str(tn_wep)
-            if isinstance(tn_wep, SimplePoly)
+            if isinstance(tn_wep, UnivariatePoly)
             else "\n".join(
                 sorted([f"{Pauli.to_str(*k)}: {v}" for k, v in tn_wep.items()])
             )
@@ -1000,7 +999,7 @@ def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
     )
 
     t1 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=0).trace_with_stopper(
-        PAULI_I, 0
+        Legos.stopper_i, 0
     )
     t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=1)
 
@@ -1150,20 +1149,20 @@ def test_single_node_with_open_legs_t6():
     )
     print(actual_wep)
     assert actual_wep == {
-        (0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
-        (0, 2): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (2, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (2, 2): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
-        (0, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (0, 3): SimplePoly({3: 2, 4: 2}),
-        (2, 1): SimplePoly({3: 2, 4: 2}),
-        (2, 3): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 2): SimplePoly({3: 2, 4: 2}),
-        (3, 0): SimplePoly({3: 2, 4: 2}),
-        (3, 2): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
-        (1, 3): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (3, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (3, 3): SimplePoly({2: 2, 3: 2}),
+        (0, 0): UnivariatePoly({0: 1, 3: 2, 4: 1}),
+        (0, 2): UnivariatePoly({3: 2, 2: 1, 4: 1}),
+        (2, 0): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (2, 2): UnivariatePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1): UnivariatePoly({3: 2, 4: 1, 2: 1}),
+        (0, 3): UnivariatePoly({3: 2, 4: 2}),
+        (2, 1): UnivariatePoly({3: 2, 4: 2}),
+        (2, 3): UnivariatePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (1, 2): UnivariatePoly({3: 2, 4: 2}),
+        (3, 0): UnivariatePoly({3: 2, 4: 2}),
+        (3, 2): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1): UnivariatePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 3): UnivariatePoly({3: 2, 2: 1, 4: 1}),
+        (3, 1): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (3, 3): UnivariatePoly({2: 2, 3: 2}),
     }

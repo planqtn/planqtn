@@ -1,10 +1,18 @@
-"""The `stabilizer_tanner_code` module contains the `StabilizerTannerCodeTN` class,
-which implements a tensor network representation of stabilizer codes using Tanner graph structure.
+"""The `stabilizer_tanner_code` module.
+
+It contains the `StabilizerTannerCodeTN` class, which implements a tensor network representation
+of arbitrary stabilizer codes using Tanner graph structure.
+
+The construction is based on the following work:
+
+Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
+“Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 """
 
 from typing import List, Tuple
 import numpy as np
-from planqtn.tensor_network import PAULI_X, TensorNetwork, TensorId, TensorLeg
+from planqtn.tensor_network import TensorNetwork, TensorId, TensorLeg
 from planqtn.legos import Legos
 from planqtn.tensor_network import (
     StabilizerCodeTensorEnumerator,
@@ -18,12 +26,17 @@ class StabilizerTannerCodeTN(TensorNetwork):
     row of H represents a stabilizer generator and each column represents a qubit.
     The tensor network is built by connecting check tensors to qubit tensors according
     to the non-zero entries in the parity check matrix.
-
-    Args:
-        h: Parity check matrix in symplectic form (must have even number of columns).
     """
 
     def __init__(self, h: np.ndarray):
+        """Construct a stabilizer Tanner code tensor network.
+
+        Args:
+            h: Parity check matrix in symplectic form (must have even number of columns).
+
+        Raises:
+            ValueError: If the parity check matrix is not symplectic.
+        """
         self.parity_check_matrix = h
         if h.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {h}")
@@ -37,8 +50,8 @@ class StabilizerTannerCodeTN(TensorNetwork):
             check = StabilizerCodeTensorEnumerator(
                 h=Legos.z_rep_code(weight + 2), tensor_id=f"check{i}"
             )
-            check = check.trace_with_stopper(PAULI_X, (f"check{i}", 0))
-            check = check.trace_with_stopper(PAULI_X, (f"check{i}", 1))
+            check = check.trace_with_stopper(Legos.stopper_x, (f"check{i}", 0))
+            check = check.trace_with_stopper(Legos.stopper_x, (f"check{i}", 1))
             checks.append(check)
 
         traces = []
@@ -54,7 +67,6 @@ class StabilizerTannerCodeTN(TensorNetwork):
             physical_leg = (f"q{q}", 0)
             for i in range(r):
                 op = tuple(h[i, (q, q + n)])
-                print(q_tensor.tensor_id, q, i, op, q_tensor.legs, physical_leg)
                 if op == (0, 0):
                     continue
 
@@ -124,11 +136,13 @@ class StabilizerTannerCodeTN(TensorNetwork):
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         """Map a qubit index to its corresponding node and leg.
 
+        Returns the tensor and leg for the given qubit index.
+
         Args:
             q: Global qubit index.
 
         Returns:
-            Tuple[TensorId, TensorLeg]: Node ID and leg that represent the qubit.
+            Node ID: node id for the tensor in the network
+            Leg: leg that represent the qubit.
         """
-
         return self.q_to_leg_and_node[q]

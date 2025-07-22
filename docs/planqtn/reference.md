@@ -1,15 +1,15 @@
 :::planqtn
 
-:::planqtn.tensor_network
-
-:::planqtn.stabilizer_tensor_enumerator
+## The `planqtn.networks` package
 
 :::planqtn.networks
 
-:::planqtn.simple_poly
+# Utilities
+
+## The `planqtn.symplectic` package
 
 :::planqtn.symplectic
 
-:::planqtn.legos
+## The `planqtn.linalg` package
 
 :::planqtn.linalg
