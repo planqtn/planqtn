@@ -2,21 +2,36 @@
 
 ## Getting started with PlanqTN Studio
 
-The idea with PlanqTN Tensor Studio is that you can start to explore the framework via small examples, including calculating weight enumerators and distance for small networks.
+The idea with PlanqTN Tensor Studio is that you can start to explore the
+framework via small examples, including calculating weight enumerators and
+distance for small networks.
 
-As a demo, let's create the [Steane code](https://errorcorrectionzoo.org/c/steane) out of two `[[6,0,3]]` tensors!
+As a demo, let's create the
+[Steane code](https://errorcorrectionzoo.org/c/steane) out of two `[[6,0,3]]`
+tensors!
 
-1. Navigate to [planqtn.com](https://planqtn.com). No need to register, unless you want to calculate weight enumerators, which we won't need for this tutorial!
-2. Grab two pieces of the `[[6,0,3]]` tensors on to the canvas
-   <video controls="true"> <source src="../fig/drag_603s.mp4" type="video/mp4"> </video>
-3. Connect the two logicals legs and calculate the parity check matrix - we can already see that this is the [[8,0,4]] encoding tensor of the Steane code.
-   <video controls="true"> <source src="../fig/steane_tutorial_connect_logicals.mp4" type="video/mp4"> </video>
-4. Add in an "identity stopper" to any of the legs to get the subspace parity check matrix
-   <video controls="true"> <source src="../fig/steane_tutorial_identity_stopper.mp4" type="video/mp4"> </video>
+<ol start=1>
+    <li> Navigate to <a href="https://planqtn.com">planqtn.com</a>. No need to register, unless
+    you want to calculate weight enumerators, which we won't need for this
+    tutorial!
+    </li>
+    <li> Grab two pieces of the <code>[[6,0,3]]</code> tensors on to the canvas
+    <div style="padding:51.42% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1103159520?title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&autoplay=1&loop=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="drag_603s"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+    </li>
+    <li> Connect the two logicals legs and calculate the parity check matrix - we can
+    already see that this is the <code>[[8,0,4]]</code> encoding tensor of the Steane code.
+    <div style="padding:50% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1103159534?title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&autoplay=1&loop=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="steane_tutorial_connect_logicals"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+    </li>
+    <li> Add in an "identity stopper" to any of the legs to get the subspace parity
+    check matrix
+    <div style="padding:50.59% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1103159489?title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&autoplay=1&loop=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="steane_tutorial_identity_stopper"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+    </li>
+</ol>
 
-Well done, now you've used the quantum LEGO framework, created a topological code via a generalized concatenation procedure!
+Well done, now you've used the quantum LEGO framework, created a topological
+code via a generalized concatenation procedure!
 
-## Getting started with PlnanqTN Python Library
+## Getting started with the PlanqTN Python Library
 
 1. Create a virtualenv
 2. Install `planqtn`
@@ -25,13 +40,13 @@ Well done, now you've used the quantum LEGO framework, created a topological cod
 pip install planqtn
 ```
 
-3. Try generating a generic tensor network for any CSS codes and calculating the weight enumerator polynomial for it:
+3. Try generating a generic tensor network for any CSS codes and calculating the
+   weight enumerator polynomial for it:
 
 ```python
 from galois import GF2
 
-from planqtn.codes.compass_code import CompassCodeTN
-from planqtn.codes.css_tanner_code import CssTannerCodeTN
+from planqtn.networks import CssTannerCodeTN
 from planqtn.progress_reporter import TqdmProgressReporter
 
 hz = GF2(

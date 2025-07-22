@@ -11,7 +11,7 @@ from planqtn_api.planqtn_server import app
 
 from fastapi.testclient import TestClient
 
-from planqtn.codes.css_tanner_code import CssTannerCodeTN
+from planqtn.networks.css_tanner_code import CssTannerCodeTN
 from planqtn.linalg import gauss
 from planqtn.tensor_network import TensorNetwork
 from planqtn_fixtures import *

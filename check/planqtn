@@ -12,12 +12,17 @@ set -e
 
 export PYTHONPATH="."
 
+echo "Running black"
 black planqtn/** --check
+echo "Running mypy"
 mypy planqtn
+echo "Running pylint"
 pylint planqtn
+echo "Running darglint2"
 darglint2 planqtn
+echo "Running pytest"
 pytest planqtn
-
-
+echo "Running doctest"
+find planqtn -name '*.py' | xargs python -m doctest
 
 echo "All checks passed"

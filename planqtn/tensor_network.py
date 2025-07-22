@@ -1,4 +1,4 @@
-"""The tensor_network mainly contains `TensorNetwork` and all contraction logic.
+"""The `tensor_network` module mainly contains `TensorNetwork` and all contraction logic.
 
 The main class is `TensorNetwork` which contains all the logic for contracting a tensor network.
 _PartiallyTracedEnumerator_ is a helper class for `TensorNetwork` that contains the logic for
@@ -64,15 +64,27 @@ class TensorNetwork:
         truncate_length: Optional maximum length for truncating enumerator polynomials.
 
     Example:
-        # Create tensor network from stabilizer code tensors
-        tensors = [tensor1, tensor2, tensor3]
-        network = TensorNetwork(tensors)
+        Put together a tensor network from stabilizer code tensors and compute the weight enumerator
+        polynomial.
 
-        # Add traces to define contraction pattern
-        network.self_trace(tensor1.id, tensor2.id, [leg1], [leg2])
+        ```python
+        >>> from planqtn.tensor_network import TensorNetwork
+        >>> from planqtn.legos import Legos
+        >>> from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+        >>> # Create tensor network from stabilizer code tensors
+        >>> nodes = [StabilizerCodeTensorEnumerator(tensor_id="z0", h=Legos.z_rep_code(3)),
+        ...          StabilizerCodeTensorEnumerator(tensor_id="x1", h=Legos.x_rep_code(3)),
+        ...          StabilizerCodeTensorEnumerator(tensor_id="z2", h=Legos.z_rep_code(3))]
+        >>> tn = TensorNetwork(nodes)
+        >>> # Add traces to define contraction pattern
+        >>> tn.self_trace("z0", "x1", [0], [0])
+        >>> tn.self_trace("x1", "z2", [1], [0])
+        >>> # Compute weight enumerator polynomial
+        >>> wep = tn.stabilizer_enumerator_polynomial()
+        >>> print(wep)
+        {0:1, 2:2, 3:8, 4:13, 5:8}
 
-        # Compute weight enumerator polynomial
-        wep = network.stabilizer_enumerator_polynomial()
+        ```
     """
 
     def __init__(
