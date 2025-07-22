@@ -9,6 +9,7 @@ from planqtn.legos import Legos
 from planqtn.tensor_network import (
     StabilizerCodeTensorEnumerator,
 )
+from typing import List, Tuple
 
 
 class StabilizerTannerCodeTN(TensorNetwork):
@@ -24,6 +25,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
     """
 
     def __init__(self, h: np.ndarray):
+        self.parity_check_matrix = h
         if h.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {h}")
 
@@ -43,6 +45,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
         traces = []
         next_check_legs = [2] * r
         q_tensors = []
+        self.q_to_leg_and_node: List[Tuple[TensorId, TensorLeg]] = []
 
         # for each qubit we create merged tensors across all checks
         for q in range(n):
@@ -104,6 +107,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
                 else:
                     raise ValueError("Y stabilizer is not implemented yet...")
             q_tensors.append(q_tensor)
+            self.q_to_leg_and_node.append((physical_leg[0], physical_leg))
 
         super().__init__(nodes={n.tensor_id: n for n in q_tensors + checks})
 
@@ -116,7 +120,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
         Returns:
             int: Total number of qubits represented by this tensor network.
         """
-        return self.nodes[list(self.nodes.keys())[0]].h.shape[1] // 2
+        return int(self.parity_check_matrix.shape[1] // 2)
 
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         """Map a qubit index to its corresponding node and leg.
@@ -127,6 +131,5 @@ class StabilizerTannerCodeTN(TensorNetwork):
         Returns:
             Tuple[TensorId, TensorLeg]: Node ID and leg that represent the qubit.
         """
-        # For stabilizer Tanner codes, qubits are represented by the q_tensors
-        # Each qubit q corresponds to the tensor with ID f"q{q}"
-        return f"q{q}", (f"q{q}", 0)
+
+        return self.q_to_leg_and_node[q]

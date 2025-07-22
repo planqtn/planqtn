@@ -20,6 +20,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
     """
 
     def __init__(self, parity_check_matrix: np.ndarray):
+        self.parity_check_matrix = parity_check_matrix
         if parity_check_matrix.shape[1] % 2 == 1:
             raise ValueError(f"Not a symplectic matrix: {parity_check_matrix}")
 
@@ -214,7 +215,12 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
             self.self_trace(*t)
 
     def n_qubits(self) -> int:
-        return self.nodes[0].h.shape[1] // 2
+        """Get the total number of qubits in the tensor network.
+
+        Returns:
+            int: Total number of qubits represented by this tensor network.
+        """
+        return int(self.parity_check_matrix.shape[1] // 2)
 
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         return self.q_to_leg_and_node[q]

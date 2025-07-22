@@ -176,7 +176,8 @@ class CssTannerCodeTN(TensorNetwork):
             int: Total number of qubits represented by this tensor network.
         """
         # The number of qubits is determined by the number of columns in hx
-        return self.nodes[list(self.nodes.keys())[0]].h.shape[1] // 2
+        first_node = list(self.nodes.values())[0]
+        return int(first_node.h.shape[1] // 2)
 
     def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         """Map a qubit index to its corresponding node and leg.
