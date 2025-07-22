@@ -22,7 +22,7 @@ mypy planqtn
 echo "Running pylint"
 pylint planqtn
 echo "Running doctest for planqtn"
-find planqtn -name '*.py' | xargs python -m doctest -v
+find planqtn -name '*.py' | xargs -I {} python -m doctest -v {}
 echo "Running pytest"
 pytest planqtn
 

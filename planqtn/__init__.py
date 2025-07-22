@@ -1,4 +1,4 @@
-"""The `planqtn` package.
+"""The starting point for PlanqTN Python API is the `planqtn` package.
 
 PlanqTN is a library for creating and analyzing tensor network quantum error correction codes.
 
@@ -6,8 +6,6 @@ To build tensor network codes manually, use the [planqtn.TensorNetwork][] class 
 the [planqtn.StabilizerCodeTensorEnumerator][] class for nodes alongside with the [planqtn.Legos][]
 module for predefined parity check matrices.
 
-To build tensor network codes automatically, you can use classes in the [planqtn.networks][] module,
-which contain universal tensor network layouts for stabilizer codes as well for specific codes.
 
 Example:
     Put together a tensor network from stabilizer code tensors and compute the weight
@@ -31,14 +29,42 @@ Example:
     {0:1, 2:2, 3:8, 4:13, 5:8}
 
     ```
+
+To build tensor network codes automatically, you can use classes in the [planqtn.networks][] module,
+which contain universal tensor network layouts for stabilizer codes as well for specific codes.
+
+Example:
+    Generate the tensor network for the 5x5 rotated surface code and calculate the weight
+    enumerator polynomial.
+
+    ```python
+    >>> from planqtn.networks import RotatedSurfaceCodeTN
+    >>> tn = RotatedSurfaceCodeTN(5)
+    >>> for power, coeff in tn.stabilizer_enumerator_polynomial().items():
+    ...     print(f"{power}: {coeff}")
+    0: 1
+    2: 8
+    4: 72
+    6: 534
+    8: 3715
+    10: 25816
+    12: 158448
+    14: 782532
+    16: 2726047
+    18: 5115376
+    20: 5136632
+    22: 2437206
+    24: 390829
+
+    ```
+
+
 """
 
 from planqtn.tensor_network import TensorNetwork
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from planqtn.poly import UnivariatePoly
 from planqtn.legos import Legos
-
-__version__ = "0.1.0"
 
 __all__ = [
     "TensorNetwork",

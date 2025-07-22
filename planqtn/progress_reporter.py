@@ -3,13 +3,18 @@
 The main class is `ProgressReporter` which is an abstract base class for all progress reporters.
 
 The main methods are:
-- `iterate`: Iterates over an iterable and reports progress on every item.
-- `enter_phase`: Starts a new phase.
-- `exit_phase`: Ends the current phase.
+
+- [iterate](planqtn.progress_reporter.ProgressReporter.iterate): Iterates over an iterable and
+    reports progress on every item.
+- [enter_phase](planqtn.progress_reporter.ProgressReporter.enter_phase): Starts a new phase.
+- [exit_phase](planqtn.progress_reporter.ProgressReporter.exit_phase): Ends the current phase.
 
 The main implementations are:
-- `TqdmProgressReporter`: A progress reporter that uses tqdm to report progress.
-- `DummyProgressReporter`: A progress reporter that does nothing.
+
+- [TqdmProgressReporter][planqtn.progress_reporter.TqdmProgressReporter]: A progress reporter that
+  uses `tqdm` to report progress in the terminal.
+- [DummyProgressReporter][planqtn.progress_reporter.DummyProgressReporter]: A progress reporter that
+  does nothing.
 
 This is the main mechanism for reporting progress back to PlanqTN Studio UI from the backend jobs
 in realtime.
@@ -308,9 +313,9 @@ class ProgressReporter(abc.ABC):
 
 
 class TqdmProgressReporter(ProgressReporter):
-    """Progress reporter that displays progress using tqdm progress bars.
+    """Progress reporter that displays progress using `tqdm` progress bars.
 
-    This implementation uses the tqdm library to display progress bars in the
+    This implementation uses the `tqdm` library to display progress bars in the
     terminal. It's useful for command-line applications and provides visual
     feedback during long-running calculations.
 
@@ -325,7 +330,7 @@ class TqdmProgressReporter(ProgressReporter):
         mininterval: float | None = None,
         sub_reporter: Optional["ProgressReporter"] = None,
     ):
-        """Initialize the tqdm progress reporter.
+        """Initialize the `tqdm` progress reporter.
 
         Args:
             file: Output stream for progress bars (default: sys.stdout).
@@ -341,9 +346,9 @@ class TqdmProgressReporter(ProgressReporter):
     def iterate(
         self, iterable: Iterable, desc: str, total_size: int
     ) -> Generator[Any, None, None]:
-        """Iterate with tqdm progress bar display.
+        """Iterate with `tqdm` progress bar display.
 
-        Overrides the parent iterate method to wrap the iteration with a tqdm
+        Overrides the parent iterate method to wrap the iteration with a `tqdm`
         progress bar that provides visual feedback in the terminal.
 
         Args:
@@ -370,10 +375,10 @@ class TqdmProgressReporter(ProgressReporter):
         t.close()
 
     def handle_result(self, result: Dict[str, Any]) -> None:
-        """Handle progress result (no-op for tqdm reporter).
+        """Handle progress result (no-op for `tqdm` reporter).
 
-        The tqdm reporter doesn't need to handle results separately since
-        the progress is displayed through the tqdm progress bar.
+        The `tqdm` reporter doesn't need to handle results separately since
+        the progress is displayed through the `tqdm` progress bar.
 
         Args:
             result: Progress result dictionary (ignored).
