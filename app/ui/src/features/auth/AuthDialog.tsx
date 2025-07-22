@@ -24,9 +24,15 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
-  Box
+  Box,
+  Checkbox,
+  Link,
+  Icon,
+  useColorModeValue
 } from "@chakra-ui/react";
 import { checkSupabaseStatus } from "../../lib/errors.ts";
+import { FiExternalLink } from "react-icons/fi";
+import { privacyPolicyUrl, termsOfServiceUrl } from "../../config/config.ts";
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -51,6 +57,7 @@ export default function AuthDialog({
   const [resetMessage, setResetMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [retryingConnection, setRetryingConnection] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (!userContextSupabase) {
@@ -93,6 +100,11 @@ export default function AuthDialog({
 
     if (connectionError) {
       setError("Cannot sign in due to backend connection issues");
+      return;
+    }
+
+    if (isSignUp && !agreedToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy");
       return;
     }
 
@@ -434,6 +446,43 @@ export default function AuthDialog({
                 />
                 {error && <FormErrorMessage>{error}</FormErrorMessage>}
               </FormControl>
+
+              {isSignUp && (
+                <FormControl isInvalid={!!error}>
+                  <Checkbox
+                    isChecked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    isDisabled={!!connectionError}
+                  >
+                    <Text fontSize="sm">
+                      I agree to the{" "}
+                      <Link
+                        href={termsOfServiceUrl}
+                        isExternal
+                        color={useColorModeValue("blue.500", "blue.300")}
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                      >
+                        Terms of Service
+                        <Icon as={FiExternalLink} boxSize={3} />
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href={privacyPolicyUrl}
+                        isExternal
+                        color={useColorModeValue("blue.500", "blue.300")}
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                      >
+                        Privacy Policy
+                        <Icon as={FiExternalLink} boxSize={3} />
+                      </Link>
+                    </Text>
+                  </Checkbox>
+                </FormControl>
+              )}
 
               <Button
                 type="submit"
