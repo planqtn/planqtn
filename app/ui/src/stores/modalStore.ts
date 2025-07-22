@@ -30,6 +30,7 @@ export interface ModalState {
   dynamicLegoDialog: boolean;
   weightEnumeratorDialog: boolean;
   pythonCodeModal: boolean;
+  aboutDialog: boolean;
 }
 
 export interface LoadingState {
@@ -105,6 +106,10 @@ interface ModalStore extends ModalState {
   openImportCanvasDialog: () => void;
   closeImportCanvasDialog: () => void;
 
+  // About dialog actions
+  openAboutDialog: () => void;
+  closeAboutDialog: () => void;
+
   // Weight enumerator dialog actions
   openWeightEnumeratorDialog: (
     subNetwork: TensorNetwork,
@@ -130,7 +135,8 @@ const initialState: ModalState = {
   shareDialog: false,
   importCanvasDialog: false,
   weightEnumeratorDialog: false,
-  pythonCodeModal: false
+  pythonCodeModal: false,
+  aboutDialog: false
 };
 
 const initialLoadingState: LoadingState = {
@@ -229,6 +235,10 @@ export const useModalStore = create<ModalStore>((set) => ({
   // Import canvas dialog actions
   openImportCanvasDialog: () => set({ importCanvasDialog: true }),
   closeImportCanvasDialog: () => set({ importCanvasDialog: false }),
+
+  // About dialog actions
+  openAboutDialog: () => set({ aboutDialog: true }),
+  closeAboutDialog: () => set({ aboutDialog: false }),
 
   // Weight enumerator dialog actions
   openWeightEnumeratorDialog: (

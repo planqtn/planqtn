@@ -71,7 +71,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
     (state) => state.setHideDanglingLegs
   );
 
-  const { openImportCanvasDialog } = useModalStore();
+  const { openImportCanvasDialog, openAboutDialog } = useModalStore();
 
   return (
     <Box
@@ -243,6 +243,8 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                 <MenuItem onClick={handleExportSvg}>
                   Export canvas as SVG...
                 </MenuItem>
+                <MenuDivider />
+                <MenuItem onClick={openAboutDialog}>About PlanqTN</MenuItem>
               </MenuList>
             )}
           </>

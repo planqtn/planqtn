@@ -8,6 +8,7 @@ import { RuntimeConfigDialog } from "../features/kernel/RuntimeConfigDialog";
 import WeightEnumeratorCalculationDialog from "../features/weight-enumerator/WeightEnumeratorCalculationDialog";
 import { ShareModal } from "../features/sharing/ShareModal";
 import { ImportCanvasModal } from "../features/canvas/ImportCanvasModal";
+import { AboutModal } from "../features/about/AboutModal";
 import { NetworkService } from "../lib/networkService";
 import { CustomLegoService } from "../features/lego/customLegoService";
 import { RuntimeConfigService } from "../features/kernel/runtimeConfigService";
@@ -37,6 +38,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     shareDialog,
     importCanvasDialog,
     weightEnumeratorDialog,
+    aboutDialog,
     loadingState,
     customLegoState,
     authState,
@@ -50,7 +52,8 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     closeRuntimeConfigDialog,
     closeShareDialog,
     closeImportCanvasDialog,
-    closeWeightEnumeratorDialog
+    closeWeightEnumeratorDialog,
+    closeAboutDialog
   } = useModalStore();
 
   const toast = useToast();
@@ -259,6 +262,11 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           subNetwork={weightEnumeratorState.subNetwork}
           mainNetworkConnections={weightEnumeratorState.mainNetworkConnections}
         />
+      )}
+
+      {/* About Dialog */}
+      {aboutDialog && (
+        <AboutModal isOpen={aboutDialog} onClose={closeAboutDialog} />
       )}
 
       {/* Additional modals will be added here as we refactor them */}

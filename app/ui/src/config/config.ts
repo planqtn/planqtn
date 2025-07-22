@@ -67,3 +67,8 @@ export const getApiUrl = (endpoint: keyof ApiConfig["endpoints"]): string => {
   );
   return `${config.runtimeStoreUrl}${config.endpoints[endpoint]}`;
 };
+
+export const privacyPolicyUrl =
+  "https://www.notion.so/PlanqTN-Privacy-Policy-23865c29349080f688e4ef5166120eaf";
+export const termsOfServiceUrl =
+  "https://www.notion.so/PlanqTN-Terms-of-Service-23865c29349080eebafcd48cef91b076?source=copy_link";
