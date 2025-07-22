@@ -2,14 +2,13 @@
 which implements a tensor network representation of stabilizer codes using Tanner graph structure.
 """
 
-from typing import Tuple
+from typing import List, Tuple
 import numpy as np
 from planqtn.tensor_network import PAULI_X, TensorNetwork, TensorId, TensorLeg
 from planqtn.legos import Legos
 from planqtn.tensor_network import (
     StabilizerCodeTensorEnumerator,
 )
-from typing import List, Tuple
 
 
 class StabilizerTannerCodeTN(TensorNetwork):

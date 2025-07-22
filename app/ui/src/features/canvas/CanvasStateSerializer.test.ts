@@ -379,7 +379,7 @@ describe("CanvasStateSerializer", () => {
 
       const result = await serializer.rehydrate(canvasStateString);
 
-      expect(result.title).toBe("");
+      expect(result.title).toBe("Untitled canvas");
       expect(result.droppedLegos).toHaveLength(0);
       expect(result.connections).toHaveLength(0);
       expect(result.viewport.screenWidth).toBe(800);
@@ -390,8 +390,8 @@ describe("CanvasStateSerializer", () => {
 
       expect(result.droppedLegos).toHaveLength(0);
       expect(result.connections).toHaveLength(0);
-      expect(result.hideConnectedLegs).toBe(false);
-      expect(result.title).toBe("");
+      expect(result.hideConnectedLegs).toBe(true);
+      expect(result.title).toBe("Untitled canvas");
     });
 
     it("should rehydrate complex canvas state with arrays", async () => {
