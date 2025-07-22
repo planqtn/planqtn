@@ -4,17 +4,17 @@ import numpy as np
 import pytest
 from planqtn.legos import Legos
 from planqtn.linalg import gauss
-from planqtn.simple_poly import SimplePoly
+from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from planqtn.tensor_network import PAULI_I, PAULI_X, PAULI_Z
+from planqtn.pauli import Pauli
 
 
 @pytest.mark.parametrize(
     "h,expected_wep",
     [
-        (GF2([PAULI_I]), {0: 1}),
-        (GF2([PAULI_X]), {0: 1, 1: 1}),
-        (GF2([PAULI_Z]), {0: 1, 1: 1}),
+        (GF2([Pauli.I.to_gf2()]), {0: 1}),
+        (GF2([Pauli.X.to_gf2()]), {0: 1, 1: 1}),
+        (GF2([Pauli.Z.to_gf2()]), {0: 1, 1: 1}),
     ],
 )
 def test_stopper_weight_enumerators(h, expected_wep):
@@ -42,7 +42,7 @@ def test_stoppers_in_different_order():
         ]
     )
     t1 = StabilizerCodeTensorEnumerator(enc_tens_512, tensor_id=1).trace_with_stopper(
-        PAULI_Z, 0
+        Legos.stopper_z, 0
     )
     assert np.array_equal(
         gauss(t1.h),
@@ -61,7 +61,7 @@ def test_stoppers_in_different_order():
         ),
     )
 
-    t1 = t1.trace_with_stopper(PAULI_X, 3)
+    t1 = t1.trace_with_stopper(Legos.stopper_x, 3)
 
     assert np.array_equal(
         gauss(t1.h),
@@ -99,17 +99,17 @@ def test_open_legged_enumerator():
 
     t1 = (
         StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=5)
-        .trace_with_stopper(PAULI_I, 4)
-        .trace_with_stopper(PAULI_I, 5)
+        .trace_with_stopper(Legos.stopper_i, 4)
+        .trace_with_stopper(Legos.stopper_i, 5)
     )
 
     t2 = t1.stabilizer_enumerator_polynomial(open_legs=[0, 1])
 
     assert t2 == {
-        (0, 0): SimplePoly({0: 1}),
-        (2, 2): SimplePoly({2: 1}),
-        (1, 1): SimplePoly({2: 1}),
-        (3, 3): SimplePoly({2: 1}),
+        (0, 0): UnivariatePoly({0: 1}),
+        (2, 2): UnivariatePoly({2: 1}),
+        (1, 1): UnivariatePoly({2: 1}),
+        (3, 3): UnivariatePoly({2: 1}),
     }, f"not equal:\n{t2}"
 
 
@@ -133,7 +133,7 @@ def test_stopper_tensors():
     )
 
     node = StabilizerCodeTensorEnumerator(enc_tens_422)
-    node = node.trace_with_stopper(stopper=PAULI_Z, traced_leg=3)
+    node = node.trace_with_stopper(stopper=Legos.stopper_z, traced_leg=3)
 
     assert np.array_equal(
         gauss(node.h),
@@ -158,9 +158,9 @@ def test_stopper_tensors():
     assert node.legs == [(0, 0), (0, 1), (0, 2), (0, 4), (0, 5)]
 
     with pytest.raises(ValueError):
-        node.trace_with_stopper(stopper=GF2([0, 1]), traced_leg=3)
+        node.trace_with_stopper(stopper=Legos.stopper_z, traced_leg=3)
 
-    node = node.trace_with_stopper(stopper=PAULI_X, traced_leg=0)
+    node = node.trace_with_stopper(stopper=Legos.stopper_x, traced_leg=0)
 
     assert np.array_equal(
         gauss(node.h),
@@ -227,7 +227,7 @@ def test_trace_two_422_codes_into_steane():
     )
 
     assert {6: 42, 4: 21, 0: 1} == t3.trace_with_stopper(
-        PAULI_I, 0
+        Legos.stopper_i, 0
     ).stabilizer_enumerator_polynomial().dict
 
 
@@ -248,7 +248,7 @@ def test_steane_logical_legs():
     )
     tensorwe_on_log_legs = StabilizerCodeTensorEnumerator(
         steane_tensor
-    ).trace_with_stopper(PAULI_I, 0)
+    ).trace_with_stopper(Legos.stopper_i, 0)
 
     h = GF2(
         [
@@ -271,6 +271,7 @@ def test_422_logical_legs_enumerator():
     enc_tens_422 = GF2(
         [
             # fmt: off
+            # noqa: E231
     #        l1,2            l1,2 
     [1,1,1,1, 0,0,  0,0,0,0,  0,0],
     [0,0,0,0, 0,0,  1,1,1,1,  0,0], 
@@ -288,24 +289,24 @@ def test_422_logical_legs_enumerator():
 
     tensorwe_on_log_legs = (
         StabilizerCodeTensorEnumerator(enc_tens_422)
-        .trace_with_stopper(PAULI_I, 4)
-        .trace_with_stopper(PAULI_I, 5)
+        .trace_with_stopper(Legos.stopper_i, 4)
+        .trace_with_stopper(Legos.stopper_i, 5)
     )
 
     assert {4: 3, 0: 1} == tensorwe_on_log_legs.stabilizer_enumerator_polynomial().dict
 
 
 def test_conjoin_to_scalar():
-    joint = StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=0).conjoin(
-        StabilizerCodeTensorEnumerator(GF2([PAULI_X]), tensor_id=1), [0], [0]
+    joint = StabilizerCodeTensorEnumerator(Legos.stopper_x, tensor_id=0).conjoin(
+        StabilizerCodeTensorEnumerator(Legos.stopper_x, tensor_id=1), [0], [0]
     )
     wep = joint.stabilizer_enumerator_polynomial().dict
     assert wep == {0: 1}
 
     assert np.array_equal(joint.h, GF2([[1]])), f"Not equal, got\n{joint.h}"
 
-    stopper_1 = StabilizerCodeTensorEnumerator(tensor_id=1, h=GF2([PAULI_I]))
-    stopper_2 = StabilizerCodeTensorEnumerator(tensor_id=2, h=GF2([PAULI_I]))
+    stopper_1 = StabilizerCodeTensorEnumerator(tensor_id=1, h=Legos.stopper_i)
+    stopper_2 = StabilizerCodeTensorEnumerator(tensor_id=2, h=Legos.stopper_i)
     joint = (
         StabilizerCodeTensorEnumerator(
             tensor_id=0,
@@ -329,7 +330,7 @@ def test_conjoin_to_scalar():
 def tensor_with_scalar():
 
     wep = (
-        StabilizerCodeTensorEnumerator(GF2([PAULI_I]))
+        StabilizerCodeTensorEnumerator(GF2([Pauli.I.to_gf2()]))
         .tensor_with(StabilizerCodeTensorEnumerator(GF2([[5]])))
         .stabilizer_enumerator_polynomial()
         .dict
@@ -366,61 +367,61 @@ def test_truncated_scalar_enumerator(truncate_length, expected_wep):
         (
             None,
             {
-                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): UnivariatePoly({0: 1, 4: 21, 6: 42}),
+                (1,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (3,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (2,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
         (
             1,
             {
-                (0,): SimplePoly({0: 1}),
+                (0,): UnivariatePoly({0: 1}),
             },
         ),
         (
             3,
             {
-                (0,): SimplePoly({0: 1}),
-                (1,): SimplePoly({3: 7}),
-                (2,): SimplePoly({3: 7}),
-                (3,): SimplePoly({3: 7}),
+                (0,): UnivariatePoly({0: 1}),
+                (1,): UnivariatePoly({3: 7}),
+                (2,): UnivariatePoly({3: 7}),
+                (3,): UnivariatePoly({3: 7}),
             },
         ),
         (
             4,
             {
-                (0,): SimplePoly({0: 1, 4: 21}),
-                (1,): SimplePoly({3: 7}),
-                (2,): SimplePoly({3: 7}),
-                (3,): SimplePoly({3: 7}),
+                (0,): UnivariatePoly({0: 1, 4: 21}),
+                (1,): UnivariatePoly({3: 7}),
+                (2,): UnivariatePoly({3: 7}),
+                (3,): UnivariatePoly({3: 7}),
             },
         ),
         (
             5,
             {
-                (0,): SimplePoly({0: 1, 4: 21}),
-                (1,): SimplePoly({3: 7, 5: 42}),
-                (2,): SimplePoly({3: 7, 5: 42}),
-                (3,): SimplePoly({3: 7, 5: 42}),
+                (0,): UnivariatePoly({0: 1, 4: 21}),
+                (1,): UnivariatePoly({3: 7, 5: 42}),
+                (2,): UnivariatePoly({3: 7, 5: 42}),
+                (3,): UnivariatePoly({3: 7, 5: 42}),
             },
         ),
         (
             7,
             {
-                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): UnivariatePoly({0: 1, 4: 21, 6: 42}),
+                (1,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (2,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (3,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
         (
             9,
             {
-                (0,): SimplePoly({0: 1, 4: 21, 6: 42}),
-                (1,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (2,): SimplePoly({3: 7, 5: 42, 7: 15}),
-                (3,): SimplePoly({3: 7, 5: 42, 7: 15}),
+                (0,): UnivariatePoly({0: 1, 4: 21, 6: 42}),
+                (1,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (2,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
+                (3,): UnivariatePoly({3: 7, 5: 42, 7: 15}),
             },
         ),
     ],
@@ -444,22 +445,22 @@ def test_tensor_enumerator_with_open_legs():
     )
     print(actual_wep)
     assert actual_wep == {
-        (0, 0): SimplePoly({0: 1, 4: 9, 6: 6}),
-        (0, 2): SimplePoly({3: 4, 5: 12}),
-        (2, 0): SimplePoly({3: 4, 5: 12}),
-        (2, 2): SimplePoly({2: 3, 6: 7, 4: 6}),
-        (0, 1): SimplePoly({3: 4, 5: 12}),
-        (0, 3): SimplePoly({3: 4, 5: 12}),
-        (2, 1): SimplePoly({4: 12, 6: 4}),
-        (2, 3): SimplePoly({4: 12, 6: 4}),
-        (1, 0): SimplePoly({3: 4, 5: 12}),
-        (1, 2): SimplePoly({4: 12, 6: 4}),
-        (3, 0): SimplePoly({3: 4, 5: 12}),
-        (3, 2): SimplePoly({4: 12, 6: 4}),
-        (1, 1): SimplePoly({2: 3, 4: 6, 6: 7}),
-        (1, 3): SimplePoly({4: 12, 6: 4}),
-        (3, 1): SimplePoly({4: 12, 6: 4}),
-        (3, 3): SimplePoly({2: 3, 4: 6, 6: 7}),
+        (0, 0): UnivariatePoly({0: 1, 4: 9, 6: 6}),
+        (0, 2): UnivariatePoly({3: 4, 5: 12}),
+        (2, 0): UnivariatePoly({3: 4, 5: 12}),
+        (2, 2): UnivariatePoly({2: 3, 6: 7, 4: 6}),
+        (0, 1): UnivariatePoly({3: 4, 5: 12}),
+        (0, 3): UnivariatePoly({3: 4, 5: 12}),
+        (2, 1): UnivariatePoly({4: 12, 6: 4}),
+        (2, 3): UnivariatePoly({4: 12, 6: 4}),
+        (1, 0): UnivariatePoly({3: 4, 5: 12}),
+        (1, 2): UnivariatePoly({4: 12, 6: 4}),
+        (3, 0): UnivariatePoly({3: 4, 5: 12}),
+        (3, 2): UnivariatePoly({4: 12, 6: 4}),
+        (1, 1): UnivariatePoly({2: 3, 4: 6, 6: 7}),
+        (1, 3): UnivariatePoly({4: 12, 6: 4}),
+        (3, 1): UnivariatePoly({4: 12, 6: 4}),
+        (3, 3): UnivariatePoly({2: 3, 4: 6, 6: 7}),
     }
 
 
@@ -471,20 +472,20 @@ def test_tensor_enumerator_with_open_legs_t6():
     )
     print(actual_wep)
     assert actual_wep == {
-        (0, 0): SimplePoly({0: 1, 3: 2, 4: 1}),
-        (0, 2): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (2, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (2, 2): SimplePoly({1: 1, 2: 1, 4: 1, 3: 1}),
-        (0, 1): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (0, 3): SimplePoly({3: 2, 4: 2}),
-        (2, 1): SimplePoly({3: 2, 4: 2}),
-        (2, 3): SimplePoly({3: 2, 4: 1, 2: 1}),
-        (1, 0): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 2): SimplePoly({3: 2, 4: 2}),
-        (3, 0): SimplePoly({3: 2, 4: 2}),
-        (3, 2): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (1, 1): SimplePoly({1: 1, 4: 1, 2: 1, 3: 1}),
-        (1, 3): SimplePoly({3: 2, 2: 1, 4: 1}),
-        (3, 1): SimplePoly({2: 1, 3: 2, 4: 1}),
-        (3, 3): SimplePoly({2: 2, 3: 2}),
+        (0, 0): UnivariatePoly({0: 1, 3: 2, 4: 1}),
+        (0, 2): UnivariatePoly({3: 2, 2: 1, 4: 1}),
+        (2, 0): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (2, 2): UnivariatePoly({1: 1, 2: 1, 4: 1, 3: 1}),
+        (0, 1): UnivariatePoly({3: 2, 4: 1, 2: 1}),
+        (0, 3): UnivariatePoly({3: 2, 4: 2}),
+        (2, 1): UnivariatePoly({3: 2, 4: 2}),
+        (2, 3): UnivariatePoly({3: 2, 4: 1, 2: 1}),
+        (1, 0): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (1, 2): UnivariatePoly({3: 2, 4: 2}),
+        (3, 0): UnivariatePoly({3: 2, 4: 2}),
+        (3, 2): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (1, 1): UnivariatePoly({1: 1, 4: 1, 2: 1, 3: 1}),
+        (1, 3): UnivariatePoly({3: 2, 2: 1, 4: 1}),
+        (3, 1): UnivariatePoly({2: 1, 3: 2, 4: 1}),
+        (3, 3): UnivariatePoly({2: 2, 3: 2}),
     }

@@ -1,7 +1,21 @@
-::: planqtn
-::: planqtn.tensor_network
-::: planqtn.stabilizer_tensor_enumerator
-::: planqtn.simple_poly
-::: planqtn.symplectic
-::: planqtn.legos
-::: planqtn.linalg
+## API Reference
+
+:::planqtn
+
+## The `planqtn.networks` package
+
+:::planqtn.networks
+
+# Utilities
+
+## The `planqtn.progress_reporter` package
+
+:::planqtn.progress_reporter
+
+## The `planqtn.symplectic` package
+
+:::planqtn.symplectic
+
+## The `planqtn.linalg` package
+
+:::planqtn.linalg

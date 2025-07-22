@@ -1,5 +1,12 @@
 {
   "tabWidth": 2,
   "useTabs": false,
-  "trailingComma": "none"
+  "trailingComma": "none",
+
+  "overrides": [
+    {
+      "files": "*.md",
+      "options": { "proseWrap": "always", "tabWidth": 4, "useTabs": true }
+    }
+  ]
 }

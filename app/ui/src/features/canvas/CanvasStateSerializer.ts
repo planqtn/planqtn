@@ -152,12 +152,12 @@ export class CanvasStateSerializer {
     const result: RehydratedCanvasState = {
       droppedLegos: [],
       connections: [],
-      hideConnectedLegs: false,
+      hideConnectedLegs: true,
       hideIds: false,
       hideTypeIds: false,
       hideDanglingLegs: false,
       hideLegLabels: false,
-      title: "", // Initialize title
+      title: "Untitled canvas", // Initialize title
       viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), null),
       parityCheckMatrices: {},
       weightEnumerators: {},

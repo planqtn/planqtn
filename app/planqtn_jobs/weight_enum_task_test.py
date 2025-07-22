@@ -7,7 +7,7 @@ import time
 import asyncio
 import pytest
 import requests
-from planqtn.simple_poly import SimplePoly
+from planqtn.poly import UnivariatePoly
 from planqtn_fixtures.job_debugger import JobDebugger
 from planqtn_fixtures.cloud_run import get_execution_details
 from planqtn_jobs.main import main

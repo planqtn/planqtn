@@ -151,3 +151,38 @@ def sconcat(*ops: Tuple[int, ...]) -> Tuple[int, ...]:
             ],
         ).astype(np.int8)
     )
+
+
+def sstr(h: GF2) -> str:
+    """Convert a symplectic matrix to a string representation.
+
+    Creates a human-readable string representation of a symplectic matrix
+    where X and Z parts are separated by a '|' character. Uses '_' for 0
+    and '1' for 1 to make the pattern more visible.
+
+    Args:
+        h: Parity check matrix in GF2.
+
+    Returns:
+        str: String representation of the matrix.
+    """
+    n = h.shape[1] // 2
+
+    return "\n".join(
+        "".join("_1"[int(b)] for b in row[:n])
+        + "|"
+        + "".join("_1"[int(b)] for b in row[n:])
+        for row in h
+    )
+
+
+def sprint(h: GF2, end: str = "\n") -> None:
+    """Print a symplectic matrix in string format.
+
+    Prints the string representation of the symplectic matrix to stdout.
+
+    Args:
+        h: Parity check matrix in GF2.
+        end: String to append at the end (default: newline).
+    """
+    print(sstr(h), end=end)

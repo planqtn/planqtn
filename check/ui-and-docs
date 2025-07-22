@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Ensure script is run from the root directory
+if [ ! -f "app/ui/package.json" ]; then
+    echo "Error: This script must be run from the root directory of the repository"
+    echo "Current directory: $(pwd)"
+    echo "Expected to find: app/ui/package.json"
+    exit 1
+fi
+
+
+export PYTHONPATH=`pwd`
+
+echo "Running doctest"
+set -e
+find docs -name '*.md' | xargs -I {} python -m doctest {}
+python -m doctest README.md
+set +e
+
+
+cd app/ui
+
+# Check formatting
+npx prettier --check src --config ../.prettierrc
+if [ $? -ne 0 ]; then
+    echo "Formatting check failed"
+    echo "Run 'cd app/ui && npx prettier --write src --config ../.prettierrc && cd -' to fix"
+    exit 1
+fi
+
+# Check linting
+echo "ESLint..."
+npx eslint src
+if [ $? -ne 0 ]; then
+    echo "Linting check failed"
+    echo "Run 'cd app/ui && npx eslint --fix src && cd -' to fix"
+    exit 1
+fi
+echo "Passed."
+
+echo "Check build"
+npm run build
+if [ $? -ne 0 ]; then
+    echo "Build check failed"    
+    exit 1
+fi
+echo "Passed."
+
+
+# Run tests
+npm run test
+if [ $? -ne 0 ]; then
+    echo "Build check failed"    
+    exit 1
+fi
+echo "Passed."
+
+echo "All checks passed"

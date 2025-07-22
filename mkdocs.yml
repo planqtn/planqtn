@@ -2,6 +2,8 @@ site_name: PlanqTN Documentation
 site_url: https://planqtn.com/docs
 theme:
   name: material
+  logo: fig/planqtn_logo.png
+  favicon: fig/favicon.ico
   palette:
     # Light mode
     - media: "(prefers-color-scheme: light)"
@@ -59,20 +61,53 @@ theme:
     share: material/share-variant
     top: material/arrow-up
 nav:
-  - Home: index.md
-  - Tutorials: tutorials/index.md
-  - Docs:
-      - Library: planqtn/index.md
-      - Reference: planqtn/reference.md
-      - Studio: planqtn-studio/index.md
+  - Home:
+      - Welcome to PlanqTN!: index.md
+      - Features: features.md
+      - Contributing: contributing.md
+  - Python API:
+      - index: planqtn/index.md
+      - API Reference: planqtn/reference.md
+  - PlanqTN Studio:
+      - index: planqtn-studio/index.md
+      - Build tensor networks: planqtn-studio/build.md
+      - Transform tensor networks: planqtn-studio/transform.md
+      - Analyze tensor networks: planqtn-studio/analyze.md
+      - Share tensor networks: planqtn-studio/share.md
+  - FAQ: faq.md
+
 markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
 plugins:
   - mkdocstrings
   - search
