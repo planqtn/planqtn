@@ -14,7 +14,7 @@ export PYTHONPATH="."
 
 echo "Running black"
 black planqtn/** --check
-echo "Running mypy"
+echo Running `mypy --version`
 mypy planqtn
 echo "Running pylint"
 pylint planqtn
