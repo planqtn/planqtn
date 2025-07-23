@@ -160,16 +160,16 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             // Create new connections with updated instance IDs
             const newConnections = (pastedData.connections || []).map(
               (conn: Connection) => {
-                return {
-                  from: {
+                return new Connection(
+                  {
                     legoId: instanceIdMap.get(conn.from.legoId)!,
                     leg_index: conn.from.leg_index
                   },
-                  to: {
+                  {
                     legoId: instanceIdMap.get(conn.to.legoId)!,
                     leg_index: conn.to.leg_index
                   }
-                };
+                );
               }
             );
 

@@ -4,14 +4,9 @@ import { userContextSupabase } from "../../config/supabaseClient.ts";
 import { Session, User } from "@supabase/supabase-js";
 import {
   Button,
-  FormControl,
-  FormLabel,
-  Input,
   VStack,
   Text,
   useToast,
-  // Divider,
-  FormErrorMessage,
   Image,
   Modal,
   ModalOverlay,
@@ -25,13 +20,14 @@ import {
   AlertTitle,
   AlertDescription,
   Box,
-  Checkbox,
   Link,
   Icon,
   useColorModeValue
 } from "@chakra-ui/react";
 import { checkSupabaseStatus } from "../../lib/errors.ts";
 import { FiExternalLink } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
+import { FaGithub } from "react-icons/fa";
 import { privacyPolicyUrl, termsOfServiceUrl } from "../../config/config.ts";
 
 interface AuthDialogProps {
@@ -47,17 +43,10 @@ export default function AuthDialog({
 }: AuthDialogProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
-  const [showReset, setShowReset] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [retryingConnection, setRetryingConnection] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (!userContextSupabase) {
@@ -90,60 +79,40 @@ export default function AuthDialog({
     };
   }, []);
 
-  const handleEmailPasswordAuth = async (e: React.FormEvent) => {
+  const handleGoogleSignIn = async () => {
     if (!userContextSupabase) {
       setError("No supabase client available");
       return;
     }
-    e.preventDefault();
-    setError("");
 
     if (connectionError) {
       setError("Cannot sign in due to backend connection issues");
       return;
     }
 
-    if (isSignUp && !agreedToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await userContextSupabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              emailRedirectTo: `${window.location}`
-            }
-          }
-        });
-        if (error) throw error;
+      // Store the current URL to redirect back after auth
+      const currentUrl = window.location.href;
+      sessionStorage.setItem("authRedirectUrl", currentUrl);
 
-        toast({
-          title: "Account created",
-          description: "Please check your email for verification",
-          status: "success",
-          duration: 3000,
-          isClosable: true
-        });
-      } else {
-        const { error } = await userContextSupabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
+      const { error } = await userContextSupabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth-callback`
+        }
+      });
 
-        toast({
-          title: "Signed in",
-          description: "You have been signed in successfully",
-          status: "success",
-          duration: 3000,
-          isClosable: true
-        });
-      }
+      if (error) throw error;
+
+      toast({
+        title: "Redirecting to Google",
+        description:
+          "If this is your first time, complete the sign in with Google",
+        status: "info",
+        duration: 3000,
+        isClosable: true
+      });
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -169,69 +138,62 @@ export default function AuthDialog({
     }
   };
 
-  // const handleGoogleSignIn = async () => {
-  //   try {
-  //     const { error } = await userContextSupabase.auth.signInWithOAuth({
-  //       provider: "google",
-  //       options: {
-  //         redirectTo: window.location.origin,
-  //       },
-  //     });
+  const handleGitHubSignIn = async () => {
+    if (!userContextSupabase) {
+      setError("No supabase client available");
+      return;
+    }
 
-  //     if (error) throw error;
+    if (connectionError) {
+      setError("Cannot sign in due to backend connection issues");
+      return;
+    }
 
-  //     toast({
-  //       title: "Redirecting to Google",
-  //       description: "Please complete the sign in with Google",
-  //       status: "info",
-  //       duration: 3000,
-  //       isClosable: true,
-  //     });
-  //   } catch (err: unknown) {
-  //     if (err instanceof Error) {
-  //       setError(err.message);
-  //       toast({
-  //         title: "Error",
-  //         description: err.message,
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     } else {
-  //       setError("An unknown error occurred");
-  //       toast({
-  //         title: "Error",
-  //         description: "An unknown error occurred",
-  //         status: "error",
-  //         duration: 5000,
-  //         isClosable: true,
-  //       });
-  //     }
-  //   }
-  // };
-
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetMessage("");
+    setIsLoading(true);
     try {
-      if (!userContextSupabase) {
-        throw new Error("No supabase client available");
-      }
-      const { error } = await userContextSupabase.auth.resetPasswordForEmail(
-        resetEmail,
-        {
-          redirectTo: `${window.location.origin}/reset-password`
+      // Store the current URL to redirect back after auth
+      const currentUrl = window.location.href;
+      sessionStorage.setItem("authRedirectUrl", currentUrl);
+
+      const { error } = await userContextSupabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/auth-callback`
         }
-      );
+      });
+
       if (error) throw error;
 
-      setResetMessage("Password reset email sent! Check your inbox.");
+      toast({
+        title: "Redirecting to GitHub",
+        description:
+          "If this is your first time, complete the sign in with GitHub",
+        status: "info",
+        duration: 3000,
+        isClosable: true
+      });
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setResetMessage(err.message);
+        setError(err.message);
+        toast({
+          title: "Error",
+          description: err.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true
+        });
       } else {
-        setResetMessage("An unknown error occurred");
+        setError("An unknown error occurred");
+        toast({
+          title: "Error",
+          description: "An unknown error occurred",
+          status: "error",
+          duration: 5000,
+          isClosable: true
+        });
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -313,13 +275,7 @@ export default function AuthDialog({
       <ModalOverlay />
       <ModalContent>
         <ModalHeader textAlign="center">
-          {currentUser
-            ? "Account"
-            : isSignUp
-              ? "Create Account"
-              : showReset
-                ? "Reset Password"
-                : "Sign In"}
+          {currentUser ? "Account" : "Sign In"}
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
@@ -354,53 +310,8 @@ export default function AuthDialog({
                 Sign Out
               </Button>
             </VStack>
-          ) : showReset ? (
-            <VStack spacing={6} as="form" onSubmit={handlePasswordReset}>
-              <Image
-                src="/planqtn_logo.png"
-                alt="PlanqTN Logo"
-                maxW="200px"
-                mx="auto"
-                mb={4}
-              />
-              <FormControl>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={resetEmail}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      handlePasswordReset(e);
-                    }
-                  }}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  required
-                />
-              </FormControl>
-              {resetMessage && (
-                <Text
-                  color={
-                    resetMessage.includes("sent") ? "green.500" : "red.500"
-                  }
-                >
-                  {resetMessage}
-                </Text>
-              )}
-              <Button type="submit" colorScheme="blue" width="full">
-                Send Password Reset Email
-              </Button>
-              <Button variant="link" onClick={() => setShowReset(false)}>
-                Back to Sign In
-              </Button>
-            </VStack>
           ) : (
-            <VStack
-              spacing={6}
-              as="form"
-              id="auth-form"
-              onSubmit={handleEmailPasswordAuth}
-            >
+            <VStack spacing={6}>
               <Image
                 src="/planqtn_logo.png"
                 alt="PlanqTN Logo"
@@ -408,134 +319,79 @@ export default function AuthDialog({
                 mx="auto"
                 mb={4}
               />
-              <Text fontSize="xl" fontWeight="bold">
-                {isSignUp ? "Create Account" : "Sign In"}
+              <Text fontSize="xl" fontWeight="bold" textAlign="center">
+                Sign In to PlanqTN
               </Text>
 
-              <FormControl isInvalid={!!error}>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      handleEmailPasswordAuth(e);
-                    }
-                  }}
-                  required
-                  isDisabled={!!connectionError}
-                />
-              </FormControl>
+              <Text textAlign="center" color="gray.600">
+                Use your Google or GitHub account to sign in and access all
+                features
+              </Text>
 
-              <FormControl isInvalid={!!error}>
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  value={password}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      handleEmailPasswordAuth(e);
-                    }
-                  }}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  isDisabled={!!connectionError}
-                />
-                {error && <FormErrorMessage>{error}</FormErrorMessage>}
-              </FormControl>
-
-              {isSignUp && (
-                <FormControl isInvalid={!!error}>
-                  <Checkbox
-                    isChecked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    isDisabled={!!connectionError}
-                  >
-                    <Text fontSize="sm">
-                      I agree to the{" "}
-                      <Link
-                        href={termsOfServiceUrl}
-                        isExternal
-                        color={useColorModeValue("blue.500", "blue.300")}
-                        display="inline-flex"
-                        alignItems="center"
-                        gap={1}
-                      >
-                        Terms of Service
-                        <Icon as={FiExternalLink} boxSize={3} />
-                      </Link>{" "}
-                      and{" "}
-                      <Link
-                        href={privacyPolicyUrl}
-                        isExternal
-                        color={useColorModeValue("blue.500", "blue.300")}
-                        display="inline-flex"
-                        alignItems="center"
-                        gap={1}
-                      >
-                        Privacy Policy
-                        <Icon as={FiExternalLink} boxSize={3} />
-                      </Link>
-                    </Text>
-                  </Checkbox>
-                </FormControl>
+              {error && (
+                <Text color="red.500" textAlign="center" fontSize="sm">
+                  {error}
+                </Text>
               )}
 
-              <Button
-                type="submit"
-                colorScheme="blue"
-                width="full"
-                isLoading={isLoading}
-                isDisabled={!!connectionError}
-              >
-                {isSignUp ? "Sign Up" : "Sign In"}
-              </Button>
+              <VStack spacing={3} width="full">
+                <Button
+                  onClick={handleGoogleSignIn}
+                  colorScheme="gray"
+                  width="full"
+                  size="lg"
+                  isLoading={isLoading}
+                  isDisabled={!!connectionError}
+                  leftIcon={<Icon as={FcGoogle} />}
+                >
+                  Sign in with Google
+                </Button>
 
-              <Button variant="link" onClick={() => setIsSignUp(!isSignUp)}>
-                {isSignUp
-                  ? "Already have an account? Sign In"
-                  : "Don't have an account? Sign Up"}
-              </Button>
+                <Button
+                  onClick={handleGitHubSignIn}
+                  colorScheme="gray"
+                  width="full"
+                  size="lg"
+                  isLoading={isLoading}
+                  isDisabled={!!connectionError}
+                  leftIcon={<Icon as={FaGithub} />}
+                >
+                  Sign in with GitHub
+                </Button>
+              </VStack>
 
-              <Button
-                variant="link"
-                onClick={() => setShowReset(true)}
-                colorScheme="blue"
-              >
-                Forgot password?
-              </Button>
-
-              {/* <Divider /> */}
-
-              {/* <Button
-                onClick={handleGoogleSignIn}
-                colorScheme="red"
-                width="full"
-              >
-                {isSignUp ? "Sign up with Google" : "Sign in with Google"}
-              </Button> */}
+              <Text fontSize="sm" textAlign="center" color="gray.600">
+                By signing in, you agree to our{" "}
+                <Link
+                  href={termsOfServiceUrl}
+                  isExternal
+                  color={useColorModeValue("blue.500", "blue.300")}
+                  display="inline-flex"
+                  alignItems="center"
+                  gap={1}
+                >
+                  Terms of Service
+                  <Icon as={FiExternalLink} boxSize={3} />
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href={privacyPolicyUrl}
+                  isExternal
+                  color={useColorModeValue("blue.500", "blue.300")}
+                  display="inline-flex"
+                  alignItems="center"
+                  gap={1}
+                >
+                  Privacy Policy
+                  <Icon as={FiExternalLink} boxSize={3} />
+                </Link>
+              </Text>
             </VStack>
           )}
         </ModalBody>
         <ModalFooter>
-          {!showReset && !currentUser && (
-            <Button
-              colorScheme="blue"
-              mr={3}
-              onClick={handleEmailPasswordAuth}
-              isLoading={isLoading}
-              isDisabled={!!connectionError}
-              form="auth-form"
-              type="submit"
-            >
-              {isSignUp ? "Sign Up" : "Sign In"}
-            </Button>
-          )}
           <Button variant="ghost" onClick={onClose}>
-            {currentUser || showReset ? "Close" : "Cancel"}
+            {currentUser ? "Close" : "Cancel"}
           </Button>
         </ModalFooter>
       </ModalContent>
