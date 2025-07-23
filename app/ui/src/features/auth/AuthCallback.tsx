@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { userContextSupabase } from "../../config/supabaseClient";
 import { Box, VStack, Text, Spinner, useToast } from "@chakra-ui/react";

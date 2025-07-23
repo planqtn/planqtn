@@ -1,5 +1,5 @@
 // Example using useEffect in a component or context
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { userContextSupabase } from "../../config/supabaseClient.ts";
 import { Session, User } from "@supabase/supabase-js";
 import {
