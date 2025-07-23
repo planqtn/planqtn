@@ -5,6 +5,7 @@ import "./index.css";
 
 import { BrowserRouter, Routes, Route } from "react-router";
 import LegoStudioView from "./LegoStudio";
+import AuthCallback from "./features/auth/AuthCallback";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // While this is handled in serve.js in production time, for the dev server mode we need to handle it here
@@ -21,6 +22,7 @@ if (import.meta.env.VITE_ENV === "TEASER") {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LegoStudioView />} />
+              <Route path="/auth-callback" element={<AuthCallback />} />
             </Routes>
           </BrowserRouter>
         </ChakraProvider>

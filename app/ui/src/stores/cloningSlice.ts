@@ -34,7 +34,7 @@ export const useCloningSlice: StateCreator<
         (l) => l.instance_id === clickedLego.instance_id
       );
 
-    const cloneOffset = new LogicalPoint(1, 1);
+    const cloneOffset = new LogicalPoint(20, 20);
     // Check if we're cloning multiple legos
     const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
 
