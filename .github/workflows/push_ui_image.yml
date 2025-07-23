@@ -2,7 +2,7 @@ name: Push UI Image
 run-name: ${{ github.actor }} is pushing the UI image
 on:
   workflow_run:
-    workflows: ["UI Checks"]
+    workflows: ["UI & Docs Checks"]
     branches: [main, hotfix/*]
     types:
       - completed
