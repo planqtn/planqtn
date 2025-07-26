@@ -2,7 +2,8 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: 'bug :lady_beetle:'
+type: 'Bug'
+labels: ''
 assignees: ''
 projects: balopat/5
 milestones: tnqec/milestone/1
