@@ -38,8 +38,8 @@ Object.defineProperty(global, "crypto", {
   writable: true
 });
 
-// Set window.location properties directly for tests
-window.location.search = "?canvasId=test-canvas-id";
-window.location.pathname = "/test";
-window.location.hash = "";
+// // Set window.location properties directly for tests
+// window.location.search = "?canvasId=test-canvas-id";
+// window.location.pathname = "/test";
+// window.location.hash = "";
 window.history.replaceState = jest.fn();

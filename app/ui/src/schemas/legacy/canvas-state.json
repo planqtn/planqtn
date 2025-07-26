@@ -64,6 +64,13 @@
               "type": "number"
             }
           },
+          "pushedLegs": {
+            "type": "array",
+            "description": "Array of pushed leg indices",
+            "items": {
+              "type": "number"
+            }
+          },
           "name": {
             "type": "string",
             "description": "Display name of the lego piece"

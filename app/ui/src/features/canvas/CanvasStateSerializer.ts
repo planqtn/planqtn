@@ -148,8 +148,8 @@ export class CanvasStateSerializer {
   }
 
   public async rehydrate(
-    canvasStateString: string, 
-    canvasRef?: RefObject<HTMLDivElement> 
+    canvasStateString: string,
+    canvasRef?: RefObject<HTMLDivElement>
   ): Promise<RehydratedCanvasState> {
     const result: RehydratedCanvasState = {
       droppedLegos: [],
@@ -160,7 +160,13 @@ export class CanvasStateSerializer {
       hideDanglingLegs: false,
       hideLegLabels: false,
       title: "Untitled canvas", // Initialize title
-      viewport: new Viewport(800, 600, 1, new LogicalPoint(0, 0), canvasRef || null),
+      viewport: new Viewport(
+        800,
+        600,
+        1,
+        new LogicalPoint(0, 0),
+        canvasRef || null
+      ),
       parityCheckMatrices: {},
       weightEnumerators: {},
       highlightedTensorNetworkLegs: {},
@@ -229,7 +235,7 @@ export class CanvasStateSerializer {
           rawCanvasStateObj.viewport?.logicalPanOffset?.x || 0,
           rawCanvasStateObj.viewport?.logicalPanOffset?.y || 0
         ),
-        canvasRef
+        canvasRef || null
       );
 
       result.viewport = decodedViewport;

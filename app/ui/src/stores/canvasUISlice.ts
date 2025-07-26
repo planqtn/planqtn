@@ -331,16 +331,18 @@ export const createCanvasUISlice: StateCreator<
 
     const clampedZoom = Math.max(0.04, Math.min(9, newZoomLevel));
 
-    const mouseWindowPosition = viewport.fromLogicalToWindow(mouseLogicalPosition);
+    const mouseWindowPosition =
+      viewport.fromLogicalToWindow(mouseLogicalPosition);
 
-    // mouseLogicalPosition should stay the same, thus we need to calculate the new pan offset 
+    // mouseLogicalPosition should stay the same, thus we need to calculate the new pan offset
     // base on a viewport with the new zoom level
     const newViewport = viewport.with({
       zoomLevel: clampedZoom
     });
-    const newMouseLogicalPosition = newViewport.fromWindowToLogical(mouseWindowPosition);
+    const newMouseLogicalPosition =
+      newViewport.fromWindowToLogical(mouseWindowPosition);
     const newPanOffset = mouseLogicalPosition.minus(newMouseLogicalPosition);
-    
+
     // Safety check for the new pan offset
     if (!isFinite(newPanOffset.x) || !isFinite(newPanOffset.y)) {
       console.warn("Invalid pan offset calculated in setZoomToMouse:", {
@@ -358,7 +360,6 @@ export const createCanvasUISlice: StateCreator<
           zoomLevel: clampedZoom,
           logicalPanOffset: newPanOffset.plus(viewport.logicalPanOffset)
         })
-
       );
     });
   },
