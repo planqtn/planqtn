@@ -23,8 +23,10 @@ interface TannerDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (matrix: number[][], logical_legs: number[]) => void;
+  defaultStabilizer?: string;
   title?: string;
   cssOnly?: boolean;
+  showLogicalLegs?: boolean;
 }
 
 export const TannerDialog: React.FC<TannerDialogProps> = ({
@@ -32,40 +34,15 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   onClose,
   onSubmit,
   title = "Create Tanner Network",
-  cssOnly = false
+  cssOnly = false,
+  showLogicalLegs = true,
+  defaultStabilizer = `XXXX\nZZZZ`
 }) => {
-  const defaultMspMatrix = `11110000
-00001100
-00000011`;
-
-  const defaultCssMatrix = `0011
-1100`;
-
-  const defaultStabilizer = `XXXX,ZZZZ`;
-
   const [matrixText, setMatrixText] = useState("");
   const [error, setError] = useState("");
   const [useStabilizer, setUseStabilizer] = useState(true);
   const [logical_legs, setLogicalLegs] = useState<number[]>([]);
   const [numLegs, setNumLegs] = useState(0);
-
-  // Set default value when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setError("");
-      setLogicalLegs([]);
-
-      if (!matrixText || matrixText === "") {
-        if (title === "Measurement State Prep Network") {
-          setMatrixText(useStabilizer ? defaultStabilizer : defaultMspMatrix);
-        } else if (cssOnly) {
-          setMatrixText(useStabilizer ? defaultStabilizer : defaultCssMatrix);
-        } else {
-          setMatrixText(useStabilizer ? defaultStabilizer : "1010\n0101\n1100");
-        }
-      }
-    }
-  }, [isOpen, title, cssOnly]);
 
   const toast = useToast();
 
@@ -329,15 +306,15 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
                 useStabilizer
                   ? defaultStabilizer
                   : cssOnly
-                    ? defaultCssMatrix
+                    ? "0011\n1100"
                     : title === "Measurement State Prep Network"
-                      ? defaultMspMatrix
+                      ? "11110000\n00001100\n00000011"
                       : "1010\n0101\n1100"
               }
               rows={10}
               fontFamily="monospace"
             />
-            {numLegs > 0 && (
+            {numLegs > 0 && showLogicalLegs && (
               <VStack align="start" width="100%">
                 <Text>Select logical legs:</Text>
                 <HStack wrap="wrap" spacing={2}>

@@ -182,6 +182,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onSubmit={handleCssTannerSubmit}
           title="Create CSS Tanner Network"
           cssOnly={true}
+          showLogicalLegs={false}
         />
       )}
 
@@ -192,6 +193,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onClose={closeTannerDialog}
           onSubmit={handleTannerSubmit}
           title="Create Tanner Network"
+          showLogicalLegs={false}
         />
       )}
 
@@ -202,6 +204,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onClose={closeMspDialog}
           onSubmit={handleMspSubmit}
           title="Measurement State Prep Network"
+          showLogicalLegs={false}
         />
       )}
 
@@ -217,6 +220,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onClose={closeCustomLegoDialog}
           onSubmit={handleCustomLegoSubmit}
           title="Create Custom Lego"
+          showLogicalLegs={true}
         />
       )}
 
