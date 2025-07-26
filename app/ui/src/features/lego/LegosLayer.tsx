@@ -3,7 +3,11 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useShallow } from "zustand/react/shallow";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
-import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
+import {
+  ResizeHandleType,
+  BoundingBox,
+  calculateBoundingBoxForLegos
+} from "../../stores/canvasUISlice";
 import { WindowPoint } from "../../types/coordinates";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 
@@ -106,25 +110,6 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
   );
 };
 
-function calculateBoundingBoxForLegos(
-  legos: DroppedLego[]
-): BoundingBox | null {
-  if (!legos || legos.length === 0) return null;
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  legos.forEach((lego: DroppedLego) => {
-    const size = lego.style?.size || 40;
-    const halfSize = size / 2;
-    minX = Math.min(minX, lego.logicalPosition.x - halfSize);
-    minY = Math.min(minY, lego.logicalPosition.y - halfSize);
-    maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
-    maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
-  });
-  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
-}
-
 export const LegosLayer: React.FC = () => {
   // Use the new coordinate system with virtualization
   const visibleLegoIds = useVisibleLegoIds();
@@ -189,31 +174,42 @@ export const LegosLayer: React.FC = () => {
     window.removeEventListener("mouseup", handleGlobalMouseUp);
   };
 
+  const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
+
   const renderedLegos = useMemo(() => {
+    // Get the IDs of legos being resized
+    const resizingLegoIds =
+      resizeProxyLegos?.map((lego) => lego.instance_id) || [];
+
     return (
       visibleLegoIds
         // .filter((legoInstanceId) => !isDraggedLego(legoInstanceId)) // Hide dragged legos
-        .map((legoInstanceId) => (
-          <g
-            key={legoInstanceId}
-            visibility={isDraggedLego(legoInstanceId) ? "hidden" : "visible"}
-          >
-            <DroppedLegoDisplay
+        .map((legoInstanceId) => {
+          // Hide legos that are being resized (they will be shown as proxy legos instead)
+          const isBeingResized = resizingLegoIds.includes(legoInstanceId);
+          const isDragged = isDraggedLego(legoInstanceId);
+
+          return (
+            <g
               key={legoInstanceId}
-              legoInstanceId={legoInstanceId}
-            />
-          </g>
-        ))
+              visibility={isDragged || isBeingResized ? "hidden" : "visible"}
+            >
+              <DroppedLegoDisplay
+                key={legoInstanceId}
+                legoInstanceId={legoInstanceId}
+              />
+            </g>
+          );
+        })
     );
   }, [
     visibleLegoIds,
     isDraggedLego,
     legoDragState.draggingStage === DraggingStage.DRAGGING,
     groupDragState,
-    viewport
+    viewport,
+    resizeProxyLegos
   ]);
-
-  const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
 
   const proxyBoundingBoxLogical = resizeProxyLegos
     ? calculateBoundingBoxForLegos(resizeProxyLegos)
@@ -247,8 +243,8 @@ export const LegosLayer: React.FC = () => {
         </g>
       )}
 
-      {/* Only render real legos if not resizing */}
-      {!resizeProxyLegos && renderedLegos}
+      {/* Render real legos (non-resizing ones are filtered in useMemo) */}
+      {renderedLegos}
     </>
   );
 };

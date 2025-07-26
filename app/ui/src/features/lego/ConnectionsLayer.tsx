@@ -26,6 +26,7 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
   const isDraggedLego = useCanvasStore((state) => state.isDraggedLego);
   const legoDragState = useCanvasStore((state) => state.legoDragState);
   const groupDragState = useCanvasStore((state) => state.groupDragState);
+  const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
 
   // Get zoom level for smart scaling
   const viewport = useCanvasStore((state) => state.viewport);
@@ -114,6 +115,17 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
 
       if (isDraggedLego(conn.from.legoId) || isDraggedLego(conn.to.legoId))
         return null;
+
+      // Don't display connections if they belong to legos that are being resized
+      if (resizeProxyLegos && resizeProxyLegos.length > 0) {
+        const resizeLegoIds = resizeProxyLegos.map((lego) => lego.instance_id);
+        if (
+          resizeLegoIds.includes(conn.from.legoId) ||
+          resizeLegoIds.includes(conn.to.legoId)
+        ) {
+          return null;
+        }
+      }
 
       // Create a stable key based on the connection's properties
       const [firstId, firstLeg, secondId, secondLeg] =
@@ -328,7 +340,8 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
     zoomLevel,
     viewport,
     legoDragState.draggingStage === DraggingStage.DRAGGING,
-    groupDragState
+    groupDragState,
+    resizeProxyLegos
   ]);
 
   // Memoize temporary drag line

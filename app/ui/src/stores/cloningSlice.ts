@@ -102,7 +102,7 @@ export const useCloningSlice: StateCreator<
     get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
       draggedLegoInstanceId: newLegos[0].instance_id,
-      startMouseWindowPoint: new WindowPoint(x, y),
+      startMouseWindowPoint: new WindowPoint(x, y).plus(cloneOffset),
       startLegoLogicalPoint: clickedLego.logicalPosition.plus(cloneOffset)
     });
 
