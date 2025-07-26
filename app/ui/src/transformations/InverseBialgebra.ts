@@ -145,12 +145,12 @@ export async function applyInverseBialgebra(
 
   // Set positions and IDs
   const avgZPos = {
-    x: _.meanBy(zLegos, "x"),
-    y: _.meanBy(zLegos, "y")
+    x: _.meanBy(zLegos, (l) => l.logicalPosition.x),
+    y: _.meanBy(zLegos, (l) => l.logicalPosition.y)
   };
   const avgXPos = {
-    x: _.meanBy(xLegos, "x"),
-    y: _.meanBy(xLegos, "y")
+    x: _.meanBy(xLegos, (l) => l.logicalPosition.x),
+    y: _.meanBy(xLegos, (l) => l.logicalPosition.y)
   };
 
   // Create new legos (with opposite types)
@@ -226,6 +226,9 @@ export async function applyInverseBialgebra(
         !selectedLegos.some((lego) => conn.containsLego(lego.instance_id))
     )
     .concat(newConnections);
+
+  console.log("updatedDroppedLegos", updatedDroppedLegos);
+  console.log("updatedConnections", updatedConnections);
 
   return {
     connections: updatedConnections,
