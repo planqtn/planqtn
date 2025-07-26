@@ -90,7 +90,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
 
   rehydrateCanvasState: async (jsonString: string) => {
     try {
-      const result = await get().canvasStateSerializer.rehydrate(jsonString);
+      const result = await get().canvasStateSerializer.rehydrate(jsonString, get().canvasRef || undefined);
       console.log("rehydration result", result);
       set({
         droppedLegos: result.droppedLegos,
