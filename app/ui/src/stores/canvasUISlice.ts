@@ -331,37 +331,21 @@ export const createCanvasUISlice: StateCreator<
 
     const clampedZoom = Math.max(0.04, Math.min(9, newZoomLevel));
 
-    // Calculate zoom factor
-    const zoomFactor = clampedZoom / viewport.zoomLevel;
+    const mouseWindowPosition = viewport.fromLogicalToWindow(mouseLogicalPosition);
 
-    // Safety check for zoom factor
-    if (!isFinite(zoomFactor) || zoomFactor <= 0) {
-      console.warn("Invalid zoom factor in setZoomToMouse:", {
-        clampedZoom,
-        currentZoom: viewport.zoomLevel,
-        zoomFactor
-      });
-      return;
-    }
-
-    // Calculate the mouse position relative to the origin, which is the top left corner of the viewport
-    const mouseOffsetFromOrigin = mouseLogicalPosition
-      .minus(viewport.logicalPanOffset)
-      .factor(-1);
-
-    // Calculate the change in screen position due to zoom change
-    const zoomDelta = mouseOffsetFromOrigin.factor(1 - zoomFactor);
-
-    // Adjust pan offset to compensate for the zoom delta
-    const newPanOffset = viewport.logicalPanOffset.plus(zoomDelta);
-
+    // mouseLogicalPosition should stay the same, thus we need to calculate the new pan offset 
+    // base on a viewport with the new zoom level
+    const newViewport = viewport.with({
+      zoomLevel: clampedZoom
+    });
+    const newMouseLogicalPosition = newViewport.fromWindowToLogical(mouseWindowPosition);
+    const newPanOffset = mouseLogicalPosition.minus(newMouseLogicalPosition);
+    
     // Safety check for the new pan offset
     if (!isFinite(newPanOffset.x) || !isFinite(newPanOffset.y)) {
       console.warn("Invalid pan offset calculated in setZoomToMouse:", {
         newPanOffset,
-        mouseOffsetFromCenter: mouseOffsetFromOrigin,
-        zoomDelta,
-        mouseCanvasPos: mouseLogicalPosition,
+        mouseWindowPosition,
         clampedZoom,
         viewport
       });
@@ -372,8 +356,9 @@ export const createCanvasUISlice: StateCreator<
       state.viewport = castDraft(
         state.viewport.with({
           zoomLevel: clampedZoom,
-          logicalPanOffset: newPanOffset
+          logicalPanOffset: newPanOffset.plus(viewport.logicalPanOffset)
         })
+
       );
     });
   },
