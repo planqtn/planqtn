@@ -9,7 +9,6 @@ import {
   calculateBoundingBoxForLegos
 } from "../../stores/canvasUISlice";
 import { WindowPoint } from "../../types/coordinates";
-import { DroppedLego } from "../../stores/droppedLegoStore";
 
 const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 

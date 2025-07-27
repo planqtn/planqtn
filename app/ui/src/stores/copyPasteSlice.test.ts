@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import { DroppedLego } from "./droppedLegoStore";
 import { Connection } from "./connectionStore";
@@ -14,7 +15,7 @@ const mockStore = {
 
 // Mock the validation function (same as in the slice)
 const validatePastedData = (
-  pastedData: any
+  pastedData: Record<string, any>
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
@@ -29,8 +30,8 @@ const validatePastedData = (
   }
 
   // Create a map of lego IDs for quick lookup
-  const legoMap = new Map<string, any>();
-  pastedData.legos.forEach((lego: any) => {
+  const legoMap = new Map<string, Record<string, any>>();
+  pastedData.legos.forEach((lego: Record<string, any>) => {
     if (!lego.instance_id) {
       errors.push("Lego missing instance_id");
       return;
@@ -109,7 +110,7 @@ const validatePastedData = (
 
     // Check if from leg exists (leg index is within the lego's number of legs)
     const fromLegoNumLegs = Math.trunc(
-      (fromLego.parity_check_matrix?.[0]?.length || 0) / 2
+      (fromLego?.parity_check_matrix?.[0]?.length || 0) / 2
     );
     if (conn.from.leg_index >= fromLegoNumLegs) {
       errors.push(
@@ -120,7 +121,7 @@ const validatePastedData = (
 
     // Check if to leg exists (leg index is within the lego's number of legs)
     const toLegoNumLegs = Math.trunc(
-      (toLego.parity_check_matrix?.[0]?.length || 0) / 2
+      (toLego?.parity_check_matrix?.[0]?.length || 0) / 2
     );
     if (conn.to.leg_index >= toLegoNumLegs) {
       errors.push(
@@ -385,10 +386,11 @@ describe("CopyPasteSlice", () => {
         )
       ];
 
-      mockClipboard.writeText.mockResolvedValue(undefined);
+      mockClipboard.writeText.mockResolvedValue(undefined as never);
 
       // This would be called from the slice
       const clipboardData = {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         legos: legos.map(({ style, ...rest }) => rest),
         connections: connections
       };
@@ -449,7 +451,7 @@ describe("CopyPasteSlice", () => {
       };
 
       mockClipboard.readText.mockResolvedValue(
-        JSON.stringify(validClipboardData)
+        JSON.stringify(validClipboardData) as never
       );
 
       // Mock the validation to return success
@@ -493,7 +495,7 @@ describe("CopyPasteSlice", () => {
       };
 
       mockClipboard.readText.mockResolvedValue(
-        JSON.stringify(invalidClipboardData)
+        JSON.stringify(invalidClipboardData) as never
       );
 
       // Mock the validation to return failure
@@ -515,7 +517,7 @@ describe("CopyPasteSlice", () => {
 
     it("should handle clipboard read errors", async () => {
       mockClipboard.readText.mockRejectedValue(
-        new Error("Clipboard access denied")
+        new Error("Clipboard access denied") as never
       );
 
       // This simulates what the paste function would return
@@ -529,7 +531,7 @@ describe("CopyPasteSlice", () => {
     });
 
     it("should handle JSON parse errors", async () => {
-      mockClipboard.readText.mockResolvedValue("invalid json");
+      mockClipboard.readText.mockResolvedValue("invalid json" as never);
 
       // This simulates what the paste function would return
       const result = {

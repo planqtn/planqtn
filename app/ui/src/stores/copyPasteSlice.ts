@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";

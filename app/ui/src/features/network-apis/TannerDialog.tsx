@@ -17,7 +17,7 @@ import {
   Checkbox,
   HStack
 } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface TannerDialogProps {
   isOpen: boolean;
