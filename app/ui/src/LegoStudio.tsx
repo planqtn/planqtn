@@ -188,7 +188,6 @@ const LegoStudioView: React.FC = () => {
   const title = useCanvasStore((state) => state.title);
   const setTitle = useCanvasStore((state) => state.setTitle);
 
-  const setZoomLevel = useCanvasStore((state) => state.setZoomLevel);
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
@@ -561,8 +560,6 @@ const LegoStudioView: React.FC = () => {
                 >
                   {/* Top-left three-dots menu */}
                   <CanvasMenu
-                    zoomLevel={zoomLevel}
-                    setZoomLevel={setZoomLevel}
                     isLegoPanelCollapsed={isLegoPanelCollapsed}
                     isTaskPanelCollapsed={isTaskPanelCollapsed}
                     setIsTaskPanelCollapsed={setIsTaskPanelCollapsed}
