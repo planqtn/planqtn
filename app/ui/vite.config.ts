@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
+import tailwindcss from "@tailwindcss/vite";
 
 // Custom plugin to handle docs routing and 404s
 function docsPlugin() {
@@ -77,7 +78,7 @@ function docsPlugin() {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
-    plugins: [docsPlugin(), react()],
+    plugins: [docsPlugin(), react(), tailwindcss()],
     preview: {
       allowedHosts: true
     },
@@ -90,6 +91,11 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true
     },
     // Serve docs folder as static assets
-    publicDir: "public"
+    publicDir: "public",
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src")
+      }
+    }
   };
 });
