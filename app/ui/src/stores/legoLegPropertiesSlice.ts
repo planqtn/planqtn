@@ -105,7 +105,7 @@ export const createLegoLegPropertiesSlice: StateCreator<
 
     if (!isConnected) return hideDanglingLegs;
     // else connected
-    if (!hideConnectedLegs) return true;
+    if (!hideConnectedLegs) return false;
 
     const thisLegStyle = lego.style!.legStyles[leg_index];
     const isThisHighlighted = thisLegStyle.is_highlighted;

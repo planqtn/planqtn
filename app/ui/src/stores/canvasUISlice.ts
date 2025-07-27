@@ -6,6 +6,25 @@ import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
 import { DroppedLego } from "./droppedLegoStore";
 
+export const calculateBoundingBoxForLegos = (
+  legos: DroppedLego[]
+): BoundingBox | null => {
+  if (!legos || legos.length === 0) return null;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  legos.forEach((lego: DroppedLego) => {
+    const size = lego.style?.size || 40;
+    const halfSize = size / 2;
+    minX = Math.min(minX, lego.logicalPosition.x - halfSize);
+    minY = Math.min(minY, lego.logicalPosition.y - halfSize);
+    maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
+    maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
+  });
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+};
+
 export interface SelectionBoxState {
   isSelecting: boolean;
   startX: number;
@@ -331,37 +350,23 @@ export const createCanvasUISlice: StateCreator<
 
     const clampedZoom = Math.max(0.04, Math.min(9, newZoomLevel));
 
-    // Calculate zoom factor
-    const zoomFactor = clampedZoom / viewport.zoomLevel;
+    const mouseWindowPosition =
+      viewport.fromLogicalToWindow(mouseLogicalPosition);
 
-    // Safety check for zoom factor
-    if (!isFinite(zoomFactor) || zoomFactor <= 0) {
-      console.warn("Invalid zoom factor in setZoomToMouse:", {
-        clampedZoom,
-        currentZoom: viewport.zoomLevel,
-        zoomFactor
-      });
-      return;
-    }
-
-    // Calculate the mouse position relative to the origin, which is the top left corner of the viewport
-    const mouseOffsetFromOrigin = mouseLogicalPosition
-      .minus(viewport.logicalPanOffset)
-      .factor(-1);
-
-    // Calculate the change in screen position due to zoom change
-    const zoomDelta = mouseOffsetFromOrigin.factor(1 - zoomFactor);
-
-    // Adjust pan offset to compensate for the zoom delta
-    const newPanOffset = viewport.logicalPanOffset.plus(zoomDelta);
+    // mouseLogicalPosition should stay the same, thus we need to calculate the new pan offset
+    // base on a viewport with the new zoom level
+    const newViewport = viewport.with({
+      zoomLevel: clampedZoom
+    });
+    const newMouseLogicalPosition =
+      newViewport.fromWindowToLogical(mouseWindowPosition);
+    const newPanOffset = mouseLogicalPosition.minus(newMouseLogicalPosition);
 
     // Safety check for the new pan offset
     if (!isFinite(newPanOffset.x) || !isFinite(newPanOffset.y)) {
       console.warn("Invalid pan offset calculated in setZoomToMouse:", {
         newPanOffset,
-        mouseOffsetFromCenter: mouseOffsetFromOrigin,
-        zoomDelta,
-        mouseCanvasPos: mouseLogicalPosition,
+        mouseWindowPosition,
         clampedZoom,
         viewport
       });
@@ -372,7 +377,7 @@ export const createCanvasUISlice: StateCreator<
       state.viewport = castDraft(
         state.viewport.with({
           zoomLevel: clampedZoom,
-          logicalPanOffset: newPanOffset
+          logicalPanOffset: newPanOffset.plus(viewport.logicalPanOffset)
         })
       );
     });
@@ -382,61 +387,15 @@ export const createCanvasUISlice: StateCreator<
     const { droppedLegos } = get();
 
     if (droppedLegos.length === 0) return null;
-
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    droppedLegos.forEach((lego) => {
-      const size = lego.style?.size || 40;
-      const halfSize = size / 2;
-
-      minX = Math.min(minX, lego.logicalPosition.x - halfSize);
-      minY = Math.min(minY, lego.logicalPosition.y - halfSize);
-      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize);
-      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize);
-    });
-
-    return {
-      minX,
-      minY,
-      maxX,
-      maxY,
-      width: maxX - minX,
-      height: maxY - minY
-    };
+    return calculateBoundingBoxForLegos(droppedLegos);
   },
 
   calculateTensorNetworkBoundingBox: () => {
     const { tensorNetwork } = get();
-    const padding = 2;
 
     if (!tensorNetwork || tensorNetwork.legos.length === 0) return null;
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    tensorNetwork.legos.forEach((lego) => {
-      const size = lego.style?.size || 40;
-      const halfSize = size / 2;
-
-      minX = Math.min(minX, lego.logicalPosition.x - halfSize - padding);
-      minY = Math.min(minY, lego.logicalPosition.y - halfSize - padding);
-      maxX = Math.max(maxX, lego.logicalPosition.x + halfSize + padding);
-      maxY = Math.max(maxY, lego.logicalPosition.y + halfSize + padding);
-    });
-
-    return {
-      minX,
-      minY,
-      maxX,
-      maxY,
-      width: maxX - minX,
-      height: maxY - minY
-    };
+    return calculateBoundingBoxForLegos(tensorNetwork.legos);
   },
 
   /**
@@ -531,7 +490,129 @@ export const createCanvasUISlice: StateCreator<
         });
         return;
       }
+      // Calculate which coordinates need to be preserved based on handleType
+      const { handleType } = resizeState;
+      let preservedCoordinates = {
+        minX: false,
+        minY: false,
+        maxX: false,
+        maxY: false
+      };
+
+      switch (handleType) {
+        case ResizeHandleType.TOP_LEFT:
+          preservedCoordinates = {
+            minX: false,
+            minY: false,
+            maxX: true,
+            maxY: true
+          };
+          break;
+        case ResizeHandleType.TOP:
+          preservedCoordinates = {
+            minX: true,
+            minY: false,
+            maxX: true,
+            maxY: true
+          };
+          break;
+        case ResizeHandleType.TOP_RIGHT:
+          preservedCoordinates = {
+            minX: true,
+            minY: false,
+            maxX: false,
+            maxY: true
+          };
+          break;
+        case ResizeHandleType.RIGHT:
+          preservedCoordinates = {
+            minX: true,
+            minY: true,
+            maxX: false,
+            maxY: true
+          };
+          break;
+        case ResizeHandleType.BOTTOM_RIGHT:
+          preservedCoordinates = {
+            minX: true,
+            minY: true,
+            maxX: false,
+            maxY: false
+          };
+          break;
+        case ResizeHandleType.BOTTOM:
+          preservedCoordinates = {
+            minX: true,
+            minY: true,
+            maxX: true,
+            maxY: false
+          };
+          break;
+        case ResizeHandleType.BOTTOM_LEFT:
+          preservedCoordinates = {
+            minX: false,
+            minY: true,
+            maxX: true,
+            maxY: false
+          };
+          break;
+        case ResizeHandleType.LEFT:
+          preservedCoordinates = {
+            minX: false,
+            minY: true,
+            maxX: true,
+            maxY: true
+          };
+          break;
+      }
+
+      // Find legos that define the bounding box coordinates BEFORE resizing
+      const minXLegos = tensorNetwork.legos.filter((lego) => {
+        const size = lego.style?.size || 40;
+        const halfSize = size / 2;
+        return (
+          Math.abs(
+            lego.logicalPosition.x - halfSize - currentBoundingBox.minX
+          ) < 0.001
+        );
+      });
+      const minYLegos = tensorNetwork.legos.filter((lego) => {
+        const size = lego.style?.size || 40;
+        const halfSize = size / 2;
+        return (
+          Math.abs(
+            lego.logicalPosition.y - halfSize - currentBoundingBox.minY
+          ) < 0.001
+        );
+      });
+      const maxXLegos = tensorNetwork.legos.filter((lego) => {
+        const size = lego.style?.size || 40;
+        const halfSize = size / 2;
+        return (
+          Math.abs(
+            lego.logicalPosition.x + halfSize - currentBoundingBox.maxX
+          ) < 0.001
+        );
+      });
+      const maxYLegos = tensorNetwork.legos.filter((lego) => {
+        const size = lego.style?.size || 40;
+        const halfSize = size / 2;
+        return (
+          Math.abs(
+            lego.logicalPosition.y + halfSize - currentBoundingBox.maxY
+          ) < 0.001
+        );
+      });
+
+      // Apply resizing logic, but preserve specific coordinates for coordinate-defining legos
       const proxyLegos = tensorNetwork.legos.map((lego) => {
+        // Check if this lego defines a preserved coordinate
+        const isMinXDefiner = minXLegos.includes(lego);
+        const isMinYDefiner = minYLegos.includes(lego);
+        const isMaxXDefiner = maxXLegos.includes(lego);
+        const isMaxYDefiner = maxYLegos.includes(lego);
+
+        // Calculate the new position using relative scaling
         const relativeX =
           (lego.logicalPosition.x - currentBoundingBox.minX) /
           currentBoundingBox.width;
@@ -540,8 +621,30 @@ export const createCanvasUISlice: StateCreator<
           currentBoundingBox.height;
         const newX = newBoundingBox.minX + relativeX * newBoundingBox.width;
         const newY = newBoundingBox.minY + relativeY * newBoundingBox.height;
-        return lego.with({ logicalPosition: new LogicalPoint(newX, newY) });
+
+        // Preserve specific coordinates based on which coordinates this lego defines
+        let finalX = newX;
+        let finalY = newY;
+
+        // If this lego defines a preserved X coordinate, keep its original X
+        if (
+          (preservedCoordinates.minX && isMinXDefiner) ||
+          (preservedCoordinates.maxX && isMaxXDefiner)
+        ) {
+          finalX = lego.logicalPosition.x;
+        }
+
+        // If this lego defines a preserved Y coordinate, keep its original Y
+        if (
+          (preservedCoordinates.minY && isMinYDefiner) ||
+          (preservedCoordinates.maxY && isMaxYDefiner)
+        ) {
+          finalY = lego.logicalPosition.y;
+        }
+
+        return lego.with({ logicalPosition: new LogicalPoint(finalX, finalY) });
       });
+
       set((state) => {
         state.resizeProxyLegos = proxyLegos;
       });
@@ -628,11 +731,7 @@ export const createCanvasUISlice: StateCreator<
         break;
     }
 
-    // Ensure minimum size
-    const minSize = 50;
-    if (newBoundingBox.width < minSize || newBoundingBox.height < minSize) {
-      return null;
-    }
+    console.log("newBoundingBox", newBoundingBox);
 
     return {
       ...newBoundingBox,

@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
-import { LogicalPoint } from "../../types/coordinates";
+import { WindowPoint } from "../../types/coordinates";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -25,7 +24,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   onPullOutSameColoredLeg,
   onToast
 }) => {
-  const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const mousePositionRef = useRef<WindowPoint | null>(null);
   const {
     droppedLegos,
     addDroppedLegos,
@@ -33,13 +32,14 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     connections,
     addConnections,
     removeConnections,
-    newInstanceId,
     addOperation,
     undo,
     redo,
     tensorNetwork,
     setTensorNetwork,
-    setError
+    setError,
+    copyToClipboard,
+    pasteFromClipboard
   } = useCanvasStore();
 
   useEffect(() => {
@@ -58,28 +58,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
         e.preventDefault();
         if (tensorNetwork && tensorNetwork.legos.length > 0) {
-          const selectedLegos = tensorNetwork.legos;
-          const selectedLegoIds = new Set(
-            selectedLegos.map((l: DroppedLego) => l.instance_id)
-          );
-
-          const selectedConnections = connections.filter(
-            (conn) =>
-              selectedLegoIds.has(conn.from.legoId) &&
-              selectedLegoIds.has(conn.to.legoId)
-          );
-
-          // Remove 'style' property from each lego before copying
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const plainLegos = selectedLegos.map(({ style, ...rest }) => rest);
-
-          const clipboardData = {
-            legos: plainLegos,
-            connections: selectedConnections
-          };
-
           try {
-            await navigator.clipboard.writeText(JSON.stringify(clipboardData));
+            await copyToClipboard(tensorNetwork.legos, connections);
             onToast({
               title: "Copied to clipboard",
               description: "Network data has been copied",
@@ -100,110 +80,24 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
         e.preventDefault();
-        try {
-          const clipText = await navigator.clipboard.readText();
-          const pastedData = JSON.parse(clipText);
 
-          if (
-            pastedData.legos &&
-            Array.isArray(pastedData.legos) &&
-            pastedData.legos.length > 0
-          ) {
-            // Get canvas element and its dimensions
-            const canvasPanel = document.querySelector("#main-panel");
-            if (!canvasPanel) return;
+        const result = await pasteFromClipboard(
+          mousePositionRef.current,
+          onToast
+        );
 
-            const canvasRect = canvasPanel.getBoundingClientRect();
+        if (result.success && result.legos && result.connections) {
+          // Update state
+          addDroppedLegos(result.legos);
+          addConnections(result.connections);
 
-            // Determine drop position
-            let dropX: number, dropY: number;
-
-            if (mousePositionRef.current) {
-              // Use current mouse position
-              dropX = mousePositionRef.current.x;
-              dropY = mousePositionRef.current.y;
-            } else {
-              // Use random position around canvas center
-              const centerX = canvasRect.width / 2;
-              const centerY = canvasRect.height / 2;
-              const randomOffset = 50; // pixels
-
-              dropX = centerX + (Math.random() * 2 - 1) * randomOffset;
-              dropY = centerY + (Math.random() * 2 - 1) * randomOffset;
+          // Add to history
+          addOperation({
+            type: "add",
+            data: {
+              legosToAdd: result.legos,
+              connectionsToAdd: result.connections
             }
-
-            // Create a mapping from old instance IDs to new ones
-            const startingId = parseInt(newInstanceId());
-            const instanceIdMap = new Map<string, string>();
-
-            // Create new legos with new instance IDs
-            const newLegos = pastedData.legos.map(
-              (l: DroppedLego, idx: number) => {
-                const newId = String(startingId + idx);
-                instanceIdMap.set(l.instance_id, newId);
-                // Style will be recalculated in DroppedLego constructor
-                return new DroppedLego(
-                  l,
-                  new LogicalPoint(
-                    l.logicalPosition.x +
-                      dropX -
-                      pastedData.legos[0].logicalPosition.x,
-                    l.logicalPosition.y +
-                      dropY -
-                      pastedData.legos[0].logicalPosition.y
-                  ),
-                  newId
-                );
-              }
-            );
-
-            // Create new connections with updated instance IDs
-            const newConnections = (pastedData.connections || []).map(
-              (conn: Connection) => {
-                return new Connection(
-                  {
-                    legoId: instanceIdMap.get(conn.from.legoId)!,
-                    leg_index: conn.from.leg_index
-                  },
-                  {
-                    legoId: instanceIdMap.get(conn.to.legoId)!,
-                    leg_index: conn.to.leg_index
-                  }
-                );
-              }
-            );
-
-            // Update state
-            addDroppedLegos(newLegos);
-            addConnections(newConnections);
-
-            // Add to history
-            addOperation({
-              type: "add",
-              data: {
-                legosToAdd: newLegos,
-                connectionsToAdd: newConnections
-              }
-            });
-
-            onToast({
-              title: "Paste successful",
-              description: `Pasted ${newLegos.length} lego${
-                newLegos.length > 1 ? "s" : ""
-              }`,
-              status: "success",
-              duration: 2000,
-              isClosable: true
-            });
-          }
-        } catch (err) {
-          console.error("Failed to paste from clipboard:", err);
-          onToast({
-            title: "Paste failed",
-            description: "Invalid network data in clipboard (" + err + ")",
-            status: "error",
-            duration: 2000,
-            isClosable: true
           });
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
@@ -324,10 +218,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.clientY <= canvasRect.bottom;
 
       if (isOverCanvas) {
-        mousePositionRef.current = {
-          x: e.clientX - canvasRect.left,
-          y: e.clientY - canvasRect.top
-        };
+        mousePositionRef.current = WindowPoint.fromMouseEvent(e);
       } else {
         mousePositionRef.current = null;
       }

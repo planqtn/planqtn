@@ -1428,106 +1428,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       }
                     />
                   )}
-                  {tensorNetwork.signature &&
-                  listWeightEnumerators(tensorNetwork.signature).length > 0 ? (
-                    <VStack align="stretch" spacing={3}>
-                      <Heading size="sm">Weight Enumerator Tasks</Heading>
-                      {listWeightEnumerators(tensorNetwork.signature).map(
-                        (enumerator, index) => {
-                          const taskId = enumerator.taskId;
-                          if (!taskId) return null;
-
-                          const task = tasks.get(taskId) || null;
-                          const taskIterationStatus =
-                            iterationStatuses.get(taskId) || [];
-                          const isWaitingForUpdate =
-                            waitingForTaskUpdates.get(taskId) || false;
-                          const taskChannel =
-                            taskUpdatesChannels.get(taskId) || null;
-
-                          return (
-                            <Box
-                              key={taskId}
-                              p={3}
-                              borderWidth={1}
-                              borderRadius="md"
-                              bg={bgColor}
-                            >
-                              <VStack align="stretch" spacing={2}>
-                                <Text fontSize="sm" fontWeight="medium">
-                                  Task #{index + 1}
-                                  {enumerator.truncateLength &&
-                                    ` (truncate: ${enumerator.truncateLength})`}
-                                  {enumerator.openLegs.length > 0 &&
-                                    ` (${enumerator.openLegs.length} open legs)`}
-                                </Text>
-
-                                {enumerator.polynomial ? (
-                                  <VStack align="stretch" spacing={2}>
-                                    {/* Display the polynomial results */}
-                                    <VStack align="stretch" spacing={1}>
-                                      <Text fontSize="sm" fontWeight="medium">
-                                        Stabilizer Weight Enumerator Polynomial
-                                      </Text>
-                                      <Box
-                                        p={2}
-                                        borderWidth={1}
-                                        borderRadius="md"
-                                        bg="gray.50"
-                                        maxH="200px"
-                                        overflowY="auto"
-                                      >
-                                        <Text fontFamily="mono" fontSize="xs">
-                                          {enumerator.polynomial}
-                                        </Text>
-                                      </Box>
-
-                                      {enumerator.normalizerPolynomial && (
-                                        <>
-                                          <Text
-                                            fontSize="sm"
-                                            fontWeight="medium"
-                                          >
-                                            Normalizer Weight Enumerator
-                                            Polynomial
-                                          </Text>
-                                          <Box
-                                            p={2}
-                                            borderWidth={1}
-                                            borderRadius="md"
-                                            bg="gray.50"
-                                            maxH="200px"
-                                            overflowY="auto"
-                                          >
-                                            <Text
-                                              fontFamily="mono"
-                                              fontSize="xs"
-                                            >
-                                              {enumerator.normalizerPolynomial}
-                                            </Text>
-                                          </Box>
-                                        </>
-                                      )}
-                                    </VStack>
-                                  </VStack>
-                                ) : (
-                                  <TaskDetailsDisplay
-                                    task={task}
-                                    taskId={taskId}
-                                    iterationStatus={taskIterationStatus}
-                                    waitingForTaskUpdate={isWaitingForUpdate}
-                                    taskUpdatesChannel={taskChannel}
-                                    onCancelTask={handleCancelTask}
-                                    onViewLogs={fetchTaskLogs}
-                                  />
-                                )}
-                              </VStack>
-                            </Box>
-                          );
-                        }
-                      )}
-                    </VStack>
-                  ) : null}
                 </VStack>
               </VStack>
             </Box>
@@ -1542,6 +1442,101 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
             </Text>
           </>
         )}
+        <>
+          {tensorNetwork &&
+          tensorNetwork.signature &&
+          listWeightEnumerators(tensorNetwork.signature).length > 0 ? (
+            <VStack align="stretch" spacing={3}>
+              <Heading size="sm">Weight Enumerator Tasks</Heading>
+              {listWeightEnumerators(tensorNetwork.signature).map(
+                (enumerator, index) => {
+                  const taskId = enumerator.taskId;
+                  if (!taskId) return null;
+
+                  const task = tasks.get(taskId) || null;
+                  const taskIterationStatus =
+                    iterationStatuses.get(taskId) || [];
+                  const isWaitingForUpdate =
+                    waitingForTaskUpdates.get(taskId) || false;
+                  const taskChannel = taskUpdatesChannels.get(taskId) || null;
+
+                  return (
+                    <Box
+                      key={taskId}
+                      p={3}
+                      borderWidth={1}
+                      borderRadius="md"
+                      bg={bgColor}
+                    >
+                      <VStack align="stretch" spacing={2}>
+                        <Text fontSize="sm" fontWeight="medium">
+                          Task #{index + 1}
+                          {enumerator.truncateLength &&
+                            ` (truncate: ${enumerator.truncateLength})`}
+                          {enumerator.openLegs.length > 0 &&
+                            ` (${enumerator.openLegs.length} open legs)`}
+                        </Text>
+
+                        {enumerator.polynomial ? (
+                          <VStack align="stretch" spacing={2}>
+                            {/* Display the polynomial results */}
+                            <VStack align="stretch" spacing={1}>
+                              <Text fontSize="sm" fontWeight="medium">
+                                Stabilizer Weight Enumerator Polynomial
+                              </Text>
+                              <Box
+                                p={2}
+                                borderWidth={1}
+                                borderRadius="md"
+                                bg="gray.50"
+                                maxH="200px"
+                                overflowY="auto"
+                              >
+                                <Text fontFamily="mono" fontSize="xs">
+                                  {enumerator.polynomial}
+                                </Text>
+                              </Box>
+
+                              {enumerator.normalizerPolynomial && (
+                                <>
+                                  <Text fontSize="sm" fontWeight="medium">
+                                    Normalizer Weight Enumerator Polynomial
+                                  </Text>
+                                  <Box
+                                    p={2}
+                                    borderWidth={1}
+                                    borderRadius="md"
+                                    bg="gray.50"
+                                    maxH="200px"
+                                    overflowY="auto"
+                                  >
+                                    <Text fontFamily="mono" fontSize="xs">
+                                      {enumerator.normalizerPolynomial}
+                                    </Text>
+                                  </Box>
+                                </>
+                              )}
+                            </VStack>
+                          </VStack>
+                        ) : (
+                          <TaskDetailsDisplay
+                            task={task}
+                            taskId={taskId}
+                            iterationStatus={taskIterationStatus}
+                            waitingForTaskUpdate={isWaitingForUpdate}
+                            taskUpdatesChannel={taskChannel}
+                            onCancelTask={handleCancelTask}
+                            onViewLogs={fetchTaskLogs}
+                          />
+                        )}
+                      </VStack>
+                    </Box>
+                  );
+                }
+              )}
+            </VStack>
+          ) : null}
+        </>
       </VStack>
       {showLegPartitionDialog && (
         <LegPartitionDialog

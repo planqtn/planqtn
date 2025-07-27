@@ -45,8 +45,10 @@ export const createEncodedCanvasStateSlice: StateCreator<
   hideLegLabels: false,
   decodeCanvasState: async (encoded: string) => {
     try {
+      console.log("decoding canvas state", encoded);
       // Try to decode as compressed format first (new format)
       const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
+      console.log("decompressed", decompressed);
       if (decompressed) {
         try {
           // Try to parse as compressed array format
@@ -66,6 +68,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
             return;
           }
         } catch {
+          console.log("JSON parsing failed, treating as raw string");
           // If JSON parsing fails, treat as raw string
           get().rehydrateCanvasState(decompressed);
           return;
@@ -79,8 +82,10 @@ export const createEncodedCanvasStateSlice: StateCreator<
     }
 
     try {
+      console.log("trying legacy base64 format");
       // Fall back to legacy base64 format for backward compatibility
       const decoded = atob(encoded);
+      console.log("decoded", decoded);
       get().rehydrateCanvasState(decoded);
     } catch (error) {
       console.error("Failed to decode canvas state:", error);
@@ -90,7 +95,10 @@ export const createEncodedCanvasStateSlice: StateCreator<
 
   rehydrateCanvasState: async (jsonString: string) => {
     try {
-      const result = await get().canvasStateSerializer.rehydrate(jsonString);
+      const result = await get().canvasStateSerializer.rehydrate(
+        jsonString,
+        get().canvasRef || undefined
+      );
       console.log("rehydration result", result);
       set({
         droppedLegos: result.droppedLegos,
