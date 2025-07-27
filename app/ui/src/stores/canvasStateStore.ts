@@ -24,6 +24,7 @@ import {
 } from "./droppedLegoEventsSlice";
 import { GroupDragStateSlice, useGroupDragStateSlice } from "./groupDragState";
 import { CloningSlice, useCloningSlice } from "./cloningSlice";
+import { CopyPasteSlice, useCopyPasteSlice } from "./copyPasteSlice";
 import {
   DroppedLegoLegEventsSlice,
   useLegoLegEventsSlice
@@ -71,6 +72,7 @@ export interface CanvasStore
     DroppedLegoClickHandlerSlice,
     GroupDragStateSlice,
     CloningSlice,
+    CopyPasteSlice,
     DroppedLegoLegEventsSlice,
     LegDragStateSlice,
     LegoLegPropertiesSlice,
@@ -135,6 +137,7 @@ export const useCanvasStore = create<CanvasStore>()(
       ...useDroppedLegoClickHandlerSlice(...a),
       ...useGroupDragStateSlice(...a),
       ...useCloningSlice(...a),
+      ...useCopyPasteSlice(...a),
       ...useLegoLegEventsSlice(...a),
       ...useLegDragStateStore(...a),
       ...createLegoLegPropertiesSlice(...a),
