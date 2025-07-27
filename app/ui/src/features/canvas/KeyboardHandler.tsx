@@ -4,7 +4,8 @@ import { TensorNetwork } from "../../lib/TensorNetwork";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
-import { LogicalPoint } from "../../types/coordinates";
+import { LogicalPoint, WindowPoint } from "../../types/coordinates";
+import { Viewport } from "../../stores/canvasUISlice";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -25,7 +26,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
   onPullOutSameColoredLeg,
   onToast
 }) => {
-  const mousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const mousePositionRef = useRef<WindowPoint | null>(null);
   const {
     droppedLegos,
     addDroppedLegos,
@@ -39,7 +40,8 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     redo,
     tensorNetwork,
     setTensorNetwork,
-    setError
+    setError,
+    viewport
   } = useCanvasStore();
 
   useEffect(() => {
@@ -116,20 +118,23 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
             const canvasRect = canvasPanel.getBoundingClientRect();
 
             // Determine drop position
-            let dropX: number, dropY: number;
+            let dropPoint: LogicalPoint;
 
             if (mousePositionRef.current) {
               // Use current mouse position
-              dropX = mousePositionRef.current.x;
-              dropY = mousePositionRef.current.y;
+              dropPoint = viewport.fromWindowToLogical(
+                mousePositionRef.current
+              );
             } else {
               // Use random position around canvas center
               const centerX = canvasRect.width / 2;
               const centerY = canvasRect.height / 2;
               const randomOffset = 50; // pixels
 
-              dropX = centerX + (Math.random() * 2 - 1) * randomOffset;
-              dropY = centerY + (Math.random() * 2 - 1) * randomOffset;
+              dropPoint = new LogicalPoint(
+                centerX + (Math.random() * 2 - 1) * randomOffset,
+                centerY + (Math.random() * 2 - 1) * randomOffset
+              );
             }
 
             // Create a mapping from old instance IDs to new ones
@@ -146,10 +151,10 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
                   l,
                   new LogicalPoint(
                     l.logicalPosition.x +
-                      dropX -
+                      dropPoint.x -
                       pastedData.legos[0].logicalPosition.x,
                     l.logicalPosition.y +
-                      dropY -
+                      dropPoint.y -
                       pastedData.legos[0].logicalPosition.y
                   ),
                   newId
@@ -324,10 +329,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.clientY <= canvasRect.bottom;
 
       if (isOverCanvas) {
-        mousePositionRef.current = {
-          x: e.clientX - canvasRect.left,
-          y: e.clientY - canvasRect.top
-        };
+        mousePositionRef.current = WindowPoint.fromMouseEvent(e);
       } else {
         mousePositionRef.current = null;
       }
