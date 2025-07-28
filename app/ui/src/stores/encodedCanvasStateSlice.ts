@@ -119,6 +119,7 @@ export const createEncodedCanvasStateSlice: StateCreator<
         viewport: result.viewport,
         parityCheckMatrices: result.parityCheckMatrices,
         weightEnumerators: result.weightEnumerators,
+        cachedTensorNetworks: result.cachedTensorNetworks,
         highlightedTensorNetworkLegs: result.highlightedTensorNetworkLegs,
         selectedTensorNetworkParityCheckMatrixRows:
           result.selectedTensorNetworkParityCheckMatrixRows,

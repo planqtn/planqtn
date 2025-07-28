@@ -7,6 +7,19 @@ import {
   WeightEnumerator
 } from "../../stores/tensorNetworkStore";
 
+export interface SerializedCachedTensorNetwork {
+  isActive: boolean;
+  tensorNetwork: {
+    legos: Array<SerializedLego>;
+    connections: Array<Connection>;
+    signature: string;
+  };
+  svg: string;
+  name: string;
+  isLocked: boolean;
+  lastUpdated: Date;
+}
+
 export interface SerializedLego {
   id: string;
   name?: string;
@@ -39,6 +52,7 @@ export interface SerializableCanvasState {
   viewport: Viewport;
   parityCheckMatrices: { key: string; value: ParityCheckMatrix }[];
   weightEnumerators: { key: string; value: WeightEnumerator[] }[];
+  cachedTensorNetworks: { key: string; value: SerializedCachedTensorNetwork }[];
   highlightedTensorNetworkLegs: {
     key: string;
     value: {

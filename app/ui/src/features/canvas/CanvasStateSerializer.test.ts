@@ -1389,5 +1389,80 @@ describe("CanvasStateSerializer", () => {
       expect(rehydrated.droppedLegos[0].instance_id).toBe("lego-1");
       expect(rehydrated.connections).toHaveLength(1);
     });
+
+    it("should serialize and deserialize cachedTensorNetworks correctly", async () => {
+      const mockCachedTensorNetwork = {
+        isActive: true,
+        tensorNetwork: {
+          legos: [
+            {
+              instance_id: "lego-1",
+              type_id: "h",
+              logicalPosition: { x: 100, y: 200 }
+            }
+          ],
+          connections: [
+            {
+              from: { legoId: "lego-1", leg_index: 0 },
+              to: { legoId: "lego-2", leg_index: 1 }
+            }
+          ],
+          signature: "test-signature-123"
+        },
+        svg: "<svg><rect width='100%' height='100%' fill='blue'/></svg>",
+        name: "Test Network",
+        isLocked: false,
+        lastUpdated: new Date("2023-01-01T00:00:00.000Z")
+      };
+
+      const mockStore = createMockCanvasStore({
+        cachedTensorNetworks: {
+          "test-signature-123": mockCachedTensorNetwork
+        }
+      });
+
+      // Test serialization
+      const serialized = serializer.toSerializableCanvasState(mockStore);
+      expect(serialized.cachedTensorNetworks).toHaveLength(1);
+      expect(serialized.cachedTensorNetworks[0].key).toBe("test-signature-123");
+      expect(serialized.cachedTensorNetworks[0].value.isActive).toBe(true);
+      expect(serialized.cachedTensorNetworks[0].value.name).toBe(
+        "Test Network"
+      );
+      expect(
+        serialized.cachedTensorNetworks[0].value.tensorNetwork.signature
+      ).toBe("test-signature-123");
+
+      // Test deserialization
+      const rehydrated = await serializer.rehydrate(JSON.stringify(serialized));
+      expect(rehydrated.cachedTensorNetworks).toHaveProperty(
+        "test-signature-123"
+      );
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].isActive
+      ).toBe(true);
+      expect(rehydrated.cachedTensorNetworks["test-signature-123"].name).toBe(
+        "Test Network"
+      );
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].tensorNetwork
+          .signature
+      ).toBe("test-signature-123");
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].lastUpdated
+      ).toBeInstanceOf(Date);
+    });
+
+    it("should handle empty cachedTensorNetworks", async () => {
+      const mockStore = createMockCanvasStore({
+        cachedTensorNetworks: {}
+      });
+
+      const serialized = serializer.toSerializableCanvasState(mockStore);
+      expect(serialized.cachedTensorNetworks).toHaveLength(0);
+
+      const rehydrated = await serializer.rehydrate(JSON.stringify(serialized));
+      expect(rehydrated.cachedTensorNetworks).toEqual({});
+    });
   });
 });
