@@ -34,7 +34,7 @@ import { checkSupabaseStatus } from "./lib/errors.ts";
 import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
 import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/FloatingBuildingBlocksPanel.tsx";
 import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
-import FloatingNavigatorPanel from "./features/navigator/FloatingNavigatorPanel.tsx";
+import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel.tsx";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
@@ -160,11 +160,11 @@ const LegoStudioView: React.FC = () => {
   const setIsDetailsPanelOpen = useCanvasStore(
     (state) => state.setIsDetailsPanelOpen
   );
-  const isNavigatorPanelOpen = useCanvasStore(
-    (state) => state.isNavigatorPanelOpen
+  const isCanvasesPanelOpen = useCanvasStore(
+    (state) => state.isCanvasesPanelOpen
   );
-  const setIsNavigatorPanelOpen = useCanvasStore(
-    (state) => state.setIsNavigatorPanelOpen
+  const setIsCanvasesPanelOpen = useCanvasStore(
+    (state) => state.setIsCanvasesPanelOpen
   );
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
@@ -482,8 +482,8 @@ const LegoStudioView: React.FC = () => {
                       }
                       isDetailsPanelOpen={isDetailsPanelOpen}
                       setIsDetailsPanelOpen={setIsDetailsPanelOpen}
-                      isNavigatorPanelOpen={isNavigatorPanelOpen}
-                      setIsNavigatorPanelOpen={setIsNavigatorPanelOpen}
+                      isCanvasesPanelOpen={isCanvasesPanelOpen}
+                      setIsCanvasesPanelOpen={setIsCanvasesPanelOpen}
                       handleClearAll={handleClearAll}
                       handleExportPythonCode={handleExportPythonCode}
                       handleExportSvg={handleExportSvg}
@@ -656,9 +656,9 @@ const LegoStudioView: React.FC = () => {
           isOpen={isDetailsPanelOpen}
         />
 
-        <FloatingNavigatorPanel
-          onClose={() => setIsNavigatorPanelOpen(false)}
-          isOpen={isNavigatorPanelOpen}
+        <FloatingCanvasesPanel
+          onClose={() => setIsCanvasesPanelOpen(false)}
+          isOpen={isCanvasesPanelOpen}
         />
 
         {isDynamicLegoDialogOpen && (

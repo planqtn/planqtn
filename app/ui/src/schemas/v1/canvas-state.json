@@ -215,7 +215,7 @@
       "description": "Whether the details panel is open",
       "default": false
     },
-    "isNavigatorPanelOpen": {
+    "isCanvasesPanelOpen": {
       "type": "boolean",
       "description": "Whether the navigator panel is open",
       "default": false
@@ -300,7 +300,7 @@
       "required": ["position", "size"],
       "additionalProperties": false
     },
-    "navigatorPanelLayout": {
+    "canvasesPanelLayout": {
       "type": "object",
       "description": "Layout configuration for the navigator panel",
       "properties": {

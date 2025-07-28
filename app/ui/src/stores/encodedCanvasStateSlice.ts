@@ -125,11 +125,11 @@ export const createEncodedCanvasStateSlice: StateCreator<
         // Floating panel state
         isBuildingBlocksPanelOpen: result.isBuildingBlocksPanelOpen,
         isDetailsPanelOpen: result.isDetailsPanelOpen,
-        isNavigatorPanelOpen: result.isNavigatorPanelOpen,
+        isCanvasesPanelOpen: result.isCanvasesPanelOpen,
         // Floating panel layout state
         buildingBlocksPanelLayout: result.buildingBlocksPanelLayout,
         detailsPanelLayout: result.detailsPanelLayout,
-        navigatorPanelLayout: result.navigatorPanelLayout
+        canvasesPanelLayout: result.canvasesPanelLayout
       });
 
       // Initialize leg hide states for all legos

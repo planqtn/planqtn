@@ -31,10 +31,10 @@ export type CompressedCanvasState = [
   [string, WeightEnumerator[]][]?, // 7: weightEnumerators
   [string, { leg: TensorNetworkLeg; operator: PauliOperator }[]][]?, // 8: highlightedTensorNetworkLegs
   [string, number[]][]?, // 9: selectedTensorNetworkParityCheckMatrixRows
-  number?, // 10: panel flags packed as bits (isBuildingBlocksPanelOpen, isDetailsPanelOpen, isNavigatorPanelOpen)
+  number?, // 10: panel flags packed as bits (isBuildingBlocksPanelOpen, isDetailsPanelOpen, isCanvasesPanelOpen)
   [number, number, number, number]?, // 11: buildingBlocksPanelLayout [x, y, width, height]
   [number, number, number, number]?, // 12: detailsPanelLayout [x, y, width, height]
-  [number, number, number, number]? // 13: navigatorPanelLayout [x, y, width, height]
+  [number, number, number, number]? // 13: canvasesPanelLayout [x, y, width, height]
 ];
 
 export type CompressedPiece = [
@@ -90,7 +90,7 @@ export interface RehydratedCanvasState {
   // Floating panel state
   isBuildingBlocksPanelOpen: boolean;
   isDetailsPanelOpen: boolean;
-  isNavigatorPanelOpen: boolean;
+  isCanvasesPanelOpen: boolean;
   // Floating panel layout state
   buildingBlocksPanelLayout: {
     position: { x: number; y: number };
@@ -100,7 +100,7 @@ export interface RehydratedCanvasState {
     position: { x: number; y: number };
     size: { width: number; height: number };
   };
-  navigatorPanelLayout: {
+  canvasesPanelLayout: {
     position: { x: number; y: number };
     size: { width: number; height: number };
   };
@@ -166,11 +166,11 @@ export class CanvasStateSerializer {
       // Floating panel state
       isBuildingBlocksPanelOpen: store.isBuildingBlocksPanelOpen,
       isDetailsPanelOpen: store.isDetailsPanelOpen,
-      isNavigatorPanelOpen: store.isNavigatorPanelOpen,
+      isCanvasesPanelOpen: store.isCanvasesPanelOpen,
       // Floating panel layout state
       buildingBlocksPanelLayout: store.buildingBlocksPanelLayout,
       detailsPanelLayout: store.detailsPanelLayout,
-      navigatorPanelLayout: store.navigatorPanelLayout
+      canvasesPanelLayout: store.canvasesPanelLayout
     };
 
     return state;
@@ -203,7 +203,7 @@ export class CanvasStateSerializer {
       // Floating panel state
       isBuildingBlocksPanelOpen: false,
       isDetailsPanelOpen: false,
-      isNavigatorPanelOpen: false,
+      isCanvasesPanelOpen: false,
       // Floating panel layout state
       buildingBlocksPanelLayout: {
         position: { x: 50, y: 50 },
@@ -213,7 +213,7 @@ export class CanvasStateSerializer {
         position: { x: window.innerWidth - 400, y: 50 },
         size: { width: 350, height: 600 }
       },
-      navigatorPanelLayout: {
+      canvasesPanelLayout: {
         position: { x: 100, y: 100 },
         size: { width: 300, height: 500 }
       }
@@ -337,8 +337,8 @@ export class CanvasStateSerializer {
       result.isBuildingBlocksPanelOpen =
         rawCanvasStateObj.isBuildingBlocksPanelOpen || false;
       result.isDetailsPanelOpen = rawCanvasStateObj.isDetailsPanelOpen || false;
-      result.isNavigatorPanelOpen =
-        rawCanvasStateObj.isNavigatorPanelOpen || false;
+      result.isCanvasesPanelOpen =
+        rawCanvasStateObj.isCanvasesPanelOpen || false;
 
       // Floating panel layout state
       result.buildingBlocksPanelLayout =
@@ -350,7 +350,7 @@ export class CanvasStateSerializer {
         position: { x: window.innerWidth - 400, y: 50 },
         size: { width: 350, height: 600 }
       };
-      result.navigatorPanelLayout = rawCanvasStateObj.navigatorPanelLayout || {
+      result.canvasesPanelLayout = rawCanvasStateObj.canvasesPanelLayout || {
         position: { x: 100, y: 100 },
         size: { width: 300, height: 500 }
       };
@@ -477,12 +477,12 @@ export class CanvasStateSerializer {
     const packPanelFlags = (
       isBuildingBlocksPanelOpen: boolean,
       isDetailsPanelOpen: boolean,
-      isNavigatorPanelOpen: boolean
+      isCanvasesPanelOpen: boolean
     ): number => {
       return (
         (isBuildingBlocksPanelOpen ? 1 : 0) |
         (isDetailsPanelOpen ? 2 : 0) |
-        (isNavigatorPanelOpen ? 4 : 0)
+        (isCanvasesPanelOpen ? 4 : 0)
       );
     };
 
@@ -584,7 +584,7 @@ export class CanvasStateSerializer {
     const panelFlags = packPanelFlags(
       store.isBuildingBlocksPanelOpen,
       store.isDetailsPanelOpen,
-      store.isNavigatorPanelOpen
+      store.isCanvasesPanelOpen
     );
     if (panelFlags > 0) {
       compressed[10] = panelFlags;
@@ -609,8 +609,8 @@ export class CanvasStateSerializer {
         Math.round(layout.size.height)
       ];
     }
-    if (store.isNavigatorPanelOpen) {
-      const layout = store.navigatorPanelLayout;
+    if (store.isCanvasesPanelOpen) {
+      const layout = store.canvasesPanelLayout;
       compressed[13] = [
         Math.round(layout.position.x),
         Math.round(layout.position.y),
@@ -641,7 +641,7 @@ export class CanvasStateSerializer {
     const unpackPanelFlags = (flags: number) => ({
       isBuildingBlocksPanelOpen: !!(flags & 1),
       isDetailsPanelOpen: !!(flags & 2),
-      isNavigatorPanelOpen: !!(flags & 4)
+      isCanvasesPanelOpen: !!(flags & 4)
     });
 
     // Build matrix lookup table
@@ -700,7 +700,7 @@ export class CanvasStateSerializer {
         : {
             isBuildingBlocksPanelOpen: false,
             isDetailsPanelOpen: false,
-            isNavigatorPanelOpen: false
+            isCanvasesPanelOpen: false
           };
 
     // Unpack panel layouts
@@ -721,7 +721,7 @@ export class CanvasStateSerializer {
           size: { width: 350, height: 600 }
         };
 
-    const navigatorPanelLayout = compressed[13]
+    const canvasesPanelLayout = compressed[13]
       ? {
           position: { x: compressed[13][0], y: compressed[13][1] },
           size: { width: compressed[13][2], height: compressed[13][3] }
@@ -758,11 +758,11 @@ export class CanvasStateSerializer {
       // Floating panel state
       isBuildingBlocksPanelOpen: panelFlags.isBuildingBlocksPanelOpen,
       isDetailsPanelOpen: panelFlags.isDetailsPanelOpen,
-      isNavigatorPanelOpen: panelFlags.isNavigatorPanelOpen,
+      isCanvasesPanelOpen: panelFlags.isCanvasesPanelOpen,
       // Floating panel layout state
       buildingBlocksPanelLayout,
       detailsPanelLayout,
-      navigatorPanelLayout
+      canvasesPanelLayout
     };
     console.log(
       "hello - deserialized result from compressed canvas state",

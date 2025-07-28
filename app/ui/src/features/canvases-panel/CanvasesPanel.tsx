@@ -23,7 +23,7 @@ interface CanvasInfo {
   legoCount: number;
 }
 
-const NavigatorPanel: React.FC = () => {
+const CanvasesPanel: React.FC = () => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const textColor = useColorModeValue("gray.800", "gray.200");
@@ -257,18 +257,27 @@ const NavigatorPanel: React.FC = () => {
       {/* Bulk Delete Controls */}
       <HStack justify="space-between" mb={3}>
         <HStack spacing={2}>
-          <Checkbox
-            isChecked={selectedCanvases.size > 0}
-            isIndeterminate={
-              selectedCanvases.size > 0 &&
-              selectedCanvases.size <
-                savedCanvases.filter((c) => c.id !== currentCanvasId).length
-            }
-            onChange={handleSelectAll}
-            size="sm"
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
           >
-            Select All
-          </Checkbox>
+            <Checkbox
+              isChecked={selectedCanvases.size > 0}
+              isIndeterminate={
+                selectedCanvases.size > 0 &&
+                selectedCanvases.size <
+                  savedCanvases.filter((c) => c.id !== currentCanvasId).length
+              }
+              onChange={handleSelectAll}
+              size="sm"
+            >
+              Select All
+            </Checkbox>
+          </Box>
           {selectedCanvases.size > 0 && (
             <Text
               fontSize="sm"
@@ -331,17 +340,25 @@ const NavigatorPanel: React.FC = () => {
                     <HStack justify="space-between" width="100%">
                       <HStack spacing={2} flex={1}>
                         {!isCurrent && (
-                          <Checkbox
-                            isChecked={isSelected}
-                            onChange={(e) => {
+                          <Box
+                            onClick={(e) => {
                               e.stopPropagation();
-                              handleCanvasSelection(
-                                canvas.id,
-                                e.target.checked
-                              );
                             }}
-                            size="sm"
-                          />
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <Checkbox
+                              isChecked={isSelected}
+                              onChange={(e) => {
+                                handleCanvasSelection(
+                                  canvas.id,
+                                  e.target.checked
+                                );
+                              }}
+                              size="sm"
+                            />
+                          </Box>
                         )}
                         <Text
                           fontWeight={isCurrent ? "bold" : "normal"}
@@ -396,4 +413,4 @@ const NavigatorPanel: React.FC = () => {
   );
 };
 
-export default NavigatorPanel;
+export default CanvasesPanel;

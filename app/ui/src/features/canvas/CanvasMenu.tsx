@@ -35,8 +35,8 @@ interface CanvasMenuProps {
   setIsBuildingBlocksPanelOpen: (open: boolean) => void;
   isDetailsPanelOpen: boolean;
   setIsDetailsPanelOpen: (open: boolean) => void;
-  isNavigatorPanelOpen: boolean;
-  setIsNavigatorPanelOpen: (open: boolean) => void;
+  isCanvasesPanelOpen: boolean;
+  setIsCanvasesPanelOpen: (open: boolean) => void;
   handleClearAll: () => void;
   handleExportPythonCode: () => void;
   handleExportSvg: () => void;
@@ -55,8 +55,8 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
   setIsBuildingBlocksPanelOpen,
   isDetailsPanelOpen,
   setIsDetailsPanelOpen,
-  isNavigatorPanelOpen,
-  setIsNavigatorPanelOpen,
+  isCanvasesPanelOpen,
+  setIsCanvasesPanelOpen,
   handleClearAll,
   handleExportPythonCode,
   handleExportSvg,
@@ -240,9 +240,9 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                 Show Details Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={isNavigatorPanelOpen}
+                checked={isCanvasesPanelOpen}
                 onClick={() => {
-                  setIsNavigatorPanelOpen(!isNavigatorPanelOpen);
+                  setIsCanvasesPanelOpen(!isCanvasesPanelOpen);
                 }}
               >
                 Show Navigator Panel

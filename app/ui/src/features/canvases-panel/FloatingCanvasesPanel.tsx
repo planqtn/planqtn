@@ -8,15 +8,15 @@ import {
 } from "@chakra-ui/react";
 import { CloseIcon, DragHandleIcon } from "@chakra-ui/icons";
 import { RiDragMove2Fill } from "react-icons/ri";
-import NavigatorPanel from "./NavigatorPanel";
+import CanvasesPanel from "./CanvasesPanel";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 
-interface FloatingNavigatorPanelProps {
+interface FloatingCanvasesPanelProps {
   onClose: () => void;
   isOpen: boolean;
 }
 
-const FloatingNavigatorPanel: React.FC<FloatingNavigatorPanelProps> = ({
+const FloatingCanvasesPanel: React.FC<FloatingCanvasesPanelProps> = ({
   onClose,
   isOpen
 }) => {
@@ -29,8 +29,8 @@ const FloatingNavigatorPanel: React.FC<FloatingNavigatorPanelProps> = ({
   const resizeHandleHoverColor = useColorModeValue("gray.600", "gray.300");
 
   // Panel position and size state from store
-  const layout = useCanvasStore((state) => state.navigatorPanelLayout);
-  const setLayout = useCanvasStore((state) => state.setNavigatorPanelLayout);
+  const layout = useCanvasStore((state) => state.canvasesPanelLayout);
+  const setLayout = useCanvasStore((state) => state.setCanvasesPanelLayout);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -194,7 +194,7 @@ const FloatingNavigatorPanel: React.FC<FloatingNavigatorPanelProps> = ({
 
       {/* Content area with scrolling */}
       <Box flex={1} overflow="auto" p={0}>
-        <NavigatorPanel />
+        <CanvasesPanel />
       </Box>
 
       {/* Resize handle */}
@@ -219,4 +219,4 @@ const FloatingNavigatorPanel: React.FC<FloatingNavigatorPanelProps> = ({
   );
 };
 
-export default FloatingNavigatorPanel;
+export default FloatingCanvasesPanel;
