@@ -1,6 +1,9 @@
 import { useCanvasStore } from "./canvasStateStore";
-import { WeightEnumerator } from "./tensorNetworkStore";
-import { TensorNetworkLeg } from "../lib/TensorNetwork";
+import { WeightEnumerator, CachedTensorNetwork } from "./tensorNetworkStore";
+import { TensorNetworkLeg, TensorNetwork } from "../lib/TensorNetwork";
+import { Connection } from "./connectionStore";
+import { DroppedLego } from "./droppedLegoStore";
+import { LogicalPoint } from "../types/coordinates";
 
 // Helper function to create a test store instance
 const createTestStore = () => {
@@ -386,5 +389,483 @@ describe("Weight Enumerator Store Behavior", () => {
     expect(updated.taskId).toBe("original");
     expect(updated.truncateLength).toBe(5);
     expect(updated.openLegs).toEqual([]);
+  });
+});
+
+describe("updateIsActiveForCachedTensorNetworks", () => {
+  let store: ReturnType<typeof useCanvasStore.getState>;
+
+  // Helper function to create a test tensor network
+  const createTestTensorNetwork = (
+    signature: string,
+    legos: DroppedLego[],
+    connections: Connection[]
+  ): TensorNetwork => {
+    return new TensorNetwork({
+      signature,
+      legos,
+      connections
+    });
+  };
+
+  // Helper function to create a test cached tensor network
+  const createTestCachedTensorNetwork = (
+    signature: string,
+    legos: DroppedLego[],
+    connections: Connection[],
+    isActive: boolean = true
+  ): CachedTensorNetwork => {
+    return {
+      isActive,
+      tensorNetwork: createTestTensorNetwork(signature, legos, connections),
+      svg: "<svg></svg>",
+      name: `Test Network ${signature}`,
+      isLocked: false,
+      lastUpdated: new Date()
+    };
+  };
+
+  // Helper function to create test legos
+  const createTestLego = (
+    instanceId: string,
+    x: number = 0,
+    y: number = 0
+  ): DroppedLego => {
+    const lego = new DroppedLego(
+      {
+        type_id: "h",
+        name: "Hadamard",
+        short_name: "H",
+        description: "Test lego",
+        parity_check_matrix: [
+          [1, 0],
+          [0, 1]
+        ],
+        logical_legs: [0, 1],
+        gauge_legs: []
+      },
+      new LogicalPoint(x, y),
+      instanceId,
+      { selectedMatrixRows: [] }
+    );
+
+    // Add the style property that legoLegPropertiesSlice expects
+    (lego as any).style = {
+      legStyles: [
+        { is_highlighted: false, is_hidden: false },
+        { is_highlighted: false, is_hidden: false }
+      ]
+    };
+
+    return lego;
+  };
+
+  // Helper function to create test connections
+  const createTestConnection = (
+    fromId: string,
+    toId: string,
+    fromLeg: number = 0,
+    toLeg: number = 1
+  ): Connection => {
+    return new Connection(
+      { legoId: fromId, leg_index: fromLeg },
+      { legoId: toId, leg_index: toLeg }
+    );
+  };
+
+  beforeEach(() => {
+    // Reset the store to a clean state
+    useCanvasStore.setState({
+      cachedTensorNetworks: {},
+      droppedLegos: [],
+      connections: [],
+      legHideStates: {},
+      legConnectionStates: {},
+      connectionHighlightStates: {},
+      legoConnectionMap: {}
+    });
+    store = useCanvasStore.getState();
+  });
+
+  describe("when a lego is removed from canvas", () => {
+    it("should set isActive to false for cached tensor networks containing that lego", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+
+      // Create a cached tensor network with all three legos
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true // Initially active
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Remove lego2 from the canvas
+      store.setDroppedLegos([lego1, lego3]);
+
+      // Update active status
+      store.updateIsActiveForCachedTensorNetworks(["lego2"], []);
+
+      // Verify the network is now inactive
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+    });
+
+    it("should reactivate when the lego is added back", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+
+      // Create a cached tensor network
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Remove lego2 and verify it becomes inactive
+      store.setDroppedLegos([lego1, lego3]);
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+
+      // Add lego2 back and verify it becomes active again
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+    });
+  });
+
+  describe("when a connection is removed from canvas", () => {
+    it("should set isActive to false for cached tensor networks containing that connection", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+
+      // Create a cached tensor network
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Remove conn1 from the canvas
+      store.setConnections([conn2]);
+
+      // Verify the network is now inactive
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+    });
+
+    it("should reactivate when the connection is added back", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+
+      // Create a cached tensor network
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Remove conn1 and verify it becomes inactive
+      store.setConnections([conn2]);
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+
+      // Add conn1 back and verify it becomes active again
+      store.setConnections([conn1, conn2]);
+      store.updateIsActiveForCachedTensorNetworks([], [conn1]);
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+    });
+  });
+
+  describe("when a new connection is added between subnet legos", () => {
+    it("should set isActive to false for cached tensor networks that don't include the new connection", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+      const newConn = createTestConnection("lego1", "lego3"); // New connection
+
+      // Create a cached tensor network with only conn1 and conn2
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Add the new connection
+      store.setConnections([conn1, conn2, newConn]);
+
+      // Verify the network is now inactive (because it has extra connections)
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+    });
+
+    it("should remain active if the cached network includes the new connection", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+      const conn3 = createTestConnection("lego1", "lego3");
+
+      // Create a cached tensor network that includes all three connections
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2, conn3],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2, conn3]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Verify the network remains active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+    });
+  });
+
+  describe("when multiple changes occur simultaneously", () => {
+    it("should handle lego removal and connection addition together", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+      const lego4 = createTestLego("lego4");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+      const newConn = createTestConnection("lego1", "lego4");
+
+      // Create a cached tensor network
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3, lego4]);
+      store.setConnections([conn1, conn2, newConn]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Remove lego3 and add newConn simultaneously
+      store.setDroppedLegos([lego1, lego2, lego4]);
+
+      // Verify the network is now inactive
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+    });
+
+    it("should handle undo operations correctly", () => {
+      // Create test legos
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+
+      // Create test connections
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego2", "lego3");
+
+      // Create a cached tensor network
+      const cachedNetwork = createTestCachedTensorNetwork(
+        "test-network",
+        [lego1, lego2, lego3],
+        [conn1, conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(cachedNetwork);
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Verify the network is initially active
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+
+      // Simulate an operation that removes lego2 and conn2
+      store.setDroppedLegos([lego1, lego3]);
+      store.setConnections([conn1]);
+
+      // Verify the network is now inactive
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(
+        false
+      );
+
+      // Simulate undo operation - restore lego2 and conn2
+      store.setDroppedLegos([lego1, lego2, lego3]);
+      store.setConnections([conn1, conn2]);
+
+      // Verify the network is active again
+      expect(store.getCachedTensorNetwork("test-network")?.isActive).toBe(true);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle empty cached tensor networks", () => {
+      // No cached networks
+      store.updateIsActiveForCachedTensorNetworks(["lego1"], []);
+
+      // Should not throw any errors
+      expect(store.cachedTensorNetworks).toEqual({});
+    });
+
+    it("should handle cached networks with no legos", () => {
+      const emptyNetwork = createTestCachedTensorNetwork(
+        "empty-network",
+        [],
+        [],
+        true
+      );
+
+      store.cacheTensorNetwork(emptyNetwork);
+      store.updateIsActiveForCachedTensorNetworks([], []);
+
+      // Should remain active since there are no legos to check
+      expect(store.getCachedTensorNetwork("empty-network")?.isActive).toBe(
+        true
+      );
+    });
+
+    it("should handle cached networks with no connections", () => {
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+
+      const networkWithoutConnections = createTestCachedTensorNetwork(
+        "no-connections-network",
+        [lego1, lego2],
+        [],
+        true
+      );
+
+      store.cacheTensorNetwork(networkWithoutConnections);
+      store.setDroppedLegos([lego1, lego2]);
+
+      // Should remain active since there are no connections to check
+      expect(
+        store.getCachedTensorNetwork("no-connections-network")?.isActive
+      ).toBe(true);
+    });
+
+    it("should not affect unrelated cached networks", () => {
+      // Create two separate networks
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const lego3 = createTestLego("lego3");
+      const lego4 = createTestLego("lego4");
+
+      const conn1 = createTestConnection("lego1", "lego2");
+      const conn2 = createTestConnection("lego3", "lego4");
+
+      const network1 = createTestCachedTensorNetwork(
+        "network1",
+        [lego1, lego2],
+        [conn1],
+        true
+      );
+
+      const network2 = createTestCachedTensorNetwork(
+        "network2",
+        [lego3, lego4],
+        [conn2],
+        true
+      );
+
+      // Set up the store state
+      store.cacheTensorNetwork(network1);
+      store.cacheTensorNetwork(network2);
+      store.setDroppedLegos([lego1, lego2, lego3, lego4]);
+      store.setConnections([conn1, conn2]);
+
+      // Remove lego3 (part of network2)
+      store.setDroppedLegos([lego1, lego2, lego4]);
+
+      // Network1 should remain active, network2 should be inactive
+      expect(store.getCachedTensorNetwork("network1")?.isActive).toBe(true);
+      expect(store.getCachedTensorNetwork("network2")?.isActive).toBe(false);
+    });
   });
 });

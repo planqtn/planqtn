@@ -100,6 +100,8 @@ export const createGlobalTensorNetworkStore: StateCreator<
     droppedLegos: DroppedLego[],
     connections: Connection[]
   ) => {
+    const oldConnections = get().connections;
+    const oldDroppedLegos = get().droppedLegos;
     set((state) => {
       state.droppedLegos = droppedLegos;
       state.connections = connections;
@@ -118,6 +120,13 @@ export const createGlobalTensorNetworkStore: StateCreator<
 
     get().setHoveredConnection(null);
     get().setTensorNetwork(null);
+    get().updateIsActiveForCachedTensorNetworks(
+      [
+        ...oldDroppedLegos.map((lego) => lego.instance_id),
+        ...droppedLegos.map((lego) => lego.instance_id)
+      ],
+      [...oldConnections, ...connections]
+    );
   },
   getLegosAndConnections: () => {
     return { droppedLegos: get().droppedLegos, connections: get().connections };

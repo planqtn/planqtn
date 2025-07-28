@@ -95,11 +95,12 @@ export interface TensorNetworkSlice {
   getCachedTensorNetwork: (
     networkSignature: string
   ) => CachedTensorNetwork | null;
-  updateCachedTensorNetworks: (
+  updateIsActiveForCachedTensorNetworks: (
     changedLegoInstanceIds: string[],
     changedConnections: Connection[]
   ) => void;
-  refreshActiveCachedTensorNetworkFromCanvasState: (
+  cloneCachedTensorNetwork: (networkSignature: string) => void;
+  refreshAndSetCachedTensorNetworkFromCanvas: (
     networkSignature: string
   ) => void;
 
@@ -162,41 +163,66 @@ export const useTensorNetworkSlice: StateCreator<
     return get().cachedTensorNetworks[networkSignature] || null;
   },
 
-  updateCachedTensorNetworks: (
+  updateIsActiveForCachedTensorNetworks: (
     changedLegoInstanceIds: string[],
     changedConnections: Connection[]
   ) => {
     set((state) => {
-      const changedTensorNetworks: CachedTensorNetwork[] = Object.values(
-        get().cachedTensorNetworks
-      ).filter(
-        (cachedTensorNetwork) =>
-          changedLegoInstanceIds.some(
-            (instance_id) =>
-              cachedTensorNetwork.tensorNetwork.signature.includes(
-                instance_id
-              ) &&
-              cachedTensorNetwork.tensorNetwork.legos.some(
-                (l) => l.instance_id === instance_id
-              )
-          ) ||
-          changedConnections.some((connection) =>
-            cachedTensorNetwork.tensorNetwork.connections.some((c) =>
-              c.equals(connection)
-            )
-          )
+      const allLegoIdsAffectedByChanges = Array.from(
+        new Set([
+          ...changedLegoInstanceIds,
+          ...changedConnections.flatMap((c) => [c.from.legoId, c.to.legoId])
+        ])
       );
 
+      const changedTensorNetworks: CachedTensorNetwork[] = Object.values(
+        get().cachedTensorNetworks
+      ).filter((cachedTensorNetwork) =>
+        allLegoIdsAffectedByChanges.some((instance_id) =>
+          cachedTensorNetwork.tensorNetwork.legos.some(
+            (l) => l.instance_id === instance_id
+          )
+        )
+      );
+      console.log(
+        "changedTensorNetworks",
+        changedTensorNetworks.map((t) => t.tensorNetwork.signature)
+      );
+
+      const canvasConns = get().connections;
       for (const cachedTensorNetwork of changedTensorNetworks) {
         const allLegosOnCanvas = cachedTensorNetwork.tensorNetwork.legos.every(
           (lego) =>
             get().droppedLegos.some((l) => l.instance_id === lego.instance_id)
         );
+
+        const connectionsOnCanvasBetweenTNLegos = canvasConns.filter((c) => {
+          let fromIsInTN = false;
+          let toIsInTN = false;
+          for (const lego of cachedTensorNetwork.tensorNetwork.legos) {
+            if (lego.instance_id === c.from.legoId) {
+              fromIsInTN = true;
+            }
+            if (lego.instance_id === c.to.legoId) {
+              toIsInTN = true;
+            }
+            if (fromIsInTN && toIsInTN) {
+              return true;
+            }
+          }
+          return false;
+        });
         const allConnectionsOnCanvas =
           cachedTensorNetwork.tensorNetwork.connections.every((connection) =>
-            get().connections.some((c) => c.equals(connection))
+            connectionsOnCanvasBetweenTNLegos.some((c) => c.equals(connection))
           );
-        const isActive = allLegosOnCanvas && allConnectionsOnCanvas;
+        const noExtraConnectionsOnCanvas =
+          connectionsOnCanvasBetweenTNLegos.length ===
+          cachedTensorNetwork.tensorNetwork.connections.length;
+        const isActive =
+          allLegosOnCanvas &&
+          allConnectionsOnCanvas &&
+          noExtraConnectionsOnCanvas;
 
         state.cachedTensorNetworks[
           cachedTensorNetwork.tensorNetwork.signature
@@ -208,9 +234,48 @@ export const useTensorNetworkSlice: StateCreator<
     });
   },
 
-  refreshActiveCachedTensorNetworkFromCanvasState: (
-    networkSignature: string
-  ) => {
+  cloneCachedTensorNetwork: (networkSignature: string) => {
+    const cachedTensorNetwork = get().getCachedTensorNetwork(networkSignature);
+    if (!cachedTensorNetwork) return;
+
+    const { newLegos, newConnections } = get().cloneLegos(
+      cachedTensorNetwork.tensorNetwork.legos,
+      cachedTensorNetwork.tensorNetwork.connections
+    );
+
+    const newTensorNetwork = new TensorNetwork({
+      legos: newLegos,
+      connections: newConnections
+    });
+
+    get().cacheTensorNetwork({
+      ...cachedTensorNetwork,
+      tensorNetwork: newTensorNetwork,
+      isActive: true,
+      isLocked: false,
+      lastUpdated: new Date(),
+      svg: "<svg><rect width='100%' height='100%' fill='red'/></svg>",
+      name: cachedTensorNetwork.name + " (clone)"
+    });
+
+    // clone all the calculations as well
+    const weightEnumerators = get().listWeightEnumerators(networkSignature);
+    for (const weightEnumerator of weightEnumerators) {
+      get().setWeightEnumerator(
+        newTensorNetwork.signature,
+        weightEnumerator.taskId!,
+        weightEnumerator
+      );
+    }
+
+    // clone all the parity check matrices as well
+    const parityCheckMatrix = get().getParityCheckMatrix(networkSignature);
+    if (parityCheckMatrix) {
+      get().setParityCheckMatrix(newTensorNetwork.signature, parityCheckMatrix);
+    }
+  },
+
+  refreshAndSetCachedTensorNetworkFromCanvas: (networkSignature: string) => {
     const cachedTensorNetwork = get().getCachedTensorNetwork(networkSignature);
     if (!cachedTensorNetwork) return;
 
@@ -219,29 +284,12 @@ export const useTensorNetworkSlice: StateCreator<
         get().droppedLegos.find((l) => l.instance_id === lego.instance_id)!
     );
 
-    console.log("legosOnCanvas ", {
-      networkSignature,
-      legosOnCanvas
-    });
-    console.log(
-      "legosOnCanvas",
-      legosOnCanvas.map(
-        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
-      )
-    );
-
     const newTensorNetwork = cachedTensorNetwork.tensorNetwork.with({
       legos: legosOnCanvas
     });
 
-    console.log(
-      "newTensorNetwork",
-      newTensorNetwork.legos.map(
-        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
-      )
-    );
-
     set((state) => {
+      state.tensorNetwork = newTensorNetwork;
       state.cachedTensorNetworks[networkSignature] = {
         ...cachedTensorNetwork,
         tensorNetwork: cachedTensorNetwork.tensorNetwork.with({

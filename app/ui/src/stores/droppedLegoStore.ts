@@ -289,6 +289,9 @@ export const createLegoSlice: StateCreator<
     });
   },
   setDroppedLegos: (legos: DroppedLego[]) => {
+    const oldLegoInstanceIds = get().droppedLegos.map(
+      (lego) => lego.instance_id
+    );
     set((state) => {
       state.droppedLegos = legos;
     });
@@ -296,6 +299,15 @@ export const createLegoSlice: StateCreator<
     get().updateAllConnectionHighlightStates();
     get().updateAllLegHideStates();
     get().updateLegoConnectionMap();
+    get().updateIsActiveForCachedTensorNetworks(
+      Array.from(
+        new Set([
+          ...oldLegoInstanceIds,
+          ...legos.map((lego) => lego.instance_id)
+        ])
+      ),
+      []
+    );
   },
 
   updateConnectedLegos: () => {
@@ -359,7 +371,10 @@ export const createLegoSlice: StateCreator<
     get().removeLegoFromConnectionMap(instance_id);
     // Update all leg hide states to account for the removed lego
     get().updateAllLegHideStates();
-    get().updateCachedTensorNetworks([instance_id], removedConnections);
+    get().updateIsActiveForCachedTensorNetworks(
+      [instance_id],
+      removedConnections
+    );
   },
 
   removeDroppedLegos: (instanceIds: string[]) => {
@@ -386,7 +401,10 @@ export const createLegoSlice: StateCreator<
       get().removeLegConnectionStates(instance_id);
       get().removeLegoFromConnectionMap(instance_id);
     });
-    get().updateCachedTensorNetworks(instanceIds, removedConnections);
+    get().updateIsActiveForCachedTensorNetworks(
+      instanceIds,
+      removedConnections
+    );
     // Update all leg hide states to account for the removed legos
     get().updateAllLegHideStates();
     get().setTensorNetwork(null);
@@ -420,7 +438,7 @@ export const createLegoSlice: StateCreator<
     }
     // Update all leg hide states to account for the updated lego
     get().updateAllLegHideStates();
-    get().updateCachedTensorNetworks([instance_id], []);
+    get().updateIsActiveForCachedTensorNetworks([instance_id], []);
   },
 
   moveDroppedLegos: (legos: DroppedLego[]) => {
@@ -510,7 +528,7 @@ export const createLegoSlice: StateCreator<
     get().clearAllConnectionHighlightStates();
     // Clear all lego connection mappings
     get().clearLegoConnectionMap();
-    get().updateCachedTensorNetworks(
+    get().updateIsActiveForCachedTensorNetworks(
       removedLegoInstanceIds,
       removedConnections
     );

@@ -55,6 +55,7 @@ export const createConnectionsSlice: StateCreator<
   getConnections: () => get().connections,
 
   setConnections: (connections) => {
+    const oldConnections = get().connections;
     set((state) => {
       state.connections = connections;
       state.connectedLegos = state.droppedLegos.filter((lego) =>
@@ -67,6 +68,10 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      [],
+      [...oldConnections, ...connections]
+    );
   },
 
   addConnections: (newConnections) => {
@@ -82,6 +87,7 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks([], newConnections);
   },
 
   removeConnections: (connectionsToRemove) => {
@@ -99,6 +105,7 @@ export const createConnectionsSlice: StateCreator<
     });
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks([], connectionsToRemove);
   },
 
   isLegConnected: (legoId, leg_index) => {

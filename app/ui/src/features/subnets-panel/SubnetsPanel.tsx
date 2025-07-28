@@ -9,7 +9,7 @@ import {
   Collapse,
   Badge
 } from "@chakra-ui/react";
-import { ChevronRightIcon, ChevronDownIcon } from "@chakra-ui/icons";
+import { ChevronRightIcon, ChevronDownIcon, CopyIcon } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { CachedTensorNetwork } from "../../stores/tensorNetworkStore";
 
@@ -37,12 +37,14 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   const cachedTensorNetworks = useCanvasStore(
     (state) => state.cachedTensorNetworks
   );
+  const cloneCachedTensorNetwork = useCanvasStore(
+    (state) => state.cloneCachedTensorNetwork
+  );
 
   const currentTensorNetwork = useCanvasStore((state) => state.tensorNetwork);
-  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
   const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
-  const refreshActiveCachedTensorNetworkFromCanvasState = useCanvasStore(
-    (state) => state.refreshActiveCachedTensorNetworkFromCanvasState
+  const refreshAndSetCachedTensorNetworkFromCanvas = useCanvasStore(
+    (state) => state.refreshAndSetCachedTensorNetworkFromCanvas
   );
 
   // Group cached tensor networks by active status
@@ -120,17 +122,17 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     });
     if (node.isActive && node.cachedTensorNetwork) {
       const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      refreshActiveCachedTensorNetworkFromCanvasState(sig);
-      node.cachedTensorNetwork = cachedTensorNetworks[sig];
-      console.log(
-        "node.cachedTensorNetwork",
-        node.cachedTensorNetwork.tensorNetwork.legos.map(
-          (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
-        )
-      );
-      setTensorNetwork(node.cachedTensorNetwork.tensorNetwork);
+      refreshAndSetCachedTensorNetworkFromCanvas(sig);
     }
     // For cached networks, do nothing as specified
+  };
+
+  const handleCloneClick = (node: TreeNode, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click
+    if (node.cachedTensorNetwork) {
+      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
+      cloneCachedTensorNetwork(sig);
+    }
   };
 
   const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({
@@ -190,6 +192,21 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
               <Badge size="sm" colorScheme="green">
                 {node.calculationCount} calcs
               </Badge>
+            )}
+            {/* Clone button for inactive networks */}
+            {!node.isActive && node.cachedTensorNetwork && (
+              <IconButton
+                aria-label="Clone tensor network"
+                icon={<CopyIcon />}
+                size="xs"
+                variant="ghost"
+                colorScheme="gray"
+                onClick={(e) => handleCloneClick(node, e)}
+                _hover={{
+                  bg: "gray.100",
+                  color: "gray.700"
+                }}
+              />
             )}
           </HStack>
         </HStack>
