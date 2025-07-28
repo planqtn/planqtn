@@ -35,6 +35,7 @@ import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
 import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/FloatingBuildingBlocksPanel.tsx";
 import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
 import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel";
+import FloatingSubnetsPanel from "./features/subnets-panel/FloatingSubnetsPanel.tsx";
 import { FloatingPanelConfigManager } from "./features/floating-panel/FloatingPanelConfig";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
@@ -171,6 +172,12 @@ const LegoStudioView: React.FC = () => {
   const taskPanelConfig = useCanvasStore((state) => state.taskPanelConfig);
   const setTaskPanelConfig = useCanvasStore(
     (state) => state.setTaskPanelConfig
+  );
+  const subnetsPanelConfig = useCanvasStore(
+    (state) => state.subnetsPanelConfig
+  );
+  const setSubnetsPanelConfig = useCanvasStore(
+    (state) => state.setSubnetsPanelConfig
   );
 
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
@@ -490,6 +497,8 @@ const LegoStudioView: React.FC = () => {
                       setDetailsPanelConfig={setDetailsPanelConfig}
                       canvasesPanelConfig={canvasesPanelConfig}
                       setCanvasesPanelConfig={setCanvasesPanelConfig}
+                      subnetsPanelConfig={subnetsPanelConfig}
+                      setSubnetsPanelConfig={setSubnetsPanelConfig}
                       handleClearAll={handleClearAll}
                       handleExportPythonCode={handleExportPythonCode}
                       handleExportSvg={handleExportSvg}
@@ -692,6 +701,18 @@ const LegoStudioView: React.FC = () => {
             );
             newConfig.setIsOpen(false);
             setCanvasesPanelConfig(newConfig);
+          }}
+        />
+
+        <FloatingSubnetsPanel
+          config={subnetsPanelConfig}
+          onConfigChange={setSubnetsPanelConfig}
+          onClose={() => {
+            const newConfig = new FloatingPanelConfigManager(
+              subnetsPanelConfig.toJSON()
+            );
+            newConfig.setIsOpen(false);
+            setSubnetsPanelConfig(newConfig);
           }}
         />
 

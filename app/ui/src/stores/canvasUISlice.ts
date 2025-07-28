@@ -230,6 +230,8 @@ export interface CanvasUISlice {
   setCanvasesPanelConfig: (config: FloatingPanelConfigManager) => void;
   taskPanelConfig: FloatingPanelConfigManager;
   setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
+  subnetsPanelConfig: FloatingPanelConfigManager;
+  setSubnetsPanelConfig: (config: FloatingPanelConfigManager) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -830,5 +832,23 @@ export const createCanvasUISlice: StateCreator<
   setTaskPanelConfig: (config) =>
     set((state) => {
       state.taskPanelConfig = config;
+    }),
+  subnetsPanelConfig: new FloatingPanelConfigManager({
+    id: "subnets",
+    title: "Subnets",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: 150, y: 150 },
+      size: { width: 350, height: 500 }
+    },
+    minWidth: 250,
+    minHeight: 300,
+    defaultWidth: 350,
+    defaultHeight: 500
+  }),
+  setSubnetsPanelConfig: (config) =>
+    set((state) => {
+      state.subnetsPanelConfig = config;
     })
 });

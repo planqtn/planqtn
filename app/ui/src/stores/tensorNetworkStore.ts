@@ -8,6 +8,7 @@ import { User } from "@supabase/supabase-js";
 import { getAccessToken } from "../features/auth/auth";
 import { getApiUrl } from "../config/config";
 import { config } from "../config/config";
+import { Connection } from "./connectionStore";
 
 export class WeightEnumerator {
   taskId?: string;
@@ -55,11 +56,21 @@ export interface ParityCheckMatrix {
   legOrdering: TensorNetworkLeg[];
 }
 
+export interface CachedTensorNetwork {
+  isActive: boolean;
+  tensorNetwork: TensorNetwork;
+  svg: string;
+  name: string;
+  isLocked: boolean;
+  lastUpdated: Date;
+}
+
 export interface TensorNetworkSlice {
   /* State */
 
   // the selected legos and their connections
   tensorNetwork: TensorNetwork | null;
+  cachedTensorNetworks: Record<string, CachedTensorNetwork>;
 
   // parity check matrix for each tensor network
   parityCheckMatrices: Record<string, ParityCheckMatrix>;
@@ -79,6 +90,18 @@ export interface TensorNetworkSlice {
   /* Setters / Mutators */
 
   setTensorNetwork: (network: TensorNetwork | null) => void;
+
+  cacheTensorNetwork: (cachedTensorNetwork: CachedTensorNetwork) => void;
+  getCachedTensorNetwork: (
+    networkSignature: string
+  ) => CachedTensorNetwork | null;
+  updateCachedTensorNetworks: (
+    changedLegoInstanceIds: string[],
+    changedConnections: Connection[]
+  ) => void;
+  refreshActiveCachedTensorNetworkFromCanvasState: (
+    networkSignature: string
+  ) => void;
 
   setParityCheckMatrix: (
     networkSignature: string,
@@ -121,12 +144,112 @@ export const useTensorNetworkSlice: StateCreator<
   TensorNetworkSlice
 > = (set, get) => ({
   tensorNetwork: null,
+  cachedTensorNetworks: {},
   // parity check matrix for each tensor network
   parityCheckMatrices: {},
   // weight enumerators for each tensor network
   weightEnumerators: {},
   highlightedTensorNetworkLegs: {},
   selectedTensorNetworkParityCheckMatrixRows: {},
+
+  cacheTensorNetwork: (cachedTensorNetwork: CachedTensorNetwork) => {
+    set((state) => {
+      state.cachedTensorNetworks[cachedTensorNetwork.tensorNetwork.signature] =
+        cachedTensorNetwork;
+    });
+  },
+  getCachedTensorNetwork: (networkSignature: string) => {
+    return get().cachedTensorNetworks[networkSignature] || null;
+  },
+
+  updateCachedTensorNetworks: (
+    changedLegoInstanceIds: string[],
+    changedConnections: Connection[]
+  ) => {
+    set((state) => {
+      const changedTensorNetworks: CachedTensorNetwork[] = Object.values(
+        get().cachedTensorNetworks
+      ).filter(
+        (cachedTensorNetwork) =>
+          changedLegoInstanceIds.some(
+            (instance_id) =>
+              cachedTensorNetwork.tensorNetwork.signature.includes(
+                instance_id
+              ) &&
+              cachedTensorNetwork.tensorNetwork.legos.some(
+                (l) => l.instance_id === instance_id
+              )
+          ) ||
+          changedConnections.some((connection) =>
+            cachedTensorNetwork.tensorNetwork.connections.some((c) =>
+              c.equals(connection)
+            )
+          )
+      );
+
+      for (const cachedTensorNetwork of changedTensorNetworks) {
+        const allLegosOnCanvas = cachedTensorNetwork.tensorNetwork.legos.every(
+          (lego) =>
+            get().droppedLegos.some((l) => l.instance_id === lego.instance_id)
+        );
+        const allConnectionsOnCanvas =
+          cachedTensorNetwork.tensorNetwork.connections.every((connection) =>
+            get().connections.some((c) => c.equals(connection))
+          );
+        const isActive = allLegosOnCanvas && allConnectionsOnCanvas;
+
+        state.cachedTensorNetworks[
+          cachedTensorNetwork.tensorNetwork.signature
+        ] = {
+          ...cachedTensorNetwork,
+          isActive: isActive
+        };
+      }
+    });
+  },
+
+  refreshActiveCachedTensorNetworkFromCanvasState: (
+    networkSignature: string
+  ) => {
+    const cachedTensorNetwork = get().getCachedTensorNetwork(networkSignature);
+    if (!cachedTensorNetwork) return;
+
+    const legosOnCanvas = cachedTensorNetwork.tensorNetwork.legos.map(
+      (lego) =>
+        get().droppedLegos.find((l) => l.instance_id === lego.instance_id)!
+    );
+
+    console.log("legosOnCanvas ", {
+      networkSignature,
+      legosOnCanvas
+    });
+    console.log(
+      "legosOnCanvas",
+      legosOnCanvas.map(
+        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
+      )
+    );
+
+    const newTensorNetwork = cachedTensorNetwork.tensorNetwork.with({
+      legos: legosOnCanvas
+    });
+
+    console.log(
+      "newTensorNetwork",
+      newTensorNetwork.legos.map(
+        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
+      )
+    );
+
+    set((state) => {
+      state.cachedTensorNetworks[networkSignature] = {
+        ...cachedTensorNetwork,
+        tensorNetwork: cachedTensorNetwork.tensorNetwork.with({
+          legos: legosOnCanvas
+        })
+      };
+    });
+  },
 
   getParityCheckMatrix: (networkSignature: string) => {
     return get().parityCheckMatrices[networkSignature] || null;
@@ -195,8 +318,13 @@ export const useTensorNetworkSlice: StateCreator<
     });
   },
 
-  setTensorNetwork: (network) => {
-    // console.log("setTensorNetwork", new Error("debug").stack);
+  setTensorNetwork: (network: TensorNetwork | null) => {
+    console.log(
+      "setTensorNetwork",
+      network?.legos.map(
+        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
+      )
+    );
     set({ tensorNetwork: network });
   },
 

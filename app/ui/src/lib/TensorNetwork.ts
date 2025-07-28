@@ -96,9 +96,9 @@ export class TensorNetwork {
   public with(overrides: Partial<TensorNetwork>): TensorNetwork {
     return new TensorNetwork({
       ...this,
-      legos: this._legos || overrides.legos || [],
-      connections: this._connections || overrides.connections || [],
-      signature: this._signature || overrides.signature,
+      legos: overrides.legos || this._legos || [],
+      connections: overrides.connections || this._connections || [],
+      signature: overrides.signature || this._signature,
       ...overrides
     });
   }

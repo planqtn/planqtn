@@ -39,7 +39,8 @@ export type CompressedCanvasState = [
   any?, // 14: buildingBlocksPanelConfig
   any?, // 15: detailsPanelConfig
   any?, // 16: canvasesPanelConfig
-  any? // 17: taskPanelConfig
+  any?, // 17: taskPanelConfig
+  any? // 18: subnetsPanelConfig
 ];
 
 export type CompressedPiece = [
@@ -97,6 +98,7 @@ export interface RehydratedCanvasState {
   detailsPanelConfig: FloatingPanelConfigManager;
   canvasesPanelConfig: FloatingPanelConfigManager;
   taskPanelConfig: FloatingPanelConfigManager;
+  subnetsPanelConfig: FloatingPanelConfigManager;
 }
 export class CanvasStateSerializer {
   public canvasId: string;
@@ -160,7 +162,8 @@ export class CanvasStateSerializer {
       buildingBlocksPanelConfig: store.buildingBlocksPanelConfig.toJSON(),
       detailsPanelConfig: store.detailsPanelConfig.toJSON(),
       canvasesPanelConfig: store.canvasesPanelConfig.toJSON(),
-      taskPanelConfig: store.taskPanelConfig.toJSON()
+      taskPanelConfig: store.taskPanelConfig.toJSON(),
+      subnetsPanelConfig: store.subnetsPanelConfig.toJSON()
     };
 
     return state;
@@ -194,7 +197,7 @@ export class CanvasStateSerializer {
       buildingBlocksPanelConfig: new FloatingPanelConfigManager({
         id: "building-blocks",
         title: "Building Blocks",
-        isOpen: false,
+        isOpen: true,
         isCollapsed: false,
         layout: {
           position: { x: 50, y: 50 },
@@ -208,7 +211,7 @@ export class CanvasStateSerializer {
       detailsPanelConfig: new FloatingPanelConfigManager({
         id: "details",
         title: "Details",
-        isOpen: false,
+        isOpen: true,
         isCollapsed: false,
         layout: {
           position: { x: window.innerWidth - 400, y: 50 },
@@ -222,7 +225,7 @@ export class CanvasStateSerializer {
       canvasesPanelConfig: new FloatingPanelConfigManager({
         id: "canvases",
         title: "Canvases",
-        isOpen: false,
+        isOpen: true,
         isCollapsed: false,
         layout: {
           position: { x: 100, y: 100 },
@@ -246,6 +249,20 @@ export class CanvasStateSerializer {
         minHeight: 200,
         defaultWidth: 600,
         defaultHeight: 400
+      }),
+      subnetsPanelConfig: new FloatingPanelConfigManager({
+        id: "subnets",
+        title: "Subnets",
+        isOpen: true,
+        isCollapsed: false,
+        layout: {
+          position: { x: 150, y: 150 },
+          size: { width: 350, height: 500 }
+        },
+        minWidth: 250,
+        minHeight: 300,
+        defaultWidth: 350,
+        defaultHeight: 500
       })
     };
 
@@ -382,6 +399,11 @@ export class CanvasStateSerializer {
       if (rawCanvasStateObj.taskPanelConfig) {
         result.taskPanelConfig = FloatingPanelConfigManager.fromJSON(
           rawCanvasStateObj.taskPanelConfig
+        );
+      }
+      if (rawCanvasStateObj.subnetsPanelConfig) {
+        result.subnetsPanelConfig = FloatingPanelConfigManager.fromJSON(
+          rawCanvasStateObj.subnetsPanelConfig
         );
       }
 
@@ -713,6 +735,7 @@ export class CanvasStateSerializer {
     compressed[15] = store.detailsPanelConfig.toJSON();
     compressed[16] = store.canvasesPanelConfig.toJSON();
     compressed[17] = store.taskPanelConfig.toJSON();
+    compressed[18] = store.subnetsPanelConfig.toJSON();
 
     return compressed;
   }
@@ -878,6 +901,21 @@ export class CanvasStateSerializer {
       defaultHeight: 400
     };
 
+    const subnetsPanelConfig = compressed[18] || {
+      id: "subnets",
+      title: "Subnets",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 150, y: 150 },
+        size: { width: 350, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 500
+    };
+
     const result: SerializableCanvasState = {
       title: compressed[0],
       pieces,
@@ -906,7 +944,8 @@ export class CanvasStateSerializer {
       buildingBlocksPanelConfig,
       detailsPanelConfig,
       canvasesPanelConfig,
-      taskPanelConfig
+      taskPanelConfig,
+      subnetsPanelConfig
     };
     console.log(
       "hello - deserialized result from compressed canvas state",

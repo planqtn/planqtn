@@ -38,6 +38,8 @@ interface CanvasMenuProps {
   setDetailsPanelConfig: (config: FloatingPanelConfigManager) => void;
   canvasesPanelConfig: FloatingPanelConfigManager;
   setCanvasesPanelConfig: (config: FloatingPanelConfigManager) => void;
+  subnetsPanelConfig: FloatingPanelConfigManager;
+  setSubnetsPanelConfig: (config: FloatingPanelConfigManager) => void;
   handleClearAll: () => void;
   handleExportPythonCode: () => void;
   handleExportSvg: () => void;
@@ -58,6 +60,8 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
   setDetailsPanelConfig,
   canvasesPanelConfig,
   setCanvasesPanelConfig,
+  subnetsPanelConfig,
+  setSubnetsPanelConfig,
   handleClearAll,
   handleExportPythonCode,
   handleExportSvg,
@@ -271,6 +275,18 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                 }}
               >
                 Show Task Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={subnetsPanelConfig.isOpen}
+                onClick={() => {
+                  const newConfig = new FloatingPanelConfigManager(
+                    subnetsPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(!subnetsPanelConfig.isOpen);
+                  setSubnetsPanelConfig(newConfig);
+                }}
+              >
+                Show Subnets Panel
               </DropdownMenuCheckboxItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>

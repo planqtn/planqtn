@@ -126,7 +126,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
         buildingBlocksPanelConfig: result.buildingBlocksPanelConfig,
         detailsPanelConfig: result.detailsPanelConfig,
         canvasesPanelConfig: result.canvasesPanelConfig,
-        taskPanelConfig: result.taskPanelConfig
+        taskPanelConfig: result.taskPanelConfig,
+        subnetsPanelConfig: result.subnetsPanelConfig
       });
 
       // Initialize leg hide states for all legos

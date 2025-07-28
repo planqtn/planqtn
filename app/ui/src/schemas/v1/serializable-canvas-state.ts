@@ -112,4 +112,19 @@ export interface SerializableCanvasState {
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
   };
+  subnetsPanelConfig?: {
+    id: string;
+    title: string;
+    isOpen: boolean;
+    isCollapsed: boolean;
+    layout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    };
+    minWidth?: number;
+    minHeight?: number;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    defaultPosition?: { x: number; y: number };
+  };
 }

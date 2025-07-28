@@ -111,7 +111,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const getParityCheckMatrix = useCanvasStore(
     (state) => state.getParityCheckMatrix
   );
-
+  const cacheTensorNetwork = useCanvasStore(
+    (state) => state.cacheTensorNetwork
+  );
+  const getCachedTensorNetwork = useCanvasStore(
+    (state) => state.getCachedTensorNetwork
+  );
   const parityCheckMatrix = useCanvasStore((state) => {
     if (!state.tensorNetwork) return null;
     return state.parityCheckMatrices[state.tensorNetwork.signature] || null;
@@ -177,6 +182,21 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
       setParityCheckMatrix(tensorNetwork.signature, {
         matrix: result.h.getMatrix(),
         legOrdering
+      });
+
+      const cachedTensorNetwork = getCachedTensorNetwork(
+        tensorNetwork.signature
+      );
+
+      cacheTensorNetwork({
+        isActive: true,
+        tensorNetwork: network,
+        svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
+        name:
+          cachedTensorNetwork?.name ||
+          `"Subnet ${tensorNetwork.legos.length} legos | ${new Date().toISOString()}"`,
+        isLocked: cachedTensorNetwork?.isLocked || false,
+        lastUpdated: new Date()
       });
     } catch (error) {
       console.error("Error calculating parity check matrix:", error);
