@@ -7,7 +7,8 @@ import {
   IconButton,
   HStack,
   Collapse,
-  Badge
+  Badge,
+  Input
 } from "@chakra-ui/react";
 import {
   ChevronRightIcon,
@@ -70,6 +71,12 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     (state) => state.refreshAndSetCachedTensorNetworkFromCanvas
   );
   const addPCMPanel = useCanvasStore((state) => state.addPCMPanel);
+  const updateCachedTensorNetworkName = useCanvasStore(
+    (state) => state.updateCachedTensorNetworkName
+  );
+
+  // State for editing subnet names
+  const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
 
   // Group cached tensor networks by active status
   const { activeNetworks, cachedNetworks } = useMemo(() => {
@@ -203,6 +210,18 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     // For cached networks, do nothing as specified
   };
 
+  const handleNameChange = (node: TreeNode, newName: string) => {
+    if (node.cachedTensorNetwork && newName.trim()) {
+      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
+      updateCachedTensorNetworkName(sig, newName.trim());
+    }
+    setEditingNodeId(null);
+  };
+
+  const handleNameCancel = () => {
+    setEditingNodeId(null);
+  };
+
   const handleCloneClick = (node: TreeNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
     if (node.cachedTensorNetwork) {
@@ -270,12 +289,28 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     const [isExpanded, setIsExpanded] = React.useState(false);
     const hasChildren = node.children && node.children.length > 0;
     const isCurrentNetwork = currentTensorNetwork?.signature === node.id;
+    const editableRef = React.useRef<any>(null);
 
     const handleClick = () => {
       if (hasChildren) {
         setIsExpanded(!isExpanded);
       }
       handleNetworkClick(node);
+    };
+
+    const handleDoubleClick = () => {
+      console.log("handleDoubleClick", {
+        node
+      });
+      if (node.cachedTensorNetwork && !node.isPCM && !node.isWeightEnumerator) {
+        setEditingNodeId(node.id);
+        // Use setTimeout to ensure the ref is available
+        setTimeout(() => {
+          if (editableRef.current) {
+            editableRef.current.focus();
+          }
+        }, 0);
+      }
     };
 
     return (
@@ -296,6 +331,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
             bg: node.isActive ? hoverBgColor : "transparent"
           }}
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
         >
           {hasChildren && (
             <IconButton
@@ -309,9 +345,33 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
               }}
             />
           )}
-          <Text fontSize="sm" flex={1}>
-            {node.name}
-          </Text>
+          {editingNodeId === node.id ? (
+            <Input
+              defaultValue={node.name}
+              onBlur={(e) => handleNameChange(node, e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleNameChange(node, e.currentTarget.value);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  handleNameCancel();
+                }
+              }}
+              ref={editableRef}
+            />
+          ) : (
+            <Text
+              fontSize="sm"
+              flex={1}
+              textOverflow="ellipsis"
+              overflow="hidden"
+              whiteSpace="nowrap"
+            >
+              {node.name}
+            </Text>
+          )}
           <HStack spacing={1}>
             {/* For PCM nodes, show table icon and PCM-specific trashcan */}
             {node.isPCM ? (

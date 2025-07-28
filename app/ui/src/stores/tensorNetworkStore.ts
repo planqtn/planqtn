@@ -103,6 +103,10 @@ export interface TensorNetworkSlice {
   refreshAndSetCachedTensorNetworkFromCanvas: (
     networkSignature: string
   ) => void;
+  updateCachedTensorNetworkName: (
+    networkSignature: string,
+    newName: string
+  ) => void;
 
   unCacheTensorNetwork: (networkSignature: string) => void;
   unCachePCM: (networkSignature: string) => void;
@@ -322,6 +326,21 @@ export const useTensorNetworkSlice: StateCreator<
           legos: legosOnCanvas
         })
       };
+    });
+  },
+
+  updateCachedTensorNetworkName: (
+    networkSignature: string,
+    newName: string
+  ) => {
+    set((state) => {
+      const cachedNetwork = state.cachedTensorNetworks[networkSignature];
+      if (cachedNetwork) {
+        state.cachedTensorNetworks[networkSignature] = {
+          ...cachedNetwork,
+          name: newName
+        };
+      }
     });
   },
 

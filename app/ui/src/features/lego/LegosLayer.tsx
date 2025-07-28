@@ -1,16 +1,13 @@
 import React, { useMemo, useRef } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useShallow } from "zustand/react/shallow";
-import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
-import {
-  ResizeHandleType,
-  BoundingBox,
-  calculateBoundingBoxForLegos
-} from "../../stores/canvasUISlice";
+import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
+import { DraggingStage } from "../../stores/legoDragState";
+import { useShallow } from "zustand/react/shallow";
+import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
+import { calculateBoundingBoxForLegos } from "../../stores/canvasUISlice";
+import { SubnetNameDisplay } from "./SubnetNameDisplay";
 import { WindowPoint } from "../../types/coordinates";
-
-const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
 
 interface ResizeHandleProps {
   x: number;
@@ -240,6 +237,19 @@ export const LegosLayer: React.FC = () => {
             />
           )}
         </g>
+      )}
+
+      {/* Subnet name display */}
+      {tensorNetwork && boundingBox && (
+        <SubnetNameDisplay
+          boundingBox={boundingBox}
+          networkSignature={tensorNetwork.signature}
+          networkName={
+            useCanvasStore.getState().cachedTensorNetworks[
+              tensorNetwork.signature
+            ]?.name || `${tensorNetwork.legos.length} legos`
+          }
+        />
       )}
 
       {/* Render real legos (non-resizing ones are filtered in useMemo) */}
