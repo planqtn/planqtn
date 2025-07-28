@@ -54,12 +54,17 @@ export interface SerializableCanvasState {
   // Floating panel state
   isBuildingBlocksPanelOpen?: boolean;
   isDetailsPanelOpen?: boolean;
+  isNavigatorPanelOpen?: boolean;
   // Floating panel layout state
   buildingBlocksPanelLayout?: {
     position: { x: number; y: number };
     size: { width: number; height: number };
   };
   detailsPanelLayout?: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  navigatorPanelLayout?: {
     position: { x: number; y: number };
     size: { width: number; height: number };
   };

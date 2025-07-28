@@ -215,6 +215,11 @@
       "description": "Whether the details panel is open",
       "default": false
     },
+    "isNavigatorPanelOpen": {
+      "type": "boolean",
+      "description": "Whether the navigator panel is open",
+      "default": false
+    },
     "buildingBlocksPanelLayout": {
       "type": "object",
       "description": "Layout configuration for the building blocks panel",
@@ -258,6 +263,46 @@
     "detailsPanelLayout": {
       "type": "object",
       "description": "Layout configuration for the details panel",
+      "properties": {
+        "position": {
+          "type": "object",
+          "description": "Position of the panel on screen",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X coordinate of the panel"
+            },
+            "y": {
+              "type": "number",
+              "description": "Y coordinate of the panel"
+            }
+          },
+          "required": ["x", "y"],
+          "additionalProperties": false
+        },
+        "size": {
+          "type": "object",
+          "description": "Size of the panel",
+          "properties": {
+            "width": {
+              "type": "number",
+              "description": "Width of the panel in pixels"
+            },
+            "height": {
+              "type": "number",
+              "description": "Height of the panel in pixels"
+            }
+          },
+          "required": ["width", "height"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["position", "size"],
+      "additionalProperties": false
+    },
+    "navigatorPanelLayout": {
+      "type": "object",
+      "description": "Layout configuration for the navigator panel",
       "properties": {
         "position": {
           "type": "object",

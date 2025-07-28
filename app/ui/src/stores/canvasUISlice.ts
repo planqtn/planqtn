@@ -225,6 +225,8 @@ export interface CanvasUISlice {
   setIsBuildingBlocksPanelOpen: (open: boolean) => void;
   isDetailsPanelOpen: boolean;
   setIsDetailsPanelOpen: (open: boolean) => void;
+  isNavigatorPanelOpen: boolean;
+  setIsNavigatorPanelOpen: (open: boolean) => void;
 
   // Floating panel layout state
   buildingBlocksPanelLayout: {
@@ -240,6 +242,14 @@ export interface CanvasUISlice {
     size: { width: number; height: number };
   };
   setDetailsPanelLayout: (layout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  }) => void;
+  navigatorPanelLayout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  setNavigatorPanelLayout: (layout: {
     position: { x: number; y: number };
     size: { width: number; height: number };
   }) => void;
@@ -782,6 +792,11 @@ export const createCanvasUISlice: StateCreator<
     set((state) => {
       state.isDetailsPanelOpen = open;
     }),
+  isNavigatorPanelOpen: false,
+  setIsNavigatorPanelOpen: (open) =>
+    set((state) => {
+      state.isNavigatorPanelOpen = open;
+    }),
 
   // Floating panel layout state
   buildingBlocksPanelLayout: {
@@ -799,5 +814,13 @@ export const createCanvasUISlice: StateCreator<
   setDetailsPanelLayout: (layout) =>
     set((state) => {
       state.detailsPanelLayout = layout;
+    }),
+  navigatorPanelLayout: {
+    position: { x: 100, y: 100 },
+    size: { width: 300, height: 500 }
+  },
+  setNavigatorPanelLayout: (layout) =>
+    set((state) => {
+      state.navigatorPanelLayout = layout;
     })
 });
