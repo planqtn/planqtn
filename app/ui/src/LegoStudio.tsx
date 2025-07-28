@@ -36,6 +36,7 @@ import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/Floati
 import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
 import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel";
 import FloatingSubnetsPanel from "./features/subnets-panel/FloatingSubnetsPanel.tsx";
+import FloatingPCMPanel from "./features/pcm-panel/FloatingPCMPanel.tsx";
 import { FloatingPanelConfigManager } from "./features/floating-panel/FloatingPanelConfig";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
@@ -179,6 +180,9 @@ const LegoStudioView: React.FC = () => {
   const setSubnetsPanelConfig = useCanvasStore(
     (state) => state.setSubnetsPanelConfig
   );
+  const openPCMPanels = useCanvasStore((state) => state.openPCMPanels);
+  const updatePCMPanel = useCanvasStore((state) => state.updatePCMPanel);
+  const removePCMPanel = useCanvasStore((state) => state.removePCMPanel);
 
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
@@ -715,6 +719,25 @@ const LegoStudioView: React.FC = () => {
             setSubnetsPanelConfig(newConfig);
           }}
         />
+
+        {Object.entries(openPCMPanels).map(([networkSignature, config]) => (
+          <FloatingPCMPanel
+            key={networkSignature}
+            config={config}
+            onConfigChange={(newConfig) =>
+              updatePCMPanel(networkSignature, newConfig)
+            }
+            onClose={() => removePCMPanel(networkSignature)}
+            networkSignature={networkSignature}
+            parityCheckMatrix={
+              useCanvasStore.getState().parityCheckMatrices[networkSignature]!
+            }
+            networkName={
+              useCanvasStore.getState().cachedTensorNetworks[networkSignature]
+                ?.name || "Unknown Network"
+            }
+          />
+        ))}
 
         {isDynamicLegoDialogOpen && (
           <DynamicLegoDialog

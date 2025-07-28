@@ -232,6 +232,20 @@ export interface CanvasUISlice {
   setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
   subnetsPanelConfig: FloatingPanelConfigManager;
   setSubnetsPanelConfig: (config: FloatingPanelConfigManager) => void;
+  pcmPanelConfig: FloatingPanelConfigManager;
+  setPCMPanelConfig: (config: FloatingPanelConfigManager) => void;
+
+  // PCM panel state
+  openPCMPanels: Record<string, FloatingPanelConfigManager>;
+  addPCMPanel: (
+    networkSignature: string,
+    config: FloatingPanelConfigManager
+  ) => void;
+  removePCMPanel: (networkSignature: string) => void;
+  updatePCMPanel: (
+    networkSignature: string,
+    config: FloatingPanelConfigManager
+  ) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -850,5 +864,39 @@ export const createCanvasUISlice: StateCreator<
   setSubnetsPanelConfig: (config) =>
     set((state) => {
       state.subnetsPanelConfig = config;
+    }),
+  pcmPanelConfig: new FloatingPanelConfigManager({
+    id: "pcm",
+    title: "Parity Check Matrix",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: 200, y: 200 },
+      size: { width: 500, height: 600 }
+    },
+    minWidth: 300,
+    minHeight: 400,
+    defaultWidth: 500,
+    defaultHeight: 600
+  }),
+  setPCMPanelConfig: (config) =>
+    set((state) => {
+      state.pcmPanelConfig = config;
+    }),
+  openPCMPanels: {},
+  addPCMPanel: (networkSignature: string, config: FloatingPanelConfigManager) =>
+    set((state) => {
+      state.openPCMPanels[networkSignature] = config;
+    }),
+  removePCMPanel: (networkSignature: string) =>
+    set((state) => {
+      delete state.openPCMPanels[networkSignature];
+    }),
+  updatePCMPanel: (
+    networkSignature: string,
+    config: FloatingPanelConfigManager
+  ) =>
+    set((state) => {
+      state.openPCMPanels[networkSignature] = config;
     })
 });
