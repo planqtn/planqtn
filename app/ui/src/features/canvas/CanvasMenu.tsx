@@ -20,6 +20,7 @@ import { RuntimeConfigService } from "../kernel/runtimeConfigService";
 import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { User } from "@supabase/supabase-js";
+import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 import { Box, Icon, Text } from "@chakra-ui/react";
 import {
@@ -29,14 +30,14 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CanvasMenuProps {
-  isTaskPanelCollapsed: boolean;
-  setIsTaskPanelCollapsed: (collapsed: boolean) => void;
-  isBuildingBlocksPanelOpen: boolean;
-  setIsBuildingBlocksPanelOpen: (open: boolean) => void;
-  isDetailsPanelOpen: boolean;
-  setIsDetailsPanelOpen: (open: boolean) => void;
-  isCanvasesPanelOpen: boolean;
-  setIsCanvasesPanelOpen: (open: boolean) => void;
+  taskPanelConfig: FloatingPanelConfigManager;
+  setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
+  buildingBlocksPanelConfig: FloatingPanelConfigManager;
+  setBuildingBlocksPanelConfig: (config: FloatingPanelConfigManager) => void;
+  detailsPanelConfig: FloatingPanelConfigManager;
+  setDetailsPanelConfig: (config: FloatingPanelConfigManager) => void;
+  canvasesPanelConfig: FloatingPanelConfigManager;
+  setCanvasesPanelConfig: (config: FloatingPanelConfigManager) => void;
   handleClearAll: () => void;
   handleExportPythonCode: () => void;
   handleExportSvg: () => void;
@@ -49,14 +50,14 @@ interface CanvasMenuProps {
 }
 
 export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  isTaskPanelCollapsed,
-  setIsTaskPanelCollapsed,
-  isBuildingBlocksPanelOpen,
-  setIsBuildingBlocksPanelOpen,
-  isDetailsPanelOpen,
-  setIsDetailsPanelOpen,
-  isCanvasesPanelOpen,
-  setIsCanvasesPanelOpen,
+  taskPanelConfig,
+  setTaskPanelConfig,
+  buildingBlocksPanelConfig,
+  setBuildingBlocksPanelConfig,
+  detailsPanelConfig,
+  setDetailsPanelConfig,
+  canvasesPanelConfig,
+  setCanvasesPanelConfig,
   handleClearAll,
   handleExportPythonCode,
   handleExportSvg,
@@ -224,33 +225,49 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
               <DropdownMenuCheckboxItem
-                checked={isBuildingBlocksPanelOpen}
+                checked={buildingBlocksPanelConfig.isOpen}
                 onClick={() => {
-                  setIsBuildingBlocksPanelOpen(!isBuildingBlocksPanelOpen);
+                  const newConfig = new FloatingPanelConfigManager(
+                    buildingBlocksPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(!buildingBlocksPanelConfig.isOpen);
+                  setBuildingBlocksPanelConfig(newConfig);
                 }}
               >
                 Show Building Blocks Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={isDetailsPanelOpen}
+                checked={detailsPanelConfig.isOpen}
                 onClick={() => {
-                  setIsDetailsPanelOpen(!isDetailsPanelOpen);
+                  const newConfig = new FloatingPanelConfigManager(
+                    detailsPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(!detailsPanelConfig.isOpen);
+                  setDetailsPanelConfig(newConfig);
                 }}
               >
                 Show Details Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={isCanvasesPanelOpen}
+                checked={canvasesPanelConfig.isOpen}
                 onClick={() => {
-                  setIsCanvasesPanelOpen(!isCanvasesPanelOpen);
+                  const newConfig = new FloatingPanelConfigManager(
+                    canvasesPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(!canvasesPanelConfig.isOpen);
+                  setCanvasesPanelConfig(newConfig);
                 }}
               >
-                Show Navigator Panel
+                Show Canvases Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={isTaskPanelCollapsed}
+                checked={taskPanelConfig.isOpen}
                 onClick={() => {
-                  setIsTaskPanelCollapsed(!isTaskPanelCollapsed);
+                  const newConfig = new FloatingPanelConfigManager(
+                    taskPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(!taskPanelConfig.isOpen);
+                  setTaskPanelConfig(newConfig);
                 }}
               >
                 Show Task Panel

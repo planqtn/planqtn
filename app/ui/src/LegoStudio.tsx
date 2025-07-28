@@ -34,7 +34,8 @@ import { checkSupabaseStatus } from "./lib/errors.ts";
 import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
 import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/FloatingBuildingBlocksPanel.tsx";
 import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
-import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel.tsx";
+import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel";
+import { FloatingPanelConfigManager } from "./features/floating-panel/FloatingPanelConfig";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
@@ -148,24 +149,30 @@ const LegoStudioView: React.FC = () => {
 
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
-  const isBuildingBlocksPanelOpen = useCanvasStore(
-    (state) => state.isBuildingBlocksPanelOpen
+  // Panel configurations
+  const buildingBlocksPanelConfig = useCanvasStore(
+    (state) => state.buildingBlocksPanelConfig
   );
-  const setIsBuildingBlocksPanelOpen = useCanvasStore(
-    (state) => state.setIsBuildingBlocksPanelOpen
+  const setBuildingBlocksPanelConfig = useCanvasStore(
+    (state) => state.setBuildingBlocksPanelConfig
   );
-  const isDetailsPanelOpen = useCanvasStore(
-    (state) => state.isDetailsPanelOpen
+  const detailsPanelConfig = useCanvasStore(
+    (state) => state.detailsPanelConfig
   );
-  const setIsDetailsPanelOpen = useCanvasStore(
-    (state) => state.setIsDetailsPanelOpen
+  const setDetailsPanelConfig = useCanvasStore(
+    (state) => state.setDetailsPanelConfig
   );
-  const isCanvasesPanelOpen = useCanvasStore(
-    (state) => state.isCanvasesPanelOpen
+  const canvasesPanelConfig = useCanvasStore(
+    (state) => state.canvasesPanelConfig
   );
-  const setIsCanvasesPanelOpen = useCanvasStore(
-    (state) => state.setIsCanvasesPanelOpen
+  const setCanvasesPanelConfig = useCanvasStore(
+    (state) => state.setCanvasesPanelConfig
   );
+  const taskPanelConfig = useCanvasStore((state) => state.taskPanelConfig);
+  const setTaskPanelConfig = useCanvasStore(
+    (state) => state.setTaskPanelConfig
+  );
+
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
   const { canvasDragState } = useCanvasDragStateStore();
@@ -185,7 +192,6 @@ const LegoStudioView: React.FC = () => {
   } = useModalStore();
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
-  const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -474,16 +480,16 @@ const LegoStudioView: React.FC = () => {
                   {/* Top-left three-dots menu */}
                   <Box position="absolute" top={2} left={2} zIndex={2000}>
                     <CanvasMenu
-                      isTaskPanelCollapsed={isTaskPanelCollapsed}
-                      setIsTaskPanelCollapsed={setIsTaskPanelCollapsed}
-                      isBuildingBlocksPanelOpen={isBuildingBlocksPanelOpen}
-                      setIsBuildingBlocksPanelOpen={
-                        setIsBuildingBlocksPanelOpen
+                      taskPanelConfig={taskPanelConfig}
+                      setTaskPanelConfig={setTaskPanelConfig}
+                      buildingBlocksPanelConfig={buildingBlocksPanelConfig}
+                      setBuildingBlocksPanelConfig={
+                        setBuildingBlocksPanelConfig
                       }
-                      isDetailsPanelOpen={isDetailsPanelOpen}
-                      setIsDetailsPanelOpen={setIsDetailsPanelOpen}
-                      isCanvasesPanelOpen={isCanvasesPanelOpen}
-                      setIsCanvasesPanelOpen={setIsCanvasesPanelOpen}
+                      detailsPanelConfig={detailsPanelConfig}
+                      setDetailsPanelConfig={setDetailsPanelConfig}
+                      canvasesPanelConfig={canvasesPanelConfig}
+                      setCanvasesPanelConfig={setCanvasesPanelConfig}
                       handleClearAll={handleClearAll}
                       handleExportPythonCode={handleExportPythonCode}
                       handleExportSvg={handleExportSvg}
@@ -631,14 +637,28 @@ const LegoStudioView: React.FC = () => {
         <FloatingTaskPanel
           user={currentUser}
           onError={setError}
-          onClose={() => setIsTaskPanelCollapsed(true)}
-          isOpen={!isTaskPanelCollapsed}
+          config={taskPanelConfig}
+          onConfigChange={setTaskPanelConfig}
+          onClose={() => {
+            const newConfig = new FloatingPanelConfigManager(
+              taskPanelConfig.toJSON()
+            );
+            newConfig.setIsOpen(false);
+            setTaskPanelConfig(newConfig);
+          }}
         />
 
         <FloatingBuildingBlocksPanel
           isUserLoggedIn={isUserLoggedIn}
-          onClose={() => setIsBuildingBlocksPanelOpen(false)}
-          isOpen={isBuildingBlocksPanelOpen}
+          config={buildingBlocksPanelConfig}
+          onConfigChange={setBuildingBlocksPanelConfig}
+          onClose={() => {
+            const newConfig = new FloatingPanelConfigManager(
+              buildingBlocksPanelConfig.toJSON()
+            );
+            newConfig.setIsOpen(false);
+            setBuildingBlocksPanelConfig(newConfig);
+          }}
         />
 
         <FloatingDetailsPanel
@@ -652,13 +672,27 @@ const LegoStudioView: React.FC = () => {
           handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
           toast={toast}
           user={currentUser}
-          onClose={() => setIsDetailsPanelOpen(false)}
-          isOpen={isDetailsPanelOpen}
+          config={detailsPanelConfig}
+          onConfigChange={setDetailsPanelConfig}
+          onClose={() => {
+            const newConfig = new FloatingPanelConfigManager(
+              detailsPanelConfig.toJSON()
+            );
+            newConfig.setIsOpen(false);
+            setDetailsPanelConfig(newConfig);
+          }}
         />
 
         <FloatingCanvasesPanel
-          onClose={() => setIsCanvasesPanelOpen(false)}
-          isOpen={isCanvasesPanelOpen}
+          config={canvasesPanelConfig}
+          onConfigChange={setCanvasesPanelConfig}
+          onClose={() => {
+            const newConfig = new FloatingPanelConfigManager(
+              canvasesPanelConfig.toJSON()
+            );
+            newConfig.setIsOpen(false);
+            setCanvasesPanelConfig(newConfig);
+          }}
         />
 
         {isDynamicLegoDialogOpen && (

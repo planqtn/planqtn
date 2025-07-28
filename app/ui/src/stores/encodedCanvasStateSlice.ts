@@ -122,14 +122,11 @@ export const createEncodedCanvasStateSlice: StateCreator<
         highlightedTensorNetworkLegs: result.highlightedTensorNetworkLegs,
         selectedTensorNetworkParityCheckMatrixRows:
           result.selectedTensorNetworkParityCheckMatrixRows,
-        // Floating panel state
-        isBuildingBlocksPanelOpen: result.isBuildingBlocksPanelOpen,
-        isDetailsPanelOpen: result.isDetailsPanelOpen,
-        isCanvasesPanelOpen: result.isCanvasesPanelOpen,
-        // Floating panel layout state
-        buildingBlocksPanelLayout: result.buildingBlocksPanelLayout,
-        detailsPanelLayout: result.detailsPanelLayout,
-        canvasesPanelLayout: result.canvasesPanelLayout
+        // Floating panel configurations
+        buildingBlocksPanelConfig: result.buildingBlocksPanelConfig,
+        detailsPanelConfig: result.detailsPanelConfig,
+        canvasesPanelConfig: result.canvasesPanelConfig,
+        taskPanelConfig: result.taskPanelConfig
       });
 
       // Initialize leg hide states for all legos

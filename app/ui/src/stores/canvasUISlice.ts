@@ -5,6 +5,7 @@ import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
 import { DroppedLego } from "./droppedLegoStore";
+import { FloatingPanelConfigManager } from "../features/floating-panel/FloatingPanelConfig";
 
 export const calculateBoundingBoxForLegos = (
   legos: DroppedLego[]
@@ -220,39 +221,15 @@ export interface CanvasUISlice {
   suppressNextCanvasClick: boolean;
   setSuppressNextCanvasClick: (val: boolean) => void;
 
-  // Floating panel state
-  isBuildingBlocksPanelOpen: boolean;
-  setIsBuildingBlocksPanelOpen: (open: boolean) => void;
-  isDetailsPanelOpen: boolean;
-  setIsDetailsPanelOpen: (open: boolean) => void;
-  isCanvasesPanelOpen: boolean;
-  setIsCanvasesPanelOpen: (open: boolean) => void;
-
-  // Floating panel layout state
-  buildingBlocksPanelLayout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  };
-  setBuildingBlocksPanelLayout: (layout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  }) => void;
-  detailsPanelLayout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  };
-  setDetailsPanelLayout: (layout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  }) => void;
-  canvasesPanelLayout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  };
-  setCanvasesPanelLayout: (layout: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-  }) => void;
+  // Floating panel configurations
+  buildingBlocksPanelConfig: FloatingPanelConfigManager;
+  setBuildingBlocksPanelConfig: (config: FloatingPanelConfigManager) => void;
+  detailsPanelConfig: FloatingPanelConfigManager;
+  setDetailsPanelConfig: (config: FloatingPanelConfigManager) => void;
+  canvasesPanelConfig: FloatingPanelConfigManager;
+  setCanvasesPanelConfig: (config: FloatingPanelConfigManager) => void;
+  taskPanelConfig: FloatingPanelConfigManager;
+  setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -781,46 +758,77 @@ export const createCanvasUISlice: StateCreator<
   suppressNextCanvasClick: false,
   setSuppressNextCanvasClick: (val) => set({ suppressNextCanvasClick: val }),
 
-  // Floating panel state
-  isBuildingBlocksPanelOpen: false,
-  setIsBuildingBlocksPanelOpen: (open) =>
+  // Floating panel configurations
+  buildingBlocksPanelConfig: new FloatingPanelConfigManager({
+    id: "building-blocks",
+    title: "Building Blocks",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: 50, y: 50 },
+      size: { width: 300, height: 600 }
+    },
+    minWidth: 200,
+    minHeight: 300,
+    defaultWidth: 300,
+    defaultHeight: 600
+  }),
+  setBuildingBlocksPanelConfig: (config) =>
     set((state) => {
-      state.isBuildingBlocksPanelOpen = open;
+      state.buildingBlocksPanelConfig = config;
     }),
-  isDetailsPanelOpen: false,
-  setIsDetailsPanelOpen: (open) =>
+  detailsPanelConfig: new FloatingPanelConfigManager({
+    id: "details",
+    title: "Details",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: window.innerWidth - 400, y: 50 },
+      size: { width: 350, height: 600 }
+    },
+    minWidth: 200,
+    minHeight: 300,
+    defaultWidth: 350,
+    defaultHeight: 600
+  }),
+  setDetailsPanelConfig: (config) =>
     set((state) => {
-      state.isDetailsPanelOpen = open;
+      state.detailsPanelConfig = config;
     }),
-  isCanvasesPanelOpen: false,
-  setIsCanvasesPanelOpen: (open) =>
+  canvasesPanelConfig: new FloatingPanelConfigManager({
+    id: "canvases",
+    title: "Canvases",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: 100, y: 100 },
+      size: { width: 300, height: 500 }
+    },
+    minWidth: 250,
+    minHeight: 300,
+    defaultWidth: 300,
+    defaultHeight: 500
+  }),
+  setCanvasesPanelConfig: (config) =>
     set((state) => {
-      state.isCanvasesPanelOpen = open;
+      state.canvasesPanelConfig = config;
     }),
-
-  // Floating panel layout state
-  buildingBlocksPanelLayout: {
-    position: { x: 50, y: 50 },
-    size: { width: 300, height: 600 }
-  },
-  setBuildingBlocksPanelLayout: (layout) =>
+  taskPanelConfig: new FloatingPanelConfigManager({
+    id: "tasks",
+    title: "Tasks",
+    isOpen: false,
+    isCollapsed: false,
+    layout: {
+      position: { x: 100, y: 100 },
+      size: { width: 600, height: 400 }
+    },
+    minWidth: 300,
+    minHeight: 200,
+    defaultWidth: 600,
+    defaultHeight: 400
+  }),
+  setTaskPanelConfig: (config) =>
     set((state) => {
-      state.buildingBlocksPanelLayout = layout;
-    }),
-  detailsPanelLayout: {
-    position: { x: window.innerWidth - 400, y: 50 },
-    size: { width: 350, height: 600 }
-  },
-  setDetailsPanelLayout: (layout) =>
-    set((state) => {
-      state.detailsPanelLayout = layout;
-    }),
-  canvasesPanelLayout: {
-    position: { x: 100, y: 100 },
-    size: { width: 300, height: 500 }
-  },
-  setCanvasesPanelLayout: (layout) =>
-    set((state) => {
-      state.canvasesPanelLayout = layout;
+      state.taskPanelConfig = config;
     })
 });

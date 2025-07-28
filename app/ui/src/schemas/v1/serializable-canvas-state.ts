@@ -51,21 +51,65 @@ export interface SerializableCanvasState {
     value: number[];
   }[];
   parity_check_matrix_table?: { key: string; value: number[][] }[];
-  // Floating panel state
-  isBuildingBlocksPanelOpen?: boolean;
-  isDetailsPanelOpen?: boolean;
-  isCanvasesPanelOpen?: boolean;
-  // Floating panel layout state
-  buildingBlocksPanelLayout?: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
+  // Floating panel configurations
+  buildingBlocksPanelConfig?: {
+    id: string;
+    title: string;
+    isOpen: boolean;
+    isCollapsed: boolean;
+    layout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    };
+    minWidth?: number;
+    minHeight?: number;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    defaultPosition?: { x: number; y: number };
   };
-  detailsPanelLayout?: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
+  detailsPanelConfig?: {
+    id: string;
+    title: string;
+    isOpen: boolean;
+    isCollapsed: boolean;
+    layout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    };
+    minWidth?: number;
+    minHeight?: number;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    defaultPosition?: { x: number; y: number };
   };
-  canvasesPanelLayout?: {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
+  canvasesPanelConfig?: {
+    id: string;
+    title: string;
+    isOpen: boolean;
+    isCollapsed: boolean;
+    layout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    };
+    minWidth?: number;
+    minHeight?: number;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    defaultPosition?: { x: number; y: number };
+  };
+  taskPanelConfig?: {
+    id: string;
+    title: string;
+    isOpen: boolean;
+    isCollapsed: boolean;
+    layout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    };
+    minWidth?: number;
+    minHeight?: number;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    defaultPosition?: { x: number; y: number };
   };
 }

@@ -205,139 +205,388 @@
       "description": "Whether to hide all leg labels",
       "default": false
     },
-    "isBuildingBlocksPanelOpen": {
-      "type": "boolean",
-      "description": "Whether the building blocks panel is open",
-      "default": false
-    },
-    "isDetailsPanelOpen": {
-      "type": "boolean",
-      "description": "Whether the details panel is open",
-      "default": false
-    },
-    "isCanvasesPanelOpen": {
-      "type": "boolean",
-      "description": "Whether the navigator panel is open",
-      "default": false
-    },
-    "buildingBlocksPanelLayout": {
+    "buildingBlocksPanelConfig": {
       "type": "object",
-      "description": "Layout configuration for the building blocks panel",
+      "description": "Configuration for the building blocks panel",
       "properties": {
-        "position": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the panel"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title of the panel"
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Whether the panel is open"
+        },
+        "isCollapsed": {
+          "type": "boolean",
+          "description": "Whether the panel is collapsed"
+        },
+        "layout": {
           "type": "object",
-          "description": "Position of the panel on screen",
+          "description": "Layout configuration for the panel",
+          "properties": {
+            "position": {
+              "type": "object",
+              "description": "Position of the panel on screen",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "X coordinate of the panel"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate of the panel"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "size": {
+              "type": "object",
+              "description": "Size of the panel",
+              "properties": {
+                "width": {
+                  "type": "number",
+                  "description": "Width of the panel in pixels"
+                },
+                "height": {
+                  "type": "number",
+                  "description": "Height of the panel in pixels"
+                }
+              },
+              "required": ["width", "height"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["position", "size"],
+          "additionalProperties": false
+        },
+        "minWidth": {
+          "type": "number",
+          "description": "Minimum width of the panel"
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Minimum height of the panel"
+        },
+        "defaultWidth": {
+          "type": "number",
+          "description": "Default width of the panel"
+        },
+        "defaultHeight": {
+          "type": "number",
+          "description": "Default height of the panel"
+        },
+        "defaultPosition": {
+          "type": "object",
+          "description": "Default position of the panel",
           "properties": {
             "x": {
               "type": "number",
-              "description": "X coordinate of the panel"
+              "description": "Default X coordinate"
             },
             "y": {
               "type": "number",
-              "description": "Y coordinate of the panel"
+              "description": "Default Y coordinate"
             }
           },
           "required": ["x", "y"],
           "additionalProperties": false
-        },
-        "size": {
-          "type": "object",
-          "description": "Size of the panel",
-          "properties": {
-            "width": {
-              "type": "number",
-              "description": "Width of the panel in pixels"
-            },
-            "height": {
-              "type": "number",
-              "description": "Height of the panel in pixels"
-            }
-          },
-          "required": ["width", "height"],
-          "additionalProperties": false
         }
       },
-      "required": ["position", "size"],
+      "required": ["id", "title", "isOpen", "isCollapsed", "layout"],
       "additionalProperties": false
     },
-    "detailsPanelLayout": {
+    "detailsPanelConfig": {
       "type": "object",
-      "description": "Layout configuration for the details panel",
+      "description": "Configuration for the details panel",
       "properties": {
-        "position": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the panel"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title of the panel"
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Whether the panel is open"
+        },
+        "isCollapsed": {
+          "type": "boolean",
+          "description": "Whether the panel is collapsed"
+        },
+        "layout": {
           "type": "object",
-          "description": "Position of the panel on screen",
+          "description": "Layout configuration for the panel",
+          "properties": {
+            "position": {
+              "type": "object",
+              "description": "Position of the panel on screen",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "X coordinate of the panel"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate of the panel"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "size": {
+              "type": "object",
+              "description": "Size of the panel",
+              "properties": {
+                "width": {
+                  "type": "number",
+                  "description": "Width of the panel in pixels"
+                },
+                "height": {
+                  "type": "number",
+                  "description": "Height of the panel in pixels"
+                }
+              },
+              "required": ["width", "height"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["position", "size"],
+          "additionalProperties": false
+        },
+        "minWidth": {
+          "type": "number",
+          "description": "Minimum width of the panel"
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Minimum height of the panel"
+        },
+        "defaultWidth": {
+          "type": "number",
+          "description": "Default width of the panel"
+        },
+        "defaultHeight": {
+          "type": "number",
+          "description": "Default height of the panel"
+        },
+        "defaultPosition": {
+          "type": "object",
+          "description": "Default position of the panel",
           "properties": {
             "x": {
               "type": "number",
-              "description": "X coordinate of the panel"
+              "description": "Default X coordinate"
             },
             "y": {
               "type": "number",
-              "description": "Y coordinate of the panel"
+              "description": "Default Y coordinate"
             }
           },
           "required": ["x", "y"],
           "additionalProperties": false
-        },
-        "size": {
-          "type": "object",
-          "description": "Size of the panel",
-          "properties": {
-            "width": {
-              "type": "number",
-              "description": "Width of the panel in pixels"
-            },
-            "height": {
-              "type": "number",
-              "description": "Height of the panel in pixels"
-            }
-          },
-          "required": ["width", "height"],
-          "additionalProperties": false
         }
       },
-      "required": ["position", "size"],
+      "required": ["id", "title", "isOpen", "isCollapsed", "layout"],
       "additionalProperties": false
     },
-    "canvasesPanelLayout": {
+    "canvasesPanelConfig": {
       "type": "object",
-      "description": "Layout configuration for the navigator panel",
+      "description": "Configuration for the canvases panel",
       "properties": {
-        "position": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the panel"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title of the panel"
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Whether the panel is open"
+        },
+        "isCollapsed": {
+          "type": "boolean",
+          "description": "Whether the panel is collapsed"
+        },
+        "layout": {
           "type": "object",
-          "description": "Position of the panel on screen",
+          "description": "Layout configuration for the panel",
+          "properties": {
+            "position": {
+              "type": "object",
+              "description": "Position of the panel on screen",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "X coordinate of the panel"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate of the panel"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "size": {
+              "type": "object",
+              "description": "Size of the panel",
+              "properties": {
+                "width": {
+                  "type": "number",
+                  "description": "Width of the panel in pixels"
+                },
+                "height": {
+                  "type": "number",
+                  "description": "Height of the panel in pixels"
+                }
+              },
+              "required": ["width", "height"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["position", "size"],
+          "additionalProperties": false
+        },
+        "minWidth": {
+          "type": "number",
+          "description": "Minimum width of the panel"
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Minimum height of the panel"
+        },
+        "defaultWidth": {
+          "type": "number",
+          "description": "Default width of the panel"
+        },
+        "defaultHeight": {
+          "type": "number",
+          "description": "Default height of the panel"
+        },
+        "defaultPosition": {
+          "type": "object",
+          "description": "Default position of the panel",
           "properties": {
             "x": {
               "type": "number",
-              "description": "X coordinate of the panel"
+              "description": "Default X coordinate"
             },
             "y": {
               "type": "number",
-              "description": "Y coordinate of the panel"
+              "description": "Default Y coordinate"
             }
           },
           "required": ["x", "y"],
           "additionalProperties": false
+        }
+      },
+      "required": ["id", "title", "isOpen", "isCollapsed", "layout"],
+      "additionalProperties": false
+    },
+    "taskPanelConfig": {
+      "type": "object",
+      "description": "Configuration for the task panel",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the panel"
         },
-        "size": {
+        "title": {
+          "type": "string",
+          "description": "Display title of the panel"
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Whether the panel is open"
+        },
+        "isCollapsed": {
+          "type": "boolean",
+          "description": "Whether the panel is collapsed"
+        },
+        "layout": {
           "type": "object",
-          "description": "Size of the panel",
+          "description": "Layout configuration for the panel",
           "properties": {
-            "width": {
-              "type": "number",
-              "description": "Width of the panel in pixels"
+            "position": {
+              "type": "object",
+              "description": "Position of the panel on screen",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "X coordinate of the panel"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "Y coordinate of the panel"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
             },
-            "height": {
-              "type": "number",
-              "description": "Height of the panel in pixels"
+            "size": {
+              "type": "object",
+              "description": "Size of the panel",
+              "properties": {
+                "width": {
+                  "type": "number",
+                  "description": "Width of the panel in pixels"
+                },
+                "height": {
+                  "type": "number",
+                  "description": "Height of the panel in pixels"
+                }
+              },
+              "required": ["width", "height"],
+              "additionalProperties": false
             }
           },
-          "required": ["width", "height"],
+          "required": ["position", "size"],
+          "additionalProperties": false
+        },
+        "minWidth": {
+          "type": "number",
+          "description": "Minimum width of the panel"
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Minimum height of the panel"
+        },
+        "defaultWidth": {
+          "type": "number",
+          "description": "Default width of the panel"
+        },
+        "defaultHeight": {
+          "type": "number",
+          "description": "Default height of the panel"
+        },
+        "defaultPosition": {
+          "type": "object",
+          "description": "Default position of the panel",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "Default X coordinate"
+            },
+            "y": {
+              "type": "number",
+              "description": "Default Y coordinate"
+            }
+          },
+          "required": ["x", "y"],
           "additionalProperties": false
         }
       },
-      "required": ["position", "size"],
+      "required": ["id", "title", "isOpen", "isCollapsed", "layout"],
       "additionalProperties": false
     },
     "parityCheckMatrices": {
