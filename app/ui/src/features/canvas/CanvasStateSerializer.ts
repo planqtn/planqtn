@@ -30,7 +30,10 @@ export type CompressedCanvasState = [
   [string, ParityCheckMatrix][]?, // 6: parityCheckMatrices
   [string, WeightEnumerator[]][]?, // 7: weightEnumerators
   [string, { leg: TensorNetworkLeg; operator: PauliOperator }[]][]?, // 8: highlightedTensorNetworkLegs
-  [string, number[]][]? // 9: selectedTensorNetworkParityCheckMatrixRows
+  [string, number[]][]?, // 9: selectedTensorNetworkParityCheckMatrixRows
+  number?, // 10: panel flags packed as bits (isBuildingBlocksPanelOpen, isDetailsPanelOpen)
+  [number, number, number, number]?, // 11: buildingBlocksPanelLayout [x, y, width, height]
+  [number, number, number, number]? // 12: detailsPanelLayout [x, y, width, height]
 ];
 
 export type CompressedPiece = [
@@ -83,6 +86,18 @@ export interface RehydratedCanvasState {
     }[]
   >;
   selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
+  // Floating panel state
+  isBuildingBlocksPanelOpen: boolean;
+  isDetailsPanelOpen: boolean;
+  // Floating panel layout state
+  buildingBlocksPanelLayout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  detailsPanelLayout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
 }
 export class CanvasStateSerializer {
   public canvasId: string;
@@ -141,7 +156,13 @@ export class CanvasStateSerializer {
       ).map(([key, value]) => ({ key, value })),
       selectedTensorNetworkParityCheckMatrixRows: Object.entries(
         store.selectedTensorNetworkParityCheckMatrixRows
-      ).map(([key, value]) => ({ key, value }))
+      ).map(([key, value]) => ({ key, value })),
+      // Floating panel state
+      isBuildingBlocksPanelOpen: store.isBuildingBlocksPanelOpen,
+      isDetailsPanelOpen: store.isDetailsPanelOpen,
+      // Floating panel layout state
+      buildingBlocksPanelLayout: store.buildingBlocksPanelLayout,
+      detailsPanelLayout: store.detailsPanelLayout
     };
 
     return state;
@@ -170,7 +191,19 @@ export class CanvasStateSerializer {
       parityCheckMatrices: {},
       weightEnumerators: {},
       highlightedTensorNetworkLegs: {},
-      selectedTensorNetworkParityCheckMatrixRows: {}
+      selectedTensorNetworkParityCheckMatrixRows: {},
+      // Floating panel state
+      isBuildingBlocksPanelOpen: false,
+      isDetailsPanelOpen: false,
+      // Floating panel layout state
+      buildingBlocksPanelLayout: {
+        position: { x: 50, y: 50 },
+        size: { width: 300, height: 600 }
+      },
+      detailsPanelLayout: {
+        position: { x: window.innerWidth - 400, y: 50 },
+        size: { width: 350, height: 600 }
+      }
     };
 
     if (canvasStateString === "") {
@@ -286,6 +319,22 @@ export class CanvasStateSerializer {
       result.hideTypeIds = rawCanvasStateObj.hideTypeIds || false;
       result.hideDanglingLegs = rawCanvasStateObj.hideDanglingLegs || false;
       result.hideLegLabels = rawCanvasStateObj.hideLegLabels || false;
+
+      // Floating panel state
+      result.isBuildingBlocksPanelOpen =
+        rawCanvasStateObj.isBuildingBlocksPanelOpen || false;
+      result.isDetailsPanelOpen = rawCanvasStateObj.isDetailsPanelOpen || false;
+
+      // Floating panel layout state
+      result.buildingBlocksPanelLayout =
+        rawCanvasStateObj.buildingBlocksPanelLayout || {
+          position: { x: 50, y: 50 },
+          size: { width: 300, height: 600 }
+        };
+      result.detailsPanelLayout = rawCanvasStateObj.detailsPanelLayout || {
+        position: { x: window.innerWidth - 400, y: 50 },
+        size: { width: 350, height: 600 }
+      };
 
       // Preserve the title from the decoded state if it exists
       if (rawCanvasStateObj.title) {
@@ -405,6 +454,14 @@ export class CanvasStateSerializer {
       );
     };
 
+    // Pack panel flags into a single number (bit flags)
+    const packPanelFlags = (
+      isBuildingBlocksPanelOpen: boolean,
+      isDetailsPanelOpen: boolean
+    ): number => {
+      return (isBuildingBlocksPanelOpen ? 1 : 0) | (isDetailsPanelOpen ? 2 : 0);
+    };
+
     // Convert pieces to compressed format
     const compressedPieces: CompressedPiece[] = store.droppedLegos.map(
       (piece) => {
@@ -499,6 +556,35 @@ export class CanvasStateSerializer {
       );
     }
 
+    // Add panel flags if any panel is open
+    const panelFlags = packPanelFlags(
+      store.isBuildingBlocksPanelOpen,
+      store.isDetailsPanelOpen
+    );
+    if (panelFlags > 0) {
+      compressed[10] = panelFlags;
+    }
+
+    // Add panel layouts if panels are open
+    if (store.isBuildingBlocksPanelOpen) {
+      const layout = store.buildingBlocksPanelLayout;
+      compressed[11] = [
+        Math.round(layout.position.x),
+        Math.round(layout.position.y),
+        Math.round(layout.size.width),
+        Math.round(layout.size.height)
+      ];
+    }
+    if (store.isDetailsPanelOpen) {
+      const layout = store.detailsPanelLayout;
+      compressed[12] = [
+        Math.round(layout.position.x),
+        Math.round(layout.position.y),
+        Math.round(layout.size.width),
+        Math.round(layout.size.height)
+      ];
+    }
+
     return compressed;
   }
 
@@ -515,6 +601,12 @@ export class CanvasStateSerializer {
       hideTypeIds: !!(flags & 4),
       hideDanglingLegs: !!(flags & 8),
       hideLegLabels: !!(flags & 16)
+    });
+
+    // Unpack panel flags
+    const unpackPanelFlags = (flags: number) => ({
+      isBuildingBlocksPanelOpen: !!(flags & 1),
+      isDetailsPanelOpen: !!(flags & 2)
     });
 
     // Build matrix lookup table
@@ -567,6 +659,28 @@ export class CanvasStateSerializer {
     );
 
     const booleanFlags = unpackBooleanFlags(compressed[3]);
+    const panelFlags =
+      compressed[10] !== undefined
+        ? unpackPanelFlags(compressed[10])
+        : { isBuildingBlocksPanelOpen: false, isDetailsPanelOpen: false };
+
+    // Unpack panel layouts
+    const buildingBlocksPanelLayout = compressed[11]
+      ? {
+          position: { x: compressed[11][0], y: compressed[11][1] },
+          size: { width: compressed[11][2], height: compressed[11][3] }
+        }
+      : { position: { x: 50, y: 50 }, size: { width: 300, height: 600 } };
+
+    const detailsPanelLayout = compressed[12]
+      ? {
+          position: { x: compressed[12][0], y: compressed[12][1] },
+          size: { width: compressed[12][2], height: compressed[12][3] }
+        }
+      : {
+          position: { x: window.innerWidth - 400, y: 50 },
+          size: { width: 350, height: 600 }
+        };
 
     const result: SerializableCanvasState = {
       title: compressed[0],
@@ -591,7 +705,13 @@ export class CanvasStateSerializer {
       ),
       selectedTensorNetworkParityCheckMatrixRows: (compressed[9] || []).map(
         ([key, value]) => ({ key, value })
-      )
+      ),
+      // Floating panel state
+      isBuildingBlocksPanelOpen: panelFlags.isBuildingBlocksPanelOpen,
+      isDetailsPanelOpen: panelFlags.isDetailsPanelOpen,
+      // Floating panel layout state
+      buildingBlocksPanelLayout,
+      detailsPanelLayout
     };
     console.log(
       "hello - deserialized result from compressed canvas state",

@@ -10,6 +10,7 @@ import {
 import { CloseIcon, DragHandleIcon } from "@chakra-ui/icons";
 import { RiDragMove2Fill } from "react-icons/ri";
 import DetailsPanel from "./DetailsPanel";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { User } from "@supabase/supabase-js";
 
@@ -45,12 +46,9 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
   const resizeHandleColor = useColorModeValue("gray.400", "gray.500");
   const resizeHandleHoverColor = useColorModeValue("gray.600", "gray.300");
 
-  // Panel position and size state
-  const [position, setPosition] = useState({
-    x: window.innerWidth - 400,
-    y: 50
-  });
-  const [size, setSize] = useState({ width: 350, height: 600 });
+  // Panel position and size state from store
+  const layout = useCanvasStore((state) => state.detailsPanelLayout);
+  const setLayout = useCanvasStore((state) => state.setDetailsPanelLayout);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -58,30 +56,16 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
-  // Save panel position and size to localStorage
-  const saveLayout = useCallback(() => {
-    const layout = { position, size };
-    localStorage.setItem("floatingDetailsPanelLayout", JSON.stringify(layout));
-  }, [position, size]);
-
-  // Load panel position and size from localStorage
-  useEffect(() => {
-    const savedLayout = localStorage.getItem("floatingDetailsPanelLayout");
-    if (savedLayout) {
-      try {
-        const layout = JSON.parse(savedLayout);
-        if (layout.position) setPosition(layout.position);
-        if (layout.size) setSize(layout.size);
-      } catch (error) {
-        console.error("Failed to load details panel layout:", error);
-      }
-    }
-  }, []);
-
-  // Save layout when position or size changes
-  useEffect(() => {
-    saveLayout();
-  }, [saveLayout]);
+  // Update store when layout changes
+  const updateLayout = useCallback(
+    (newLayout: {
+      position: { x: number; y: number };
+      size: { width: number; height: number };
+    }) => {
+      setLayout(newLayout);
+    },
+    [setLayout]
+  );
 
   // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -111,28 +95,34 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
         const newY = e.clientY - dragOffset.y;
 
         // Constrain to viewport
-        const maxX = window.innerWidth - size.width;
-        const maxY = window.innerHeight - size.height;
+        const maxX = window.innerWidth - layout.size.width;
+        const maxY = window.innerHeight - layout.size.height;
 
-        setPosition({
-          x: Math.max(0, Math.min(newX, maxX)),
-          y: Math.max(0, Math.min(newY, maxY))
+        updateLayout({
+          position: {
+            x: Math.max(0, Math.min(newX, maxX)),
+            y: Math.max(0, Math.min(newY, maxY))
+          },
+          size: layout.size
         });
       } else if (isResizing) {
-        const newWidth = Math.max(200, e.clientX - position.x);
-        const newHeight = Math.max(300, e.clientY - position.y);
+        const newWidth = Math.max(200, e.clientX - layout.position.x);
+        const newHeight = Math.max(300, e.clientY - layout.position.y);
 
         // Constrain to viewport
-        const maxWidth = window.innerWidth - position.x;
-        const maxHeight = window.innerHeight - position.y;
+        const maxWidth = window.innerWidth - layout.position.x;
+        const maxHeight = window.innerHeight - layout.position.y;
 
-        setSize({
-          width: Math.min(newWidth, maxWidth),
-          height: Math.min(newHeight, maxHeight)
+        updateLayout({
+          position: layout.position,
+          size: {
+            width: Math.min(newWidth, maxWidth),
+            height: Math.min(newHeight, maxHeight)
+          }
         });
       }
     },
-    [isDragging, isResizing, dragOffset, position, size]
+    [isDragging, isResizing, dragOffset, layout, updateLayout]
   );
 
   // Handle mouse up
@@ -157,18 +147,21 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
   // Handle window resize to keep panel in bounds
   useEffect(() => {
     const handleWindowResize = () => {
-      const maxX = window.innerWidth - size.width;
-      const maxY = window.innerHeight - size.height;
+      const maxX = window.innerWidth - layout.size.width;
+      const maxY = window.innerHeight - layout.size.height;
 
-      setPosition((prev) => ({
-        x: Math.max(0, Math.min(prev.x, maxX)),
-        y: Math.max(0, Math.min(prev.y, maxY))
-      }));
+      updateLayout({
+        position: {
+          x: Math.max(0, Math.min(layout.position.x, maxX)),
+          y: Math.max(0, Math.min(layout.position.y, maxY))
+        },
+        size: layout.size
+      });
     };
 
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [size]);
+  }, [layout, updateLayout]);
 
   if (!isOpen) return null;
 
@@ -176,10 +169,10 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
     <Box
       ref={panelRef}
       position="fixed"
-      left={`${position.x}px`}
-      top={`${position.y}px`}
-      width={`${size.width}px`}
-      height={`${size.height}px`}
+      left={`${layout.position.x}px`}
+      top={`${layout.position.y}px`}
+      width={`${layout.size.width}px`}
+      height={`${layout.size.height}px`}
       bg={bgColor}
       border="1px"
       borderColor={borderColor}

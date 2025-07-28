@@ -219,6 +219,30 @@ export interface CanvasUISlice {
   setResizeProxyLegos: (legos: DroppedLego[] | null) => void;
   suppressNextCanvasClick: boolean;
   setSuppressNextCanvasClick: (val: boolean) => void;
+
+  // Floating panel state
+  isBuildingBlocksPanelOpen: boolean;
+  setIsBuildingBlocksPanelOpen: (open: boolean) => void;
+  isDetailsPanelOpen: boolean;
+  setIsDetailsPanelOpen: (open: boolean) => void;
+
+  // Floating panel layout state
+  buildingBlocksPanelLayout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  setBuildingBlocksPanelLayout: (layout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  }) => void;
+  detailsPanelLayout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  setDetailsPanelLayout: (layout: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  }) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -745,5 +769,35 @@ export const createCanvasUISlice: StateCreator<
       state.resizeProxyLegos = legos;
     }),
   suppressNextCanvasClick: false,
-  setSuppressNextCanvasClick: (val) => set({ suppressNextCanvasClick: val })
+  setSuppressNextCanvasClick: (val) => set({ suppressNextCanvasClick: val }),
+
+  // Floating panel state
+  isBuildingBlocksPanelOpen: false,
+  setIsBuildingBlocksPanelOpen: (open) =>
+    set((state) => {
+      state.isBuildingBlocksPanelOpen = open;
+    }),
+  isDetailsPanelOpen: false,
+  setIsDetailsPanelOpen: (open) =>
+    set((state) => {
+      state.isDetailsPanelOpen = open;
+    }),
+
+  // Floating panel layout state
+  buildingBlocksPanelLayout: {
+    position: { x: 50, y: 50 },
+    size: { width: 300, height: 600 }
+  },
+  setBuildingBlocksPanelLayout: (layout) =>
+    set((state) => {
+      state.buildingBlocksPanelLayout = layout;
+    }),
+  detailsPanelLayout: {
+    position: { x: window.innerWidth - 400, y: 50 },
+    size: { width: 350, height: 600 }
+  },
+  setDetailsPanelLayout: (layout) =>
+    set((state) => {
+      state.detailsPanelLayout = layout;
+    })
 });

@@ -51,4 +51,16 @@ export interface SerializableCanvasState {
     value: number[];
   }[];
   parity_check_matrix_table?: { key: string; value: number[][] }[];
+  // Floating panel state
+  isBuildingBlocksPanelOpen?: boolean;
+  isDetailsPanelOpen?: boolean;
+  // Floating panel layout state
+  buildingBlocksPanelLayout?: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+  detailsPanelLayout?: {
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  };
 }

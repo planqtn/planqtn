@@ -147,6 +147,18 @@ const LegoStudioView: React.FC = () => {
 
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
+  const isBuildingBlocksPanelOpen = useCanvasStore(
+    (state) => state.isBuildingBlocksPanelOpen
+  );
+  const setIsBuildingBlocksPanelOpen = useCanvasStore(
+    (state) => state.setIsBuildingBlocksPanelOpen
+  );
+  const isDetailsPanelOpen = useCanvasStore(
+    (state) => state.isDetailsPanelOpen
+  );
+  const setIsDetailsPanelOpen = useCanvasStore(
+    (state) => state.setIsDetailsPanelOpen
+  );
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
   const { canvasDragState } = useCanvasDragStateStore();
@@ -167,9 +179,6 @@ const LegoStudioView: React.FC = () => {
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
   const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
-  const [isBuildingBlocksPanelOpen, setIsBuildingBlocksPanelOpen] =
-    useState(false);
-  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 

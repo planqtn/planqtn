@@ -19,7 +19,7 @@ import DroppedLegoDisplay, {
   getLegoBoundingBox
 } from "../lego/DroppedLegoDisplay.tsx";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
-import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
+import { FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lego/Legos.ts";
 import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
