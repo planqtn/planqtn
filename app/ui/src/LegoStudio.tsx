@@ -9,15 +9,10 @@ import {
   useToast,
   VStack
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
-import {
-  Panel,
-  PanelGroup,
-  ImperativePanelHandle
-} from "react-resizable-panels";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 
 import ErrorPanel from "./components/ErrorPanel";
-import BuildingBlocksPanel from "./features/building-blocks-panel/BuildingBlocksPanel.tsx";
 import { KeyboardHandler } from "./features/canvas/KeyboardHandler.tsx";
 import { ConnectionsLayer } from "./features/lego/ConnectionsLayer.tsx";
 import { LegosLayer } from "./features/lego/LegosLayer.tsx";
@@ -25,9 +20,6 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./features/canvas/SelectionManager.tsx";
-
-import DetailsPanel from "./features/details-panel/DetailsPanel.tsx";
-import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
 import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { randomPlankterName } from "./lib/RandomPlankterNames";
@@ -40,6 +32,8 @@ import { checkSupabaseStatus } from "./lib/errors.ts";
 // import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 
 import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
+import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/FloatingBuildingBlocksPanel.tsx";
+import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
@@ -56,43 +50,6 @@ import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx
 
 import { DroppedLego } from "./stores/droppedLegoStore.ts";
 // import PythonCodeModal from "./components/PythonCodeModal";
-
-// Memoized Left Panel Component
-const LeftPanel = memo<{
-  leftPanelRef: React.RefObject<ImperativePanelHandle>;
-  legoPanelSizes: { defaultSize: number; minSize: number };
-  isLegoPanelCollapsed: boolean;
-  setIsLegoPanelCollapsed: (collapsed: boolean) => void;
-  isUserLoggedIn: boolean;
-}>(
-  ({
-    leftPanelRef,
-    legoPanelSizes,
-    isLegoPanelCollapsed,
-    setIsLegoPanelCollapsed,
-    isUserLoggedIn
-  }) => {
-    return (
-      <Panel
-        ref={leftPanelRef as React.RefObject<ImperativePanelHandle>}
-        id="lego-panel"
-        defaultSize={legoPanelSizes.defaultSize}
-        minSize={legoPanelSizes.minSize}
-        maxSize={legoPanelSizes.defaultSize}
-        order={1}
-        collapsible={true}
-        onCollapse={() => setIsLegoPanelCollapsed(true)}
-        onExpand={() => setIsLegoPanelCollapsed(false)}
-      >
-        {!isLegoPanelCollapsed && (
-          <BuildingBlocksPanel isUserLoggedIn={isUserLoggedIn} />
-        )}
-      </Panel>
-    );
-  }
-);
-
-LeftPanel.displayName = "LeftPanel";
 
 const LegoStudioView: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>("");
@@ -208,19 +165,11 @@ const LegoStudioView: React.FC = () => {
     openShareDialog
   } = useModalStore();
 
-  const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
-    setIsLegoPanelCollapsed(collapsed);
-  }, []);
-
-  const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
-
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
-  const leftPanelRef = useRef<ImperativePanelHandle>(null);
-  const [legoPanelSizes, setLegoPanelSizes] = useState({
-    defaultSize: 15,
-    minSize: 8
-  });
   const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
+  const [isBuildingBlocksPanelOpen, setIsBuildingBlocksPanelOpen] =
+    useState(false);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -305,46 +254,6 @@ const LegoStudioView: React.FC = () => {
       setCurrentUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const calculatePanelSizes = (containerWidth: number) => {
-      // With accordion structure, we need more space for the headers
-      // Default is 280px, min is 150px to accommodate accordion headers
-      const defaultWidthInPx = 280;
-      const minWidthInPx = 150;
-
-      if (containerWidth > 0) {
-        const defaultSize = (defaultWidthInPx / containerWidth) * 100 * 1.5;
-        const minSize = (minWidthInPx / containerWidth) * 100;
-
-        // Add some sanity checks to not exceed 100% or go below 0
-        setLegoPanelSizes({
-          defaultSize: Math.min(100, Math.max(0, defaultSize)),
-          minSize: Math.min(100, Math.max(0, minSize))
-        });
-      }
-    };
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        calculatePanelSizes(entry.contentRect.width);
-      }
-    });
-
-    const currentContainerRef = panelGroupContainerRef.current;
-    if (currentContainerRef) {
-      observer.observe(currentContainerRef);
-      // Initial calculation
-      calculatePanelSizes(currentContainerRef.offsetWidth);
-    }
-
-    return () => {
-      if (currentContainerRef) {
-        observer.unobserve(currentContainerRef);
-      }
-    };
   }, []);
 
   // Add Supabase status check on page load
@@ -524,20 +433,8 @@ const LegoStudioView: React.FC = () => {
           overflow="hidden"
         >
           <PanelGroup direction="horizontal">
-            {/* Left Panel */}
-            <LeftPanel
-              leftPanelRef={
-                leftPanelRef as React.RefObject<ImperativePanelHandle>
-              }
-              legoPanelSizes={legoPanelSizes}
-              isLegoPanelCollapsed={isLegoPanelCollapsed}
-              setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
-              isUserLoggedIn={isUserLoggedIn}
-            />
-            <ResizeHandle id="lego-panel-resize-handle" />
-
             {/* Main Content */}
-            <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
+            <Panel id="main-panel" defaultSize={100} minSize={5} order={1}>
               <Box h="100%" display="flex" flexDirection="column" p={4}>
                 {/* Canvas with overlay controls */}
                 <Box
@@ -559,18 +456,24 @@ const LegoStudioView: React.FC = () => {
                   }}
                 >
                   {/* Top-left three-dots menu */}
-                  <CanvasMenu
-                    isLegoPanelCollapsed={isLegoPanelCollapsed}
-                    isTaskPanelCollapsed={isTaskPanelCollapsed}
-                    setIsTaskPanelCollapsed={setIsTaskPanelCollapsed}
-                    leftPanelRef={leftPanelRef}
-                    handleClearAll={handleClearAll}
-                    handleExportPythonCode={handleExportPythonCode}
-                    handleExportSvg={handleExportSvg}
-                    handleRuntimeToggle={handleRuntimeToggle}
-                    openWeightEnumeratorDialog={openWeightEnumeratorDialog}
-                    currentUser={currentUser}
-                  />
+                  <Box position="absolute" top={2} left={2} zIndex={2000}>
+                    <CanvasMenu
+                      isTaskPanelCollapsed={isTaskPanelCollapsed}
+                      setIsTaskPanelCollapsed={setIsTaskPanelCollapsed}
+                      isBuildingBlocksPanelOpen={isBuildingBlocksPanelOpen}
+                      setIsBuildingBlocksPanelOpen={
+                        setIsBuildingBlocksPanelOpen
+                      }
+                      isDetailsPanelOpen={isDetailsPanelOpen}
+                      setIsDetailsPanelOpen={setIsDetailsPanelOpen}
+                      handleClearAll={handleClearAll}
+                      handleExportPythonCode={handleExportPythonCode}
+                      handleExportSvg={handleExportSvg}
+                      handleRuntimeToggle={handleRuntimeToggle}
+                      openWeightEnumeratorDialog={openWeightEnumeratorDialog}
+                      currentUser={currentUser}
+                    />
+                  </Box>
                   {/* Top-center title (contextual) */}
                   <Box
                     position="absolute"
@@ -702,24 +605,6 @@ const LegoStudioView: React.FC = () => {
                 </Box>
               </Box>
             </Panel>
-
-            <ResizeHandle id="details-panel-resize-handle" />
-
-            {/* Right Panel */}
-            <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
-              <DetailsPanel
-                handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-                fuseLegos={fuseLegos}
-                makeSpace={(
-                  center: { x: number; y: number },
-                  radius: number,
-                  skipLegos: DroppedLego[],
-                  legosToCheck: DroppedLego[]
-                ) => makeSpace(center, radius, skipLegos, legosToCheck)}
-                toast={toast}
-                user={currentUser}
-              />
-            </Panel>
           </PanelGroup>
           {/* Error Panel */}
           <ErrorPanel />
@@ -730,6 +615,27 @@ const LegoStudioView: React.FC = () => {
           onError={setError}
           onClose={() => setIsTaskPanelCollapsed(true)}
           isOpen={!isTaskPanelCollapsed}
+        />
+
+        <FloatingBuildingBlocksPanel
+          isUserLoggedIn={isUserLoggedIn}
+          onClose={() => setIsBuildingBlocksPanelOpen(false)}
+          isOpen={isBuildingBlocksPanelOpen}
+        />
+
+        <FloatingDetailsPanel
+          fuseLegos={fuseLegos}
+          makeSpace={(
+            center: { x: number; y: number },
+            radius: number,
+            skipLegos: DroppedLego[],
+            legosToCheck: DroppedLego[]
+          ) => makeSpace(center, radius, skipLegos, legosToCheck)}
+          handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
+          toast={toast}
+          user={currentUser}
+          onClose={() => setIsDetailsPanelOpen(false)}
+          isOpen={isDetailsPanelOpen}
         />
 
         {isDynamicLegoDialogOpen && (

@@ -333,45 +333,18 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
     return (
       <Box
         ref={panelRef}
-        height="100vh"
         minHeight={0}
         borderRight="1px"
         borderColor={borderColor}
         bg={bgColor}
-        overflowY="auto"
         minW={0}
         maxW="100vw"
         display="flex"
         flexDirection="column"
+        height="100%"
       >
-        {/* Modern Title Bar - Fixed at top */}
-        <Box
-          px={4}
-          py={3}
-          bgGradient="linear(to-r, teal.500, blue.500)"
-          color="white"
-          fontWeight="bold"
-          fontSize="lg"
-          boxShadow="sm"
-          letterSpacing="wide"
-          display="flex"
-          alignItems="center"
-          flexShrink={0}
-          userSelect="none"
-        >
-          <Icon as={FiPackage} boxSize={5} mr={2} />
-          Building Blocks
-        </Box>
-
-        {/* Scrollable Content Area */}
-        <Box
-          flex="1 1 0%"
-          height={0}
-          minHeight={0}
-          overflowY="auto"
-          px={2}
-          pb={2}
-        >
+        {/* Content Area */}
+        <Box flex="1 1 0%" minHeight={0} px={2} pb={2}>
           <Accordion
             allowMultiple
             defaultIndex={[0]}

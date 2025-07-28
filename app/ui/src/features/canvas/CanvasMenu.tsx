@@ -20,7 +20,7 @@ import { RuntimeConfigService } from "../kernel/runtimeConfigService";
 import { Connection } from "../../stores/connectionStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
 import { User } from "@supabase/supabase-js";
-import { ImperativePanelHandle } from "react-resizable-panels";
+
 import { Box, Icon, Text } from "@chakra-ui/react";
 import {
   Tooltip,
@@ -29,10 +29,12 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CanvasMenuProps {
-  isLegoPanelCollapsed: boolean;
   isTaskPanelCollapsed: boolean;
   setIsTaskPanelCollapsed: (collapsed: boolean) => void;
-  leftPanelRef: React.RefObject<ImperativePanelHandle | null>;
+  isBuildingBlocksPanelOpen: boolean;
+  setIsBuildingBlocksPanelOpen: (open: boolean) => void;
+  isDetailsPanelOpen: boolean;
+  setIsDetailsPanelOpen: (open: boolean) => void;
   handleClearAll: () => void;
   handleExportPythonCode: () => void;
   handleExportSvg: () => void;
@@ -45,10 +47,12 @@ interface CanvasMenuProps {
 }
 
 export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  isLegoPanelCollapsed,
   isTaskPanelCollapsed,
   setIsTaskPanelCollapsed,
-  leftPanelRef,
+  isBuildingBlocksPanelOpen,
+  setIsBuildingBlocksPanelOpen,
+  isDetailsPanelOpen,
+  setIsDetailsPanelOpen,
   handleClearAll,
   handleExportPythonCode,
   handleExportSvg,
@@ -216,18 +220,20 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
               <DropdownMenuCheckboxItem
-                checked={isLegoPanelCollapsed}
+                checked={isBuildingBlocksPanelOpen}
                 onClick={() => {
-                  if (leftPanelRef.current) {
-                    if (isLegoPanelCollapsed) {
-                      leftPanelRef.current.expand();
-                    } else {
-                      leftPanelRef.current.collapse();
-                    }
-                  }
+                  setIsBuildingBlocksPanelOpen(!isBuildingBlocksPanelOpen);
                 }}
               >
-                Hide Building Blocks Panel
+                Show Building Blocks Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isDetailsPanelOpen}
+                onClick={() => {
+                  setIsDetailsPanelOpen(!isDetailsPanelOpen);
+                }}
+              >
+                Show Details Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={isTaskPanelCollapsed}
@@ -235,7 +241,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                   setIsTaskPanelCollapsed(!isTaskPanelCollapsed);
                 }}
               >
-                Hide Task Panel
+                Show Task Panel
               </DropdownMenuCheckboxItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
