@@ -13,7 +13,8 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   CopyIcon,
-  ViewIcon
+  ViewIcon,
+  DeleteIcon
 } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { CachedTensorNetwork } from "../../stores/tensorNetworkStore";
@@ -32,6 +33,10 @@ interface TreeNode {
   children?: TreeNode[];
   cachedTensorNetwork?: CachedTensorNetwork;
   isPCM?: boolean;
+  isWeightEnumerator?: boolean;
+  taskId?: string;
+  openLegsCount?: number;
+  truncateLength?: number;
 }
 
 const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
@@ -49,6 +54,14 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   );
   const parityCheckMatrices = useCanvasStore(
     (state) => state.parityCheckMatrices
+  );
+  const unCacheTensorNetwork = useCanvasStore(
+    (state) => state.unCacheTensorNetwork
+  );
+
+  const unCachePCM = useCanvasStore((state) => state.unCachePCM);
+  const unCacheWeightEnumerator = useCanvasStore(
+    (state) => state.unCacheWeightEnumerator
   );
 
   const currentTensorNetwork = useCanvasStore((state) => state.tensorNetwork);
@@ -106,7 +119,12 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
             : `Weight Enumerator ${index + 1}`,
           isActive: false,
           legoCount: 0,
-          calculationCount: 0
+          calculationCount: 0,
+          cachedTensorNetwork: network,
+          isWeightEnumerator: true,
+          taskId: enumerator.taskId,
+          openLegsCount: enumerator.openLegs.length,
+          truncateLength: enumerator.truncateLength
         }))
       );
 
@@ -153,7 +171,12 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
             : `Weight Enumerator ${index + 1}`,
           isActive: false,
           legoCount: 0,
-          calculationCount: 0
+          calculationCount: 0,
+          cachedTensorNetwork: network,
+          isWeightEnumerator: true,
+          taskId: enumerator.taskId,
+          openLegsCount: enumerator.openLegs.length,
+          truncateLength: enumerator.truncateLength
         }))
       );
 
@@ -213,6 +236,33 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     }
   };
 
+  const handleUncacheClick = (node: TreeNode, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click
+    if (node.cachedTensorNetwork) {
+      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
+      unCacheTensorNetwork(sig);
+    }
+  };
+
+  const handleUncachePCMClick = (node: TreeNode, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click
+    if (node.cachedTensorNetwork) {
+      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
+      unCachePCM(sig);
+    }
+  };
+
+  const handleUncacheWeightEnumeratorClick = (
+    node: TreeNode,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation(); // Prevent triggering the parent click
+    if (node.cachedTensorNetwork && node.taskId) {
+      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
+      unCacheWeightEnumerator(sig, node.taskId);
+    }
+  };
+
   const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({
     node,
     level
@@ -263,7 +313,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
             {node.name}
           </Text>
           <HStack spacing={1}>
-            {/* For PCM nodes, show table icon and PCM button */}
+            {/* For PCM nodes, show table icon and PCM-specific trashcan */}
             {node.isPCM ? (
               <>
                 <IconButton
@@ -278,9 +328,55 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
                     color: "purple.700"
                   }}
                 />
+                {/* Trashcan button for PCM nodes */}
+                {node.cachedTensorNetwork && (
+                  <IconButton
+                    aria-label="Uncache parity check matrix"
+                    icon={<DeleteIcon />}
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={(e) => handleUncachePCMClick(node, e)}
+                    _hover={{
+                      bg: "red.100",
+                      color: "red.700"
+                    }}
+                  />
+                )}
+              </>
+            ) : node.isWeightEnumerator ? (
+              <>
+                {/* For weight enumerator nodes, show calculation type, truncation level, open legs count and weight enumerator-specific trashcan */}
+                <Badge size="sm" colorScheme="teal">
+                  WEP
+                </Badge>
+                {node.truncateLength && (
+                  <Badge size="sm" colorScheme="purple">
+                    T{node.truncateLength}
+                  </Badge>
+                )}
+                <Badge size="sm" colorScheme="orange">
+                  {node.openLegsCount} open legs
+                </Badge>
+                {/* Trashcan button for weight enumerator nodes */}
+                {node.cachedTensorNetwork && node.taskId && (
+                  <IconButton
+                    aria-label="Uncache weight enumerator"
+                    icon={<DeleteIcon />}
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={(e) => handleUncacheWeightEnumeratorClick(node, e)}
+                    _hover={{
+                      bg: "red.100",
+                      color: "red.700"
+                    }}
+                  />
+                )}
               </>
             ) : (
               <>
+                {/* For regular tensor network nodes */}
                 <Badge size="sm" colorScheme="blue">
                   {node.legoCount} legos
                 </Badge>
@@ -301,6 +397,21 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
                     _hover={{
                       bg: "gray.100",
                       color: "gray.700"
+                    }}
+                  />
+                )}
+                {/* Trashcan button for all tensor network nodes */}
+                {node.cachedTensorNetwork && (
+                  <IconButton
+                    aria-label="Uncache tensor network"
+                    icon={<DeleteIcon />}
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={(e) => handleUncacheClick(node, e)}
+                    _hover={{
+                      bg: "red.100",
+                      color: "red.700"
                     }}
                   />
                 )}

@@ -104,6 +104,10 @@ export interface TensorNetworkSlice {
     networkSignature: string
   ) => void;
 
+  unCacheTensorNetwork: (networkSignature: string) => void;
+  unCachePCM: (networkSignature: string) => void;
+  unCacheWeightEnumerator: (networkSignature: string, taskId: string) => void;
+
   setParityCheckMatrix: (
     networkSignature: string,
     parityCheckMatrix: ParityCheckMatrix
@@ -157,6 +161,28 @@ export const useTensorNetworkSlice: StateCreator<
     set((state) => {
       state.cachedTensorNetworks[cachedTensorNetwork.tensorNetwork.signature] =
         cachedTensorNetwork;
+    });
+  },
+  unCacheTensorNetwork: (networkSignature: string) => {
+    get().unCachePCM(networkSignature);
+    set((state) => {
+      delete state.cachedTensorNetworks[networkSignature];
+      delete state.weightEnumerators[networkSignature];
+    });
+  },
+  unCachePCM: (networkSignature: string) => {
+    set((state) => {
+      delete state.parityCheckMatrices[networkSignature];
+      delete state.highlightedTensorNetworkLegs[networkSignature];
+      delete state.selectedTensorNetworkParityCheckMatrixRows[networkSignature];
+    });
+  },
+  unCacheWeightEnumerator: (networkSignature: string, taskId: string) => {
+    set((state) => {
+      const weightEnumerators = state.weightEnumerators[networkSignature];
+      state.weightEnumerators[networkSignature] = weightEnumerators.filter(
+        (enumerator) => enumerator.taskId !== taskId
+      );
     });
   },
   getCachedTensorNetwork: (networkSignature: string) => {
@@ -570,6 +596,21 @@ export const useTensorNetworkSlice: StateCreator<
         taskId,
         newEnumerator.with({ taskId })
       );
+
+      const cachedTensorNetwork = get().getCachedTensorNetwork(
+        tensorNetwork.signature
+      );
+
+      get().cacheTensorNetwork({
+        isActive: true,
+        tensorNetwork: tensorNetwork,
+        svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
+        name:
+          cachedTensorNetwork?.name ||
+          `"Subnet ${tensorNetwork.legos.length} legos | ${new Date().toISOString()}"`,
+        isLocked: cachedTensorNetwork?.isLocked || false,
+        lastUpdated: new Date()
+      });
 
       toast({
         title: "Success starting the task!",
