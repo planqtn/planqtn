@@ -9,7 +9,9 @@ import {
   Badge,
   useColorModeValue,
   IconButton,
-  useToast
+  useToast,
+  Checkbox,
+  Button
 } from "@chakra-ui/react";
 import { DeleteIcon } from "@chakra-ui/icons";
 import { getCanvasIdFromUrl } from "../../stores/canvasStateStore";
@@ -32,6 +34,10 @@ const NavigatorPanel: React.FC = () => {
   const currentCanvasId = getCanvasIdFromUrl();
   const toast = useToast();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedCanvases, setSelectedCanvases] = useState<Set<string>>(
+    new Set()
+  );
+  const [_, setIsBulkDeleteMode] = useState(false);
 
   const savedCanvases = useMemo(() => {
     const canvases: CanvasInfo[] = [];
@@ -142,6 +148,100 @@ const NavigatorPanel: React.FC = () => {
     }
   };
 
+  const handleBulkDelete = () => {
+    if (selectedCanvases.size === 0) {
+      toast({
+        title: "No canvases selected",
+        description: "Please select at least one canvas to delete.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    const selectedCanvasTitles = savedCanvases
+      .filter((canvas) => selectedCanvases.has(canvas.id))
+      .map((canvas) => canvas.title);
+
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${selectedCanvases.size} canvas${selectedCanvases.size > 1 ? "es" : ""}?\n\n${selectedCanvasTitles.join("\n")}\n\nThis action cannot be undone.`
+      )
+    ) {
+      try {
+        let deletedCount = 0;
+        let errorCount = 0;
+
+        selectedCanvases.forEach((canvasId) => {
+          try {
+            localStorage.removeItem(`canvas-state-${canvasId}`);
+            localStorage.removeItem(`canvas-state-${canvasId}-backup`);
+            deletedCount++;
+          } catch (error) {
+            errorCount++;
+          }
+        });
+
+        if (errorCount > 0) {
+          toast({
+            title: "Partial deletion completed",
+            description: `Successfully deleted ${deletedCount} canvas${deletedCount > 1 ? "es" : ""}, but ${errorCount} failed.`,
+            status: "warning",
+            duration: 5000,
+            isClosable: true
+          });
+        } else {
+          toast({
+            title: "Bulk deletion completed",
+            description: `Successfully deleted ${deletedCount} canvas${deletedCount > 1 ? "es" : ""}.`,
+            status: "success",
+            duration: 3000,
+            isClosable: true
+          });
+        }
+
+        // Clear selection and refresh
+        setSelectedCanvases(new Set());
+        setIsBulkDeleteMode(false);
+        setRefreshTrigger((prev) => prev + 1);
+      } catch (error) {
+        toast({
+          title: "Error during bulk deletion",
+          description: "Failed to delete some canvases. Please try again.",
+          status: "error",
+          duration: 3000,
+          isClosable: true
+        });
+      }
+    }
+  };
+
+  const handleCanvasSelection = (canvasId: string, checked: boolean) => {
+    const newSelection = new Set(selectedCanvases);
+    if (checked) {
+      newSelection.add(canvasId);
+    } else {
+      newSelection.delete(canvasId);
+    }
+    setSelectedCanvases(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    const deletableCanvases = savedCanvases.filter(
+      (canvas) => canvas.id !== currentCanvasId
+    );
+    if (selectedCanvases.size === deletableCanvases.length) {
+      // If all are selected, deselect all
+      setSelectedCanvases(new Set());
+    } else {
+      // Select all deletable canvases
+      setSelectedCanvases(
+        new Set(deletableCanvases.map((canvas) => canvas.id))
+      );
+    }
+  };
+
   return (
     <Box
       bg={bgColor}
@@ -154,38 +254,105 @@ const NavigatorPanel: React.FC = () => {
       display="flex"
       flexDirection="column"
     >
+      {/* Bulk Delete Controls */}
+      <HStack justify="space-between" mb={3}>
+        <HStack spacing={2}>
+          <Checkbox
+            isChecked={selectedCanvases.size > 0}
+            isIndeterminate={
+              selectedCanvases.size > 0 &&
+              selectedCanvases.size <
+                savedCanvases.filter((c) => c.id !== currentCanvasId).length
+            }
+            onChange={handleSelectAll}
+            size="sm"
+          >
+            Select All
+          </Checkbox>
+          {selectedCanvases.size > 0 && (
+            <Text
+              fontSize="sm"
+              color={useColorModeValue("gray.600", "gray.400")}
+            >
+              {selectedCanvases.size} selected
+            </Text>
+          )}
+        </HStack>
+        {selectedCanvases.size > 0 && (
+          <Button
+            size="sm"
+            colorScheme="red"
+            variant="outline"
+            onClick={handleBulkDelete}
+            leftIcon={<DeleteIcon />}
+          >
+            Delete Selected
+          </Button>
+        )}
+      </HStack>
+
       <VStack spacing={2} flex={1} overflow="auto">
         <List spacing={2} width="100%">
           {savedCanvases.map((canvas) => {
             const isCurrent = canvas.id === currentCanvasId;
+            const isSelected = selectedCanvases.has(canvas.id);
 
             return (
               <ListItem key={canvas.id}>
                 <Box
                   p={3}
                   borderRadius="md"
-                  bg={isCurrent ? selectedBgColor : "transparent"}
-                  border={isCurrent ? "1px" : "1px"}
-                  borderColor={isCurrent ? "blue.200" : "transparent"}
+                  bg={
+                    isCurrent
+                      ? selectedBgColor
+                      : isSelected
+                        ? useColorModeValue("blue.50", "blue.900")
+                        : "transparent"
+                  }
+                  border={isCurrent ? "1px" : isSelected ? "1px" : "1px"}
+                  borderColor={
+                    isCurrent
+                      ? "blue.200"
+                      : isSelected
+                        ? "blue.300"
+                        : "transparent"
+                  }
                   cursor="pointer"
                   _hover={{
                     bg: isCurrent
                       ? selectedBgColor
-                      : useColorModeValue("gray.50", "gray.700")
+                      : isSelected
+                        ? useColorModeValue("blue.100", "blue.800")
+                        : useColorModeValue("gray.50", "gray.700")
                   }}
                   onClick={() => handleCanvasClick(canvas.id)}
                 >
                   <VStack align="start" spacing={1}>
                     <HStack justify="space-between" width="100%">
-                      <Text
-                        fontWeight={isCurrent ? "bold" : "normal"}
-                        color={isCurrent ? selectedTextColor : textColor}
-                        fontSize="sm"
-                        noOfLines={1}
-                        flex={1}
-                      >
-                        {canvas.title}
-                      </Text>
+                      <HStack spacing={2} flex={1}>
+                        {!isCurrent && (
+                          <Checkbox
+                            isChecked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleCanvasSelection(
+                                canvas.id,
+                                e.target.checked
+                              );
+                            }}
+                            size="sm"
+                          />
+                        )}
+                        <Text
+                          fontWeight={isCurrent ? "bold" : "normal"}
+                          color={isCurrent ? selectedTextColor : textColor}
+                          fontSize="sm"
+                          noOfLines={1}
+                          flex={1}
+                        >
+                          {canvas.title}
+                        </Text>
+                      </HStack>
                       <HStack spacing={2}>
                         <Badge
                           size="sm"
@@ -194,7 +361,7 @@ const NavigatorPanel: React.FC = () => {
                         >
                           {canvas.legoCount} legos
                         </Badge>
-                        {!isCurrent && (
+                        {!isCurrent && selectedCanvases.size === 0 && (
                           <IconButton
                             aria-label={`Delete ${canvas.title}`}
                             icon={<DeleteIcon />}
