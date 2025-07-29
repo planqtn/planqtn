@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 
 import ErrorPanel from "./components/ErrorPanel";
+import FloatingPanelHandler from "./components/FloatingPanelHandler";
 import { KeyboardHandler } from "./features/canvas/KeyboardHandler.tsx";
 import { ConnectionsLayer } from "./features/lego/ConnectionsLayer.tsx";
 import { LegosLayer } from "./features/lego/LegosLayer.tsx";
@@ -31,30 +32,19 @@ import { User } from "@supabase/supabase-js";
 import { checkSupabaseStatus } from "./lib/errors.ts";
 // import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 
-import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
-import FloatingBuildingBlocksPanel from "./features/building-blocks-panel/FloatingBuildingBlocksPanel.tsx";
-import FloatingDetailsPanel from "./features/details-panel/FloatingDetailsPanel.tsx";
-import FloatingCanvasesPanel from "./features/canvases-panel/FloatingCanvasesPanel";
-import FloatingSubnetsPanel from "./features/subnets-panel/FloatingSubnetsPanel.tsx";
-import FloatingPCMPanel from "./features/pcm-panel/FloatingPCMPanel.tsx";
-import { FloatingPanelConfigManager } from "./features/floating-panel/FloatingPanelConfig";
-
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
 import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { useCanvasStore } from "./stores/canvasStateStore";
-import { usePanelConfigStore } from "./stores/panelConfigStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
+import { DroppedLego } from "./stores/droppedLegoStore";
+import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap";
+import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
 import { FiShare2, FiFileText } from "react-icons/fi";
-import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
-import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
-
-import { DroppedLego } from "./stores/droppedLegoStore.ts";
-// import PythonCodeModal from "./components/PythonCodeModal";
 
 const LegoStudioView: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>("");
@@ -152,38 +142,6 @@ const LegoStudioView: React.FC = () => {
 
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
-  // Panel configurations
-  const buildingBlocksPanelConfig = usePanelConfigStore(
-    (state) => state.buildingBlocksPanelConfig
-  );
-  const setBuildingBlocksPanelConfig = usePanelConfigStore(
-    (state) => state.setBuildingBlocksPanelConfig
-  );
-  const detailsPanelConfig = usePanelConfigStore(
-    (state) => state.detailsPanelConfig
-  );
-  const setDetailsPanelConfig = usePanelConfigStore(
-    (state) => state.setDetailsPanelConfig
-  );
-  const canvasesPanelConfig = usePanelConfigStore(
-    (state) => state.canvasesPanelConfig
-  );
-  const setCanvasesPanelConfig = usePanelConfigStore(
-    (state) => state.setCanvasesPanelConfig
-  );
-  const taskPanelConfig = usePanelConfigStore((state) => state.taskPanelConfig);
-  const setTaskPanelConfig = usePanelConfigStore(
-    (state) => state.setTaskPanelConfig
-  );
-  const subnetsPanelConfig = usePanelConfigStore(
-    (state) => state.subnetsPanelConfig
-  );
-  const setSubnetsPanelConfig = usePanelConfigStore(
-    (state) => state.setSubnetsPanelConfig
-  );
-  const openPCMPanels = usePanelConfigStore((state) => state.openPCMPanels);
-  const updatePCMPanel = usePanelConfigStore((state) => state.updatePCMPanel);
-  const removePCMPanel = usePanelConfigStore((state) => state.removePCMPanel);
 
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
@@ -492,18 +450,6 @@ const LegoStudioView: React.FC = () => {
                   {/* Top-left three-dots menu */}
                   <Box position="absolute" top={2} left={2} zIndex={2000}>
                     <CanvasMenu
-                      taskPanelConfig={taskPanelConfig}
-                      setTaskPanelConfig={setTaskPanelConfig}
-                      buildingBlocksPanelConfig={buildingBlocksPanelConfig}
-                      setBuildingBlocksPanelConfig={
-                        setBuildingBlocksPanelConfig
-                      }
-                      detailsPanelConfig={detailsPanelConfig}
-                      setDetailsPanelConfig={setDetailsPanelConfig}
-                      canvasesPanelConfig={canvasesPanelConfig}
-                      setCanvasesPanelConfig={setCanvasesPanelConfig}
-                      subnetsPanelConfig={subnetsPanelConfig}
-                      setSubnetsPanelConfig={setSubnetsPanelConfig}
                       handleClearAll={handleClearAll}
                       handleExportPythonCode={handleExportPythonCode}
                       handleExportSvg={handleExportSvg}
@@ -648,34 +594,8 @@ const LegoStudioView: React.FC = () => {
           <ErrorPanel />
         </Box>
 
-        <FloatingTaskPanel
-          user={currentUser}
-          onError={setError}
-          config={taskPanelConfig}
-          onConfigChange={setTaskPanelConfig}
-          onClose={() => {
-            const newConfig = new FloatingPanelConfigManager(
-              taskPanelConfig.toJSON()
-            );
-            newConfig.setIsOpen(false);
-            setTaskPanelConfig(newConfig);
-          }}
-        />
-
-        <FloatingBuildingBlocksPanel
-          isUserLoggedIn={isUserLoggedIn}
-          config={buildingBlocksPanelConfig}
-          onConfigChange={setBuildingBlocksPanelConfig}
-          onClose={() => {
-            const newConfig = new FloatingPanelConfigManager(
-              buildingBlocksPanelConfig.toJSON()
-            );
-            newConfig.setIsOpen(false);
-            setBuildingBlocksPanelConfig(newConfig);
-          }}
-        />
-
-        <FloatingDetailsPanel
+        <FloatingPanelHandler
+          currentUser={currentUser}
           fuseLegos={fuseLegos}
           makeSpace={(
             center: { x: number; y: number },
@@ -685,60 +605,8 @@ const LegoStudioView: React.FC = () => {
           ) => makeSpace(center, radius, skipLegos, legosToCheck)}
           handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
           toast={toast}
-          user={currentUser}
-          config={detailsPanelConfig}
-          onConfigChange={setDetailsPanelConfig}
-          onClose={() => {
-            const newConfig = new FloatingPanelConfigManager(
-              detailsPanelConfig.toJSON()
-            );
-            newConfig.setIsOpen(false);
-            setDetailsPanelConfig(newConfig);
-          }}
+          setError={setError}
         />
-
-        <FloatingCanvasesPanel
-          config={canvasesPanelConfig}
-          onConfigChange={setCanvasesPanelConfig}
-          onClose={() => {
-            const newConfig = new FloatingPanelConfigManager(
-              canvasesPanelConfig.toJSON()
-            );
-            newConfig.setIsOpen(false);
-            setCanvasesPanelConfig(newConfig);
-          }}
-        />
-
-        <FloatingSubnetsPanel
-          config={subnetsPanelConfig}
-          onConfigChange={setSubnetsPanelConfig}
-          onClose={() => {
-            const newConfig = new FloatingPanelConfigManager(
-              subnetsPanelConfig.toJSON()
-            );
-            newConfig.setIsOpen(false);
-            setSubnetsPanelConfig(newConfig);
-          }}
-        />
-
-        {Object.entries(openPCMPanels).map(([networkSignature, config]) => (
-          <FloatingPCMPanel
-            key={networkSignature}
-            config={config}
-            onConfigChange={(newConfig) =>
-              updatePCMPanel(networkSignature, newConfig)
-            }
-            onClose={() => removePCMPanel(networkSignature)}
-            networkSignature={networkSignature}
-            parityCheckMatrix={
-              useCanvasStore.getState().parityCheckMatrices[networkSignature]!
-            }
-            networkName={
-              useCanvasStore.getState().cachedTensorNetworks[networkSignature]
-                ?.name || "Unknown Network"
-            }
-          />
-        ))}
 
         {isDynamicLegoDialogOpen && (
           <DynamicLegoDialog

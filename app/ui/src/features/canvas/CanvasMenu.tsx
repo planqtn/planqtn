@@ -15,6 +15,7 @@ import {
 import { FiFile, FiMoreVertical, FiUpload } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useModalStore } from "../../stores/modalStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
 import { Connection } from "../../stores/connectionStore";
@@ -30,16 +31,6 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CanvasMenuProps {
-  taskPanelConfig: FloatingPanelConfigManager;
-  setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
-  buildingBlocksPanelConfig: FloatingPanelConfigManager;
-  setBuildingBlocksPanelConfig: (config: FloatingPanelConfigManager) => void;
-  detailsPanelConfig: FloatingPanelConfigManager;
-  setDetailsPanelConfig: (config: FloatingPanelConfigManager) => void;
-  canvasesPanelConfig: FloatingPanelConfigManager;
-  setCanvasesPanelConfig: (config: FloatingPanelConfigManager) => void;
-  subnetsPanelConfig: FloatingPanelConfigManager;
-  setSubnetsPanelConfig: (config: FloatingPanelConfigManager) => void;
   handleClearAll: () => void;
   handleExportPythonCode: () => void;
   handleExportSvg: () => void;
@@ -52,16 +43,6 @@ interface CanvasMenuProps {
 }
 
 export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  taskPanelConfig,
-  setTaskPanelConfig,
-  buildingBlocksPanelConfig,
-  setBuildingBlocksPanelConfig,
-  detailsPanelConfig,
-  setDetailsPanelConfig,
-  canvasesPanelConfig,
-  setCanvasesPanelConfig,
-  subnetsPanelConfig,
-  setSubnetsPanelConfig,
   handleClearAll,
   handleExportPythonCode,
   handleExportSvg,
@@ -233,61 +214,91 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
               <DropdownMenuCheckboxItem
-                checked={buildingBlocksPanelConfig.isOpen}
+                checked={
+                  usePanelConfigStore.getState().buildingBlocksPanelConfig
+                    .isOpen
+                }
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
-                    buildingBlocksPanelConfig.toJSON()
+                    usePanelConfigStore
+                      .getState()
+                      .buildingBlocksPanelConfig.toJSON()
                   );
-                  newConfig.setIsOpen(!buildingBlocksPanelConfig.isOpen);
-                  setBuildingBlocksPanelConfig(newConfig);
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().buildingBlocksPanelConfig
+                      .isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setBuildingBlocksPanelConfig(newConfig);
                 }}
               >
                 Show Building Blocks Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={detailsPanelConfig.isOpen}
+                checked={
+                  usePanelConfigStore.getState().detailsPanelConfig.isOpen
+                }
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
-                    detailsPanelConfig.toJSON()
+                    usePanelConfigStore.getState().detailsPanelConfig.toJSON()
                   );
-                  newConfig.setIsOpen(!detailsPanelConfig.isOpen);
-                  setDetailsPanelConfig(newConfig);
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().detailsPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setDetailsPanelConfig(newConfig);
                 }}
               >
                 Show Details Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={canvasesPanelConfig.isOpen}
+                checked={
+                  usePanelConfigStore.getState().canvasesPanelConfig.isOpen
+                }
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
-                    canvasesPanelConfig.toJSON()
+                    usePanelConfigStore.getState().canvasesPanelConfig.toJSON()
                   );
-                  newConfig.setIsOpen(!canvasesPanelConfig.isOpen);
-                  setCanvasesPanelConfig(newConfig);
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().canvasesPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setCanvasesPanelConfig(newConfig);
                 }}
               >
                 Show Canvases Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={taskPanelConfig.isOpen}
+                checked={usePanelConfigStore.getState().taskPanelConfig.isOpen}
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
-                    taskPanelConfig.toJSON()
+                    usePanelConfigStore.getState().taskPanelConfig.toJSON()
                   );
-                  newConfig.setIsOpen(!taskPanelConfig.isOpen);
-                  setTaskPanelConfig(newConfig);
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().taskPanelConfig.isOpen
+                  );
+                  usePanelConfigStore.getState().setTaskPanelConfig(newConfig);
                 }}
               >
                 Show Task Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={subnetsPanelConfig.isOpen}
+                checked={
+                  usePanelConfigStore.getState().subnetsPanelConfig.isOpen
+                }
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
-                    subnetsPanelConfig.toJSON()
+                    usePanelConfigStore.getState().subnetsPanelConfig.toJSON()
                   );
-                  newConfig.setIsOpen(!subnetsPanelConfig.isOpen);
-                  setSubnetsPanelConfig(newConfig);
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().subnetsPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setSubnetsPanelConfig(newConfig);
                 }}
               >
                 Show Subnets Panel
