@@ -13,6 +13,9 @@ const PCMPanel: React.FC<PCMPanelProps> = ({
   parityCheckMatrix,
   networkName
 }) => {
+  if (!parityCheckMatrix) {
+    return null;
+  }
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
 

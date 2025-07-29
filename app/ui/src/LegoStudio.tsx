@@ -38,7 +38,6 @@ import { checkSupabaseStatus } from "./lib/errors.ts";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
-import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
@@ -105,12 +104,8 @@ const LegoStudioView: React.FC = () => {
   const handleDynamicLegoSubmit = useCanvasStore(
     (state) => state.handleDynamicLegoSubmit
   );
-  const handleClearAll = useCanvasStore((state) => state.handleClearAll);
   const handleDynamicLegoDrop = useCanvasStore(
     (state) => state.handleDynamicLegoDrop
-  );
-  const handleExportPythonCode = useCanvasStore(
-    (state) => state.handleExportPythonCode
   );
 
   const showPythonCodeModal = useCanvasStore(
@@ -155,8 +150,6 @@ const LegoStudioView: React.FC = () => {
     openLoadingModal,
     closeLoadingModal,
     openAuthDialog,
-    openRuntimeConfigDialog,
-    openWeightEnumeratorDialog,
     openShareDialog
   } = useModalStore();
 
@@ -377,16 +370,6 @@ const LegoStudioView: React.FC = () => {
     event.stopPropagation();
   }
 
-  const handleRuntimeToggle = () => {
-    const isLocalRuntime = RuntimeConfigService.isLocalRuntime();
-    if (isLocalRuntime) {
-      RuntimeConfigService.switchToCloud();
-    } else {
-      const currentConfig = RuntimeConfigService.getCurrentConfig();
-      openRuntimeConfigDialog(isLocalRuntime, currentConfig || undefined);
-    }
-  };
-
   return (
     <>
       <KeyboardHandler onSetAltKeyPressed={setAltKeyPressed} />
@@ -435,14 +418,7 @@ const LegoStudioView: React.FC = () => {
                 >
                   {/* Top-left three-dots menu */}
                   <Box position="absolute" top={2} left={2} zIndex={2000}>
-                    <CanvasMenu
-                      handleClearAll={handleClearAll}
-                      handleExportPythonCode={handleExportPythonCode}
-                      handleExportSvg={handleExportSvg}
-                      handleRuntimeToggle={handleRuntimeToggle}
-                      openWeightEnumeratorDialog={openWeightEnumeratorDialog}
-                      currentUser={currentUser}
-                    />
+                    <CanvasMenu handleExportSvg={handleExportSvg} />
                   </Box>
                   {/* Top-center title (contextual) */}
                   <Box

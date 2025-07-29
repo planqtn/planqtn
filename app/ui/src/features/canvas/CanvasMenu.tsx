@@ -18,9 +18,6 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useModalStore } from "../../stores/modalStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
-import { Connection } from "../../stores/connectionStore";
-import { TensorNetwork } from "../../lib/TensorNetwork";
-import { User } from "@supabase/supabase-js";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 import { Box, Icon, Text } from "@chakra-ui/react";
@@ -29,27 +26,17 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { useUserStore } from "@/stores/userStore";
 
 interface CanvasMenuProps {
-  handleClearAll: () => void;
-  handleExportPythonCode: () => void;
   handleExportSvg: () => void;
-  handleRuntimeToggle: () => void;
-  openWeightEnumeratorDialog: (
-    tensorNetwork: TensorNetwork,
-    connections: Connection[]
-  ) => void;
-  currentUser: User | null;
 }
 
-export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  handleClearAll,
-  handleExportPythonCode,
-  handleExportSvg,
-  handleRuntimeToggle,
-  openWeightEnumeratorDialog,
-  currentUser
-}) => {
+export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
+  const { handleRuntimeToggle } = useModalStore();
+  const { currentUser } = useUserStore();
+  const { handleClearAll, handleExportPythonCode } = useCanvasStore();
+  const { openWeightEnumeratorDialog } = useModalStore();
   const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);

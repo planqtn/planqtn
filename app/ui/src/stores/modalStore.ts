@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { Connection } from "./connectionStore";
+import { RuntimeConfigService } from "@/features/kernel/runtimeConfigService";
 
 export interface ModalState {
   // Network dialogs
@@ -121,6 +122,9 @@ interface ModalStore extends ModalState {
   openModal: (modalName: keyof ModalState) => void;
   closeModal: (modalName: keyof ModalState) => void;
   closeAllModals: () => void;
+
+  // Runtime toggle actions
+  handleRuntimeToggle: () => void;
 }
 
 const initialState: ModalState = {
@@ -268,5 +272,21 @@ export const useModalStore = create<ModalStore>((set) => ({
       authState: initialAuthState,
       runtimeConfigState: initialRuntimeConfigState,
       weightEnumeratorState: initialWeightEnumeratorState
-    })
+    }),
+
+  handleRuntimeToggle: () => {
+    const isLocalRuntime = RuntimeConfigService.isLocalRuntime();
+    if (isLocalRuntime) {
+      RuntimeConfigService.switchToCloud();
+    } else {
+      const currentConfig = RuntimeConfigService.getCurrentConfig();
+      set({
+        runtimeConfigDialog: true,
+        runtimeConfigState: {
+          isLocal: isLocalRuntime,
+          initialConfig: currentConfig || undefined
+        }
+      });
+    }
+  }
 }));
