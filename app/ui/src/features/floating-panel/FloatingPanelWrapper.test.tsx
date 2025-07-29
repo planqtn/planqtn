@@ -2,18 +2,18 @@ import { render, fireEvent, screen } from "@testing-library/react";
 import { ChakraProvider } from "@chakra-ui/react";
 import FloatingPanelWrapper from "./FloatingPanelWrapper";
 import { FloatingPanelConfigManager } from "./FloatingPanelConfig";
-import { useCanvasStore } from "../../stores/canvasStateStore";
 
-// Mock the canvas store
+// Mock the stores
 jest.mock("../../stores/canvasStateStore", () => ({
   useCanvasStore: jest.fn()
 }));
 
-const mockBringPanelToFront = jest.fn();
+jest.mock("../../stores/panelConfigStore", () => ({
+  usePanelConfigStore: jest.fn()
+}));
 
-const mockUseCanvasStore = useCanvasStore as jest.MockedFunction<
-  typeof useCanvasStore
->;
+// Mock the setState function
+const mockSetState = jest.fn();
 
 describe("FloatingPanelWrapper", () => {
   const mockConfig = new FloatingPanelConfigManager({
@@ -33,7 +33,27 @@ describe("FloatingPanelWrapper", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseCanvasStore.mockReturnValue(mockBringPanelToFront);
+
+    // Mock the panel config store
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { usePanelConfigStore } = require("../../stores/panelConfigStore");
+    const mockUsePanelConfigStore = usePanelConfigStore as jest.MockedFunction<
+      typeof usePanelConfigStore
+    >;
+    mockUsePanelConfigStore.mockImplementation((selector: unknown) => {
+      if (typeof selector === "function") {
+        // Return different values based on what's being selected
+        const mockState = {
+          nextZIndex: 1005,
+          setState: mockSetState
+        };
+        return (selector as (state: unknown) => unknown)(mockState);
+      }
+      return 1005; // Default return for nextZIndex
+    });
+
+    // Mock the setState method
+    mockUsePanelConfigStore.setState = mockSetState;
   });
 
   const renderWrapper = () => {
@@ -65,7 +85,13 @@ describe("FloatingPanelWrapper", () => {
     renderWrapper();
     const panelContent = screen.getByTestId("panel-content");
     fireEvent.click(panelContent);
-    expect(mockBringPanelToFront).toHaveBeenCalledWith("test-panel");
+
+    // Check that onConfigChange was called with a new config that has a higher zIndex
+    expect(mockOnConfigChange).toHaveBeenCalled();
+    const lastCall =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig = lastCall[0];
+    expect(newConfig.zIndex).toBe(1005);
   });
 
   it("should bring panel to front when clicking on empty space in content area", () => {
@@ -74,7 +100,12 @@ describe("FloatingPanelWrapper", () => {
     if (contentContainer) {
       // Click on the container itself (background)
       fireEvent.click(contentContainer);
-      expect(mockBringPanelToFront).toHaveBeenCalledWith("test-panel");
+
+      expect(mockOnConfigChange).toHaveBeenCalled();
+      const lastCall =
+        mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+      const newConfig = lastCall[0];
+      expect(newConfig.zIndex).toBe(1005);
     }
   });
 
@@ -84,7 +115,12 @@ describe("FloatingPanelWrapper", () => {
 
     if (header) {
       fireEvent.click(header);
-      expect(mockBringPanelToFront).toHaveBeenCalledWith("test-panel");
+
+      expect(mockOnConfigChange).toHaveBeenCalled();
+      const lastCall =
+        mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+      const newConfig = lastCall[0];
+      expect(newConfig.zIndex).toBe(1005);
     }
   });
 
@@ -94,7 +130,7 @@ describe("FloatingPanelWrapper", () => {
 
     fireEvent.click(closeButton);
 
-    expect(mockBringPanelToFront).not.toHaveBeenCalled();
+    expect(mockOnConfigChange).not.toHaveBeenCalled();
     expect(mockOnClose).toHaveBeenCalled();
   });
 
@@ -104,8 +140,12 @@ describe("FloatingPanelWrapper", () => {
 
     fireEvent.click(collapseButton);
 
-    expect(mockBringPanelToFront).not.toHaveBeenCalled();
     expect(mockOnConfigChange).toHaveBeenCalled();
+    // The collapse button should call onConfigChange but not for z-index reasons
+    const lastCall =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig = lastCall[0];
+    expect(newConfig.isCollapsed).toBe(true);
   });
 
   it("should apply correct z-index from config", () => {

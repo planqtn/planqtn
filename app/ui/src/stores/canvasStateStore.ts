@@ -38,7 +38,7 @@ import {
   CanvasEventHandlingSlice,
   createCanvasEventHandlingSlice
 } from "./canvasEventHandlingSlice";
-import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
+import { createCanvasUISlice, CanvasUISlice } from "./canvasUISlice";
 import { persist } from "zustand/middleware";
 
 // Helper function to get canvasId from URL

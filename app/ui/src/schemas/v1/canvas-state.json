@@ -116,28 +116,6 @@
       "description": "Whether to hide all leg labels",
       "default": false
     },
-    "buildingBlocksPanelConfig": {
-      "$ref": "#/definitions/PanelConfig"
-    },
-    "detailsPanelConfig": {
-      "$ref": "#/definitions/PanelConfig"
-    },
-    "canvasesPanelConfig": {
-      "$ref": "#/definitions/PanelConfig"
-    },
-    "taskPanelConfig": {
-      "$ref": "#/definitions/PanelConfig"
-    },
-    "subnetsPanelConfig": {
-      "$ref": "#/definitions/PanelConfig"
-    },
-    "openPCMPanels": {
-      "type": "object",
-      "description": "Open PCM panel configurations keyed by network signature",
-      "additionalProperties": {
-        "$ref": "#/definitions/PanelConfig"
-      }
-    },
     "nextZIndex": {
       "type": "number",
       "description": "Next z-index value to be assigned to floating panels",
@@ -362,107 +340,6 @@
   "required": ["pieces", "connections"],
   "additionalProperties": false,
   "definitions": {
-    "PanelConfig": {
-      "type": "object",
-      "description": "Configuration for a floating panel",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the panel"
-        },
-        "title": {
-          "type": "string",
-          "description": "Display title of the panel"
-        },
-        "isOpen": {
-          "type": "boolean",
-          "description": "Whether the panel is open"
-        },
-        "isCollapsed": {
-          "type": "boolean",
-          "description": "Whether the panel is collapsed"
-        },
-        "layout": {
-          "type": "object",
-          "description": "Layout configuration for the panel",
-          "properties": {
-            "position": {
-              "type": "object",
-              "description": "Position of the panel on screen",
-              "properties": {
-                "x": {
-                  "type": "number",
-                  "description": "X coordinate of the panel"
-                },
-                "y": {
-                  "type": "number",
-                  "description": "Y coordinate of the panel"
-                }
-              },
-              "required": ["x", "y"],
-              "additionalProperties": false
-            },
-            "size": {
-              "type": "object",
-              "description": "Size of the panel",
-              "properties": {
-                "width": {
-                  "type": "number",
-                  "description": "Width of the panel in pixels"
-                },
-                "height": {
-                  "type": "number",
-                  "description": "Height of the panel in pixels"
-                }
-              },
-              "required": ["width", "height"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["position", "size"],
-          "additionalProperties": false
-        },
-        "minWidth": {
-          "type": "number",
-          "description": "Minimum width of the panel"
-        },
-        "minHeight": {
-          "type": "number",
-          "description": "Minimum height of the panel"
-        },
-        "defaultWidth": {
-          "type": "number",
-          "description": "Default width of the panel"
-        },
-        "defaultHeight": {
-          "type": "number",
-          "description": "Default height of the panel"
-        },
-        "defaultPosition": {
-          "type": "object",
-          "description": "Default position of the panel",
-          "properties": {
-            "x": {
-              "type": "number",
-              "description": "Default X coordinate"
-            },
-            "y": {
-              "type": "number",
-              "description": "Default Y coordinate"
-            }
-          },
-          "required": ["x", "y"],
-          "additionalProperties": false
-        },
-        "zIndex": {
-          "type": "number",
-          "description": "Z-index value for panel layering",
-          "minimum": 1000
-        }
-      },
-      "required": ["id", "title", "isOpen", "isCollapsed", "layout"],
-      "additionalProperties": false
-    },
     "Lego": {
       "type": "object",
       "properties": {

@@ -41,7 +41,7 @@ const CanvasesPanel: React.FC = () => {
   const [selectedCanvases, setSelectedCanvases] = useState<Set<string>>(
     new Set()
   );
-  const [_, setIsBulkDeleteMode] = useState(false);
+  const [, setIsBulkDeleteMode] = useState(false);
 
   const savedCanvases = useMemo(() => {
     const canvases: CanvasInfo[] = [];
@@ -143,7 +143,7 @@ const CanvasesPanel: React.FC = () => {
       } catch (error) {
         toast({
           title: "Error deleting canvas",
-          description: "Failed to delete the canvas. Please try again.",
+          description: `Failed to delete the canvas. ${error instanceof Error ? error.message : "Unknown error"}`,
           status: "error",
           duration: 3000,
           isClosable: true
@@ -182,7 +182,7 @@ const CanvasesPanel: React.FC = () => {
             localStorage.removeItem(`canvas-state-${canvasId}`);
             localStorage.removeItem(`canvas-state-${canvasId}-backup`);
             deletedCount++;
-          } catch (error) {
+          } catch {
             errorCount++;
           }
         });
@@ -212,7 +212,7 @@ const CanvasesPanel: React.FC = () => {
       } catch (error) {
         toast({
           title: "Error during bulk deletion",
-          description: "Failed to delete some canvases. Please try again.",
+          description: `Failed to delete some canvases. ${error instanceof Error ? error.message : "Unknown error"}`,
           status: "error",
           duration: 3000,
           isClosable: true

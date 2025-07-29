@@ -122,38 +122,8 @@ export const createEncodedCanvasStateSlice: StateCreator<
         cachedTensorNetworks: result.cachedTensorNetworks,
         highlightedTensorNetworkLegs: result.highlightedTensorNetworkLegs,
         selectedTensorNetworkParityCheckMatrixRows:
-          result.selectedTensorNetworkParityCheckMatrixRows,
-        // Z-index management
-        nextZIndex: result.nextZIndex,
-        // Floating panel configurations
-        buildingBlocksPanelConfig: result.buildingBlocksPanelConfig,
-        detailsPanelConfig: result.detailsPanelConfig,
-        canvasesPanelConfig: result.canvasesPanelConfig,
-        taskPanelConfig: result.taskPanelConfig,
-        subnetsPanelConfig: result.subnetsPanelConfig,
-        // PCM panel configurations
-        openPCMPanels: result.openPCMPanels || {}
+          result.selectedTensorNetworkParityCheckMatrixRows
       });
-
-      // Ensure nextZIndex is higher than the highest panel z-index
-      const panelZIndices = [
-        result.buildingBlocksPanelConfig?.zIndex,
-        result.detailsPanelConfig?.zIndex,
-        result.canvasesPanelConfig?.zIndex,
-        result.taskPanelConfig?.zIndex,
-        result.subnetsPanelConfig?.zIndex,
-        // Include PCM panel z-indices
-        ...Object.values(result.openPCMPanels || {}).map(
-          (config) => config.zIndex
-        )
-      ].filter((zIndex): zIndex is number => zIndex !== undefined);
-
-      const maxPanelZIndex = Math.max(...panelZIndices, 1000); // Default to 1000 if no panels
-      const currentNextZIndex = result.nextZIndex || 1100;
-
-      if (currentNextZIndex <= maxPanelZIndex) {
-        set({ nextZIndex: maxPanelZIndex + 1 });
-      }
 
       // Initialize leg hide states for all legos
       result.droppedLegos.forEach((lego) => {

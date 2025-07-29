@@ -10,7 +10,6 @@ interface PCMPanelProps {
 }
 
 const PCMPanel: React.FC<PCMPanelProps> = ({
-  networkSignature,
   parityCheckMatrix,
   networkName
 }) => {

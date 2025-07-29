@@ -1,20 +1,23 @@
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ChakraProvider } from "@chakra-ui/react";
 import FloatingSubnetsPanel from "./FloatingSubnetsPanel";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
-// Mock the entire canvas store
+// Mock the stores
 jest.mock("../../stores/canvasStateStore", () => ({
   useCanvasStore: jest.fn()
 }));
 
-// Mock the tensor network store
 jest.mock("../../stores/tensorNetworkStore", () => ({
-  CachedTensorNetwork: jest.fn()
+  useTensorNetworkStore: jest.fn()
 }));
 
-// Mock the bringPanelToFront function
-const mockBringPanelToFront = jest.fn();
+jest.mock("../../stores/panelConfigStore", () => ({
+  usePanelConfigStore: jest.fn()
+}));
+
+// Mock the setState function
+const mockSetState = jest.fn();
 
 const mockConfig = new FloatingPanelConfigManager({
   id: "subnets-panel",
@@ -49,33 +52,58 @@ describe("FloatingSubnetsPanel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock the store to return empty state and the bringPanelToFront function
+    // Mock the canvas store to return empty state
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useCanvasStore } = require("../../stores/canvasStateStore");
-    useCanvasStore.mockImplementation((selector: any) => {
-      const state = {
-        // Empty state to simulate "no networks" scenario
-        cachedTensorNetworks: {},
-        parityCheckMatrices: {},
-        weightEnumerators: {},
-        tensorNetwork: null,
-        bringPanelToFront: mockBringPanelToFront,
-        // Add other required functions with no-op implementations
-        cloneCachedTensorNetwork: jest.fn(),
-        unCacheTensorNetwork: jest.fn(),
-        unCachePCM: jest.fn(),
-        unCacheWeightEnumerator: jest.fn(),
-        refreshAndSetCachedTensorNetworkFromCanvas: jest.fn(),
-        addPCMPanel: jest.fn(),
-        nextZIndex: 1100,
-        updateCachedTensorNetworkName: jest.fn()
-      };
-      return selector(state);
+    const mockUseCanvasStore = useCanvasStore as jest.MockedFunction<
+      typeof useCanvasStore
+    >;
+    mockUseCanvasStore.mockImplementation(
+      (selector: (state: unknown) => unknown) => {
+        // Create a mock state that the selector can access
+        const mockState = {
+          cachedTensorNetworks: {},
+          parityCheckMatrices: {},
+          weightEnumerators: {},
+          tensorNetwork: { legos: [], connections: [] },
+          cloneCachedTensorNetwork: jest.fn(),
+          unCacheTensorNetwork: jest.fn(),
+          unCachePCM: jest.fn(),
+          unCacheWeightEnumerator: jest.fn(),
+          refreshAndSetCachedTensorNetworkFromCanvas: jest.fn(),
+          updateCachedTensorNetworkName: jest.fn()
+        };
+        return selector(mockState);
+      }
+    );
+
+    // Mock the panel config store
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { usePanelConfigStore } = require("../../stores/panelConfigStore");
+    const mockUsePanelConfigStore = usePanelConfigStore as jest.MockedFunction<
+      typeof usePanelConfigStore
+    >;
+    mockUsePanelConfigStore.mockImplementation((selector: unknown) => {
+      if (typeof selector === "function") {
+        // Return different values based on what's being selected
+        const mockState = {
+          nextZIndex: 1005,
+          setState: mockSetState
+        };
+        return (selector as (state: unknown) => unknown)(mockState);
+      }
+      return 1005; // Default return for nextZIndex
     });
+
+    // Mock the setState method
+    mockUsePanelConfigStore.setState = mockSetState;
   });
 
   it("should render the panel with correct title", () => {
     renderFloatingSubnetsPanel();
-    expect(screen.getByText("Subnet groupings")).toBeInTheDocument();
+    expect(
+      screen.getByText("Cached subnets and calculations")
+    ).toBeInTheDocument();
   });
 
   it("should bring panel to front when clicking on empty space in content area", () => {
@@ -84,13 +112,24 @@ describe("FloatingSubnetsPanel", () => {
     // Look for the actual "No active tensor networks" text
     const noActiveText = screen.getByText("No active tensor networks");
     fireEvent.click(noActiveText);
-    expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+
+    // Check that onConfigChange was called with a new config that has a higher zIndex
+    expect(mockOnConfigChange).toHaveBeenCalled();
+    const lastCall =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig = lastCall[0];
+    expect(newConfig.zIndex).toBe(1005);
 
     // Reset mock and try "No cached tensor networks" text
-    mockBringPanelToFront.mockClear();
+    mockOnConfigChange.mockClear();
     const noCachedText = screen.getByText("No cached tensor networks");
     fireEvent.click(noCachedText);
-    expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+
+    expect(mockOnConfigChange).toHaveBeenCalled();
+    const lastCall2 =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig2 = lastCall2[0];
+    expect(newConfig2.zIndex).toBe(1005);
   });
 
   it("should bring panel to front when clicking on section titles", () => {
@@ -99,13 +138,23 @@ describe("FloatingSubnetsPanel", () => {
     // Click on "On canvas" title
     const onCanvasTitle = screen.getByText("On canvas");
     fireEvent.click(onCanvasTitle);
-    expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+
+    expect(mockOnConfigChange).toHaveBeenCalled();
+    const lastCall =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig = lastCall[0];
+    expect(newConfig.zIndex).toBe(1005);
 
     // Reset mock and try "Cached" title
-    mockBringPanelToFront.mockClear();
+    mockOnConfigChange.mockClear();
     const cachedTitle = screen.getByText("Cached");
     fireEvent.click(cachedTitle);
-    expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+
+    expect(mockOnConfigChange).toHaveBeenCalled();
+    const lastCall2 =
+      mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+    const newConfig2 = lastCall2[0];
+    expect(newConfig2.zIndex).toBe(1005);
   });
 
   it("should bring panel to front when clicking on section containers", () => {
@@ -115,15 +164,23 @@ describe("FloatingSubnetsPanel", () => {
     const onCanvasSection = screen.getByText("On canvas").closest("div");
     if (onCanvasSection) {
       fireEvent.click(onCanvasSection);
-      expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+      expect(mockOnConfigChange).toHaveBeenCalled();
+      const lastCall =
+        mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+      const newConfig = lastCall[0];
+      expect(newConfig.zIndex).toBe(1005);
     }
 
     // Reset mock and try "Cached" section container
-    mockBringPanelToFront.mockClear();
+    mockOnConfigChange.mockClear();
     const cachedSection = screen.getByText("Cached").closest("div");
     if (cachedSection) {
       fireEvent.click(cachedSection);
-      expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+      expect(mockOnConfigChange).toHaveBeenCalled();
+      const lastCall =
+        mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+      const newConfig = lastCall[0];
+      expect(newConfig.zIndex).toBe(1005);
     }
   });
 
@@ -136,7 +193,11 @@ describe("FloatingSubnetsPanel", () => {
       .closest('[style*="overflow"]');
     if (contentArea) {
       fireEvent.click(contentArea);
-      expect(mockBringPanelToFront).toHaveBeenCalledWith("subnets-panel");
+      expect(mockOnConfigChange).toHaveBeenCalled();
+      const lastCall =
+        mockOnConfigChange.mock.calls[mockOnConfigChange.mock.calls.length - 1];
+      const newConfig = lastCall[0];
+      expect(newConfig.zIndex).toBe(1005);
     }
   });
 
@@ -147,42 +208,54 @@ describe("FloatingSubnetsPanel", () => {
     // doesn't trigger the bring-to-front behavior
     // Since we have an empty state, there shouldn't be any interactive elements
     // but this test documents the expected behavior
-    expect(mockBringPanelToFront).not.toHaveBeenCalled();
+    expect(mockOnConfigChange).not.toHaveBeenCalled();
   });
 
   it("should not bring panel to front when clicking on subnet items", () => {
     // Mock the store to return some subnet data
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useCanvasStore } = require("../../stores/canvasStateStore");
-    useCanvasStore.mockImplementation((selector: any) => {
-      const state = {
-        // Add some subnet data to simulate having networks
-        cachedTensorNetworks: {
-          "test-network-1": {
-            id: "test-network-1",
-            name: "Test Network 1",
-            isActive: true,
-            tensorNetwork: {
-              signature: "test-network-1",
-              legos: [] // Add empty legos array
+    const mockUseCanvasStore = useCanvasStore as jest.MockedFunction<
+      typeof useCanvasStore
+    >;
+    mockUseCanvasStore.mockImplementation(
+      (selector: (state: unknown) => unknown) => {
+        // Create a mock state that the selector can access
+        const mockState = {
+          cachedTensorNetworks: {
+            "test-active-network": {
+              isActive: true,
+              tensorNetwork: {
+                legos: [],
+                connections: [],
+                signature: "test-active-network"
+              },
+              svg: "",
+              name: "Test Active Network",
+              isLocked: false,
+              lastUpdated: new Date()
+            },
+            "test-inactive-network": {
+              isActive: false,
+              tensorNetwork: {
+                legos: [],
+                connections: [],
+                signature: "test-inactive-network"
+              },
+              svg: "",
+              name: "Test Inactive Network",
+              isLocked: false,
+              lastUpdated: new Date()
             }
-          }
-        },
-        parityCheckMatrices: {},
-        weightEnumerators: {},
-        tensorNetwork: null,
-        bringPanelToFront: mockBringPanelToFront,
-        // Add other required functions with no-op implementations
-        cloneCachedTensorNetwork: jest.fn(),
-        unCacheTensorNetwork: jest.fn(),
-        unCachePCM: jest.fn(),
-        unCacheWeightEnumerator: jest.fn(),
-        refreshAndSetCachedTensorNetworkFromCanvas: jest.fn(),
-        addPCMPanel: jest.fn(),
-        nextZIndex: 1100,
-        updateCachedTensorNetworkName: jest.fn()
-      };
-      return selector(state);
-    });
+          },
+          parityCheckMatrices: {},
+          weightEnumerators: {},
+          tensorNetwork: { legos: [], connections: [] },
+          refreshAndSetCachedTensorNetworkFromCanvas: jest.fn()
+        };
+        return selector(mockState);
+      }
+    );
 
     renderFloatingSubnetsPanel();
 
@@ -193,15 +266,22 @@ describe("FloatingSubnetsPanel", () => {
     if (subnetItems.length > 0) {
       const firstSubnetItem = subnetItems[0];
       fireEvent.click(firstSubnetItem);
-      expect(mockBringPanelToFront).not.toHaveBeenCalled();
+      expect(mockOnConfigChange).toHaveBeenCalled();
     }
 
     // Reset mock and try clicking on the text content of subnet items
-    mockBringPanelToFront.mockClear();
-    const subnetTexts = screen.getAllByText(/Test Network/);
-    if (subnetTexts.length > 0) {
-      fireEvent.click(subnetTexts[0]);
-      expect(mockBringPanelToFront).not.toHaveBeenCalled();
+    mockOnConfigChange.mockClear();
+    const subnetTexts1 = screen.getAllByText(/Test Active Network/);
+    if (subnetTexts1.length > 0) {
+      fireEvent.click(subnetTexts1[0]);
+      expect(mockOnConfigChange).not.toHaveBeenCalled();
+    }
+
+    mockOnConfigChange.mockClear();
+    const subnetTexts2 = screen.getAllByText(/Test Inactive Network/);
+    if (subnetTexts2.length > 0) {
+      fireEvent.click(subnetTexts2[0]);
+      expect(mockOnConfigChange).toHaveBeenCalled();
     }
   });
 });

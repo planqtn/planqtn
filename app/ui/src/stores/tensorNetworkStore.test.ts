@@ -450,6 +450,7 @@ describe("updateIsActiveForCachedTensorNetworks", () => {
     );
 
     // Add the style property that legoLegPropertiesSlice expects
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (lego as any).style = {
       legStyles: [
         { is_highlighted: false, is_hidden: false },

@@ -8,6 +8,7 @@ import { LogicalPoint } from "../../types/coordinates";
 import { Viewport } from "../../stores/canvasUISlice";
 import { PauliOperator } from "../../lib/types";
 import {
+  CachedTensorNetwork,
   ParityCheckMatrix,
   WeightEnumerator
 } from "../../stores/tensorNetworkStore";
@@ -111,6 +112,7 @@ describe("CanvasStateSerializer", () => {
       viewport: mockViewport,
       parityCheckMatrices: {},
       weightEnumerators: {},
+      cachedTensorNetworks: {},
       highlightedTensorNetworkLegs: {},
       selectedTensorNetworkParityCheckMatrixRows: {},
       ...overrides
@@ -164,6 +166,7 @@ describe("CanvasStateSerializer", () => {
         }),
         parityCheckMatrices: [],
         weightEnumerators: [],
+        cachedTensorNetworks: [],
         highlightedTensorNetworkLegs: [],
         selectedTensorNetworkParityCheckMatrixRows: []
       });
@@ -1398,7 +1401,18 @@ describe("CanvasStateSerializer", () => {
             {
               instance_id: "lego-1",
               type_id: "h",
-              logicalPosition: { x: 100, y: 200 }
+              logicalPosition: { x: 100, y: 200 },
+              parity_check_matrix: [
+                [1, 0],
+                [0, 1]
+              ],
+              logical_legs: [0, 1],
+              gauge_legs: [],
+              short_name: "H",
+              is_dynamic: false,
+              parameters: {},
+              selectedMatrixRows: [],
+              highlightedLegConstraints: []
             }
           ],
           connections: [
@@ -1413,7 +1427,7 @@ describe("CanvasStateSerializer", () => {
         name: "Test Network",
         isLocked: false,
         lastUpdated: new Date("2023-01-01T00:00:00.000Z")
-      };
+      } as unknown as CachedTensorNetwork;
 
       const mockStore = createMockCanvasStore({
         cachedTensorNetworks: {
@@ -1429,6 +1443,7 @@ describe("CanvasStateSerializer", () => {
       expect(serialized.cachedTensorNetworks[0].value.name).toBe(
         "Test Network"
       );
+      // The tensorNetwork.signature should be the original signature since it was provided in the mock
       expect(
         serialized.cachedTensorNetworks[0].value.tensorNetwork.signature
       ).toBe("test-signature-123");
@@ -1444,6 +1459,7 @@ describe("CanvasStateSerializer", () => {
       expect(rehydrated.cachedTensorNetworks["test-signature-123"].name).toBe(
         "Test Network"
       );
+      // The signature should be preserved as the original value
       expect(
         rehydrated.cachedTensorNetworks["test-signature-123"].tensorNetwork
           .signature

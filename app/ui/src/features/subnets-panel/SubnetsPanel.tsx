@@ -18,9 +18,11 @@ import {
   DeleteIcon
 } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { CachedTensorNetwork } from "../../stores/tensorNetworkStore";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SubnetsPanelProps {
   // No props needed for this component
 }
@@ -50,31 +52,30 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   const cachedTensorNetworks = useCanvasStore(
     (state) => state.cachedTensorNetworks
   );
-  const cloneCachedTensorNetwork = useCanvasStore(
-    (state) => state.cloneCachedTensorNetwork
-  );
   const parityCheckMatrices = useCanvasStore(
     (state) => state.parityCheckMatrices
+  );
+  const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const cloneCachedTensorNetwork = useCanvasStore(
+    (state) => state.cloneCachedTensorNetwork
   );
   const unCacheTensorNetwork = useCanvasStore(
     (state) => state.unCacheTensorNetwork
   );
-
   const unCachePCM = useCanvasStore((state) => state.unCachePCM);
   const unCacheWeightEnumerator = useCanvasStore(
     (state) => state.unCacheWeightEnumerator
   );
-
-  const currentTensorNetwork = useCanvasStore((state) => state.tensorNetwork);
-  const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
   const refreshAndSetCachedTensorNetworkFromCanvas = useCanvasStore(
     (state) => state.refreshAndSetCachedTensorNetworkFromCanvas
   );
-  const addPCMPanel = useCanvasStore((state) => state.addPCMPanel);
-  const nextZIndex = useCanvasStore((state) => state.nextZIndex);
   const updateCachedTensorNetworkName = useCanvasStore(
     (state) => state.updateCachedTensorNetworkName
   );
+
+  const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
+  const addPCMPanel = usePanelConfigStore((state) => state.addPCMPanel);
 
   // State for editing subnet names
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
@@ -200,15 +201,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     });
   }, [cachedNetworks, weightEnumerators, parityCheckMatrices]);
 
-  const handleNetworkClick = (node: TreeNode) => {
-    console.log("handleNetworkClick", {
-      node
-    });
-    if (node.isActive && node.cachedTensorNetwork) {
-      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      refreshAndSetCachedTensorNetworkFromCanvas(sig);
-    }
-    // For cached networks, do nothing as specified
+  const handleNetworkClick = (node: CachedTensorNetwork) => {
+    refreshAndSetCachedTensorNetworkFromCanvas(node.tensorNetwork.signature);
   };
 
   const handleNameChange = (node: TreeNode, newName: string) => {
@@ -231,7 +225,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     }
   };
 
-  const handlePCMClick = (node: TreeNode, e: React.MouseEvent) => {
+  const handleOpenPCMPanel = (node: TreeNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
     if (node.cachedTensorNetwork) {
       const sig = node.cachedTensorNetwork.tensorNetwork.signature;
@@ -290,14 +284,14 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   }) => {
     const [isExpanded, setIsExpanded] = React.useState(false);
     const hasChildren = node.children && node.children.length > 0;
-    const isCurrentNetwork = currentTensorNetwork?.signature === node.id;
-    const editableRef = React.useRef<any>(null);
+    const isCurrentNetwork = tensorNetwork?.signature === node.id;
+    const editableRef = React.useRef<HTMLInputElement>(null);
 
     const handleClick = () => {
       if (hasChildren) {
         setIsExpanded(!isExpanded);
       }
-      handleNetworkClick(node);
+      handleNetworkClick(node.cachedTensorNetwork!);
     };
 
     const handleDoubleClick = () => {
@@ -384,7 +378,10 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
                   size="xs"
                   variant="ghost"
                   colorScheme="purple"
-                  onClick={(e) => handlePCMClick(node, e)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenPCMPanel(node, e);
+                  }}
                   _hover={{
                     bg: "purple.100",
                     color: "purple.700"

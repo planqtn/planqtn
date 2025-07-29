@@ -115,14 +115,11 @@ export class FloatingPanelConfigManager {
   }
 
   // Serialization
-  toJSON(): any {
-    return {
-      ...this.config,
-      layout: { ...this.config.layout }
-    };
+  public static fromJSON(json: unknown): FloatingPanelConfigManager {
+    return new FloatingPanelConfigManager(json as FloatingPanelConfig);
   }
 
-  static fromJSON(data: any): FloatingPanelConfigManager {
-    return new FloatingPanelConfigManager(data);
+  public toJSON(): FloatingPanelConfig {
+    return { ...this.config };
   }
 }

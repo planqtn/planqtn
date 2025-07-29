@@ -19,7 +19,6 @@ import {
   SerializedLego
 } from "../../schemas/v1/serializable-canvas-state";
 import { RefObject } from "react";
-import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 // Compressed format types for URL sharing (array-based, no field names)
 export type CompressedCanvasState = [
@@ -38,12 +37,7 @@ export type CompressedCanvasState = [
   [number, number, number, number]?, // 11: buildingBlocksPanelLayout [x, y, width, height] (legacy)
   [number, number, number, number]?, // 12: detailsPanelLayout [x, y, width, height] (legacy)
   [number, number, number, number]?, // 13: canvasesPanelLayout [x, y, width, height] (legacy)
-  any?, // 14: buildingBlocksPanelConfig
-  any?, // 15: detailsPanelConfig
-  any?, // 16: canvasesPanelConfig
-  any?, // 17: taskPanelConfig
-  any?, // 18: subnetsPanelConfig
-  [string, CachedTensorNetwork][]? // 19: cachedTensorNetworks
+  [string, SerializedCachedTensorNetwork][]? // 14: cachedTensorNetworks
 ];
 
 export type CompressedPiece = [
@@ -99,14 +93,6 @@ export interface RehydratedCanvasState {
   selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
   // Z-index management
   nextZIndex?: number;
-  // Floating panel configurations
-  buildingBlocksPanelConfig: FloatingPanelConfigManager;
-  detailsPanelConfig: FloatingPanelConfigManager;
-  canvasesPanelConfig: FloatingPanelConfigManager;
-  taskPanelConfig: FloatingPanelConfigManager;
-  subnetsPanelConfig: FloatingPanelConfigManager;
-  // PCM panel configurations
-  openPCMPanels?: Record<string, FloatingPanelConfigManager>;
 }
 
 function reconstructLegos(pieces: SerializedLego[]) {
@@ -179,77 +165,8 @@ function defaultCanvasState(
     cachedTensorNetworks: {},
     highlightedTensorNetworkLegs: {},
     selectedTensorNetworkParityCheckMatrixRows: {},
-    // Floating panel configurations
-    buildingBlocksPanelConfig: new FloatingPanelConfigManager({
-      id: "building-blocks",
-      title: "Building Blocks",
-      isOpen: true,
-      isCollapsed: false,
-      layout: {
-        position: { x: 50, y: 50 },
-        size: { width: 300, height: 600 }
-      },
-      minWidth: 200,
-      minHeight: 300,
-      defaultWidth: 300,
-      defaultHeight: 600
-    }),
-    detailsPanelConfig: new FloatingPanelConfigManager({
-      id: "details",
-      title: "Details",
-      isOpen: true,
-      isCollapsed: false,
-      layout: {
-        position: { x: window.innerWidth - 400, y: 50 },
-        size: { width: 350, height: 600 }
-      },
-      minWidth: 200,
-      minHeight: 300,
-      defaultWidth: 350,
-      defaultHeight: 600
-    }),
-    canvasesPanelConfig: new FloatingPanelConfigManager({
-      id: "canvases",
-      title: "Canvases",
-      isOpen: true,
-      isCollapsed: false,
-      layout: {
-        position: { x: 100, y: 100 },
-        size: { width: 300, height: 500 }
-      },
-      minWidth: 250,
-      minHeight: 300,
-      defaultWidth: 300,
-      defaultHeight: 500
-    }),
-    taskPanelConfig: new FloatingPanelConfigManager({
-      id: "tasks",
-      title: "Tasks",
-      isOpen: false,
-      isCollapsed: false,
-      layout: {
-        position: { x: 100, y: 100 },
-        size: { width: 600, height: 400 }
-      },
-      minWidth: 300,
-      minHeight: 200,
-      defaultWidth: 600,
-      defaultHeight: 400
-    }),
-    subnetsPanelConfig: new FloatingPanelConfigManager({
-      id: "subnets",
-      title: "Subnet groupings",
-      isOpen: true,
-      isCollapsed: false,
-      layout: {
-        position: { x: 150, y: 150 },
-        size: { width: 350, height: 500 }
-      },
-      minWidth: 250,
-      minHeight: 300,
-      defaultWidth: 350,
-      defaultHeight: 500
-    })
+    // Z-index management
+    nextZIndex: 1100
   };
 }
 
@@ -289,7 +206,7 @@ export class CanvasStateSerializer {
     };
   }
 
-  private toSerializableTensorNetwork(tensorNetwork: any) {
+  private toSerializableTensorNetwork(tensorNetwork: TensorNetwork) {
     return {
       legos: tensorNetwork.legos.map((lego: DroppedLego) =>
         this.toSerializableLego(lego)
@@ -344,22 +261,7 @@ export class CanvasStateSerializer {
       ).map(([key, value]) => ({ key, value })),
       selectedTensorNetworkParityCheckMatrixRows: Object.entries(
         store.selectedTensorNetworkParityCheckMatrixRows
-      ).map(([key, value]) => ({ key, value })),
-      // Z-index management
-      nextZIndex: store.nextZIndex,
-      // Floating panel configurations
-      buildingBlocksPanelConfig: store.buildingBlocksPanelConfig.toJSON(),
-      detailsPanelConfig: store.detailsPanelConfig.toJSON(),
-      canvasesPanelConfig: store.canvasesPanelConfig.toJSON(),
-      taskPanelConfig: store.taskPanelConfig.toJSON(),
-      subnetsPanelConfig: store.subnetsPanelConfig.toJSON(),
-      // PCM panel configurations
-      openPCMPanels: Object.fromEntries(
-        Object.entries(store.openPCMPanels).map(([key, config]) => [
-          key,
-          config.toJSON()
-        ])
-      )
+      ).map(([key, value]) => ({ key, value }))
     };
 
     return state;
@@ -466,7 +368,8 @@ export class CanvasStateSerializer {
                   ...item.value,
                   tensorNetwork: new TensorNetwork({
                     legos: reconstructLegos(item.value.tensorNetwork.legos),
-                    connections: item.value.tensorNetwork.connections
+                    connections: item.value.tensorNetwork.connections,
+                    signature: item.value.tensorNetwork.signature
                   }),
                   lastUpdated: new Date(item.value.lastUpdated)
                 }
@@ -501,104 +404,6 @@ export class CanvasStateSerializer {
       result.hideTypeIds = rawCanvasStateObj.hideTypeIds || false;
       result.hideDanglingLegs = rawCanvasStateObj.hideDanglingLegs || false;
       result.hideLegLabels = rawCanvasStateObj.hideLegLabels || false;
-
-      // Floating panel configurations
-      if (rawCanvasStateObj.buildingBlocksPanelConfig) {
-        result.buildingBlocksPanelConfig = FloatingPanelConfigManager.fromJSON(
-          rawCanvasStateObj.buildingBlocksPanelConfig
-        );
-      }
-      if (rawCanvasStateObj.detailsPanelConfig) {
-        result.detailsPanelConfig = FloatingPanelConfigManager.fromJSON(
-          rawCanvasStateObj.detailsPanelConfig
-        );
-      }
-      if (rawCanvasStateObj.canvasesPanelConfig) {
-        result.canvasesPanelConfig = FloatingPanelConfigManager.fromJSON(
-          rawCanvasStateObj.canvasesPanelConfig
-        );
-      }
-      if (rawCanvasStateObj.taskPanelConfig) {
-        result.taskPanelConfig = FloatingPanelConfigManager.fromJSON(
-          rawCanvasStateObj.taskPanelConfig
-        );
-      }
-      if (rawCanvasStateObj.subnetsPanelConfig) {
-        result.subnetsPanelConfig = FloatingPanelConfigManager.fromJSON(
-          rawCanvasStateObj.subnetsPanelConfig
-        );
-      }
-
-      // Rehydrate PCM panel configurations
-      if (rawCanvasStateObj.openPCMPanels) {
-        result.openPCMPanels = Object.fromEntries(
-          Object.entries(rawCanvasStateObj.openPCMPanels).map(
-            ([key, config]) => [
-              key,
-              FloatingPanelConfigManager.fromJSON(config)
-            ]
-          )
-        );
-      }
-
-      // Legacy support - if new configs don't exist, create them from legacy data
-      if (
-        !rawCanvasStateObj.buildingBlocksPanelConfig &&
-        rawCanvasStateObj.isBuildingBlocksPanelOpen !== undefined
-      ) {
-        result.buildingBlocksPanelConfig = new FloatingPanelConfigManager({
-          id: "building-blocks",
-          title: "Building Blocks",
-          isOpen: rawCanvasStateObj.isBuildingBlocksPanelOpen || false,
-          isCollapsed: false,
-          layout: rawCanvasStateObj.buildingBlocksPanelLayout || {
-            position: { x: 50, y: 50 },
-            size: { width: 300, height: 600 }
-          },
-          minWidth: 200,
-          minHeight: 300,
-          defaultWidth: 300,
-          defaultHeight: 600
-        });
-      }
-      if (
-        !rawCanvasStateObj.detailsPanelConfig &&
-        rawCanvasStateObj.isDetailsPanelOpen !== undefined
-      ) {
-        result.detailsPanelConfig = new FloatingPanelConfigManager({
-          id: "details",
-          title: "Details",
-          isOpen: rawCanvasStateObj.isDetailsPanelOpen || false,
-          isCollapsed: false,
-          layout: rawCanvasStateObj.detailsPanelLayout || {
-            position: { x: window.innerWidth - 400, y: 50 },
-            size: { width: 350, height: 600 }
-          },
-          minWidth: 200,
-          minHeight: 300,
-          defaultWidth: 350,
-          defaultHeight: 600
-        });
-      }
-      if (
-        !rawCanvasStateObj.canvasesPanelConfig &&
-        rawCanvasStateObj.isCanvasesPanelOpen !== undefined
-      ) {
-        result.canvasesPanelConfig = new FloatingPanelConfigManager({
-          id: "canvases",
-          title: "Canvases",
-          isOpen: rawCanvasStateObj.isCanvasesPanelOpen || false,
-          isCollapsed: false,
-          layout: rawCanvasStateObj.canvasesPanelLayout || {
-            position: { x: 100, y: 100 },
-            size: { width: 300, height: 500 }
-          },
-          minWidth: 250,
-          minHeight: 300,
-          defaultWidth: 300,
-          defaultHeight: 500
-        });
-      }
 
       // Preserve the title from the decoded state if it exists
       if (rawCanvasStateObj.title) {
@@ -676,19 +481,6 @@ export class CanvasStateSerializer {
         (hideTypeIds ? 4 : 0) |
         (hideDanglingLegs ? 8 : 0) |
         (hideLegLabels ? 16 : 0)
-      );
-    };
-
-    // Pack panel flags into a single number (bit flags)
-    const packPanelFlags = (
-      isBuildingBlocksPanelOpen: boolean,
-      isDetailsPanelOpen: boolean,
-      isCanvasesPanelOpen: boolean
-    ): number => {
-      return (
-        (isBuildingBlocksPanelOpen ? 1 : 0) |
-        (isDetailsPanelOpen ? 2 : 0) |
-        (isCanvasesPanelOpen ? 4 : 0)
       );
     };
 
@@ -776,7 +568,9 @@ export class CanvasStateSerializer {
       compressed[7] = Object.entries(store.weightEnumerators);
     }
     if (Object.keys(store.cachedTensorNetworks).length > 0) {
-      compressed[19] = Object.entries(store.cachedTensorNetworks);
+      compressed[14] = Object.entries(store.cachedTensorNetworks).map(
+        ([key, value]) => [key, this.toSerializableCachedTensorNetwork(value)]
+      );
     }
     if (Object.keys(store.highlightedTensorNetworkLegs).length > 0) {
       compressed[8] = Object.entries(store.highlightedTensorNetworkLegs);
@@ -788,52 +582,6 @@ export class CanvasStateSerializer {
         store.selectedTensorNetworkParityCheckMatrixRows
       );
     }
-
-    // Add panel flags if any panel is open (legacy support)
-    const panelFlags = packPanelFlags(
-      store.buildingBlocksPanelConfig.isOpen,
-      store.detailsPanelConfig.isOpen,
-      store.canvasesPanelConfig.isOpen
-    );
-    if (panelFlags > 0) {
-      compressed[10] = panelFlags;
-    }
-
-    // Add panel layouts if panels are open (legacy support)
-    if (store.buildingBlocksPanelConfig.isOpen) {
-      const layout = store.buildingBlocksPanelConfig.layout;
-      compressed[11] = [
-        Math.round(layout.position.x),
-        Math.round(layout.position.y),
-        Math.round(layout.size.width),
-        Math.round(layout.size.height)
-      ];
-    }
-    if (store.detailsPanelConfig.isOpen) {
-      const layout = store.detailsPanelConfig.layout;
-      compressed[12] = [
-        Math.round(layout.position.x),
-        Math.round(layout.position.y),
-        Math.round(layout.size.width),
-        Math.round(layout.size.height)
-      ];
-    }
-    if (store.canvasesPanelConfig.isOpen) {
-      const layout = store.canvasesPanelConfig.layout;
-      compressed[13] = [
-        Math.round(layout.position.x),
-        Math.round(layout.position.y),
-        Math.round(layout.size.width),
-        Math.round(layout.size.height)
-      ];
-    }
-
-    // Add new panel configurations
-    compressed[14] = store.buildingBlocksPanelConfig.toJSON();
-    compressed[15] = store.detailsPanelConfig.toJSON();
-    compressed[16] = store.canvasesPanelConfig.toJSON();
-    compressed[17] = store.taskPanelConfig.toJSON();
-    compressed[18] = store.subnetsPanelConfig.toJSON();
 
     return compressed;
   }
@@ -851,13 +599,6 @@ export class CanvasStateSerializer {
       hideTypeIds: !!(flags & 4),
       hideDanglingLegs: !!(flags & 8),
       hideLegLabels: !!(flags & 16)
-    });
-
-    // Unpack panel flags
-    const unpackPanelFlags = (flags: number) => ({
-      isBuildingBlocksPanelOpen: !!(flags & 1),
-      isDetailsPanelOpen: !!(flags & 2),
-      isCanvasesPanelOpen: !!(flags & 4)
     });
 
     // Build matrix lookup table
@@ -910,109 +651,6 @@ export class CanvasStateSerializer {
     );
 
     const booleanFlags = unpackBooleanFlags(compressed[3]);
-    const panelFlags =
-      compressed[10] !== undefined
-        ? unpackPanelFlags(compressed[10])
-        : {
-            isBuildingBlocksPanelOpen: false,
-            isDetailsPanelOpen: false,
-            isCanvasesPanelOpen: false
-          };
-
-    // Unpack panel layouts
-    const buildingBlocksPanelLayout = compressed[11]
-      ? {
-          position: { x: compressed[11][0], y: compressed[11][1] },
-          size: { width: compressed[11][2], height: compressed[11][3] }
-        }
-      : { position: { x: 50, y: 50 }, size: { width: 300, height: 600 } };
-
-    const detailsPanelLayout = compressed[12]
-      ? {
-          position: { x: compressed[12][0], y: compressed[12][1] },
-          size: { width: compressed[12][2], height: compressed[12][3] }
-        }
-      : {
-          position: { x: window.innerWidth - 400, y: 50 },
-          size: { width: 350, height: 600 }
-        };
-
-    const canvasesPanelLayout = compressed[13]
-      ? {
-          position: { x: compressed[13][0], y: compressed[13][1] },
-          size: { width: compressed[13][2], height: compressed[13][3] }
-        }
-      : {
-          position: { x: 100, y: 100 },
-          size: { width: 300, height: 500 }
-        };
-
-    // Get panel configurations from new format, fallback to legacy if not available
-    const buildingBlocksPanelConfig = compressed[14] || {
-      id: "building-blocks",
-      title: "Building Blocks",
-      isOpen: panelFlags.isBuildingBlocksPanelOpen,
-      isCollapsed: false,
-      layout: buildingBlocksPanelLayout,
-      minWidth: 200,
-      minHeight: 300,
-      defaultWidth: 300,
-      defaultHeight: 600
-    };
-
-    const detailsPanelConfig = compressed[15] || {
-      id: "details",
-      title: "Details",
-      isOpen: panelFlags.isDetailsPanelOpen,
-      isCollapsed: false,
-      layout: detailsPanelLayout,
-      minWidth: 200,
-      minHeight: 300,
-      defaultWidth: 350,
-      defaultHeight: 600
-    };
-
-    const canvasesPanelConfig = compressed[16] || {
-      id: "canvases",
-      title: "Canvases",
-      isOpen: panelFlags.isCanvasesPanelOpen,
-      isCollapsed: false,
-      layout: canvasesPanelLayout,
-      minWidth: 250,
-      minHeight: 300,
-      defaultWidth: 300,
-      defaultHeight: 500
-    };
-
-    const taskPanelConfig = compressed[17] || {
-      id: "tasks",
-      title: "Tasks",
-      isOpen: false,
-      isCollapsed: false,
-      layout: {
-        position: { x: 100, y: 100 },
-        size: { width: 600, height: 400 }
-      },
-      minWidth: 300,
-      minHeight: 200,
-      defaultWidth: 600,
-      defaultHeight: 400
-    };
-
-    const subnetsPanelConfig = compressed[18] || {
-      id: "subnets",
-      title: "Subnets",
-      isOpen: false,
-      isCollapsed: false,
-      layout: {
-        position: { x: 150, y: 150 },
-        size: { width: 350, height: 500 }
-      },
-      minWidth: 250,
-      minHeight: 300,
-      defaultWidth: 350,
-      defaultHeight: 500
-    };
 
     const result: SerializableCanvasState = {
       title: compressed[0],
@@ -1032,7 +670,7 @@ export class CanvasStateSerializer {
         key,
         value
       })),
-      cachedTensorNetworks: (compressed[19] || []).map(([key, value]) => ({
+      cachedTensorNetworks: (compressed[14] || []).map(([key, value]) => ({
         key,
         value
       })),
@@ -1041,13 +679,7 @@ export class CanvasStateSerializer {
       ),
       selectedTensorNetworkParityCheckMatrixRows: (compressed[9] || []).map(
         ([key, value]) => ({ key, value })
-      ),
-      // Floating panel configurations
-      buildingBlocksPanelConfig,
-      detailsPanelConfig,
-      canvasesPanelConfig,
-      taskPanelConfig,
-      subnetsPanelConfig
+      )
     };
     console.log(
       "hello - deserialized result from compressed canvas state",

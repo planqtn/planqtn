@@ -45,6 +45,7 @@ import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts"
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { useCanvasStore } from "./stores/canvasStateStore";
+import { usePanelConfigStore } from "./stores/panelConfigStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
@@ -152,37 +153,37 @@ const LegoStudioView: React.FC = () => {
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
   // Panel configurations
-  const buildingBlocksPanelConfig = useCanvasStore(
+  const buildingBlocksPanelConfig = usePanelConfigStore(
     (state) => state.buildingBlocksPanelConfig
   );
-  const setBuildingBlocksPanelConfig = useCanvasStore(
+  const setBuildingBlocksPanelConfig = usePanelConfigStore(
     (state) => state.setBuildingBlocksPanelConfig
   );
-  const detailsPanelConfig = useCanvasStore(
+  const detailsPanelConfig = usePanelConfigStore(
     (state) => state.detailsPanelConfig
   );
-  const setDetailsPanelConfig = useCanvasStore(
+  const setDetailsPanelConfig = usePanelConfigStore(
     (state) => state.setDetailsPanelConfig
   );
-  const canvasesPanelConfig = useCanvasStore(
+  const canvasesPanelConfig = usePanelConfigStore(
     (state) => state.canvasesPanelConfig
   );
-  const setCanvasesPanelConfig = useCanvasStore(
+  const setCanvasesPanelConfig = usePanelConfigStore(
     (state) => state.setCanvasesPanelConfig
   );
-  const taskPanelConfig = useCanvasStore((state) => state.taskPanelConfig);
-  const setTaskPanelConfig = useCanvasStore(
+  const taskPanelConfig = usePanelConfigStore((state) => state.taskPanelConfig);
+  const setTaskPanelConfig = usePanelConfigStore(
     (state) => state.setTaskPanelConfig
   );
-  const subnetsPanelConfig = useCanvasStore(
+  const subnetsPanelConfig = usePanelConfigStore(
     (state) => state.subnetsPanelConfig
   );
-  const setSubnetsPanelConfig = useCanvasStore(
+  const setSubnetsPanelConfig = usePanelConfigStore(
     (state) => state.setSubnetsPanelConfig
   );
-  const openPCMPanels = useCanvasStore((state) => state.openPCMPanels);
-  const updatePCMPanel = useCanvasStore((state) => state.updatePCMPanel);
-  const removePCMPanel = useCanvasStore((state) => state.removePCMPanel);
+  const openPCMPanels = usePanelConfigStore((state) => state.openPCMPanels);
+  const updatePCMPanel = usePanelConfigStore((state) => state.updatePCMPanel);
+  const removePCMPanel = usePanelConfigStore((state) => state.removePCMPanel);
 
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 

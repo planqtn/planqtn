@@ -20,7 +20,7 @@ import {
 } from "@chakra-ui/icons";
 import { RiDragMove2Fill } from "react-icons/ri";
 import { FloatingPanelConfigManager, PanelLayout } from "./FloatingPanelConfig";
-import { useCanvasStore } from "../../stores/canvasStateStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
 
 interface FloatingPanelWrapperProps {
   config: FloatingPanelConfigManager;
@@ -56,7 +56,20 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
-  const bringPanelToFront = useCanvasStore((state) => state.bringPanelToFront);
+  const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
+
+  // Function to bring panel to front
+  const bringToFront = useCallback(() => {
+    const newConfig = new FloatingPanelConfigManager({
+      ...config.toJSON(),
+      zIndex: nextZIndex
+    });
+    onConfigChange(newConfig);
+    // Increment the nextZIndex in the store
+    usePanelConfigStore.setState((state) => {
+      state.nextZIndex++;
+    });
+  }, [config, nextZIndex, onConfigChange]);
 
   // Add DOM-level click listener for more reliable click detection
   useEffect(() => {
@@ -86,7 +99,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         currentElement = currentElement.parentElement;
       }
 
-      bringPanelToFront(config.id);
+      bringToFront();
     };
 
     panelElement.addEventListener("click", handlePanelClick, true); // Use capture phase
@@ -94,7 +107,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     return () => {
       panelElement.removeEventListener("click", handlePanelClick, true);
     };
-  }, [config.id, bringPanelToFront]);
+  }, [bringToFront]);
 
   // Handle panel click to bring to front
   const handlePanelClick = useCallback(
@@ -125,9 +138,9 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         currentElement = currentElement.parentElement;
       }
 
-      bringPanelToFront(config.id);
+      bringToFront();
     },
-    [config.id, bringPanelToFront]
+    [bringToFront]
   );
 
   // Handle panel mousedown to bring to front (more reliable than click)
@@ -160,28 +173,9 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       }
 
       // Bring to front on mousedown for more reliable detection
-      bringPanelToFront(config.id);
+      bringToFront();
     },
-    [config.id, bringPanelToFront]
-  );
-
-  // Handle content area click specifically - this should always bring to front
-  const handleContentClick = useCallback(
-    (e: React.MouseEvent) => {
-      // Don't bring to front if clicking on interactive elements
-      const target = e.target as HTMLElement;
-      if (
-        target.closest(
-          'button, input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
-        )
-      ) {
-        return;
-      }
-
-      // Always bring to front when clicking on content area (non-interactive parts)
-      bringPanelToFront(config.id);
-    },
-    [config.id, bringPanelToFront]
+    [bringToFront]
   );
 
   // Update config when layout changes
@@ -203,7 +197,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       if (!panelRef.current) return;
 
       // Bring panel to front when starting to drag
-      bringPanelToFront(config.id);
+      bringToFront();
 
       const rect = panelRef.current.getBoundingClientRect();
       setDragOffset({
@@ -212,7 +206,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       });
       setIsDragging(true);
     },
-    [config.id, bringPanelToFront]
+    [bringToFront]
   );
 
   // Handle resize start
@@ -222,11 +216,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       e.stopPropagation();
 
       // Bring panel to front when starting to resize
-      bringPanelToFront(config.id);
+      bringToFront();
 
       setIsResizing(true);
     },
-    [config.id, bringPanelToFront]
+    [bringToFront]
   );
 
   // Handle mouse move for drag and resize
@@ -446,7 +440,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
               currentElement = currentElement.parentElement;
             }
 
-            bringPanelToFront(config.id);
+            bringToFront();
           }}
           onMouseDown={(e) => {
             // Also handle mousedown for more immediate response
@@ -471,7 +465,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
               currentElement = currentElement.parentElement;
             }
 
-            bringPanelToFront(config.id);
+            bringToFront();
           }}
         >
           {children}

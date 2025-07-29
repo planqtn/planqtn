@@ -17,7 +17,7 @@ const FloatingSubnetsPanel: React.FC<FloatingSubnetsPanelProps> = ({
   return (
     <FloatingPanelWrapper
       config={config}
-      title="Subnet groupings"
+      title="Cached subnets and calculations"
       onConfigChange={onConfigChange}
       onClose={onClose}
       showCollapseButton={true}
