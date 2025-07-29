@@ -12,7 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { FiMoreVertical, FiUpload } from "react-icons/fi";
+import { FiFile, FiMoreVertical, FiUpload } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useModalStore } from "../../stores/modalStore";
@@ -108,6 +108,10 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
           <Text>Canvas</Text>
         </DropdownMenuLabel>
 
+        <DropdownMenuItem onClick={() => (window.location.href = "/")}>
+          <Icon as={FiFile} />
+          New Canvas
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={openImportCanvasDialog}>
           <Icon as={FiUpload} />
           New from JSON file...

@@ -14,7 +14,10 @@ import {
   Button
 } from "@chakra-ui/react";
 import { DeleteIcon } from "@chakra-ui/icons";
-import { getCanvasIdFromUrl } from "../../stores/canvasStateStore";
+import {
+  getCanvasIdFromUrl,
+  useCanvasStore
+} from "../../stores/canvasStateStore";
 
 interface CanvasInfo {
   id: string;
@@ -30,6 +33,7 @@ const CanvasesPanel: React.FC = () => {
   const selectedBgColor = useColorModeValue("blue.50", "blue.900");
   const selectedTextColor = useColorModeValue("blue.700", "blue.200");
   const deleteButtonHoverBg = useColorModeValue("red.100", "red.900");
+  const currentCanvasTitle = useCanvasStore((state) => state.title);
 
   const currentCanvasId = getCanvasIdFromUrl();
   const toast = useToast();
@@ -367,7 +371,7 @@ const CanvasesPanel: React.FC = () => {
                           noOfLines={1}
                           flex={1}
                         >
-                          {canvas.title}
+                          {isCurrent ? currentCanvasTitle : canvas.title}
                         </Text>
                       </HStack>
                       <HStack spacing={2}>
