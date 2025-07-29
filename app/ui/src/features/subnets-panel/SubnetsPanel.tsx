@@ -27,19 +27,36 @@ interface SubnetsPanelProps {
   // No props needed for this component
 }
 
+type NodeContentType = "pcm" | "weightEnumerator" | "tensorNetwork";
+
 interface TreeNode {
   id: string;
   name: string;
-  isActive: boolean;
+  nodeContentType?: NodeContentType;
+  children?: TreeNode[];
+}
+
+interface TensorNetworkNode extends TreeNode {
+  nodeContentType: "tensorNetwork";
   legoCount: number;
   calculationCount: number;
-  children?: TreeNode[];
-  cachedTensorNetwork?: CachedTensorNetwork;
-  isPCM?: boolean;
-  isWeightEnumerator?: boolean;
-  taskId?: string;
-  openLegsCount?: number;
-  truncateLength?: number;
+  isActive: boolean;
+  cachedTensorNetwork: CachedTensorNetwork;
+}
+
+interface WeightEnumeratorNode extends TreeNode {
+  signature: string;
+  nodeContentType: "weightEnumerator";
+  taskId: string;
+  openLegsCount: number;
+  truncateLength: number;
+}
+
+interface PCMNode extends TreeNode {
+  signature: string;
+  nodeContentType: "pcm";
+  numDanglingLegs: number;
+  pcmRows: number;
 }
 
 const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
@@ -80,6 +97,62 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   // State for editing subnet names
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
 
+  const mapTensorNetworkToTreeNode = (
+    network: CachedTensorNetwork
+  ): TensorNetworkNode => {
+    const enumerators =
+      weightEnumerators[network.tensorNetwork.signature] || [];
+    const calculationCount = enumerators.length;
+    const hasPCM = parityCheckMatrices[network.tensorNetwork.signature];
+
+    const children: TreeNode[] = [];
+
+    // Add PCM node if it exists
+    if (hasPCM) {
+      const pcm = parityCheckMatrices[network.tensorNetwork.signature];
+      const totalLegs = pcm ? pcm.matrix[0].length / 2 : 0;
+      const pcmRows = pcm ? pcm.matrix.length : 0;
+      children.push({
+        id: `${network.tensorNetwork.signature}-pcm`,
+        signature: network.tensorNetwork.signature,
+        name: "Parity Check Matrix",
+        nodeContentType: "pcm",
+        numDanglingLegs: totalLegs,
+        pcmRows: pcmRows
+      } as PCMNode);
+    }
+
+    // Add weight enumerator nodes
+    children.push(
+      ...enumerators.map(
+        (enumerator, index) =>
+          ({
+            id: `${network.tensorNetwork.signature}-enumerator-${index}`,
+            signature: network.tensorNetwork.signature,
+            name: enumerator.taskId
+              ? `Task ${enumerator.taskId.slice(0, 8)}...`
+              : `Weight Enumerator ${index + 1}`,
+            nodeContentType: "weightEnumerator",
+            taskId: enumerator.taskId,
+            openLegsCount: enumerator.openLegs.length,
+            truncateLength: enumerator.truncateLength,
+            cachedTensorNetwork: network
+          }) as WeightEnumeratorNode
+      )
+    );
+
+    return {
+      id: network.tensorNetwork.signature,
+      name: network.name,
+      nodeContentType: "tensorNetwork",
+      legoCount: network.tensorNetwork.legos.length,
+      calculationCount,
+      isActive: true,
+      cachedTensorNetwork: network,
+      children
+    } as TensorNetworkNode;
+  };
+
   // Group cached tensor networks by active status
   const { activeNetworks, cachedNetworks } = useMemo(() => {
     const active: CachedTensorNetwork[] = [];
@@ -98,114 +171,20 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
   // Convert networks to tree nodes
   const activeNodes: TreeNode[] = useMemo(() => {
-    return activeNetworks.map((network) => {
-      const enumerators =
-        weightEnumerators[network.tensorNetwork.signature] || [];
-      const calculationCount = enumerators.length;
-      const hasPCM = parityCheckMatrices[network.tensorNetwork.signature];
-
-      const children: TreeNode[] = [];
-
-      // Add PCM node if it exists
-      if (hasPCM) {
-        children.push({
-          id: `${network.tensorNetwork.signature}-pcm`,
-          name: "Parity Check Matrix",
-          isActive: false,
-          legoCount: 0,
-          calculationCount: 0,
-          cachedTensorNetwork: network,
-          isPCM: true
-        });
-      }
-
-      // Add weight enumerator nodes
-      children.push(
-        ...enumerators.map((enumerator, index) => ({
-          id: `${network.tensorNetwork.signature}-enumerator-${index}`,
-          name: enumerator.taskId
-            ? `Task ${enumerator.taskId.slice(0, 8)}...`
-            : `Weight Enumerator ${index + 1}`,
-          isActive: false,
-          legoCount: 0,
-          calculationCount: 0,
-          cachedTensorNetwork: network,
-          isWeightEnumerator: true,
-          taskId: enumerator.taskId,
-          openLegsCount: enumerator.openLegs.length,
-          truncateLength: enumerator.truncateLength
-        }))
-      );
-
-      return {
-        id: network.tensorNetwork.signature,
-        name: network.name,
-        isActive: true,
-        legoCount: network.tensorNetwork.legos.length,
-        calculationCount,
-        cachedTensorNetwork: network,
-        children
-      } as TreeNode;
-    });
+    return activeNetworks.map(mapTensorNetworkToTreeNode);
   }, [activeNetworks, weightEnumerators, parityCheckMatrices]);
 
   const cachedNodes: TreeNode[] = useMemo(() => {
-    return cachedNetworks.map((network) => {
-      const enumerators =
-        weightEnumerators[network.tensorNetwork.signature] || [];
-      const calculationCount = enumerators.length;
-      const hasPCM = parityCheckMatrices[network.tensorNetwork.signature];
-
-      const children: TreeNode[] = [];
-
-      // Add PCM node if it exists
-      if (hasPCM) {
-        children.push({
-          id: `${network.tensorNetwork.signature}-pcm`,
-          name: "Parity Check Matrix",
-          isActive: false,
-          legoCount: 0,
-          calculationCount: 0,
-          cachedTensorNetwork: network,
-          isPCM: true
-        });
-      }
-
-      // Add weight enumerator nodes
-      children.push(
-        ...enumerators.map((enumerator, index) => ({
-          id: `${network.tensorNetwork.signature}-enumerator-${index}`,
-          name: enumerator.taskId
-            ? `Task ${enumerator.taskId.slice(0, 8)}...`
-            : `Weight Enumerator ${index + 1}`,
-          isActive: false,
-          legoCount: 0,
-          calculationCount: 0,
-          cachedTensorNetwork: network,
-          isWeightEnumerator: true,
-          taskId: enumerator.taskId,
-          openLegsCount: enumerator.openLegs.length,
-          truncateLength: enumerator.truncateLength
-        }))
-      );
-
-      return {
-        id: network.tensorNetwork.signature,
-        name: network.name,
-        isActive: false,
-        legoCount: network.tensorNetwork.legos.length,
-        calculationCount,
-        cachedTensorNetwork: network,
-        children
-      } as TreeNode;
-    });
+    return cachedNetworks.map(mapTensorNetworkToTreeNode);
   }, [cachedNetworks, weightEnumerators, parityCheckMatrices]);
 
-  const handleNetworkClick = (node: CachedTensorNetwork) => {
-    refreshAndSetCachedTensorNetworkFromCanvas(node.tensorNetwork.signature);
+  const handleNetworkClick = (node: TensorNetworkNode) => {
+    refreshAndSetCachedTensorNetworkFromCanvas(
+      node.cachedTensorNetwork.tensorNetwork.signature
+    );
   };
 
-  const handleNameChange = (node: TreeNode, newName: string) => {
+  const handleNameChange = (node: TensorNetworkNode, newName: string) => {
     if (node.cachedTensorNetwork && newName.trim()) {
       const sig = node.cachedTensorNetwork.tensorNetwork.signature;
       updateCachedTensorNetworkName(sig, newName.trim());
@@ -217,7 +196,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     setEditingNodeId(null);
   };
 
-  const handleCloneClick = (node: TreeNode, e: React.MouseEvent) => {
+  const handleCloneClick = (node: TensorNetworkNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
     if (node.cachedTensorNetwork) {
       const sig = node.cachedTensorNetwork.tensorNetwork.signature;
@@ -225,57 +204,45 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     }
   };
 
-  const handleOpenPCMPanel = (node: TreeNode, e: React.MouseEvent) => {
+  const handleOpenPCMPanel = (node: PCMNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
-    if (node.cachedTensorNetwork) {
-      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      const config = new FloatingPanelConfigManager({
-        id: `pcm-${sig}`,
-        title: `PCM - ${node.cachedTensorNetwork.name}`,
-        isOpen: true,
-        isCollapsed: false,
-        layout: {
-          position: {
-            x: 200 + Math.random() * 100,
-            y: 200 + Math.random() * 100
-          },
-          size: { width: 500, height: 600 }
+    const config = new FloatingPanelConfigManager({
+      id: `pcm-${node.signature}`,
+      title: `PCM - ${node.name}`,
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: {
+          x: 200 + Math.random() * 100,
+          y: 200 + Math.random() * 100
         },
-        minWidth: 300,
-        minHeight: 400,
-        defaultWidth: 500,
-        defaultHeight: 600,
-        zIndex: nextZIndex
-      });
-      addPCMPanel(sig, config);
-    }
+        size: { width: 500, height: 600 }
+      },
+      minWidth: 300,
+      minHeight: 400,
+      defaultWidth: 500,
+      defaultHeight: 600,
+      zIndex: nextZIndex
+    });
+    addPCMPanel(node.signature, config);
   };
 
-  const handleUncacheClick = (node: TreeNode, e: React.MouseEvent) => {
+  const handleUncacheClick = (node: TensorNetworkNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
-    if (node.cachedTensorNetwork) {
-      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      unCacheTensorNetwork(sig);
-    }
+    unCacheTensorNetwork(node.cachedTensorNetwork.tensorNetwork.signature);
   };
 
-  const handleUncachePCMClick = (node: TreeNode, e: React.MouseEvent) => {
+  const handleUncachePCMClick = (node: PCMNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
-    if (node.cachedTensorNetwork) {
-      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      unCachePCM(sig);
-    }
+    unCachePCM(node.signature);
   };
 
   const handleUncacheWeightEnumeratorClick = (
-    node: TreeNode,
+    node: WeightEnumeratorNode,
     e: React.MouseEvent
   ) => {
     e.stopPropagation(); // Prevent triggering the parent click
-    if (node.cachedTensorNetwork && node.taskId) {
-      const sig = node.cachedTensorNetwork.tensorNetwork.signature;
-      unCacheWeightEnumerator(sig, node.taskId);
-    }
+    unCacheWeightEnumerator(node.signature, node.taskId);
   };
 
   const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({
@@ -289,16 +256,31 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
     const handleClick = () => {
       if (hasChildren) {
-        setIsExpanded(!isExpanded);
+        // Only toggle expansion if clicking on the expand/collapse button
+        // For child clicks, keep the tree open
+        if (
+          node.nodeContentType !== "pcm" &&
+          node.nodeContentType !== "weightEnumerator"
+        ) {
+          setIsExpanded(!isExpanded);
+        }
       }
-      handleNetworkClick(node.cachedTensorNetwork!);
+
+      // Handle different click behaviors based on node type
+      if (node.nodeContentType === "pcm") {
+        // For PCM nodes, open the PCM panel
+        handleOpenPCMPanel(node as PCMNode, {} as React.MouseEvent);
+      } else if (node.nodeContentType === "tensorNetwork") {
+        // For regular tensor network nodes, select the network
+        handleNetworkClick(node as TensorNetworkNode);
+      }
     };
 
     const handleDoubleClick = () => {
       console.log("handleDoubleClick", {
         node
       });
-      if (node.cachedTensorNetwork && !node.isPCM && !node.isWeightEnumerator) {
+      if (node.nodeContentType === "tensorNetwork") {
         setEditingNodeId(node.id);
         // Use setTimeout to ensure the ref is available
         setTimeout(() => {
@@ -315,7 +297,12 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           spacing={2}
           p={2}
           pl={level * 4 + 2}
-          cursor={node.isActive ? "pointer" : "default"}
+          cursor={
+            node.nodeContentType === "tensorNetwork" &&
+            (node as TensorNetworkNode).isActive
+              ? "pointer"
+              : "default"
+          }
           bg={isCurrentNetwork ? activeBgColor : "transparent"}
           border={
             isCurrentNetwork
@@ -324,7 +311,11 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           }
           borderRadius="md"
           _hover={{
-            bg: node.isActive ? hoverBgColor : "transparent"
+            bg:
+              node.nodeContentType === "tensorNetwork" &&
+              (node as TensorNetworkNode).isActive
+                ? hoverBgColor
+                : "transparent"
           }}
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
@@ -344,10 +335,15 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           {editingNodeId === node.id ? (
             <Input
               defaultValue={node.name}
-              onBlur={(e) => handleNameChange(node, e.target.value)}
+              onBlur={(e) =>
+                handleNameChange(node as TensorNetworkNode, e.target.value)
+              }
               onKeyPress={(e) => {
                 if (e.key === "Enter") {
-                  handleNameChange(node, e.currentTarget.value);
+                  handleNameChange(
+                    node as TensorNetworkNode,
+                    e.currentTarget.value
+                  );
                 }
               }}
               onKeyDown={(e) => {
@@ -366,116 +362,114 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
               whiteSpace="nowrap"
             >
               {node.name}
+              {node.nodeContentType === "pcm" &&
+                `[[${(node as PCMNode).numDanglingLegs},${(node as PCMNode).numDanglingLegs - (node as PCMNode).pcmRows}]]`}
             </Text>
           )}
           <HStack spacing={1}>
-            {/* For PCM nodes, show table icon and PCM-specific trashcan */}
-            {node.isPCM ? (
-              <>
-                <IconButton
-                  aria-label="View parity check matrix"
-                  icon={<ViewIcon />}
-                  size="xs"
-                  variant="ghost"
-                  colorScheme="purple"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenPCMPanel(node, e);
-                  }}
-                  _hover={{
-                    bg: "purple.100",
-                    color: "purple.700"
-                  }}
-                />
-                {/* Trashcan button for PCM nodes */}
-                {node.cachedTensorNetwork && (
-                  <IconButton
-                    aria-label="Uncache parity check matrix"
-                    icon={<DeleteIcon />}
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="red"
-                    onClick={(e) => handleUncachePCMClick(node, e)}
-                    _hover={{
-                      bg: "red.100",
-                      color: "red.700"
-                    }}
-                  />
-                )}
-              </>
-            ) : node.isWeightEnumerator ? (
-              <>
-                {/* For weight enumerator nodes, show calculation type, truncation level, open legs count and weight enumerator-specific trashcan */}
-                <Badge size="sm" colorScheme="teal">
-                  WEP
-                </Badge>
-                {node.truncateLength && (
-                  <Badge size="sm" colorScheme="purple">
-                    T{node.truncateLength}
-                  </Badge>
-                )}
-                <Badge size="sm" colorScheme="orange">
-                  {node.openLegsCount} open legs
-                </Badge>
-                {/* Trashcan button for weight enumerator nodes */}
-                {node.cachedTensorNetwork && node.taskId && (
-                  <IconButton
-                    aria-label="Uncache weight enumerator"
-                    icon={<DeleteIcon />}
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="red"
-                    onClick={(e) => handleUncacheWeightEnumeratorClick(node, e)}
-                    _hover={{
-                      bg: "red.100",
-                      color: "red.700"
-                    }}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                {/* For regular tensor network nodes */}
-                <Badge size="sm" colorScheme="blue">
-                  {node.legoCount} legos
-                </Badge>
-                {node.calculationCount > 0 && (
-                  <Badge size="sm" colorScheme="green">
-                    {node.calculationCount} calcs
-                  </Badge>
-                )}
-                {/* Clone button for inactive networks */}
-                {!node.isActive && node.cachedTensorNetwork && (
-                  <IconButton
-                    aria-label="Clone tensor network"
-                    icon={<CopyIcon />}
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="gray"
-                    onClick={(e) => handleCloneClick(node, e)}
-                    _hover={{
-                      bg: "gray.100",
-                      color: "gray.700"
-                    }}
-                  />
-                )}
-                {/* Trashcan button for all tensor network nodes */}
-                {node.cachedTensorNetwork && (
-                  <IconButton
-                    aria-label="Uncache tensor network"
-                    icon={<DeleteIcon />}
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="red"
-                    onClick={(e) => handleUncacheClick(node, e)}
-                    _hover={{
-                      bg: "red.100",
-                      color: "red.700"
-                    }}
-                  />
-                )}
-              </>
-            )}
+            {/* For PCM nodes, show leg count and rows info */}
+            {node.nodeContentType === "pcm"
+              ? ((pcmNode: PCMNode) => {
+                  return (
+                    <>
+                      {/* Trashcan button for PCM nodes */}
+
+                      <IconButton
+                        aria-label="Uncache parity check matrix"
+                        icon={<DeleteIcon />}
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="red"
+                        onClick={(e) => handleUncachePCMClick(pcmNode, e)}
+                        _hover={{
+                          bg: "red.100",
+                          color: "red.700"
+                        }}
+                      />
+                    </>
+                  );
+                })(node as PCMNode)
+              : node.nodeContentType === "weightEnumerator"
+                ? ((wepNode: WeightEnumeratorNode) => {
+                    return (
+                      <>
+                        {/* For weight enumerator nodes, show calculation type, truncation level, open legs count and weight enumerator-specific trashcan */}
+                        <Badge size="sm" colorScheme="teal">
+                          WEP
+                        </Badge>
+                        {wepNode.truncateLength && (
+                          <Badge size="sm" colorScheme="purple">
+                            T{wepNode.truncateLength}
+                          </Badge>
+                        )}
+                        <Badge size="sm" colorScheme="orange">
+                          {wepNode.openLegsCount} legs
+                        </Badge>
+                        {/* Trashcan button for weight enumerator nodes */}
+                        {wepNode.taskId && (
+                          <IconButton
+                            aria-label="Uncache weight enumerator"
+                            icon={<DeleteIcon />}
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={(e) =>
+                              handleUncacheWeightEnumeratorClick(wepNode, e)
+                            }
+                            _hover={{
+                              bg: "red.100",
+                              color: "red.700"
+                            }}
+                          />
+                        )}
+                      </>
+                    );
+                  })(node as WeightEnumeratorNode)
+                : ((tnNode: TensorNetworkNode) => {
+                    return (
+                      <>
+                        {/* For regular tensor network nodes */}
+                        <Badge size="sm" colorScheme="blue">
+                          {tnNode.legoCount} legos
+                        </Badge>
+                        {tnNode.calculationCount > 0 && (
+                          <Badge size="sm" colorScheme="green">
+                            {tnNode.calculationCount} calcs
+                          </Badge>
+                        )}
+                        {/* Clone button for inactive networks */}
+                        {!tnNode.isActive && tnNode.cachedTensorNetwork && (
+                          <IconButton
+                            aria-label="Clone tensor network"
+                            icon={<CopyIcon />}
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="gray"
+                            onClick={(e) => handleCloneClick(tnNode, e)}
+                            _hover={{
+                              bg: "gray.100",
+                              color: "gray.700"
+                            }}
+                          />
+                        )}
+                        {/* Trashcan button for all tensor network nodes */}
+                        {tnNode.cachedTensorNetwork && (
+                          <IconButton
+                            aria-label="Uncache tensor network"
+                            icon={<DeleteIcon />}
+                            size="xs"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={(e) => handleUncacheClick(tnNode, e)}
+                            _hover={{
+                              bg: "red.100",
+                              color: "red.700"
+                            }}
+                          />
+                        )}
+                      </>
+                    );
+                  })(node as TensorNetworkNode)}
           </HStack>
         </HStack>
         {hasChildren && (
