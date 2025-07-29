@@ -14,16 +14,15 @@ import {
   Scissors,
   Network,
   Link,
-  User
+  Trash2,
+  Eraser
 } from "lucide-react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useModalStore } from "../../stores/modalStore";
 import { BoundingBox } from "../../stores/canvasUISlice";
 import "./SubnetToolbar.css";
 
 interface SubnetToolbarProps {
   boundingBox: BoundingBox;
-  networkSignature: string;
   isLocked?: boolean;
   onToggleLock?: () => void;
   onCollapse?: () => void;
@@ -38,6 +37,8 @@ interface SubnetToolbarProps {
   onUnfuseToTwo?: () => void;
   onCompleteGraph?: () => void;
   onConnectViaCentral?: () => void;
+  onRemoveFromCache?: () => void;
+  onRemoveHighlights?: () => void;
   isUserLoggedIn?: boolean;
 }
 
@@ -70,7 +71,6 @@ const ToolbarSeparator: React.FC = () => <div className="toolbar-separator" />;
 
 export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   boundingBox,
-  networkSignature,
   isLocked = false,
   onToggleLock,
   onCollapse,
@@ -85,7 +85,9 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   onUnfuseToTwo,
   onCompleteGraph,
   onConnectViaCentral,
-  isUserLoggedIn = false
+  onRemoveFromCache,
+  onRemoveHighlights,
+  isUserLoggedIn
 }) => {
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
 
@@ -127,6 +129,16 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             tooltip="Expand single lego (not implemented yet)"
             onClick={onExpand}
             disabled={true}
+          />
+          <ToolbarButton
+            icon={<Trash2 size={16} />}
+            tooltip="Remove this subnet from cache"
+            onClick={onRemoveFromCache}
+          />
+          <ToolbarButton
+            icon={<Eraser size={16} />}
+            tooltip="Remove all highlights in subnet"
+            onClick={onRemoveHighlights}
           />
         </div>
 

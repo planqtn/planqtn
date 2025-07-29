@@ -27,6 +27,7 @@ export interface PanelConfigSlice {
     networkSignature: string,
     config: FloatingPanelConfigManager
   ) => void;
+  openPCMPanel: (networkSignature: string, networkName: string) => void;
 
   // Z-index management for floating panels
   nextZIndex: number;
@@ -169,6 +170,42 @@ export const createPanelConfigSlice: StateCreator<
     config: FloatingPanelConfigManager
   ) =>
     set((state) => {
+      state.openPCMPanels[networkSignature] = config;
+    }),
+  openPCMPanel: (networkSignature: string, networkName: string) =>
+    set((state) => {
+      // Check if PCM panel is already open for this network
+      if (state.openPCMPanels[networkSignature]) {
+        // Panel is already open, just bring it to front
+        const nextZ = state.nextZIndex++;
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.openPCMPanels[networkSignature].toJSON(),
+          zIndex: nextZ
+        });
+        state.openPCMPanels[networkSignature] = newConfig;
+        return;
+      }
+
+      // Create new PCM panel configuration
+      const config = new FloatingPanelConfigManager({
+        id: `pcm-${networkSignature}`,
+        title: `PCM - ${networkName}`,
+        isOpen: true,
+        isCollapsed: false,
+        layout: {
+          position: {
+            x: 200 + Math.random() * 100,
+            y: 200 + Math.random() * 100
+          },
+          size: { width: 500, height: 600 }
+        },
+        minWidth: 300,
+        minHeight: 400,
+        defaultWidth: 500,
+        defaultHeight: 600,
+        zIndex: state.nextZIndex++
+      });
+
       state.openPCMPanels[networkSignature] = config;
     }),
 

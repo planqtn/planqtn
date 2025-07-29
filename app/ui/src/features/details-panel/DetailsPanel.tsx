@@ -8,7 +8,6 @@ import {
   useColorModeValue,
   Input,
   Checkbox,
-  UseToastOptions,
   useDisclosure
 } from "@chakra-ui/react";
 import { FaTable, FaCube } from "react-icons/fa";
@@ -18,7 +17,6 @@ import {
   Task
 } from "../../lib/types.ts";
 import { Connection } from "../../stores/connectionStore";
-import { TensorNetwork } from "../../lib/TensorNetwork.ts";
 import {
   createHadamardLego,
   DroppedLego
@@ -49,7 +47,6 @@ import {
   applyCompleteGraphViaHadamards
 } from "../../transformations/CompleteGraphViaHadamards.ts";
 import {
-  User,
   RealtimePostgresChangesPayload,
   RealtimeChannel
 } from "@supabase/supabase-js";
@@ -67,27 +64,17 @@ import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
+import { useUserStore } from "@/stores/userStore.ts";
 
-interface DetailsPanelProps {
-  fuseLegos: (legos: DroppedLego[]) => void;
+const DetailsPanel: React.FC = () => {
+  const { currentUser: user } = useUserStore();
 
-  makeSpace: (
-    center: { x: number; y: number },
-    radius: number,
-    skipLegos: DroppedLego[],
-    legosToCheck: DroppedLego[]
-  ) => DroppedLego[];
-  handlePullOutSameColoredLeg: (lego: DroppedLego) => Promise<void>;
-  toast: (props: UseToastOptions) => void;
-  user?: User | null;
-}
-
-const DetailsPanel: React.FC<DetailsPanelProps> = ({
-  fuseLegos,
-  makeSpace,
-  handlePullOutSameColoredLeg,
-  user
-}) => {
+  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
+  const makeSpace = useCanvasStore((state) => state.makeSpace);
+  const handlePullOutSameColoredLeg = useCanvasStore(
+    (state) => state.handlePullOutSameColoredLeg
+  );
   const connections = useCanvasStore((state) => state.connections);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
@@ -111,12 +98,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const getParityCheckMatrix = useCanvasStore(
     (state) => state.getParityCheckMatrix
   );
-  const cacheTensorNetwork = useCanvasStore(
-    (state) => state.cacheTensorNetwork
-  );
-  const getCachedTensorNetwork = useCanvasStore(
-    (state) => state.getCachedTensorNetwork
-  );
   const parityCheckMatrix = useCanvasStore((state) => {
     if (!state.tensorNetwork) return null;
     return state.parityCheckMatrices[state.tensorNetwork.signature] || null;
@@ -131,6 +112,10 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
   const setWeightEnumerator = useCanvasStore(
     (state) => state.setWeightEnumerator
   );
+  const calculateParityCheckMatrix = useCanvasStore(
+    (state) => state.calculateParityCheckMatrix
+  );
+  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
@@ -160,48 +145,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     tensorNetwork?.legos.length == 1 ? tensorNetwork?.legos[0] : null;
   const legoSelectedRows = lego ? lego.selectedMatrixRows : [];
 
-  const calculateParityCheckMatrix = async () => {
-    if (!tensorNetwork) return;
-    try {
-      // Create a TensorNetwork and perform the fusion
-      const network = new TensorNetwork({
-        legos: tensorNetwork.legos,
-        connections: tensorNetwork.connections
-      });
-      const result = network.conjoin_nodes();
-
-      if (!result) {
-        throw new Error("Cannot compute tensor network parity check matrix");
-      }
-
-      const legOrdering = result.legs.map((leg) => ({
-        instance_id: leg.instance_id,
-        leg_index: leg.leg_index
-      }));
-
-      setParityCheckMatrix(tensorNetwork.signature, {
-        matrix: result.h.getMatrix(),
-        legOrdering
-      });
-
-      const cachedTensorNetwork = getCachedTensorNetwork(
-        tensorNetwork.signature
-      );
-
-      cacheTensorNetwork({
-        isActive: true,
-        tensorNetwork: network,
-        svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
-        name:
-          cachedTensorNetwork?.name ||
-          `${tensorNetwork.legos.length} legos | ${new Date().toISOString()}`,
-        isLocked: cachedTensorNetwork?.isLocked || false,
-        lastUpdated: new Date()
-      });
-    } catch (error) {
-      console.error("Error calculating parity check matrix:", error);
-      setError("Failed to calculate parity check matrix");
-    }
+  const handleCalculateParityCheckMatrix = async () => {
+    await calculateParityCheckMatrix((networkSignature, networkName) => {
+      // Open PCM panel after successful calculation
+      openPCMPanel(networkSignature, networkName);
+    });
   };
 
   const subscribeToTaskUpdates = (taskId: string) => {
@@ -429,11 +377,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
     if (!tensorNetwork?.signature) return;
 
     const allEnumerators = weightEnumerators[tensorNetwork.signature] || [];
-    console.log(
-      "details panel sees all weight enumerators for network",
-      allEnumerators.length,
-      allEnumerators
-    );
 
     allEnumerators.forEach((enumerator) => {
       if (enumerator.taskId) {
@@ -1424,7 +1367,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                 <VStack align="stretch" spacing={3}>
                   {!parityCheckMatrix && (
                     <Button
-                      onClick={calculateParityCheckMatrix}
+                      onClick={handleCalculateParityCheckMatrix}
                       colorScheme="blue"
                       size="sm"
                       width="full"
@@ -1439,7 +1382,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({
                       title="Pauli stabilizers"
                       legOrdering={parityCheckMatrix.legOrdering}
                       onMatrixChange={handleMultiLegoMatrixChange}
-                      onRecalculate={calculateParityCheckMatrix}
+                      onRecalculate={handleCalculateParityCheckMatrix}
                       onRowSelectionChange={handleMatrixRowSelection}
                       selectedRows={
                         selectedTensorNetworkParityCheckMatrixRows[

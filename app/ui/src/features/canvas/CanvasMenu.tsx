@@ -84,7 +84,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         </Box>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="dropdown-menu-high-z">
+      <DropdownMenuContent className="high-z">
         <DropdownMenuLabel>
           <Text>Canvas</Text>
         </DropdownMenuLabel>
@@ -164,7 +164,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Display settings</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuCheckboxItem
                 onClick={() => {
                   setHideConnectedLegs(!hideConnectedLegs);
@@ -212,7 +212,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Panel settings</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuCheckboxItem
                 checked={
                   usePanelConfigStore.getState().buildingBlocksPanelConfig
@@ -320,7 +320,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Export...</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuItem onClick={handleExportSvg}>
                 Export canvas as SVG...
               </DropdownMenuItem>

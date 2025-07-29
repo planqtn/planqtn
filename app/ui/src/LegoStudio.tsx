@@ -4,12 +4,16 @@ import {
   EditableInput,
   EditablePreview,
   Icon,
-  Tooltip,
   useColorModeValue,
   useToast,
   VStack
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 
 import ErrorPanel from "./components/ErrorPanel";
@@ -27,20 +31,18 @@ import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { UserMenu } from "./features/auth/UserMenu.tsx";
 
 import { userContextSupabase } from "./config/supabaseClient.ts";
-import { User } from "@supabase/supabase-js";
+import { useCanvasStore } from "./stores/canvasStateStore";
+import { useUserStore } from "./stores/userStore";
 
 import { checkSupabaseStatus } from "./lib/errors.ts";
-// import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { useModalStore } from "./stores/modalStore";
 import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
-import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
-import { DroppedLego } from "./stores/droppedLegoStore";
 import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
@@ -104,17 +106,13 @@ const LegoStudioView: React.FC = () => {
     (state) => state.handleDynamicLegoSubmit
   );
   const handleClearAll = useCanvasStore((state) => state.handleClearAll);
-  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
-  const makeSpace = useCanvasStore((state) => state.makeSpace);
   const handleDynamicLegoDrop = useCanvasStore(
     (state) => state.handleDynamicLegoDrop
   );
   const handleExportPythonCode = useCanvasStore(
     (state) => state.handleExportPythonCode
   );
-  const handlePullOutSameColoredLeg = useCanvasStore(
-    (state) => state.handlePullOutSameColoredLeg
-  );
+
   const showPythonCodeModal = useCanvasStore(
     (state) => state.showPythonCodeModal
   );
@@ -164,10 +162,7 @@ const LegoStudioView: React.FC = () => {
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  // Memoize isUserLoggedIn to prevent BuildingBlocksPanel re-renders
-  const isUserLoggedIn = useMemo(() => !!currentUser, [currentUser]);
+  const { currentUser, setCurrentUser } = useUserStore();
 
   const supabaseStatusRef = useRef<{ isHealthy: boolean; message: string }>({
     isHealthy: false,
@@ -394,17 +389,7 @@ const LegoStudioView: React.FC = () => {
 
   return (
     <>
-      <KeyboardHandler
-        onSetAltKeyPressed={setAltKeyPressed}
-        onFuseLegos={fuseLegos}
-        onPullOutSameColoredLeg={handlePullOutSameColoredLeg}
-        onToast={(props) =>
-          toast({
-            ...props,
-            status: props.status as "success" | "error" | "warning" | "info"
-          })
-        }
-      />
+      <KeyboardHandler onSetAltKeyPressed={setAltKeyPressed} />
 
       <CanvasMouseHandler
         selectionManagerRef={selectionManagerRef}
@@ -494,46 +479,56 @@ const LegoStudioView: React.FC = () => {
                     gap={2}
                   >
                     {/* Documentation button */}
-                    <Tooltip label="Documentation" placement="bottom">
-                      <Box
-                        bg="transparent"
-                        borderRadius="md"
-                        px={2}
-                        py={2}
-                        opacity={0.8}
-                        _hover={{
-                          opacity: 1,
-                          bg: useColorModeValue("gray.100", "gray.700")
-                        }}
-                        transition="opacity 0.2s"
-                        cursor="pointer"
-                        onClick={() => window.open("/docs", "_blank")}
-                        alignItems="center"
-                        display="flex"
-                      >
-                        <Icon as={FiFileText} boxSize={5} />
-                      </Box>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Box
+                          bg="transparent"
+                          borderRadius="md"
+                          px={2}
+                          py={2}
+                          opacity={0.8}
+                          _hover={{
+                            opacity: 1,
+                            bg: useColorModeValue("gray.100", "gray.700")
+                          }}
+                          transition="opacity 0.2s"
+                          cursor="pointer"
+                          onClick={() => window.open("/docs", "_blank")}
+                          alignItems="center"
+                          display="flex"
+                        >
+                          <Icon as={FiFileText} boxSize={5} />
+                        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Documentation
+                      </TooltipContent>
                     </Tooltip>
                     {/* Share button */}
-                    <Tooltip label="Share canvas" placement="bottom">
-                      <Box
-                        bg="transparent"
-                        borderRadius="md"
-                        px={2}
-                        py={2}
-                        opacity={0.8}
-                        _hover={{
-                          opacity: 1,
-                          bg: useColorModeValue("gray.100", "gray.700")
-                        }}
-                        transition="opacity 0.2s"
-                        cursor="pointer"
-                        onClick={openShareDialog}
-                        alignItems="center"
-                        display="flex"
-                      >
-                        <Icon as={FiShare2} boxSize={5} />
-                      </Box>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Box
+                          bg="transparent"
+                          borderRadius="md"
+                          px={2}
+                          py={2}
+                          opacity={0.8}
+                          _hover={{
+                            opacity: 1,
+                            bg: useColorModeValue("gray.100", "gray.700")
+                          }}
+                          transition="opacity 0.2s"
+                          cursor="pointer"
+                          onClick={openShareDialog}
+                          alignItems="center"
+                          display="flex"
+                        >
+                          <Icon as={FiShare2} boxSize={5} />
+                        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Share canvas
+                      </TooltipContent>
                     </Tooltip>
                     {/* User menu */}
                     <Box
@@ -544,10 +539,7 @@ const LegoStudioView: React.FC = () => {
                       _hover={{ opacity: 1 }}
                       transition="opacity 0.2s"
                     >
-                      <UserMenu
-                        user={currentUser}
-                        onSignIn={handleAuthDialogOpen}
-                      />
+                      <UserMenu onSignIn={handleAuthDialogOpen} />
                     </Box>
                   </Box>
 
@@ -599,19 +591,7 @@ const LegoStudioView: React.FC = () => {
           <ErrorPanel />
         </Box>
 
-        <FloatingPanelHandler
-          currentUser={currentUser}
-          fuseLegos={fuseLegos}
-          makeSpace={(
-            center: { x: number; y: number },
-            radius: number,
-            skipLegos: DroppedLego[],
-            legosToCheck: DroppedLego[]
-          ) => makeSpace(center, radius, skipLegos, legosToCheck)}
-          handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-          toast={toast}
-          setError={setError}
-        />
+        <FloatingPanelHandler />
 
         {isDynamicLegoDialogOpen && (
           <DynamicLegoDialog

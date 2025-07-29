@@ -4,7 +4,6 @@ import FloatingPanelWrapper from "../floating-panel/FloatingPanelWrapper";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 interface FloatingBuildingBlocksPanelProps {
-  isUserLoggedIn?: boolean;
   config: FloatingPanelConfigManager;
   onConfigChange: (config: FloatingPanelConfigManager) => void;
   onClose: () => void;
@@ -12,7 +11,7 @@ interface FloatingBuildingBlocksPanelProps {
 
 const FloatingBuildingBlocksPanel: React.FC<
   FloatingBuildingBlocksPanelProps
-> = ({ isUserLoggedIn, config, onConfigChange, onClose }) => {
+> = ({ config, onConfigChange, onClose }) => {
   return (
     <FloatingPanelWrapper
       title="Building blocks"
@@ -20,7 +19,7 @@ const FloatingBuildingBlocksPanel: React.FC<
       onConfigChange={onConfigChange}
       onClose={onClose}
     >
-      <BuildingBlocksPanel isUserLoggedIn={isUserLoggedIn} />
+      <BuildingBlocksPanel />
     </FloatingPanelWrapper>
   );
 };

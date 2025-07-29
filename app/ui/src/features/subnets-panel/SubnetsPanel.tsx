@@ -19,7 +19,6 @@ import {
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { CachedTensorNetwork } from "../../stores/tensorNetworkStore";
-import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SubnetsPanelProps {
@@ -91,9 +90,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     (state) => state.updateCachedTensorNetworkName
   );
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
-  const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
-  const addPCMPanel = usePanelConfigStore((state) => state.addPCMPanel);
-  const openPCMPanels = usePanelConfigStore((state) => state.openPCMPanels);
+
+  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
 
   // State for editing subnet names
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
@@ -234,32 +232,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
   const handleOpenPCMPanel = (node: PCMNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
-
-    // Check if PCM panel is already open for this network
-    if (openPCMPanels[node.signature]) {
-      // Panel is already open, just bring it to front (this will be handled by the panel's own click handler)
-      return;
-    }
-
-    const config = new FloatingPanelConfigManager({
-      id: `pcm-${node.signature}`,
-      title: `PCM - ${node.name}`,
-      isOpen: true,
-      isCollapsed: false,
-      layout: {
-        position: {
-          x: 200 + Math.random() * 100,
-          y: 200 + Math.random() * 100
-        },
-        size: { width: 500, height: 600 }
-      },
-      minWidth: 300,
-      minHeight: 400,
-      defaultWidth: 500,
-      defaultHeight: 600,
-      zIndex: nextZIndex
-    });
-    addPCMPanel(node.signature, config);
+    openPCMPanel(node.signature, node.name);
   };
 
   const handleUncacheClick = (node: TensorNetworkNode, e: React.MouseEvent) => {

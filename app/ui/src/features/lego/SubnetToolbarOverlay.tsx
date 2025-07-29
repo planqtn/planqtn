@@ -1,14 +1,21 @@
 import React from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
+import { useUserStore } from "../../stores/userStore";
 import { SubnetToolbar } from "./SubnetToolbar";
-import { BoundingBox } from "../../stores/canvasUISlice";
 
 export const SubnetToolbarOverlay: React.FC = () => {
+  const { isUserLoggedIn } = useUserStore();
+
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const calculateTensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
   );
   const viewport = useCanvasStore((state) => state.viewport);
+  const calculateParityCheckMatrix = useCanvasStore(
+    (state) => state.calculateParityCheckMatrix
+  );
+  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
 
   // Calculate bounding box for the current tensor network
   const tnBoundingBoxLogical =
@@ -36,8 +43,11 @@ export const SubnetToolbarOverlay: React.FC = () => {
     console.log("Weight enumerator");
   };
 
-  const handleParityCheckMatrix = () => {
-    console.log("Parity check matrix");
+  const handleParityCheckMatrix = async () => {
+    await calculateParityCheckMatrix((networkSignature, networkName) => {
+      // Open PCM panel after successful calculation
+      openPCMPanel(networkSignature, networkName);
+    });
   };
 
   const handleChangeColor = () => {
@@ -72,6 +82,14 @@ export const SubnetToolbarOverlay: React.FC = () => {
     console.log("Connect via central");
   };
 
+  const handleRemoveFromCache = () => {
+    console.log("Remove from cache");
+  };
+
+  const handleRemoveHighlights = () => {
+    console.log("Remove highlights");
+  };
+
   // Only render if we have a tensor network and bounding box
   if (!tensorNetwork || !boundingBox) {
     return null;
@@ -80,7 +98,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
   return (
     <SubnetToolbar
       boundingBox={boundingBox}
-      networkSignature={tensorNetwork.signature}
       onToggleLock={handleToggleLock}
       onCollapse={handleCollapse}
       onExpand={handleExpand}
@@ -94,7 +111,9 @@ export const SubnetToolbarOverlay: React.FC = () => {
       onUnfuseToTwo={handleUnfuseToTwo}
       onCompleteGraph={handleCompleteGraph}
       onConnectViaCentral={handleConnectViaCentral}
-      isUserLoggedIn={false} // TODO: Get from auth context
+      onRemoveFromCache={handleRemoveFromCache}
+      onRemoveHighlights={handleRemoveHighlights}
+      isUserLoggedIn={isUserLoggedIn}
     />
   );
 };

@@ -144,6 +144,10 @@ export interface TensorNetworkSlice {
     truncateLength?: number,
     openLegs?: TensorNetworkLeg[]
   ) => Promise<void>;
+
+  calculateParityCheckMatrix: (
+    onSuccess?: (networkSignature: string, networkName: string) => void
+  ) => Promise<void>;
 }
 
 export const useTensorNetworkSlice: StateCreator<
@@ -643,6 +647,59 @@ export const useTensorNetworkSlice: StateCreator<
       const errorMessage =
         err instanceof Error ? err.message : "Unknown error occurred";
       get().setError(`Failed to calculate weight enumerator: ${errorMessage}`);
+    }
+  },
+
+  calculateParityCheckMatrix: async (
+    onSuccess?: (networkSignature: string, networkName: string) => void
+  ): Promise<void> => {
+    const tensorNetwork = get().tensorNetwork;
+    if (!tensorNetwork) return;
+
+    try {
+      // Create a TensorNetwork and perform the fusion
+      const network = new TensorNetwork({
+        legos: tensorNetwork.legos,
+        connections: tensorNetwork.connections
+      });
+      const result = network.conjoin_nodes();
+
+      if (!result) {
+        throw new Error("Cannot compute tensor network parity check matrix");
+      }
+
+      const legOrdering = result.legs.map((leg) => ({
+        instance_id: leg.instance_id,
+        leg_index: leg.leg_index
+      }));
+
+      get().setParityCheckMatrix(tensorNetwork.signature, {
+        matrix: result.h.getMatrix(),
+        legOrdering
+      });
+
+      const cachedTensorNetwork = get().getCachedTensorNetwork(
+        tensorNetwork.signature
+      );
+
+      get().cacheTensorNetwork({
+        isActive: true,
+        tensorNetwork: network,
+        svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
+        name:
+          cachedTensorNetwork?.name ||
+          `${tensorNetwork.legos.length} legos | ${new Date().toISOString()}`,
+        isLocked: cachedTensorNetwork?.isLocked || false,
+        lastUpdated: new Date()
+      });
+
+      // Call success callback if provided
+      const networkName =
+        cachedTensorNetwork?.name || `${tensorNetwork.legos.length} legos`;
+      onSuccess?.(tensorNetwork.signature, networkName);
+    } catch (error) {
+      console.error("Error calculating parity check matrix:", error);
+      get().setError("Failed to calculate parity check matrix");
     }
   }
 });

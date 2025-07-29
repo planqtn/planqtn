@@ -8,27 +8,9 @@ import FloatingDetailsPanel from "../features/details-panel/FloatingDetailsPanel
 import FloatingCanvasesPanel from "../features/canvases-panel/FloatingCanvasesPanel";
 import FloatingSubnetsPanel from "../features/subnets-panel/FloatingSubnetsPanel";
 import FloatingPCMPanel from "../features/pcm-panel/FloatingPCMPanel";
-import { User } from "@supabase/supabase-js";
-
-interface FloatingPanelHandlerProps {
-  currentUser: User | null;
-  fuseLegos: (legos: any[]) => void;
-  makeSpace: (
-    center: { x: number; y: number },
-    radius: number,
-    skipLegos: any[],
-    legosToCheck: any[]
-  ) => any[];
-  handlePullOutSameColoredLeg: (lego: any) => Promise<void>;
-  toast: (props: any) => void;
-  setError: (error: string | null) => void;
-}
 
 // Individual panel components that only subscribe to their own configs
-const TaskPanelWrapper: React.FC<{
-  currentUser: User | null;
-  setError: (error: string | null) => void;
-}> = ({ currentUser, setError }) => {
+const TaskPanelWrapper: React.FC = () => {
   const taskPanelConfig = usePanelConfigStore((state) => state.taskPanelConfig);
   const setTaskPanelConfig = usePanelConfigStore(
     (state) => state.setTaskPanelConfig
@@ -36,8 +18,6 @@ const TaskPanelWrapper: React.FC<{
 
   return (
     <FloatingTaskPanel
-      user={currentUser}
-      onError={(error) => setError(error)}
       config={taskPanelConfig}
       onConfigChange={setTaskPanelConfig}
       onClose={() => {
@@ -51,9 +31,7 @@ const TaskPanelWrapper: React.FC<{
   );
 };
 
-const BuildingBlocksPanelWrapper: React.FC<{ currentUser: User | null }> = ({
-  currentUser
-}) => {
+const BuildingBlocksPanelWrapper: React.FC = () => {
   const buildingBlocksPanelConfig = usePanelConfigStore(
     (state) => state.buildingBlocksPanelConfig
   );
@@ -61,11 +39,8 @@ const BuildingBlocksPanelWrapper: React.FC<{ currentUser: User | null }> = ({
     (state) => state.setBuildingBlocksPanelConfig
   );
 
-  const isUserLoggedIn = React.useMemo(() => !!currentUser, [currentUser]);
-
   return (
     <FloatingBuildingBlocksPanel
-      isUserLoggedIn={isUserLoggedIn}
       config={buildingBlocksPanelConfig}
       onConfigChange={setBuildingBlocksPanelConfig}
       onClose={() => {
@@ -79,24 +54,7 @@ const BuildingBlocksPanelWrapper: React.FC<{ currentUser: User | null }> = ({
   );
 };
 
-const DetailsPanelWrapper: React.FC<{
-  currentUser: User | null;
-  fuseLegos: (legos: any[]) => void;
-  makeSpace: (
-    center: { x: number; y: number },
-    radius: number,
-    skipLegos: any[],
-    legosToCheck: any[]
-  ) => any[];
-  handlePullOutSameColoredLeg: (lego: any) => Promise<void>;
-  toast: (props: any) => void;
-}> = ({
-  currentUser,
-  fuseLegos,
-  makeSpace,
-  handlePullOutSameColoredLeg,
-  toast
-}) => {
+const DetailsPanelWrapper: React.FC = () => {
   const detailsPanelConfig = usePanelConfigStore(
     (state) => state.detailsPanelConfig
   );
@@ -106,11 +64,6 @@ const DetailsPanelWrapper: React.FC<{
 
   return (
     <FloatingDetailsPanel
-      fuseLegos={fuseLegos}
-      makeSpace={makeSpace}
-      handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-      toast={toast}
-      user={currentUser}
       config={detailsPanelConfig}
       onConfigChange={setDetailsPanelConfig}
       onClose={() => {
@@ -212,25 +165,12 @@ const PCMPanelWrapper: React.FC<{
   );
 };
 
-const FloatingPanelHandler: React.FC<FloatingPanelHandlerProps> = ({
-  currentUser,
-  fuseLegos,
-  makeSpace,
-  handlePullOutSameColoredLeg,
-  toast,
-  setError
-}) => {
+const FloatingPanelHandler: React.FC = () => {
   return (
     <>
-      <TaskPanelWrapper currentUser={currentUser} setError={setError} />
-      <BuildingBlocksPanelWrapper currentUser={currentUser} />
-      <DetailsPanelWrapper
-        currentUser={currentUser}
-        fuseLegos={fuseLegos}
-        makeSpace={makeSpace}
-        handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-        toast={toast}
-      />
+      <TaskPanelWrapper />
+      <BuildingBlocksPanelWrapper />
+      <DetailsPanelWrapper />
       <CanvasesPanelWrapper />
       <SubnetsPanelWrapper />
       <PCMPanelsWrapper />

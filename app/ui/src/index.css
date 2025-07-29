@@ -129,6 +129,6 @@ body {
   }
 }
 
-.dropdown-menu-high-z {
+.high-z {
   z-index: 10000 !important;
 }
