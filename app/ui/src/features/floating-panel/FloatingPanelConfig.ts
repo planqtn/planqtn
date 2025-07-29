@@ -14,6 +14,7 @@ export interface FloatingPanelConfig {
   defaultWidth?: number;
   defaultHeight?: number;
   defaultPosition?: { x: number; y: number };
+  zIndex?: number;
 }
 
 export class FloatingPanelConfigManager {
@@ -54,6 +55,9 @@ export class FloatingPanelConfigManager {
   get defaultPosition(): { x: number; y: number } {
     return this.config.defaultPosition || { x: 100, y: 100 };
   }
+  get zIndex(): number {
+    return this.config.zIndex || 1000;
+  }
 
   // Setters
   setIsOpen(isOpen: boolean): void {
@@ -74,6 +78,10 @@ export class FloatingPanelConfigManager {
 
   updateSize(size: { width: number; height: number }): void {
     this.config.layout.size = size;
+  }
+
+  setZIndex(zIndex: number): void {
+    this.config.zIndex = zIndex;
   }
 
   // Utility methods

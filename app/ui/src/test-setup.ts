@@ -1,3 +1,6 @@
+// React Testing Library setup
+import "@testing-library/jest-dom";
+
 // Mock the config module to avoid import.meta.env issues in tests
 jest.mock("./config/config", () => ({
   config: {

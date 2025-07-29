@@ -42,6 +42,88 @@ describe("Canvas State Validator", () => {
       zoomLevel: 1,
       logicalPanOffset: { x: 0, y: 0 }
     },
+    buildingBlocksPanelConfig: {
+      id: "building-blocks",
+      title: "Building Blocks",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 50, y: 50 },
+        size: { width: 300, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 600,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1000
+    },
+    detailsPanelConfig: {
+      id: "details",
+      title: "Details",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 400, y: 50 },
+        size: { width: 350, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 600,
+      defaultPosition: { x: 400, y: 100 },
+      zIndex: 1001
+    },
+    canvasesPanelConfig: {
+      id: "canvases",
+      title: "Canvases",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 300, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 500,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1002
+    },
+    taskPanelConfig: {
+      id: "tasks",
+      title: "Tasks",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 600, height: 400 }
+      },
+      minWidth: 300,
+      minHeight: 200,
+      defaultWidth: 600,
+      defaultHeight: 400,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1003
+    },
+    subnetsPanelConfig: {
+      id: "subnets",
+      title: "Subnets",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 150, y: 150 },
+        size: { width: 350, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 500,
+      defaultPosition: { x: 150, y: 150 },
+      zIndex: 1004
+    },
+    nextZIndex: 1100,
+    openPCMPanels: {},
     parityCheckMatrices: [],
     weightEnumerators: [],
     highlightedTensorNetworkLegs: [],
@@ -207,7 +289,88 @@ describe("Canvas State Validator", () => {
         key: "matrix-1",
         value: [0, 2, 4]
       }
-    ]
+    ],
+    buildingBlocksPanelConfig: {
+      id: "building-blocks",
+      title: "Building Blocks",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 50, y: 50 },
+        size: { width: 300, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 600,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1000
+    },
+    detailsPanelConfig: {
+      id: "details",
+      title: "Details",
+      isOpen: false,
+      isCollapsed: true,
+      layout: {
+        position: { x: 400, y: 50 },
+        size: { width: 350, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 600,
+      defaultPosition: { x: 400, y: 100 },
+      zIndex: 1001
+    },
+    canvasesPanelConfig: {
+      id: "canvases",
+      title: "Canvases",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 300, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 500,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1002
+    },
+    taskPanelConfig: {
+      id: "tasks",
+      title: "Tasks",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 600, height: 400 }
+      },
+      minWidth: 300,
+      minHeight: 200,
+      defaultWidth: 600,
+      defaultHeight: 400,
+      defaultPosition: { x: 100, y: 100 },
+      zIndex: 1003
+    },
+    subnetsPanelConfig: {
+      id: "subnets",
+      title: "Subnets",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 150, y: 150 },
+        size: { width: 350, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 500,
+      defaultPosition: { x: 150, y: 150 },
+      zIndex: 1004
+    },
+    nextZIndex: 1100
   };
 
   const validLegacyCanvasState = {
@@ -431,6 +594,130 @@ describe("Canvas State Validator", () => {
       }
       expect(result.isValid).toBe(true);
 
+      expect(result.errors).toBeUndefined();
+    });
+
+    it("should validate canvas state with panel configurations", () => {
+      const result = validateCanvasStateV1(validCanvasState);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
+
+    it("should validate canvas state with z-index management", () => {
+      const result = validateCanvasStateV1(validCanvasState);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
+
+    it("should reject canvas state with invalid panel configuration", () => {
+      const invalidState = {
+        ...validCanvasState,
+        buildingBlocksPanelConfig: {
+          id: "building-blocks",
+          title: "Building Blocks",
+          isOpen: false,
+          isCollapsed: false,
+          layout: {
+            position: { x: 50, y: 50 },
+            size: { width: 300, height: 600 }
+          },
+          zIndex: "invalid" // String instead of number
+        }
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should reject canvas state with invalid z-index value", () => {
+      const invalidState = {
+        ...validCanvasState,
+        nextZIndex: "invalid" // String instead of number
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should reject canvas state with z-index below minimum", () => {
+      const invalidState = {
+        ...validCanvasState,
+        buildingBlocksPanelConfig: {
+          id: "building-blocks",
+          title: "Building Blocks",
+          isOpen: false,
+          isCollapsed: false,
+          layout: {
+            position: { x: 50, y: 50 },
+            size: { width: 300, height: 600 }
+          },
+          zIndex: 999 // Below minimum of 1000
+        }
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should reject canvas state with nextZIndex below minimum", () => {
+      const invalidState = {
+        ...validCanvasState,
+        nextZIndex: 999 // Below minimum of 1000
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should validate canvas state with openPCMPanels", () => {
+      const stateWithPCMPanels = {
+        ...validCanvasState,
+        openPCMPanels: {
+          "test-network-1": {
+            id: "pcm-test-network-1",
+            title: "PCM - Test Network 1",
+            isOpen: true,
+            isCollapsed: false,
+            layout: {
+              position: { x: 200, y: 200 },
+              size: { width: 500, height: 600 }
+            },
+            minWidth: 300,
+            minHeight: 400,
+            defaultWidth: 500,
+            defaultHeight: 600,
+            zIndex: 1105
+          }
+        }
+      };
+
+      const result = validateCanvasStateV1(stateWithPCMPanels);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
+
+    it("should validate canvas state with missing optional panel properties", () => {
+      const minimalPanelConfig = {
+        ...validCanvasState,
+        buildingBlocksPanelConfig: {
+          id: "building-blocks",
+          title: "Building Blocks",
+          isOpen: false,
+          isCollapsed: false,
+          layout: {
+            position: { x: 50, y: 50 },
+            size: { width: 300, height: 600 }
+          }
+          // Missing optional properties like minWidth, minHeight, etc.
+        }
+      };
+
+      const result = validateCanvasStateV1(minimalPanelConfig);
+      expect(result.isValid).toBe(true);
       expect(result.errors).toBeUndefined();
     });
   });

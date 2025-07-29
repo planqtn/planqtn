@@ -17,11 +17,11 @@ const FloatingSubnetsPanel: React.FC<FloatingSubnetsPanelProps> = ({
   return (
     <FloatingPanelWrapper
       config={config}
+      title="Subnet groupings"
       onConfigChange={onConfigChange}
       onClose={onClose}
       showCollapseButton={true}
       showResizeHandle={true}
-      zIndex={1000}
     >
       <SubnetsPanel />
     </FloatingPanelWrapper>

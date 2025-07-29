@@ -217,6 +217,8 @@ export const LegosLayer: React.FC = () => {
 
   return (
     <>
+      {/* Render real legos (non-resizing ones are filtered in useMemo) */}
+      {renderedLegos}
       {tensorNetwork && boundingBox && (
         <g>
           <rect
@@ -251,9 +253,6 @@ export const LegosLayer: React.FC = () => {
           }
         />
       )}
-
-      {/* Render real legos (non-resizing ones are filtered in useMemo) */}
-      {renderedLegos}
     </>
   );
 };

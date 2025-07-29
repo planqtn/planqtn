@@ -71,6 +71,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     (state) => state.refreshAndSetCachedTensorNetworkFromCanvas
   );
   const addPCMPanel = useCanvasStore((state) => state.addPCMPanel);
+  const nextZIndex = useCanvasStore((state) => state.nextZIndex);
   const updateCachedTensorNetworkName = useCanvasStore(
     (state) => state.updateCachedTensorNetworkName
   );
@@ -249,7 +250,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
         minWidth: 300,
         minHeight: 400,
         defaultWidth: 500,
-        defaultHeight: 600
+        defaultHeight: 600,
+        zIndex: nextZIndex
       });
       addPCMPanel(sig, config);
     }
@@ -502,7 +504,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
         {/* Active Networks Section */}
         <Box p={3} borderBottom="1px" borderColor={borderColor}>
           <Text fontWeight="bold" fontSize="sm" color="green.600">
-            Active
+            On canvas
           </Text>
         </Box>
         {activeNodes.length > 0 ? (

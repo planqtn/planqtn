@@ -15,6 +15,7 @@ const FloatingBuildingBlocksPanel: React.FC<
 > = ({ isUserLoggedIn, config, onConfigChange, onClose }) => {
   return (
     <FloatingPanelWrapper
+      title="Building blocks"
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}

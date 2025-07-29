@@ -65,6 +65,8 @@ export interface SerializableCanvasState {
     value: number[];
   }[];
   parity_check_matrix_table?: { key: string; value: number[][] }[];
+  // Z-index management
+  nextZIndex?: number;
   // Floating panel configurations
   buildingBlocksPanelConfig?: {
     id: string;
@@ -80,6 +82,7 @@ export interface SerializableCanvasState {
     defaultWidth?: number;
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
+    zIndex?: number;
   };
   detailsPanelConfig?: {
     id: string;
@@ -95,6 +98,7 @@ export interface SerializableCanvasState {
     defaultWidth?: number;
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
+    zIndex?: number;
   };
   canvasesPanelConfig?: {
     id: string;
@@ -110,6 +114,7 @@ export interface SerializableCanvasState {
     defaultWidth?: number;
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
+    zIndex?: number;
   };
   taskPanelConfig?: {
     id: string;
@@ -125,6 +130,7 @@ export interface SerializableCanvasState {
     defaultWidth?: number;
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
+    zIndex?: number;
   };
   subnetsPanelConfig?: {
     id: string;
@@ -140,5 +146,25 @@ export interface SerializableCanvasState {
     defaultWidth?: number;
     defaultHeight?: number;
     defaultPosition?: { x: number; y: number };
+    zIndex?: number;
   };
+  openPCMPanels?: Record<
+    string,
+    {
+      id: string;
+      title: string;
+      isOpen: boolean;
+      isCollapsed: boolean;
+      layout: {
+        position: { x: number; y: number };
+        size: { width: number; height: number };
+      };
+      minWidth?: number;
+      minHeight?: number;
+      defaultWidth?: number;
+      defaultHeight?: number;
+      defaultPosition?: { x: number; y: number };
+      zIndex?: number;
+    }
+  >;
 }

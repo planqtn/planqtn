@@ -23,12 +23,12 @@ const FloatingPCMPanel: React.FC<FloatingPCMPanelProps> = ({
 }) => {
   return (
     <FloatingPanelWrapper
+      title={config.title}
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}
       showCollapseButton={true}
       showResizeHandle={true}
-      zIndex={1000}
     >
       <PCMPanel
         networkSignature={networkSignature}

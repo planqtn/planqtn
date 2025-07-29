@@ -97,12 +97,16 @@ export interface RehydratedCanvasState {
     }[]
   >;
   selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
+  // Z-index management
+  nextZIndex?: number;
   // Floating panel configurations
   buildingBlocksPanelConfig: FloatingPanelConfigManager;
   detailsPanelConfig: FloatingPanelConfigManager;
   canvasesPanelConfig: FloatingPanelConfigManager;
   taskPanelConfig: FloatingPanelConfigManager;
   subnetsPanelConfig: FloatingPanelConfigManager;
+  // PCM panel configurations
+  openPCMPanels?: Record<string, FloatingPanelConfigManager>;
 }
 
 function reconstructLegos(pieces: SerializedLego[]) {
@@ -150,6 +154,105 @@ function reconstructLegos(pieces: SerializedLego[]) {
   });
   return reconstructedPieces;
 }
+
+function defaultCanvasState(
+  canvasRef?: RefObject<HTMLDivElement>
+): RehydratedCanvasState {
+  return {
+    droppedLegos: [],
+    connections: [],
+    hideConnectedLegs: true,
+    hideIds: false,
+    hideTypeIds: false,
+    hideDanglingLegs: false,
+    hideLegLabels: false,
+    title: "Untitled canvas", // Initialize title
+    viewport: new Viewport(
+      800,
+      600,
+      1,
+      new LogicalPoint(0, 0),
+      canvasRef || null
+    ),
+    parityCheckMatrices: {},
+    weightEnumerators: {},
+    cachedTensorNetworks: {},
+    highlightedTensorNetworkLegs: {},
+    selectedTensorNetworkParityCheckMatrixRows: {},
+    // Floating panel configurations
+    buildingBlocksPanelConfig: new FloatingPanelConfigManager({
+      id: "building-blocks",
+      title: "Building Blocks",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 50, y: 50 },
+        size: { width: 300, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 600
+    }),
+    detailsPanelConfig: new FloatingPanelConfigManager({
+      id: "details",
+      title: "Details",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: window.innerWidth - 400, y: 50 },
+        size: { width: 350, height: 600 }
+      },
+      minWidth: 200,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 600
+    }),
+    canvasesPanelConfig: new FloatingPanelConfigManager({
+      id: "canvases",
+      title: "Canvases",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 300, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 300,
+      defaultHeight: 500
+    }),
+    taskPanelConfig: new FloatingPanelConfigManager({
+      id: "tasks",
+      title: "Tasks",
+      isOpen: false,
+      isCollapsed: false,
+      layout: {
+        position: { x: 100, y: 100 },
+        size: { width: 600, height: 400 }
+      },
+      minWidth: 300,
+      minHeight: 200,
+      defaultWidth: 600,
+      defaultHeight: 400
+    }),
+    subnetsPanelConfig: new FloatingPanelConfigManager({
+      id: "subnets",
+      title: "Subnet groupings",
+      isOpen: true,
+      isCollapsed: false,
+      layout: {
+        position: { x: 150, y: 150 },
+        size: { width: 350, height: 500 }
+      },
+      minWidth: 250,
+      minHeight: 300,
+      defaultWidth: 350,
+      defaultHeight: 500
+    })
+  };
+}
+
 export class CanvasStateSerializer {
   public canvasId: string;
 
@@ -242,12 +345,21 @@ export class CanvasStateSerializer {
       selectedTensorNetworkParityCheckMatrixRows: Object.entries(
         store.selectedTensorNetworkParityCheckMatrixRows
       ).map(([key, value]) => ({ key, value })),
+      // Z-index management
+      nextZIndex: store.nextZIndex,
       // Floating panel configurations
       buildingBlocksPanelConfig: store.buildingBlocksPanelConfig.toJSON(),
       detailsPanelConfig: store.detailsPanelConfig.toJSON(),
       canvasesPanelConfig: store.canvasesPanelConfig.toJSON(),
       taskPanelConfig: store.taskPanelConfig.toJSON(),
-      subnetsPanelConfig: store.subnetsPanelConfig.toJSON()
+      subnetsPanelConfig: store.subnetsPanelConfig.toJSON(),
+      // PCM panel configurations
+      openPCMPanels: Object.fromEntries(
+        Object.entries(store.openPCMPanels).map(([key, config]) => [
+          key,
+          config.toJSON()
+        ])
+      )
     };
 
     return state;
@@ -257,99 +369,7 @@ export class CanvasStateSerializer {
     canvasStateString: string,
     canvasRef?: RefObject<HTMLDivElement>
   ): Promise<RehydratedCanvasState> {
-    const result: RehydratedCanvasState = {
-      droppedLegos: [],
-      connections: [],
-      hideConnectedLegs: true,
-      hideIds: false,
-      hideTypeIds: false,
-      hideDanglingLegs: false,
-      hideLegLabels: false,
-      title: "Untitled canvas", // Initialize title
-      viewport: new Viewport(
-        800,
-        600,
-        1,
-        new LogicalPoint(0, 0),
-        canvasRef || null
-      ),
-      parityCheckMatrices: {},
-      weightEnumerators: {},
-      cachedTensorNetworks: {},
-      highlightedTensorNetworkLegs: {},
-      selectedTensorNetworkParityCheckMatrixRows: {},
-      // Floating panel configurations
-      buildingBlocksPanelConfig: new FloatingPanelConfigManager({
-        id: "building-blocks",
-        title: "Building Blocks",
-        isOpen: true,
-        isCollapsed: false,
-        layout: {
-          position: { x: 50, y: 50 },
-          size: { width: 300, height: 600 }
-        },
-        minWidth: 200,
-        minHeight: 300,
-        defaultWidth: 300,
-        defaultHeight: 600
-      }),
-      detailsPanelConfig: new FloatingPanelConfigManager({
-        id: "details",
-        title: "Details",
-        isOpen: true,
-        isCollapsed: false,
-        layout: {
-          position: { x: window.innerWidth - 400, y: 50 },
-          size: { width: 350, height: 600 }
-        },
-        minWidth: 200,
-        minHeight: 300,
-        defaultWidth: 350,
-        defaultHeight: 600
-      }),
-      canvasesPanelConfig: new FloatingPanelConfigManager({
-        id: "canvases",
-        title: "Canvases",
-        isOpen: true,
-        isCollapsed: false,
-        layout: {
-          position: { x: 100, y: 100 },
-          size: { width: 300, height: 500 }
-        },
-        minWidth: 250,
-        minHeight: 300,
-        defaultWidth: 300,
-        defaultHeight: 500
-      }),
-      taskPanelConfig: new FloatingPanelConfigManager({
-        id: "tasks",
-        title: "Tasks",
-        isOpen: false,
-        isCollapsed: false,
-        layout: {
-          position: { x: 100, y: 100 },
-          size: { width: 600, height: 400 }
-        },
-        minWidth: 300,
-        minHeight: 200,
-        defaultWidth: 600,
-        defaultHeight: 400
-      }),
-      subnetsPanelConfig: new FloatingPanelConfigManager({
-        id: "subnets",
-        title: "Subnets",
-        isOpen: true,
-        isCollapsed: false,
-        layout: {
-          position: { x: 150, y: 150 },
-          size: { width: 350, height: 500 }
-        },
-        minWidth: 250,
-        minHeight: 300,
-        defaultWidth: 350,
-        defaultHeight: 500
-      })
-    };
+    const result: RehydratedCanvasState = defaultCanvasState(canvasRef);
 
     if (canvasStateString === "") {
       return result;
@@ -509,6 +529,18 @@ export class CanvasStateSerializer {
         );
       }
 
+      // Rehydrate PCM panel configurations
+      if (rawCanvasStateObj.openPCMPanels) {
+        result.openPCMPanels = Object.fromEntries(
+          Object.entries(rawCanvasStateObj.openPCMPanels).map(
+            ([key, config]) => [
+              key,
+              FloatingPanelConfigManager.fromJSON(config)
+            ]
+          )
+        );
+      }
+
       // Legacy support - if new configs don't exist, create them from legacy data
       if (
         !rawCanvasStateObj.buildingBlocksPanelConfig &&
@@ -571,6 +603,11 @@ export class CanvasStateSerializer {
       // Preserve the title from the decoded state if it exists
       if (rawCanvasStateObj.title) {
         result.title = rawCanvasStateObj.title;
+      }
+
+      // Preserve the nextZIndex from the decoded state if it exists
+      if (rawCanvasStateObj.nextZIndex !== undefined) {
+        result.nextZIndex = rawCanvasStateObj.nextZIndex;
       }
 
       if (

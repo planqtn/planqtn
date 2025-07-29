@@ -20,25 +20,26 @@ import {
 } from "@chakra-ui/icons";
 import { RiDragMove2Fill } from "react-icons/ri";
 import { FloatingPanelConfigManager, PanelLayout } from "./FloatingPanelConfig";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface FloatingPanelWrapperProps {
   config: FloatingPanelConfigManager;
+  title: string;
   onConfigChange: (config: FloatingPanelConfigManager) => void;
   onClose: () => void;
   children: ReactNode;
   showCollapseButton?: boolean;
   showResizeHandle?: boolean;
-  zIndex?: number;
 }
 
 const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   config,
+  title,
   onConfigChange,
   onClose,
   children,
   showCollapseButton = true,
-  showResizeHandle = true,
-  zIndex = 1000
+  showResizeHandle = true
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -55,6 +56,134 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
+  const bringPanelToFront = useCanvasStore((state) => state.bringPanelToFront);
+
+  // Add DOM-level click listener for more reliable click detection
+  useEffect(() => {
+    const panelElement = panelRef.current;
+    if (!panelElement) return;
+
+    const handlePanelClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Don't bring to front if clicking on interactive elements
+      if (
+        target.closest(
+          'button, input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-resize-handle], [data-testid*="button"], [data-testid*="icon"]'
+        )
+      ) {
+        return;
+      }
+
+      // Don't bring to front if clicking on elements with cursor pointer (likely interactive)
+      // Check the clicked element and all its parents
+      let currentElement: HTMLElement | null = target;
+      while (currentElement) {
+        const computedStyle = window.getComputedStyle(currentElement);
+        if (computedStyle.cursor === "pointer") {
+          return;
+        }
+        currentElement = currentElement.parentElement;
+      }
+
+      bringPanelToFront(config.id);
+    };
+
+    panelElement.addEventListener("click", handlePanelClick, true); // Use capture phase
+
+    return () => {
+      panelElement.removeEventListener("click", handlePanelClick, true);
+    };
+  }, [config.id, bringPanelToFront]);
+
+  // Handle panel click to bring to front
+  const handlePanelClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Don't bring to front if clicking on buttons or resize handle
+      const target = e.target as HTMLElement;
+      if (target.closest("button") || target.closest("[data-resize-handle]")) {
+        return;
+      }
+
+      // Don't bring to front if clicking on interactive elements
+      if (
+        target.closest(
+          'input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
+        )
+      ) {
+        return;
+      }
+
+      // Don't bring to front if clicking on elements with cursor pointer (likely interactive)
+      // Check the clicked element and all its parents
+      let currentElement: HTMLElement | null = target;
+      while (currentElement) {
+        const computedStyle = window.getComputedStyle(currentElement);
+        if (computedStyle.cursor === "pointer") {
+          return;
+        }
+        currentElement = currentElement.parentElement;
+      }
+
+      bringPanelToFront(config.id);
+    },
+    [config.id, bringPanelToFront]
+  );
+
+  // Handle panel mousedown to bring to front (more reliable than click)
+  const handlePanelMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Don't bring to front if clicking on buttons or resize handle
+      const target = e.target as HTMLElement;
+      if (target.closest("button") || target.closest("[data-resize-handle]")) {
+        return;
+      }
+
+      // Don't bring to front if clicking on interactive elements
+      if (
+        target.closest(
+          'input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
+        )
+      ) {
+        return;
+      }
+
+      // Don't bring to front if clicking on elements with cursor pointer (likely interactive)
+      // Check the clicked element and all its parents
+      let currentElement: HTMLElement | null = target;
+      while (currentElement) {
+        const computedStyle = window.getComputedStyle(currentElement);
+        if (computedStyle.cursor === "pointer") {
+          return;
+        }
+        currentElement = currentElement.parentElement;
+      }
+
+      // Bring to front on mousedown for more reliable detection
+      bringPanelToFront(config.id);
+    },
+    [config.id, bringPanelToFront]
+  );
+
+  // Handle content area click specifically - this should always bring to front
+  const handleContentClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Don't bring to front if clicking on interactive elements
+      const target = e.target as HTMLElement;
+      if (
+        target.closest(
+          'button, input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
+        )
+      ) {
+        return;
+      }
+
+      // Always bring to front when clicking on content area (non-interactive parts)
+      bringPanelToFront(config.id);
+    },
+    [config.id, bringPanelToFront]
+  );
+
   // Update config when layout changes
   const updateLayout = useCallback(
     (newLayout: PanelLayout) => {
@@ -68,24 +197,37 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   );
 
   // Handle drag start
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!panelRef.current) return;
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!panelRef.current) return;
 
-    const rect = panelRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-    setIsDragging(true);
-  }, []);
+      // Bring panel to front when starting to drag
+      bringPanelToFront(config.id);
+
+      const rect = panelRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      setIsDragging(true);
+    },
+    [config.id, bringPanelToFront]
+  );
 
   // Handle resize start
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-  }, []);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Bring panel to front when starting to resize
+      bringPanelToFront(config.id);
+
+      setIsResizing(true);
+    },
+    [config.id, bringPanelToFront]
+  );
 
   // Handle mouse move for drag and resize
   const handleMouseMove = useCallback(
@@ -230,11 +372,13 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       borderColor={borderColor}
       borderRadius="lg"
       boxShadow={shadowColor}
-      zIndex={zIndex}
+      zIndex={config.zIndex}
       display="flex"
       flexDirection="column"
       overflow="hidden"
       cursor={isDragging ? "grabbing" : "default"}
+      onClick={handlePanelClick}
+      onMouseDown={handlePanelMouseDown}
     >
       {/* Header with drag handle */}
       <HStack
@@ -250,7 +394,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       >
         <DragHandleIcon />
         <Text fontSize="sm" fontWeight="bold" flex={1}>
-          {config.title}
+          {title}
         </Text>
         {showCollapseButton && (
           <IconButton
@@ -272,9 +416,64 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         />
       </HStack>
 
-      {/* Content area with scrolling */}
+      {/* Content area with scrolling - clicking anywhere here brings panel to front */}
       {!config.isCollapsed && (
-        <Box flex={1} overflow="auto" p={0}>
+        <Box
+          flex={1}
+          overflow="auto"
+          p={0}
+          onClick={(e) => {
+            // Always bring to front when clicking on the content area
+            // unless clicking on interactive elements
+            const target = e.target as HTMLElement;
+
+            if (
+              target.closest(
+                'button, input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
+              )
+            ) {
+              return;
+            }
+
+            // Don't bring to front if clicking on elements with cursor pointer (likely interactive)
+            // Check the clicked element and all its parents
+            let currentElement: HTMLElement | null = target;
+            while (currentElement) {
+              const computedStyle = window.getComputedStyle(currentElement);
+              if (computedStyle.cursor === "pointer") {
+                return;
+              }
+              currentElement = currentElement.parentElement;
+            }
+
+            bringPanelToFront(config.id);
+          }}
+          onMouseDown={(e) => {
+            // Also handle mousedown for more immediate response
+            const target = e.target as HTMLElement;
+
+            if (
+              target.closest(
+                'button, input, textarea, select, a, [role="button"], [tabindex], [type="checkbox"], [type="radio"], svg, [data-testid*="button"], [data-testid*="icon"]'
+              )
+            ) {
+              return;
+            }
+
+            // Don't bring to front if clicking on elements with cursor pointer (likely interactive)
+            // Check the clicked element and all its parents
+            let currentElement: HTMLElement | null = target;
+            while (currentElement) {
+              const computedStyle = window.getComputedStyle(currentElement);
+              if (computedStyle.cursor === "pointer") {
+                return;
+              }
+              currentElement = currentElement.parentElement;
+            }
+
+            bringPanelToFront(config.id);
+          }}
+        >
           {children}
         </Box>
       )}
@@ -295,6 +494,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
           justifyContent="center"
           color={resizeHandleColor}
           _hover={{ color: resizeHandleHoverColor }}
+          data-resize-handle
         >
           <RiDragMove2Fill size={14} />
         </Box>

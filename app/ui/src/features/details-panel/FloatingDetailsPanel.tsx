@@ -34,6 +34,7 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
 }) => {
   return (
     <FloatingPanelWrapper
+      title="Details"
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}

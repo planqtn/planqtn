@@ -20,6 +20,7 @@ const FloatingTaskPanel: React.FC<FloatingTaskPanelProps> = ({
 }) => {
   return (
     <FloatingPanelWrapper
+      title="Tasks"
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}

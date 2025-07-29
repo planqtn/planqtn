@@ -17,6 +17,7 @@ const FloatingCanvasesPanel: React.FC<FloatingCanvasesPanelProps> = ({
   return (
     <FloatingPanelWrapper
       config={config}
+      title="Canvases"
       onConfigChange={onConfigChange}
       onClose={onClose}
     >

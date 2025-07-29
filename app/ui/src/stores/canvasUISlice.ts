@@ -246,6 +246,10 @@ export interface CanvasUISlice {
     networkSignature: string,
     config: FloatingPanelConfigManager
   ) => void;
+
+  // Z-index management for floating panels
+  nextZIndex: number;
+  bringPanelToFront: (panelId: string) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -787,7 +791,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 200,
     minHeight: 300,
     defaultWidth: 300,
-    defaultHeight: 600
+    defaultHeight: 600,
+    zIndex: 1000
   }),
   setBuildingBlocksPanelConfig: (config) =>
     set((state) => {
@@ -805,7 +810,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 200,
     minHeight: 300,
     defaultWidth: 350,
-    defaultHeight: 600
+    defaultHeight: 600,
+    zIndex: 1001
   }),
   setDetailsPanelConfig: (config) =>
     set((state) => {
@@ -823,7 +829,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 250,
     minHeight: 300,
     defaultWidth: 300,
-    defaultHeight: 500
+    defaultHeight: 500,
+    zIndex: 1002
   }),
   setCanvasesPanelConfig: (config) =>
     set((state) => {
@@ -841,7 +848,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 300,
     minHeight: 200,
     defaultWidth: 600,
-    defaultHeight: 400
+    defaultHeight: 400,
+    zIndex: 1003
   }),
   setTaskPanelConfig: (config) =>
     set((state) => {
@@ -859,7 +867,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 250,
     minHeight: 300,
     defaultWidth: 350,
-    defaultHeight: 500
+    defaultHeight: 500,
+    zIndex: 1004
   }),
   setSubnetsPanelConfig: (config) =>
     set((state) => {
@@ -877,7 +886,8 @@ export const createCanvasUISlice: StateCreator<
     minWidth: 300,
     minHeight: 400,
     defaultWidth: 500,
-    defaultHeight: 600
+    defaultHeight: 600,
+    zIndex: 1005
   }),
   setPCMPanelConfig: (config) =>
     set((state) => {
@@ -887,6 +897,7 @@ export const createCanvasUISlice: StateCreator<
   addPCMPanel: (networkSignature: string, config: FloatingPanelConfigManager) =>
     set((state) => {
       state.openPCMPanels[networkSignature] = config;
+      state.nextZIndex++;
     }),
   removePCMPanel: (networkSignature: string) =>
     set((state) => {
@@ -898,5 +909,58 @@ export const createCanvasUISlice: StateCreator<
   ) =>
     set((state) => {
       state.openPCMPanels[networkSignature] = config;
-    })
+    }),
+
+  // Z-index management for floating panels
+  nextZIndex: 1100,
+  bringPanelToFront: (panelId: string) => {
+    set((state) => {
+      const nextZ = state.nextZIndex++;
+
+      // Check all panel types and update the matching one
+      if (state.buildingBlocksPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.buildingBlocksPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.buildingBlocksPanelConfig = newConfig;
+      } else if (state.detailsPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.detailsPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.detailsPanelConfig = newConfig;
+      } else if (state.canvasesPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.canvasesPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.canvasesPanelConfig = newConfig;
+      } else if (state.taskPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.taskPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.taskPanelConfig = newConfig;
+      } else if (state.subnetsPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.subnetsPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.subnetsPanelConfig = newConfig;
+      } else if (state.pcmPanelConfig.id === panelId) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.pcmPanelConfig.toJSON(),
+          zIndex: nextZ
+        });
+        state.pcmPanelConfig = newConfig;
+      } else if (state.openPCMPanels[panelId]) {
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.openPCMPanels[panelId].toJSON(),
+          zIndex: nextZ
+        });
+        state.openPCMPanels[panelId] = newConfig;
+      }
+    });
+  }
 });
