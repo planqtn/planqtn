@@ -128,3 +128,7 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.dropdown-menu-high-z {
+  z-index: 10000 !important;
+}

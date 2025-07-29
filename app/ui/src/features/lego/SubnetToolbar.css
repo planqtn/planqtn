@@ -1,0 +1,103 @@
+.subnet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.toolbar-button:hover:not(.disabled) {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1f2937;
+}
+
+.toolbar-button:active:not(.disabled) {
+  background: rgba(59, 130, 246, 0.2);
+  transform: translateY(1px);
+}
+
+.toolbar-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.toolbar-button.disabled:hover {
+  background: transparent;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 2px;
+}
+
+/* Tooltip styles */
+.tooltip-content {
+  background: #1f2937;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  max-width: 200px;
+  text-align: center;
+}
+
+.tooltip-arrow {
+  fill: #1f2937;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .subnet-toolbar {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .toolbar-button {
+    color: #d1d5db;
+  }
+
+  .toolbar-button:hover:not(.disabled) {
+    background: rgba(59, 130, 246, 0.2);
+    color: #f9fafb;
+  }
+
+  .toolbar-button.disabled {
+    color: #6b7280;
+  }
+
+  .toolbar-separator {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}

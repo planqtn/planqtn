@@ -45,6 +45,7 @@ import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
 import { FiShare2, FiFileText } from "react-icons/fi";
+import { SubnetToolbarOverlay } from "./features/lego/SubnetToolbarOverlay";
 
 const LegoStudioView: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>("");
@@ -574,6 +575,10 @@ const LegoStudioView: React.FC = () => {
                     <LegosLayer />
                     <ConnectionsLayer bodyOrder="front" />
                   </svg>
+
+                  {/* Subnet Toolbar Overlay - rendered outside SVG context */}
+                  <SubnetToolbarOverlay />
+
                   <SelectionManager ref={selectionManagerRef} />
 
                   {/* Drag Proxy for smooth dragging */}

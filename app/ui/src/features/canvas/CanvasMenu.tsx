@@ -84,7 +84,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         </Box>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent className="dropdown-menu-high-z">
         <DropdownMenuLabel>
           <Text>Canvas</Text>
         </DropdownMenuLabel>
