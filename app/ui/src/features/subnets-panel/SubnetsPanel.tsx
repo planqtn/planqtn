@@ -14,7 +14,6 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   CopyIcon,
-  ViewIcon,
   DeleteIcon
 } from "@chakra-ui/icons";
 import { useCanvasStore } from "../../stores/canvasStateStore";
@@ -50,6 +49,7 @@ interface WeightEnumeratorNode extends TreeNode {
   taskId: string;
   openLegsCount: number;
   truncateLength: number;
+  cachedTensorNetwork: CachedTensorNetwork;
 }
 
 interface PCMNode extends TreeNode {
@@ -90,12 +90,38 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
   const updateCachedTensorNetworkName = useCanvasStore(
     (state) => state.updateCachedTensorNetworkName
   );
-
+  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
   const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
   const addPCMPanel = usePanelConfigStore((state) => state.addPCMPanel);
+  const openPCMPanels = usePanelConfigStore((state) => state.openPCMPanels);
 
   // State for editing subnet names
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
+
+  // State for tree expansion - memoized based on cachedTensorNetworks
+  const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(
+    new Set()
+  );
+
+  // Memoize the expanded state to prevent unnecessary re-renders
+  const isNodeExpanded = React.useCallback(
+    (nodeId: string) => {
+      return expandedNodes.has(nodeId);
+    },
+    [expandedNodes]
+  );
+
+  const toggleNodeExpansion = React.useCallback((nodeId: string) => {
+    setExpandedNodes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  }, []);
 
   const mapTensorNetworkToTreeNode = (
     network: CachedTensorNetwork
@@ -147,7 +173,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
       nodeContentType: "tensorNetwork",
       legoCount: network.tensorNetwork.legos.length,
       calculationCount,
-      isActive: true,
+      isActive: network.isActive,
       cachedTensorNetwork: network,
       children
     } as TensorNetworkNode;
@@ -189,6 +215,10 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
       const sig = node.cachedTensorNetwork.tensorNetwork.signature;
       updateCachedTensorNetworkName(sig, newName.trim());
     }
+    setTensorNetwork(null);
+    setTimeout(() => {
+      setTensorNetwork(node.cachedTensorNetwork.tensorNetwork);
+    }, 1);
     setEditingNodeId(null);
   };
 
@@ -206,6 +236,13 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
   const handleOpenPCMPanel = (node: PCMNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
+
+    // Check if PCM panel is already open for this network
+    if (openPCMPanels[node.signature]) {
+      // Panel is already open, just bring it to front (this will be handled by the panel's own click handler)
+      return;
+    }
+
     const config = new FloatingPanelConfigManager({
       id: `pcm-${node.signature}`,
       title: `PCM - ${node.name}`,
@@ -245,49 +282,166 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     unCacheWeightEnumerator(node.signature, node.taskId);
   };
 
+  // Separate display components for different node types
+  const PCMNodeDisplay: React.FC<{ node: PCMNode }> = ({ node }) => (
+    <>
+      {/* Trashcan button for PCM nodes */}
+      <IconButton
+        aria-label="Uncache parity check matrix"
+        icon={<DeleteIcon />}
+        size="xs"
+        variant="ghost"
+        colorScheme="red"
+        onClick={(e) => handleUncachePCMClick(node, e)}
+        _hover={{
+          bg: "red.100",
+          color: "red.700"
+        }}
+      />
+    </>
+  );
+
+  const WeightEnumeratorNodeDisplay: React.FC<{
+    node: WeightEnumeratorNode;
+  }> = ({ node }) => (
+    <>
+      {/* For weight enumerator nodes, show calculation type, truncation level, open legs count and weight enumerator-specific trashcan */}
+      <Badge size="sm" colorScheme="teal">
+        WEP
+      </Badge>
+      {node.truncateLength && (
+        <Badge size="sm" colorScheme="purple">
+          T{node.truncateLength}
+        </Badge>
+      )}
+      <Badge size="sm" colorScheme="orange">
+        {node.openLegsCount} legs
+      </Badge>
+      {/* Trashcan button for weight enumerator nodes */}
+      {node.taskId && (
+        <IconButton
+          aria-label="Uncache weight enumerator"
+          icon={<DeleteIcon />}
+          size="xs"
+          variant="ghost"
+          colorScheme="red"
+          onClick={(e) => handleUncacheWeightEnumeratorClick(node, e)}
+          _hover={{
+            bg: "red.100",
+            color: "red.700"
+          }}
+        />
+      )}
+    </>
+  );
+
+  const TensorNetworkNodeDisplay: React.FC<{ node: TensorNetworkNode }> = ({
+    node
+  }) => (
+    <>
+      {/* For regular tensor network nodes */}
+      <Badge size="sm" colorScheme="blue">
+        {node.legoCount} legos
+      </Badge>
+      {node.calculationCount > 0 && (
+        <Badge size="sm" colorScheme="green">
+          {node.calculationCount} calcs
+        </Badge>
+      )}
+      {/* Clone button for inactive networks */}
+      {!node.isActive && node.cachedTensorNetwork && (
+        <IconButton
+          aria-label="Clone tensor network"
+          icon={<CopyIcon />}
+          size="xs"
+          variant="ghost"
+          colorScheme="gray"
+          onClick={(e) => handleCloneClick(node, e)}
+          _hover={{
+            bg: "gray.100",
+            color: "gray.700"
+          }}
+        />
+      )}
+      {/* Trashcan button for all tensor network nodes */}
+      {node.cachedTensorNetwork && (
+        <IconButton
+          aria-label="Uncache tensor network"
+          icon={<DeleteIcon />}
+          size="xs"
+          variant="ghost"
+          colorScheme="red"
+          onClick={(e) => handleUncacheClick(node, e)}
+          _hover={{
+            bg: "red.100",
+            color: "red.700"
+          }}
+        />
+      )}
+    </>
+  );
+
   const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({
     node,
     level
   }) => {
-    const [isExpanded, setIsExpanded] = React.useState(false);
     const hasChildren = node.children && node.children.length > 0;
     const isCurrentNetwork = tensorNetwork?.signature === node.id;
     const editableRef = React.useRef<HTMLInputElement>(null);
 
-    const handleClick = () => {
-      if (hasChildren) {
-        // Only toggle expansion if clicking on the expand/collapse button
-        // For child clicks, keep the tree open
-        if (
-          node.nodeContentType !== "pcm" &&
-          node.nodeContentType !== "weightEnumerator"
-        ) {
-          setIsExpanded(!isExpanded);
+    const handleDoubleClick = (e: React.MouseEvent) => {
+      // Only allow double-click for active tensor network nodes
+      if (node.nodeContentType === "tensorNetwork") {
+        const tensorNode = node as TensorNetworkNode;
+        if (tensorNode.isActive) {
+          e.stopPropagation();
+          setEditingNodeId(node.id);
+          // Use setTimeout to ensure the ref is available
+          setTimeout(() => {
+            if (editableRef.current) {
+              editableRef.current.focus();
+              editableRef.current.select(); // Select all text for easy editing
+            }
+          }, 0);
+          return; // Exit early for double-click
         }
       }
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+      // Handle double-click for renaming
+      if (e.detail === 2) {
+        handleDoubleClick(e);
+        return; // Exit early for any double-click
+      }
+
+      // Handle single click
+      if (
+        node.nodeContentType === "tensorNetwork" &&
+        !(node as TensorNetworkNode).isActive
+      ) {
+        return;
+      }
+      e.stopPropagation();
 
       // Handle different click behaviors based on node type
       if (node.nodeContentType === "pcm") {
         // For PCM nodes, open the PCM panel
-        handleOpenPCMPanel(node as PCMNode, {} as React.MouseEvent);
+        handleOpenPCMPanel(node as PCMNode, e as React.MouseEvent);
       } else if (node.nodeContentType === "tensorNetwork") {
-        // For regular tensor network nodes, select the network
-        handleNetworkClick(node as TensorNetworkNode);
-      }
-    };
+        // For tensor network nodes, toggle expansion if they have children
+        if (hasChildren) {
+          toggleNodeExpansion(node.id);
+        }
 
-    const handleDoubleClick = () => {
-      console.log("handleDoubleClick", {
-        node
-      });
-      if (node.nodeContentType === "tensorNetwork") {
-        setEditingNodeId(node.id);
-        // Use setTimeout to ensure the ref is available
-        setTimeout(() => {
-          if (editableRef.current) {
-            editableRef.current.focus();
-          }
-        }, 0);
+        // Select the network if not already selected
+        const tensorNode = node as TensorNetworkNode;
+        if (
+          tensorNetwork?.signature !==
+          tensorNode.cachedTensorNetwork.tensorNetwork.signature
+        ) {
+          handleNetworkClick(tensorNode);
+        }
       }
     };
 
@@ -298,8 +452,9 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           p={2}
           pl={level * 4 + 2}
           cursor={
-            node.nodeContentType === "tensorNetwork" &&
-            (node as TensorNetworkNode).isActive
+            (node.nodeContentType === "tensorNetwork" &&
+              (node as TensorNetworkNode).isActive) ||
+            node.nodeContentType === "pcm"
               ? "pointer"
               : "default"
           }
@@ -318,38 +473,50 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
                 : "transparent"
           }}
           onClick={handleClick}
-          onDoubleClick={handleDoubleClick}
         >
-          {hasChildren && (
+          {(node.nodeContentType === "tensorNetwork" && (
             <IconButton
-              aria-label={isExpanded ? "Collapse" : "Expand"}
-              icon={isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+              aria-label={isNodeExpanded(node.id) ? "Collapse" : "Expand"}
+              icon={
+                isNodeExpanded(node.id) ? (
+                  <ChevronDownIcon />
+                ) : (
+                  <ChevronRightIcon />
+                )
+              }
               size="xs"
               variant="ghost"
+              isDisabled={!hasChildren}
               onClick={(e) => {
                 e.stopPropagation();
-                setIsExpanded(!isExpanded);
+                toggleNodeExpansion(node.id);
               }}
             />
-          )}
+          )) || <Box w={4} />}
+
           {editingNodeId === node.id ? (
             <Input
               defaultValue={node.name}
               onBlur={(e) =>
                 handleNameChange(node as TensorNetworkNode, e.target.value)
               }
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
+                e.stopPropagation();
                 if (e.key === "Enter") {
                   handleNameChange(
                     node as TensorNetworkNode,
                     e.currentTarget.value
                   );
                 }
-              }}
-              onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   handleNameCancel();
                 }
+              }}
+              onKeyUp={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
               }}
               ref={editableRef}
             />
@@ -367,113 +534,19 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
             </Text>
           )}
           <HStack spacing={1}>
-            {/* For PCM nodes, show leg count and rows info */}
-            {node.nodeContentType === "pcm"
-              ? ((pcmNode: PCMNode) => {
-                  return (
-                    <>
-                      {/* Trashcan button for PCM nodes */}
-
-                      <IconButton
-                        aria-label="Uncache parity check matrix"
-                        icon={<DeleteIcon />}
-                        size="xs"
-                        variant="ghost"
-                        colorScheme="red"
-                        onClick={(e) => handleUncachePCMClick(pcmNode, e)}
-                        _hover={{
-                          bg: "red.100",
-                          color: "red.700"
-                        }}
-                      />
-                    </>
-                  );
-                })(node as PCMNode)
-              : node.nodeContentType === "weightEnumerator"
-                ? ((wepNode: WeightEnumeratorNode) => {
-                    return (
-                      <>
-                        {/* For weight enumerator nodes, show calculation type, truncation level, open legs count and weight enumerator-specific trashcan */}
-                        <Badge size="sm" colorScheme="teal">
-                          WEP
-                        </Badge>
-                        {wepNode.truncateLength && (
-                          <Badge size="sm" colorScheme="purple">
-                            T{wepNode.truncateLength}
-                          </Badge>
-                        )}
-                        <Badge size="sm" colorScheme="orange">
-                          {wepNode.openLegsCount} legs
-                        </Badge>
-                        {/* Trashcan button for weight enumerator nodes */}
-                        {wepNode.taskId && (
-                          <IconButton
-                            aria-label="Uncache weight enumerator"
-                            icon={<DeleteIcon />}
-                            size="xs"
-                            variant="ghost"
-                            colorScheme="red"
-                            onClick={(e) =>
-                              handleUncacheWeightEnumeratorClick(wepNode, e)
-                            }
-                            _hover={{
-                              bg: "red.100",
-                              color: "red.700"
-                            }}
-                          />
-                        )}
-                      </>
-                    );
-                  })(node as WeightEnumeratorNode)
-                : ((tnNode: TensorNetworkNode) => {
-                    return (
-                      <>
-                        {/* For regular tensor network nodes */}
-                        <Badge size="sm" colorScheme="blue">
-                          {tnNode.legoCount} legos
-                        </Badge>
-                        {tnNode.calculationCount > 0 && (
-                          <Badge size="sm" colorScheme="green">
-                            {tnNode.calculationCount} calcs
-                          </Badge>
-                        )}
-                        {/* Clone button for inactive networks */}
-                        {!tnNode.isActive && tnNode.cachedTensorNetwork && (
-                          <IconButton
-                            aria-label="Clone tensor network"
-                            icon={<CopyIcon />}
-                            size="xs"
-                            variant="ghost"
-                            colorScheme="gray"
-                            onClick={(e) => handleCloneClick(tnNode, e)}
-                            _hover={{
-                              bg: "gray.100",
-                              color: "gray.700"
-                            }}
-                          />
-                        )}
-                        {/* Trashcan button for all tensor network nodes */}
-                        {tnNode.cachedTensorNetwork && (
-                          <IconButton
-                            aria-label="Uncache tensor network"
-                            icon={<DeleteIcon />}
-                            size="xs"
-                            variant="ghost"
-                            colorScheme="red"
-                            onClick={(e) => handleUncacheClick(tnNode, e)}
-                            _hover={{
-                              bg: "red.100",
-                              color: "red.700"
-                            }}
-                          />
-                        )}
-                      </>
-                    );
-                  })(node as TensorNetworkNode)}
+            {node.nodeContentType === "pcm" ? (
+              <PCMNodeDisplay node={node as PCMNode} />
+            ) : node.nodeContentType === "weightEnumerator" ? (
+              <WeightEnumeratorNodeDisplay
+                node={node as WeightEnumeratorNode}
+              />
+            ) : (
+              <TensorNetworkNodeDisplay node={node as TensorNetworkNode} />
+            )}
           </HStack>
         </HStack>
         {hasChildren && (
-          <Collapse in={isExpanded}>
+          <Collapse in={isNodeExpanded(node.id)}>
             <VStack align="stretch" spacing={0}>
               {node.children!.map((child) => (
                 <TreeNodeComponent

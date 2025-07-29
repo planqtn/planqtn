@@ -77,7 +77,13 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     if (!panelElement) return;
 
     const handlePanelClick = (e: MouseEvent) => {
+      console.log("handlePanelClick", e);
       const target = e.target as HTMLElement;
+
+      // Allow double-click events to pass through for renaming functionality
+      if (e.detail >= 2) {
+        return;
+      }
 
       // Don't bring to front if clicking on interactive elements
       if (
@@ -112,6 +118,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   // Handle panel click to bring to front
   const handlePanelClick = useCallback(
     (e: React.MouseEvent) => {
+      // Allow double-click events to pass through for renaming functionality
+      if (e.detail >= 2) {
+        return;
+      }
+
       // Don't bring to front if clicking on buttons or resize handle
       const target = e.target as HTMLElement;
       if (target.closest("button") || target.closest("[data-resize-handle]")) {
@@ -146,6 +157,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   // Handle panel mousedown to bring to front (more reliable than click)
   const handlePanelMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      // Allow double-click events to pass through for renaming functionality
+      if (e.detail >= 2) {
+        return;
+      }
+
       // Don't bring to front if clicking on buttons or resize handle
       const target = e.target as HTMLElement;
       if (target.closest("button") || target.closest("[data-resize-handle]")) {
@@ -417,6 +433,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
           overflow="auto"
           p={0}
           onClick={(e) => {
+            // Allow double-click events to pass through for renaming functionality
+            if (e.detail >= 2) {
+              return;
+            }
+
             // Always bring to front when clicking on the content area
             // unless clicking on interactive elements
             const target = e.target as HTMLElement;
@@ -443,6 +464,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
             bringToFront();
           }}
           onMouseDown={(e) => {
+            // Allow double-click events to pass through for renaming functionality
+            if (e.detail >= 2) {
+              return;
+            }
+
             // Also handle mousedown for more immediate response
             const target = e.target as HTMLElement;
 
