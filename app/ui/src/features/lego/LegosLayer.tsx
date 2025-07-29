@@ -114,6 +114,9 @@ export const LegosLayer: React.FC = () => {
   const groupDragState = useCanvasStore((state) => state.groupDragState);
   const legoDragState = useCanvasStore((state) => state.legoDragState);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
   const calculateTensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
   );
@@ -247,9 +250,8 @@ export const LegosLayer: React.FC = () => {
           boundingBox={boundingBox}
           networkSignature={tensorNetwork.signature}
           networkName={
-            useCanvasStore.getState().cachedTensorNetworks[
-              tensorNetwork.signature
-            ]?.name || `${tensorNetwork.legos.length} legos`
+            cachedTensorNetworks[tensorNetwork.signature]?.name ||
+            `${tensorNetwork.legos.length} legos`
           }
         />
       )}

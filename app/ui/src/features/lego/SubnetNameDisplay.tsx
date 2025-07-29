@@ -18,6 +18,13 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
   const updateCachedTensorNetworkName = useCanvasStore(
     (state) => state.updateCachedTensorNetworkName
   );
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
+  const cacheTensorNetwork = useCanvasStore(
+    (state) => state.cacheTensorNetwork
+  );
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
 
   // Calculate text dimensions based on text length and font size
   const textDimensions = useMemo(() => {
@@ -44,7 +51,18 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
 
   const handleNameChange = () => {
     if (editValue.trim()) {
-      updateCachedTensorNetworkName(networkSignature, editValue.trim());
+      if (!(networkSignature in cachedTensorNetworks)) {
+        cacheTensorNetwork({
+          tensorNetwork: tensorNetwork!,
+          name: editValue.trim(),
+          isActive: true,
+          svg: "<svg>render me</svg>",
+          isLocked: false,
+          lastUpdated: new Date()
+        });
+      } else {
+        updateCachedTensorNetworkName(networkSignature, editValue.trim());
+      }
     } else {
       setEditValue(networkName);
     }
@@ -94,6 +112,10 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
           y={bgY + 2}
           width={Math.max(textDimensions.width - 8, 112)}
           height={textDimensions.height - 4}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          pointerEvents="all"
         >
           <input
             value={editValue}

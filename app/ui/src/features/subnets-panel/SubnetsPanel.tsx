@@ -204,10 +204,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     return cachedNetworks.map(mapTensorNetworkToTreeNode);
   }, [cachedNetworks, weightEnumerators, parityCheckMatrices]);
 
-  const handleNetworkClick = (node: TensorNetworkNode) => {
-    refreshAndSetCachedTensorNetworkFromCanvas(
-      node.cachedTensorNetwork.tensorNetwork.signature
-    );
+  const handleNetworkClick = (signature: string) => {
+    refreshAndSetCachedTensorNetworkFromCanvas(signature);
   };
 
   const handleNameChange = (node: TensorNetworkNode, newName: string) => {
@@ -409,6 +407,10 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     };
 
     const handleClick = (e: React.MouseEvent) => {
+      console.log("handleClick", {
+        node,
+        e
+      });
       // Handle double-click for renaming
       if (e.detail === 2) {
         handleDoubleClick(e);
@@ -428,9 +430,10 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
       if (node.nodeContentType === "pcm") {
         // For PCM nodes, open the PCM panel
         handleOpenPCMPanel(node as PCMNode, e as React.MouseEvent);
+        handleNetworkClick((node as PCMNode).signature);
       } else if (node.nodeContentType === "tensorNetwork") {
-        // For tensor network nodes, toggle expansion if they have children
-        if (hasChildren) {
+        // For tensor network nodes, toggle expansion if they have children if the node is selected
+        if (hasChildren && isCurrentNetwork) {
           toggleNodeExpansion(node.id);
         }
 
@@ -440,7 +443,9 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           tensorNetwork?.signature !==
           tensorNode.cachedTensorNetwork.tensorNetwork.signature
         ) {
-          handleNetworkClick(tensorNode);
+          handleNetworkClick(
+            tensorNode.cachedTensorNetwork.tensorNetwork.signature
+          );
         }
       }
     };
