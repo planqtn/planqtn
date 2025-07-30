@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Text, VStack, useColorModeValue } from "@chakra-ui/react";
+import { Box, useColorModeValue } from "@chakra-ui/react";
 import { ParityCheckMatrixDisplay } from "../details-panel/ParityCheckMatrixDisplay";
 import { ParityCheckMatrix } from "../../stores/tensorNetworkStore";
 

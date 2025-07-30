@@ -6,12 +6,16 @@ interface SubnetNameDisplayProps {
   boundingBox: BoundingBox;
   networkSignature: string;
   networkName: string;
+  isSingleLego?: boolean;
+  singleLegoInstanceId?: string;
 }
 
 export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
   boundingBox,
   networkSignature,
-  networkName
+  networkName,
+  isSingleLego = false,
+  singleLegoInstanceId
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(networkName);
@@ -25,6 +29,19 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
     (state) => state.cacheTensorNetwork
   );
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+
+  // Get the current display name (for single legos, this might change as the short_name is updated)
+  const currentDisplayName = useMemo(() => {
+    if (isSingleLego && singleLegoInstanceId) {
+      const lego = droppedLegos.find(
+        (lego) => lego.instance_id === singleLegoInstanceId
+      );
+      return lego?.short_name || networkName;
+    }
+    return networkName;
+  }, [isSingleLego, singleLegoInstanceId, droppedLegos, networkName]);
 
   // Calculate text dimensions based on text length and font size
   const textDimensions = useMemo(() => {
@@ -35,7 +52,7 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
 
     if (context) {
       context.font = `${fontSize}px ${fontFamily}`;
-      const metrics = context.measureText(networkName);
+      const metrics = context.measureText(currentDisplayName);
       return {
         width: metrics.width + 16, // Add padding
         height: fontSize + 8 // Approximate height
@@ -44,14 +61,24 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
 
     // Fallback calculation
     return {
-      width: networkName.length * 7 + 16, // Approximate width
+      width: currentDisplayName.length * 7 + 16, // Approximate width
       height: 20
     };
-  }, [networkName]);
+  }, [currentDisplayName]);
 
   const handleNameChange = () => {
     if (editValue.trim()) {
-      if (!(networkSignature in cachedTensorNetworks)) {
+      if (isSingleLego && singleLegoInstanceId) {
+        const legoToUpdate = droppedLegos.find(
+          (lego) => lego.instance_id === singleLegoInstanceId
+        );
+        if (legoToUpdate) {
+          const updatedLego = legoToUpdate.with({
+            short_name: editValue.trim()
+          });
+          updateDroppedLego(singleLegoInstanceId, updatedLego);
+        }
+      } else if (!(networkSignature in cachedTensorNetworks)) {
         cacheTensorNetwork({
           tensorNetwork: tensorNetwork!,
           name: editValue.trim(),
@@ -64,7 +91,14 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
         updateCachedTensorNetworkName(networkSignature, editValue.trim());
       }
     } else {
-      setEditValue(networkName);
+      if (isSingleLego && singleLegoInstanceId) {
+        const lego = droppedLegos.find(
+          (lego) => lego.instance_id === singleLegoInstanceId
+        );
+        setEditValue(lego?.short_name || networkName);
+      } else {
+        setEditValue(networkName);
+      }
     }
     setIsEditing(false);
   };
@@ -74,14 +108,28 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
     if (e.key === "Enter") {
       handleNameChange();
     } else if (e.key === "Escape") {
-      setEditValue(networkName);
+      if (isSingleLego && singleLegoInstanceId) {
+        const lego = droppedLegos.find(
+          (lego) => lego.instance_id === singleLegoInstanceId
+        );
+        setEditValue(lego?.short_name || networkName);
+      } else {
+        setEditValue(networkName);
+      }
       setIsEditing(false);
     }
   };
 
   const handleDoubleClick = () => {
     setIsEditing(true);
-    setEditValue(networkName);
+    if (isSingleLego && singleLegoInstanceId) {
+      const lego = droppedLegos.find(
+        (lego) => lego.instance_id === singleLegoInstanceId
+      );
+      setEditValue(lego?.short_name || networkName);
+    } else {
+      setEditValue(networkName);
+    }
   };
 
   // Position the label above the bounding box
@@ -166,7 +214,7 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
         fontWeight="500"
         fill="#374151"
       >
-        {networkName}
+        {currentDisplayName}
       </text>
     </g>
   );

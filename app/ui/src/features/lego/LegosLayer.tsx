@@ -250,8 +250,16 @@ export const LegosLayer: React.FC = () => {
           boundingBox={boundingBox}
           networkSignature={tensorNetwork.signature}
           networkName={
-            cachedTensorNetworks[tensorNetwork.signature]?.name ||
-            `${tensorNetwork.legos.length} legos`
+            tensorNetwork.isSingleLego
+              ? tensorNetwork.singleLego.short_name
+              : cachedTensorNetworks[tensorNetwork.signature]?.name ||
+                `${tensorNetwork.legos.length} legos`
+          }
+          isSingleLego={tensorNetwork.isSingleLego}
+          singleLegoInstanceId={
+            tensorNetwork.isSingleLego
+              ? tensorNetwork.singleLego.instance_id
+              : undefined
           }
         />
       )}

@@ -118,7 +118,7 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
           position: "absolute",
           top: boundingBox.minY - 50,
           left: boundingBox.minX + boundingBox.width / 2, // Center horizontally
-          zIndex: 1000,
+          zIndex: 10000,
           transform: "translateY(-100%) translateX(-50%)", // Center the toolbar itself
           pointerEvents: "auto"
         }}
