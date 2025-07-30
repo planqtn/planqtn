@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import {
   Box,
   Text,
-  Heading,
   HStack,
   Menu,
   MenuButton,
@@ -14,7 +13,6 @@ import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FixedSizeList as List } from "react-window";
-import { Resizable } from "re-resizable";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
 
 interface ParityCheckMatrixDisplayProps {
@@ -248,7 +246,8 @@ export const ParityCheckMatrixDisplay: React.FC<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listRef = useRef<any>(null);
   const [charWidth, setCharWidth] = useState<number>(8);
-  const [listSize, setListSize] = useState({ width: 100, height: 100 });
+  const [listSize, setListSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Local selection state as fallback
   const [localSelectedRows, setLocalSelectedRows] = useState<number[]>([]);
@@ -272,6 +271,26 @@ export const ParityCheckMatrixDisplay: React.FC<
       setLocalSelectedRows([...selectedRows]);
     }
   }, [selectedRows, parentUpdating]);
+
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setListSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    return () => {
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+    };
+  }, []);
 
   // Prevent wheel events during drag operations
   useEffect(() => {
@@ -681,7 +700,13 @@ export const ParityCheckMatrixDisplay: React.FC<
         )}
       </Box>
 
-      <Box position="relative" mx={0} mt={0} style={{ flex: 1, minHeight: 0 }}>
+      <Box
+        position="relative"
+        mx={0}
+        mt={0}
+        style={{ flex: 1, minHeight: 0 }}
+        ref={containerRef}
+      >
         {/* <Resizable
           size={listSize}
           minWidth={250}

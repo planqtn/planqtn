@@ -20,13 +20,7 @@ const PCMPanel: React.FC<PCMPanelProps> = ({
   const bgColor = useColorModeValue("white", "gray.800");
 
   return (
-    <Box
-      h="100%"
-      w="100%"
-      bg={bgColor}
-      overflowY="auto"
-      border="1px solid blue"
-    >
+    <Box h="100%" w="100%" bg={bgColor} overflowY="auto">
       <ParityCheckMatrixDisplay
         matrix={parityCheckMatrix.matrix}
         title={`PCM for ${networkName}`}

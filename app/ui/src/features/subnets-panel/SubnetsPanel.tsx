@@ -549,7 +549,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
         {/* Active Networks Section */}
         <Box p={3} borderBottom="1px" borderColor={borderColor}>
           <Text fontWeight="bold" fontSize="sm" color="green.600">
-            On canvas
+            Active tensor networks on canvas
           </Text>
         </Box>
         {activeNodes.length > 0 ? (
@@ -569,7 +569,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
         {/* Cached Networks Section */}
         <Box p={3} borderBottom="1px" borderColor={borderColor}>
           <Text fontWeight="bold" fontSize="sm" color="gray.600">
-            Cached
+            Old versions of tensor networks
           </Text>
         </Box>
         {cachedNodes.length > 0 ? (
