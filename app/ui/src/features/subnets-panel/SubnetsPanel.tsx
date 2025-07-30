@@ -90,7 +90,9 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     (state) => state.updateCachedTensorNetworkName
   );
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
-
+  const focusOnTensorNetwork = useCanvasStore(
+    (state) => state.focusOnTensorNetwork
+  );
   const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
 
   // State for editing subnet names
@@ -204,6 +206,7 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
   const handleNetworkClick = (signature: string) => {
     refreshAndSetCachedTensorNetworkFromCanvas(signature);
+    focusOnTensorNetwork();
   };
 
   const handleNameChange = (node: TensorNetworkNode, newName: string) => {

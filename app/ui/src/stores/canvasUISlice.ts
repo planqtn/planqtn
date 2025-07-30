@@ -180,6 +180,7 @@ export interface CanvasUISlice {
   updatePanOffset: (delta: LogicalPoint) => void;
   canvasRef: RefObject<HTMLDivElement> | null;
   setCanvasRef: (element: HTMLDivElement | null) => void;
+  focusOnTensorNetwork: () => void;
 
   viewport: Viewport;
 
@@ -378,6 +379,67 @@ export const createCanvasUISlice: StateCreator<
         state.viewport.with({
           zoomLevel: clampedZoom,
           logicalPanOffset: newPanOffset.plus(viewport.logicalPanOffset)
+        })
+      );
+    });
+  },
+
+  focusOnTensorNetwork: () => {
+    set((state) => {
+      const tensorNetworkBoundingBox =
+        get().calculateTensorNetworkBoundingBox();
+      if (!tensorNetworkBoundingBox) return;
+
+      // if tensornetrowk bounding box is within the viewport, do nothing
+      if (
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          ),
+          0
+        ) &&
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.maxX,
+            tensorNetworkBoundingBox.maxY
+          ),
+          0
+        )
+      ) {
+        return;
+      }
+
+      // set the view port to be a good 200 px margin around the tensor network
+      // we have to calculate a zoom level that will fit the tensor network in the viewport
+      // and then the pan so that the center of the tensor network is in the center of the viewport
+
+      const tensorNetworkWidth =
+        tensorNetworkBoundingBox.maxX - tensorNetworkBoundingBox.minX;
+      const tensorNetworkHeight =
+        tensorNetworkBoundingBox.maxY - tensorNetworkBoundingBox.minY;
+      const margin = 200;
+
+      const newZoomLevel = Math.min(
+        state.viewport.screenWidth / (tensorNetworkWidth + margin * 2),
+        state.viewport.screenHeight / (tensorNetworkHeight + margin * 2)
+      );
+
+      const newViewport = state.viewport.with({
+        logicalPanOffset: new LogicalPoint(0, 0),
+        zoomLevel: newZoomLevel
+      });
+
+      const newPanOffset = new LogicalPoint(
+        (tensorNetworkBoundingBox.minX + tensorNetworkBoundingBox.maxX) / 2 -
+          newViewport.logicalWidth / 2,
+        (tensorNetworkBoundingBox.minY + tensorNetworkBoundingBox.maxY) / 2 -
+          newViewport.logicalHeight / 2
+      );
+
+      state.viewport = castDraft(
+        newViewport.with({
+          logicalPanOffset: newPanOffset
         })
       );
     });

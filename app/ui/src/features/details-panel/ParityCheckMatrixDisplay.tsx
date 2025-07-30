@@ -15,6 +15,7 @@ import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FixedSizeList as List } from "react-window";
 import { Resizable } from "re-resizable";
+import { useCanvasStore } from "@/stores/canvasStateStore.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -26,6 +27,7 @@ interface ParityCheckMatrixDisplayProps {
   selectedRows?: number[];
   onRowSelectionChange?: (selectedRows: number[]) => void;
   onLegHover?: (leg: TensorNetworkLeg | null) => void;
+  signature?: string;
 }
 
 interface PauliRowProps {
@@ -226,9 +228,17 @@ export const ParityCheckMatrixDisplay: React.FC<
   onRecalculate,
   selectedRows = [],
   onRowSelectionChange,
-  onLegHover
+  onLegHover,
+  signature
 }) => {
   const [draggedRowIndex] = useState<number | null>(null);
+  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
+  const focusOnTensorNetwork = useCanvasStore(
+    (state) => state.focusOnTensorNetwork
+  );
+  const getCachedTensorNetwork = useCanvasStore(
+    (state) => state.getCachedTensorNetwork
+  );
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
@@ -238,7 +248,7 @@ export const ParityCheckMatrixDisplay: React.FC<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listRef = useRef<any>(null);
   const [charWidth, setCharWidth] = useState<number>(8);
-  const [listSize, setListSize] = useState({ width: 250, height: 600 });
+  const [listSize, setListSize] = useState({ width: 100, height: 100 });
 
   // Local selection state as fallback
   const [localSelectedRows, setLocalSelectedRows] = useState<number[]>([]);
@@ -572,15 +582,33 @@ export const ParityCheckMatrixDisplay: React.FC<
   const listKey = `list-${effectiveSelectedRows.join("-")}-${draggedRowIndex || "none"}`;
 
   return (
-    <Box>
+    <Box h="100%" w="100%" display="flex" flexDirection="column">
       <HStack justify="space-between" mb={2}>
-        <Box>
-          {title && <Heading size="sm">{title}</Heading>}
-          <Text>
-            [[{numLegs}, {numLegs - n_stabilizers}]] (
-            {matrix.every(isCSS) ? "CSS" : "non-CSS"})
+        <Box
+          p={3}
+          borderBottom="1px"
+          borderColor="gray.200"
+          cursor="pointer"
+          onClick={() => {
+            if (signature) {
+              const cachedTensorNetwork = getCachedTensorNetwork(signature);
+              if (cachedTensorNetwork) {
+                setTensorNetwork(cachedTensorNetwork.tensorNetwork);
+                focusOnTensorNetwork();
+              }
+            }
+          }}
+        >
+          <Text fontWeight="bold" fontSize="sm">
+            [[{numLegs}, {numLegs - n_stabilizers}]]{" "}
+            {matrix.every(isCSS) ? "CSS" : "non-CSS"} stabilizer{" "}
+            {numLegs - n_stabilizers > 0 ? " subspace" : " state"}
+          </Text>
+          <Text fontSize="xs" color="gray.500">
+            {title}
           </Text>
         </Box>
+
         <Menu>
           <MenuButton
             as={IconButton}
@@ -653,15 +681,8 @@ export const ParityCheckMatrixDisplay: React.FC<
         )}
       </Box>
 
-      <Box
-        position="relative"
-        width="100%"
-        height="100%"
-        mx={0}
-        mt={0}
-        style={{ flex: 1, minHeight: 0 }}
-      >
-        <Resizable
+      <Box position="relative" mx={0} mt={0} style={{ flex: 1, minHeight: 0 }}>
+        {/* <Resizable
           size={listSize}
           minWidth={250}
           minHeight={200}
@@ -710,56 +731,56 @@ export const ParityCheckMatrixDisplay: React.FC<
             bottomLeft: false,
             topLeft: false
           }}
+        > */}
+        {/* Pauli stabilizer rows - virtualized */}
+        <List
+          key={listKey}
+          height={listSize.height}
+          width={listSize.width}
+          itemCount={matrix.length}
+          itemSize={20}
+          itemData={itemData}
+          ref={listRef}
         >
-          {/* Pauli stabilizer rows - virtualized */}
-          <List
-            key={listKey}
-            height={listSize.height}
-            width={listSize.width}
-            itemCount={matrix.length}
-            itemSize={20}
-            itemData={itemData}
-            ref={listRef}
-          >
-            {({
-              index,
-              style,
-              data
-            }: {
-              index: number;
-              style: React.CSSProperties;
-              data: typeof itemData;
-            }) => (
-              <div
-                style={{
-                  ...style
-                }}
-                key={`${index}-${data.selectedRows.join(",")}`}
-              >
-                <PauliRow
-                  row={data.matrix[index]}
-                  rowIndex={index}
-                  numLegs={data.numLegs}
-                  charWidth={data.charWidth}
-                  getPauliString={data.getPauliString}
-                  getPauliColor={data.getPauliColor}
-                  selectedRows={data.selectedRows}
-                  draggedRowIndex={data.draggedRowIndex}
-                  handleDragStart={data.handleDragStart}
-                  handleDragOver={data.handleDragOver}
-                  handleDrop={data.handleDrop}
-                  handleDragEnd={data.handleDragEnd}
-                  handleRowClick={data.handleRowClick}
-                  legOrdering={data.legOrdering}
-                  onLegHover={data.onLegHover}
-                  setHoveredLegIndex={data.setHoveredLegIndex}
-                  setHoveredRowIndex={data.setHoveredRowIndex}
-                />
-              </div>
-            )}
-          </List>
-
-          {/* Resize grip indicator */}
+          {({
+            index,
+            style,
+            data
+          }: {
+            index: number;
+            style: React.CSSProperties;
+            data: typeof itemData;
+          }) => (
+            <div
+              style={{
+                ...style
+              }}
+              key={`${index}-${data.selectedRows.join(",")}`}
+            >
+              <PauliRow
+                row={data.matrix[index]}
+                rowIndex={index}
+                numLegs={data.numLegs}
+                charWidth={data.charWidth}
+                getPauliString={data.getPauliString}
+                getPauliColor={data.getPauliColor}
+                selectedRows={data.selectedRows}
+                draggedRowIndex={data.draggedRowIndex}
+                handleDragStart={data.handleDragStart}
+                handleDragOver={data.handleDragOver}
+                handleDrop={data.handleDrop}
+                handleDragEnd={data.handleDragEnd}
+                handleRowClick={data.handleRowClick}
+                legOrdering={data.legOrdering}
+                onLegHover={data.onLegHover}
+                setHoveredLegIndex={data.setHoveredLegIndex}
+                setHoveredRowIndex={data.setHoveredRowIndex}
+              />
+            </div>
+          )}
+        </List>
+        {/* 
+          
           <Box
             position="absolute"
             bottom="0"
@@ -787,7 +808,7 @@ export const ParityCheckMatrixDisplay: React.FC<
               />
             </svg>
           </Box>
-        </Resizable>
+        </Resizable> */}
       </Box>
     </Box>
   );
