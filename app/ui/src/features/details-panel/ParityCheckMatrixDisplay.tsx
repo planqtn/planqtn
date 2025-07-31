@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { FaCopy, FaEllipsisV } from "react-icons/fa";
-import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
+import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { FixedSizeList as List } from "react-window";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
 import { FiExternalLink } from "react-icons/fi";
@@ -52,9 +52,6 @@ interface PauliRowProps {
   handleDragEnd: (e: React.DragEvent) => void;
   handleRowClick: (rowIndex: number) => void;
   legOrdering?: TensorNetworkLeg[];
-  onLegHover?: (leg: TensorNetworkLeg | null) => void;
-  setHoveredLegIndex: (index: number | null) => void;
-  setHoveredRowIndex: (index: number | null) => void;
   isDisabled?: boolean;
 }
 
@@ -62,9 +59,9 @@ interface PauliCellProps {
   pauli: string;
   color: string;
   onRowClick?: () => void;
-  onHover?: (index: number) => void;
-  onUnhover?: () => void;
+  onCellClick?: () => void;
   index: number;
+  hoverText?: string;
 }
 
 // Memoized PauliCell component
@@ -72,38 +69,52 @@ const PauliCell = memo(function PauliCell({
   pauli,
   color,
   onRowClick,
-  onHover,
-  onUnhover,
-  index,
-  isDisabled
+  onCellClick,
+  isDisabled,
+  hoverText
 }: PauliCellProps & { isDisabled?: boolean }) {
+  const [isHovered, setIsHovered] = useState(false);
   return (
-    <span
-      style={{
-        color,
-        background: "transparent",
-        borderRadius: 3,
-        cursor: isDisabled ? "not-allowed" : "pointer"
-      }}
-      onMouseEnter={() => {
-        if (onHover) {
-          onHover(index);
-        }
-      }}
-      onMouseLeave={() => {
-        if (onUnhover) {
-          onUnhover();
-        }
-      }}
-      onClick={() => {
-        // Let the click bubble up to the parent row
-        if (onRowClick && !isDisabled) {
-          onRowClick();
-        }
-      }}
-    >
-      {pauli}
-    </span>
+    <Tooltip>
+      <TooltipTrigger>
+        <span
+          style={{
+            color: isHovered ? "orange" : color,
+            border: isHovered ? "1px solid orange" : "0px",
+            backgroundColor: isHovered ? "blue.400" : "transparent",
+            padding: "0px",
+            margin: "0px",
+            cursor: isDisabled ? "not-allowed" : "pointer"
+          }}
+          onMouseEnter={(e) => {
+            setIsHovered(true);
+          }}
+          onMouseLeave={() => {
+            setIsHovered(false);
+          }}
+          onClick={(e) => {
+            if (isDisabled) {
+              e.preventDefault();
+              return;
+            }
+            if (!e.ctrlKey) {
+              if (onCellClick) {
+                onCellClick();
+              }
+            } else {
+              if (onRowClick && !isDisabled) {
+                onRowClick();
+              }
+            }
+          }}
+        >
+          {pauli}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="bg-black text-white high-z">
+        <Text>{hoverText}</Text>
+      </TooltipContent>
+    </Tooltip>
   );
 });
 
@@ -123,13 +134,15 @@ const PauliRow = function PauliRow({
   handleDragEnd,
   handleRowClick,
   legOrdering,
-  onLegHover,
-  setHoveredLegIndex,
-  setHoveredRowIndex,
   isDisabled
 }: PauliRowProps) {
   const pauliString = getPauliString(row);
   const [isDragOver, setIsDragOver] = useState(false);
+  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+  const focusOnTensorNetwork = useCanvasStore(
+    (state) => state.focusOnTensorNetwork
+  );
 
   const isSelected = selectedRows.includes(rowIndex);
   const isDragged = draggedRowIndex === rowIndex;
@@ -166,7 +179,13 @@ const PauliRow = function PauliRow({
         setIsDragOver(false);
       }}
       onDragEnd={handleDragEnd}
-      onClick={() => handleRowClick(rowIndex)}
+      onClick={(e) => {
+        if (!e.ctrlKey) {
+          e.preventDefault();
+        } else {
+          handleRowClick(rowIndex);
+        }
+      }}
       style={{
         pointerEvents: "all",
         display: "flex",
@@ -207,20 +226,22 @@ const PauliRow = function PauliRow({
               pauli={pauli}
               color={getPauliColor(pauli)}
               onRowClick={() => handleRowClick(rowIndex)}
-              index={i}
-              isDisabled={isDisabled}
-              onHover={(idx) => {
-                setHoveredLegIndex(idx);
-                setHoveredRowIndex(rowIndex);
-                if (onLegHover && legOrdering && legOrdering[idx]) {
-                  onLegHover(legOrdering[idx]);
+              onCellClick={() => {
+                if (legOrdering && legOrdering[i]) {
+                  const lego = droppedLegos.find(
+                    (lego) => lego.instance_id === legOrdering[i].instance_id
+                  );
+                  if (lego) {
+                    setTensorNetwork(
+                      new TensorNetwork({ legos: [lego], connections: [] })
+                    );
+                    focusOnTensorNetwork();
+                  }
                 }
               }}
-              onUnhover={() => {
-                setHoveredLegIndex(null);
-                setHoveredRowIndex(null);
-                if (onLegHover) onLegHover(null);
-              }}
+              index={i}
+              isDisabled={isDisabled}
+              hoverText={`Generator ${rowIndex} • Qubit ${i} • ${legOrdering && legOrdering[i] ? "lego: " + legOrdering[i].instance_id + " leg: " + legOrdering[i].leg_index : ""}`}
             />
           ))}
         </Text>
@@ -269,9 +290,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [lastParentSelectedRows, setLastParentSelectedRows] = useState<
     number[]
   >([]);
-  const highlightCachedTensorNetworkLegs = useCanvasStore(
-    (state) => state.highlightCachedTensorNetworkLegs
-  );
 
   // Check if parent is updating selectedRows properly
   const parentUpdating =
@@ -310,22 +328,22 @@ export const ParityCheckMatrixDisplay: React.FC<
     };
   }, []);
 
-  // Prevent wheel events during drag operations
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (draggedRowIndex !== null) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
+  // // Prevent wheel events during drag operations
+  // useEffect(() => {
+  //   const handleWheel = (e: WheelEvent) => {
+  //     if (draggedRowIndex !== null) {
+  //       e.preventDefault();
+  //       e.stopPropagation();
+  //     }
+  //   };
 
-    if (draggedRowIndex !== null) {
-      document.addEventListener("wheel", handleWheel, { passive: false });
-      return () => {
-        document.removeEventListener("wheel", handleWheel);
-      };
-    }
-  }, [draggedRowIndex]);
+  //   if (draggedRowIndex !== null) {
+  //     document.addEventListener("wheel", handleWheel, { passive: false });
+  //     return () => {
+  //       document.removeEventListener("wheel", handleWheel);
+  //     };
+  //   }
+  // }, [draggedRowIndex]);
 
   // Initialize history only once when component mounts
   useEffect(() => {
@@ -750,38 +768,6 @@ export const ParityCheckMatrixDisplay: React.FC<
         </HStack>
       </HStack>
 
-      {/* Status box showing current hover position */}
-      <Box
-        bg="gray.50"
-        border="1px solid"
-        borderColor="gray.200"
-        borderRadius="md"
-        px={3}
-        py={2}
-        mb={2}
-        fontSize="sm"
-        minHeight="32px"
-        display="flex"
-        alignItems="center"
-      >
-        {hoveredRowIndex !== null && hoveredLegIndex !== null ? (
-          <Text>
-            <b>Row {hoveredRowIndex}</b> • <b>Column {hoveredLegIndex}</b>
-            {legOrdering && legOrdering[hoveredLegIndex] && (
-              <>
-                {" "}
-                • <b>Tensor:</b> {legOrdering[hoveredLegIndex].instance_id} •{" "}
-                <b>Leg:</b> {legOrdering[hoveredLegIndex].leg_index}
-              </>
-            )}
-          </Text>
-        ) : (
-          <Text color="gray.500">
-            Hover over a Pauli operator to see position info
-          </Text>
-        )}
-      </Box>
-
       <Box
         position="relative"
         mx={0}
@@ -879,9 +865,6 @@ export const ParityCheckMatrixDisplay: React.FC<
                 handleDragEnd={data.handleDragEnd}
                 handleRowClick={data.handleRowClick}
                 legOrdering={data.legOrdering}
-                onLegHover={data.onLegHover}
-                setHoveredLegIndex={data.setHoveredLegIndex}
-                setHoveredRowIndex={data.setHoveredRowIndex}
                 isDisabled={data.isDisabled}
               />
             </div>
