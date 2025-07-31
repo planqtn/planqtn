@@ -153,11 +153,34 @@ const DynamicLegHighlightLayer = memo<{
   shouldHideLeg: boolean[];
   bodyOrder: "front" | "behind";
   scaleStart: number;
-}>(({ legStyles, shouldHideLeg, bodyOrder, scaleStart }) => {
+  lego: DroppedLego;
+}>(({ legStyles, shouldHideLeg, bodyOrder, scaleStart, lego }) => {
+  // Calculate dynamic leg colors based on current highlightedLegConstraints
+  const getLegColor = (leg_index: number): string => {
+    // Check if this leg has a global highlight constraint
+    const globalHighlight = lego.highlightedLegConstraints.find(
+      (constraint) => constraint.legIndex === leg_index
+    );
+
+    if (globalHighlight) {
+      return SVG_COLORS[globalHighlight.operator];
+    }
+
+    // Check if this leg has a local highlight (from leg connection states)
+    const localHighlightPauliOperator =
+      lego.style!.getLegHighlightPauliOperator(leg_index);
+    if (localHighlightPauliOperator !== "I") {
+      return SVG_COLORS[localHighlightPauliOperator];
+    }
+
+    // Default to the static leg style color
+    return legStyles[leg_index]?.color || SVG_COLORS.I;
+  };
+
   return (
     <>
       {legStyles.map((legStyle, leg_index) => {
-        const legColor = legStyle.color;
+        const legColor = getLegColor(leg_index);
         const shouldHide = shouldHideLeg[leg_index];
 
         if (
@@ -233,11 +256,33 @@ const LegEndpointLayer = memo<{
     storeHandleLegMouseUp(lego.instance_id, i);
   };
 
+  // Calculate dynamic leg colors based on current highlightedLegConstraints
+  const getLegColor = (leg_index: number): string => {
+    // Check if this leg has a global highlight constraint
+    const globalHighlight = lego.highlightedLegConstraints.find(
+      (constraint) => constraint.legIndex === leg_index
+    );
+
+    if (globalHighlight) {
+      return SVG_COLORS[globalHighlight.operator];
+    }
+
+    // Check if this leg has a local highlight (from leg connection states)
+    const localHighlightPauliOperator =
+      lego.style!.getLegHighlightPauliOperator(leg_index);
+    if (localHighlightPauliOperator !== "I") {
+      return SVG_COLORS[localHighlightPauliOperator];
+    }
+
+    // Default to the static leg style color
+    return legStyles[leg_index]?.color || SVG_COLORS.I;
+  };
+
   return (
     <>
       {legStyles.map((legStyle, leg_index) => {
         const isLogical = lego.logical_legs.includes(leg_index);
-        const legColor = legStyle.color;
+        const legColor = getLegColor(leg_index);
 
         const shouldHide = shouldHideLeg[leg_index];
 
@@ -256,19 +301,11 @@ const LegEndpointLayer = memo<{
                 y2={legStyle.position.endY}
                 stroke="transparent"
                 strokeWidth={5}
-                onMouseOver={(e) => {
-                  e.stopPropagation();
-                  const line = e.target as SVGLineElement;
-                  line.style.stroke = legColor;
-                }}
-                onMouseOut={(e) => {
-                  e.stopPropagation();
-                  const line = e.target as SVGLineElement;
-                  line.style.stroke = "transparent";
-                }}
+                className="logical-leg-interactive"
                 style={{
                   cursor: "pointer",
-                  pointerEvents: "visibleStroke"
+                  pointerEvents: "visibleStroke",
+                  color: legColor // Set the current color for CSS inheritance
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -294,16 +331,6 @@ const LegEndpointLayer = memo<{
               onMouseDown={(e) => {
                 e.stopPropagation();
                 handleLegMouseDown(e, lego.instance_id, leg_index);
-              }}
-              onMouseOver={(e) => {
-                const circle = e.target as SVGCircleElement;
-                circle.style.stroke = legColor;
-                circle.style.fill = "rgb(235, 248, 255)";
-              }}
-              onMouseOut={(e) => {
-                const circle = e.target as SVGCircleElement;
-                circle.style.stroke = legColor;
-                circle.style.fill = "white";
               }}
               onMouseUp={(e) => {
                 e.stopPropagation();
@@ -685,6 +712,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="behind"
                   scaleStart={size / originalSize}
+                  lego={lego}
                 />
               )}
 
@@ -732,6 +760,7 @@ export const DroppedLegoDisplay: React.FC<DroppedLegoDisplayProps> = memo(
                   shouldHideLeg={staticShouldHideLeg}
                   bodyOrder="front"
                   scaleStart={size / originalSize}
+                  lego={lego}
                 />
               )}
 

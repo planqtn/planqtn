@@ -134,7 +134,7 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
 
   // Position the label above the bounding box
   const labelX = boundingBox.minX + boundingBox.width / 2;
-  const labelY = boundingBox.minY - 10;
+  const labelY = boundingBox.minY - 60;
 
   // Background rectangle position (centered on text)
   const bgX = labelX - textDimensions.width / 2;
