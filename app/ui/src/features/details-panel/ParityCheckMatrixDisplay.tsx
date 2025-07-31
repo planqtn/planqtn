@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
-import { FaCopy, FaEllipsisV } from "react-icons/fa";
+import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { FixedSizeList as List } from "react-window";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
@@ -88,7 +88,7 @@ const PauliCell = memo(function PauliCell({
             margin: "0px",
             cursor: isDisabled ? "not-allowed" : "pointer"
           }}
-          onMouseEnter={(e) => {
+          onMouseEnter={() => {
             setIsHovered(true);
           }}
           onMouseLeave={() => {
@@ -689,7 +689,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             borderBottom="1px"
             borderColor="gray.200"
             cursor={isDisabled ? "not-allowed" : "pointer"}
-            onClick={(e) => {
+            onClick={() => {
               if (isDisabled || !signature) return;
               const cachedTensorNetwork = getCachedTensorNetwork(signature);
               if (cachedTensorNetwork) {

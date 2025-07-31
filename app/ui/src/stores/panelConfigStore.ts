@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { PanelConfigSlice, createPanelConfigSlice } from "./panelConfigSlice";
-import { FloatingPanelConfigManager } from "../features/floating-panel/FloatingPanelConfig";
+import { FloatingPanelConfigManager } from "@/features/floating-panel/FloatingPanelConfig";
 
 // Separate store for panel configurations (application-level persistence)
 export const usePanelConfigStore = create<PanelConfigSlice>()(

@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { useModalStore } from "../stores/modalStore";
 import { TannerDialog } from "../features/network-apis/TannerDialog";
 import LoadingModal from "./LoadingModal";
 import AuthDialog from "../features/auth/AuthDialog";
@@ -16,6 +15,8 @@ import { useToast } from "@chakra-ui/react";
 import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
 import { useCanvasStore } from "../stores/canvasStateStore";
+import { LegPartitionDialog } from "@/features/details-panel/LegPartitionDialog";
+import _ from "lodash";
 
 interface ModalRootProps {
   // Weight enumerator dependencies
@@ -53,8 +54,13 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     closeShareDialog,
     closeImportCanvasDialog,
     closeWeightEnumeratorDialog,
-    closeAboutDialog
-  } = useModalStore();
+    closeAboutDialog,
+    showLegPartitionDialog,
+    closeLegPartitionDialog,
+    handleLegPartitionDialogClose,
+    handleUnfuseTo2LegosPartitionConfirm,
+    unfuseLego
+  } = useCanvasStore();
 
   const toast = useToast();
 
@@ -273,7 +279,21 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
         <AboutModal isOpen={aboutDialog} onClose={closeAboutDialog} />
       )}
 
-      {/* Additional modals will be added here as we refactor them */}
+      {showLegPartitionDialog && (
+        <LegPartitionDialog
+          open={showLegPartitionDialog}
+          onClose={() => {
+            closeLegPartitionDialog();
+            handleLegPartitionDialogClose();
+          }}
+          onSubmit={(legPartition: number[]) => {
+            closeLegPartitionDialog();
+            handleLegPartitionDialogClose();
+            handleUnfuseTo2LegosPartitionConfirm(legPartition);
+          }}
+          numLegs={unfuseLego ? unfuseLego.numberOfLegs : 0}
+        />
+      )}
     </>,
     document.getElementById("modal-root")!
   );

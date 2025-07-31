@@ -9,6 +9,7 @@ import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
 import { calculateBoundingBoxForLegos } from "../../stores/canvasUISlice";
 import { SubnetNameDisplay } from "./SubnetNameDisplay";
 import { WindowPoint } from "../../types/coordinates";
+import { usePanelConfigStore } from "@/stores/panelConfigStore";
 
 interface ResizeHandleProps {
   x: number;
@@ -118,6 +119,7 @@ export const LegosLayer: React.FC = () => {
   const cachedTensorNetworks = useCanvasStore(
     (state) => state.cachedTensorNetworks
   );
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
   const calculateTensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
   );
@@ -522,7 +524,7 @@ export const LegosLayer: React.FC = () => {
       )}
 
       {/* Subnet name display */}
-      {constrainedBoundingBox && (
+      {constrainedBoundingBox && showToolbar && (
         <SubnetNameDisplay
           boundingBox={constrainedBoundingBox}
           networkSignature={tensorNetwork?.signature || ""}

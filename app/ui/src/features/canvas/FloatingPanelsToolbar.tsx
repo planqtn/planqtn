@@ -13,7 +13,8 @@ import {
   FaFolderTree,
   FaInfo,
   FaLayerGroup,
-  FaCubes
+  FaCubes,
+  FaWrench
 } from "react-icons/fa6";
 
 interface FloatingPanelsToolbarProps {
@@ -61,6 +62,10 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
   const setTaskPanelConfig = usePanelConfigStore(
     (state) => state.setTaskPanelConfig
   );
+
+  // Canvas store for showToolbar setting
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
+  const setShowToolbar = usePanelConfigStore((state) => state.setShowToolbar);
 
   // Helper function to toggle panel
   const togglePanel = (
@@ -227,6 +232,33 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
             </Box>
           </TooltipTrigger>
           <TooltipContent className="high-z">Task Panel</TooltipContent>
+        </Tooltip>
+
+        {/* Show Toolbar Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Box
+              bg={showToolbar ? activeBgColor : "transparent"}
+              borderRadius="md"
+              px={2}
+              py={2}
+              opacity={0.8}
+              _hover={{
+                opacity: 1,
+                bg: showToolbar ? activeBgColor : hoverBgColor
+              }}
+              transition="all 0.2s"
+              cursor="pointer"
+              onClick={() => setShowToolbar(!showToolbar)}
+              alignItems="center"
+              display="flex"
+            >
+              <Icon as={FaWrench} boxSize={4} />
+            </Box>
+          </TooltipTrigger>
+          <TooltipContent className="high-z">
+            Show Floating Toolbar
+          </TooltipContent>
         </Tooltip>
       </HStack>
     </Box>

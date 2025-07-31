@@ -81,7 +81,6 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     if (!panelElement) return;
 
     const handlePanelClick = (e: MouseEvent) => {
-      console.log("handlePanelClick", e);
       const target = e.target as HTMLElement;
 
       // Allow double-click events to pass through for renaming functionality

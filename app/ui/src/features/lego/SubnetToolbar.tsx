@@ -7,15 +7,11 @@ import {
   Plus,
   BarChart3,
   Table,
-  Palette,
-  ArrowUpRight,
-  RotateCcw,
   Split,
   Scissors,
   Network,
   Link,
-  Trash2,
-  Eraser
+  Trash2
 } from "lucide-react";
 import { FaDropletSlash, FaYinYang } from "react-icons/fa6";
 import { useCanvasStore } from "../../stores/canvasStateStore";
@@ -25,6 +21,9 @@ import { canDoChangeColor } from "@/transformations/zx/ChangeColor";
 import { canDoPullOutSameColoredLeg } from "@/transformations/zx/PullOutSameColoredLeg";
 import { canDoBialgebra } from "@/transformations/zx/Bialgebra";
 import { canDoInverseBialgebra } from "@/transformations/zx/InverseBialgebra";
+import { canDoHopfRule } from "@/transformations/zx/Hopf";
+import { canUnfuseInto2Legos } from "@/transformations/zx/UnfuseIntoTwoLegos";
+import { canUnfuseToLegs } from "@/transformations/zx/UnfuseToLegs";
 
 interface SubnetToolbarProps {
   boundingBox: BoundingBox;
@@ -34,12 +33,6 @@ interface SubnetToolbarProps {
   onExpand?: () => void;
   onWeightEnumerator?: () => void;
   onParityCheckMatrix?: () => void;
-  onChangeColor?: () => void;
-  onPullOutSameColor?: () => void;
-  onBiAlgebra?: () => void;
-  onInverseBiAlgebra?: () => void;
-  onUnfuseToLegs?: () => void;
-  onUnfuseToTwo?: () => void;
   onCompleteGraph?: () => void;
   onConnectViaCentral?: () => void;
   onRemoveFromCache?: () => void;
@@ -98,12 +91,6 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   onExpand,
   onWeightEnumerator,
   onParityCheckMatrix,
-  onChangeColor,
-  onPullOutSameColor,
-  onBiAlgebra,
-  onInverseBiAlgebra,
-  onUnfuseToLegs,
-  onUnfuseToTwo,
   onCompleteGraph,
   onConnectViaCentral,
   onRemoveFromCache,
@@ -116,30 +103,21 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   const handlePullOutSameColoredLeg = useCanvasStore(
     (state) => state.handlePullOutSameColoredLeg
   );
-  const connections = useCanvasStore((state) => state.connections);
+
   const handleBialgebra = useCanvasStore((state) => state.handleBialgebra);
   const handleInverseBialgebra = useCanvasStore(
     (state) => state.handleInverseBialgebra
   );
   const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
-  const handleConnectGraphNodes = useCanvasStore(
-    (state) => state.handleConnectGraphNodes
-  );
-  const handleCompleteGraphViaHadamards = useCanvasStore(
-    (state) => state.handleCompleteGraphViaHadamards
-  );
-  const handleLegPartitionDialogClose = useCanvasStore(
-    (state) => state.handleLegPartitionDialogClose
-  );
-  const setShowLegPartitionDialog = useCanvasStore(
-    (state) => state.setShowLegPartitionDialog
-  );
-  const showLegPartitionDialog = useCanvasStore(
-    (state) => state.showLegPartitionDialog
-  );
 
   const hasMultipleLegos = tensorNetwork && tensorNetwork.legos.length > 1;
   const canCollapse = hasMultipleLegos;
+  const handleUnfuseInto2Legos = useCanvasStore(
+    (state) => state.handleUnfuseInto2Legos
+  );
+  const handleUnfuseToLegs = useCanvasStore(
+    (state) => state.handleUnfuseToLegs
+  );
 
   return (
     <Tooltip.Provider>
@@ -291,14 +269,27 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
               text="IBi"
             />
             <ToolbarButton
+              tooltip="Hopf rule"
+              disabled={
+                !canDoHopfRule(
+                  tensorNetwork?.legos || [],
+                  tensorNetwork?.connections || []
+                )
+              }
+              onClick={() => handleHopfRule(tensorNetwork?.legos || [])}
+              text="Hopf"
+            />
+            <ToolbarButton
               icon={<Scissors size={16} />}
               tooltip="Unfuse to legs"
-              onClick={onUnfuseToLegs}
+              onClick={() => handleUnfuseToLegs(tensorNetwork?.legos[0]!)}
+              disabled={!canUnfuseToLegs(tensorNetwork?.legos || [])}
             />
             <ToolbarButton
               icon={<Split size={16} />}
               tooltip="Unfuse into 2 legos"
-              onClick={onUnfuseToTwo}
+              onClick={() => handleUnfuseInto2Legos(tensorNetwork?.legos[0]!)}
+              disabled={!canUnfuseInto2Legos(tensorNetwork?.legos || [])}
             />
           </div>
         </div>

@@ -11,6 +11,7 @@ export const SubnetToolbarOverlay: React.FC = () => {
   const { isUserLoggedIn } = useUserStore();
 
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
   const calculateTensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
   );
@@ -268,30 +269,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
     (state) => state.parityCheckMatrices
   );
 
-  const handleChangeColor = () => {
-    console.log("Change color");
-  };
-
-  const handlePullOutSameColor = () => {
-    console.log("Pull out same color");
-  };
-
-  const handleBiAlgebra = () => {
-    console.log("Bi-algebra");
-  };
-
-  const handleInverseBiAlgebra = () => {
-    console.log("Inverse bi-algebra");
-  };
-
-  const handleUnfuseToLegs = () => {
-    console.log("Unfuse to legs");
-  };
-
-  const handleUnfuseToTwo = () => {
-    console.log("Unfuse to two");
-  };
-
   const handleCompleteGraph = () => {
     console.log("Complete graph");
   };
@@ -321,8 +298,8 @@ export const SubnetToolbarOverlay: React.FC = () => {
     }
   };
 
-  // Only render if we have a tensor network and bounding box
-  if (!tensorNetwork || !constrainedBoundingBox) {
+  // Only render if we have a tensor network, bounding box, and toolbar is enabled
+  if (!tensorNetwork || !constrainedBoundingBox || !showToolbar) {
     return null;
   }
 
@@ -334,12 +311,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
       onExpand={handleExpand}
       onWeightEnumerator={handleWeightEnumerator}
       onParityCheckMatrix={handleParityCheckMatrix}
-      onChangeColor={handleChangeColor}
-      onPullOutSameColor={handlePullOutSameColor}
-      onBiAlgebra={handleBiAlgebra}
-      onInverseBiAlgebra={handleInverseBiAlgebra}
-      onUnfuseToLegs={handleUnfuseToLegs}
-      onUnfuseToTwo={handleUnfuseToTwo}
       onCompleteGraph={handleCompleteGraph}
       onConnectViaCentral={handleConnectViaCentral}
       onRemoveFromCache={handleRemoveFromCache}

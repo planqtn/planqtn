@@ -16,7 +16,6 @@ import { FiFile, FiMoreVertical, FiUpload } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
-import { useModalStore } from "../../stores/modalStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
@@ -33,10 +32,9 @@ interface CanvasMenuProps {
 }
 
 export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
-  const { handleRuntimeToggle } = useModalStore();
   const { currentUser } = useUserStore();
   const { handleClearAll, handleExportPythonCode } = useCanvasStore();
-  const { openWeightEnumeratorDialog } = useModalStore();
+
   const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
@@ -54,8 +52,19 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
   const setHideDanglingLegs = useCanvasStore(
     (state) => state.setHideDanglingLegs
   );
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
+  const setShowToolbar = usePanelConfigStore((state) => state.setShowToolbar);
 
-  const { openImportCanvasDialog, openAboutDialog } = useModalStore();
+  const handleRuntimeToggle = useCanvasStore(
+    (state) => state.handleRuntimeToggle
+  );
+  const openWeightEnumeratorDialog = useCanvasStore(
+    (state) => state.openWeightEnumeratorDialog
+  );
+  const openImportCanvasDialog = useCanvasStore(
+    (state) => state.openImportCanvasDialog
+  );
+  const openAboutDialog = useCanvasStore((state) => state.openAboutDialog);
 
   return (
     <DropdownMenu>
@@ -289,6 +298,12 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
                 }}
               >
                 Show Subnets Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={showToolbar}
+                onClick={() => setShowToolbar(!showToolbar)}
+              >
+                Show Floating Toolbar
               </DropdownMenuCheckboxItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>

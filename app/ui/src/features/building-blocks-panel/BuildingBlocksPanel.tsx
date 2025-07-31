@@ -25,7 +25,6 @@ import DroppedLegoDisplay, {
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
 import { FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lego/Legos.ts";
-import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
@@ -212,8 +211,7 @@ export const BuildingBlocksPanel: React.FC = memo(() => {
   const { isUserLoggedIn } = useUserStore();
   const [isPanelSmall, setIsPanelSmall] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { openCssTannerDialog, openTannerDialog, openMspDialog } =
-    useModalStore.getState();
+
   const [legos, setLegos] = useState<LegoPiece[]>([]);
   const setDraggedLego = useDraggedLegoStore(
     (state) => state.setDraggedLegoProto
@@ -222,6 +220,12 @@ export const BuildingBlocksPanel: React.FC = memo(() => {
     (state) => state.setBuildingBlockDragState
   );
   const newInstanceId = useCanvasStore((state) => state.newInstanceId);
+
+  const openCssTannerDialog = useCanvasStore(
+    (state) => state.openCssTannerDialog
+  );
+  const openTannerDialog = useCanvasStore((state) => state.openTannerDialog);
+  const openMspDialog = useCanvasStore((state) => state.openMspDialog);
 
   useEffect(() => {
     const fetchData = async () => {

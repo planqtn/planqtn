@@ -48,6 +48,7 @@ import {
   createZXTransformationsSlice,
   ZXTransformationsSlice
 } from "./zxTransformationsSlice";
+import { createModalsSlice, ModalSlice } from "./modalStore";
 
 // Helper function to get canvasId from URL
 export const getCanvasIdFromUrl = (): string => {
@@ -87,7 +88,8 @@ export interface CanvasStore
     CanvasEventHandlingSlice,
     CanvasUISlice,
     OperatorHighlightSlice,
-    ZXTransformationsSlice {}
+    ZXTransformationsSlice,
+    ModalSlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -163,7 +165,8 @@ export const useCanvasStore = create<CanvasStore>()(
       ...createCanvasEventHandlingSlice(...a),
       ...createCanvasUISlice(...a),
       ...createOperatorHighlightSlice(...a),
-      ...createZXTransformationsSlice(...a)
+      ...createZXTransformationsSlice(...a),
+      ...createModalsSlice(...a)
     })),
     {
       name: `canvas-state-${getCanvasIdFromUrl()}`,

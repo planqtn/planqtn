@@ -6,6 +6,8 @@ import { applyPullOutSameColoredLeg } from "@/transformations/zx/PullOutSameColo
 import { applyBialgebra } from "@/transformations/zx/Bialgebra";
 import { applyInverseBialgebra } from "@/transformations/zx/InverseBialgebra";
 import { applyHopfRule } from "@/transformations/zx/Hopf";
+import { applyUnfuseInto2Legos } from "@/transformations/zx/UnfuseIntoTwoLegos";
+import { applyUnfuseToLegs } from "@/transformations/zx/UnfuseToLegs";
 import { applyConnectGraphNodes } from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego";
 import { applyCompleteGraphViaHadamards } from "@/transformations/graph-states/CompleteGraphViaHadamards";
 
@@ -18,8 +20,11 @@ export interface ZXTransformationsSlice {
   handleConnectGraphNodes: (legos: DroppedLego[]) => void;
   handleCompleteGraphViaHadamards: (legos: DroppedLego[]) => void;
   handleLegPartitionDialogClose: () => void;
-  setShowLegPartitionDialog: (show: boolean) => void;
-  showLegPartitionDialog: boolean;
+  handleUnfuseInto2Legos: (lego: DroppedLego) => void;
+  handleUnfuseTo2LegosPartitionConfirm: (legPartition: number[]) => void;
+  handleUnfuseToLegs: (lego: DroppedLego) => void;
+  unfuseLego: DroppedLego | null;
+  setUnfuseLego: (lego: DroppedLego | null) => void;
 }
 
 export const createZXTransformationsSlice: StateCreator<
@@ -28,11 +33,8 @@ export const createZXTransformationsSlice: StateCreator<
   [],
   ZXTransformationsSlice
 > = (set, get) => ({
-  showLegPartitionDialog: false,
-  setShowLegPartitionDialog: (show) =>
-    set((state) => {
-      state.showLegPartitionDialog = show;
-    }),
+  unfuseLego: null,
+  setUnfuseLego: (lego) => set({ unfuseLego: lego }),
 
   handleChangeColor: (lego: DroppedLego) => {
     const { droppedLegos, connections, setLegosAndConnections, addOperation } =
@@ -109,7 +111,7 @@ export const createZXTransformationsSlice: StateCreator<
     };
     windowWithRestore.__restoreLegsState?.();
     delete windowWithRestore.__restoreLegsState;
-    get().setShowLegPartitionDialog(false);
+    get().closeLegPartitionDialog();
   },
 
   handleBialgebra: (legos: DroppedLego[]) => {
@@ -126,5 +128,82 @@ export const createZXTransformationsSlice: StateCreator<
     const result = applyInverseBialgebra(legos, droppedLegos, connections);
     setLegosAndConnections(result.droppedLegos, result.connections);
     addOperation(result.operation);
+  },
+
+  handleUnfuseInto2Legos: (lego: DroppedLego) => {
+    // Store the original state
+    const originalAlwaysShowLegs = lego.alwaysShowLegs;
+
+    // Temporarily force legs to be shown
+    const updatedLego = lego.with({ alwaysShowLegs: true });
+    get().setDroppedLegos(
+      get().droppedLegos.map((l) =>
+        l.instance_id === lego.instance_id ? updatedLego : l
+      )
+    );
+    get().setUnfuseLego(updatedLego);
+    get().openLegPartitionDialog();
+
+    // Add cleanup function to restore original state when dialog closes
+    const cleanup = () => {
+      get().setDroppedLegos(
+        get().droppedLegos.map((l) =>
+          l.instance_id === lego.instance_id
+            ? l.with({ alwaysShowLegs: originalAlwaysShowLegs })
+            : l
+        )
+      );
+    };
+
+    // Store cleanup function
+    (
+      window as Window & { __restoreLegsState?: () => void }
+    ).__restoreLegsState = cleanup;
+  },
+
+  handleUnfuseTo2LegosPartitionConfirm: (legPartition: number[]) => {
+    const lego = get().unfuseLego;
+    if (!lego) {
+      return;
+    }
+
+    try {
+      const {
+        droppedLegos,
+        connections,
+        setLegosAndConnections,
+        addOperation
+      } = get();
+
+      const {
+        connections: newConnections,
+        droppedLegos: newDroppedLegos,
+        operation
+      } = applyUnfuseInto2Legos(lego, legPartition, droppedLegos, connections);
+
+      setLegosAndConnections(newDroppedLegos, newConnections);
+      addOperation(operation);
+    } catch (error) {
+      get().setError(
+        `Error unfusing lego: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    get().closeLegPartitionDialog();
+    get().setUnfuseLego(null);
+  },
+
+  handleUnfuseToLegs: (lego: DroppedLego) => {
+    const { droppedLegos, connections, setLegosAndConnections, addOperation } =
+      get();
+
+    const {
+      connections: newConnections,
+      droppedLegos: newDroppedLegos,
+      operation
+    } = applyUnfuseToLegs(lego, droppedLegos, connections);
+
+    setLegosAndConnections(newDroppedLegos, newConnections);
+    addOperation(operation);
   }
 });

@@ -40,6 +40,8 @@ export interface PanelConfigSlice {
   // Z-index management for floating panels
   nextZIndex: number;
   bringPanelToFront: (panelId: string) => void;
+  showToolbar: boolean;
+  setShowToolbar: (showToolbar: boolean) => void;
 }
 
 export const createPanelConfigSlice: StateCreator<
@@ -48,6 +50,11 @@ export const createPanelConfigSlice: StateCreator<
   [],
   PanelConfigSlice
 > = (set) => ({
+  showToolbar: true,
+  setShowToolbar: (showToolbar: boolean) =>
+    set((state) => {
+      state.showToolbar = showToolbar;
+    }),
   // Static panel configurations
   buildingBlocksPanelConfig: new FloatingPanelConfigManager({
     id: "building-blocks",

@@ -37,7 +37,6 @@ import { useUserStore } from "./stores/userStore";
 import { checkSupabaseStatus } from "./lib/errors.ts";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
-import { useModalStore } from "./stores/modalStore";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
@@ -147,12 +146,10 @@ const LegoStudioView: React.FC = () => {
   // Use centralized TensorNetwork store
 
   // Use modal store for network dialogs
-  const {
-    openLoadingModal,
-    closeLoadingModal,
-    openAuthDialog,
-    openShareDialog
-  } = useModalStore();
+  const openLoadingModal = useCanvasStore((state) => state.openLoadingModal);
+  const closeLoadingModal = useCanvasStore((state) => state.closeLoadingModal);
+  const openAuthDialog = useCanvasStore((state) => state.openAuthDialog);
+  const openShareDialog = useCanvasStore((state) => state.openShareDialog);
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
 

@@ -10,7 +10,6 @@ import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore";
 import { AddStopper } from "../../transformations/AddStopper";
-import { useModalStore } from "../../stores/modalStore";
 import { InjectTwoLegged } from "../../transformations/InjectTwoLegged";
 import { useToast } from "@chakra-ui/react";
 import { DraggingStage } from "../../stores/legoDragState";
@@ -78,7 +77,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
   } = useBuildingBlockDragStateStore();
   const toast = useToast();
 
-  const { openCustomLegoDialog } = useModalStore();
+  const openCustomLegoDialog = useCanvasStore(
+    (state) => state.openCustomLegoDialog
+  );
 
   useEffect(() => {
     // Drag update handler

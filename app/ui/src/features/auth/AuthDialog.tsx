@@ -47,6 +47,7 @@ export default function AuthDialog({
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [retryingConnection, setRetryingConnection] = useState(false);
+  const linkColor = useColorModeValue("blue.500", "blue.300");
 
   useEffect(() => {
     if (!userContextSupabase) {
@@ -365,7 +366,7 @@ export default function AuthDialog({
                 <Link
                   href={termsOfServiceUrl}
                   isExternal
-                  color={useColorModeValue("blue.500", "blue.300")}
+                  color={linkColor}
                   display="inline-flex"
                   alignItems="center"
                   gap={1}
@@ -377,7 +378,7 @@ export default function AuthDialog({
                 <Link
                   href={privacyPolicyUrl}
                   isExternal
-                  color={useColorModeValue("blue.500", "blue.300")}
+                  color={linkColor}
                   display="inline-flex"
                   alignItems="center"
                   gap={1}

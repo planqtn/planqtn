@@ -4,7 +4,6 @@ import { useCanvasStore } from "../stores/canvasStateStore";
 import { config, getApiUrl } from "../config/config";
 import { getAccessToken } from "../features/auth/auth";
 import { getAxiosErrorMessage } from "./errors";
-import { useModalStore } from "../stores/modalStore";
 import { DroppedLego } from "../stores/droppedLegoStore";
 import { LogicalPoint } from "../types/coordinates";
 
@@ -41,7 +40,10 @@ export class NetworkService {
     matrix: number[][],
     networkType: string
   ) {
-    const { openLoadingModal, closeLoadingModal } = useModalStore.getState();
+    const openLoadingModal = useCanvasStore((state) => state.openLoadingModal);
+    const closeLoadingModal = useCanvasStore(
+      (state) => state.closeLoadingModal
+    );
     const { newInstanceId } = useCanvasStore.getState();
 
     try {
