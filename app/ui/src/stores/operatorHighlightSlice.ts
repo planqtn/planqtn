@@ -2,7 +2,6 @@ import { StateCreator } from "zustand";
 import { DroppedLego } from "./droppedLegoStore";
 import { PauliOperator } from "../lib/types";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
-import { useCallback } from "react";
 import { CanvasStore } from "./canvasStateStore";
 
 export interface OperatorHighlightSlice {
@@ -30,7 +29,7 @@ export const createOperatorHighlightSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   OperatorHighlightSlice
-> = (set, get) => ({
+> = (_, get) => ({
   handleSingleLegoMatrixRowSelection: (
     lego: DroppedLego,
     newSelectedRows: number[]

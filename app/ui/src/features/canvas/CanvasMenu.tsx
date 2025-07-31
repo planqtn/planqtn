@@ -98,7 +98,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
                 highlightedLegConstraints: []
               })
             );
-            useCanvasStore.getState().highlightCachedTensorNetworkLegs([]);
+            useCanvasStore.getState().clearAllHighlightedTensorNetworkLegs();
             setDroppedLegos(clearedLegos);
           }}
           disabled={

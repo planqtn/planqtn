@@ -19,7 +19,6 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
           canvasesPanelConfig: state.canvasesPanelConfig.toJSON(),
           taskPanelConfig: state.taskPanelConfig.toJSON(),
           subnetsPanelConfig: state.subnetsPanelConfig.toJSON(),
-          pcmPanelConfig: state.pcmPanelConfig.toJSON(),
           openPCMPanels: Object.fromEntries(
             Object.entries(state.openPCMPanels).map(([key, config]) => [
               key,
@@ -74,11 +73,7 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
             panelConfigs.subnetsPanelConfig
           );
         }
-        if (panelConfigs.pcmPanelConfig) {
-          state.pcmPanelConfig = FloatingPanelConfigManager.fromJSON(
-            panelConfigs.pcmPanelConfig
-          );
-        }
+
         if (panelConfigs.openPCMPanels) {
           state.openPCMPanels = Object.fromEntries(
             Object.entries(panelConfigs.openPCMPanels).map(([key, config]) => [
@@ -105,7 +100,6 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
           state.canvasesPanelConfig?.zIndex,
           state.taskPanelConfig?.zIndex,
           state.subnetsPanelConfig?.zIndex,
-          state.pcmPanelConfig?.zIndex,
           ...Object.values(state.openPCMPanels || {}).map(
             (config) => config.zIndex
           ),

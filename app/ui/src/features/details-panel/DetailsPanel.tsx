@@ -25,7 +25,7 @@ import { Operation } from "../canvas/OperationHistory.ts";
 
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { LegPartitionDialog } from "./LegPartitionDialog.tsx";
 import * as _ from "lodash";
 import {
@@ -120,8 +120,9 @@ const DetailsPanel: React.FC = () => {
   const cachedTensorNetworks = useCanvasStore(
     (state) => state.cachedTensorNetworks
   );
-  const cachedTensorNetwork =
-    tensorNetwork?.signature && cachedTensorNetworks[tensorNetwork.signature];
+  const cachedTensorNetwork = tensorNetwork?.signature
+    ? cachedTensorNetworks[tensorNetwork.signature]
+    : null;
 
   const [taskLogs, setTaskLogs] = useState<string>("");
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);

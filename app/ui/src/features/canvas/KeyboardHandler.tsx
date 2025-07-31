@@ -48,28 +48,37 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.preventDefault();
         redo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-        e.preventDefault();
-        if (tensorNetwork && tensorNetwork.legos.length > 0) {
-          try {
-            await copyToClipboard(tensorNetwork.legos, connections);
-            toast({
-              title: "Copied to clipboard",
-              description: "Network data has been copied",
-              status: "success",
-              duration: 2000,
-              isClosable: true
-            });
-          } catch (err) {
-            console.error("Failed to copy to clipboard:", err);
-            toast({
-              title: "Copy failed",
-              description: "Failed to copy network data (" + err + ")",
-              status: "error",
-              duration: 2000,
-              isClosable: true
-            });
+        // Check if there's text selection - if so, allow normal copy behavior
+        const selection = window.getSelection();
+        const hasTextSelection = selection
+          ? selection.toString().length > 0
+          : false;
+
+        if (!hasTextSelection) {
+          e.preventDefault();
+          if (tensorNetwork && tensorNetwork.legos.length > 0) {
+            try {
+              await copyToClipboard(tensorNetwork.legos, connections);
+              toast({
+                title: "Copied to clipboard",
+                description: "Network data has been copied",
+                status: "success",
+                duration: 2000,
+                isClosable: true
+              });
+            } catch (err) {
+              console.error("Failed to copy to clipboard:", err);
+              toast({
+                title: "Copy failed",
+                description: "Failed to copy network data (" + err + ")",
+                status: "error",
+                duration: 2000,
+                isClosable: true
+              });
+            }
           }
         }
+        // If text is selected, don't prevent default - let the browser handle normal copy
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
         e.preventDefault();
 

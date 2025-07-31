@@ -121,6 +121,7 @@ export interface TensorNetworkSlice {
     taskId: string,
     weightEnumerator: WeightEnumerator
   ) => void;
+  clearAllHighlightedTensorNetworkLegs: () => void;
   highlightCachedTensorNetworkLegs: (
     signature: string,
     selectedRows: number[]
@@ -415,13 +416,13 @@ export const useTensorNetworkSlice: StateCreator<
   },
 
   setTensorNetwork: (network: TensorNetwork | null) => {
-    console.log(
-      "setTensorNetwork",
-      network?.legos.map(
-        (lego) => lego.logicalPosition.x + "," + lego.logicalPosition.y
-      )
-    );
     set({ tensorNetwork: network });
+  },
+
+  clearAllHighlightedTensorNetworkLegs: () => {
+    set((state) => {
+      state.highlightedTensorNetworkLegs = {};
+    });
   },
 
   highlightCachedTensorNetworkLegs: (
