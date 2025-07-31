@@ -9,11 +9,20 @@ import {
   MenuItem,
   IconButton
 } from "@chakra-ui/react";
+
 import { FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
-import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FixedSizeList as List } from "react-window";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
+import { FiExternalLink } from "react-icons/fi";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import { TooltipPortal } from "@radix-ui/react-tooltip";
+import { usePanelConfigStore } from "@/stores/panelConfigStore.ts";
+import { SVG_COLORS } from "../../lib/PauliColors.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -26,6 +35,8 @@ interface ParityCheckMatrixDisplayProps {
   onRowSelectionChange?: (selectedRows: number[]) => void;
   onLegHover?: (leg: TensorNetworkLeg | null) => void;
   signature?: string;
+  isDisabled?: boolean;
+  popOut?: boolean;
 }
 
 interface PauliRowProps {
@@ -46,6 +57,7 @@ interface PauliRowProps {
   onLegHover?: (leg: TensorNetworkLeg | null) => void;
   setHoveredLegIndex: (index: number | null) => void;
   setHoveredRowIndex: (index: number | null) => void;
+  isDisabled?: boolean;
 }
 
 interface PauliCellProps {
@@ -64,15 +76,16 @@ const PauliCell = memo(function PauliCell({
   onRowClick,
   onHover,
   onUnhover,
-  index
-}: PauliCellProps) {
+  index,
+  isDisabled
+}: PauliCellProps & { isDisabled?: boolean }) {
   return (
     <span
       style={{
         color,
         background: "transparent",
         borderRadius: 3,
-        cursor: "pointer"
+        cursor: isDisabled ? "default" : "pointer"
       }}
       onMouseEnter={() => {
         if (onHover) {
@@ -86,7 +99,7 @@ const PauliCell = memo(function PauliCell({
       }}
       onClick={() => {
         // Let the click bubble up to the parent row
-        if (onRowClick) {
+        if (onRowClick && !isDisabled) {
           onRowClick();
         }
       }}
@@ -114,7 +127,8 @@ const PauliRow = function PauliRow({
   legOrdering,
   onLegHover,
   setHoveredLegIndex,
-  setHoveredRowIndex
+  setHoveredRowIndex,
+  isDisabled
 }: PauliRowProps) {
   const pauliString = getPauliString(row);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -138,7 +152,7 @@ const PauliRow = function PauliRow({
   return (
     <div
       key={rowIndex}
-      draggable
+      draggable={!isDisabled}
       onDragStart={(e) => handleDragStart(e, rowIndex)}
       onDragOver={handleDragOver}
       onDragEnter={(e) => {
@@ -160,7 +174,7 @@ const PauliRow = function PauliRow({
         display: "flex",
         alignItems: "center",
         gap: "8px",
-        cursor: "grab",
+        cursor: isDisabled ? "default" : "grab",
         backgroundColor: getBackgroundColor(),
         padding: "1px",
         borderRadius: "6px",
@@ -196,6 +210,7 @@ const PauliRow = function PauliRow({
               color={getPauliColor(pauli)}
               onRowClick={() => handleRowClick(rowIndex)}
               index={i}
+              isDisabled={isDisabled}
               onHover={(idx) => {
                 setHoveredLegIndex(idx);
                 setHoveredRowIndex(rowIndex);
@@ -227,7 +242,9 @@ export const ParityCheckMatrixDisplay: React.FC<
   selectedRows = [],
   onRowSelectionChange,
   onLegHover,
-  signature
+  signature,
+  isDisabled = false,
+  popOut = false
 }) => {
   const [draggedRowIndex] = useState<number | null>(null);
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
@@ -358,6 +375,10 @@ export const ParityCheckMatrixDisplay: React.FC<
   // Memoize drag/row handlers
   const handleDragStart = useCallback(
     (e: React.DragEvent, rowIndex: number) => {
+      if (isDisabled) {
+        e.preventDefault();
+        return;
+      }
       console.log("Drag start:", rowIndex);
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", rowIndex.toString());
@@ -368,7 +389,7 @@ export const ParityCheckMatrixDisplay: React.FC<
       // Don't update drag state to prevent re-renders during drag
       // setDraggedRowIndex(rowIndex);
     },
-    []
+    [isDisabled]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -526,6 +547,9 @@ export const ParityCheckMatrixDisplay: React.FC<
   // Memoize handleRowClick with minimal dependencies
   const handleRowClick = useCallback(
     (rowIndex: number) => {
+      if (isDisabled) {
+        return;
+      }
       const newSelection = effectiveSelectedRows.includes(rowIndex)
         ? effectiveSelectedRows.filter((i) => i !== rowIndex)
         : [...effectiveSelectedRows, rowIndex];
@@ -538,8 +562,10 @@ export const ParityCheckMatrixDisplay: React.FC<
         onRowSelectionChange(newSelection);
       }
     },
-    [onRowSelectionChange, effectiveSelectedRows]
+    [onRowSelectionChange, effectiveSelectedRows, isDisabled]
   );
+
+  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
 
   const isScalar = matrix.length === 1 && matrix[0].length === 1;
 
@@ -594,7 +620,8 @@ export const ParityCheckMatrixDisplay: React.FC<
     legOrdering,
     onLegHover,
     setHoveredLegIndex,
-    setHoveredRowIndex
+    setHoveredRowIndex,
+    isDisabled
   };
 
   // Add a key to force re-render when selection changes
@@ -602,31 +629,58 @@ export const ParityCheckMatrixDisplay: React.FC<
 
   return (
     <Box h="100%" w="100%" display="flex" flexDirection="column">
-      <HStack justify="space-between" mb={2}>
-        <Box
-          p={3}
-          borderBottom="1px"
-          borderColor="gray.200"
-          cursor="pointer"
-          onClick={() => {
-            if (signature) {
+      <HStack justify="space-between" mb={2} align="center">
+        <HStack align="left" spacing={0}>
+          {popOut && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  icon={<FiExternalLink />}
+                  aria-label="Pop out PCM panel"
+                  size="lg"
+                  variant="ghost"
+                  onClick={() => {
+                    if (signature) {
+                      openPCMPanel(signature, "PCM for " + title);
+                    }
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipPortal>
+                <TooltipContent
+                  className="bg-gray-900 text-white px-2 py-1 text-sm rounded high-z"
+                  sideOffset={5}
+                >
+                  Pop out PCM panel
+                </TooltipContent>
+              </TooltipPortal>
+            </Tooltip>
+          )}
+          <Box
+            p={3}
+            borderBottom="1px"
+            borderColor="gray.200"
+            cursor={isDisabled ? "default" : "pointer"}
+            onClick={() => {
+              if (isDisabled || !signature) return;
               const cachedTensorNetwork = getCachedTensorNetwork(signature);
               if (cachedTensorNetwork) {
                 setTensorNetwork(cachedTensorNetwork.tensorNetwork);
                 focusOnTensorNetwork();
               }
-            }
-          }}
-        >
-          <Text fontWeight="bold" fontSize="sm">
-            [[{numLegs}, {numLegs - n_stabilizers}]]{" "}
-            {matrix.every(isCSS) ? "CSS" : "non-CSS"} stabilizer{" "}
-            {numLegs - n_stabilizers > 0 ? " subspace" : " state"}
-          </Text>
-          <Text fontSize="xs" color="gray.500">
-            {title}
-          </Text>
-        </Box>
+            }}
+          >
+            <Text fontWeight="bold" fontSize="sm">
+              [[{numLegs}, {numLegs - n_stabilizers}]]{" "}
+              {matrix.every(isCSS) ? "CSS" : "non-CSS"} stabilizer{" "}
+              {numLegs - n_stabilizers > 0 ? " subspace" : " state"}
+              {isDisabled && " (inactive)"}
+            </Text>
+            <Text fontSize="xs" color="gray.500">
+              {title}
+            </Text>
+          </Box>
+        </HStack>
 
         <Menu>
           <MenuButton
@@ -639,23 +693,31 @@ export const ParityCheckMatrixDisplay: React.FC<
           <MenuList>
             <MenuItem
               onClick={handleUndo}
-              isDisabled={currentHistoryIndex <= 0}
+              isDisabled={isDisabled || currentHistoryIndex <= 0}
             >
               Undo
             </MenuItem>
             <MenuItem
               onClick={handleRedo}
-              isDisabled={currentHistoryIndex >= matrixHistory.length - 1}
+              isDisabled={
+                isDisabled || currentHistoryIndex >= matrixHistory.length - 1
+              }
             >
               Redo
             </MenuItem>
             {onRecalculate && (
-              <MenuItem onClick={onRecalculate}>Recalculate</MenuItem>
+              <MenuItem onClick={onRecalculate} isDisabled={isDisabled}>
+                Recalculate
+              </MenuItem>
             )}
             {matrix.every(isCSS) && (
-              <MenuItem onClick={handleCSSSort}>CSS-sort</MenuItem>
+              <MenuItem onClick={handleCSSSort} isDisabled={isDisabled}>
+                CSS-sort
+              </MenuItem>
             )}
-            <MenuItem onClick={handleWeightSort}>Sort by weight</MenuItem>
+            <MenuItem onClick={handleWeightSort} isDisabled={isDisabled}>
+              Sort by weight
+            </MenuItem>
             {/* TODO: Re-enable this when we have a way to re-order legs */}
             {/* {legOrdering && onLegOrderingChange && (
               <MenuItem onClick={() => setIsLegReorderDialogOpen(true)}>

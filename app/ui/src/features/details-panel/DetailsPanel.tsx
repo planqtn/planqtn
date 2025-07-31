@@ -62,7 +62,6 @@ import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay.tsx";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
-import { simpleAutoFlow } from "../../transformations/AutoPauliFlow.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "@/stores/userStore.ts";
@@ -92,20 +91,15 @@ const DetailsPanel: React.FC = () => {
     (state) => state.listWeightEnumerators
   );
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
-  const setParityCheckMatrix = useCanvasStore(
-    (state) => state.setParityCheckMatrix
-  );
-  const getParityCheckMatrix = useCanvasStore(
-    (state) => state.getParityCheckMatrix
-  );
+
   const parityCheckMatrix = useCanvasStore((state) => {
     if (!state.tensorNetwork) return null;
     return state.parityCheckMatrices[state.tensorNetwork.signature] || null;
   });
 
   const setError = useCanvasStore((state) => state.setError);
-  const highlightTensorNetworkLegs = useCanvasStore(
-    (state) => state.highlightTensorNetworkLegs
+  const highlightCachedTensorNetworkLegs = useCanvasStore(
+    (state) => state.highlightCachedTensorNetworkLegs
   );
 
   const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
@@ -123,6 +117,11 @@ const DetailsPanel: React.FC = () => {
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
   const [unfuseLego, setUnfuseLego] = useState<DroppedLego | null>(null);
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
+  const cachedTensorNetwork =
+    tensorNetwork?.signature && cachedTensorNetworks[tensorNetwork.signature];
 
   const [taskLogs, setTaskLogs] = useState<string>("");
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -414,6 +413,10 @@ const DetailsPanel: React.FC = () => {
     (state) => state.handleSingleLegoMatrixChange
   );
 
+  const handleMultiLegoMatrixChange = useCanvasStore(
+    (state) => state.handleMultiLegoMatrixChange
+  );
+
   const handleMatrixRowSelection = useCallback(
     (newSelectedRows: number[]) => {
       if (!tensorNetwork) return;
@@ -422,12 +425,15 @@ const DetailsPanel: React.FC = () => {
         const lego = tensorNetwork.legos[0];
         handleSingleLegoMatrixRowSelection(lego, newSelectedRows);
       } else {
-        highlightTensorNetworkLegs(newSelectedRows);
+        highlightCachedTensorNetworkLegs(
+          tensorNetwork.signature,
+          newSelectedRows
+        );
       }
     },
     [
       tensorNetwork,
-      highlightTensorNetworkLegs,
+      highlightCachedTensorNetworkLegs,
       handleSingleLegoMatrixRowSelection
     ]
   );
@@ -439,23 +445,6 @@ const DetailsPanel: React.FC = () => {
       handleSingleLegoMatrixChange(lego, newMatrix);
     },
     [tensorNetwork, handleSingleLegoMatrixChange]
-  );
-
-  // Memoized callbacks for ParityCheckMatrixDisplay
-  const handleMultiLegoMatrixChange = useCallback(
-    (newMatrix: number[][]) => {
-      if (!tensorNetwork) return;
-
-      const pcm = getParityCheckMatrix(tensorNetwork.signature)!;
-
-      // Update the cache
-      const signature = tensorNetwork.signature!;
-      setParityCheckMatrix(signature, {
-        matrix: newMatrix,
-        legOrdering: pcm.legOrdering
-      });
-    },
-    [tensorNetwork, setParityCheckMatrix]
   );
 
   // Memoized leg ordering for single lego
@@ -1280,13 +1269,27 @@ const DetailsPanel: React.FC = () => {
                   </Button>
                 </>
               )}
-              <ParityCheckMatrixDisplay
-                matrix={tensorNetwork.legos[0].parity_check_matrix}
-                legOrdering={singleLegoLegOrdering}
-                selectedRows={legoSelectedRows}
-                onRowSelectionChange={handleMatrixRowSelection}
-                onMatrixChange={handleLegoMatrixChange}
-              />
+              <Box
+                p={4}
+                borderWidth={1}
+                borderRadius="lg"
+                bg={bgColor}
+                w="100%"
+                h="300px"
+              >
+                <ParityCheckMatrixDisplay
+                  matrix={tensorNetwork.legos[0].parity_check_matrix}
+                  legOrdering={singleLegoLegOrdering}
+                  selectedRows={legoSelectedRows}
+                  onRowSelectionChange={handleMatrixRowSelection}
+                  onMatrixChange={handleLegoMatrixChange}
+                  title={
+                    tensorNetwork.legos[0].name ||
+                    tensorNetwork.legos[0].short_name
+                  }
+                  popOut={true}
+                />
+              </Box>
             </VStack>
           </>
         ) : tensorNetwork && tensorNetwork.legos.length > 1 ? (
@@ -1371,19 +1374,38 @@ const DetailsPanel: React.FC = () => {
                     </Button>
                   )}
                   {parityCheckMatrix && (
-                    <ParityCheckMatrixDisplay
-                      matrix={parityCheckMatrix.matrix}
-                      title="Pauli stabilizers"
-                      legOrdering={parityCheckMatrix.legOrdering}
-                      onMatrixChange={handleMultiLegoMatrixChange}
-                      onRecalculate={handleCalculateParityCheckMatrix}
-                      onRowSelectionChange={handleMatrixRowSelection}
-                      selectedRows={
-                        selectedTensorNetworkParityCheckMatrixRows[
-                          tensorNetwork.signature
-                        ] || []
-                      }
-                    />
+                    <Box
+                      p={4}
+                      borderWidth={1}
+                      borderRadius="lg"
+                      bg={bgColor}
+                      w="100%"
+                      h="300px"
+                    >
+                      <ParityCheckMatrixDisplay
+                        matrix={parityCheckMatrix.matrix}
+                        title={
+                          cachedTensorNetwork?.name ||
+                          tensorNetwork.legos.length + " legos"
+                        }
+                        legOrdering={parityCheckMatrix.legOrdering}
+                        onMatrixChange={(newMatrix) => {
+                          handleMultiLegoMatrixChange(
+                            tensorNetwork.signature,
+                            newMatrix
+                          );
+                        }}
+                        onRecalculate={handleCalculateParityCheckMatrix}
+                        onRowSelectionChange={handleMatrixRowSelection}
+                        selectedRows={
+                          selectedTensorNetworkParityCheckMatrixRows[
+                            tensorNetwork.signature
+                          ] || []
+                        }
+                        signature={tensorNetwork.signature}
+                        popOut={true}
+                      />
+                    </Box>
                   )}
                 </VStack>
               </VStack>
@@ -1526,4 +1548,4 @@ const DetailsPanel: React.FC = () => {
   );
 };
 
-export default memo(DetailsPanel);
+export default DetailsPanel;

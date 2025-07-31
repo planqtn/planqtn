@@ -290,12 +290,6 @@ export const createPanelConfigSlice: StateCreator<
           zIndex: nextZ
         });
         state.subnetsPanelConfig = newConfig;
-      } else if (state.pcmPanelConfig.id === panelId) {
-        const newConfig = new FloatingPanelConfigManager({
-          ...state.pcmPanelConfig.toJSON(),
-          zIndex: nextZ
-        });
-        state.pcmPanelConfig = newConfig;
       } else if (state.openPCMPanels[panelId]) {
         // Handle PCM panels with dynamic IDs
         const newConfig = new FloatingPanelConfigManager({

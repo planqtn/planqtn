@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { usePanelConfigStore } from "../stores/panelConfigStore";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { FloatingPanelConfigManager } from "../features/floating-panel/FloatingPanelConfig";
@@ -165,7 +165,12 @@ const PCMPanelWrapper: React.FC<{
 }> = ({ networkSignature, config }) => {
   const updatePCMPanel = usePanelConfigStore((state) => state.updatePCMPanel);
   const removePCMPanel = usePanelConfigStore((state) => state.removePCMPanel);
-
+  const parityCheckMatrices = useCanvasStore(
+    (state) => state.parityCheckMatrices
+  );
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
   return (
     <FloatingPCMPanel
       config={config}
@@ -174,12 +179,9 @@ const PCMPanelWrapper: React.FC<{
       }
       onClose={() => removePCMPanel(networkSignature)}
       networkSignature={networkSignature}
-      parityCheckMatrix={
-        useCanvasStore.getState().parityCheckMatrices[networkSignature]!
-      }
+      parityCheckMatrix={parityCheckMatrices[networkSignature]!}
       networkName={
-        useCanvasStore.getState().cachedTensorNetworks[networkSignature]
-          ?.name || "Unknown Network"
+        cachedTensorNetworks[networkSignature]?.name || "Unknown Network"
       }
     />
   );
@@ -229,6 +231,45 @@ const SingleLegoPCMPanelWrapper: React.FC<{
 };
 
 const FloatingPanelHandler: React.FC = () => {
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
+  const openPCMPanels = usePanelConfigStore((state) => state.openPCMPanels);
+  const openSingleLegoPCMPanels = usePanelConfigStore(
+    (state) => state.openSingleLegoPCMPanels
+  );
+  const removePCMPanel = usePanelConfigStore((state) => state.removePCMPanel);
+  const removeSingleLegoPCMPanel = usePanelConfigStore(
+    (state) => state.removeSingleLegoPCMPanel
+  );
+
+  // Clean up PCM panels when tensor networks are removed
+  useEffect(() => {
+    const availableNetworkSignatures = Object.keys(cachedTensorNetworks);
+
+    // Close PCM panels for networks that no longer exist
+    Object.keys(openPCMPanels).forEach((networkSignature) => {
+      if (!availableNetworkSignatures.includes(networkSignature)) {
+        removePCMPanel(networkSignature);
+      }
+    });
+  }, [cachedTensorNetworks, openPCMPanels, removePCMPanel]);
+
+  // Clean up single lego PCM panels when legos are removed
+  useEffect(() => {
+    const availableLegoInstanceIds = droppedLegos.map(
+      (lego) => lego.instance_id
+    );
+
+    // Close PCM panels for legos that no longer exist
+    Object.keys(openSingleLegoPCMPanels).forEach((legoInstanceId) => {
+      if (!availableLegoInstanceIds.includes(legoInstanceId)) {
+        removeSingleLegoPCMPanel(legoInstanceId);
+      }
+    });
+  }, [droppedLegos, openSingleLegoPCMPanels, removeSingleLegoPCMPanel]);
+
   return (
     <>
       <TaskPanelWrapper />

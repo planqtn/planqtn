@@ -2,6 +2,8 @@ import { StateCreator } from "zustand";
 import { DroppedLego } from "./droppedLegoStore";
 import { PauliOperator } from "../lib/types";
 import { simpleAutoFlow } from "../transformations/AutoPauliFlow";
+import { useCallback } from "react";
+import { CanvasStore } from "./canvasStateStore";
 
 export interface OperatorHighlightSlice {
   // Single lego matrix operations
@@ -17,10 +19,14 @@ export interface OperatorHighlightSlice {
     matrix: number[][],
     selectedRows: number[]
   ) => { legIndex: number; operator: PauliOperator }[];
+  handleMultiLegoMatrixChange: (
+    signature: string,
+    newMatrix: number[][]
+  ) => void;
 }
 
 export const createOperatorHighlightSlice: StateCreator<
-  any,
+  CanvasStore,
   [["zustand/immer", never]],
   [],
   OperatorHighlightSlice
@@ -116,5 +122,16 @@ export const createOperatorHighlightSlice: StateCreator<
     }
 
     return highlightedLegConstraints;
+  },
+
+  // Memoized callbacks for ParityCheckMatrixDisplay
+  handleMultiLegoMatrixChange: (signature: string, newMatrix: number[][]) => {
+    const pcm = get().parityCheckMatrices[signature];
+    if (!pcm) return;
+
+    get().setParityCheckMatrix(signature, {
+      matrix: newMatrix,
+      legOrdering: pcm.legOrdering
+    });
   }
 });

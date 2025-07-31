@@ -121,7 +121,10 @@ export interface TensorNetworkSlice {
     taskId: string,
     weightEnumerator: WeightEnumerator
   ) => void;
-  highlightTensorNetworkLegs: (selectedRows: number[]) => void;
+  highlightCachedTensorNetworkLegs: (
+    signature: string,
+    selectedRows: number[]
+  ) => void;
 
   /* Getters / Accessors */
 
@@ -421,9 +424,13 @@ export const useTensorNetworkSlice: StateCreator<
     set({ tensorNetwork: network });
   },
 
-  highlightTensorNetworkLegs: (selectedRows: number[]) => {
-    const tensorNetwork = get().tensorNetwork;
-    if (!tensorNetwork) return;
+  highlightCachedTensorNetworkLegs: (
+    signature: string,
+    selectedRows: number[]
+  ) => {
+    const cachedTensorNetwork = get().getCachedTensorNetwork(signature);
+    if (!cachedTensorNetwork) return;
+    const tensorNetwork = cachedTensorNetwork.tensorNetwork;
 
     let updatedDroppedLegos: DroppedLego[] = [];
 

@@ -235,7 +235,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
 
   const handleOpenPCMPanel = (node: PCMNode, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click
-    openPCMPanel(node.signature, node.name);
+
+    openPCMPanel(node.signature, cachedTensorNetworks[node.signature].name);
   };
 
   const handleUncacheClick = (node: TensorNetworkNode, e: React.MouseEvent) => {
@@ -406,7 +407,6 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
       if (node.nodeContentType === "pcm") {
         // For PCM nodes, open the PCM panel
         handleOpenPCMPanel(node as PCMNode, e as React.MouseEvent);
-        handleNetworkClick((node as PCMNode).signature);
       } else if (node.nodeContentType === "tensorNetwork") {
         // For tensor network nodes, toggle expansion if they have children if the node is selected
         if (hasChildren && isCurrentNetwork) {
