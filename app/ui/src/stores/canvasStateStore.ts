@@ -39,6 +39,10 @@ import {
   createCanvasEventHandlingSlice
 } from "./canvasEventHandlingSlice";
 import { createCanvasUISlice, CanvasUISlice } from "./canvasUISlice";
+import {
+  OperatorHighlightSlice,
+  createOperatorHighlightSlice
+} from "./operatorHighlightSlice";
 import { persist } from "zustand/middleware";
 
 // Helper function to get canvasId from URL
@@ -77,7 +81,8 @@ export interface CanvasStore
     LegDragStateSlice,
     LegoLegPropertiesSlice,
     CanvasEventHandlingSlice,
-    CanvasUISlice {}
+    CanvasUISlice,
+    OperatorHighlightSlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -151,7 +156,8 @@ export const useCanvasStore = create<CanvasStore>()(
       ...useLegDragStateStore(...a),
       ...createLegoLegPropertiesSlice(...a),
       ...createCanvasEventHandlingSlice(...a),
-      ...createCanvasUISlice(...a)
+      ...createCanvasUISlice(...a),
+      ...createOperatorHighlightSlice(...a)
     })),
     {
       name: `canvas-state-${getCanvasIdFromUrl()}`,

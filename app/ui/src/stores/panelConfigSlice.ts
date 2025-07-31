@@ -13,21 +13,29 @@ export interface PanelConfigSlice {
   setTaskPanelConfig: (config: FloatingPanelConfigManager) => void;
   subnetsPanelConfig: FloatingPanelConfigManager;
   setSubnetsPanelConfig: (config: FloatingPanelConfigManager) => void;
-  pcmPanelConfig: FloatingPanelConfigManager;
-  setPCMPanelConfig: (config: FloatingPanelConfigManager) => void;
 
   // PCM panel state
   openPCMPanels: Record<string, FloatingPanelConfigManager>;
-  addPCMPanel: (
-    networkSignature: string,
-    config: FloatingPanelConfigManager
-  ) => void;
+
   removePCMPanel: (networkSignature: string) => void;
   updatePCMPanel: (
     networkSignature: string,
     config: FloatingPanelConfigManager
   ) => void;
   openPCMPanel: (networkSignature: string, networkName: string) => void;
+
+  // Single lego PCM panel state
+  openSingleLegoPCMPanels: Record<string, FloatingPanelConfigManager>;
+  addSingleLegoPCMPanel: (
+    legoInstanceId: string,
+    config: FloatingPanelConfigManager
+  ) => void;
+  removeSingleLegoPCMPanel: (legoInstanceId: string) => void;
+  updateSingleLegoPCMPanel: (
+    legoInstanceId: string,
+    config: FloatingPanelConfigManager
+  ) => void;
+  openSingleLegoPCMPanel: (legoInstanceId: string, legoName: string) => void;
 
   // Z-index management for floating panels
   nextZIndex: number;
@@ -136,31 +144,9 @@ export const createPanelConfigSlice: StateCreator<
     set((state) => {
       state.subnetsPanelConfig = config;
     }),
-  pcmPanelConfig: new FloatingPanelConfigManager({
-    id: "pcm",
-    title: "Parity Check Matrix",
-    isOpen: false,
-    isCollapsed: false,
-    layout: {
-      position: { x: 200, y: 200 },
-      size: { width: 500, height: 600 }
-    },
-    minWidth: 300,
-    minHeight: 400,
-    defaultWidth: 500,
-    defaultHeight: 600,
-    zIndex: 1005
-  }),
-  setPCMPanelConfig: (config) =>
-    set((state) => {
-      state.pcmPanelConfig = config;
-    }),
+
   openPCMPanels: {},
-  addPCMPanel: (networkSignature: string, config: FloatingPanelConfigManager) =>
-    set((state) => {
-      state.openPCMPanels[networkSignature] = config;
-      state.nextZIndex++;
-    }),
+
   removePCMPanel: (networkSignature: string) =>
     set((state) => {
       delete state.openPCMPanels[networkSignature];
@@ -197,16 +183,74 @@ export const createPanelConfigSlice: StateCreator<
             x: 200 + Math.random() * 100,
             y: 200 + Math.random() * 100
           },
-          size: { width: 500, height: 600 }
+          size: { width: 200, height: 300 }
         },
-        minWidth: 300,
-        minHeight: 400,
-        defaultWidth: 500,
-        defaultHeight: 600,
+        minWidth: 200,
+        minHeight: 300,
+        defaultWidth: 200,
+        defaultHeight: 300,
         zIndex: state.nextZIndex++
       });
 
       state.openPCMPanels[networkSignature] = config;
+    }),
+
+  // Single lego PCM panel state
+  openSingleLegoPCMPanels: {},
+  addSingleLegoPCMPanel: (
+    legoInstanceId: string,
+    config: FloatingPanelConfigManager
+  ) =>
+    set((state) => {
+      state.openSingleLegoPCMPanels[legoInstanceId] = config;
+      state.nextZIndex++;
+    }),
+  removeSingleLegoPCMPanel: (legoInstanceId: string) =>
+    set((state) => {
+      delete state.openSingleLegoPCMPanels[legoInstanceId];
+    }),
+  updateSingleLegoPCMPanel: (
+    legoInstanceId: string,
+    config: FloatingPanelConfigManager
+  ) =>
+    set((state) => {
+      state.openSingleLegoPCMPanels[legoInstanceId] = config;
+    }),
+  openSingleLegoPCMPanel: (legoInstanceId: string, legoName: string) =>
+    set((state) => {
+      // Check if PCM panel is already open for this lego instance
+      if (state.openSingleLegoPCMPanels[legoInstanceId]) {
+        // Panel is already open, just bring it to front
+        const nextZ = state.nextZIndex++;
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.openSingleLegoPCMPanels[legoInstanceId].toJSON(),
+          zIndex: nextZ
+        });
+        state.openSingleLegoPCMPanels[legoInstanceId] = newConfig;
+        return;
+      }
+
+      // Create new single lego PCM panel configuration
+      const config = new FloatingPanelConfigManager({
+        id: `pcm-lego-${legoInstanceId}`,
+        title: `PCM - ${legoName}`,
+        isOpen: true,
+        isCollapsed: false,
+        layout: {
+          position: {
+            x: 200 + Math.random() * 100,
+            y: 200 + Math.random() * 100
+          },
+          size: { width: 200, height: 300 }
+        },
+        minWidth: 200,
+        minHeight: 300,
+        defaultWidth: 200,
+        defaultHeight: 300,
+        zIndex: state.nextZIndex++
+      });
+
+      state.openSingleLegoPCMPanels[legoInstanceId] = config;
     }),
 
   // Z-index management for floating panels
@@ -259,6 +303,13 @@ export const createPanelConfigSlice: StateCreator<
           zIndex: nextZ
         });
         state.openPCMPanels[panelId] = newConfig;
+      } else if (state.openSingleLegoPCMPanels[panelId]) {
+        // Handle single lego PCM panels with dynamic IDs
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.openSingleLegoPCMPanels[panelId].toJSON(),
+          zIndex: nextZ
+        });
+        state.openSingleLegoPCMPanels[panelId] = newConfig;
       } else {
         // Check if it's a PCM panel with a different ID format (e.g., "pcm-networkSignature")
         const pcmKey = Object.keys(state.openPCMPanels).find(
@@ -270,6 +321,18 @@ export const createPanelConfigSlice: StateCreator<
             zIndex: nextZ
           });
           state.openPCMPanels[pcmKey] = newConfig;
+        } else {
+          // Check if it's a single lego PCM panel with a different ID format (e.g., "pcm-lego-legoInstanceId")
+          const singleLegoPcmKey = Object.keys(
+            state.openSingleLegoPCMPanels
+          ).find((key) => state.openSingleLegoPCMPanels[key].id === panelId);
+          if (singleLegoPcmKey) {
+            const newConfig = new FloatingPanelConfigManager({
+              ...state.openSingleLegoPCMPanels[singleLegoPcmKey].toJSON(),
+              zIndex: nextZ
+            });
+            state.openSingleLegoPCMPanels[singleLegoPcmKey] = newConfig;
+          }
         }
       }
     });

@@ -41,16 +41,16 @@ export class FloatingPanelConfigManager {
     return this.config.layout;
   }
   get minWidth(): number {
-    return this.config.minWidth || 200;
+    return this.config.minWidth || 100;
   }
   get minHeight(): number {
-    return this.config.minHeight || 300;
+    return this.config.minHeight || 100;
   }
   get defaultWidth(): number {
-    return this.config.defaultWidth || 350;
+    return this.config.defaultWidth || 100;
   }
   get defaultHeight(): number {
-    return this.config.defaultHeight || 600;
+    return this.config.defaultHeight || 100;
   }
   get defaultPosition(): { x: number; y: number } {
     return this.config.defaultPosition || { x: 100, y: 100 };

@@ -218,10 +218,6 @@ export const useTensorNetworkSlice: StateCreator<
           )
         )
       );
-      console.log(
-        "changedTensorNetworks",
-        changedTensorNetworks.map((t) => t.tensorNetwork.signature)
-      );
 
       const canvasConns = get().connections;
       for (const cachedTensorNetwork of changedTensorNetworks) {

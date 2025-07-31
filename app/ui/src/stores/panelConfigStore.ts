@@ -26,6 +26,11 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
               config.toJSON()
             ])
           ),
+          openSingleLegoPCMPanels: Object.fromEntries(
+            Object.entries(state.openSingleLegoPCMPanels).map(
+              ([key, config]) => [key, config.toJSON()]
+            )
+          ),
           nextZIndex: state.nextZIndex
         };
       },
@@ -41,6 +46,7 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
           subnetsPanelConfig?: any;
           pcmPanelConfig?: any;
           openPCMPanels?: Record<string, any>;
+          openSingleLegoPCMPanels?: Record<string, any>;
         };
 
         if (panelConfigs.buildingBlocksPanelConfig) {
@@ -81,6 +87,16 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
             ])
           );
         }
+        if (panelConfigs.openSingleLegoPCMPanels) {
+          state.openSingleLegoPCMPanels = Object.fromEntries(
+            Object.entries(panelConfigs.openSingleLegoPCMPanels).map(
+              ([key, config]) => [
+                key,
+                FloatingPanelConfigManager.fromJSON(config)
+              ]
+            )
+          );
+        }
 
         // Ensure nextZIndex is higher than the highest panel z-index
         const panelZIndices = [
@@ -91,6 +107,9 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
           state.subnetsPanelConfig?.zIndex,
           state.pcmPanelConfig?.zIndex,
           ...Object.values(state.openPCMPanels || {}).map(
+            (config) => config.zIndex
+          ),
+          ...Object.values(state.openSingleLegoPCMPanels || {}).map(
             (config) => config.zIndex
           )
         ].filter((zIndex): zIndex is number => zIndex !== undefined);

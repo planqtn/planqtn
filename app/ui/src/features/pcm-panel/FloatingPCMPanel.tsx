@@ -11,6 +11,8 @@ interface FloatingPCMPanelProps {
   networkSignature: string;
   parityCheckMatrix: ParityCheckMatrix;
   networkName: string;
+  isSingleLego?: boolean;
+  singleLegoInstanceId?: string;
 }
 
 const FloatingPCMPanel: React.FC<FloatingPCMPanelProps> = ({
@@ -19,7 +21,9 @@ const FloatingPCMPanel: React.FC<FloatingPCMPanelProps> = ({
   onClose,
   networkSignature,
   parityCheckMatrix,
-  networkName
+  networkName,
+  isSingleLego = false,
+  singleLegoInstanceId
 }) => {
   return (
     <FloatingPanelWrapper
@@ -34,6 +38,8 @@ const FloatingPCMPanel: React.FC<FloatingPCMPanelProps> = ({
         networkSignature={networkSignature}
         parityCheckMatrix={parityCheckMatrix}
         networkName={networkName}
+        isSingleLego={isSingleLego}
+        singleLegoInstanceId={singleLegoInstanceId}
       />
     </FloatingPanelWrapper>
   );

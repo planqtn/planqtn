@@ -16,6 +16,9 @@ export const SubnetToolbarOverlay: React.FC = () => {
     (state) => state.calculateParityCheckMatrix
   );
   const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
+  const openSingleLegoPCMPanel = usePanelConfigStore(
+    (state) => state.openSingleLegoPCMPanel
+  );
 
   // Calculate bounding box for the current tensor network
   const tnBoundingBoxLogical =
@@ -44,10 +47,20 @@ export const SubnetToolbarOverlay: React.FC = () => {
   };
 
   const handleParityCheckMatrix = async () => {
-    await calculateParityCheckMatrix((networkSignature, networkName) => {
-      // Open PCM panel after successful calculation
-      openPCMPanel(networkSignature, networkName);
-    });
+    if (tensorNetwork?.isSingleLego) {
+      // For single legos, open the PCM panel directly with the lego's matrix
+      const singleLego = tensorNetwork.singleLego;
+      openSingleLegoPCMPanel(
+        singleLego.instance_id,
+        singleLego.short_name || singleLego.name
+      );
+    } else {
+      // For multi-lego networks, calculate the parity check matrix and open the panel
+      await calculateParityCheckMatrix((networkSignature, networkName) => {
+        // Open PCM panel after successful calculation
+        openPCMPanel(networkSignature, networkName);
+      });
+    }
   };
 
   const handleChangeColor = () => {

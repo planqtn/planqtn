@@ -116,6 +116,9 @@ const DetailsPanel: React.FC = () => {
     (state) => state.calculateParityCheckMatrix
   );
   const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
+  const openSingleLegoPCMPanel = usePanelConfigStore(
+    (state) => state.openSingleLegoPCMPanel
+  );
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [showLegPartitionDialog, setShowLegPartitionDialog] = useState(false);
@@ -146,10 +149,20 @@ const DetailsPanel: React.FC = () => {
   const legoSelectedRows = lego ? lego.selectedMatrixRows : [];
 
   const handleCalculateParityCheckMatrix = async () => {
-    await calculateParityCheckMatrix((networkSignature, networkName) => {
-      // Open PCM panel after successful calculation
-      openPCMPanel(networkSignature, networkName);
-    });
+    if (tensorNetwork?.isSingleLego) {
+      // For single legos, open the PCM panel directly with the lego's matrix
+      const singleLego = tensorNetwork.singleLego;
+      openSingleLegoPCMPanel(
+        singleLego.instance_id,
+        singleLego.short_name || singleLego.name
+      );
+    } else {
+      // For multi-lego networks, calculate the parity check matrix and open the panel
+      await calculateParityCheckMatrix((networkSignature, networkName) => {
+        // Open PCM panel after successful calculation
+        openPCMPanel(networkSignature, networkName);
+      });
+    }
   };
 
   const subscribeToTaskUpdates = (taskId: string) => {
@@ -394,57 +407,38 @@ const DetailsPanel: React.FC = () => {
     )
   ]);
 
+  const handleSingleLegoMatrixRowSelection = useCanvasStore(
+    (state) => state.handleSingleLegoMatrixRowSelection
+  );
+  const handleSingleLegoMatrixChange = useCanvasStore(
+    (state) => state.handleSingleLegoMatrixChange
+  );
+
   const handleMatrixRowSelection = useCallback(
     (newSelectedRows: number[]) => {
       if (!tensorNetwork) return;
 
       if (tensorNetwork.legos.length == 1) {
         const lego = tensorNetwork.legos[0];
-        const updatedLego = new DroppedLego(
-          lego,
-          lego.logicalPosition,
-          lego.instance_id,
-          { selectedMatrixRows: newSelectedRows }
-        );
-
-        updateDroppedLego(updatedLego.instance_id, updatedLego);
-
-        simpleAutoFlow(
-          updatedLego,
-          droppedLegos.map((lego) =>
-            lego.instance_id === updatedLego.instance_id ? updatedLego : lego
-          ),
-          connections,
-          setDroppedLegos
-        );
+        handleSingleLegoMatrixRowSelection(lego, newSelectedRows);
       } else {
         highlightTensorNetworkLegs(newSelectedRows);
       }
     },
-    [tensorNetwork, droppedLegos, connections, updateDroppedLego]
+    [
+      tensorNetwork,
+      highlightTensorNetworkLegs,
+      handleSingleLegoMatrixRowSelection
+    ]
   );
 
   const handleLegoMatrixChange = useCallback(
     (newMatrix: number[][]) => {
       if (!tensorNetwork) return;
       const lego = tensorNetwork.legos[0];
-      const updatedLego = new DroppedLego(
-        lego,
-        lego.logicalPosition,
-        lego.instance_id,
-        { parity_check_matrix: newMatrix }
-      );
-      updateDroppedLego(updatedLego.instance_id, updatedLego);
-      simpleAutoFlow(
-        updatedLego,
-        droppedLegos.map((lego) =>
-          lego.instance_id === updatedLego.instance_id ? updatedLego : lego
-        ),
-        connections,
-        setDroppedLegos
-      );
+      handleSingleLegoMatrixChange(lego, newMatrix);
     },
-    [tensorNetwork, setTensorNetwork]
+    [tensorNetwork, handleSingleLegoMatrixChange]
   );
 
   // Memoized callbacks for ParityCheckMatrixDisplay
