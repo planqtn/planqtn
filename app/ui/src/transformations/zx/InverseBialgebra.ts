@@ -25,15 +25,18 @@ export function canDoInverseBialgebra(
     return false;
   }
 
-  // Check if partitions are fully connected
+  // Check if partitions are fully connected via odd number of connections
   for (const zLego of zLegos) {
     for (const xLego of xLegos) {
-      const hasConnection = connections.some(
-        (conn) =>
-          conn.containsLego(zLego.instance_id) &&
-          conn.containsLego(xLego.instance_id)
-      );
-      if (!hasConnection) return false;
+      const hasOddNumberOfConnections =
+        connections.filter(
+          (conn) =>
+            conn.containsLego(zLego.instance_id) &&
+            conn.containsLego(xLego.instance_id)
+        ).length %
+          2 ===
+        1;
+      if (!hasOddNumberOfConnections) return false;
     }
   }
 
