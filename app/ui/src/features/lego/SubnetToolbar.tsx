@@ -24,6 +24,8 @@ import { canDoInverseBialgebra } from "@/transformations/zx/InverseBialgebra";
 import { canDoHopfRule } from "@/transformations/zx/Hopf";
 import { canUnfuseInto2Legos } from "@/transformations/zx/UnfuseIntoTwoLegos";
 import { canUnfuseToLegs } from "@/transformations/zx/UnfuseToLegs";
+import { canDoCompleteGraphViaHadamards } from "@/transformations/graph-states/CompleteGraphViaHadamards";
+import { canDoConnectGraphNodes } from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego";
 
 interface SubnetToolbarProps {
   boundingBox: BoundingBox;
@@ -33,8 +35,6 @@ interface SubnetToolbarProps {
   onExpand?: () => void;
   onWeightEnumerator?: () => void;
   onParityCheckMatrix?: () => void;
-  onCompleteGraph?: () => void;
-  onConnectViaCentral?: () => void;
   onRemoveFromCache?: () => void;
   onRemoveHighlights?: () => void;
   isUserLoggedIn?: boolean;
@@ -89,27 +89,23 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   onToggleLock,
   onCollapse,
   onExpand,
-  onWeightEnumerator,
   onParityCheckMatrix,
-  onCompleteGraph,
-  onConnectViaCentral,
   onRemoveFromCache,
   onRemoveHighlights,
   isUserLoggedIn
 }) => {
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const connections = useCanvasStore((state) => state.connections);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const handleChangeColor = useCanvasStore((state) => state.handleChangeColor);
   const handlePullOutSameColoredLeg = useCanvasStore(
     (state) => state.handlePullOutSameColoredLeg
   );
-
   const handleBialgebra = useCanvasStore((state) => state.handleBialgebra);
   const handleInverseBialgebra = useCanvasStore(
     (state) => state.handleInverseBialgebra
   );
   const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
-
   const hasMultipleLegos = tensorNetwork && tensorNetwork.legos.length > 1;
   const canCollapse = hasMultipleLegos;
   const handleUnfuseInto2Legos = useCanvasStore(
@@ -117,6 +113,16 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   );
   const handleUnfuseToLegs = useCanvasStore(
     (state) => state.handleUnfuseToLegs
+  );
+
+  const handleCompleteGraphViaHadamards = useCanvasStore(
+    (state) => state.handleCompleteGraphViaHadamards
+  );
+  const handleConnectGraphNodes = useCanvasStore(
+    (state) => state.handleConnectGraphNodes
+  );
+  const openWeightEnumeratorDialog = useCanvasStore(
+    (state) => state.openWeightEnumeratorDialog
   );
 
   return (
@@ -206,7 +212,11 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
                   ? "Calculate weight enumerator polynomial"
                   : "Calculate weight enumerator polynomial - needs login"
               }
-              onClick={onWeightEnumerator}
+              onClick={() => {
+                if (tensorNetwork) {
+                  openWeightEnumeratorDialog(tensorNetwork, connections);
+                }
+              }}
               disabled={!isUserLoggedIn}
             />
             <ToolbarButton
@@ -312,12 +322,20 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             <ToolbarButton
               icon={<Network size={16} />}
               tooltip="Complete graph through Hadamard"
-              onClick={onCompleteGraph}
+              onClick={() =>
+                handleCompleteGraphViaHadamards(tensorNetwork?.legos || [])
+              }
+              disabled={
+                !canDoCompleteGraphViaHadamards(tensorNetwork?.legos || [])
+              }
             />
             <ToolbarButton
               icon={<Link size={16} />}
               tooltip="Connect via central lego"
-              onClick={onConnectViaCentral}
+              onClick={() =>
+                handleConnectGraphNodes(tensorNetwork?.legos || [])
+              }
+              disabled={!canDoConnectGraphNodes(tensorNetwork?.legos || [])}
             />
           </div>
         </div>

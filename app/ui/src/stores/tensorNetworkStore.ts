@@ -634,7 +634,7 @@ export const useTensorNetworkSlice: StateCreator<
         svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
         name:
           cachedTensorNetwork?.name ||
-          `"Subnet ${tensorNetwork.legos.length} legos | ${new Date().toISOString()}"`,
+          `${tensorNetwork.legos.length} legos | ${new Date().toISOString()}`,
         isLocked: cachedTensorNetwork?.isLocked || false,
         lastUpdated: new Date()
       });

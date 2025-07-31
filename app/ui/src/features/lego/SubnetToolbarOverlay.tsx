@@ -269,14 +269,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
     (state) => state.parityCheckMatrices
   );
 
-  const handleCompleteGraph = () => {
-    console.log("Complete graph");
-  };
-
-  const handleConnectViaCentral = () => {
-    console.log("Connect via central");
-  };
-
   const handleRemoveFromCache = () => {
     console.log("Remove from cache");
   };
@@ -311,8 +303,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
       onExpand={handleExpand}
       onWeightEnumerator={handleWeightEnumerator}
       onParityCheckMatrix={handleParityCheckMatrix}
-      onCompleteGraph={handleCompleteGraph}
-      onConnectViaCentral={handleConnectViaCentral}
       onRemoveFromCache={handleRemoveFromCache}
       onRemoveHighlights={handleRemoveHighlights}
       isUserLoggedIn={isUserLoggedIn}

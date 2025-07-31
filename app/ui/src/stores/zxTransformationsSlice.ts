@@ -17,8 +17,7 @@ export interface ZXTransformationsSlice {
   handleBialgebra: (legos: DroppedLego[]) => void;
   handleInverseBialgebra: (legos: DroppedLego[]) => void;
   handleHopfRule: (legos: DroppedLego[]) => void;
-  handleConnectGraphNodes: (legos: DroppedLego[]) => void;
-  handleCompleteGraphViaHadamards: (legos: DroppedLego[]) => void;
+
   handleLegPartitionDialogClose: () => void;
   handleUnfuseInto2Legos: (lego: DroppedLego) => void;
   handleUnfuseTo2LegosPartitionConfirm: (legPartition: number[]) => void;
@@ -80,26 +79,6 @@ export const createZXTransformationsSlice: StateCreator<
     const { droppedLegos, connections, setLegosAndConnections, addOperation } =
       get();
     const result = applyHopfRule(legos, droppedLegos, connections);
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  },
-
-  handleConnectGraphNodes: (legos: DroppedLego[]) => {
-    const { droppedLegos, connections, setLegosAndConnections, addOperation } =
-      get();
-    const result = applyConnectGraphNodes(legos, droppedLegos, connections);
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  },
-
-  handleCompleteGraphViaHadamards: (legos: DroppedLego[]) => {
-    const { droppedLegos, connections, setLegosAndConnections, addOperation } =
-      get();
-    const result = applyCompleteGraphViaHadamards(
-      legos,
-      droppedLegos,
-      connections
-    );
     setLegosAndConnections(result.droppedLegos, result.connections);
     addOperation(result.operation);
   },

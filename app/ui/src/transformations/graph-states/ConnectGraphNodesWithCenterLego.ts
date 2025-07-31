@@ -37,6 +37,40 @@ export const applyConnectGraphNodes = (
     )
   );
 
+  // Create new legos with one extra leg
+  const newLegos: DroppedLego[] = legos.map((lego) => {
+    return Legos.createDynamicLego(
+      "z_rep_code",
+      lego.numberOfLegs + 1,
+      lego.instance_id,
+      lego.logicalPosition
+    );
+  });
+
+  // Create Hadamard legos
+  const hadamardLegos: DroppedLego[] = legos.map((lego, index) => {
+    // Position Hadamard halfway between connector and original lego
+    return new DroppedLego(
+      {
+        type_id: "h",
+        name: "Hadamard",
+        short_name: "H",
+        description: "Hadamard",
+        parity_check_matrix: [
+          [1, 0, 0, 1],
+          [0, 1, 1, 0]
+        ],
+        logical_legs: [],
+        gauge_legs: []
+      },
+      new LogicalPoint(
+        (connectorLego.logicalPosition.x + lego.logicalPosition.x) / 2,
+        (connectorLego.logicalPosition.y + lego.logicalPosition.y) / 2
+      ),
+      (maxInstanceId + 2 + index).toString()
+    );
+  });
+
   // Find dangling legs for each lego
   const legoDanglingLegs = legos.map((lego) => {
     const numLegs = lego.numberOfLegs;
@@ -63,47 +97,6 @@ export const applyConnectGraphNodes = (
       danglingLeg: danglingLeg < numLegs ? danglingLeg : numLegs
     };
   });
-
-  // Create new legos with one extra leg
-  const newLegos: DroppedLego[] = legoDanglingLegs.map(
-    ({ lego, danglingLeg }) => {
-      if (danglingLeg !== lego.numberOfLegs) {
-        return lego; // Keep the lego as is if it has dangling legs
-      }
-      return Legos.createDynamicLego(
-        "z_rep_code",
-        lego.numberOfLegs + 1,
-        lego.instance_id,
-        lego.logicalPosition
-      );
-    }
-  );
-
-  // Create Hadamard legos
-  const hadamardLegos: DroppedLego[] = legoDanglingLegs.map(
-    ({ lego }, index) => {
-      // Position Hadamard halfway between connector and original lego
-      return new DroppedLego(
-        {
-          type_id: "h",
-          name: "Hadamard",
-          short_name: "H",
-          description: "Hadamard",
-          parity_check_matrix: [
-            [1, 0, 0, 1],
-            [0, 1, 1, 0]
-          ],
-          logical_legs: [],
-          gauge_legs: []
-        },
-        new LogicalPoint(
-          (connectorLego.logicalPosition.x + lego.logicalPosition.x) / 2,
-          (connectorLego.logicalPosition.y + lego.logicalPosition.y) / 2
-        ),
-        (maxInstanceId + 2 + index).toString()
-      );
-    }
-  );
 
   // Create connections between connector, Hadamards, and new legos
   const newConnections: Connection[] = legoDanglingLegs.flatMap(

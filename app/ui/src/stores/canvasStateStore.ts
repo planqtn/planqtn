@@ -49,6 +49,10 @@ import {
   ZXTransformationsSlice
 } from "./zxTransformationsSlice";
 import { createModalsSlice, ModalSlice } from "./modalStore";
+import {
+  createGraphStateTransformationsSlice,
+  GraphStateTransformationsSlice
+} from "./graphStateTransformationsSlice";
 
 // Helper function to get canvasId from URL
 export const getCanvasIdFromUrl = (): string => {
@@ -89,6 +93,7 @@ export interface CanvasStore
     CanvasUISlice,
     OperatorHighlightSlice,
     ZXTransformationsSlice,
+    GraphStateTransformationsSlice,
     ModalSlice {}
 
 export interface GlobalTensorNetworkSlice {
@@ -166,6 +171,7 @@ export const useCanvasStore = create<CanvasStore>()(
       ...createCanvasUISlice(...a),
       ...createOperatorHighlightSlice(...a),
       ...createZXTransformationsSlice(...a),
+      ...createGraphStateTransformationsSlice(...a),
       ...createModalsSlice(...a)
     })),
     {
