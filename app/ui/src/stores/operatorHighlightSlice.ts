@@ -6,6 +6,9 @@ import { CanvasStore } from "./canvasStateStore";
 
 export interface OperatorHighlightSlice {
   // Single lego matrix operations
+  handleMatrixRowSelectionForSelectedTensorNetwork: (
+    newSelectedRows: number[]
+  ) => void;
   handleSingleLegoMatrixRowSelection: (
     lego: DroppedLego,
     newSelectedRows: number[]
@@ -30,6 +33,28 @@ export const createOperatorHighlightSlice: StateCreator<
   [],
   OperatorHighlightSlice
 > = (_, get) => ({
+  handleMatrixRowSelectionForSelectedTensorNetwork: (
+    newSelectedRows: number[]
+  ) => {
+    const tensorNetwork = get().tensorNetwork;
+    const highlightCachedTensorNetworkLegs =
+      get().highlightCachedTensorNetworkLegs;
+    const handleSingleLegoMatrixRowSelection =
+      get().handleSingleLegoMatrixRowSelection;
+
+    if (!tensorNetwork) return;
+
+    if (tensorNetwork.legos.length == 1) {
+      const lego = tensorNetwork.legos[0];
+      handleSingleLegoMatrixRowSelection(lego, newSelectedRows);
+    } else {
+      highlightCachedTensorNetworkLegs(
+        tensorNetwork.signature,
+        newSelectedRows
+      );
+    }
+  },
+
   handleSingleLegoMatrixRowSelection: (
     lego: DroppedLego,
     newSelectedRows: number[]

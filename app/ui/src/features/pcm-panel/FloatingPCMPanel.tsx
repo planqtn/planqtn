@@ -27,7 +27,7 @@ const FloatingPCMPanel: React.FC<FloatingPCMPanelProps> = ({
 }) => {
   return (
     <FloatingPanelWrapper
-      title={config.title}
+      title={"PCM - " + networkName}
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}

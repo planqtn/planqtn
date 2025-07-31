@@ -63,6 +63,17 @@ export const SubnetToolbarOverlay: React.FC = () => {
     }
   };
 
+  const handleMatrixRowSelectionForSelectedTensorNetwork = useCanvasStore(
+    (state) => state.handleMatrixRowSelectionForSelectedTensorNetwork
+  );
+  const handleSingleLegoMatrixRowSelection = useCanvasStore(
+    (state) => state.handleSingleLegoMatrixRowSelection
+  );
+
+  const parityCheckMatrices = useCanvasStore(
+    (state) => state.parityCheckMatrices
+  );
+
   const handleChangeColor = () => {
     console.log("Change color");
   };
@@ -100,7 +111,20 @@ export const SubnetToolbarOverlay: React.FC = () => {
   };
 
   const handleRemoveHighlights = () => {
-    console.log("Remove highlights");
+    if (
+      tensorNetwork &&
+      (tensorNetwork.legos.length == 1 ||
+        parityCheckMatrices[tensorNetwork.signature])
+    ) {
+      handleMatrixRowSelectionForSelectedTensorNetwork([]);
+      return;
+    }
+    // otherwise we'll have to go through all selected legos and clear their highlights
+    if (tensorNetwork) {
+      tensorNetwork.legos.forEach((lego) => {
+        handleSingleLegoMatrixRowSelection(lego, []);
+      });
+    }
   };
 
   // Only render if we have a tensor network and bounding box

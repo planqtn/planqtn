@@ -17,6 +17,7 @@ import {
   Trash2,
   Eraser
 } from "lucide-react";
+import { FaDropletSlash } from "react-icons/fa6";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { BoundingBox } from "../../stores/canvasUISlice";
 import "./SubnetToolbar.css";
@@ -163,7 +164,7 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
               onClick={onRemoveFromCache}
             />
             <ToolbarButton
-              icon={<Eraser size={16} />}
+              icon={<FaDropletSlash size={16} />}
               tooltip="Remove all highlights in subnet"
               onClick={onRemoveHighlights}
             />

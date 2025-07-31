@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import { Box, Text, HStack, IconButton } from "@chakra-ui/react";
 import {
-  Box,
-  Text,
-  HStack,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  IconButton
-} from "@chakra-ui/react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
-import { FaEllipsisV } from "react-icons/fa";
+import { FaCopy, FaEllipsisV } from "react-icons/fa";
 import { TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { FixedSizeList as List } from "react-window";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
@@ -23,6 +20,7 @@ import {
 import { TooltipPortal } from "@radix-ui/react-tooltip";
 import { usePanelConfigStore } from "@/stores/panelConfigStore.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
+import { FaDropletSlash } from "react-icons/fa6";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -85,7 +83,7 @@ const PauliCell = memo(function PauliCell({
         color,
         background: "transparent",
         borderRadius: 3,
-        cursor: isDisabled ? "default" : "pointer"
+        cursor: isDisabled ? "not-allowed" : "pointer"
       }}
       onMouseEnter={() => {
         if (onHover) {
@@ -271,6 +269,9 @@ export const ParityCheckMatrixDisplay: React.FC<
   const [lastParentSelectedRows, setLastParentSelectedRows] = useState<
     number[]
   >([]);
+  const highlightCachedTensorNetworkLegs = useCanvasStore(
+    (state) => state.highlightCachedTensorNetworkLegs
+  );
 
   // Check if parent is updating selectedRows properly
   const parentUpdating =
@@ -628,8 +629,8 @@ export const ParityCheckMatrixDisplay: React.FC<
   const listKey = `list-${effectiveSelectedRows.join("-")}-${draggedRowIndex || "none"}`;
 
   return (
-    <Box h="100%" w="100%" display="flex" flexDirection="column">
-      <HStack justify="space-between" mb={2} align="center">
+    <Box h="100%" w="100%" display="flex" flexDirection="column" p={4}>
+      <HStack mb={0} align="center" justify="space-between">
         <HStack align="left" spacing={0}>
           {popOut && (
             <Tooltip>
@@ -656,11 +657,12 @@ export const ParityCheckMatrixDisplay: React.FC<
               </TooltipPortal>
             </Tooltip>
           )}
+
           <Box
             p={3}
             borderBottom="1px"
             borderColor="gray.200"
-            cursor={isDisabled ? "default" : "pointer"}
+            cursor={isDisabled ? "not-allowed" : "pointer"}
             onClick={() => {
               if (isDisabled || !signature) return;
               const cachedTensorNetwork = getCachedTensorNetwork(signature);
@@ -681,53 +683,71 @@ export const ParityCheckMatrixDisplay: React.FC<
             </Text>
           </Box>
         </HStack>
-
-        <Menu>
-          <MenuButton
-            as={IconButton}
-            icon={<FaEllipsisV />}
-            variant="outline"
-            size="sm"
-            aria-label="Matrix actions"
-          />
-          <MenuList>
-            <MenuItem
-              onClick={handleUndo}
-              isDisabled={isDisabled || currentHistoryIndex <= 0}
-            >
-              Undo
-            </MenuItem>
-            <MenuItem
-              onClick={handleRedo}
-              isDisabled={
-                isDisabled || currentHistoryIndex >= matrixHistory.length - 1
-              }
-            >
-              Redo
-            </MenuItem>
-            {onRecalculate && (
-              <MenuItem onClick={onRecalculate} isDisabled={isDisabled}>
-                Recalculate
-              </MenuItem>
-            )}
-            {matrix.every(isCSS) && (
-              <MenuItem onClick={handleCSSSort} isDisabled={isDisabled}>
-                CSS-sort
-              </MenuItem>
-            )}
-            <MenuItem onClick={handleWeightSort} isDisabled={isDisabled}>
-              Sort by weight
-            </MenuItem>
-            {/* TODO: Re-enable this when we have a way to re-order legs */}
-            {/* {legOrdering && onLegOrderingChange && (
-              <MenuItem onClick={() => setIsLegReorderDialogOpen(true)}>
+        <HStack>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                icon={<FaEllipsisV />}
+                variant="outline"
+                size="sm"
+                aria-label="Matrix actions"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="high-z">
+              <DropdownMenuItem
+                onClick={handleUndo}
+                disabled={isDisabled || currentHistoryIndex <= 0}
+              >
+                Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleRedo}
+                disabled={
+                  isDisabled || currentHistoryIndex >= matrixHistory.length - 1
+                }
+              >
+                Redo
+              </DropdownMenuItem>
+              {onRecalculate && (
+                <DropdownMenuItem onClick={onRecalculate} disabled={isDisabled}>
+                  Recalculate
+                </DropdownMenuItem>
+              )}
+              {matrix.every(isCSS) && (
+                <DropdownMenuItem onClick={handleCSSSort} disabled={isDisabled}>
+                  CSS-sort
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={handleWeightSort}
+                disabled={isDisabled}
+              >
+                Sort by weight
+              </DropdownMenuItem>
+              {/* TODO: Re-enable this when we have a way to re-order legs */}
+              {/* {legOrdering && onLegOrderingChange && (
+              <DropdownMenuItem onClick={() => setIsLegReorderDialogOpen(true)}>
                 Reorder Legs
-              </MenuItem>
+              </DropdownMenuItem>
             )} */}
-            <MenuItem onClick={copyMatrixAsNumpy}>Copy as numpy</MenuItem>
-            <MenuItem onClick={copyMatrixAsQdistrnd}>Copy as qdistrnd</MenuItem>
-          </MenuList>
-        </Menu>
+              <DropdownMenuItem onClick={copyMatrixAsNumpy}>
+                Copy as numpy
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyMatrixAsQdistrnd}>
+                Copy as qdistrnd
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <IconButton
+            icon={<FaDropletSlash />}
+            aria-label="Clear highlights"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              onRowSelectionChange?.([]);
+            }}
+          />
+        </HStack>
       </HStack>
 
       {/* Status box showing current hover position */}
@@ -862,6 +882,7 @@ export const ParityCheckMatrixDisplay: React.FC<
                 onLegHover={data.onLegHover}
                 setHoveredLegIndex={data.setHoveredLegIndex}
                 setHoveredRowIndex={data.setHoveredRowIndex}
+                isDisabled={data.isDisabled}
               />
             </div>
           )}

@@ -5,7 +5,6 @@ import {
   Text,
   Badge,
   useColorModeValue,
-  Tooltip,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -14,6 +13,11 @@ import {
   Button,
   Icon
 } from "@chakra-ui/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import DroppedLegoDisplay, {
   getLegoBoundingBox
@@ -78,63 +82,66 @@ const LegoListItem = memo<LegoListItemProps>(
 
     if (isPanelSmall) {
       return (
-        <Tooltip key={lego.type_id} label={lego.name} placement="top">
-          <Box
-            p={2}
-            borderRadius="md"
-            _hover={{ bg: "gray.50" }}
-            cursor="move"
-            draggable
-            onDragStart={(e) => handleDragStart(e, lego)}
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            minH="80px"
-            justifyContent="space-between"
-            style={{
-              pointerEvents: "all"
-            }}
-          >
+        <Tooltip key={lego.type_id}>
+          <TooltipTrigger asChild>
             <Box
+              p={2}
+              borderRadius="md"
+              _hover={{ bg: "gray.50" }}
+              cursor="move"
+              draggable
+              onDragStart={(e) => handleDragStart(e, lego)}
               display="flex"
+              flexDirection="column"
               alignItems="center"
-              justifyContent="center"
-              width="50px"
-              height="50px"
-              flex="1"
+              minH="80px"
+              justifyContent="space-between"
               style={{
-                pointerEvents: "none"
+                pointerEvents: "all"
               }}
             >
-              <svg
-                className="demo-svg"
-                width={Math.min(boundingBox.width * 0.3, 40)}
-                height={Math.min(boundingBox.height * 0.3, 40)}
-                viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                width="50px"
+                height="50px"
+                flex="1"
                 style={{
-                  overflow: "visible",
                   pointerEvents: "none"
                 }}
               >
-                <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
-              </svg>
-            </Box>
-            <Box height="14px" display="flex" alignItems="center">
-              {lego.is_dynamic && (
-                <Badge
-                  colorScheme="green"
-                  size="xs"
-                  fontSize="8px"
-                  px={1}
-                  py={0}
-                  height="12px"
-                  minW="auto"
+                <svg
+                  className="demo-svg"
+                  width={Math.min(boundingBox.width * 0.3, 40)}
+                  height={Math.min(boundingBox.height * 0.3, 40)}
+                  viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+                  style={{
+                    overflow: "visible",
+                    pointerEvents: "none"
+                  }}
                 >
-                  DYN
-                </Badge>
-              )}
+                  <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
+                </svg>
+              </Box>
+              <Box height="14px" display="flex" alignItems="center">
+                {lego.is_dynamic && (
+                  <Badge
+                    colorScheme="green"
+                    size="xs"
+                    fontSize="8px"
+                    px={1}
+                    py={0}
+                    height="12px"
+                    minW="auto"
+                  >
+                    DYN
+                  </Badge>
+                )}
+              </Box>
             </Box>
-          </Box>
+          </TooltipTrigger>
+          <TooltipContent className="high-z">{lego.name}</TooltipContent>
         </Tooltip>
       );
     }
@@ -428,61 +435,64 @@ export const BuildingBlocksPanel: React.FC = memo(() => {
                 </AccordionButton>
                 <AccordionPanel pb={4} pl={0}>
                   <VStack spacing={3} align="stretch">
-                    <Tooltip
-                      label={"CSS Tanner Network"}
-                      placement="right"
-                      isDisabled={!isPanelSmall}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                        onClick={() => openCssTannerDialog()}
-                        isDisabled={!isUserLoggedIn}
-                        justifyContent="flex-start"
-                        title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        leftIcon={<Icon as={FiCpu} />}
-                      >
-                        {isPanelSmall ? "CSS" : "CSS Tanner Network"}
-                      </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="blue"
+                          onClick={() => openCssTannerDialog()}
+                          isDisabled={!isUserLoggedIn}
+                          justifyContent="flex-start"
+                          title={!isUserLoggedIn ? "Needs signing in" : ""}
+                          leftIcon={<Icon as={FiCpu} />}
+                        >
+                          {isPanelSmall ? "CSS" : "CSS Tanner Network"}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        CSS Tanner Network
+                      </TooltipContent>
                     </Tooltip>
-                    <Tooltip
-                      label={"Tanner Network"}
-                      placement="right"
-                      isDisabled={!isPanelSmall}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                        onClick={() => openTannerDialog()}
-                        isDisabled={!isUserLoggedIn}
-                        justifyContent="flex-start"
-                        title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        leftIcon={<Icon as={FiGrid} />}
-                      >
-                        {isPanelSmall ? "Tanner" : "Tanner Network"}
-                      </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="blue"
+                          onClick={() => openTannerDialog()}
+                          isDisabled={!isUserLoggedIn}
+                          justifyContent="flex-start"
+                          title={!isUserLoggedIn ? "Needs signing in" : ""}
+                          leftIcon={<Icon as={FiGrid} />}
+                        >
+                          {isPanelSmall ? "Tanner" : "Tanner Network"}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Tanner Network
+                      </TooltipContent>
                     </Tooltip>
-                    <Tooltip
-                      label={"Measurement State Prep Network"}
-                      placement="right"
-                      isDisabled={!isPanelSmall}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                        onClick={() => openMspDialog()}
-                        isDisabled={!isUserLoggedIn}
-                        justifyContent="flex-start"
-                        title={!isUserLoggedIn ? "Needs signing in" : ""}
-                        leftIcon={<Icon as={FiTarget} />}
-                      >
-                        {isPanelSmall
-                          ? "MSP"
-                          : "Measurement State Prep Network"}
-                      </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="blue"
+                          onClick={() => openMspDialog()}
+                          isDisabled={!isUserLoggedIn}
+                          justifyContent="flex-start"
+                          title={!isUserLoggedIn ? "Needs signing in" : ""}
+                          leftIcon={<Icon as={FiTarget} />}
+                        >
+                          {isPanelSmall
+                            ? "MSP"
+                            : "Measurement State Prep Network"}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Measurement State Prep Network
+                      </TooltipContent>
                     </Tooltip>
                   </VStack>
                 </AccordionPanel>

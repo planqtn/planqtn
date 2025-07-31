@@ -98,8 +98,8 @@ const DetailsPanel: React.FC = () => {
   });
 
   const setError = useCanvasStore((state) => state.setError);
-  const highlightCachedTensorNetworkLegs = useCanvasStore(
-    (state) => state.highlightCachedTensorNetworkLegs
+  const handleMatrixRowSelectionForSelectedTensorNetwork = useCanvasStore(
+    (state) => state.handleMatrixRowSelectionForSelectedTensorNetwork
   );
 
   const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
@@ -407,36 +407,12 @@ const DetailsPanel: React.FC = () => {
     )
   ]);
 
-  const handleSingleLegoMatrixRowSelection = useCanvasStore(
-    (state) => state.handleSingleLegoMatrixRowSelection
-  );
   const handleSingleLegoMatrixChange = useCanvasStore(
     (state) => state.handleSingleLegoMatrixChange
   );
 
   const handleMultiLegoMatrixChange = useCanvasStore(
     (state) => state.handleMultiLegoMatrixChange
-  );
-
-  const handleMatrixRowSelection = useCallback(
-    (newSelectedRows: number[]) => {
-      if (!tensorNetwork) return;
-
-      if (tensorNetwork.legos.length == 1) {
-        const lego = tensorNetwork.legos[0];
-        handleSingleLegoMatrixRowSelection(lego, newSelectedRows);
-      } else {
-        highlightCachedTensorNetworkLegs(
-          tensorNetwork.signature,
-          newSelectedRows
-        );
-      }
-    },
-    [
-      tensorNetwork,
-      highlightCachedTensorNetworkLegs,
-      handleSingleLegoMatrixRowSelection
-    ]
   );
 
   const handleLegoMatrixChange = useCallback(
@@ -1170,8 +1146,9 @@ const DetailsPanel: React.FC = () => {
       borderColor={borderColor}
       bg={bgColor}
       overflowY="auto"
+      p={0}
     >
-      <VStack align="stretch" spacing={4} p={4}>
+      <VStack align="stretch" spacing={1} p={4}>
         {tensorNetwork && tensorNetwork.legos.length == 1 ? (
           <>
             <Heading size="md">Lego Instance Details</Heading>
@@ -1282,7 +1259,9 @@ const DetailsPanel: React.FC = () => {
                   matrix={tensorNetwork.legos[0].parity_check_matrix}
                   legOrdering={singleLegoLegOrdering}
                   selectedRows={legoSelectedRows}
-                  onRowSelectionChange={handleMatrixRowSelection}
+                  onRowSelectionChange={
+                    handleMatrixRowSelectionForSelectedTensorNetwork
+                  }
                   onMatrixChange={handleLegoMatrixChange}
                   title={
                     tensorNetwork.legos[0].name ||
@@ -1362,7 +1341,7 @@ const DetailsPanel: React.FC = () => {
                   )}
                 </VStack>
                 <Heading size="md">Network Details</Heading>
-                <VStack align="stretch" spacing={3}>
+                <VStack align="stretch" spacing={1}>
                   {!parityCheckMatrix && (
                     <Button
                       onClick={handleCalculateParityCheckMatrix}
@@ -1376,7 +1355,8 @@ const DetailsPanel: React.FC = () => {
                   )}
                   {parityCheckMatrix && (
                     <Box
-                      p={4}
+                      p={0}
+                      m={0}
                       borderWidth={1}
                       borderRadius="lg"
                       bg={bgColor}
@@ -1397,7 +1377,9 @@ const DetailsPanel: React.FC = () => {
                           );
                         }}
                         onRecalculate={handleCalculateParityCheckMatrix}
-                        onRowSelectionChange={handleMatrixRowSelection}
+                        onRowSelectionChange={
+                          handleMatrixRowSelectionForSelectedTensorNetwork
+                        }
                         selectedRows={
                           selectedTensorNetworkParityCheckMatrixRows[
                             tensorNetwork.signature
