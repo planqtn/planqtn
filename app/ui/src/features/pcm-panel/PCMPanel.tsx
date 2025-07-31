@@ -29,12 +29,14 @@ const PCMPanel: React.FC<PCMPanelProps> = ({
     (state) => state.cachedTensorNetworks
   );
 
-  const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
   const highlightCachedTensorNetworkLegs = useCanvasStore(
     (state) => state.highlightCachedTensorNetworkLegs
   );
   const handleSingleLegoMatrixChange = useCanvasStore(
     (state) => state.handleSingleLegoMatrixChange
+  );
+  const handleSingleLegoMatrixRowSelection = useCanvasStore(
+    (state) => state.handleSingleLegoMatrixRowSelection
   );
   const handleMultiLegoMatrixChange = useCanvasStore(
     (state) => state.handleMultiLegoMatrixChange
@@ -110,10 +112,7 @@ const PCMPanel: React.FC<PCMPanelProps> = ({
         (lego) => lego.instance_id === singleLegoInstanceId
       );
       if (legoToUpdate) {
-        const updatedLego = legoToUpdate.with({
-          selectedMatrixRows: selectedRows
-        });
-        updateDroppedLego(singleLegoInstanceId, updatedLego);
+        handleSingleLegoMatrixRowSelection(legoToUpdate, selectedRows);
       }
     } else {
       // For multi-lego networks, use the existing behavior

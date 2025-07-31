@@ -10,7 +10,8 @@ import {
   IconButton,
   HStack,
   Text,
-  useColorModeValue
+  useColorModeValue,
+  Icon
 } from "@chakra-ui/react";
 import {
   CloseIcon,
@@ -21,6 +22,7 @@ import {
 import { RiDragMove2Fill } from "react-icons/ri";
 import { FloatingPanelConfigManager, PanelLayout } from "./FloatingPanelConfig";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
+import { IconType } from "react-icons/lib";
 
 interface FloatingPanelWrapperProps {
   config: FloatingPanelConfigManager;
@@ -30,6 +32,7 @@ interface FloatingPanelWrapperProps {
   children: ReactNode;
   showCollapseButton?: boolean;
   showResizeHandle?: boolean;
+  icon?: IconType;
 }
 
 const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
@@ -39,7 +42,8 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   onClose,
   children,
   showCollapseButton = true,
-  showResizeHandle = true
+  showResizeHandle = true,
+  icon
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -403,6 +407,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         userSelect="none"
       >
         <DragHandleIcon />
+        {icon && <Icon as={icon} />}
         <Text fontSize="sm" fontWeight="bold" flex={1}>
           {title}
         </Text>

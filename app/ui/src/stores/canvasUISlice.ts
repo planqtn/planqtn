@@ -470,7 +470,7 @@ export const createCanvasUISlice: StateCreator<
     e.preventDefault();
 
     // Calculate new zoom level
-    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+    const zoomDelta = 1 + 0.0002 * e.deltaY;
     const newZoomLevel = Math.max(
       0.04,
       Math.min(9, get().viewport.zoomLevel * zoomDelta)

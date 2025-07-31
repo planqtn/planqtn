@@ -2,6 +2,7 @@ import React from "react";
 import DetailsPanel from "./DetailsPanel";
 import FloatingPanelWrapper from "../floating-panel/FloatingPanelWrapper";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
+import { FaInfo } from "react-icons/fa6";
 
 interface FloatingDetailsPanelProps {
   config: FloatingPanelConfigManager;
@@ -20,6 +21,7 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}
+      icon={FaInfo}
     >
       <DetailsPanel />
     </FloatingPanelWrapper>

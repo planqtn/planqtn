@@ -2,6 +2,7 @@ import React from "react";
 import BuildingBlocksPanel from "./BuildingBlocksPanel";
 import FloatingPanelWrapper from "../floating-panel/FloatingPanelWrapper";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
+import { FaCubes } from "react-icons/fa6";
 
 interface FloatingBuildingBlocksPanelProps {
   config: FloatingPanelConfigManager;
@@ -18,6 +19,7 @@ const FloatingBuildingBlocksPanel: React.FC<
       config={config}
       onConfigChange={onConfigChange}
       onClose={onClose}
+      icon={FaCubes}
     >
       <BuildingBlocksPanel />
     </FloatingPanelWrapper>

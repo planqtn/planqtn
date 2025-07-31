@@ -45,6 +45,7 @@ import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
 import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
+import { FloatingPanelsToolbar } from "./features/canvas/FloatingPanelsToolbar.tsx";
 import { FiShare2, FiFileText } from "react-icons/fi";
 import { SubnetToolbarOverlay } from "./features/lego/SubnetToolbarOverlay";
 
@@ -420,6 +421,8 @@ const LegoStudioView: React.FC = () => {
                   <Box position="absolute" top={2} left={2} zIndex={2000}>
                     <CanvasMenu handleExportSvg={handleExportSvg} />
                   </Box>
+                  {/* Floating panels toolbar */}
+                  <FloatingPanelsToolbar />
                   {/* Top-center title (contextual) */}
                   <Box
                     position="absolute"

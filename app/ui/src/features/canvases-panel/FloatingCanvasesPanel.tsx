@@ -2,6 +2,7 @@ import React from "react";
 import CanvasesPanel from "./CanvasesPanel";
 import FloatingPanelWrapper from "../floating-panel/FloatingPanelWrapper";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
+import { FaLayerGroup } from "react-icons/fa6";
 
 interface FloatingCanvasesPanelProps {
   config: FloatingPanelConfigManager;
@@ -20,6 +21,7 @@ const FloatingCanvasesPanel: React.FC<FloatingCanvasesPanelProps> = ({
       title="Canvases"
       onConfigChange={onConfigChange}
       onClose={onClose}
+      icon={FaLayerGroup}
     >
       <CanvasesPanel />
     </FloatingPanelWrapper>
