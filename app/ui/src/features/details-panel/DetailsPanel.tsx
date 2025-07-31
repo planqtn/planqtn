@@ -31,21 +31,21 @@ import * as _ from "lodash";
 import {
   canDoBialgebra,
   applyBialgebra
-} from "../../transformations/Bialgebra.ts";
+} from "@/transformations/zx/Bialgebra.ts";
 import {
   canDoInverseBialgebra,
   applyInverseBialgebra
-} from "../../transformations/InverseBialgebra.ts";
-import { canDoHopfRule, applyHopfRule } from "../../transformations/Hopf.ts";
+} from "@/transformations/zx/InverseBialgebra.ts";
+import { canDoHopfRule, applyHopfRule } from "@/transformations/zx/Hopf.ts";
 import {
   canDoConnectGraphNodes,
   applyConnectGraphNodes
-} from "../../transformations/ConnectGraphNodesWithCenterLego.ts";
+} from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego.ts";
 import { findConnectedComponent } from "../../lib/TensorNetwork.ts";
 import {
   canDoCompleteGraphViaHadamards,
   applyCompleteGraphViaHadamards
-} from "../../transformations/CompleteGraphViaHadamards.ts";
+} from "@/transformations/graph-states/CompleteGraphViaHadamards.ts";
 import {
   RealtimePostgresChangesPayload,
   RealtimeChannel
@@ -65,14 +65,29 @@ import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "@/stores/userStore.ts";
+import { canDoChangeColor } from "@/transformations/zx/ChangeColor.ts";
 
 const DetailsPanel: React.FC = () => {
   const { currentUser: user } = useUserStore();
 
   const fuseLegos = useCanvasStore((state) => state.fuseLegos);
-  const makeSpace = useCanvasStore((state) => state.makeSpace);
   const handlePullOutSameColoredLeg = useCanvasStore(
     (state) => state.handlePullOutSameColoredLeg
+  );
+  const handleChangeColor = useCanvasStore((state) => state.handleChangeColor);
+  const handleBialgebra = useCanvasStore((state) => state.handleBialgebra);
+  const handleInverseBialgebra = useCanvasStore(
+    (state) => state.handleInverseBialgebra
+  );
+  const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
+  const handleConnectGraphNodes = useCanvasStore(
+    (state) => state.handleConnectGraphNodes
+  );
+  const handleCompleteGraphViaHadamards = useCanvasStore(
+    (state) => state.handleCompleteGraphViaHadamards
+  );
+  const handleLegPartitionDialogClose = useCanvasStore(
+    (state) => state.handleLegPartitionDialogClose
   );
   const connections = useCanvasStore((state) => state.connections);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
@@ -442,126 +457,6 @@ const DetailsPanel: React.FC = () => {
     tensorNetwork?.legos?.[0]?.parity_check_matrix?.length
   ]);
 
-  const handleChangeColor = (lego: DroppedLego) => {
-    // Get max instance ID
-    const maxInstanceId = Math.max(
-      ...droppedLegos.map((l) => parseInt(l.instance_id))
-    );
-    const numLegs = lego.numberOfLegs;
-
-    // Find any existing connections to the original lego
-    const existingConnections = connections.filter(
-      (conn) =>
-        conn.from.legoId === lego.instance_id ||
-        conn.to.legoId === lego.instance_id
-    );
-
-    // Store the old state for history
-    const oldLegos = [lego];
-    const oldConnections = existingConnections;
-    const newParityCheckMatrix = lego.parity_check_matrix.map((row) => {
-      const n = row.length / 2;
-      return [...row.slice(n), ...row.slice(0, n)];
-    });
-    // Create new legos array starting with the modified original lego
-    const newLegos: DroppedLego[] = [
-      lego.with({
-        type_id: lego.type_id === "x_rep_code" ? "z_rep_code" : "x_rep_code",
-        short_name: lego.type_id === "x_rep_code" ? "Z Rep Code" : "X Rep Code",
-        parity_check_matrix: newParityCheckMatrix
-      })
-    ];
-
-    // Create new connections array
-    const newConnections: Connection[] = [];
-
-    // Make space for Hadamard legos
-    const radius = 50; // Same radius as for Hadamard placement
-    const updatedLegos = makeSpace(
-      { x: lego.logicalPosition.x, y: lego.logicalPosition.y },
-      radius,
-      [lego],
-      droppedLegos
-    );
-
-    // Add Hadamard legos for each leg
-    for (let i = 0; i < numLegs; i++) {
-      // Calculate the angle for this leg
-      const angle = (2 * Math.PI * i) / numLegs;
-      const hadamardLego = createHadamardLego(
-        lego.logicalPosition.plus(
-          new LogicalPoint(radius * Math.cos(angle), radius * Math.sin(angle))
-        ),
-        (maxInstanceId + 1 + i).toString()
-      );
-
-      newLegos.push(hadamardLego);
-
-      // Connect Hadamard to the original lego
-      newConnections.push(
-        new Connection(
-          { legoId: lego.instance_id, leg_index: i },
-          { legoId: hadamardLego.instance_id, leg_index: 0 }
-        )
-      );
-
-      // Connect Hadamard to the original connection if it exists
-      const existingConnection = existingConnections.find((conn) =>
-        conn.containsLeg(lego.instance_id, i)
-      );
-
-      if (existingConnection) {
-        if (existingConnection.from.legoId === lego.instance_id) {
-          newConnections.push(
-            new Connection(
-              { legoId: hadamardLego.instance_id, leg_index: 1 },
-              existingConnection.to
-            )
-          );
-        } else {
-          newConnections.push(
-            new Connection(existingConnection.from, {
-              legoId: hadamardLego.instance_id,
-              leg_index: 1
-            })
-          );
-        }
-      }
-    }
-
-    // Update state with the legos that were pushed out of the way
-    const finalLegos = [
-      ...updatedLegos.filter((l) => l.instance_id !== lego.instance_id),
-      ...newLegos
-    ];
-    const updatedConnections = [
-      ...connections.filter(
-        (conn) =>
-          !existingConnections.some(
-            (existingConn) =>
-              existingConn.from.legoId === conn.from.legoId &&
-              existingConn.from.leg_index === conn.from.leg_index &&
-              existingConn.to.legoId === conn.to.legoId &&
-              existingConn.to.leg_index === conn.to.leg_index
-          )
-      ),
-      ...newConnections
-    ];
-    setLegosAndConnections(finalLegos, updatedConnections);
-
-    // Add to history
-    const operation: Operation = {
-      type: "colorChange",
-      data: {
-        legosToRemove: oldLegos,
-        connectionsToRemove: oldConnections,
-        legosToAdd: newLegos,
-        connectionsToAdd: newConnections
-      }
-    };
-    addOperation(operation);
-  };
-
   const handleUnfuseInto2Legos = (lego: DroppedLego) => {
     // Store the original state
     const originalAlwaysShowLegs = lego.alwaysShowLegs;
@@ -634,38 +529,17 @@ const DetailsPanel: React.FC = () => {
         }
       });
 
-      // Get dynamic legos for both parts (adding 1 leg to each for the connection between them)
-      const [lego1Data, lego2Data] = [
-        Legos.getDynamicLego({
-          lego_id: lego.type_id,
-          parameters: { d: lego1Legs + 1 }
-        }),
-        Legos.getDynamicLego({
-          lego_id: lego.type_id,
-          parameters: { d: lego2Legs + 1 }
-        })
-      ];
-
-      // Create the two new legos
-      const lego1: DroppedLego = new DroppedLego(
-        {
-          ...lego,
-          parity_check_matrix: lego1Data.parity_check_matrix
-        },
-        lego.logicalPosition.plus(new LogicalPoint(-50, 0)),
-
+      const lego1 = Legos.createDynamicLego(
+        lego.type_id,
+        lego1Legs + 1,
         (maxInstanceId + 1).toString(),
-        { alwaysShowLegs: false }
+        lego.logicalPosition.plus(new LogicalPoint(-50, 0))
       );
-
-      const lego2: DroppedLego = new DroppedLego(
-        {
-          ...lego,
-          parity_check_matrix: lego2Data.parity_check_matrix
-        },
-        lego.logicalPosition.plus(new LogicalPoint(50, 0)),
+      const lego2 = Legos.createDynamicLego(
+        lego.type_id,
+        lego2Legs + 1,
         (maxInstanceId + 2).toString(),
-        { alwaysShowLegs: false }
+        lego.logicalPosition.plus(new LogicalPoint(50, 0))
       );
 
       // Create connection between the new legos
@@ -960,73 +834,6 @@ const DetailsPanel: React.FC = () => {
     addOperation(operation);
   };
 
-  const handleBialgebra = async () => {
-    const result = await applyBialgebra(
-      tensorNetwork!.legos,
-      droppedLegos,
-      connections
-    );
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  };
-
-  const handleInverseBialgebra = async () => {
-    const result = await applyInverseBialgebra(
-      tensorNetwork!.legos,
-      droppedLegos,
-      connections
-    );
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  };
-
-  const handleHopfRule = async () => {
-    const result = await applyHopfRule(
-      tensorNetwork!.legos,
-      droppedLegos,
-      connections
-    );
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  };
-
-  const handleConnectGraphNodes = async () => {
-    const result = await applyConnectGraphNodes(
-      tensorNetwork!.legos,
-      droppedLegos,
-      connections
-    );
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-
-    const newTensorNetwork = findConnectedComponent(
-      result.operation.data.legosToAdd![0],
-      droppedLegos,
-      connections
-    );
-    setTensorNetwork(newTensorNetwork);
-  };
-
-  const handleCompleteGraphViaHadamards = async () => {
-    const result = await applyCompleteGraphViaHadamards(
-      tensorNetwork!.legos,
-      droppedLegos,
-      connections
-    );
-    setLegosAndConnections(result.droppedLegos, result.connections);
-    addOperation(result.operation);
-  };
-
-  const handleLegPartitionDialogClose = () => {
-    // Call cleanup to restore original state
-    const windowWithRestore = window as Window & {
-      __restoreLegsState?: () => void;
-    };
-    windowWithRestore.__restoreLegsState?.();
-    delete windowWithRestore.__restoreLegsState;
-    setShowLegPartitionDialog(false);
-  };
-
   const handleCancelTask = async (taskId: string) => {
     try {
       const acessToken = await getAccessToken();
@@ -1203,8 +1010,7 @@ const DetailsPanel: React.FC = () => {
                   Always show legs
                 </Checkbox>
               </Box>
-              {(tensorNetwork.legos[0].type_id === "x_rep_code" ||
-                tensorNetwork.legos[0].type_id === "z_rep_code") && (
+              {canDoChangeColor(tensorNetwork.legos) && (
                 <>
                   <Button
                     leftIcon={<Icon as={FaCube} />}
@@ -1267,6 +1073,7 @@ const DetailsPanel: React.FC = () => {
                     tensorNetwork.legos[0].name ||
                     tensorNetwork.legos[0].short_name
                   }
+                  lego={tensorNetwork.legos[0]}
                   popOut={true}
                 />
               </Box>
@@ -1294,7 +1101,7 @@ const DetailsPanel: React.FC = () => {
                       leftIcon={<Icon as={FaCube} />}
                       colorScheme="blue"
                       size="sm"
-                      onClick={handleBialgebra}
+                      onClick={() => handleBialgebra(tensorNetwork.legos)}
                     >
                       Bialgebra
                     </Button>
@@ -1304,7 +1111,9 @@ const DetailsPanel: React.FC = () => {
                       leftIcon={<Icon as={FaCube} />}
                       colorScheme="blue"
                       size="sm"
-                      onClick={handleInverseBialgebra}
+                      onClick={() =>
+                        handleInverseBialgebra(tensorNetwork.legos)
+                      }
                     >
                       Inverse bialgebra
                     </Button>
@@ -1314,7 +1123,7 @@ const DetailsPanel: React.FC = () => {
                       leftIcon={<Icon as={FaCube} />}
                       colorScheme="blue"
                       size="sm"
-                      onClick={handleHopfRule}
+                      onClick={() => handleHopfRule(tensorNetwork.legos)}
                     >
                       Hopf rule
                     </Button>
@@ -1324,7 +1133,9 @@ const DetailsPanel: React.FC = () => {
                       leftIcon={<Icon as={FaCube} />}
                       colorScheme="blue"
                       size="sm"
-                      onClick={handleConnectGraphNodes}
+                      onClick={() =>
+                        handleConnectGraphNodes(tensorNetwork.legos)
+                      }
                     >
                       Connect Graph Nodes with center lego
                     </Button>
@@ -1334,7 +1145,9 @@ const DetailsPanel: React.FC = () => {
                       leftIcon={<Icon as={FaCube} />}
                       colorScheme="blue"
                       size="sm"
-                      onClick={handleCompleteGraphViaHadamards}
+                      onClick={() =>
+                        handleCompleteGraphViaHadamards(tensorNetwork.legos)
+                      }
                     >
                       Complete Graph Via Hadamards
                     </Button>

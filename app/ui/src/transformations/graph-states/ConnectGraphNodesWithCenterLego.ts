@@ -1,9 +1,9 @@
-import { Connection } from "../stores/connectionStore";
-import { Operation } from "../features/canvas/OperationHistory.ts";
+import { Connection } from "@/stores/connectionStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
-import { Legos } from "../features/lego/Legos.ts";
-import { DroppedLego } from "../stores/droppedLegoStore.ts";
-import { LogicalPoint } from "../types/coordinates.ts";
+import { Legos } from "@/features/lego/Legos.ts";
+import { DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { LogicalPoint } from "@/types/coordinates.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return (
@@ -11,15 +11,15 @@ export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   );
 };
 
-export const applyConnectGraphNodes = async (
+export const applyConnectGraphNodes = (
   legos: DroppedLego[],
   allLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   droppedLegos: DroppedLego[];
   connections: Connection[];
   operation: Operation;
-}> => {
+} => {
   // Get max instance ID
   const maxInstanceId = Math.max(
     ...allLegos.map((l) => parseInt(l.instance_id))

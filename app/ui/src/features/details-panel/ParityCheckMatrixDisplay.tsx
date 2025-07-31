@@ -21,6 +21,7 @@ import { TooltipPortal } from "@radix-ui/react-tooltip";
 import { usePanelConfigStore } from "@/stores/panelConfigStore.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FaDropletSlash } from "react-icons/fa6";
+import { DroppedLego } from "@/stores/droppedLegoStore.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -35,6 +36,7 @@ interface ParityCheckMatrixDisplayProps {
   signature?: string;
   isDisabled?: boolean;
   popOut?: boolean;
+  lego?: DroppedLego;
 }
 
 interface PauliRowProps {
@@ -97,11 +99,11 @@ const PauliCell = memo(function PauliCell({
               e.preventDefault();
               return;
             }
-            if (!e.ctrlKey) {
+            if (!e.ctrlKey && e.altKey) {
               if (onCellClick) {
                 onCellClick();
               }
-            } else {
+            } else if (e.ctrlKey && !e.altKey) {
               if (onRowClick && !isDisabled) {
                 onRowClick();
               }
@@ -263,7 +265,8 @@ export const ParityCheckMatrixDisplay: React.FC<
   onLegHover,
   signature,
   isDisabled = false,
-  popOut = false
+  popOut = false,
+  lego
 }) => {
   const [draggedRowIndex] = useState<number | null>(null);
   const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
@@ -275,8 +278,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   );
   const [matrixHistory, setMatrixHistory] = useState<number[][][]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
-  const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
-  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const hasInitialized = useRef(false);
   const charMeasureRef = useRef<HTMLSpanElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -585,6 +586,9 @@ export const ParityCheckMatrixDisplay: React.FC<
   );
 
   const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
+  const openSingleLegoPCMPanel = usePanelConfigStore(
+    (state) => state.openSingleLegoPCMPanel
+  );
 
   const isScalar = matrix.length === 1 && matrix[0].length === 1;
 
@@ -638,8 +642,6 @@ export const ParityCheckMatrixDisplay: React.FC<
     handleRowClick,
     legOrdering,
     onLegHover,
-    setHoveredLegIndex,
-    setHoveredRowIndex,
     isDisabled
   };
 
@@ -661,6 +663,12 @@ export const ParityCheckMatrixDisplay: React.FC<
                   onClick={() => {
                     if (signature) {
                       openPCMPanel(signature, "PCM for " + title);
+                    } else if (lego) {
+                      console.log("Opening single lego PCM panel for", lego);
+                      openSingleLegoPCMPanel(
+                        lego.instance_id,
+                        "PCM for " + title
+                      );
                     }
                   }}
                 />
@@ -681,7 +689,7 @@ export const ParityCheckMatrixDisplay: React.FC<
             borderBottom="1px"
             borderColor="gray.200"
             cursor={isDisabled ? "not-allowed" : "pointer"}
-            onClick={() => {
+            onClick={(e) => {
               if (isDisabled || !signature) return;
               const cachedTensorNetwork = getCachedTensorNetwork(signature);
               if (cachedTensorNetwork) {

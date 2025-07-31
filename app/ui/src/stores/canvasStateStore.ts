@@ -44,6 +44,10 @@ import {
   createOperatorHighlightSlice
 } from "./operatorHighlightSlice";
 import { persist } from "zustand/middleware";
+import {
+  createZXTransformationsSlice,
+  ZXTransformationsSlice
+} from "./zxTransformationsSlice";
 
 // Helper function to get canvasId from URL
 export const getCanvasIdFromUrl = (): string => {
@@ -82,7 +86,8 @@ export interface CanvasStore
     LegoLegPropertiesSlice,
     CanvasEventHandlingSlice,
     CanvasUISlice,
-    OperatorHighlightSlice {}
+    OperatorHighlightSlice,
+    ZXTransformationsSlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -157,7 +162,8 @@ export const useCanvasStore = create<CanvasStore>()(
       ...createLegoLegPropertiesSlice(...a),
       ...createCanvasEventHandlingSlice(...a),
       ...createCanvasUISlice(...a),
-      ...createOperatorHighlightSlice(...a)
+      ...createOperatorHighlightSlice(...a),
+      ...createZXTransformationsSlice(...a)
     })),
     {
       name: `canvas-state-${getCanvasIdFromUrl()}`,

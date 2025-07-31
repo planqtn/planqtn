@@ -1,9 +1,9 @@
-import { Connection } from "../stores/connectionStore";
+import { Connection } from "@/stores/connectionStore.ts";
 
-import { Legos } from "../features/lego/Legos.ts";
-import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
-import { Operation } from "../features/canvas/OperationHistory.ts";
-import { LogicalPoint } from "../types/coordinates.ts";
+import { Legos } from "@/features/lego/Legos.ts";
+import { createHadamardLego, DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
+import { LogicalPoint } from "@/types/coordinates.ts";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
@@ -45,15 +45,15 @@ const getDanglingLegs = (
     };
   });
 };
-export const applyCompleteGraphViaHadamards = async (
+export const applyCompleteGraphViaHadamards = (
   legos: DroppedLego[],
   allLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   droppedLegos: DroppedLego[];
   connections: Connection[];
   operation: Operation;
-}> => {
+} => {
   // Get max instance ID
   const maxInstanceId = Math.max(
     ...allLegos.map((l) => parseInt(l.instance_id))

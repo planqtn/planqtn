@@ -17,10 +17,14 @@ import {
   Trash2,
   Eraser
 } from "lucide-react";
-import { FaDropletSlash } from "react-icons/fa6";
+import { FaDropletSlash, FaYinYang } from "react-icons/fa6";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { BoundingBox } from "../../stores/canvasUISlice";
 import "./SubnetToolbar.css";
+import { canDoChangeColor } from "@/transformations/zx/ChangeColor";
+import { canDoPullOutSameColoredLeg } from "@/transformations/zx/PullOutSameColoredLeg";
+import { canDoBialgebra } from "@/transformations/zx/Bialgebra";
+import { canDoInverseBialgebra } from "@/transformations/zx/InverseBialgebra";
 
 interface SubnetToolbarProps {
   boundingBox: BoundingBox;
@@ -44,11 +48,12 @@ interface SubnetToolbarProps {
 }
 
 const ToolbarButton: React.FC<{
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
+  text?: string;
   tooltip: string;
   onClick?: () => void;
   disabled?: boolean;
-}> = ({ icon, tooltip, onClick, disabled = false }) => (
+}> = ({ icon, text, tooltip, onClick, disabled = false }) => (
   <Tooltip.Root>
     <Tooltip.Trigger asChild>
       <button
@@ -56,7 +61,7 @@ const ToolbarButton: React.FC<{
         onClick={onClick}
         disabled={disabled}
       >
-        {icon}
+        {icon || text}
       </button>
     </Tooltip.Trigger>
     <Tooltip.Portal>
@@ -107,6 +112,31 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
 }) => {
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+  const handleChangeColor = useCanvasStore((state) => state.handleChangeColor);
+  const handlePullOutSameColoredLeg = useCanvasStore(
+    (state) => state.handlePullOutSameColoredLeg
+  );
+  const connections = useCanvasStore((state) => state.connections);
+  const handleBialgebra = useCanvasStore((state) => state.handleBialgebra);
+  const handleInverseBialgebra = useCanvasStore(
+    (state) => state.handleInverseBialgebra
+  );
+  const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
+  const handleConnectGraphNodes = useCanvasStore(
+    (state) => state.handleConnectGraphNodes
+  );
+  const handleCompleteGraphViaHadamards = useCanvasStore(
+    (state) => state.handleCompleteGraphViaHadamards
+  );
+  const handleLegPartitionDialogClose = useCanvasStore(
+    (state) => state.handleLegPartitionDialogClose
+  );
+  const setShowLegPartitionDialog = useCanvasStore(
+    (state) => state.setShowLegPartitionDialog
+  );
+  const showLegPartitionDialog = useCanvasStore(
+    (state) => state.showLegPartitionDialog
+  );
 
   const hasMultipleLegos = tensorNetwork && tensorNetwork.legos.length > 1;
   const canCollapse = hasMultipleLegos;
@@ -117,10 +147,15 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
         className="subnet-toolbar"
         style={{
           position: "absolute",
-          top: boundingBox.minY - 90,
-          left: boundingBox.minX + boundingBox.width / 2, // Center horizontally
+          top:
+            (boundingBox as any).constrainedToolbarTop || boundingBox.minY - 90,
+          left:
+            (boundingBox as any).constrainedToolbarLeft ||
+            boundingBox.minX + boundingBox.width / 2,
           zIndex: 10000,
-          transform: "translateY(-100%) translateX(-50%)", // Center the toolbar itself
+          transform: (boundingBox as any).constrainedToolbarTop
+            ? "none"
+            : "translateY(-100%) translateX(-50%)", // Only center if not constrained
           pointerEvents: "auto"
         }}
       >
@@ -220,24 +255,40 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
           />
           <div className="toolbar-group">
             <ToolbarButton
-              icon={<Palette size={16} />}
+              icon={<FaYinYang size={16} />}
               tooltip="Change color"
-              onClick={onChangeColor}
+              onClick={() => handleChangeColor(tensorNetwork?.legos[0]!)}
+              disabled={!canDoChangeColor(tensorNetwork?.legos || [])}
             />
             <ToolbarButton
-              icon={<ArrowUpRight size={16} />}
+              text="+Leg"
               tooltip="Pull out lego of same color"
-              onClick={onPullOutSameColor}
+              disabled={!canDoPullOutSameColoredLeg(tensorNetwork?.legos || [])}
+              onClick={() =>
+                handlePullOutSameColoredLeg(tensorNetwork?.legos[0]!)
+              }
             />
             <ToolbarButton
-              icon={<RotateCcw size={16} />}
+              text="Bi"
               tooltip="Bi-algebra transformation"
-              onClick={onBiAlgebra}
+              disabled={
+                !canDoBialgebra(
+                  tensorNetwork?.legos || [],
+                  tensorNetwork?.connections || []
+                )
+              }
+              onClick={() => handleBialgebra(tensorNetwork?.legos || [])}
             />
             <ToolbarButton
-              icon={<RotateCcw size={16} style={{ transform: "scaleX(-1)" }} />}
               tooltip="Inverse bi-algebra transformation"
-              onClick={onInverseBiAlgebra}
+              disabled={
+                !canDoInverseBialgebra(
+                  tensorNetwork?.legos || [],
+                  tensorNetwork?.connections || []
+                )
+              }
+              onClick={() => handleInverseBialgebra(tensorNetwork?.legos || [])}
+              text="IBi"
             />
             <ToolbarButton
               icon={<Scissors size={16} />}

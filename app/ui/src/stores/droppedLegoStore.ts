@@ -158,16 +158,16 @@ export class DroppedLego implements LegoPiece {
     // optional overrides
     overrides: Partial<DroppedLego> = {}
   ) {
-    this.type_id = lego.type_id;
-    this.name = lego.name;
+    this.type_id = overrides.type_id || lego.type_id;
+    this.name = overrides.name || lego.name;
     this.short_name = overrides.short_name || lego.short_name;
     this.description = overrides.description || lego.description;
     this.parity_check_matrix =
       overrides.parity_check_matrix || lego.parity_check_matrix;
-    this.logical_legs = lego.logical_legs;
-    this.gauge_legs = lego.gauge_legs;
-    this.is_dynamic = lego.is_dynamic;
-    this.parameters = lego.parameters;
+    this.logical_legs = overrides.logical_legs || lego.logical_legs;
+    this.gauge_legs = overrides.gauge_legs || lego.gauge_legs;
+    this.is_dynamic = overrides.is_dynamic || lego.is_dynamic;
+    this.parameters = overrides.parameters || lego.parameters;
     this.logicalPosition = canvasPosition;
     this.instance_id = instance_id;
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];

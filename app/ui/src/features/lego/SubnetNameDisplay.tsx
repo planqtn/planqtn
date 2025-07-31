@@ -8,6 +8,8 @@ interface SubnetNameDisplayProps {
   networkName: string;
   isSingleLego?: boolean;
   singleLegoInstanceId?: string;
+  constrainedNameTop?: number;
+  constrainedNameLeft?: number;
 }
 
 export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
@@ -15,7 +17,9 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
   networkSignature,
   networkName,
   isSingleLego = false,
-  singleLegoInstanceId
+  singleLegoInstanceId,
+  constrainedNameTop,
+  constrainedNameLeft
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(networkName);
@@ -132,13 +136,28 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
     }
   };
 
-  // Position the label above the bounding box
-  const labelX = boundingBox.minX + boundingBox.width / 2;
-  const labelY = boundingBox.minY - 60;
+  // Position the label below the bounding box
+  const labelX =
+    constrainedNameLeft !== undefined
+      ? constrainedNameLeft + 100 // Center text within the 200px constrained background (200/2 = 100)
+      : boundingBox.minX + boundingBox.width / 2; // Center text on bounding box
 
-  // Background rectangle position (centered on text)
-  const bgX = labelX - textDimensions.width / 2;
-  const bgY = labelY - textDimensions.height - 2;
+  const labelY =
+    30 +
+    (constrainedNameTop !== undefined
+      ? constrainedNameTop + textDimensions.height
+      : boundingBox.minY + boundingBox.height + 10 + textDimensions.height);
+
+  // Background rectangle position
+  const bgX =
+    constrainedNameLeft !== undefined
+      ? constrainedNameLeft // Use constrained position (left edge of 200px area)
+      : boundingBox.minX + boundingBox.width / 2 - textDimensions.width / 2; // Center on bounding box
+  const bgY =
+    30 +
+    (constrainedNameTop !== undefined
+      ? constrainedNameTop
+      : boundingBox.minY + boundingBox.height + 10);
 
   if (isEditing) {
     return (
@@ -147,7 +166,11 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
         <rect
           x={bgX}
           y={bgY}
-          width={Math.max(textDimensions.width, 120)} // Minimum width for input
+          width={
+            constrainedNameLeft !== undefined
+              ? 200
+              : Math.max(textDimensions.width, 120)
+          } // Use 200px when constrained, otherwise minimum 120px
           height={textDimensions.height}
           fill="white"
           stroke="#e2e8f0"
@@ -158,7 +181,11 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
         <foreignObject
           x={bgX + 4}
           y={bgY + 2}
-          width={Math.max(textDimensions.width - 8, 112)}
+          width={
+            constrainedNameLeft !== undefined
+              ? 192
+              : Math.max(textDimensions.width - 8, 112)
+          } // 200 - 8 = 192px when constrained
           height={textDimensions.height - 4}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -196,7 +223,7 @@ export const SubnetNameDisplay: React.FC<SubnetNameDisplayProps> = ({
       <rect
         x={bgX}
         y={bgY}
-        width={textDimensions.width}
+        width={constrainedNameLeft !== undefined ? 200 : textDimensions.width}
         height={textDimensions.height}
         fill="white"
         stroke="#e2e8f0"

@@ -1,8 +1,8 @@
-import { Connection } from "../stores/connectionStore";
-import { Operation } from "../features/canvas/OperationHistory.ts";
-import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
-import { Legos } from "../features/lego/Legos.ts";
-import { DroppedLego } from "../stores/droppedLegoStore.ts";
+import { Connection } from "@/stores/connectionStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
+import { Z_REP_CODE, X_REP_CODE } from "@/features/lego/LegoStyles.ts";
+import { Legos } from "@/features/lego/Legos.ts";
+import { DroppedLego } from "@/stores/droppedLegoStore.ts";
 
 export function canDoHopfRule(
   selectedLegos: DroppedLego[],
@@ -29,15 +29,15 @@ export function canDoHopfRule(
   return connectionsBetween.length > 1;
 }
 
-export async function applyHopfRule(
+export function applyHopfRule(
   selectedLegos: DroppedLego[],
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   connections: Connection[];
   droppedLegos: DroppedLego[];
   operation: Operation;
-}> {
+} {
   // Get the X and Z legos in correct order
   const [xLego, zLego] =
     selectedLegos[0].type_id === X_REP_CODE

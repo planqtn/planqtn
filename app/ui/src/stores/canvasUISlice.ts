@@ -220,6 +220,8 @@ export interface CanvasUISlice {
   setResizeProxyLegos: (legos: DroppedLego[] | null) => void;
   suppressNextCanvasClick: boolean;
   setSuppressNextCanvasClick: (val: boolean) => void;
+  dragOffset: { x: number; y: number } | null;
+  setDragOffset: (offset: { x: number; y: number } | null) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -228,7 +230,6 @@ export const createCanvasUISlice: StateCreator<
   [],
   CanvasUISlice
 > = (set, get) => ({
-  // Legacy props
   selectionBox: {
     isSelecting: false,
     startX: 0,
@@ -261,6 +262,13 @@ export const createCanvasUISlice: StateCreator<
   setHoveredConnection: (hoveredConnection) => {
     set((state) => {
       state.hoveredConnection = hoveredConnection;
+    });
+  },
+
+  dragOffset: null,
+  setDragOffset: (offset: { x: number; y: number } | null) => {
+    set((state) => {
+      state.dragOffset = offset;
     });
   },
   error: null,
