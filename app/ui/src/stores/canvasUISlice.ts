@@ -35,6 +35,13 @@ export interface SelectionBoxState {
   justFinished: boolean;
 }
 
+export interface FocusBoundingBoxState {
+  isVisible: boolean;
+  boundingBox: BoundingBox | null;
+  opacity: number;
+  fadeTimerId: ReturnType<typeof setInterval> | null;
+}
+
 export interface BoundingBox {
   minX: number;
   minY: number;
@@ -172,6 +179,9 @@ export interface CanvasUISlice {
   setSelectionBox: (selectionBox: SelectionBoxState) => void;
   updateSelectionBox: (updates: Partial<SelectionBoxState>) => void;
   clearSelectionBox: () => void;
+  focusBoundingBox: FocusBoundingBoxState;
+  setFocusBoundingBox: (focusBoundingBox: FocusBoundingBoxState) => void;
+  showFocusBoundingBox: (boundingBox: BoundingBox) => void;
   hoveredConnection: Connection | null;
   setHoveredConnection: (hoveredConnection: Connection | null) => void;
   setError: (error: string | null) => void;
@@ -241,6 +251,12 @@ export const createCanvasUISlice: StateCreator<
     currentY: 0,
     justFinished: false
   },
+  focusBoundingBox: {
+    isVisible: false,
+    boundingBox: null,
+    opacity: 0,
+    fadeTimerId: null
+  },
   clearSelectionBox: () => {
     set({
       selectionBox: {
@@ -251,6 +267,56 @@ export const createCanvasUISlice: StateCreator<
         currentY: 0,
         justFinished: false
       }
+    });
+  },
+  setFocusBoundingBox: (focusBoundingBox) =>
+    set((state) => {
+      state.focusBoundingBox = focusBoundingBox;
+    }),
+  showFocusBoundingBox: (boundingBox) => {
+    // Clear any existing fade timer
+    const currentState = get().focusBoundingBox;
+    if (currentState.fadeTimerId) {
+      clearInterval(currentState.fadeTimerId);
+    }
+
+    set((state) => {
+      state.focusBoundingBox = {
+        isVisible: true,
+        boundingBox,
+        opacity: 0.7,
+        fadeTimerId: null
+      };
+    });
+
+    // Fade out over 1 second
+    const fadeOutDuration = 1000; // 1 second
+    const fadeSteps = 60; // 60 steps for smooth animation
+    const fadeInterval = fadeOutDuration / fadeSteps;
+    const opacityStep = 0.7 / fadeSteps;
+
+    let currentStep = 0;
+    const fadeTimer = setInterval(() => {
+      currentStep++;
+      const newOpacity = Math.max(0, 0.7 - opacityStep * currentStep);
+
+      set((state) => {
+        state.focusBoundingBox.opacity = newOpacity;
+        if (newOpacity <= 0) {
+          state.focusBoundingBox.isVisible = false;
+          state.focusBoundingBox.boundingBox = null;
+          state.focusBoundingBox.fadeTimerId = null;
+        }
+      });
+
+      if (currentStep >= fadeSteps) {
+        clearInterval(fadeTimer);
+      }
+    }, fadeInterval);
+
+    // Store the timer ID so we can cancel it later
+    set((state) => {
+      state.focusBoundingBox.fadeTimerId = fadeTimer;
     });
   },
   setSelectionBox: (selectionBox) =>
@@ -396,12 +462,15 @@ export const createCanvasUISlice: StateCreator<
   },
 
   focusOnTensorNetwork: (tensorNetwork?: TensorNetwork) => {
-    set((state) => {
-      const tensorNetworkBoundingBox = get().calculateTensorNetworkBoundingBox(
-        tensorNetwork || get().tensorNetwork
-      );
-      if (!tensorNetworkBoundingBox) return;
+    const tensorNetworkBoundingBox = get().calculateTensorNetworkBoundingBox(
+      tensorNetwork || get().tensorNetwork
+    );
+    if (!tensorNetworkBoundingBox) return;
 
+    // Show the focus bounding box visual effect
+    get().showFocusBoundingBox(tensorNetworkBoundingBox);
+
+    set((state) => {
       // if tensornetrowk bounding box is within the viewport, do nothing
       if (
         state.viewport.isPointInViewport(

@@ -47,6 +47,7 @@ import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
 import { FloatingPanelsToolbar } from "./features/canvas/FloatingPanelsToolbar.tsx";
 import { FiShare2, FiFileText } from "react-icons/fi";
 import { SubnetToolbarOverlay } from "./features/lego/SubnetToolbarOverlay";
+import { FocusBoundingBox } from "./features/canvas/FocusBoundingBox";
 
 const LegoStudioView: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>("");
@@ -551,6 +552,9 @@ const LegoStudioView: React.FC = () => {
 
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy />
+
+                  {/* Focus Bounding Box for tensor network focus effect */}
+                  <FocusBoundingBox />
 
                   {import.meta.env.VITE_ENV === "debug" && (
                     // Debug viewport overlay
