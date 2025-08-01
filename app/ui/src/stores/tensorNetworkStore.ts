@@ -16,6 +16,8 @@ export class WeightEnumerator {
   normalizerPolynomial?: string;
   truncateLength?: number;
   openLegs: TensorNetworkLeg[];
+  status: "pending" | "running" | "completed" | "failed";
+  errorMessage?: string;
 
   constructor(data: {
     taskId?: string;
@@ -23,12 +25,16 @@ export class WeightEnumerator {
     normalizerPolynomial?: string;
     truncateLength?: number;
     openLegs: TensorNetworkLeg[];
+    status?: "pending" | "running" | "completed" | "failed";
+    errorMessage?: string;
   }) {
     this.taskId = data.taskId;
     this.polynomial = data.polynomial;
     this.normalizerPolynomial = data.normalizerPolynomial;
     this.truncateLength = data.truncateLength;
     this.openLegs = data.openLegs;
+    this.status = data.status || "pending";
+    this.errorMessage = data.errorMessage;
   }
 
   public equalArgs(other: WeightEnumerator): boolean {
@@ -120,6 +126,12 @@ export interface TensorNetworkSlice {
     networkSignature: string,
     taskId: string,
     weightEnumerator: WeightEnumerator
+  ) => void;
+  updateWeightEnumeratorStatus: (
+    networkSignature: string,
+    taskId: string,
+    status: "pending" | "running" | "completed" | "failed",
+    errorMessage?: string
   ) => void;
   clearAllHighlightedTensorNetworkLegs: () => void;
   highlightCachedTensorNetworkLegs: (
@@ -439,6 +451,27 @@ export const useTensorNetworkSlice: StateCreator<
     });
   },
 
+  updateWeightEnumeratorStatus: (
+    networkSignature: string,
+    taskId: string,
+    status: "pending" | "running" | "completed" | "failed",
+    errorMessage?: string
+  ) => {
+    set((state) => {
+      const weightEnumerators = state.weightEnumerators[networkSignature];
+      const index = weightEnumerators?.findIndex(
+        (enumerator) => enumerator.taskId === taskId
+      );
+      if (weightEnumerators && index !== undefined && index !== -1) {
+        weightEnumerators[index] = weightEnumerators[index].with({
+          status,
+          errorMessage
+        });
+      }
+      return state;
+    });
+  },
+
   setTensorNetwork: (network: TensorNetwork | null) => {
     set({ tensorNetwork: network });
   },
@@ -634,6 +667,24 @@ export const useTensorNetworkSlice: StateCreator<
         })
       });
 
+      // Check for HTTP error status codes
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // If we can't parse the error response, use the raw text
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
 
       if (data.status === "error") {
@@ -645,7 +696,7 @@ export const useTensorNetworkSlice: StateCreator<
       get().setWeightEnumerator(
         tensorNetwork.signature,
         taskId,
-        newEnumerator.with({ taskId })
+        newEnumerator.with({ taskId, status: "pending" })
       );
 
       const cachedTensorNetwork = get().getCachedTensorNetwork(
@@ -674,6 +725,17 @@ export const useTensorNetworkSlice: StateCreator<
       console.error("Error calculating weight enumerator:", err);
       const errorMessage =
         err instanceof Error ? err.message : "Unknown error occurred";
+
+      // Mark the task as failed if it was created
+      if (newEnumerator.taskId) {
+        get().updateWeightEnumeratorStatus(
+          tensorNetwork.signature,
+          newEnumerator.taskId,
+          "failed",
+          errorMessage
+        );
+      }
+
       get().setError(`Failed to calculate weight enumerator: ${errorMessage}`);
     }
   },

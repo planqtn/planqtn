@@ -28,10 +28,12 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { TaskUpdateIterationStatus } from "../../lib/types";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useUserStore } from "@/stores/userStore";
+import { TensorNetwork, TensorNetworkLeg } from "@/lib/TensorNetwork";
+import { WeightEnumerator } from "@/stores/tensorNetworkStore";
 
 interface WeightEnumeratorsProps {
-  tensorNetwork: any;
-  weightEnumerators: any[];
+  tensorNetwork: TensorNetwork;
+  weightEnumerators: WeightEnumerator[];
   tasks: Map<string, Task>;
   iterationStatuses: Map<string, Array<TaskUpdateIterationStatus>>;
   waitingForTaskUpdates: Map<string, boolean>;
@@ -125,88 +127,110 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
 
           return (
             <AccordionItem key={taskId} border="none">
-              <AccordionButton p={2} _hover={{ bg: "gray.50" }}>
-                <Box flex="1" textAlign="left">
-                  <VStack align="stretch" spacing={1}>
-                    <HStack justify="space-between" align="center">
-                      <Text fontSize="sm" fontWeight="medium">
-                        Task #{index + 1}
-                      </Text>
-                      <HStack spacing={1}>
-                        {task && <TaskStateLabel state={task.state} />}
-                        {enumerator.truncateLength && (
-                          <Badge size="sm" colorScheme="purple">
-                            T{enumerator.truncateLength}
-                          </Badge>
-                        )}
-                        {enumerator.openLegs.length > 0 ? (
-                          <Badge size="sm" colorScheme="orange">
-                            {enumerator.openLegs.length} open legs
-                          </Badge>
-                        ) : (
-                          <Badge size="sm" colorScheme="gray">
-                            SCALAR
-                          </Badge>
-                        )}
-                        <IconButton
-                          aria-label="Delete task"
-                          icon={<DeleteIcon />}
-                          size="xs"
-                          variant="ghost"
-                          colorScheme="red"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTask(taskId);
-                          }}
-                        />
+              <HStack spacing={2} align="flex-start">
+                <AccordionButton p={2} _hover={{ bg: "gray.50" }} flex="1">
+                  <Box flex="1" textAlign="left">
+                    <VStack align="stretch" spacing={1}>
+                      <HStack justify="space-between" align="center">
+                        <Text fontSize="sm" fontWeight="medium">
+                          Task #{index + 1}
+                        </Text>
+                        <HStack spacing={1}>
+                          {task && <TaskStateLabel state={task.state} />}
+                          {enumerator.status === "failed" && (
+                            <Badge size="sm" colorScheme="red">
+                              Failed
+                            </Badge>
+                          )}
+                          {enumerator.truncateLength && (
+                            <Badge size="sm" colorScheme="purple">
+                              T{enumerator.truncateLength}
+                            </Badge>
+                          )}
+                          {enumerator.openLegs.length > 0 ? (
+                            <Badge size="sm" colorScheme="orange">
+                              {enumerator.openLegs.length} open legs
+                            </Badge>
+                          ) : (
+                            <Badge size="sm" colorScheme="gray">
+                              SCALAR
+                            </Badge>
+                          )}
+                        </HStack>
                       </HStack>
-                    </HStack>
-                    <VStack align="stretch" spacing={0}>
-                      <Text fontSize="xs" color="gray.500" fontFamily="mono">
-                        ID: {taskId}
-                      </Text>
-                      {task?.sent_at && (
+                      <VStack align="stretch" spacing={0}>
                         <Text fontSize="xs" color="gray.500" fontFamily="mono">
-                          Created: {new Date(task.sent_at).toLocaleString()}
+                          ID: {taskId}
                         </Text>
-                      )}
-                      {task?.started_at && task?.ended_at && (
-                        <Text fontSize="xs" color="gray.500" fontFamily="mono">
-                          Duration:{" "}
-                          {(
-                            (new Date(task.ended_at).getTime() -
-                              new Date(task.started_at).getTime()) /
-                            1000
-                          ).toFixed(2)}
-                          s
-                        </Text>
-                      )}
-                      {task?.state === 2 &&
-                        task?.result &&
-                        (() => {
-                          try {
-                            const parsedResult = JSON.parse(task.result);
-                            if (parsedResult.time) {
-                              return (
-                                <Text
-                                  fontSize="xs"
-                                  color="gray.500"
-                                  fontFamily="mono"
-                                >
-                                  Execution: {parsedResult.time.toFixed(2)}s
-                                </Text>
-                              );
+                        {task?.sent_at && (
+                          <Text
+                            fontSize="xs"
+                            color="gray.500"
+                            fontFamily="mono"
+                          >
+                            Created: {new Date(task.sent_at).toLocaleString()}
+                          </Text>
+                        )}
+                        {task?.started_at && task?.ended_at && (
+                          <Text
+                            fontSize="xs"
+                            color="gray.500"
+                            fontFamily="mono"
+                          >
+                            Duration:{" "}
+                            {(
+                              (new Date(task.ended_at).getTime() -
+                                new Date(task.started_at).getTime()) /
+                              1000
+                            ).toFixed(2)}
+                            s
+                          </Text>
+                        )}
+                        {task?.state === 2 &&
+                          task?.result &&
+                          (() => {
+                            try {
+                              const parsedResult = JSON.parse(task.result);
+                              if (parsedResult.time) {
+                                return (
+                                  <Text
+                                    fontSize="xs"
+                                    color="gray.500"
+                                    fontFamily="mono"
+                                  >
+                                    Execution: {parsedResult.time.toFixed(2)}s
+                                  </Text>
+                                );
+                              }
+                            } catch {
+                              return null;
                             }
-                          } catch (e) {
-                            // Ignore parsing errors
-                          }
-                          return null;
-                        })()}
+                          })()}
+                        {enumerator.status === "failed" &&
+                          enumerator.errorMessage && (
+                            <Text
+                              fontSize="xs"
+                              color="red.500"
+                              fontFamily="mono"
+                            >
+                              Error: {enumerator.errorMessage}
+                            </Text>
+                          )}
+                      </VStack>
                     </VStack>
-                  </VStack>
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <IconButton
+                  aria-label="Delete task"
+                  icon={<DeleteIcon />}
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={() => handleDeleteTask(taskId)}
+                  mt={2}
+                />
+              </HStack>
               <AccordionPanel pb={2} pt={0}>
                 <VStack align="stretch" spacing={1}>
                   {/* Display open legs */}
@@ -236,7 +260,7 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
                           </Thead>
                           <Tbody>
                             {enumerator.openLegs.map(
-                              (leg: any, legIndex: number) => (
+                              (leg: TensorNetworkLeg, legIndex: number) => (
                                 <Tr key={legIndex}>
                                   <Td
                                     fontSize="xs"

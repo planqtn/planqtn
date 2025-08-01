@@ -232,6 +232,23 @@ const DetailsPanel: React.FC = () => {
             if (task.state === 0 || task.state === 1) {
               console.log("Setting up subscription for task:", taskId);
               subscribeToTaskUpdates(taskId);
+
+              // Update weight enumerator status to running if task is running
+              if (task.state === 1 && task.job_type === "weightenumerator") {
+                const currentEnumerator = weightEnumerators[
+                  tensorNetwork.signature
+                ]?.find((enumerator) => enumerator.taskId === taskId);
+
+                if (currentEnumerator) {
+                  const updateWeightEnumeratorStatus =
+                    useCanvasStore.getState().updateWeightEnumeratorStatus;
+                  updateWeightEnumeratorStatus(
+                    tensorNetwork.signature,
+                    taskId,
+                    "running"
+                  );
+                }
+              }
             } else {
               const existingChannel = taskUpdatesChannels.get(taskId);
               if (existingChannel) {
@@ -295,7 +312,8 @@ const DetailsPanel: React.FC = () => {
                       taskId,
                       currentEnumerator.with({
                         polynomial: result.stabilizer_polynomial,
-                        normalizerPolynomial: result.normalizer_polynomial
+                        normalizerPolynomial: result.normalizer_polynomial,
+                        status: "completed"
                       })
                     );
 
@@ -318,6 +336,24 @@ const DetailsPanel: React.FC = () => {
                   }
                 } catch (parseError) {
                   console.error("Error parsing task result:", parseError);
+                }
+              }
+
+              // If task failed, update the weight enumerator status
+              if (task.state === 3 && task.job_type === "weightenumerator") {
+                const currentEnumerator = weightEnumerators[
+                  tensorNetwork.signature
+                ]?.find((enumerator) => enumerator.taskId === taskId);
+
+                if (currentEnumerator) {
+                  const updateWeightEnumeratorStatus =
+                    useCanvasStore.getState().updateWeightEnumeratorStatus;
+                  updateWeightEnumeratorStatus(
+                    tensorNetwork.signature,
+                    taskId,
+                    "failed",
+                    "Task failed"
+                  );
                 }
               }
             }

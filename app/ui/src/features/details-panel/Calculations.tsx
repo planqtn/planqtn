@@ -8,22 +8,26 @@ import {
   Text,
   useColorModeValue
 } from "@chakra-ui/react";
-import ParityCheckMatrix from "./ParityCheckMatrix";
+import ParityCheckMatrixSection from "./ParityCheckMatrixSection";
 import WeightEnumerators from "./WeightEnumerators";
 import { Task } from "../../lib/types";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { TaskUpdateIterationStatus } from "../../lib/types";
 import { TensorNetwork } from "@/lib/TensorNetwork";
 import { DroppedLego } from "@/stores/droppedLegoStore";
+import {
+  ParityCheckMatrix,
+  WeightEnumerator
+} from "@/stores/tensorNetworkStore";
 
 interface CalculationsProps {
   tensorNetwork: TensorNetwork | null;
   lego: DroppedLego | null;
   isSingleLego: boolean;
-  parityCheckMatrix: any;
+  parityCheckMatrix: ParityCheckMatrix | null;
   selectedRows: number[];
   singleLegoLegOrdering: Array<{ instance_id: string; leg_index: number }>;
-  weightEnumerators: any[];
+  weightEnumerators: WeightEnumerator[];
   tasks: Map<string, Task>;
   iterationStatuses: Map<string, Array<TaskUpdateIterationStatus>>;
   waitingForTaskUpdates: Map<string, boolean>;
@@ -84,7 +88,7 @@ const Calculations: React.FC<CalculationsProps> = ({
           <AccordionIcon />
         </AccordionButton>
         <AccordionPanel pb={0} pt={0}>
-          <ParityCheckMatrix
+          <ParityCheckMatrixSection
             tensorNetwork={tensorNetwork}
             lego={lego}
             isSingleLego={isSingleLego}

@@ -227,6 +227,15 @@
                     "required": ["instance_id", "leg_index"],
                     "additionalProperties": false
                   }
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["pending", "running", "completed", "failed"],
+                  "description": "Status of the weight enumerator calculation"
+                },
+                "errorMessage": {
+                  "type": "string",
+                  "description": "Error message if the calculation failed"
                 }
               },
               "required": ["openLegs"],
