@@ -89,7 +89,7 @@ export const CanvasMiniMap: React.FC = () => {
   const droppedLegoBoundingBox = calculateDroppedLegoBoundingBox();
   const tensorNetworkBoundingBox =
     tensorNetwork && tensorNetwork.legos.length > 0
-      ? calculateTensorNetworkBoundingBox()
+      ? calculateTensorNetworkBoundingBox(tensorNetwork)
       : null;
 
   // Calculate minimap dimensions and positions (in pixels)

@@ -133,9 +133,10 @@ export const ViewportDebugOverlay: React.FC = () => {
     (state) => state.calculateDroppedLegoBoundingBox
   )();
 
+  const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
   const tensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
-  )();
+  )(tensorNetwork);
 
   const legoBoundingBoxStyle = droppedLegoBoundingBox
     ? {

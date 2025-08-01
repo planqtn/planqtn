@@ -5,6 +5,7 @@ import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
 import { DroppedLego } from "./droppedLegoStore";
+import { TensorNetwork } from "@/lib/TensorNetwork";
 
 export const calculateBoundingBoxForLegos = (
   legos: DroppedLego[]
@@ -180,7 +181,7 @@ export interface CanvasUISlice {
   updatePanOffset: (delta: LogicalPoint) => void;
   canvasRef: RefObject<HTMLDivElement> | null;
   setCanvasRef: (element: HTMLDivElement | null) => void;
-  focusOnTensorNetwork: () => void;
+  focusOnTensorNetwork: (tensorNetwork?: TensorNetwork) => void;
 
   viewport: Viewport;
 
@@ -195,7 +196,9 @@ export interface CanvasUISlice {
 
   // Bounding box calculations
   calculateDroppedLegoBoundingBox: () => BoundingBox | null;
-  calculateTensorNetworkBoundingBox: () => BoundingBox | null;
+  calculateTensorNetworkBoundingBox: (
+    tensorNetwork: TensorNetwork | null
+  ) => BoundingBox | null;
 
   // Mouse wheel handling
   handleWheelEvent: (e: WheelEvent) => void;
@@ -392,10 +395,11 @@ export const createCanvasUISlice: StateCreator<
     });
   },
 
-  focusOnTensorNetwork: () => {
+  focusOnTensorNetwork: (tensorNetwork?: TensorNetwork) => {
     set((state) => {
-      const tensorNetworkBoundingBox =
-        get().calculateTensorNetworkBoundingBox();
+      const tensorNetworkBoundingBox = get().calculateTensorNetworkBoundingBox(
+        tensorNetwork || get().tensorNetwork
+      );
       if (!tensorNetworkBoundingBox) return;
 
       // if tensornetrowk bounding box is within the viewport, do nothing
@@ -460,9 +464,7 @@ export const createCanvasUISlice: StateCreator<
     return calculateBoundingBoxForLegos(droppedLegos);
   },
 
-  calculateTensorNetworkBoundingBox: () => {
-    const { tensorNetwork } = get();
-
+  calculateTensorNetworkBoundingBox: (tensorNetwork: TensorNetwork | null) => {
     if (!tensorNetwork || tensorNetwork.legos.length === 0) return null;
 
     return calculateBoundingBoxForLegos(tensorNetwork.legos);
@@ -478,7 +480,7 @@ export const createCanvasUISlice: StateCreator<
     e.preventDefault();
 
     // Calculate new zoom level
-    const zoomDelta = 1 - 0.0002 * e.deltaY;
+    const zoomDelta = 1 - 0.0005 * e.deltaY;
     const newZoomLevel = Math.max(
       0.04,
       Math.min(9, get().viewport.zoomLevel * zoomDelta)
@@ -511,7 +513,9 @@ export const createCanvasUISlice: StateCreator<
     }),
 
   startResize: (handleType: ResizeHandleType, mousePosition: LogicalPoint) => {
-    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+    const { tensorNetwork } = get();
+    const currentBoundingBox =
+      get().calculateTensorNetworkBoundingBox(tensorNetwork);
     if (!currentBoundingBox) return;
 
     set((state) => {
@@ -549,7 +553,8 @@ export const createCanvasUISlice: StateCreator<
     if (newBoundingBox) {
       // Instead of updating real legos, update the proxy legos
       const { tensorNetwork } = get();
-      const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+      const currentBoundingBox =
+        get().calculateTensorNetworkBoundingBox(tensorNetwork);
       if (
         !tensorNetwork ||
         tensorNetwork.legos.length === 0 ||
@@ -560,6 +565,7 @@ export const createCanvasUISlice: StateCreator<
         });
         return;
       }
+
       // Calculate which coordinates need to be preserved based on handleType
       const { handleType } = resizeState;
       let preservedCoordinates = {

@@ -159,7 +159,7 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             (boundingBox as BoundingBoxWithConstrainedToolbar)
               .constrainedToolbarLeft ||
             boundingBox.minX + boundingBox.width / 2,
-          zIndex: 10000,
+          zIndex: 1000,
           transform: (boundingBox as BoundingBoxWithConstrainedToolbar)
             .constrainedToolbarTop
             ? "none"

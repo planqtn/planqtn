@@ -140,7 +140,6 @@ const PauliRow = function PauliRow({
 }: PauliRowProps) {
   const pauliString = getPauliString(row);
   const [isDragOver, setIsDragOver] = useState(false);
-  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const focusOnTensorNetwork = useCanvasStore(
     (state) => state.focusOnTensorNetwork
@@ -234,10 +233,9 @@ const PauliRow = function PauliRow({
                     (lego) => lego.instance_id === legOrdering[i].instance_id
                   );
                   if (lego) {
-                    setTensorNetwork(
+                    focusOnTensorNetwork(
                       new TensorNetwork({ legos: [lego], connections: [] })
                     );
-                    focusOnTensorNetwork();
                   }
                 }
               }}
@@ -269,7 +267,6 @@ export const ParityCheckMatrixDisplay: React.FC<
   lego
 }) => {
   const [draggedRowIndex] = useState<number | null>(null);
-  const setTensorNetwork = useCanvasStore((state) => state.setTensorNetwork);
   const focusOnTensorNetwork = useCanvasStore(
     (state) => state.focusOnTensorNetwork
   );
@@ -657,7 +654,7 @@ export const ParityCheckMatrixDisplay: React.FC<
               <TooltipTrigger asChild>
                 <IconButton
                   icon={<FiExternalLink />}
-                  aria-label="Pop out PCM panel"
+                  aria-label="Pop out PCM panel with qubit navigation"
                   size="lg"
                   variant="ghost"
                   onClick={() => {
@@ -693,8 +690,8 @@ export const ParityCheckMatrixDisplay: React.FC<
               if (isDisabled || !signature) return;
               const cachedTensorNetwork = getCachedTensorNetwork(signature);
               if (cachedTensorNetwork) {
-                setTensorNetwork(cachedTensorNetwork.tensorNetwork);
-                focusOnTensorNetwork();
+                // setTensorNetwork(cachedTensorNetwork.tensorNetwork);
+                focusOnTensorNetwork(cachedTensorNetwork.tensorNetwork);
               }
             }}
           >
@@ -783,56 +780,6 @@ export const ParityCheckMatrixDisplay: React.FC<
         style={{ flex: 1, minHeight: 0 }}
         ref={containerRef}
       >
-        {/* <Resizable
-          size={listSize}
-          minWidth={250}
-          minHeight={200}
-          maxWidth="100vw"
-          maxHeight="100vh"
-          onResizeStop={(_e, _direction, _ref, d) => {
-            setListSize({
-              width: listSize.width + d.width,
-              height: listSize.height + d.height
-            });
-          }}
-          handleStyles={{
-            bottom: {
-              background: "#E2E8F0",
-              borderTop: "1px solid #CBD5E0",
-              height: "8px",
-              cursor: "ns-resize"
-            },
-            right: {
-              background: "#E2E8F0",
-              borderLeft: "1px solid #CBD5E0",
-              width: "8px",
-              cursor: "ew-resize"
-            },
-            bottomRight: {
-              background: "#CBD5E0",
-              border: "1px solid #A0AEC0",
-              borderRadius: "0 0 6px 0",
-              width: "12px",
-              height: "12px",
-              cursor: "nw-resize"
-            }
-          }}
-          handleClasses={{
-            bottom: "resize-handle-bottom",
-            right: "resize-handle-right",
-            bottomRight: "resize-handle-corner"
-          }}
-          enable={{
-            top: false,
-            right: true,
-            bottom: true,
-            left: false,
-            topRight: false,
-            bottomRight: true,
-            bottomLeft: false,
-            topLeft: false
-          }}
-        > */}
         {/* Pauli stabilizer rows - virtualized */}
         <List
           key={listKey}
@@ -878,36 +825,6 @@ export const ParityCheckMatrixDisplay: React.FC<
             </div>
           )}
         </List>
-        {/* 
-          
-          <Box
-            position="absolute"
-            bottom="0"
-            right="0"
-            width="12px"
-            height="12px"
-            pointerEvents="none"
-            zIndex={1}
-            opacity={0.6}
-            _hover={{ opacity: 1 }}
-            transition="opacity 0.2s"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              style={{ transform: "rotate(90deg)" }}
-            >
-              <path
-                d="M9 3L3 9M6 3L3 6M9 6L6 9"
-                stroke={SVG_COLORS.I}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </Box>
-        </Resizable> */}
       </Box>
     </Box>
   );

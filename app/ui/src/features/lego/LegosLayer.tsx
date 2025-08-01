@@ -125,7 +125,7 @@ export const LegosLayer: React.FC = () => {
   );
   const tnBoundingBoxLogical =
     tensorNetwork && tensorNetwork.legos.length > 0
-      ? calculateTensorNetworkBoundingBox()
+      ? calculateTensorNetworkBoundingBox(tensorNetwork)
       : null;
 
   // Resize functionality

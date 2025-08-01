@@ -26,7 +26,7 @@ export const SubnetToolbarOverlay: React.FC = () => {
   // Calculate bounding box for the current tensor network
   const tnBoundingBoxLogical =
     tensorNetwork && tensorNetwork.legos.length > 0
-      ? calculateTensorNetworkBoundingBox()
+      ? calculateTensorNetworkBoundingBox(tensorNetwork)
       : null;
 
   // Calculate dragged legos (same logic as LegosLayer)
