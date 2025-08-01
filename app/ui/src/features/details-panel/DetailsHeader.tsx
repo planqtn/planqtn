@@ -9,10 +9,8 @@ import {
   HStack,
   useColorModeValue,
   Table,
-  Thead,
   Tbody,
   Tr,
-  Th,
   Td
 } from "@chakra-ui/react";
 import { TensorNetwork } from "@/lib/TensorNetwork";

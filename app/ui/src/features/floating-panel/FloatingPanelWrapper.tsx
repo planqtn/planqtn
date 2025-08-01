@@ -3,6 +3,7 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   ReactNode
 } from "react";
 import {
@@ -45,6 +46,34 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   showResizeHandle = true,
   icon
 }) => {
+  // Safety check: ensure config has valid layout data
+  const safeConfig = useMemo(() => {
+    if (
+      !config ||
+      !config.layout ||
+      !config.layout.position ||
+      !config.layout.size
+    ) {
+      // Create a safe fallback config
+      const fallbackConfig = new FloatingPanelConfigManager({
+        id: config?.id || "fallback",
+        title: config?.title || title,
+        isOpen: config?.isOpen ?? false,
+        isCollapsed: config?.isCollapsed ?? false,
+        layout: {
+          position: { x: 100, y: 100 },
+          size: { width: 300, height: 400 }
+        },
+        zIndex: config?.zIndex || 1000
+      });
+
+      // Update the parent with the safe config
+      setTimeout(() => onConfigChange(fallbackConfig), 0);
+      return fallbackConfig;
+    }
+    return config;
+  }, [config, title, onConfigChange]);
+
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const shadowColor = useColorModeValue("lg", "dark-lg");
@@ -65,7 +94,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   // Function to bring panel to front
   const bringToFront = useCallback(() => {
     const newConfig = new FloatingPanelConfigManager({
-      ...config.toJSON(),
+      ...safeConfig.toJSON(),
       zIndex: nextZIndex
     });
     onConfigChange(newConfig);
@@ -73,7 +102,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     usePanelConfigStore.setState((state) => {
       state.nextZIndex++;
     });
-  }, [config, nextZIndex, onConfigChange]);
+  }, [safeConfig, nextZIndex, onConfigChange]);
 
   // Add DOM-level click listener for more reliable click detection
   useEffect(() => {
@@ -201,12 +230,12 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   const updateLayout = useCallback(
     (newLayout: PanelLayout) => {
       const newConfig = new FloatingPanelConfigManager({
-        ...config.toJSON(),
+        ...safeConfig.toJSON(),
         layout: newLayout
       });
       onConfigChange(newConfig);
     },
-    [config, onConfigChange]
+    [safeConfig, onConfigChange]
   );
 
   // Handle drag start
@@ -251,12 +280,12 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
 
         // When collapsed, allow positioning anywhere (just constrain to header size)
         // When expanded, constrain to viewport with full panel size
-        const effectiveWidth = config.isCollapsed
+        const effectiveWidth = safeConfig.isCollapsed
           ? 200
-          : config.layout.size.width;
-        const effectiveHeight = config.isCollapsed
+          : safeConfig.layout.size.width;
+        const effectiveHeight = safeConfig.isCollapsed
           ? 50
-          : config.layout.size.height;
+          : safeConfig.layout.size.height;
 
         const maxX = window.innerWidth - effectiveWidth;
         const maxY = window.innerHeight - effectiveHeight;
@@ -266,24 +295,24 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
             x: Math.max(0, Math.min(newX, maxX)),
             y: Math.max(0, Math.min(newY, maxY))
           },
-          size: config.layout.size
+          size: safeConfig.layout.size
         });
       } else if (isResizing) {
         const newWidth = Math.max(
-          config.minWidth,
-          e.clientX - config.layout.position.x
+          safeConfig.minWidth,
+          e.clientX - safeConfig.layout.position.x
         );
         const newHeight = Math.max(
-          config.minHeight,
-          e.clientY - config.layout.position.y
+          safeConfig.minHeight,
+          e.clientY - safeConfig.layout.position.y
         );
 
         // Constrain to viewport
-        const maxWidth = window.innerWidth - config.layout.position.x;
-        const maxHeight = window.innerHeight - config.layout.position.y;
+        const maxWidth = window.innerWidth - safeConfig.layout.position.x;
+        const maxHeight = window.innerHeight - safeConfig.layout.position.y;
 
         updateLayout({
-          position: config.layout.position,
+          position: safeConfig.layout.position,
           size: {
             width: Math.min(newWidth, maxWidth),
             height: Math.min(newHeight, maxHeight)
@@ -291,7 +320,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         });
       }
     },
-    [isDragging, isResizing, dragOffset, config, updateLayout]
+    [isDragging, isResizing, dragOffset, safeConfig, updateLayout]
   );
 
   // Handle mouse up
@@ -316,11 +345,11 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   // Handle window resize to keep panel in bounds
   useEffect(() => {
     const handleWindowResize = () => {
-      const newConfig = new FloatingPanelConfigManager(config.toJSON());
+      const newConfig = new FloatingPanelConfigManager(safeConfig.toJSON());
 
       // When collapsed, only constrain to header size
       // When expanded, constrain to full panel size
-      if (config.isCollapsed) {
+      if (safeConfig.isCollapsed) {
         newConfig.constrainToViewportCollapsed();
       } else {
         newConfig.constrainToViewport();
@@ -331,19 +360,19 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
 
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [config, onConfigChange]);
+  }, [safeConfig, onConfigChange]);
 
   // Handle collapse toggle
   const handleToggleCollapse = useCallback(() => {
-    const newConfig = new FloatingPanelConfigManager(config.toJSON());
-    const wasCollapsed = config.isCollapsed;
+    const newConfig = new FloatingPanelConfigManager(safeConfig.toJSON());
+    const wasCollapsed = safeConfig.isCollapsed;
     newConfig.setIsCollapsed(!wasCollapsed);
 
     // If expanding, ensure the panel has enough space
     if (wasCollapsed) {
-      const currentPos = config.layout.position;
-      const panelWidth = config.layout.size.width;
-      const panelHeight = config.layout.size.height;
+      const currentPos = safeConfig.layout.position;
+      const panelWidth = safeConfig.layout.size.width;
+      const panelHeight = safeConfig.layout.size.height;
 
       // Check if panel would go outside viewport when expanded
       const maxX = window.innerWidth - panelWidth;
@@ -368,24 +397,26 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     }
 
     onConfigChange(newConfig);
-  }, [config, onConfigChange]);
+  }, [safeConfig, onConfigChange]);
 
-  if (!config.isOpen) return null;
+  if (!safeConfig.isOpen) return null;
 
   return (
     <Box
       ref={panelRef}
       position="fixed"
-      left={`${config.layout.position.x}px`}
-      top={`${config.layout.position.y}px`}
-      width={`${config.layout.size.width}px`}
-      height={config.isCollapsed ? "auto" : `${config.layout.size.height}px`}
+      left={`${safeConfig.layout.position.x}px`}
+      top={`${safeConfig.layout.position.y}px`}
+      width={`${safeConfig.layout.size.width}px`}
+      height={
+        safeConfig.isCollapsed ? "auto" : `${safeConfig.layout.size.height}px`
+      }
       bg={bgColor}
       border="1px"
       borderColor={borderColor}
       borderRadius="lg"
       boxShadow={shadowColor}
-      zIndex={config.zIndex}
+      zIndex={safeConfig.zIndex}
       display="flex"
       flexDirection="column"
       overflow="hidden"
@@ -412,8 +443,12 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
         </Text>
         {showCollapseButton && (
           <IconButton
-            aria-label={config.isCollapsed ? "Expand panel" : "Collapse panel"}
-            icon={config.isCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
+            aria-label={
+              safeConfig.isCollapsed ? "Expand panel" : "Collapse panel"
+            }
+            icon={
+              safeConfig.isCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />
+            }
             size="sm"
             variant="ghost"
             onClick={handleToggleCollapse}
@@ -431,7 +466,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
       </HStack>
 
       {/* Content area with scrolling - clicking anywhere here brings panel to front */}
-      {!config.isCollapsed && (
+      {!safeConfig.isCollapsed && (
         <Box
           flex={1}
           overflow="auto"

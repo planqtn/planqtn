@@ -18,8 +18,7 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  IconButton,
-  Icon
+  IconButton
 } from "@chakra-ui/react";
 import { DeleteIcon } from "@chakra-ui/icons";
 import { Task } from "../../lib/types";
@@ -28,6 +27,7 @@ import TaskStateLabel from "../tasks/TaskStateLabel";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { TaskUpdateIterationStatus } from "../../lib/types";
 import { useCanvasStore } from "../../stores/canvasStateStore";
+import { useUserStore } from "@/stores/userStore";
 
 interface WeightEnumeratorsProps {
   tensorNetwork: any;
@@ -51,7 +51,6 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
   onViewLogs
 }) => {
   const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
 
   const openWeightEnumeratorDialog = useCanvasStore(
     (state) => state.openWeightEnumeratorDialog
@@ -73,6 +72,8 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
     }
   };
 
+  const isUserLoggedIn = useUserStore((state) => state.isUserLoggedIn);
+
   if (!tensorNetwork || weightEnumerators.length === 0) {
     return (
       <VStack align="stretch" spacing={2} p={2}>
@@ -85,6 +86,7 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
               colorScheme="blue"
               size="sm"
               onClick={handleRunWeightEnumerator}
+              disabled={!isUserLoggedIn}
             >
               Run a weight enumerator calculation
             </Button>

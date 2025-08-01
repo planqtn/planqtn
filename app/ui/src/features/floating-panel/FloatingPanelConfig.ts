@@ -21,7 +21,40 @@ export class FloatingPanelConfigManager {
   private config: FloatingPanelConfig;
 
   constructor(config: FloatingPanelConfig) {
-    this.config = config;
+    // Validate and provide fallbacks for missing properties
+    this.config = {
+      id: config.id || "unknown",
+      title: config.title || "Panel",
+      isOpen: config.isOpen ?? false,
+      isCollapsed: config.isCollapsed ?? false,
+      layout: config.layout || {
+        position: config.defaultPosition || { x: 100, y: 100 },
+        size: {
+          width: config.defaultWidth || 300,
+          height: config.defaultHeight || 400
+        }
+      },
+      minWidth: config.minWidth || 100,
+      minHeight: config.minHeight || 100,
+      defaultWidth: config.defaultWidth || 300,
+      defaultHeight: config.defaultHeight || 400,
+      defaultPosition: config.defaultPosition || { x: 100, y: 100 },
+      zIndex: config.zIndex || 1000
+    };
+
+    // Ensure layout has valid position and size
+    if (!this.config.layout.position) {
+      this.config.layout.position = this.config.defaultPosition || {
+        x: 100,
+        y: 100
+      };
+    }
+    if (!this.config.layout.size) {
+      this.config.layout.size = {
+        width: this.config.defaultWidth || 300,
+        height: this.config.defaultHeight || 400
+      };
+    }
   }
 
   // Getters
@@ -116,7 +149,38 @@ export class FloatingPanelConfigManager {
 
   // Serialization
   public static fromJSON(json: unknown): FloatingPanelConfigManager {
-    return new FloatingPanelConfigManager(json as FloatingPanelConfig);
+    // Validate the JSON data and provide fallbacks
+    const configData = json as Partial<FloatingPanelConfig>;
+
+    // Ensure we have a valid layout object
+    if (!configData.layout || typeof configData.layout !== "object") {
+      configData.layout = {
+        position: configData.defaultPosition || { x: 100, y: 100 },
+        size: {
+          width: configData.defaultWidth || 300,
+          height: configData.defaultHeight || 400
+        }
+      };
+    }
+
+    // Ensure layout has valid position and size
+    if (
+      !configData.layout.position ||
+      typeof configData.layout.position !== "object"
+    ) {
+      configData.layout.position = configData.defaultPosition || {
+        x: 100,
+        y: 100
+      };
+    }
+    if (!configData.layout.size || typeof configData.layout.size !== "object") {
+      configData.layout.size = {
+        width: configData.defaultWidth || 300,
+        height: configData.defaultHeight || 400
+      };
+    }
+
+    return new FloatingPanelConfigManager(configData as FloatingPanelConfig);
   }
 
   public toJSON(): FloatingPanelConfig {

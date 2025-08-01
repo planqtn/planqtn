@@ -131,28 +131,3 @@
   fill: #1f2937;
   transform: rotate(180deg);
 }
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .subnet-toolbar {
-    background: rgba(31, 41, 55, 0.95);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .toolbar-button {
-    color: #d1d5db;
-  }
-
-  .toolbar-button:hover:not(.disabled) {
-    background: rgba(59, 130, 246, 0.2);
-    color: #f9fafb;
-  }
-
-  .toolbar-button.disabled {
-    color: #6b7280;
-  }
-
-  .toolbar-separator {
-    background: rgba(255, 255, 255, 0.1);
-  }
-}

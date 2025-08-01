@@ -1,9 +1,4 @@
-import {
-  Box,
-  VStack,
-  useColorModeValue,
-  useDisclosure
-} from "@chakra-ui/react";
+import { Box, useColorModeValue, useDisclosure } from "@chakra-ui/react";
 import {
   TaskUpdate,
   TaskUpdateIterationStatus,
@@ -27,7 +22,6 @@ import { useEffect } from "react";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
-import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "@/stores/userStore.ts";
 import { SubnetToolbar } from "../lego/SubnetToolbar";
 import DetailsHeader from "./DetailsHeader";
@@ -36,7 +30,6 @@ import Calculations from "./Calculations";
 const DetailsPanel: React.FC = () => {
   const { currentUser: user, isUserLoggedIn } = useUserStore();
 
-  const connections = useCanvasStore((state) => state.connections);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
 
   const updateDroppedLego = useCanvasStore((state) => state.updateDroppedLego);
@@ -75,10 +68,7 @@ const DetailsPanel: React.FC = () => {
   const calculateParityCheckMatrix = useCanvasStore(
     (state) => state.calculateParityCheckMatrix
   );
-  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
-  const openSingleLegoPCMPanel = usePanelConfigStore(
-    (state) => state.openSingleLegoPCMPanel
-  );
+
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const cachedTensorNetworks = useCanvasStore(
