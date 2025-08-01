@@ -16,13 +16,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
     (state) => state.calculateTensorNetworkBoundingBox
   );
   const viewport = useCanvasStore((state) => state.viewport);
-  const calculateParityCheckMatrix = useCanvasStore(
-    (state) => state.calculateParityCheckMatrix
-  );
-  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
-  const openSingleLegoPCMPanel = usePanelConfigStore(
-    (state) => state.openSingleLegoPCMPanel
-  );
 
   // Get the same bounding box logic as LegosLayer
   const legoDragState = useCanvasStore((state) => state.legoDragState);
@@ -224,40 +217,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
     };
   }, [boundingBox, viewport.screenWidth, viewport.screenHeight]);
 
-  // Placeholder handlers for toolbar actions
-  const handleToggleLock = () => {
-    console.log("Toggle lock");
-  };
-
-  const handleCollapse = () => {
-    console.log("Collapse");
-  };
-
-  const handleExpand = () => {
-    console.log("Expand");
-  };
-
-  const handleWeightEnumerator = () => {
-    console.log("Weight enumerator");
-  };
-
-  const handleParityCheckMatrix = async () => {
-    if (tensorNetwork?.isSingleLego) {
-      // For single legos, open the PCM panel directly with the lego's matrix
-      const singleLego = tensorNetwork.singleLego;
-      openSingleLegoPCMPanel(
-        singleLego.instance_id,
-        singleLego.short_name || singleLego.name
-      );
-    } else {
-      // For multi-lego networks, calculate the parity check matrix and open the panel
-      await calculateParityCheckMatrix((networkSignature, networkName) => {
-        // Open PCM panel after successful calculation
-        openPCMPanel(networkSignature, networkName);
-      });
-    }
-  };
-
   const handleMatrixRowSelectionForSelectedTensorNetwork = useCanvasStore(
     (state) => state.handleMatrixRowSelectionForSelectedTensorNetwork
   );
@@ -268,10 +227,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
   const parityCheckMatrices = useCanvasStore(
     (state) => state.parityCheckMatrices
   );
-
-  const handleRemoveFromCache = () => {
-    console.log("Remove from cache");
-  };
 
   const handleRemoveHighlights = () => {
     if (tensorNetwork && tensorNetwork.legos.length == 1) {
@@ -298,12 +253,6 @@ export const SubnetToolbarOverlay: React.FC = () => {
   return (
     <SubnetToolbar
       boundingBox={constrainedBoundingBox}
-      onToggleLock={handleToggleLock}
-      onCollapse={handleCollapse}
-      onExpand={handleExpand}
-      onWeightEnumerator={handleWeightEnumerator}
-      onParityCheckMatrix={handleParityCheckMatrix}
-      onRemoveFromCache={handleRemoveFromCache}
       onRemoveHighlights={handleRemoveHighlights}
       isUserLoggedIn={isUserLoggedIn}
     />

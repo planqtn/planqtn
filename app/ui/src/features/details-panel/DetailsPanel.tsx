@@ -20,7 +20,6 @@ import {
 import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
 import { useState, useCallback, useMemo } from "react";
-import * as _ from "lodash";
 import { canDoBialgebra } from "@/transformations/zx/Bialgebra.ts";
 import { canDoInverseBialgebra } from "@/transformations/zx/InverseBialgebra.ts";
 import { canDoHopfRule } from "@/transformations/zx/Hopf.ts";

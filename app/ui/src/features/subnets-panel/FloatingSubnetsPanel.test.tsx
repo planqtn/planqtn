@@ -135,8 +135,8 @@ describe("FloatingSubnetsPanel", () => {
   it("should bring panel to front when clicking on section titles", () => {
     renderFloatingSubnetsPanel();
 
-    // Click on "On canvas" title
-    const onCanvasTitle = screen.getByText("On canvas");
+    // Click on "Active tensor networks on canvas" title
+    const onCanvasTitle = screen.getByText("Active tensor networks on canvas");
     fireEvent.click(onCanvasTitle);
 
     expect(mockOnConfigChange).toHaveBeenCalled();
@@ -145,9 +145,9 @@ describe("FloatingSubnetsPanel", () => {
     const newConfig = lastCall[0];
     expect(newConfig.zIndex).toBe(1005);
 
-    // Reset mock and try "Cached" title
+    // Reset mock and try "Old versions of tensor networks" title
     mockOnConfigChange.mockClear();
-    const cachedTitle = screen.getByText("Cached");
+    const cachedTitle = screen.getByText("Old versions of tensor networks");
     fireEvent.click(cachedTitle);
 
     expect(mockOnConfigChange).toHaveBeenCalled();
@@ -161,7 +161,9 @@ describe("FloatingSubnetsPanel", () => {
     renderFloatingSubnetsPanel();
 
     // Find the section containers by looking for the Box elements that contain the titles
-    const onCanvasSection = screen.getByText("On canvas").closest("div");
+    const onCanvasSection = screen
+      .getByText("Active tensor networks on canvas")
+      .closest("div");
     if (onCanvasSection) {
       fireEvent.click(onCanvasSection);
       expect(mockOnConfigChange).toHaveBeenCalled();
@@ -171,9 +173,11 @@ describe("FloatingSubnetsPanel", () => {
       expect(newConfig.zIndex).toBe(1005);
     }
 
-    // Reset mock and try "Cached" section container
+    // Reset mock and try "Old versions of tensor networks" section container
     mockOnConfigChange.mockClear();
-    const cachedSection = screen.getByText("Cached").closest("div");
+    const cachedSection = screen
+      .getByText("Old versions of tensor networks")
+      .closest("div");
     if (cachedSection) {
       fireEvent.click(cachedSection);
       expect(mockOnConfigChange).toHaveBeenCalled();
@@ -189,7 +193,7 @@ describe("FloatingSubnetsPanel", () => {
 
     // Find the main content area by looking for the root Box with overflow
     const contentArea = screen
-      .getByText("On canvas")
+      .getByText("Active tensor networks on canvas")
       .closest('[style*="overflow"]');
     if (contentArea) {
       fireEvent.click(contentArea);
@@ -251,7 +255,8 @@ describe("FloatingSubnetsPanel", () => {
           parityCheckMatrices: {},
           weightEnumerators: {},
           tensorNetwork: { legos: [], connections: [] },
-          refreshAndSetCachedTensorNetworkFromCanvas: jest.fn()
+          refreshAndSetCachedTensorNetworkFromCanvas: jest.fn(),
+          focusOnTensorNetwork: jest.fn()
         };
         return selector(mockState);
       }

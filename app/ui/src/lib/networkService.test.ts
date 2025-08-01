@@ -19,7 +19,9 @@ jest.mock("../stores/canvasStateStore", () => ({
       newInstanceId: mockNewInstanceId,
       addDroppedLegos: mockAddDroppedLegos,
       addConnections: mockAddConnections,
-      addOperation: mockAddOperation
+      addOperation: mockAddOperation,
+      openLoadingModal: jest.fn(),
+      closeLoadingModal: jest.fn()
     }))
   }
 }));

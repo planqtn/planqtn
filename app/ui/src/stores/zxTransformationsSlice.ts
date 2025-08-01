@@ -8,8 +8,6 @@ import { applyInverseBialgebra } from "@/transformations/zx/InverseBialgebra";
 import { applyHopfRule } from "@/transformations/zx/Hopf";
 import { applyUnfuseInto2Legos } from "@/transformations/zx/UnfuseIntoTwoLegos";
 import { applyUnfuseToLegs } from "@/transformations/zx/UnfuseToLegs";
-import { applyConnectGraphNodes } from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego";
-import { applyCompleteGraphViaHadamards } from "@/transformations/graph-states/CompleteGraphViaHadamards";
 
 export interface ZXTransformationsSlice {
   handlePullOutSameColoredLeg: (lego: DroppedLego) => void;

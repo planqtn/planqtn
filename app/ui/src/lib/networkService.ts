@@ -40,11 +40,8 @@ export class NetworkService {
     matrix: number[][],
     networkType: string
   ) {
-    const openLoadingModal = useCanvasStore((state) => state.openLoadingModal);
-    const closeLoadingModal = useCanvasStore(
-      (state) => state.closeLoadingModal
-    );
-    const { newInstanceId } = useCanvasStore.getState();
+    const { openLoadingModal, closeLoadingModal, newInstanceId } =
+      useCanvasStore.getState();
 
     try {
       openLoadingModal("Generating network...");

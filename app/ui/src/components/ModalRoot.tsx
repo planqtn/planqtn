@@ -16,7 +16,6 @@ import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { LegPartitionDialog } from "@/features/details-panel/LegPartitionDialog";
-import _ from "lodash";
 
 interface ModalRootProps {
   // Weight enumerator dependencies

@@ -258,12 +258,36 @@ export const useTensorNetworkSlice: StateCreator<
           allConnectionsOnCanvas &&
           noExtraConnectionsOnCanvas;
 
-        state.cachedTensorNetworks[
-          cachedTensorNetwork.tensorNetwork.signature
-        ] = {
-          ...cachedTensorNetwork,
-          isActive: isActive
-        };
+        if (isActive) {
+          const legosOnCanvas = cachedTensorNetwork.tensorNetwork.legos.map(
+            (lego) => {
+              const legoOnCanvas = get().droppedLegos.find(
+                (l) => l.instance_id === lego.instance_id
+              );
+              if (!legoOnCanvas) {
+                throw new Error(`Lego ${lego.instance_id} not found on canvas`);
+              }
+              return legoOnCanvas;
+            }
+          );
+
+          state.cachedTensorNetworks[
+            cachedTensorNetwork.tensorNetwork.signature
+          ] = {
+            ...cachedTensorNetwork,
+            tensorNetwork: cachedTensorNetwork.tensorNetwork.with({
+              legos: legosOnCanvas
+            }),
+            isActive: true
+          };
+        } else {
+          state.cachedTensorNetworks[
+            cachedTensorNetwork.tensorNetwork.signature
+          ] = {
+            ...cachedTensorNetwork,
+            isActive: false
+          };
+        }
       }
     });
   },

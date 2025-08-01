@@ -398,25 +398,25 @@ export const createCanvasUISlice: StateCreator<
         get().calculateTensorNetworkBoundingBox();
       if (!tensorNetworkBoundingBox) return;
 
-      // // if tensornetrowk bounding box is within the viewport, do nothing
-      // if (
-      //   state.viewport.isPointInViewport(
-      //     new LogicalPoint(
-      //       tensorNetworkBoundingBox.minX,
-      //       tensorNetworkBoundingBox.minY
-      //     ),
-      //     0
-      //   ) &&
-      //   state.viewport.isPointInViewport(
-      //     new LogicalPoint(
-      //       tensorNetworkBoundingBox.maxX,
-      //       tensorNetworkBoundingBox.maxY
-      //     ),
-      //     0
-      //   )
-      // ) {
-      //   return;
-      // }
+      // if tensornetrowk bounding box is within the viewport, do nothing
+      if (
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          ),
+          0
+        ) &&
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.maxX,
+            tensorNetworkBoundingBox.maxY
+          ),
+          0
+        )
+      ) {
+        return;
+      }
 
       // set the view port to be a good 200 px margin around the tensor network
       // we have to calculate a zoom level that will fit the tensor network in the viewport

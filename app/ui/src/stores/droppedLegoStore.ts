@@ -332,6 +332,7 @@ export const createLegoSlice: StateCreator<
     get().initializeLegConnectionStates(lego.instance_id, lego.numberOfLegs);
     // Update all leg hide states to account for the new lego
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks([lego.instance_id], []);
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
@@ -345,6 +346,10 @@ export const createLegoSlice: StateCreator<
     });
     // Update all leg hide states to account for the new legos
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
 
   removeDroppedLego: (instance_id: string) => {
@@ -468,6 +473,10 @@ export const createLegoSlice: StateCreator<
       });
     });
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
@@ -509,6 +518,10 @@ export const createLegoSlice: StateCreator<
 
     // Update all leg hide states to account for the updated legos
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
 
   clearDroppedLegos: () => {

@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import {
-  Lock,
-  Unlock,
-  Minus,
-  Plus,
   BarChart3,
   Table,
   Split,
@@ -13,7 +9,7 @@ import {
   Link,
   Trash2
 } from "lucide-react";
-import { FaDropletSlash, FaYinYang } from "react-icons/fa6";
+import { FaDropletSlash, FaMinimize, FaYinYang } from "react-icons/fa6";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { BoundingBox } from "../../stores/canvasUISlice";
 import "./SubnetToolbar.css";
@@ -26,18 +22,19 @@ import { canUnfuseInto2Legos } from "@/transformations/zx/UnfuseIntoTwoLegos";
 import { canUnfuseToLegs } from "@/transformations/zx/UnfuseToLegs";
 import { canDoCompleteGraphViaHadamards } from "@/transformations/graph-states/CompleteGraphViaHadamards";
 import { canDoConnectGraphNodes } from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego";
+import { usePanelConfigStore } from "@/stores/panelConfigStore";
 
 interface SubnetToolbarProps {
   boundingBox: BoundingBox;
-  isLocked?: boolean;
-  onToggleLock?: () => void;
-  onCollapse?: () => void;
-  onExpand?: () => void;
-  onWeightEnumerator?: () => void;
-  onParityCheckMatrix?: () => void;
-  onRemoveFromCache?: () => void;
   onRemoveHighlights?: () => void;
   isUserLoggedIn?: boolean;
+}
+
+interface BoundingBoxWithConstrainedToolbar extends BoundingBox {
+  constrainedToolbarTop: number;
+  constrainedToolbarLeft: number;
+  constrainedNameTop: number;
+  constrainedNameLeft: number;
 }
 
 const ToolbarButton: React.FC<{
@@ -85,12 +82,6 @@ const GroupTab: React.FC<{
 
 export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   boundingBox,
-  isLocked = false,
-  onToggleLock,
-  onCollapse,
-  onExpand,
-  onParityCheckMatrix,
-  onRemoveFromCache,
   onRemoveHighlights,
   isUserLoggedIn
 }) => {
@@ -98,6 +89,12 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   const connections = useCanvasStore((state) => state.connections);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const handleChangeColor = useCanvasStore((state) => state.handleChangeColor);
+  const unCacheTensorNetwork = useCanvasStore(
+    (state) => state.unCacheTensorNetwork
+  );
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
   const handlePullOutSameColoredLeg = useCanvasStore(
     (state) => state.handlePullOutSameColoredLeg
   );
@@ -106,8 +103,8 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
     (state) => state.handleInverseBialgebra
   );
   const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
-  const hasMultipleLegos = tensorNetwork && tensorNetwork.legos.length > 1;
-  const canCollapse = hasMultipleLegos;
+
+  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
   const handleUnfuseInto2Legos = useCanvasStore(
     (state) => state.handleUnfuseInto2Legos
   );
@@ -124,6 +121,30 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   const openWeightEnumeratorDialog = useCanvasStore(
     (state) => state.openWeightEnumeratorDialog
   );
+  const calculateParityCheckMatrix = useCanvasStore(
+    (state) => state.calculateParityCheckMatrix
+  );
+  const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
+  const openSingleLegoPCMPanel = usePanelConfigStore(
+    (state) => state.openSingleLegoPCMPanel
+  );
+
+  const handleParityCheckMatrix = async () => {
+    if (tensorNetwork?.isSingleLego) {
+      // For single legos, open the PCM panel directly with the lego's matrix
+      const singleLego = tensorNetwork.singleLego;
+      openSingleLegoPCMPanel(
+        singleLego.instance_id,
+        singleLego.short_name || singleLego.name
+      );
+    } else {
+      // For multi-lego networks, calculate the parity check matrix and open the panel
+      await calculateParityCheckMatrix((networkSignature, networkName) => {
+        // Open PCM panel after successful calculation
+        openPCMPanel(networkSignature, networkName);
+      });
+    }
+  };
 
   return (
     <Tooltip.Provider>
@@ -132,12 +153,15 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
         style={{
           position: "absolute",
           top:
-            (boundingBox as any).constrainedToolbarTop || boundingBox.minY - 90,
+            (boundingBox as BoundingBoxWithConstrainedToolbar)
+              .constrainedToolbarTop || boundingBox.minY - 90,
           left:
-            (boundingBox as any).constrainedToolbarLeft ||
+            (boundingBox as BoundingBoxWithConstrainedToolbar)
+              .constrainedToolbarLeft ||
             boundingBox.minX + boundingBox.width / 2,
           zIndex: 10000,
-          transform: (boundingBox as any).constrainedToolbarTop
+          transform: (boundingBox as BoundingBoxWithConstrainedToolbar)
+            .constrainedToolbarTop
             ? "none"
             : "translateY(-100%) translateX(-50%)", // Only center if not constrained
           pointerEvents: "auto"
@@ -157,30 +181,22 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
           />
           <div className="toolbar-group">
             <ToolbarButton
-              icon={isLocked ? <Lock size={16} /> : <Unlock size={16} />}
-              tooltip={
-                isLocked
-                  ? "Unlock group for modifications"
-                  : "Lock group for modifications"
-              }
-              onClick={onToggleLock}
-            />
-            <ToolbarButton
-              icon={<Minus size={16} />}
+              icon={<FaMinimize size={16} />}
               tooltip="Collapse into a single lego"
-              onClick={onCollapse}
-              disabled={!canCollapse}
-            />
-            <ToolbarButton
-              icon={<Plus size={16} />}
-              tooltip="Expand single lego (not implemented yet)"
-              onClick={onExpand}
-              disabled={true}
+              onClick={() => fuseLegos(tensorNetwork?.legos || [])}
+              disabled={tensorNetwork?.legos.length === 1}
             />
             <ToolbarButton
               icon={<Trash2 size={16} />}
               tooltip="Remove this subnet from cache"
-              onClick={onRemoveFromCache}
+              onClick={() =>
+                unCacheTensorNetwork(tensorNetwork?.signature || "")
+              }
+              disabled={
+                !tensorNetwork ||
+                tensorNetwork.legos.length === 1 ||
+                !cachedTensorNetworks[tensorNetwork.signature]
+              }
             />
             <ToolbarButton
               icon={<FaDropletSlash size={16} />}
@@ -222,7 +238,7 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             <ToolbarButton
               icon={<Table size={16} />}
               tooltip="Calculate/show parity check matrix"
-              onClick={onParityCheckMatrix}
+              onClick={handleParityCheckMatrix}
             />
           </div>
         </div>
@@ -245,16 +261,22 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             <ToolbarButton
               icon={<FaYinYang size={16} />}
               tooltip="Change color"
-              onClick={() => handleChangeColor(tensorNetwork?.legos[0]!)}
+              onClick={() => {
+                if (tensorNetwork?.legos[0]) {
+                  handleChangeColor(tensorNetwork.legos[0]);
+                }
+              }}
               disabled={!canDoChangeColor(tensorNetwork?.legos || [])}
             />
             <ToolbarButton
               text="+Leg"
               tooltip="Pull out lego of same color"
               disabled={!canDoPullOutSameColoredLeg(tensorNetwork?.legos || [])}
-              onClick={() =>
-                handlePullOutSameColoredLeg(tensorNetwork?.legos[0]!)
-              }
+              onClick={() => {
+                if (tensorNetwork?.legos[0]) {
+                  handlePullOutSameColoredLeg(tensorNetwork.legos[0]);
+                }
+              }}
             />
             <ToolbarButton
               text="Bi"
@@ -265,7 +287,11 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
                   tensorNetwork?.connections || []
                 )
               }
-              onClick={() => handleBialgebra(tensorNetwork?.legos || [])}
+              onClick={() => {
+                if (tensorNetwork?.legos) {
+                  handleBialgebra(tensorNetwork.legos);
+                }
+              }}
             />
             <ToolbarButton
               tooltip="Inverse bi-algebra transformation"
@@ -292,13 +318,21 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             <ToolbarButton
               icon={<Scissors size={16} />}
               tooltip="Unfuse to legs"
-              onClick={() => handleUnfuseToLegs(tensorNetwork?.legos[0]!)}
+              onClick={() => {
+                if (tensorNetwork?.legos[0]) {
+                  handleUnfuseToLegs(tensorNetwork.legos[0]);
+                }
+              }}
               disabled={!canUnfuseToLegs(tensorNetwork?.legos || [])}
             />
             <ToolbarButton
               icon={<Split size={16} />}
               tooltip="Unfuse into 2 legos"
-              onClick={() => handleUnfuseInto2Legos(tensorNetwork?.legos[0]!)}
+              onClick={() => {
+                if (tensorNetwork?.legos[0]) {
+                  handleUnfuseInto2Legos(tensorNetwork.legos[0]);
+                }
+              }}
               disabled={!canUnfuseInto2Legos(tensorNetwork?.legos || [])}
             />
           </div>

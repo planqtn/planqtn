@@ -66,6 +66,7 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
   // Canvas store for showToolbar setting
   const showToolbar = usePanelConfigStore((state) => state.showToolbar);
   const setShowToolbar = usePanelConfigStore((state) => state.setShowToolbar);
+  const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
 
   // Helper function to toggle panel
   const togglePanel = (
@@ -73,7 +74,12 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
     setConfig: (config: FloatingPanelConfigManager) => void
   ) => {
     const newConfig = new FloatingPanelConfigManager(currentConfig.toJSON());
+    newConfig.setZIndex(nextZIndex);
+    usePanelConfigStore.setState((state) => {
+      state.nextZIndex = nextZIndex + 1;
+    });
     newConfig.setIsOpen(!currentConfig.isOpen);
+
     setConfig(newConfig);
   };
 
