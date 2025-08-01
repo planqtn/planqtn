@@ -1,30 +1,18 @@
 import {
   Box,
   VStack,
-  Heading,
-  Text,
-  Button,
-  Icon,
   useColorModeValue,
-  Input,
-  Checkbox,
   useDisclosure
 } from "@chakra-ui/react";
-import { FaTable, FaCube } from "react-icons/fa";
 import {
   TaskUpdate,
   TaskUpdateIterationStatus,
   Task
 } from "../../lib/types.ts";
 
-import { ParityCheckMatrixDisplay } from "./ParityCheckMatrixDisplay.tsx";
 import axios, { AxiosError } from "axios";
 import { useState, useCallback, useMemo } from "react";
-import { canDoBialgebra } from "@/transformations/zx/Bialgebra.ts";
-import { canDoInverseBialgebra } from "@/transformations/zx/InverseBialgebra.ts";
-import { canDoHopfRule } from "@/transformations/zx/Hopf.ts";
-import { canDoConnectGraphNodes } from "@/transformations/graph-states/ConnectGraphNodesWithCenterLego.ts";
-import { canDoCompleteGraphViaHadamards } from "@/transformations/graph-states/CompleteGraphViaHadamards.ts";
+
 import {
   RealtimePostgresChangesPayload,
   RealtimeChannel
@@ -36,39 +24,18 @@ import {
 import { config, getApiUrl } from "../../config/config.ts";
 import { getAccessToken } from "../auth/auth.ts";
 import { useEffect } from "react";
-import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay.tsx";
 import TaskLogsModal from "../tasks/TaskLogsModal.tsx";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "@/stores/userStore.ts";
-import { canDoChangeColor } from "@/transformations/zx/ChangeColor.ts";
+import { SubnetToolbar } from "../lego/SubnetToolbar";
+import DetailsHeader from "./DetailsHeader";
+import Calculations from "./Calculations";
 
 const DetailsPanel: React.FC = () => {
-  const { currentUser: user } = useUserStore();
+  const { currentUser: user, isUserLoggedIn } = useUserStore();
 
-  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
-  const handlePullOutSameColoredLeg = useCanvasStore(
-    (state) => state.handlePullOutSameColoredLeg
-  );
-  const handleChangeColor = useCanvasStore((state) => state.handleChangeColor);
-  const handleBialgebra = useCanvasStore((state) => state.handleBialgebra);
-  const handleInverseBialgebra = useCanvasStore(
-    (state) => state.handleInverseBialgebra
-  );
-  const handleHopfRule = useCanvasStore((state) => state.handleHopfRule);
-  const handleConnectGraphNodes = useCanvasStore(
-    (state) => state.handleConnectGraphNodes
-  );
-  const handleCompleteGraphViaHadamards = useCanvasStore(
-    (state) => state.handleCompleteGraphViaHadamards
-  );
-  const handleUnfuseToLegs = useCanvasStore(
-    (state) => state.handleUnfuseToLegs
-  );
-  const handleUnfuseInto2Legos = useCanvasStore(
-    (state) => state.handleUnfuseInto2Legos
-  );
   const connections = useCanvasStore((state) => state.connections);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
 
@@ -87,6 +54,15 @@ const DetailsPanel: React.FC = () => {
     return state.parityCheckMatrices[state.tensorNetwork.signature] || null;
   });
 
+  const parityCheckMatrices = useCanvasStore(
+    (state) => state.parityCheckMatrices
+  );
+  const handleSingleLegoMatrixRowSelection = useCanvasStore(
+    (state) => state.handleSingleLegoMatrixRowSelection
+  );
+
+  const isSingleLego = tensorNetwork && tensorNetwork.legos.length == 1;
+  const lego = isSingleLego ? tensorNetwork?.legos[0] : null;
   const setError = useCanvasStore((state) => state.setError);
   const handleMatrixRowSelectionForSelectedTensorNetwork = useCanvasStore(
     (state) => state.handleMatrixRowSelectionForSelectedTensorNetwork
@@ -132,24 +108,11 @@ const DetailsPanel: React.FC = () => {
     Map<string, Array<TaskUpdateIterationStatus>>
   >(new Map());
 
-  const lego =
-    tensorNetwork?.legos.length == 1 ? tensorNetwork?.legos[0] : null;
   const legoSelectedRows = lego ? lego.selectedMatrixRows : [];
 
   const handleCalculateParityCheckMatrix = async () => {
-    if (tensorNetwork?.isSingleLego) {
-      // For single legos, open the PCM panel directly with the lego's matrix
-      const singleLego = tensorNetwork.singleLego;
-      openSingleLegoPCMPanel(
-        singleLego.instance_id,
-        singleLego.short_name || singleLego.name
-      );
-    } else {
-      // For multi-lego networks, calculate the parity check matrix and open the panel
-      await calculateParityCheckMatrix((networkSignature, networkName) => {
-        // Open PCM panel after successful calculation
-        openPCMPanel(networkSignature, networkName);
-      });
+    if (!tensorNetwork?.isSingleLego) {
+      await calculateParityCheckMatrix(() => {});
     }
   };
 
@@ -403,6 +366,23 @@ const DetailsPanel: React.FC = () => {
     (state) => state.handleMultiLegoMatrixChange
   );
 
+  const handleRemoveHighlights = () => {
+    if (tensorNetwork && tensorNetwork.legos.length == 1) {
+      handleMatrixRowSelectionForSelectedTensorNetwork([]);
+      return;
+    }
+    // otherwise we'll have to go through all selected legos and clear their highlights
+    if (tensorNetwork) {
+      if (parityCheckMatrices[tensorNetwork.signature]) {
+        handleMatrixRowSelectionForSelectedTensorNetwork([]);
+      }
+
+      tensorNetwork.legos.forEach((lego) => {
+        handleSingleLegoMatrixRowSelection(lego, []);
+      });
+    }
+  };
+
   const handleLegoMatrixChange = useCallback(
     (newMatrix: number[][]) => {
       if (!tensorNetwork) return;
@@ -551,364 +531,81 @@ const DetailsPanel: React.FC = () => {
       overflowY="auto"
       p={0}
     >
-      <VStack align="stretch" spacing={1} p={4}>
-        {tensorNetwork && tensorNetwork.legos.length == 1 ? (
-          <>
-            <Heading size="md">Lego Instance Details</Heading>
-            <VStack align="stretch" spacing={3}>
-              <Text fontWeight="bold">
-                {tensorNetwork.legos[0].name ||
-                  tensorNetwork.legos[0].short_name}
-              </Text>
-              <Text fontSize="sm" color="gray.600">
-                {tensorNetwork.legos[0].description}, instaceId:{" "}
-                {tensorNetwork.legos[0].instance_id}, x:{" "}
-                {tensorNetwork.legos[0].logicalPosition.x}, y:{" "}
-                {tensorNetwork.legos[0].logicalPosition.y}
-              </Text>
-              <Box>
-                <Text fontSize="sm" mb={1}>
-                  Short Name:
-                </Text>
-                <Input
-                  size="sm"
-                  value={tensorNetwork.legos[0].short_name}
-                  onChange={(e) => {
-                    const newShortName = e.target.value;
-                    const updatedLego = tensorNetwork.legos[0].with({
-                      short_name: newShortName
-                    });
-                    setTimeout(() => {
-                      updateDroppedLego(
-                        tensorNetwork.legos[0].instance_id,
-                        updatedLego
-                      );
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                  }}
-                />
-              </Box>
-              <Box>
-                <Checkbox
-                  isChecked={tensorNetwork.legos[0].alwaysShowLegs || false}
-                  onChange={(e) => {
-                    const updatedLego = tensorNetwork.legos[0].with({
-                      alwaysShowLegs: e.target.checked
-                    });
-                    updateDroppedLego(
-                      tensorNetwork.legos[0].instance_id,
-                      updatedLego
-                    );
-                  }}
-                >
-                  Always show legs
-                </Checkbox>
-              </Box>
-              {canDoChangeColor(tensorNetwork.legos) && (
-                <>
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handleUnfuseToLegs(tensorNetwork.legos[0])}
-                  >
-                    Unfuse to legs
-                  </Button>
+      <SubnetToolbar
+        responsive={true}
+        onRemoveHighlights={handleRemoveHighlights}
+        isUserLoggedIn={isUserLoggedIn}
+      />
 
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() =>
-                      handleUnfuseInto2Legos(tensorNetwork.legos[0])
-                    }
-                  >
-                    Unfuse into 2 legos
-                  </Button>
+      <DetailsHeader
+        tensorNetwork={tensorNetwork}
+        lego={lego}
+        isSingleLego={!!isSingleLego}
+        droppedLegosCount={droppedLegos.length}
+        cachedTensorNetwork={cachedTensorNetwork}
+        onShortNameChange={(newShortName) => {
+          if (lego) {
+            const updatedLego = lego.with({
+              short_name: newShortName
+            });
+            setTimeout(() => {
+              updateDroppedLego(lego.instance_id, updatedLego);
+            });
+          }
+        }}
+        onAlwaysShowLegsChange={(alwaysShow) => {
+          if (lego) {
+            const updatedLego = lego.with({
+              alwaysShowLegs: alwaysShow
+            });
+            updateDroppedLego(lego.instance_id, updatedLego);
+          }
+        }}
+      />
 
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() => handleChangeColor(tensorNetwork.legos[0])}
-                  >
-                    Change color
-                  </Button>
-
-                  <Button
-                    leftIcon={<Icon as={FaCube} />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() =>
-                      handlePullOutSameColoredLeg(tensorNetwork.legos[0])
-                    }
-                  >
-                    Pull out a leg of same color (p)
-                  </Button>
-                </>
-              )}
-              <Box
-                p={4}
-                borderWidth={1}
-                borderRadius="lg"
-                bg={bgColor}
-                w="100%"
-                h="300px"
-              >
-                <ParityCheckMatrixDisplay
-                  matrix={tensorNetwork.legos[0].parity_check_matrix}
-                  legOrdering={singleLegoLegOrdering}
-                  selectedRows={legoSelectedRows}
-                  onRowSelectionChange={
-                    handleMatrixRowSelectionForSelectedTensorNetwork
-                  }
-                  onMatrixChange={handleLegoMatrixChange}
-                  title={
-                    tensorNetwork.legos[0].name ||
-                    tensorNetwork.legos[0].short_name
-                  }
-                  lego={tensorNetwork.legos[0]}
-                  popOut={true}
-                />
-              </Box>
-            </VStack>
-          </>
-        ) : tensorNetwork && tensorNetwork.legos.length > 1 ? (
-          <>
-            <Heading size="md">Tensor Network</Heading>
-            <Text>Selected components: {tensorNetwork.legos.length} Legos</Text>
-            <Box p={4} borderWidth={1} borderRadius="lg" bg={bgColor}>
-              <VStack align="stretch" spacing={4}>
-                <Heading size="md">Transformations</Heading>
-                <VStack align="stretch" spacing={3}>
-                  <Button
-                    colorScheme="blue"
-                    size="sm"
-                    width="full"
-                    onClick={() => fuseLegos(tensorNetwork.legos)}
-                    leftIcon={<Icon as={FaCube} />}
-                  >
-                    Fuse Legos (f)
-                  </Button>
-                  {canDoBialgebra(tensorNetwork.legos, connections) && (
-                    <Button
-                      leftIcon={<Icon as={FaCube} />}
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={() => handleBialgebra(tensorNetwork.legos)}
-                    >
-                      Bialgebra
-                    </Button>
-                  )}
-                  {canDoInverseBialgebra(tensorNetwork.legos, connections) && (
-                    <Button
-                      leftIcon={<Icon as={FaCube} />}
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={() =>
-                        handleInverseBialgebra(tensorNetwork.legos)
-                      }
-                    >
-                      Inverse bialgebra
-                    </Button>
-                  )}
-                  {canDoHopfRule(tensorNetwork.legos, connections) && (
-                    <Button
-                      leftIcon={<Icon as={FaCube} />}
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={() => handleHopfRule(tensorNetwork.legos)}
-                    >
-                      Hopf rule
-                    </Button>
-                  )}
-                  {canDoConnectGraphNodes(tensorNetwork.legos) && (
-                    <Button
-                      leftIcon={<Icon as={FaCube} />}
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={() =>
-                        handleConnectGraphNodes(tensorNetwork.legos)
-                      }
-                    >
-                      Connect Graph Nodes with center lego
-                    </Button>
-                  )}
-                  {canDoCompleteGraphViaHadamards(tensorNetwork.legos) && (
-                    <Button
-                      leftIcon={<Icon as={FaCube} />}
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={() =>
-                        handleCompleteGraphViaHadamards(tensorNetwork.legos)
-                      }
-                    >
-                      Complete Graph Via Hadamards
-                    </Button>
-                  )}
-                </VStack>
-                <Heading size="md">Network Details</Heading>
-                <VStack align="stretch" spacing={1}>
-                  {!parityCheckMatrix && (
-                    <Button
-                      onClick={handleCalculateParityCheckMatrix}
-                      colorScheme="blue"
-                      size="sm"
-                      width="full"
-                      leftIcon={<Icon as={FaTable} />}
-                    >
-                      Calculate Parity Check Matrix
-                    </Button>
-                  )}
-                  {parityCheckMatrix && (
-                    <Box
-                      p={0}
-                      m={0}
-                      borderWidth={1}
-                      borderRadius="lg"
-                      bg={bgColor}
-                      w="100%"
-                      h="300px"
-                    >
-                      <ParityCheckMatrixDisplay
-                        matrix={parityCheckMatrix.matrix}
-                        title={
-                          cachedTensorNetwork?.name ||
-                          tensorNetwork.legos.length + " legos"
-                        }
-                        legOrdering={parityCheckMatrix.legOrdering}
-                        onMatrixChange={(newMatrix) => {
-                          handleMultiLegoMatrixChange(
-                            tensorNetwork.signature,
-                            newMatrix
-                          );
-                        }}
-                        onRecalculate={handleCalculateParityCheckMatrix}
-                        onRowSelectionChange={
-                          handleMatrixRowSelectionForSelectedTensorNetwork
-                        }
-                        selectedRows={
-                          selectedTensorNetworkParityCheckMatrixRows[
-                            tensorNetwork.signature
-                          ] || []
-                        }
-                        signature={tensorNetwork.signature}
-                        popOut={true}
-                      />
-                    </Box>
-                  )}
-                </VStack>
-              </VStack>
-            </Box>
-          </>
-        ) : (
-          <>
-            <Heading size="md">Canvas Overview</Heading>
-            <Text color="gray.600">
-              No legos are selected. There{" "}
-              {droppedLegos.length === 1 ? "is" : "are"} {droppedLegos.length}{" "}
-              {droppedLegos.length === 1 ? "lego" : "legos"} on the canvas.
-            </Text>
-          </>
-        )}
-        <>
-          {tensorNetwork &&
-          tensorNetwork.signature &&
-          listWeightEnumerators(tensorNetwork.signature).length > 0 ? (
-            <VStack align="stretch" spacing={3}>
-              <Heading size="sm">Weight Enumerator Tasks</Heading>
-              {listWeightEnumerators(tensorNetwork.signature).map(
-                (enumerator, index) => {
-                  const taskId = enumerator.taskId;
-                  if (!taskId) return null;
-
-                  const task = tasks.get(taskId) || null;
-                  const taskIterationStatus =
-                    iterationStatuses.get(taskId) || [];
-                  const isWaitingForUpdate =
-                    waitingForTaskUpdates.get(taskId) || false;
-                  const taskChannel = taskUpdatesChannels.get(taskId) || null;
-
-                  return (
-                    <Box
-                      key={taskId}
-                      p={3}
-                      borderWidth={1}
-                      borderRadius="md"
-                      bg={bgColor}
-                    >
-                      <VStack align="stretch" spacing={2}>
-                        <Text fontSize="sm" fontWeight="medium">
-                          Task #{index + 1}
-                          {enumerator.truncateLength &&
-                            ` (truncate: ${enumerator.truncateLength})`}
-                          {enumerator.openLegs.length > 0 &&
-                            ` (${enumerator.openLegs.length} open legs)`}
-                        </Text>
-
-                        {enumerator.polynomial ? (
-                          <VStack align="stretch" spacing={2}>
-                            {/* Display the polynomial results */}
-                            <VStack align="stretch" spacing={1}>
-                              <Text fontSize="sm" fontWeight="medium">
-                                Stabilizer Weight Enumerator Polynomial
-                              </Text>
-                              <Box
-                                p={2}
-                                borderWidth={1}
-                                borderRadius="md"
-                                bg="gray.50"
-                                maxH="200px"
-                                overflowY="auto"
-                              >
-                                <Text fontFamily="mono" fontSize="xs">
-                                  {enumerator.polynomial}
-                                </Text>
-                              </Box>
-
-                              {enumerator.normalizerPolynomial && (
-                                <>
-                                  <Text fontSize="sm" fontWeight="medium">
-                                    Normalizer Weight Enumerator Polynomial
-                                  </Text>
-                                  <Box
-                                    p={2}
-                                    borderWidth={1}
-                                    borderRadius="md"
-                                    bg="gray.50"
-                                    maxH="200px"
-                                    overflowY="auto"
-                                  >
-                                    <Text fontFamily="mono" fontSize="xs">
-                                      {enumerator.normalizerPolynomial}
-                                    </Text>
-                                  </Box>
-                                </>
-                              )}
-                            </VStack>
-                          </VStack>
-                        ) : (
-                          <TaskDetailsDisplay
-                            task={task}
-                            taskId={taskId}
-                            iterationStatus={taskIterationStatus}
-                            waitingForTaskUpdate={isWaitingForUpdate}
-                            taskUpdatesChannel={taskChannel}
-                            onCancelTask={handleCancelTask}
-                            onViewLogs={fetchTaskLogs}
-                          />
-                        )}
-                      </VStack>
-                    </Box>
+      {tensorNetwork && (
+        <Calculations
+          tensorNetwork={tensorNetwork}
+          lego={lego}
+          isSingleLego={!!isSingleLego}
+          parityCheckMatrix={parityCheckMatrix}
+          selectedRows={
+            isSingleLego
+              ? legoSelectedRows
+              : selectedTensorNetworkParityCheckMatrixRows[
+                  tensorNetwork.signature
+                ] || []
+          }
+          singleLegoLegOrdering={singleLegoLegOrdering}
+          weightEnumerators={
+            tensorNetwork.signature
+              ? listWeightEnumerators(tensorNetwork.signature)
+              : []
+          }
+          tasks={tasks}
+          iterationStatuses={iterationStatuses}
+          waitingForTaskUpdates={waitingForTaskUpdates}
+          taskUpdatesChannels={taskUpdatesChannels}
+          onCalculatePCM={handleCalculateParityCheckMatrix}
+          onRowSelectionChange={
+            handleMatrixRowSelectionForSelectedTensorNetwork
+          }
+          onMatrixChange={
+            isSingleLego
+              ? handleLegoMatrixChange
+              : (newMatrix) => {
+                  handleMultiLegoMatrixChange(
+                    tensorNetwork.signature,
+                    newMatrix
                   );
                 }
-              )}
-            </VStack>
-          ) : null}
-        </>
-      </VStack>
+          }
+          onRecalculate={handleCalculateParityCheckMatrix}
+          onCancelTask={handleCancelTask}
+          onViewLogs={fetchTaskLogs}
+          signature={tensorNetwork.signature}
+        />
+      )}
 
       {isLogsModalOpen && (
         <TaskLogsModal
