@@ -35,13 +35,14 @@ describe("Canvas State Validator", () => {
     hideIds: false,
     hideTypeIds: false,
     hideDanglingLegs: false,
-    hideLegLabels: false,
+    hideLegLabels: true,
     viewport: {
-      screenWidth: 800,
-      screenHeight: 600,
-      zoomLevel: 1,
-      logicalPanOffset: { x: 0, y: 0 }
+      screenWidth: 1200,
+      screenHeight: 800,
+      zoomLevel: 1.5,
+      logicalPanOffset: { x: 50, y: -25 }
     },
+    nextZIndex: 1100,
     parityCheckMatrices: [],
     weightEnumerators: [],
     highlightedTensorNetworkLegs: [],
@@ -104,6 +105,7 @@ describe("Canvas State Validator", () => {
       zoomLevel: 1.5,
       logicalPanOffset: { x: 50, y: -25 }
     },
+    nextZIndex: 1100,
     parityCheckMatrices: [
       {
         key: "matrix-1",
@@ -432,6 +434,55 @@ describe("Canvas State Validator", () => {
       expect(result.isValid).toBe(true);
 
       expect(result.errors).toBeUndefined();
+    });
+
+    it("should validate canvas state with z-index management", () => {
+      const result = validateCanvasStateV1(validCanvasState);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
+
+    it("should reject canvas state with invalid z-index value", () => {
+      const invalidState = {
+        ...validCanvasState,
+        nextZIndex: "invalid" // String instead of number
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should reject canvas state with z-index below minimum", () => {
+      const invalidState = {
+        ...validCanvasState,
+        buildingBlocksPanelConfig: {
+          id: "building-blocks",
+          title: "Building Blocks",
+          isOpen: false,
+          isCollapsed: false,
+          layout: {
+            position: { x: 50, y: 50 },
+            size: { width: 300, height: 600 }
+          },
+          zIndex: 999 // Below minimum of 1000
+        }
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
+    });
+
+    it("should reject canvas state with nextZIndex below minimum", () => {
+      const invalidState = {
+        ...validCanvasState,
+        nextZIndex: 999 // Below minimum of 1000
+      };
+
+      const result = validateCanvasStateV1(invalidState);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toBeDefined();
     });
   });
 

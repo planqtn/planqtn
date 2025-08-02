@@ -1,6 +1,8 @@
-import { create } from "zustand";
+import { StateCreator } from "zustand";
 import { TensorNetwork } from "../lib/TensorNetwork";
 import { Connection } from "./connectionStore";
+import { RuntimeConfigService } from "@/features/kernel/runtimeConfigService";
+import { CanvasStore } from "./canvasStateStore";
 
 export interface ModalState {
   // Network dialogs
@@ -31,6 +33,7 @@ export interface ModalState {
   weightEnumeratorDialog: boolean;
   pythonCodeModal: boolean;
   aboutDialog: boolean;
+  showLegPartitionDialog: boolean;
 }
 
 export interface LoadingState {
@@ -55,7 +58,7 @@ export interface WeightEnumeratorState {
   mainNetworkConnections: Connection[];
 }
 
-interface ModalStore extends ModalState {
+export interface ModalSlice extends ModalState {
   // Loading state
   loadingState: LoadingState;
 
@@ -117,10 +120,17 @@ interface ModalStore extends ModalState {
   ) => void;
   closeWeightEnumeratorDialog: () => void;
 
+  // Leg partition dialog actions
+  openLegPartitionDialog: () => void;
+  closeLegPartitionDialog: () => void;
+
   // Generic actions for future modals
   openModal: (modalName: keyof ModalState) => void;
   closeModal: (modalName: keyof ModalState) => void;
   closeAllModals: () => void;
+
+  // Runtime toggle actions
+  handleRuntimeToggle: () => void;
 }
 
 const initialState: ModalState = {
@@ -136,7 +146,8 @@ const initialState: ModalState = {
   importCanvasDialog: false,
   weightEnumeratorDialog: false,
   pythonCodeModal: false,
-  aboutDialog: false
+  aboutDialog: false,
+  showLegPartitionDialog: false
 };
 
 const initialLoadingState: LoadingState = {
@@ -161,7 +172,12 @@ const initialWeightEnumeratorState: WeightEnumeratorState = {
   mainNetworkConnections: []
 };
 
-export const useModalStore = create<ModalStore>((set) => ({
+export const createModalsSlice: StateCreator<
+  CanvasStore,
+  [["zustand/immer", never]],
+  [],
+  ModalSlice
+> = (set) => ({
   ...initialState,
   loadingState: initialLoadingState,
   customLegoState: initialCustomLegoState,
@@ -255,11 +271,15 @@ export const useModalStore = create<ModalStore>((set) => ({
       weightEnumeratorState: { subNetwork: null, mainNetworkConnections: [] }
     }),
 
+  openLegPartitionDialog: () => set({ showLegPartitionDialog: true }),
+  closeLegPartitionDialog: () => set({ showLegPartitionDialog: false }),
+
   // Generic actions
   openModal: (modalName: keyof ModalState) =>
     set((state) => ({ ...state, [modalName]: true })),
   closeModal: (modalName: keyof ModalState) =>
     set((state) => ({ ...state, [modalName]: false })),
+
   closeAllModals: () =>
     set({
       ...initialState,
@@ -268,5 +288,21 @@ export const useModalStore = create<ModalStore>((set) => ({
       authState: initialAuthState,
       runtimeConfigState: initialRuntimeConfigState,
       weightEnumeratorState: initialWeightEnumeratorState
-    })
-}));
+    }),
+
+  handleRuntimeToggle: () => {
+    const isLocalRuntime = RuntimeConfigService.isLocalRuntime();
+    if (isLocalRuntime) {
+      RuntimeConfigService.switchToCloud();
+    } else {
+      const currentConfig = RuntimeConfigService.getCurrentConfig();
+      set({
+        runtimeConfigDialog: true,
+        runtimeConfigState: {
+          isLocal: isLocalRuntime,
+          initialConfig: currentConfig || undefined
+        }
+      });
+    }
+  }
+});

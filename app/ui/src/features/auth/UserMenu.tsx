@@ -1,61 +1,53 @@
 import React, { useState } from "react";
 import {
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  HStack,
-  Avatar,
-  useColorModeValue,
-  Icon,
-  Tooltip
-} from "@chakra-ui/react";
-import { FiUser, FiAlertCircle, FiPieChart } from "react-icons/fi";
-import { User } from "@supabase/supabase-js";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import { User, PieChart, AlertCircle } from "lucide-react";
+import { Box, Icon } from "@chakra-ui/react";
 import { userContextSupabase } from "../../config/supabaseClient";
 import { QuotasModal } from "../quotas/QuotasModal";
+import { useUserStore } from "@/stores/userStore";
 
 interface UserMenuProps {
-  user?: User | null;
   onSignIn?: () => void;
 }
 
-export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
+export const UserMenu: React.FC<UserMenuProps> = ({ onSignIn }) => {
+  const { currentUser, setCurrentUser } = useUserStore();
   const [isQuotasModalOpen, setIsQuotasModalOpen] = useState(false);
-  const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
 
-  if (!user) {
+  if (!currentUser) {
     return (
-      <Menu>
-        <Tooltip
-          label={
-            !userContextSupabase
-              ? "User Context is unavailable, no Supabase instance is setup"
-              : "Not signed in"
-          }
-          placement="bottom"
-        >
-          <MenuButton
-            as={HStack}
-            spacing={2}
-            px={2}
-            py={2}
-            rounded="md"
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Box
+            p={2}
             cursor="pointer"
-            alignItems="center"
-            _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
+            _hover={{ bg: "gray.100" }}
+            borderRadius="full"
+            transition="all 0.2s ease-in-out"
             onClick={onSignIn}
-            border="none"
-            bg="transparent"
           >
-            <Icon as={FiUser} boxSize={5} />
+            <Icon as={User} boxSize={5} />
             {!userContextSupabase && (
-              <Icon as={FiAlertCircle} color="red.500" boxSize={4} />
+              <Icon as={AlertCircle} color="red.500" boxSize={4} />
             )}
-          </MenuButton>
-        </Tooltip>
-      </Menu>
+          </Box>
+        </TooltipTrigger>
+        <TooltipContent className="high-z">
+          {!userContextSupabase
+            ? "User Context is unavailable, no Supabase instance is setup"
+            : "Not signed in"}
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -64,52 +56,48 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onSignIn }) => {
     if (!userContextSupabase) {
       return;
     }
-    userContextSupabase.auth
-      .signOut()
-      .then(() => {
-        userContextSupabase!.auth
-          .getUser()
-          .then((user) => {
-            console.log("Signed out..." + user);
-          })
-          .catch((error) => {
-            console.error("Error getting user:", error);
-          });
-      })
-      .catch((error) => {
-        console.error("Error signing out:", error);
-      });
+    try {
+      await userContextSupabase.auth.signOut();
+      setCurrentUser(null);
+      console.log("Signed out successfully");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
     <>
-      <Menu>
-        <Tooltip label={user.email} placement="bottom">
-          <MenuButton
-            as={HStack}
-            spacing={2}
-            px={2}
-            py={2}
-            rounded="md"
-            cursor="pointer"
-            alignItems="center"
-            _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-            border="none"
-            bg="transparent"
-          >
-            <Avatar size="sm" name={user.email || undefined} />
-          </MenuButton>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Box
+                p={2}
+                cursor="pointer"
+                _hover={{ bg: "gray.100" }}
+                borderRadius="full"
+                transition="all 0.2s ease-in-out"
+              >
+                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">
+                  {currentUser.email?.charAt(0).toUpperCase() || "U"}
+                </div>
+              </Box>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent className="high-z">
+            {currentUser.email}
+          </TooltipContent>
         </Tooltip>
-        <MenuList bg={bgColor} borderColor={borderColor}>
-          <MenuItem
-            onClick={() => setIsQuotasModalOpen(true)}
-            icon={<Icon as={FiPieChart} />}
-          >
+
+        <DropdownMenuContent className="high-z">
+          <DropdownMenuItem onClick={() => setIsQuotasModalOpen(true)}>
+            <PieChart className="mr-2 h-4 w-4" />
             My quotas
-          </MenuItem>
-          <MenuItem onClick={() => handleSignOut()}>Sign Out</MenuItem>
-        </MenuList>
-      </Menu>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {isQuotasModalOpen && (
         <QuotasModal
           isOpen={isQuotasModalOpen}

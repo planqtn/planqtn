@@ -4,20 +4,20 @@ import {
   EditableInput,
   EditablePreview,
   Icon,
-  Tooltip,
   useColorModeValue,
   useToast,
   VStack
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
 import {
-  Panel,
-  PanelGroup,
-  ImperativePanelHandle
-} from "react-resizable-panels";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 
 import ErrorPanel from "./components/ErrorPanel";
-import BuildingBlocksPanel from "./features/building-blocks-panel/BuildingBlocksPanel.tsx";
+import FloatingPanelHandler from "./components/FloatingPanelHandler";
 import { KeyboardHandler } from "./features/canvas/KeyboardHandler.tsx";
 import { ConnectionsLayer } from "./features/lego/ConnectionsLayer.tsx";
 import { LegosLayer } from "./features/lego/LegosLayer.tsx";
@@ -25,74 +25,29 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./features/canvas/SelectionManager.tsx";
-
-import DetailsPanel from "./features/details-panel/DetailsPanel.tsx";
-import { ResizeHandle } from "./features/canvas/ResizeHandle.tsx";
 import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { UserMenu } from "./features/auth/UserMenu.tsx";
 
 import { userContextSupabase } from "./config/supabaseClient.ts";
-import { User } from "@supabase/supabase-js";
+import { useCanvasStore } from "./stores/canvasStateStore";
+import { useUserStore } from "./stores/userStore";
 
 import { checkSupabaseStatus } from "./lib/errors.ts";
-// import WeightEnumeratorCalculationDialog from "./components/WeightEnumeratorCalculationDialog";
-
-import FloatingTaskPanel from "./features/tasks/FloatingTaskPanel.tsx";
 
 import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
-import { useModalStore } from "./stores/modalStore";
-import { RuntimeConfigService } from "./features/kernel/runtimeConfigService.ts";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
-import { useCanvasStore } from "./stores/canvasStateStore";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
 import { useCanvasDragStateStore } from "./stores/canvasDragStateStore.ts";
-import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
-import { FiShare2, FiFileText } from "react-icons/fi";
-import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap.tsx";
+import { CanvasMiniMap } from "./features/canvas/CanvasMiniMap";
 import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx";
-
-import { DroppedLego } from "./stores/droppedLegoStore.ts";
-// import PythonCodeModal from "./components/PythonCodeModal";
-
-// Memoized Left Panel Component
-const LeftPanel = memo<{
-  leftPanelRef: React.RefObject<ImperativePanelHandle>;
-  legoPanelSizes: { defaultSize: number; minSize: number };
-  isLegoPanelCollapsed: boolean;
-  setIsLegoPanelCollapsed: (collapsed: boolean) => void;
-  isUserLoggedIn: boolean;
-}>(
-  ({
-    leftPanelRef,
-    legoPanelSizes,
-    isLegoPanelCollapsed,
-    setIsLegoPanelCollapsed,
-    isUserLoggedIn
-  }) => {
-    return (
-      <Panel
-        ref={leftPanelRef as React.RefObject<ImperativePanelHandle>}
-        id="lego-panel"
-        defaultSize={legoPanelSizes.defaultSize}
-        minSize={legoPanelSizes.minSize}
-        maxSize={legoPanelSizes.defaultSize}
-        order={1}
-        collapsible={true}
-        onCollapse={() => setIsLegoPanelCollapsed(true)}
-        onExpand={() => setIsLegoPanelCollapsed(false)}
-      >
-        {!isLegoPanelCollapsed && (
-          <BuildingBlocksPanel isUserLoggedIn={isUserLoggedIn} />
-        )}
-      </Panel>
-    );
-  }
-);
-
-LeftPanel.displayName = "LeftPanel";
+import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
+import { FloatingPanelsToolbar } from "./features/canvas/FloatingPanelsToolbar.tsx";
+import { FiShare2, FiFileText } from "react-icons/fi";
+import { SubnetToolbarOverlay } from "./features/lego/SubnetToolbarOverlay";
+import { FocusBoundingBox } from "./features/canvas/FocusBoundingBox";
 
 const LegoStudioView: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>("");
@@ -150,18 +105,10 @@ const LegoStudioView: React.FC = () => {
   const handleDynamicLegoSubmit = useCanvasStore(
     (state) => state.handleDynamicLegoSubmit
   );
-  const handleClearAll = useCanvasStore((state) => state.handleClearAll);
-  const fuseLegos = useCanvasStore((state) => state.fuseLegos);
-  const makeSpace = useCanvasStore((state) => state.makeSpace);
   const handleDynamicLegoDrop = useCanvasStore(
     (state) => state.handleDynamicLegoDrop
   );
-  const handleExportPythonCode = useCanvasStore(
-    (state) => state.handleExportPythonCode
-  );
-  const handlePullOutSameColoredLeg = useCanvasStore(
-    (state) => state.handlePullOutSameColoredLeg
-  );
+
   const showPythonCodeModal = useCanvasStore(
     (state) => state.showPythonCodeModal
   );
@@ -190,6 +137,7 @@ const LegoStudioView: React.FC = () => {
 
   const setCanvasRef = useCanvasStore((state) => state.setCanvasRef);
   const canvasRef = useCanvasStore((state) => state.canvasRef);
+
   const selectionManagerRef = useRef<SelectionManagerRef>(null);
 
   const { canvasDragState } = useCanvasDragStateStore();
@@ -199,33 +147,14 @@ const LegoStudioView: React.FC = () => {
   // Use centralized TensorNetwork store
 
   // Use modal store for network dialogs
-  const {
-    openLoadingModal,
-    closeLoadingModal,
-    openAuthDialog,
-    openRuntimeConfigDialog,
-    openWeightEnumeratorDialog,
-    openShareDialog
-  } = useModalStore();
-
-  const handleSetLegoPanelCollapsed = useCallback((collapsed: boolean) => {
-    setIsLegoPanelCollapsed(collapsed);
-  }, []);
-
-  const [isLegoPanelCollapsed, setIsLegoPanelCollapsed] = useState(false);
+  const openLoadingModal = useCanvasStore((state) => state.openLoadingModal);
+  const closeLoadingModal = useCanvasStore((state) => state.closeLoadingModal);
+  const openAuthDialog = useCanvasStore((state) => state.openAuthDialog);
+  const openShareDialog = useCanvasStore((state) => state.openShareDialog);
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
-  const leftPanelRef = useRef<ImperativePanelHandle>(null);
-  const [legoPanelSizes, setLegoPanelSizes] = useState({
-    defaultSize: 15,
-    minSize: 8
-  });
-  const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(true);
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  // Memoize isUserLoggedIn to prevent BuildingBlocksPanel re-renders
-  const isUserLoggedIn = useMemo(() => !!currentUser, [currentUser]);
+  const { currentUser, setCurrentUser } = useUserStore();
 
   const supabaseStatusRef = useRef<{ isHealthy: boolean; message: string }>({
     isHealthy: false,
@@ -305,46 +234,6 @@ const LegoStudioView: React.FC = () => {
       setCurrentUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const calculatePanelSizes = (containerWidth: number) => {
-      // With accordion structure, we need more space for the headers
-      // Default is 280px, min is 150px to accommodate accordion headers
-      const defaultWidthInPx = 280;
-      const minWidthInPx = 150;
-
-      if (containerWidth > 0) {
-        const defaultSize = (defaultWidthInPx / containerWidth) * 100 * 1.5;
-        const minSize = (minWidthInPx / containerWidth) * 100;
-
-        // Add some sanity checks to not exceed 100% or go below 0
-        setLegoPanelSizes({
-          defaultSize: Math.min(100, Math.max(0, defaultSize)),
-          minSize: Math.min(100, Math.max(0, minSize))
-        });
-      }
-    };
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        calculatePanelSizes(entry.contentRect.width);
-      }
-    });
-
-    const currentContainerRef = panelGroupContainerRef.current;
-    if (currentContainerRef) {
-      observer.observe(currentContainerRef);
-      // Initial calculation
-      calculatePanelSizes(currentContainerRef.offsetWidth);
-    }
-
-    return () => {
-      if (currentContainerRef) {
-        observer.unobserve(currentContainerRef);
-      }
-    };
   }, []);
 
   // Add Supabase status check on page load
@@ -480,29 +369,9 @@ const LegoStudioView: React.FC = () => {
     event.stopPropagation();
   }
 
-  const handleRuntimeToggle = () => {
-    const isLocalRuntime = RuntimeConfigService.isLocalRuntime();
-    if (isLocalRuntime) {
-      RuntimeConfigService.switchToCloud();
-    } else {
-      const currentConfig = RuntimeConfigService.getCurrentConfig();
-      openRuntimeConfigDialog(isLocalRuntime, currentConfig || undefined);
-    }
-  };
-
   return (
     <>
-      <KeyboardHandler
-        onSetAltKeyPressed={setAltKeyPressed}
-        onFuseLegos={fuseLegos}
-        onPullOutSameColoredLeg={handlePullOutSameColoredLeg}
-        onToast={(props) =>
-          toast({
-            ...props,
-            status: props.status as "success" | "error" | "warning" | "info"
-          })
-        }
-      />
+      <KeyboardHandler onSetAltKeyPressed={setAltKeyPressed} />
 
       <CanvasMouseHandler
         selectionManagerRef={selectionManagerRef}
@@ -524,20 +393,8 @@ const LegoStudioView: React.FC = () => {
           overflow="hidden"
         >
           <PanelGroup direction="horizontal">
-            {/* Left Panel */}
-            <LeftPanel
-              leftPanelRef={
-                leftPanelRef as React.RefObject<ImperativePanelHandle>
-              }
-              legoPanelSizes={legoPanelSizes}
-              isLegoPanelCollapsed={isLegoPanelCollapsed}
-              setIsLegoPanelCollapsed={handleSetLegoPanelCollapsed}
-              isUserLoggedIn={isUserLoggedIn}
-            />
-            <ResizeHandle id="lego-panel-resize-handle" />
-
             {/* Main Content */}
-            <Panel id="main-panel" defaultSize={65} minSize={5} order={2}>
+            <Panel id="main-panel" defaultSize={100} minSize={5} order={1}>
               <Box h="100%" display="flex" flexDirection="column" p={4}>
                 {/* Canvas with overlay controls */}
                 <Box
@@ -559,18 +416,11 @@ const LegoStudioView: React.FC = () => {
                   }}
                 >
                   {/* Top-left three-dots menu */}
-                  <CanvasMenu
-                    isLegoPanelCollapsed={isLegoPanelCollapsed}
-                    isTaskPanelCollapsed={isTaskPanelCollapsed}
-                    setIsTaskPanelCollapsed={setIsTaskPanelCollapsed}
-                    leftPanelRef={leftPanelRef}
-                    handleClearAll={handleClearAll}
-                    handleExportPythonCode={handleExportPythonCode}
-                    handleExportSvg={handleExportSvg}
-                    handleRuntimeToggle={handleRuntimeToggle}
-                    openWeightEnumeratorDialog={openWeightEnumeratorDialog}
-                    currentUser={currentUser}
-                  />
+                  <Box position="absolute" top={2} left={2} zIndex={2000}>
+                    <CanvasMenu handleExportSvg={handleExportSvg} />
+                  </Box>
+                  {/* Floating panels toolbar */}
+                  <FloatingPanelsToolbar />
                   {/* Top-center title (contextual) */}
                   <Box
                     position="absolute"
@@ -606,46 +456,56 @@ const LegoStudioView: React.FC = () => {
                     gap={2}
                   >
                     {/* Documentation button */}
-                    <Tooltip label="Documentation" placement="bottom">
-                      <Box
-                        bg="transparent"
-                        borderRadius="md"
-                        px={2}
-                        py={2}
-                        opacity={0.8}
-                        _hover={{
-                          opacity: 1,
-                          bg: useColorModeValue("gray.100", "gray.700")
-                        }}
-                        transition="opacity 0.2s"
-                        cursor="pointer"
-                        onClick={() => window.open("/docs", "_blank")}
-                        alignItems="center"
-                        display="flex"
-                      >
-                        <Icon as={FiFileText} boxSize={5} />
-                      </Box>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Box
+                          bg="transparent"
+                          borderRadius="md"
+                          px={2}
+                          py={2}
+                          opacity={0.8}
+                          _hover={{
+                            opacity: 1,
+                            bg: useColorModeValue("gray.100", "gray.700")
+                          }}
+                          transition="opacity 0.2s"
+                          cursor="pointer"
+                          onClick={() => window.open("/docs", "_blank")}
+                          alignItems="center"
+                          display="flex"
+                        >
+                          <Icon as={FiFileText} boxSize={5} />
+                        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Documentation
+                      </TooltipContent>
                     </Tooltip>
                     {/* Share button */}
-                    <Tooltip label="Share canvas" placement="bottom">
-                      <Box
-                        bg="transparent"
-                        borderRadius="md"
-                        px={2}
-                        py={2}
-                        opacity={0.8}
-                        _hover={{
-                          opacity: 1,
-                          bg: useColorModeValue("gray.100", "gray.700")
-                        }}
-                        transition="opacity 0.2s"
-                        cursor="pointer"
-                        onClick={openShareDialog}
-                        alignItems="center"
-                        display="flex"
-                      >
-                        <Icon as={FiShare2} boxSize={5} />
-                      </Box>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Box
+                          bg="transparent"
+                          borderRadius="md"
+                          px={2}
+                          py={2}
+                          opacity={0.8}
+                          _hover={{
+                            opacity: 1,
+                            bg: useColorModeValue("gray.100", "gray.700")
+                          }}
+                          transition="opacity 0.2s"
+                          cursor="pointer"
+                          onClick={openShareDialog}
+                          alignItems="center"
+                          display="flex"
+                        >
+                          <Icon as={FiShare2} boxSize={5} />
+                        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Share canvas
+                      </TooltipContent>
                     </Tooltip>
                     {/* User menu */}
                     <Box
@@ -656,10 +516,7 @@ const LegoStudioView: React.FC = () => {
                       _hover={{ opacity: 1 }}
                       transition="opacity 0.2s"
                     >
-                      <UserMenu
-                        user={currentUser}
-                        onSignIn={handleAuthDialogOpen}
-                      />
+                      <UserMenu onSignIn={handleAuthDialogOpen} />
                     </Box>
                   </Box>
 
@@ -687,10 +544,17 @@ const LegoStudioView: React.FC = () => {
                     <LegosLayer />
                     <ConnectionsLayer bodyOrder="front" />
                   </svg>
+
+                  {/* Subnet Toolbar Overlay - rendered outside SVG context */}
+                  <SubnetToolbarOverlay />
+
                   <SelectionManager ref={selectionManagerRef} />
 
                   {/* Drag Proxy for smooth dragging */}
                   <DragProxy />
+
+                  {/* Focus Bounding Box for tensor network focus effect */}
+                  <FocusBoundingBox />
 
                   {import.meta.env.VITE_ENV === "debug" && (
                     // Debug viewport overlay
@@ -702,35 +566,12 @@ const LegoStudioView: React.FC = () => {
                 </Box>
               </Box>
             </Panel>
-
-            <ResizeHandle id="details-panel-resize-handle" />
-
-            {/* Right Panel */}
-            <Panel id="details-panel" defaultSize={20} minSize={5} order={3}>
-              <DetailsPanel
-                handlePullOutSameColoredLeg={handlePullOutSameColoredLeg}
-                fuseLegos={fuseLegos}
-                makeSpace={(
-                  center: { x: number; y: number },
-                  radius: number,
-                  skipLegos: DroppedLego[],
-                  legosToCheck: DroppedLego[]
-                ) => makeSpace(center, radius, skipLegos, legosToCheck)}
-                toast={toast}
-                user={currentUser}
-              />
-            </Panel>
           </PanelGroup>
           {/* Error Panel */}
           <ErrorPanel />
         </Box>
 
-        <FloatingTaskPanel
-          user={currentUser}
-          onError={setError}
-          onClose={() => setIsTaskPanelCollapsed(true)}
-          isOpen={!isTaskPanelCollapsed}
-        />
+        <FloatingPanelHandler />
 
         {isDynamicLegoDialogOpen && (
           <DynamicLegoDialog

@@ -1,15 +1,19 @@
-import { Connection } from "../stores/connectionStore";
+import { Connection } from "@/stores/connectionStore.ts";
 
-import { Legos } from "../features/lego/Legos.ts";
-import { createHadamardLego, DroppedLego } from "../stores/droppedLegoStore.ts";
-import { Operation } from "../features/canvas/OperationHistory.ts";
-import { LogicalPoint } from "../types/coordinates.ts";
+import { Legos, LegoType } from "@/features/lego/Legos.ts";
+import { createHadamardLego, DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
+import { LogicalPoint } from "@/types/coordinates.ts";
 
 export const canDoCompleteGraphViaHadamards = (
   legos: DroppedLego[]
 ): boolean => {
   return (
-    legos.length > 1 && legos.every((lego) => lego.type_id === "z_rep_code")
+    legos.length > 1 &&
+    legos.every(
+      (lego) =>
+        lego.type_id === LegoType.ZREP || lego.type_id === LegoType.STOPPER_X
+    )
   );
 };
 
@@ -45,15 +49,15 @@ const getDanglingLegs = (
     };
   });
 };
-export const applyCompleteGraphViaHadamards = async (
+export const applyCompleteGraphViaHadamards = (
   legos: DroppedLego[],
   allLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   droppedLegos: DroppedLego[];
   connections: Connection[];
   operation: Operation;
-}> => {
+} => {
   // Get max instance ID
   const maxInstanceId = Math.max(
     ...allLegos.map((l) => parseInt(l.instance_id))
@@ -63,21 +67,19 @@ export const applyCompleteGraphViaHadamards = async (
   const oldLegoDanglingLegs = getDanglingLegs(legos, connections);
 
   // Create new legos with extra legs for connections
-  const newLegos: DroppedLego[] = oldLegoDanglingLegs.map(
-    ({ lego, danglingLegs }) => {
-      // Calculate how many new legs we need
-      const numNewLegs = legos.length - 1 - danglingLegs.length; // Each lego needs to connect to all others
-      if (numNewLegs <= 0) {
-        return lego; // Keep the lego as is if it has enough dangling legs
-      }
-      return Legos.createDynamicLego(
-        "z_rep_code",
-        lego.numberOfLegs + numNewLegs,
-        lego.instance_id,
-        lego.logicalPosition
-      );
+  const newLegos: DroppedLego[] = oldLegoDanglingLegs.map(({ lego }) => {
+    // Calculate how many new legs we need
+    const numNewLegs = legos.length - 1; // Each lego needs to connect to all others
+    if (numNewLegs <= 0) {
+      return lego; // Keep the lego as is if it has enough dangling legs
     }
-  );
+    return Legos.createDynamicLego(
+      "z_rep_code",
+      lego.numberOfLegs + numNewLegs,
+      lego.instance_id,
+      lego.logicalPosition
+    );
+  });
 
   const legoDanglingLegs = getDanglingLegs(newLegos, connections);
 

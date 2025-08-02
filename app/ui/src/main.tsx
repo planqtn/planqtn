@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import "./index.css";
 
 import { BrowserRouter, Routes, Route } from "react-router";
@@ -18,6 +18,7 @@ if (import.meta.env.VITE_ENV === "TEASER") {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <ErrorBoundary>
+        <ColorModeScript initialColorMode="light" />
         <ChakraProvider>
           <BrowserRouter>
             <Routes>

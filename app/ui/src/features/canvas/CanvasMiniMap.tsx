@@ -89,7 +89,7 @@ export const CanvasMiniMap: React.FC = () => {
   const droppedLegoBoundingBox = calculateDroppedLegoBoundingBox();
   const tensorNetworkBoundingBox =
     tensorNetwork && tensorNetwork.legos.length > 0
-      ? calculateTensorNetworkBoundingBox()
+      ? calculateTensorNetworkBoundingBox(tensorNetwork)
       : null;
 
   // Calculate minimap dimensions and positions (in pixels)
@@ -299,7 +299,7 @@ export const CanvasMiniMap: React.FC = () => {
 
   // Zoom control handlers
   const handleZoomIn = useCallback(() => {
-    const newZoomLevel = Math.min(zoomLevel * 1.05, 9);
+    const newZoomLevel = Math.min(zoomLevel * 1.02, 9);
     let centerPoint;
     if (
       droppedLegoBoundingBox &&
@@ -327,7 +327,7 @@ export const CanvasMiniMap: React.FC = () => {
   }, [zoomLevel, viewport, setZoomToMouse, droppedLegoBoundingBox]);
 
   const handleZoomOut = useCallback(() => {
-    const newZoomLevel = Math.max(zoomLevel * 0.95, 0.04);
+    const newZoomLevel = Math.max(zoomLevel * 0.98, 0.04);
     let centerPoint;
     if (
       droppedLegoBoundingBox &&

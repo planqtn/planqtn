@@ -128,3 +128,18 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.high-z {
+  z-index: 10000 !important;
+}
+
+/* Leg endpoint hover effects */
+.leg-endpoint:hover {
+  fill: rgb(235, 248, 255) !important;
+}
+
+/* Logical leg interactive hover effects */
+.logical-leg-interactive:hover {
+  stroke: currentColor !important;
+  opacity: 0.3 !important;
+}

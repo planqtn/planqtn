@@ -5,6 +5,7 @@ import { LogicalPoint, CanvasPoint, WindowPoint } from "../types/coordinates";
 import { createRef, RefObject } from "react";
 import { castDraft } from "immer";
 import { DroppedLego } from "./droppedLegoStore";
+import { TensorNetwork } from "@/lib/TensorNetwork";
 
 export const calculateBoundingBoxForLegos = (
   legos: DroppedLego[]
@@ -32,6 +33,13 @@ export interface SelectionBoxState {
   currentX: number;
   currentY: number;
   justFinished: boolean;
+}
+
+export interface FocusBoundingBoxState {
+  isVisible: boolean;
+  boundingBox: BoundingBox | null;
+  opacity: number;
+  fadeTimerId: ReturnType<typeof setInterval> | null;
 }
 
 export interface BoundingBox {
@@ -171,6 +179,9 @@ export interface CanvasUISlice {
   setSelectionBox: (selectionBox: SelectionBoxState) => void;
   updateSelectionBox: (updates: Partial<SelectionBoxState>) => void;
   clearSelectionBox: () => void;
+  focusBoundingBox: FocusBoundingBoxState;
+  setFocusBoundingBox: (focusBoundingBox: FocusBoundingBoxState) => void;
+  showFocusBoundingBox: (boundingBox: BoundingBox) => void;
   hoveredConnection: Connection | null;
   setHoveredConnection: (hoveredConnection: Connection | null) => void;
   setError: (error: string | null) => void;
@@ -180,6 +191,7 @@ export interface CanvasUISlice {
   updatePanOffset: (delta: LogicalPoint) => void;
   canvasRef: RefObject<HTMLDivElement> | null;
   setCanvasRef: (element: HTMLDivElement | null) => void;
+  focusOnTensorNetwork: (tensorNetwork?: TensorNetwork) => void;
 
   viewport: Viewport;
 
@@ -194,7 +206,9 @@ export interface CanvasUISlice {
 
   // Bounding box calculations
   calculateDroppedLegoBoundingBox: () => BoundingBox | null;
-  calculateTensorNetworkBoundingBox: () => BoundingBox | null;
+  calculateTensorNetworkBoundingBox: (
+    tensorNetwork: TensorNetwork | null
+  ) => BoundingBox | null;
 
   // Mouse wheel handling
   handleWheelEvent: (e: WheelEvent) => void;
@@ -219,6 +233,8 @@ export interface CanvasUISlice {
   setResizeProxyLegos: (legos: DroppedLego[] | null) => void;
   suppressNextCanvasClick: boolean;
   setSuppressNextCanvasClick: (val: boolean) => void;
+  dragOffset: { x: number; y: number } | null;
+  setDragOffset: (offset: { x: number; y: number } | null) => void;
 }
 
 export const createCanvasUISlice: StateCreator<
@@ -227,7 +243,6 @@ export const createCanvasUISlice: StateCreator<
   [],
   CanvasUISlice
 > = (set, get) => ({
-  // Legacy props
   selectionBox: {
     isSelecting: false,
     startX: 0,
@@ -235,6 +250,12 @@ export const createCanvasUISlice: StateCreator<
     currentX: 0,
     currentY: 0,
     justFinished: false
+  },
+  focusBoundingBox: {
+    isVisible: false,
+    boundingBox: null,
+    opacity: 0,
+    fadeTimerId: null
   },
   clearSelectionBox: () => {
     set({
@@ -246,6 +267,56 @@ export const createCanvasUISlice: StateCreator<
         currentY: 0,
         justFinished: false
       }
+    });
+  },
+  setFocusBoundingBox: (focusBoundingBox) =>
+    set((state) => {
+      state.focusBoundingBox = focusBoundingBox;
+    }),
+  showFocusBoundingBox: (boundingBox) => {
+    // Clear any existing fade timer
+    const currentState = get().focusBoundingBox;
+    if (currentState.fadeTimerId) {
+      clearInterval(currentState.fadeTimerId);
+    }
+
+    set((state) => {
+      state.focusBoundingBox = {
+        isVisible: true,
+        boundingBox,
+        opacity: 0.7,
+        fadeTimerId: null
+      };
+    });
+
+    // Fade out over 1 second
+    const fadeOutDuration = 1000; // 1 second
+    const fadeSteps = 60; // 60 steps for smooth animation
+    const fadeInterval = fadeOutDuration / fadeSteps;
+    const opacityStep = 0.7 / fadeSteps;
+
+    let currentStep = 0;
+    const fadeTimer = setInterval(() => {
+      currentStep++;
+      const newOpacity = Math.max(0, 0.7 - opacityStep * currentStep);
+
+      set((state) => {
+        state.focusBoundingBox.opacity = newOpacity;
+        if (newOpacity <= 0) {
+          state.focusBoundingBox.isVisible = false;
+          state.focusBoundingBox.boundingBox = null;
+          state.focusBoundingBox.fadeTimerId = null;
+        }
+      });
+
+      if (currentStep >= fadeSteps) {
+        clearInterval(fadeTimer);
+      }
+    }, fadeInterval);
+
+    // Store the timer ID so we can cancel it later
+    set((state) => {
+      state.focusBoundingBox.fadeTimerId = fadeTimer;
     });
   },
   setSelectionBox: (selectionBox) =>
@@ -260,6 +331,13 @@ export const createCanvasUISlice: StateCreator<
   setHoveredConnection: (hoveredConnection) => {
     set((state) => {
       state.hoveredConnection = hoveredConnection;
+    });
+  },
+
+  dragOffset: null,
+  setDragOffset: (offset: { x: number; y: number } | null) => {
+    set((state) => {
+      state.dragOffset = offset;
     });
   },
   error: null,
@@ -383,6 +461,71 @@ export const createCanvasUISlice: StateCreator<
     });
   },
 
+  focusOnTensorNetwork: (tensorNetwork?: TensorNetwork) => {
+    const tensorNetworkBoundingBox = get().calculateTensorNetworkBoundingBox(
+      tensorNetwork || get().tensorNetwork
+    );
+    if (!tensorNetworkBoundingBox) return;
+
+    // Show the focus bounding box visual effect
+    get().showFocusBoundingBox(tensorNetworkBoundingBox);
+
+    set((state) => {
+      // if tensornetrowk bounding box is within the viewport, do nothing
+      if (
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.minX,
+            tensorNetworkBoundingBox.minY
+          ),
+          0
+        ) &&
+        state.viewport.isPointInViewport(
+          new LogicalPoint(
+            tensorNetworkBoundingBox.maxX,
+            tensorNetworkBoundingBox.maxY
+          ),
+          0
+        )
+      ) {
+        return;
+      }
+
+      // set the view port to be a good 200 px margin around the tensor network
+      // we have to calculate a zoom level that will fit the tensor network in the viewport
+      // and then the pan so that the center of the tensor network is in the center of the viewport
+
+      const tensorNetworkWidth =
+        tensorNetworkBoundingBox.maxX - tensorNetworkBoundingBox.minX;
+      const tensorNetworkHeight =
+        tensorNetworkBoundingBox.maxY - tensorNetworkBoundingBox.minY;
+      const margin = 200;
+
+      const newZoomLevel = Math.min(
+        state.viewport.screenWidth / (tensorNetworkWidth + margin * 2),
+        state.viewport.screenHeight / (tensorNetworkHeight + margin * 2)
+      );
+
+      const newViewport = state.viewport.with({
+        logicalPanOffset: new LogicalPoint(0, 0),
+        zoomLevel: newZoomLevel
+      });
+
+      const newPanOffset = new LogicalPoint(
+        (tensorNetworkBoundingBox.minX + tensorNetworkBoundingBox.maxX) / 2 -
+          newViewport.logicalWidth / 2,
+        (tensorNetworkBoundingBox.minY + tensorNetworkBoundingBox.maxY) / 2 -
+          newViewport.logicalHeight / 2
+      );
+
+      state.viewport = castDraft(
+        newViewport.with({
+          logicalPanOffset: newPanOffset
+        })
+      );
+    });
+  },
+
   calculateDroppedLegoBoundingBox: () => {
     const { droppedLegos } = get();
 
@@ -390,9 +533,7 @@ export const createCanvasUISlice: StateCreator<
     return calculateBoundingBoxForLegos(droppedLegos);
   },
 
-  calculateTensorNetworkBoundingBox: () => {
-    const { tensorNetwork } = get();
-
+  calculateTensorNetworkBoundingBox: (tensorNetwork: TensorNetwork | null) => {
     if (!tensorNetwork || tensorNetwork.legos.length === 0) return null;
 
     return calculateBoundingBoxForLegos(tensorNetwork.legos);
@@ -408,7 +549,7 @@ export const createCanvasUISlice: StateCreator<
     e.preventDefault();
 
     // Calculate new zoom level
-    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+    const zoomDelta = 1 - 0.0005 * e.deltaY;
     const newZoomLevel = Math.max(
       0.04,
       Math.min(9, get().viewport.zoomLevel * zoomDelta)
@@ -441,7 +582,9 @@ export const createCanvasUISlice: StateCreator<
     }),
 
   startResize: (handleType: ResizeHandleType, mousePosition: LogicalPoint) => {
-    const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+    const { tensorNetwork } = get();
+    const currentBoundingBox =
+      get().calculateTensorNetworkBoundingBox(tensorNetwork);
     if (!currentBoundingBox) return;
 
     set((state) => {
@@ -479,7 +622,8 @@ export const createCanvasUISlice: StateCreator<
     if (newBoundingBox) {
       // Instead of updating real legos, update the proxy legos
       const { tensorNetwork } = get();
-      const currentBoundingBox = get().calculateTensorNetworkBoundingBox();
+      const currentBoundingBox =
+        get().calculateTensorNetworkBoundingBox(tensorNetwork);
       if (
         !tensorNetwork ||
         tensorNetwork.legos.length === 0 ||
@@ -490,6 +634,7 @@ export const createCanvasUISlice: StateCreator<
         });
         return;
       }
+
       // Calculate which coordinates need to be preserved based on handleType
       const { handleType } = resizeState;
       let preservedCoordinates = {

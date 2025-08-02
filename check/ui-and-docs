@@ -48,7 +48,7 @@ echo "Passed."
 
 
 # Run tests
-npm run test
+npm run test:failures    
 if [ $? -ne 0 ]; then
     echo "Build check failed"    
     exit 1

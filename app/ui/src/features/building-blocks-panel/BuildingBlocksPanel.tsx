@@ -5,7 +5,6 @@ import {
   Text,
   Badge,
   useColorModeValue,
-  Tooltip,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -14,22 +13,23 @@ import {
   Button,
   Icon
 } from "@chakra-ui/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import DroppedLegoDisplay, {
   getLegoBoundingBox
 } from "../lego/DroppedLegoDisplay.tsx";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore.ts";
-import { FiPackage, FiCpu, FiGrid, FiTarget } from "react-icons/fi";
+import { FiCpu, FiGrid, FiTarget } from "react-icons/fi";
 import { Legos } from "../lego/Legos.ts";
-import { useModalStore } from "../../stores/modalStore.ts";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore.ts";
 import { useCanvasStore } from "../../stores/canvasStateStore.ts";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore.ts";
 import { LogicalPoint } from "../../types/coordinates.ts";
-
-interface BuildingBlocksPanelProps {
-  isUserLoggedIn?: boolean;
-}
+import { useUserStore } from "@/stores/userStore.ts";
 
 // Create custom lego piece
 const customLego: LegoPiece = {
@@ -81,63 +81,66 @@ const LegoListItem = memo<LegoListItemProps>(
 
     if (isPanelSmall) {
       return (
-        <Tooltip key={lego.type_id} label={lego.name} placement="top">
-          <Box
-            p={2}
-            borderRadius="md"
-            _hover={{ bg: "gray.50" }}
-            cursor="move"
-            draggable
-            onDragStart={(e) => handleDragStart(e, lego)}
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            minH="80px"
-            justifyContent="space-between"
-            style={{
-              pointerEvents: "all"
-            }}
-          >
+        <Tooltip key={lego.type_id}>
+          <TooltipTrigger asChild>
             <Box
+              p={2}
+              borderRadius="md"
+              _hover={{ bg: "gray.50" }}
+              cursor="move"
+              draggable
+              onDragStart={(e) => handleDragStart(e, lego)}
               display="flex"
+              flexDirection="column"
               alignItems="center"
-              justifyContent="center"
-              width="50px"
-              height="50px"
-              flex="1"
+              minH="80px"
+              justifyContent="space-between"
               style={{
-                pointerEvents: "none"
+                pointerEvents: "all"
               }}
             >
-              <svg
-                className="demo-svg"
-                width={Math.min(boundingBox.width * 0.3, 40)}
-                height={Math.min(boundingBox.height * 0.3, 40)}
-                viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                width="50px"
+                height="50px"
+                flex="1"
                 style={{
-                  overflow: "visible",
                   pointerEvents: "none"
                 }}
               >
-                <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
-              </svg>
-            </Box>
-            <Box height="14px" display="flex" alignItems="center">
-              {lego.is_dynamic && (
-                <Badge
-                  colorScheme="green"
-                  size="xs"
-                  fontSize="8px"
-                  px={1}
-                  py={0}
-                  height="12px"
-                  minW="auto"
+                <svg
+                  className="demo-svg"
+                  width={Math.min(boundingBox.width * 0.3, 40)}
+                  height={Math.min(boundingBox.height * 0.3, 40)}
+                  viewBox={`${boundingBox.left} ${boundingBox.top} ${boundingBox.width} ${boundingBox.height}`}
+                  style={{
+                    overflow: "visible",
+                    pointerEvents: "none"
+                  }}
                 >
-                  DYN
-                </Badge>
-              )}
+                  <DroppedLegoDisplay legoInstanceId="-1" demoLego={demoLego} />
+                </svg>
+              </Box>
+              <Box height="14px" display="flex" alignItems="center">
+                {lego.is_dynamic && (
+                  <Badge
+                    colorScheme="green"
+                    size="xs"
+                    fontSize="8px"
+                    px={1}
+                    py={0}
+                    height="12px"
+                    minW="auto"
+                  >
+                    DYN
+                  </Badge>
+                )}
+              </Box>
             </Box>
-          </Box>
+          </TooltipTrigger>
+          <TooltipContent className="high-z">{lego.name}</TooltipContent>
         </Tooltip>
       );
     }
@@ -204,265 +207,240 @@ const LegoListItem = memo<LegoListItemProps>(
 );
 LegoListItem.displayName = "LegoListItem";
 
-export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
-  ({ isUserLoggedIn }) => {
-    const [isPanelSmall, setIsPanelSmall] = useState(false);
-    const panelRef = useRef<HTMLDivElement>(null);
-    const { openCssTannerDialog, openTannerDialog, openMspDialog } =
-      useModalStore.getState();
-    const [legos, setLegos] = useState<LegoPiece[]>([]);
-    const setDraggedLego = useDraggedLegoStore(
-      (state) => state.setDraggedLegoProto
-    );
-    const setBuildingBlockDragState = useBuildingBlockDragStateStore(
-      (state) => state.setBuildingBlockDragState
-    );
-    const newInstanceId = useCanvasStore((state) => state.newInstanceId);
+export const BuildingBlocksPanel: React.FC = memo(() => {
+  const { isUserLoggedIn } = useUserStore();
+  const [isPanelSmall, setIsPanelSmall] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-      const fetchData = async () => {
-        setLegos(Legos.listAvailableLegos());
-      };
+  const [legos, setLegos] = useState<LegoPiece[]>([]);
+  const setDraggedLego = useDraggedLegoStore(
+    (state) => state.setDraggedLegoProto
+  );
+  const setBuildingBlockDragState = useBuildingBlockDragStateStore(
+    (state) => state.setBuildingBlockDragState
+  );
+  const newInstanceId = useCanvasStore((state) => state.newInstanceId);
 
-      fetchData();
-    }, []);
+  const openCssTannerDialog = useCanvasStore(
+    (state) => state.openCssTannerDialog
+  );
+  const openTannerDialog = useCanvasStore((state) => state.openTannerDialog);
+  const openMspDialog = useCanvasStore((state) => state.openMspDialog);
 
-    const checkPanelSize = useCallback(() => {
-      // const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
-      if (panelRef.current) {
-        setIsPanelSmall(panelRef.current.offsetWidth < 200);
-      }
-    }, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      setLegos(Legos.listAvailableLegos());
+    };
 
-    useEffect(() => {
-      const observer = new ResizeObserver(checkPanelSize);
-      const currentPanelRef = panelRef.current;
+    fetchData();
+  }, []);
+
+  const checkPanelSize = useCallback(() => {
+    // const rootFontSize = window.getComputedStyle(document.documentElement).fontSize;
+    if (panelRef.current) {
+      setIsPanelSmall(panelRef.current.offsetWidth < 200);
+    }
+  }, []);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(checkPanelSize);
+    const currentPanelRef = panelRef.current;
+    if (currentPanelRef) {
+      observer.observe(currentPanelRef);
+    }
+
+    window.addEventListener("resize", checkPanelSize);
+    // Note: 'zoom' event is non-standard, but works in some browsers.
+    // resize is a good fallback.
+    window.addEventListener("zoom", checkPanelSize);
+
+    // Initial check
+    checkPanelSize();
+
+    return () => {
       if (currentPanelRef) {
-        observer.observe(currentPanelRef);
+        observer.unobserve(currentPanelRef);
+      }
+      window.removeEventListener("resize", checkPanelSize);
+      window.removeEventListener("zoom", checkPanelSize);
+    };
+  }, [checkPanelSize]);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
+      console.log("handleDragStart", e.target, lego);
+
+      // Find the SVG element with class "demo-svg" within the drag target
+      const svgElement = (e.target as HTMLElement).querySelector(
+        ".demo-svg"
+      ) as SVGElement;
+
+      if (svgElement) {
+        // Use the SVG element as the drag image
+        // Center the drag image by using half of its dimensions as offset
+        const rect = svgElement.getBoundingClientRect();
+        e.dataTransfer.setDragImage(
+          svgElement,
+          rect.width / 2,
+          rect.height / 2
+        );
+      } else {
+        // Fallback to transparent image if SVG not found
+        const dragImage = new Image();
+        dragImage.src =
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+        e.dataTransfer.setDragImage(dragImage, 0, 0);
       }
 
-      window.addEventListener("resize", checkPanelSize);
-      // Note: 'zoom' event is non-standard, but works in some browsers.
-      // resize is a good fallback.
-      window.addEventListener("zoom", checkPanelSize);
+      const logicalPosition = new LogicalPoint(0, 0);
 
-      // Initial check
-      checkPanelSize();
+      if (lego.type_id === "custom") {
+        // Store the drop position for the custom lego
+        // Note: position will be set when the custom lego is dropped, not during drag start
+        // Set the draggedLego state for custom legos
 
-      return () => {
-        if (currentPanelRef) {
-          observer.unobserve(currentPanelRef);
-        }
-        window.removeEventListener("resize", checkPanelSize);
-        window.removeEventListener("zoom", checkPanelSize);
-      };
-    }, [checkPanelSize]);
+        const draggedLego: DroppedLego = new DroppedLego(
+          lego,
+          logicalPosition,
+          newInstanceId()
+        );
+        setDraggedLego(draggedLego);
+        setBuildingBlockDragState({
+          isDragging: true,
+          draggedLego: lego,
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          dragEnterCounter: 0
+        });
+      } else {
+        // Handle regular lego drag
 
-    const handleDragStart = useCallback(
-      (e: React.DragEvent<HTMLElement>, lego: LegoPiece) => {
-        console.log("handleDragStart", e.target, lego);
+        const draggedLego: DroppedLego = new DroppedLego(
+          lego,
+          logicalPosition,
+          newInstanceId()
+        );
+        setDraggedLego(draggedLego);
+        setBuildingBlockDragState({
+          isDragging: true,
+          draggedLego: lego,
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          dragEnterCounter: 0
+        });
+      }
+    },
+    [newInstanceId, setBuildingBlockDragState, setDraggedLego]
+  );
 
-        // Find the SVG element with class "demo-svg" within the drag target
-        const svgElement = (e.target as HTMLElement).querySelector(
-          ".demo-svg"
-        ) as SVGElement;
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
 
-        if (svgElement) {
-          // Use the SVG element as the drag image
-          // Center the drag image by using half of its dimensions as offset
-          const rect = svgElement.getBoundingClientRect();
-          e.dataTransfer.setDragImage(
-            svgElement,
-            rect.width / 2,
-            rect.height / 2
-          );
-        } else {
-          // Fallback to transparent image if SVG not found
-          const dragImage = new Image();
-          dragImage.src =
-            "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-          e.dataTransfer.setDragImage(dragImage, 0, 0);
-        }
+  const allLegos = useMemo(() => [...legos, customLego], [legos]);
 
-        const logicalPosition = new LogicalPoint(0, 0);
-
-        if (lego.type_id === "custom") {
-          // Store the drop position for the custom lego
-          // Note: position will be set when the custom lego is dropped, not during drag start
-          // Set the draggedLego state for custom legos
-
-          const draggedLego: DroppedLego = new DroppedLego(
-            lego,
-            logicalPosition,
-            newInstanceId()
-          );
-          setDraggedLego(draggedLego);
-          setBuildingBlockDragState({
-            isDragging: true,
-            draggedLego: lego,
-            mouseX: e.clientX,
-            mouseY: e.clientY,
-            dragEnterCounter: 0
-          });
-        } else {
-          // Handle regular lego drag
-
-          const draggedLego: DroppedLego = new DroppedLego(
-            lego,
-            logicalPosition,
-            newInstanceId()
-          );
-          setDraggedLego(draggedLego);
-          setBuildingBlockDragState({
-            isDragging: true,
-            draggedLego: lego,
-            mouseX: e.clientX,
-            mouseY: e.clientY,
-            dragEnterCounter: 0
-          });
-        }
-      },
-      [newInstanceId, setBuildingBlockDragState, setDraggedLego]
-    );
-
-    const bgColor = useColorModeValue("white", "gray.800");
-    const borderColor = useColorModeValue("gray.200", "gray.600");
-
-    const allLegos = useMemo(() => [...legos, customLego], [legos]);
-
-    return (
-      <Box
-        ref={panelRef}
-        height="100vh"
-        minHeight={0}
-        borderRight="1px"
-        borderColor={borderColor}
-        bg={bgColor}
-        overflowY="auto"
-        minW={0}
-        maxW="100vw"
-        display="flex"
-        flexDirection="column"
-      >
-        {/* Modern Title Bar - Fixed at top */}
-        <Box
-          px={4}
-          py={3}
-          bgGradient="linear(to-r, teal.500, blue.500)"
-          color="white"
-          fontWeight="bold"
-          fontSize="lg"
-          boxShadow="sm"
-          letterSpacing="wide"
-          display="flex"
-          alignItems="center"
-          flexShrink={0}
-          userSelect="none"
+  return (
+    <Box
+      ref={panelRef}
+      minHeight={0}
+      borderRight="1px"
+      borderColor={borderColor}
+      bg={bgColor}
+      minW={0}
+      maxW="100vw"
+      display="flex"
+      flexDirection="column"
+      height="100%"
+    >
+      {/* Content Area */}
+      <Box flex="1 1 0%" minHeight={0} px={2} pb={2}>
+        <Accordion
+          allowMultiple
+          defaultIndex={[0]}
+          borderRadius="md"
+          bg="white"
         >
-          <Icon as={FiPackage} boxSize={5} mr={2} />
-          Building Blocks
-        </Box>
-
-        {/* Scrollable Content Area */}
-        <Box
-          flex="1 1 0%"
-          height={0}
-          minHeight={0}
-          overflowY="auto"
-          px={2}
-          pb={2}
-        >
-          <Accordion
-            allowMultiple
-            defaultIndex={[0]}
-            borderRadius="md"
-            bg="white"
-          >
-            {/* Tensors Section */}
-            <AccordionItem border="none" mb={2}>
-              {({ isExpanded }) => (
-                <>
-                  <AccordionButton
-                    bg={isExpanded ? "teal.100" : "gray.50"}
-                    _hover={{ bg: "teal.50" }}
-                    borderRadius="md"
-                    px={4}
-                    py={2}
-                    fontWeight="bold"
-                    fontSize="md"
-                    transition="background 0.2s"
-                    userSelect="none"
-                    _focus={{ boxShadow: "none" }}
-                  >
-                    <Box flex="1" textAlign="left" color="teal.700">
-                      Tensors
+          {/* Tensors Section */}
+          <AccordionItem border="none" mb={2}>
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton
+                  bg={isExpanded ? "teal.100" : "gray.50"}
+                  _hover={{ bg: "teal.50" }}
+                  borderRadius="md"
+                  px={4}
+                  py={2}
+                  fontWeight="bold"
+                  fontSize="md"
+                  transition="background 0.2s"
+                  userSelect="none"
+                  _focus={{ boxShadow: "none" }}
+                >
+                  <Box flex="1" textAlign="left" color="teal.700">
+                    Tensors
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4} pl={0}>
+                  {isPanelSmall ? (
+                    // Grid layout for small panels
+                    <Box
+                      display="grid"
+                      gridTemplateColumns="repeat(auto-fit, minmax(60px, 1fr))"
+                      gap={2}
+                      justifyItems="center"
+                    >
+                      {allLegos.map((lego) => (
+                        <LegoListItem
+                          key={lego.type_id}
+                          lego={lego}
+                          isPanelSmall={isPanelSmall}
+                          handleDragStart={handleDragStart}
+                        />
+                      ))}
                     </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                  <AccordionPanel pb={4} pl={0}>
-                    {isPanelSmall ? (
-                      // Grid layout for small panels
-                      <Box
-                        display="grid"
-                        gridTemplateColumns="repeat(auto-fit, minmax(60px, 1fr))"
-                        gap={2}
-                        justifyItems="center"
-                      >
-                        {allLegos.map((lego) => (
-                          <LegoListItem
-                            key={lego.type_id}
-                            lego={lego}
-                            isPanelSmall={isPanelSmall}
-                            handleDragStart={handleDragStart}
-                          />
-                        ))}
-                      </Box>
-                    ) : (
-                      // List layout for normal panels
-                      <VStack spacing={2} align="stretch">
-                        {allLegos.map((lego) => (
-                          <LegoListItem
-                            key={lego.type_id}
-                            lego={lego}
-                            isPanelSmall={isPanelSmall}
-                            handleDragStart={handleDragStart}
-                          />
-                        ))}
-                      </VStack>
-                    )}
-                  </AccordionPanel>
-                </>
-              )}
-            </AccordionItem>
+                  ) : (
+                    // List layout for normal panels
+                    <VStack spacing={2} align="stretch">
+                      {allLegos.map((lego) => (
+                        <LegoListItem
+                          key={lego.type_id}
+                          lego={lego}
+                          isPanelSmall={isPanelSmall}
+                          handleDragStart={handleDragStart}
+                        />
+                      ))}
+                    </VStack>
+                  )}
+                </AccordionPanel>
+              </>
+            )}
+          </AccordionItem>
 
-            {/* Networks Section */}
-            <AccordionItem border="none" borderRadius="md">
-              {({ isExpanded }) => (
-                <>
-                  <AccordionButton
-                    bg={isExpanded ? "blue.100" : "gray.50"}
-                    _hover={{ bg: "blue.50" }}
-                    borderRadius="md"
-                    px={4}
-                    py={2}
-                    fontWeight="bold"
-                    fontSize="md"
-                    transition="background 0.2s"
-                    userSelect="none"
-                    _focus={{ boxShadow: "none" }}
-                  >
-                    <Box flex="1" textAlign="left" color="blue.700">
-                      Networks
-                    </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                  <AccordionPanel pb={4} pl={0}>
-                    <VStack spacing={3} align="stretch">
-                      <Tooltip
-                        label={"CSS Tanner Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
-                      >
+          {/* Networks Section */}
+          <AccordionItem border="none" borderRadius="md">
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton
+                  bg={isExpanded ? "blue.100" : "gray.50"}
+                  _hover={{ bg: "blue.50" }}
+                  borderRadius="md"
+                  px={4}
+                  py={2}
+                  fontWeight="bold"
+                  fontSize="md"
+                  transition="background 0.2s"
+                  userSelect="none"
+                  _focus={{ boxShadow: "none" }}
+                >
+                  <Box flex="1" textAlign="left" color="blue.700">
+                    Networks
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4} pl={0}>
+                  <VStack spacing={3} align="stretch">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
                           size="sm"
                           variant="outline"
@@ -475,12 +453,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                         >
                           {isPanelSmall ? "CSS" : "CSS Tanner Network"}
                         </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={"Tanner Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
-                      >
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        CSS Tanner Network
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
                           size="sm"
                           variant="outline"
@@ -493,12 +472,13 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                         >
                           {isPanelSmall ? "Tanner" : "Tanner Network"}
                         </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={"Measurement State Prep Network"}
-                        placement="right"
-                        isDisabled={!isPanelSmall}
-                      >
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Tanner Network
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
                           size="sm"
                           variant="outline"
@@ -513,21 +493,21 @@ export const BuildingBlocksPanel: React.FC<BuildingBlocksPanelProps> = memo(
                             ? "MSP"
                             : "Measurement State Prep Network"}
                         </Button>
-                      </Tooltip>
-                    </VStack>
-                  </AccordionPanel>
-                </>
-              )}
-            </AccordionItem>
-          </Accordion>
-        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Measurement State Prep Network
+                      </TooltipContent>
+                    </Tooltip>
+                  </VStack>
+                </AccordionPanel>
+              </>
+            )}
+          </AccordionItem>
+        </Accordion>
       </Box>
-    );
-  },
-  (prevProps, nextProps) => {
-    return prevProps.isUserLoggedIn === nextProps.isUserLoggedIn;
-  }
-);
+    </Box>
+  );
+});
 
 BuildingBlocksPanel.displayName = "BuildingBlocksPanel";
 

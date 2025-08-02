@@ -1,16 +1,15 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useShallow } from "zustand/react/shallow";
-import { DraggingStage } from "../../stores/legoDragState";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
-import {
-  ResizeHandleType,
-  BoundingBox,
-  calculateBoundingBoxForLegos
-} from "../../stores/canvasUISlice";
+import { LogicalPoint } from "../../types/coordinates";
+import { DroppedLegoDisplay } from "./DroppedLegoDisplay";
+import { DraggingStage } from "../../stores/legoDragState";
+import { useShallow } from "zustand/react/shallow";
+import { ResizeHandleType, BoundingBox } from "../../stores/canvasUISlice";
+import { calculateBoundingBoxForLegos } from "../../stores/canvasUISlice";
+import { SubnetNameDisplay } from "./SubnetNameDisplay";
 import { WindowPoint } from "../../types/coordinates";
-
-const DroppedLegoDisplay = React.lazy(() => import("./DroppedLegoDisplay"));
+import { usePanelConfigStore } from "@/stores/panelConfigStore";
 
 interface ResizeHandleProps {
   x: number;
@@ -117,12 +116,16 @@ export const LegosLayer: React.FC = () => {
   const groupDragState = useCanvasStore((state) => state.groupDragState);
   const legoDragState = useCanvasStore((state) => state.legoDragState);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
+  const cachedTensorNetworks = useCanvasStore(
+    (state) => state.cachedTensorNetworks
+  );
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
   const calculateTensorNetworkBoundingBox = useCanvasStore(
     (state) => state.calculateTensorNetworkBoundingBox
   );
   const tnBoundingBoxLogical =
     tensorNetwork && tensorNetwork.legos.length > 0
-      ? calculateTensorNetworkBoundingBox()
+      ? calculateTensorNetworkBoundingBox(tensorNetwork)
       : null;
 
   // Resize functionality
@@ -210,40 +213,339 @@ export const LegosLayer: React.FC = () => {
     resizeProxyLegos
   ]);
 
+  // Get dragged legos for bounding box calculation
+  const droppedLegos = useCanvasStore((state) => state.droppedLegos);
+
+  // Calculate bounding box for dragged legos
+  const draggedLegos = useMemo(() => {
+    if (legoDragState.draggingStage !== DraggingStage.DRAGGING) {
+      return [];
+    }
+
+    // Get all dragged legos (both individual and group)
+    const draggedIds = new Set<string>();
+
+    // Add individually dragged lego
+    if (legoDragState.draggedLegoInstanceId) {
+      draggedIds.add(legoDragState.draggedLegoInstanceId);
+    }
+
+    // Add group dragged legos
+    if (groupDragState && groupDragState.legoInstanceIds) {
+      groupDragState.legoInstanceIds.forEach((id) => draggedIds.add(id));
+    }
+
+    return droppedLegos.filter((lego) => draggedIds.has(lego.instance_id));
+  }, [groupDragState, legoDragState, droppedLegos]);
+
   const proxyBoundingBoxLogical = resizeProxyLegos
     ? calculateBoundingBoxForLegos(resizeProxyLegos)
     : null;
-  const boundingBoxLogical = proxyBoundingBoxLogical || tnBoundingBoxLogical;
+
+  // Track mouse position for drag operations (same as DragProxy)
+  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
+  const animationFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const shouldTrackMouse =
+      legoDragState.draggingStage === DraggingStage.DRAGGING &&
+      (!!groupDragState || !!legoDragState.draggedLegoInstanceId);
+
+    if (import.meta.env.VITE_ENV === "debug") {
+      console.log("Mouse tracking effect:", {
+        shouldTrackMouse,
+        draggingStage: legoDragState.draggingStage,
+        hasGroupDrag: !!groupDragState,
+        hasSingleDrag: !!legoDragState.draggedLegoInstanceId
+      });
+    }
+
+    if (!shouldTrackMouse) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const newMousePos = WindowPoint.fromMouseEvent(e);
+        setMousePos(newMousePos);
+        if (import.meta.env.VITE_ENV === "debug") {
+          console.log(
+            "Mouse pos updated:",
+            newMousePos,
+            "shouldTrack:",
+            shouldTrackMouse,
+            "draggingStage:",
+            legoDragState.draggingStage,
+            "hasGroupDrag:",
+            !!groupDragState,
+            "hasSingleDrag:",
+            !!legoDragState.draggedLegoInstanceId
+          );
+        }
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [legoDragState.draggingStage, groupDragState]);
+
+  // Calculate bounding box for dragged legos with their current positions
+  const setDragOffset = useCanvasStore((state) => state.setDragOffset);
+
+  const draggedLegosBoundingBoxLogical = useMemo(() => {
+    if (draggedLegos.length === 0) {
+      setDragOffset(null);
+      return null;
+    }
+
+    if (import.meta.env.VITE_ENV === "debug") {
+      console.log("Calculating dragged legos bounding box:", {
+        draggedLegosCount: draggedLegos.length,
+        groupDragState: !!groupDragState,
+        singleDragId: legoDragState.draggedLegoInstanceId,
+        mousePos,
+        draggingStage: legoDragState.draggingStage,
+        startMousePoint: legoDragState.startMouseWindowPoint,
+        startLegoPoint: legoDragState.startLegoLogicalPoint
+      });
+    }
+
+    // Calculate the delta from original positions to current positions (same logic as DragProxy)
+    const startMouseLogicalPoint = viewport.fromWindowToLogical(
+      legoDragState.startMouseWindowPoint
+    );
+    const currentMouseLogicalPoint = viewport.fromWindowToLogical(mousePos);
+
+    const deltaLogical = currentMouseLogicalPoint.minus(startMouseLogicalPoint);
+
+    // Handle group drag (multiple legos)
+    if (groupDragState && groupDragState.originalPositions) {
+      // Create legos with updated positions for bounding box calculation (same as DragProxy)
+      const legosWithUpdatedPositions = draggedLegos.map((lego) => {
+        const originalPos = groupDragState.originalPositions[lego.instance_id];
+        if (originalPos) {
+          return lego.with({
+            logicalPosition: originalPos.plus(deltaLogical)
+          });
+        }
+        return lego;
+      });
+
+      return calculateBoundingBoxForLegos(legosWithUpdatedPositions);
+    }
+
+    // Handle single lego drag (same logic as SingleLegoDragProxy)
+    if (legoDragState.draggedLegoInstanceId && draggedLegos.length === 1) {
+      const lego = draggedLegos[0];
+
+      // Calculate the mouse starting grab delta (same as DragProxy)
+      const mouseStartingGrabDeltaWindow =
+        legoDragState.startMouseWindowPoint.minus(
+          viewport.fromLogicalToWindow(legoDragState.startLegoLogicalPoint)
+        );
+
+      // Calculate the new canvas position (same as DragProxy)
+      const proxyCanvasPos = viewport.fromWindowToCanvas(
+        mousePos.minus(mouseStartingGrabDeltaWindow)
+      );
+
+      // Convert back to logical position for bounding box calculation
+      const newLogicalPos = viewport.fromCanvasToLogical(proxyCanvasPos);
+
+      if (import.meta.env.VITE_ENV === "debug") {
+        console.log("Single lego drag calculation:", {
+          originalPos: lego.logicalPosition,
+          newLogicalPos,
+          mouseStartingGrabDeltaWindow,
+          proxyCanvasPos,
+          mousePos
+        });
+      }
+
+      const updatedLego = lego.with({
+        logicalPosition: newLogicalPos
+      });
+
+      const boundingBox = calculateBoundingBoxForLegos([updatedLego]);
+
+      // Calculate drag offset for floating panels
+      const originalBoundingBox = calculateBoundingBoxForLegos([lego]);
+      if (originalBoundingBox && boundingBox) {
+        const originalCenter = new LogicalPoint(
+          originalBoundingBox.minX + originalBoundingBox.width / 2,
+          originalBoundingBox.minY + originalBoundingBox.height / 2
+        );
+        const newCenter = new LogicalPoint(
+          boundingBox.minX + boundingBox.width / 2,
+          boundingBox.minY + boundingBox.height / 2
+        );
+        const originalCanvasPos = viewport.fromLogicalToCanvas(originalCenter);
+        const newCanvasPos = viewport.fromLogicalToCanvas(newCenter);
+        const offset = {
+          x: newCanvasPos.x - originalCanvasPos.x,
+          y: newCanvasPos.y - originalCanvasPos.y
+        };
+        setDragOffset(offset);
+      }
+
+      return boundingBox;
+    }
+
+    // Handle group drag (multiple legos)
+    if (groupDragState && groupDragState.originalPositions) {
+      // Create legos with updated positions for bounding box calculation (same as DragProxy)
+      const legosWithUpdatedPositions = draggedLegos.map((lego) => {
+        const originalPos = groupDragState.originalPositions[lego.instance_id];
+        if (originalPos) {
+          return lego.with({
+            logicalPosition: originalPos.plus(deltaLogical)
+          });
+        }
+        return lego;
+      });
+
+      const boundingBox = calculateBoundingBoxForLegos(
+        legosWithUpdatedPositions
+      );
+
+      // Calculate drag offset for floating panels
+      const originalBoundingBox = calculateBoundingBoxForLegos(draggedLegos);
+      if (originalBoundingBox && boundingBox) {
+        const originalCenter = new LogicalPoint(
+          originalBoundingBox.minX + originalBoundingBox.width / 2,
+          originalBoundingBox.minY + originalBoundingBox.height / 2
+        );
+        const newCenter = new LogicalPoint(
+          boundingBox.minX + boundingBox.width / 2,
+          boundingBox.minY + boundingBox.height / 2
+        );
+        const originalCanvasPos = viewport.fromLogicalToCanvas(originalCenter);
+        const newCanvasPos = viewport.fromLogicalToCanvas(newCenter);
+        const offset = {
+          x: newCanvasPos.x - originalCanvasPos.x,
+          y: newCanvasPos.y - originalCanvasPos.y
+        };
+        setDragOffset(offset);
+      }
+
+      return boundingBox;
+    }
+
+    return calculateBoundingBoxForLegos(draggedLegos);
+  }, [
+    draggedLegos,
+    groupDragState,
+    legoDragState,
+    viewport,
+    mousePos,
+    setDragOffset
+  ]);
+
+  const boundingBoxLogical =
+    proxyBoundingBoxLogical ||
+    draggedLegosBoundingBoxLogical ||
+    tnBoundingBoxLogical;
   const boundingBox = boundingBoxLogical
     ? viewport.fromLogicalToCanvasBB(boundingBoxLogical)
     : null;
 
+  // Calculate constrained positions to keep name within canvas bounds
+  const constrainedBoundingBox = useMemo(() => {
+    if (!boundingBox) return null;
+
+    // Get canvas dimensions
+    const canvasWidth = viewport.screenWidth;
+    const canvasHeight = viewport.screenHeight;
+
+    // Name display dimensions (approximate)
+    const nameHeight = 30;
+    const nameWidth = 200; // Approximate width of the name
+
+    // Name position is ALWAYS below the bounding box with fixed spacing, but constrained to canvas bounds
+    const desiredNameTop = boundingBox.minY + boundingBox.height + 10; // Always 10px below bounding box
+    const constrainedNameTop = Math.min(
+      desiredNameTop,
+      canvasHeight - nameHeight - 10
+    ); // Don't go off bottom
+
+    // Center the name on the bounding box, but constrain to canvas bounds
+    const boundingBoxCenterX = boundingBox.minX + boundingBox.width / 2;
+    const desiredNameLeft = boundingBoxCenterX - nameWidth / 2;
+    let constrainedNameLeft = desiredNameLeft;
+    if (constrainedNameLeft < 10) {
+      // If too far left, align to left edge
+      constrainedNameLeft = 10;
+    } else if (constrainedNameLeft + nameWidth > canvasWidth - 10) {
+      // If too far right, align to right edge
+      constrainedNameLeft = canvasWidth - nameWidth - 10;
+    }
+
+    return {
+      ...boundingBox,
+      constrainedNameTop,
+      constrainedNameLeft
+    };
+  }, [boundingBox, viewport.screenWidth, viewport.screenHeight]);
+
   return (
     <>
-      {tensorNetwork && boundingBox && (
+      {/* Render real legos (non-resizing ones are filtered in useMemo) */}
+      {renderedLegos}
+      {/* Show bounding box and subnet name for tensor network or dragged legos */}
+      {constrainedBoundingBox && (
         <g>
           <rect
-            x={boundingBox.minX}
-            y={boundingBox.minY}
-            width={boundingBox.width}
-            height={boundingBox.height}
+            x={constrainedBoundingBox.minX}
+            y={constrainedBoundingBox.minY}
+            width={constrainedBoundingBox.width}
+            height={constrainedBoundingBox.height}
             fill="none"
             strokeWidth="2"
             stroke="blue"
           />
 
-          {/* Resize handles */}
-          {tensorNetwork.legos.length > 1 && (
-            <ResizeHandles
-              boundingBox={boundingBox}
-              onHandleMouseDown={handleResizeMouseDown}
-            />
-          )}
+          {/* Resize handles - only show for tensor network with multiple legos */}
+          {tensorNetwork &&
+            tensorNetwork.legos.length > 1 &&
+            !draggedLegos.length && (
+              <ResizeHandles
+                boundingBox={constrainedBoundingBox}
+                onHandleMouseDown={handleResizeMouseDown}
+              />
+            )}
         </g>
       )}
 
-      {/* Render real legos (non-resizing ones are filtered in useMemo) */}
-      {renderedLegos}
+      {/* Subnet name display */}
+      {constrainedBoundingBox && showToolbar && (
+        <SubnetNameDisplay
+          boundingBox={constrainedBoundingBox}
+          networkSignature={tensorNetwork?.signature || ""}
+          networkName={
+            draggedLegos.length > 0
+              ? `${draggedLegos.length} legos`
+              : tensorNetwork?.isSingleLego
+                ? tensorNetwork.singleLego.short_name
+                : cachedTensorNetworks[tensorNetwork?.signature || ""]?.name ||
+                  `${tensorNetwork?.legos.length || 0} legos`
+          }
+          isSingleLego={tensorNetwork?.isSingleLego || false}
+          singleLegoInstanceId={
+            tensorNetwork?.isSingleLego
+              ? tensorNetwork.singleLego.instance_id
+              : undefined
+          }
+          constrainedNameTop={constrainedBoundingBox.constrainedNameTop}
+          constrainedNameLeft={constrainedBoundingBox.constrainedNameLeft}
+        />
+      )}
     </>
   );
 };

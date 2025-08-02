@@ -31,10 +31,10 @@ import { getAccessToken } from "../auth/auth.ts";
 import { getApiUrl } from "../../config/config.ts";
 import { getAxiosErrorMessage } from "../../lib/errors.ts";
 import axios, { AxiosError } from "axios";
+import { useUserStore } from "@/stores/userStore.ts";
+import { useCanvasStore } from "@/stores/canvasStateStore.ts";
 
 interface TaskPanelProps {
-  user?: { id: string } | null;
-  onError: (error: string) => void;
   floatingMode?: boolean;
 }
 
@@ -54,13 +54,11 @@ function formatSecondsToDuration(seconds: number) {
   );
 }
 
-const TaskPanel: React.FC<TaskPanelProps> = ({
-  user,
-  onError,
-  floatingMode = false
-}) => {
+const TaskPanel: React.FC<TaskPanelProps> = ({ floatingMode = false }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+  const { currentUser: user } = useUserStore();
+  const { setError } = useCanvasStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskUpdatesChannels, setTaskUpdatesChannels] = useState<
@@ -90,7 +88,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
 
       if (error) {
         console.error("Error fetching tasks:", error);
-        onError("Error fetching tasks: " + error.message);
+        setError("Error fetching tasks: " + error.message);
         return;
       }
 
@@ -105,7 +103,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
       });
     } catch (error) {
       console.error("Error fetching tasks:", error);
-      onError("Error fetching tasks");
+      setError("Error fetching tasks");
     }
   };
 
@@ -225,7 +223,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         status: number;
       }>;
       console.error("Error cancelling task:", error);
-      onError(`Failed to cancel task: ${getAxiosErrorMessage(error)}`);
+      setError(`Failed to cancel task: ${getAxiosErrorMessage(error)}`);
     }
   };
 
@@ -277,7 +275,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         status: number;
       }>;
       console.error("Error fetching task logs:", error);
-      onError(`Failed to fetch task logs: ${getAxiosErrorMessage(error)}`);
+      setError(`Failed to fetch task logs: ${getAxiosErrorMessage(error)}`);
       setTaskLogs(
         (prev) =>
           new Map(
@@ -319,7 +317,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
       }
     } catch (error) {
       console.error("Error deleting task:", error);
-      onError("Error deleting task");
+      setError("Error deleting task");
     }
   };
 

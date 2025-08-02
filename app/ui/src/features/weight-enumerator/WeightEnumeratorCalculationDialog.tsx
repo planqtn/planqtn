@@ -125,7 +125,7 @@ const WeightEnumeratorCalculationDialog: React.FC<
 
   return (
     <Modal isOpen={open} onClose={onClose}>
-      <ModalContent maxHeight="90vh" overflowY="auto">
+      <ModalContent maxHeight="90vh" overflowY="auto" className="modal-high-z">
         <ModalHeader>Weight Enumerator Calculation</ModalHeader>
         <ModalBody>
           <VStack spacing={4} align="stretch">

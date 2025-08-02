@@ -38,8 +38,21 @@ import {
   CanvasEventHandlingSlice,
   createCanvasEventHandlingSlice
 } from "./canvasEventHandlingSlice";
-import { CanvasUISlice, createCanvasUISlice } from "./canvasUISlice";
+import { createCanvasUISlice, CanvasUISlice } from "./canvasUISlice";
+import {
+  OperatorHighlightSlice,
+  createOperatorHighlightSlice
+} from "./operatorHighlightSlice";
 import { persist } from "zustand/middleware";
+import {
+  createZXTransformationsSlice,
+  ZXTransformationsSlice
+} from "./zxTransformationsSlice";
+import { createModalsSlice, ModalSlice } from "./modalStore";
+import {
+  createGraphStateTransformationsSlice,
+  GraphStateTransformationsSlice
+} from "./graphStateTransformationsSlice";
 
 // Helper function to get canvasId from URL
 export const getCanvasIdFromUrl = (): string => {
@@ -77,7 +90,11 @@ export interface CanvasStore
     LegDragStateSlice,
     LegoLegPropertiesSlice,
     CanvasEventHandlingSlice,
-    CanvasUISlice {}
+    CanvasUISlice,
+    OperatorHighlightSlice,
+    ZXTransformationsSlice,
+    GraphStateTransformationsSlice,
+    ModalSlice {}
 
 export interface GlobalTensorNetworkSlice {
   setLegosAndConnections: (
@@ -100,6 +117,8 @@ export const createGlobalTensorNetworkStore: StateCreator<
     droppedLegos: DroppedLego[],
     connections: Connection[]
   ) => {
+    const oldConnections = get().connections;
+    const oldDroppedLegos = get().droppedLegos;
     set((state) => {
       state.droppedLegos = droppedLegos;
       state.connections = connections;
@@ -118,6 +137,13 @@ export const createGlobalTensorNetworkStore: StateCreator<
 
     get().setHoveredConnection(null);
     get().setTensorNetwork(null);
+    get().updateIsActiveForCachedTensorNetworks(
+      [
+        ...oldDroppedLegos.map((lego) => lego.instance_id),
+        ...droppedLegos.map((lego) => lego.instance_id)
+      ],
+      [...oldConnections, ...connections]
+    );
   },
   getLegosAndConnections: () => {
     return { droppedLegos: get().droppedLegos, connections: get().connections };
@@ -142,7 +168,11 @@ export const useCanvasStore = create<CanvasStore>()(
       ...useLegDragStateStore(...a),
       ...createLegoLegPropertiesSlice(...a),
       ...createCanvasEventHandlingSlice(...a),
-      ...createCanvasUISlice(...a)
+      ...createCanvasUISlice(...a),
+      ...createOperatorHighlightSlice(...a),
+      ...createZXTransformationsSlice(...a),
+      ...createGraphStateTransformationsSlice(...a),
+      ...createModalsSlice(...a)
     })),
     {
       name: `canvas-state-${getCanvasIdFromUrl()}`,

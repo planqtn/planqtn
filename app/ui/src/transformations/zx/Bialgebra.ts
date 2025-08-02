@@ -1,10 +1,10 @@
-import { Connection } from "../stores/connectionStore";
-import { Operation } from "../features/canvas/OperationHistory.ts";
-import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
+import { Connection } from "@/stores/connectionStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
+import { Z_REP_CODE, X_REP_CODE } from "@/features/lego/LegoStyles.ts";
 import _ from "lodash";
-import { DroppedLego } from "../stores/droppedLegoStore.ts";
-import { Legos } from "../features/lego/Legos.ts";
-import { LogicalPoint } from "../types/coordinates.ts";
+import { DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { Legos } from "@/features/lego/Legos.ts";
+import { LogicalPoint } from "@/types/coordinates.ts";
 
 export function canDoBialgebra(
   selectedLegos: DroppedLego[],
@@ -28,15 +28,15 @@ export function canDoBialgebra(
   return connectionsBetween.length === 1;
 }
 
-export async function applyBialgebra(
+export function applyBialgebra(
   legosToCommute: DroppedLego[],
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   connections: Connection[];
   droppedLegos: DroppedLego[];
   operation: Operation;
-}> {
+} {
   const [lego1, lego2] = legosToCommute;
   const connectionsBetween = connections.filter(
     (conn) =>
@@ -89,8 +89,8 @@ export async function applyBialgebra(
       legsPerLego1,
       String(maxInstanceId + 1 + i),
       new LogicalPoint(
-        lego1.logicalPosition.x + i * 100,
-        lego1.logicalPosition.y + 100
+        lego1.logicalPosition.x + i * 20,
+        lego1.logicalPosition.y + 20
       )
     );
     newLegos.push(newLego);
@@ -103,8 +103,8 @@ export async function applyBialgebra(
       legsPerLego2,
       String(maxInstanceId + 1 + n_group_1 + i),
       new LogicalPoint(
-        lego2.logicalPosition.x + i * 100,
-        lego2.logicalPosition.y + 100
+        lego2.logicalPosition.x + i * 20,
+        lego2.logicalPosition.y + 20
       )
     );
     newLegos.push(newLego);

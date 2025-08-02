@@ -12,50 +12,29 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { FiMoreVertical, FiUpload } from "react-icons/fi";
+import { FiFile, FiMoreVertical, FiUpload } from "react-icons/fi";
 import { TbPlugConnected } from "react-icons/tb";
 import { useCanvasStore } from "../../stores/canvasStateStore";
-import { useModalStore } from "../../stores/modalStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { RuntimeConfigService } from "../kernel/runtimeConfigService";
-import { Connection } from "../../stores/connectionStore";
-import { TensorNetwork } from "../../lib/TensorNetwork";
-import { User } from "@supabase/supabase-js";
-import { ImperativePanelHandle } from "react-resizable-panels";
+import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
+
 import { Box, Icon, Text } from "@chakra-ui/react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { useUserStore } from "@/stores/userStore";
 
 interface CanvasMenuProps {
-  isLegoPanelCollapsed: boolean;
-  isTaskPanelCollapsed: boolean;
-  setIsTaskPanelCollapsed: (collapsed: boolean) => void;
-  leftPanelRef: React.RefObject<ImperativePanelHandle | null>;
-  handleClearAll: () => void;
-  handleExportPythonCode: () => void;
   handleExportSvg: () => void;
-  handleRuntimeToggle: () => void;
-  openWeightEnumeratorDialog: (
-    tensorNetwork: TensorNetwork,
-    connections: Connection[]
-  ) => void;
-  currentUser: User | null;
 }
 
-export const CanvasMenu: React.FC<CanvasMenuProps> = ({
-  isLegoPanelCollapsed,
-  isTaskPanelCollapsed,
-  setIsTaskPanelCollapsed,
-  leftPanelRef,
-  handleClearAll,
-  handleExportPythonCode,
-  handleExportSvg,
-  handleRuntimeToggle,
-  openWeightEnumeratorDialog,
-  currentUser
-}) => {
+export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
+  const { currentUser } = useUserStore();
+  const { handleClearAll, handleExportPythonCode } = useCanvasStore();
+
   const setDroppedLegos = useCanvasStore((state) => state.setDroppedLegos);
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const tensorNetwork = useCanvasStore((state) => state.tensorNetwork);
@@ -73,8 +52,19 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
   const setHideDanglingLegs = useCanvasStore(
     (state) => state.setHideDanglingLegs
   );
+  const showToolbar = usePanelConfigStore((state) => state.showToolbar);
+  const setShowToolbar = usePanelConfigStore((state) => state.setShowToolbar);
 
-  const { openImportCanvasDialog, openAboutDialog } = useModalStore();
+  const handleRuntimeToggle = useCanvasStore(
+    (state) => state.handleRuntimeToggle
+  );
+  const openWeightEnumeratorDialog = useCanvasStore(
+    (state) => state.openWeightEnumeratorDialog
+  );
+  const openImportCanvasDialog = useCanvasStore(
+    (state) => state.openImportCanvasDialog
+  );
+  const openAboutDialog = useCanvasStore((state) => state.openAboutDialog);
 
   return (
     <DropdownMenu>
@@ -90,11 +80,15 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         </Box>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent className="high-z">
         <DropdownMenuLabel>
           <Text>Canvas</Text>
         </DropdownMenuLabel>
 
+        <DropdownMenuItem onClick={() => (window.location.href = "/")}>
+          <Icon as={FiFile} />
+          New Canvas
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={openImportCanvasDialog}>
           <Icon as={FiUpload} />
           New from JSON file...
@@ -113,7 +107,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
                 highlightedLegConstraints: []
               })
             );
-            useCanvasStore.getState().highlightTensorNetworkLegs([]);
+            useCanvasStore.getState().clearAllHighlightedTensorNetworkLegs();
             setDroppedLegos(clearedLegos);
           }}
           disabled={
@@ -166,7 +160,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Display settings</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuCheckboxItem
                 onClick={() => {
                   setHideConnectedLegs(!hideConnectedLegs);
@@ -214,28 +208,102 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Panel settings</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuCheckboxItem
-                checked={isLegoPanelCollapsed}
+                checked={
+                  usePanelConfigStore.getState().buildingBlocksPanelConfig
+                    .isOpen
+                }
                 onClick={() => {
-                  if (leftPanelRef.current) {
-                    if (isLegoPanelCollapsed) {
-                      leftPanelRef.current.expand();
-                    } else {
-                      leftPanelRef.current.collapse();
-                    }
-                  }
+                  const newConfig = new FloatingPanelConfigManager(
+                    usePanelConfigStore
+                      .getState()
+                      .buildingBlocksPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().buildingBlocksPanelConfig
+                      .isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setBuildingBlocksPanelConfig(newConfig);
                 }}
               >
-                Hide Building Blocks Panel
+                Show Building Blocks Panel
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={isTaskPanelCollapsed}
+                checked={
+                  usePanelConfigStore.getState().detailsPanelConfig.isOpen
+                }
                 onClick={() => {
-                  setIsTaskPanelCollapsed(!isTaskPanelCollapsed);
+                  const newConfig = new FloatingPanelConfigManager(
+                    usePanelConfigStore.getState().detailsPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().detailsPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setDetailsPanelConfig(newConfig);
                 }}
               >
-                Hide Task Panel
+                Show Details Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={
+                  usePanelConfigStore.getState().canvasesPanelConfig.isOpen
+                }
+                onClick={() => {
+                  const newConfig = new FloatingPanelConfigManager(
+                    usePanelConfigStore.getState().canvasesPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().canvasesPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setCanvasesPanelConfig(newConfig);
+                }}
+              >
+                Show Canvases Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={usePanelConfigStore.getState().taskPanelConfig.isOpen}
+                onClick={() => {
+                  const newConfig = new FloatingPanelConfigManager(
+                    usePanelConfigStore.getState().taskPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().taskPanelConfig.isOpen
+                  );
+                  usePanelConfigStore.getState().setTaskPanelConfig(newConfig);
+                }}
+              >
+                Show Task Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={
+                  usePanelConfigStore.getState().subnetsPanelConfig.isOpen
+                }
+                onClick={() => {
+                  const newConfig = new FloatingPanelConfigManager(
+                    usePanelConfigStore.getState().subnetsPanelConfig.toJSON()
+                  );
+                  newConfig.setIsOpen(
+                    !usePanelConfigStore.getState().subnetsPanelConfig.isOpen
+                  );
+                  usePanelConfigStore
+                    .getState()
+                    .setSubnetsPanelConfig(newConfig);
+                }}
+              >
+                Show Subnets Panel
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={showToolbar}
+                onClick={() => setShowToolbar(!showToolbar)}
+              >
+                Show Floating Toolbar
               </DropdownMenuCheckboxItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
@@ -254,7 +322,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Export...</DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent>
+            <DropdownMenuSubContent className="high-z">
               <DropdownMenuItem onClick={handleExportSvg}>
                 Export canvas as SVG...
               </DropdownMenuItem>

@@ -76,6 +76,16 @@ export class TensorNetwork {
       this.createNetworkSignature(data.legos, data.connections);
   }
 
+  public get isSingleLego(): boolean {
+    return this._legos.length === 1;
+  }
+  public get singleLego(): DroppedLego {
+    if (!this.isSingleLego) {
+      throw new Error("TensorNetwork is not a single lego");
+    }
+    return this._legos[0];
+  }
+
   public get legos() {
     return this._legos;
   }
@@ -96,9 +106,9 @@ export class TensorNetwork {
   public with(overrides: Partial<TensorNetwork>): TensorNetwork {
     return new TensorNetwork({
       ...this,
-      legos: this._legos || overrides.legos || [],
-      connections: this._connections || overrides.connections || [],
-      signature: this._signature || overrides.signature,
+      legos: overrides.legos || this._legos || [],
+      connections: overrides.connections || this._connections || [],
+      signature: overrides.signature || this._signature,
       ...overrides
     });
   }

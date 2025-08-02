@@ -4,25 +4,14 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { WindowPoint } from "../../types/coordinates";
+import { useToast } from "@chakra-ui/react";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
-  onFuseLegos: (legos: DroppedLego[]) => void;
-  onPullOutSameColoredLeg: (lego: DroppedLego) => void;
-  onToast: (props: {
-    title: string;
-    description: string;
-    status: string;
-    duration: number;
-    isClosable: boolean;
-  }) => void;
 }
 
 export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
-  onSetAltKeyPressed,
-  onFuseLegos,
-  onPullOutSameColoredLeg,
-  onToast
+  onSetAltKeyPressed
 }) => {
   const mousePositionRef = useRef<WindowPoint | null>(null);
   const {
@@ -39,8 +28,11 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
     setTensorNetwork,
     setError,
     copyToClipboard,
-    pasteFromClipboard
+    pasteFromClipboard,
+    fuseLegos,
+    handlePullOutSameColoredLeg
   } = useCanvasStore();
+  const toast = useToast();
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
@@ -56,34 +48,47 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         e.preventDefault();
         redo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-        e.preventDefault();
-        if (tensorNetwork && tensorNetwork.legos.length > 0) {
-          try {
-            await copyToClipboard(tensorNetwork.legos, connections);
-            onToast({
-              title: "Copied to clipboard",
-              description: "Network data has been copied",
-              status: "success",
-              duration: 2000,
-              isClosable: true
-            });
-          } catch (err) {
-            console.error("Failed to copy to clipboard:", err);
-            onToast({
-              title: "Copy failed",
-              description: "Failed to copy network data (" + err + ")",
-              status: "error",
-              duration: 2000,
-              isClosable: true
-            });
+        // Check if there's text selection - if so, allow normal copy behavior
+        const selection = window.getSelection();
+        const hasTextSelection = selection
+          ? selection.toString().length > 0
+          : false;
+
+        if (!hasTextSelection) {
+          e.preventDefault();
+          if (tensorNetwork && tensorNetwork.legos.length > 0) {
+            try {
+              await copyToClipboard(tensorNetwork.legos, connections);
+              toast({
+                title: "Copied to clipboard",
+                description: "Network data has been copied",
+                status: "success",
+                duration: 2000,
+                isClosable: true
+              });
+            } catch (err) {
+              console.error("Failed to copy to clipboard:", err);
+              toast({
+                title: "Copy failed",
+                description: "Failed to copy network data (" + err + ")",
+                status: "error",
+                duration: 2000,
+                isClosable: true
+              });
+            }
           }
         }
+        // If text is selected, don't prevent default - let the browser handle normal copy
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
         e.preventDefault();
 
         const result = await pasteFromClipboard(
           mousePositionRef.current,
-          onToast
+          (props) =>
+            toast({
+              ...props,
+              status: props.status as "success" | "error" | "warning" | "info"
+            })
         );
 
         if (result.success && result.legos && result.connections) {
@@ -155,7 +160,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
       } else if (e.key === "f") {
         e.preventDefault();
         if (tensorNetwork) {
-          onFuseLegos(tensorNetwork.legos);
+          fuseLegos(tensorNetwork.legos);
         }
       } else if (e.key === "p") {
         e.preventDefault();
@@ -164,7 +169,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
           (tensorNetwork.legos[0].type_id === "x_rep_code" ||
             tensorNetwork.legos[0].type_id === "z_rep_code")
         ) {
-          onPullOutSameColoredLeg(tensorNetwork.legos[0]);
+          handlePullOutSameColoredLeg(tensorNetwork.legos[0]);
         }
       }
     };

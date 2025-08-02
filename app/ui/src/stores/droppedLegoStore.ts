@@ -158,16 +158,16 @@ export class DroppedLego implements LegoPiece {
     // optional overrides
     overrides: Partial<DroppedLego> = {}
   ) {
-    this.type_id = lego.type_id;
-    this.name = lego.name;
+    this.type_id = overrides.type_id || lego.type_id;
+    this.name = overrides.name || lego.name;
     this.short_name = overrides.short_name || lego.short_name;
     this.description = overrides.description || lego.description;
     this.parity_check_matrix =
       overrides.parity_check_matrix || lego.parity_check_matrix;
-    this.logical_legs = lego.logical_legs;
-    this.gauge_legs = lego.gauge_legs;
-    this.is_dynamic = lego.is_dynamic;
-    this.parameters = lego.parameters;
+    this.logical_legs = overrides.logical_legs || lego.logical_legs;
+    this.gauge_legs = overrides.gauge_legs || lego.gauge_legs;
+    this.is_dynamic = overrides.is_dynamic || lego.is_dynamic;
+    this.parameters = overrides.parameters || lego.parameters;
     this.logicalPosition = canvasPosition;
     this.instance_id = instance_id;
     this._selectedMatrixRows = overrides.selectedMatrixRows || [];
@@ -289,6 +289,9 @@ export const createLegoSlice: StateCreator<
     });
   },
   setDroppedLegos: (legos: DroppedLego[]) => {
+    const oldLegoInstanceIds = get().droppedLegos.map(
+      (lego) => lego.instance_id
+    );
     set((state) => {
       state.droppedLegos = legos;
     });
@@ -296,6 +299,15 @@ export const createLegoSlice: StateCreator<
     get().updateAllConnectionHighlightStates();
     get().updateAllLegHideStates();
     get().updateLegoConnectionMap();
+    get().updateIsActiveForCachedTensorNetworks(
+      Array.from(
+        new Set([
+          ...oldLegoInstanceIds,
+          ...legos.map((lego) => lego.instance_id)
+        ])
+      ),
+      []
+    );
   },
 
   updateConnectedLegos: () => {
@@ -320,6 +332,7 @@ export const createLegoSlice: StateCreator<
     get().initializeLegConnectionStates(lego.instance_id, lego.numberOfLegs);
     // Update all leg hide states to account for the new lego
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks([lego.instance_id], []);
   },
 
   addDroppedLegos: (legos: DroppedLego[]) => {
@@ -333,9 +346,16 @@ export const createLegoSlice: StateCreator<
     });
     // Update all leg hide states to account for the new legos
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
 
   removeDroppedLego: (instance_id: string) => {
+    const removedConnections = get().connections.filter((connection) =>
+      connection.containsLego(instance_id)
+    );
     set((state) => {
       state.droppedLegos = state.droppedLegos.filter(
         (lego) => lego.instance_id !== instance_id
@@ -356,9 +376,16 @@ export const createLegoSlice: StateCreator<
     get().removeLegoFromConnectionMap(instance_id);
     // Update all leg hide states to account for the removed lego
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      [instance_id],
+      removedConnections
+    );
   },
 
   removeDroppedLegos: (instanceIds: string[]) => {
+    const removedConnections = get().connections.filter((connection) =>
+      instanceIds.some((instance_id) => connection.containsLego(instance_id))
+    );
     set((state) => {
       state.droppedLegos = state.droppedLegos.filter(
         (lego) => !instanceIds.includes(lego.instance_id)
@@ -379,6 +406,10 @@ export const createLegoSlice: StateCreator<
       get().removeLegConnectionStates(instance_id);
       get().removeLegoFromConnectionMap(instance_id);
     });
+    get().updateIsActiveForCachedTensorNetworks(
+      instanceIds,
+      removedConnections
+    );
     // Update all leg hide states to account for the removed legos
     get().updateAllLegHideStates();
     get().setTensorNetwork(null);
@@ -412,6 +443,7 @@ export const createLegoSlice: StateCreator<
     }
     // Update all leg hide states to account for the updated lego
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks([instance_id], []);
   },
 
   moveDroppedLegos: (legos: DroppedLego[]) => {
@@ -441,6 +473,10 @@ export const createLegoSlice: StateCreator<
       });
     });
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
   updateDroppedLegos: (legos: DroppedLego[]) => {
     set((state) => {
@@ -482,9 +518,17 @@ export const createLegoSlice: StateCreator<
 
     // Update all leg hide states to account for the updated legos
     get().updateAllLegHideStates();
+    get().updateIsActiveForCachedTensorNetworks(
+      legos.map((lego) => lego.instance_id),
+      []
+    );
   },
 
   clearDroppedLegos: () => {
+    const removedConnections = get().connections;
+    const removedLegoInstanceIds = get().droppedLegos.map(
+      (lego) => lego.instance_id
+    );
     set((state) => {
       state.droppedLegos = [];
       state.connectedLegos = [];
@@ -497,5 +541,9 @@ export const createLegoSlice: StateCreator<
     get().clearAllConnectionHighlightStates();
     // Clear all lego connection mappings
     get().clearLegoConnectionMap();
+    get().updateIsActiveForCachedTensorNetworks(
+      removedLegoInstanceIds,
+      removedConnections
+    );
   }
 });

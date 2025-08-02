@@ -8,9 +8,11 @@ import { CanvasStore } from "../../stores/canvasStateStore";
 import { Viewport } from "../../stores/canvasUISlice";
 import {
   ParityCheckMatrix,
-  WeightEnumerator
+  WeightEnumerator,
+  CachedTensorNetwork
 } from "../../stores/tensorNetworkStore";
-import { TensorNetworkLeg } from "../../lib/TensorNetwork";
+import { SerializedCachedTensorNetwork } from "../../schemas/v1/serializable-canvas-state";
+import { TensorNetworkLeg, TensorNetwork } from "../../lib/TensorNetwork";
 import * as LZString from "lz-string";
 import {
   SerializableCanvasState,
@@ -30,7 +32,12 @@ export type CompressedCanvasState = [
   [string, ParityCheckMatrix][]?, // 6: parityCheckMatrices
   [string, WeightEnumerator[]][]?, // 7: weightEnumerators
   [string, { leg: TensorNetworkLeg; operator: PauliOperator }[]][]?, // 8: highlightedTensorNetworkLegs
-  [string, number[]][]? // 9: selectedTensorNetworkParityCheckMatrixRows
+  [string, number[]][]?, // 9: selectedTensorNetworkParityCheckMatrixRows
+  number?, // 10: panel flags packed as bits (isBuildingBlocksPanelOpen, isDetailsPanelOpen, isCanvasesPanelOpen)
+  [number, number, number, number]?, // 11: buildingBlocksPanelLayout [x, y, width, height] (legacy)
+  [number, number, number, number]?, // 12: detailsPanelLayout [x, y, width, height] (legacy)
+  [number, number, number, number]?, // 13: canvasesPanelLayout [x, y, width, height] (legacy)
+  [string, SerializedCachedTensorNetwork][]? // 14: cachedTensorNetworks
 ];
 
 export type CompressedPiece = [
@@ -75,6 +82,7 @@ export interface RehydratedCanvasState {
   viewport: Viewport;
   parityCheckMatrices: Record<string, ParityCheckMatrix>;
   weightEnumerators: Record<string, WeightEnumerator[]>;
+  cachedTensorNetworks: Record<string, CachedTensorNetwork>;
   highlightedTensorNetworkLegs: Record<
     string,
     {
@@ -83,7 +91,85 @@ export interface RehydratedCanvasState {
     }[]
   >;
   selectedTensorNetworkParityCheckMatrixRows: Record<string, number[]>;
+  // Z-index management
+  nextZIndex?: number;
 }
+
+function reconstructLegos(pieces: SerializedLego[]) {
+  const legosList = Legos.listAvailableLegos();
+
+  const reconstructedPieces = pieces.map((piece: SerializedLego) => {
+    const predefinedLego = legosList.find((l) => l.type_id === piece.id);
+    if (!piece.parity_check_matrix || piece.parity_check_matrix.length === 0) {
+      throw new Error(
+        `Piece ${piece.instance_id} (of type ${piece.id}) has no parity check matrix.`
+      );
+    }
+
+    const legoPrototype: LegoPiece = predefinedLego
+      ? {
+          ...predefinedLego,
+
+          is_dynamic: piece.is_dynamic || false,
+          parameters: piece.parameters || {},
+          parity_check_matrix: piece.parity_check_matrix || []
+        }
+      : {
+          type_id: piece.id,
+          name: piece.name || piece.id,
+          short_name: piece.short_name || piece.id,
+          description: piece.description || "",
+
+          is_dynamic: piece.is_dynamic || false,
+          parameters: piece.parameters || {},
+          parity_check_matrix: piece.parity_check_matrix || [],
+          logical_legs: piece.logical_legs || [],
+          gauge_legs: piece.gauge_legs || []
+        };
+
+    // For regular legos, use the template
+    return new DroppedLego(
+      legoPrototype,
+      new LogicalPoint(piece.x, piece.y),
+      piece.instance_id,
+      {
+        selectedMatrixRows: piece.selectedMatrixRows || [],
+        highlightedLegConstraints: piece.highlightedLegConstraints || []
+      }
+    );
+  });
+  return reconstructedPieces;
+}
+
+function defaultCanvasState(
+  canvasRef?: RefObject<HTMLDivElement>
+): RehydratedCanvasState {
+  return {
+    droppedLegos: [],
+    connections: [],
+    hideConnectedLegs: true,
+    hideIds: false,
+    hideTypeIds: false,
+    hideDanglingLegs: false,
+    hideLegLabels: false,
+    title: "Untitled canvas", // Initialize title
+    viewport: new Viewport(
+      800,
+      600,
+      1,
+      new LogicalPoint(0, 0),
+      canvasRef || null
+    ),
+    parityCheckMatrices: {},
+    weightEnumerators: {},
+    cachedTensorNetworks: {},
+    highlightedTensorNetworkLegs: {},
+    selectedTensorNetworkParityCheckMatrixRows: {},
+    // Z-index management
+    nextZIndex: 1100
+  };
+}
+
 export class CanvasStateSerializer {
   public canvasId: string;
 
@@ -103,26 +189,54 @@ export class CanvasStateSerializer {
       }
     );
   }
+  private toSerializableLego(piece: DroppedLego): SerializedLego {
+    return {
+      id: piece.type_id,
+      instance_id: piece.instance_id,
+      x: piece.logicalPosition.x,
+      y: piece.logicalPosition.y,
+      short_name: piece.short_name,
+      is_dynamic: piece.is_dynamic,
+      parameters: piece.parameters,
+      parity_check_matrix: piece.parity_check_matrix,
+      logical_legs: piece.logical_legs,
+      gauge_legs: piece.gauge_legs,
+      selectedMatrixRows: piece.selectedMatrixRows,
+      highlightedLegConstraints: piece.highlightedLegConstraints
+    };
+  }
+
+  private toSerializableTensorNetwork(tensorNetwork: TensorNetwork) {
+    return {
+      legos: tensorNetwork.legos.map((lego: DroppedLego) =>
+        this.toSerializableLego(lego)
+      ),
+      connections: tensorNetwork.connections,
+      signature: tensorNetwork.signature
+    };
+  }
+
+  private toSerializableCachedTensorNetwork(
+    cachedNetwork: CachedTensorNetwork
+  ) {
+    return {
+      isActive: cachedNetwork.isActive,
+      tensorNetwork: this.toSerializableTensorNetwork(
+        cachedNetwork.tensorNetwork
+      ),
+      svg: cachedNetwork.svg,
+      name: cachedNetwork.name,
+      isLocked: cachedNetwork.isLocked,
+      lastUpdated: cachedNetwork.lastUpdated
+    };
+  }
 
   public toSerializableCanvasState(
     store: CanvasStore
   ): SerializableCanvasState {
     const state: SerializableCanvasState = {
-      title: store.title, // Assuming store.title is available
-      pieces: store.droppedLegos.map((piece) => ({
-        id: piece.type_id,
-        instance_id: piece.instance_id,
-        x: piece.logicalPosition.x,
-        y: piece.logicalPosition.y,
-        short_name: piece.short_name,
-        is_dynamic: piece.is_dynamic,
-        parameters: piece.parameters,
-        parity_check_matrix: piece.parity_check_matrix,
-        logical_legs: piece.logical_legs,
-        gauge_legs: piece.gauge_legs,
-        selectedMatrixRows: piece.selectedMatrixRows,
-        highlightedLegConstraints: piece.highlightedLegConstraints
-      })),
+      title: store.title, // Assuming store.titl  e is available
+      pieces: store.droppedLegos.map((piece) => this.toSerializableLego(piece)),
       connections: store.connections,
       hideConnectedLegs: store.hideConnectedLegs,
       hideIds: store.hideIds,
@@ -135,6 +249,12 @@ export class CanvasStateSerializer {
       ),
       weightEnumerators: Object.entries(store.weightEnumerators).map(
         ([key, value]) => ({ key, value })
+      ),
+      cachedTensorNetworks: Object.entries(store.cachedTensorNetworks).map(
+        ([key, value]) => ({
+          key,
+          value: this.toSerializableCachedTensorNetwork(value)
+        })
       ),
       highlightedTensorNetworkLegs: Object.entries(
         store.highlightedTensorNetworkLegs
@@ -151,27 +271,7 @@ export class CanvasStateSerializer {
     canvasStateString: string,
     canvasRef?: RefObject<HTMLDivElement>
   ): Promise<RehydratedCanvasState> {
-    const result: RehydratedCanvasState = {
-      droppedLegos: [],
-      connections: [],
-      hideConnectedLegs: true,
-      hideIds: false,
-      hideTypeIds: false,
-      hideDanglingLegs: false,
-      hideLegLabels: false,
-      title: "Untitled canvas", // Initialize title
-      viewport: new Viewport(
-        800,
-        600,
-        1,
-        new LogicalPoint(0, 0),
-        canvasRef || null
-      ),
-      parityCheckMatrices: {},
-      weightEnumerators: {},
-      highlightedTensorNetworkLegs: {},
-      selectedTensorNetworkParityCheckMatrixRows: {}
-    };
+    const result: RehydratedCanvasState = defaultCanvasState(canvasRef);
 
     if (canvasStateString === "") {
       return result;
@@ -259,6 +359,24 @@ export class CanvasStateSerializer {
             )
           )
         : {};
+      result.cachedTensorNetworks = rawCanvasStateObj.cachedTensorNetworks
+        ? Object.fromEntries(
+            rawCanvasStateObj.cachedTensorNetworks.map(
+              (item: { key: string; value: SerializedCachedTensorNetwork }) => [
+                item.key,
+                {
+                  ...item.value,
+                  tensorNetwork: new TensorNetwork({
+                    legos: reconstructLegos(item.value.tensorNetwork.legos),
+                    connections: item.value.tensorNetwork.connections,
+                    signature: item.value.tensorNetwork.signature
+                  }),
+                  lastUpdated: new Date(item.value.lastUpdated)
+                }
+              ]
+            )
+          )
+        : {};
       result.highlightedTensorNetworkLegs =
         rawCanvasStateObj.highlightedTensorNetworkLegs
           ? Object.fromEntries(
@@ -292,6 +410,11 @@ export class CanvasStateSerializer {
         result.title = rawCanvasStateObj.title;
       }
 
+      // Preserve the nextZIndex from the decoded state if it exists
+      if (rawCanvasStateObj.nextZIndex !== undefined) {
+        result.nextZIndex = rawCanvasStateObj.nextZIndex;
+      }
+
       if (
         !rawCanvasStateObj.pieces ||
         !Array.isArray(rawCanvasStateObj.pieces)
@@ -300,54 +423,10 @@ export class CanvasStateSerializer {
       }
 
       // Fetch legos if not already loaded
-      const legosList = Legos.listAvailableLegos();
 
+      const reconstructedPieces = reconstructLegos(rawCanvasStateObj.pieces);
       // Reconstruct dropped legos with full lego information
-      const reconstructedPieces = rawCanvasStateObj.pieces.map(
-        (piece: SerializedLego) => {
-          const predefinedLego = legosList.find((l) => l.type_id === piece.id);
-          if (
-            !piece.parity_check_matrix ||
-            piece.parity_check_matrix.length === 0
-          ) {
-            throw new Error(
-              `Piece ${piece.instance_id} (of type ${piece.id}) has no parity check matrix. Full state:\n${canvasStateString}`
-            );
-          }
 
-          const legoPrototype: LegoPiece = predefinedLego
-            ? {
-                ...predefinedLego,
-
-                is_dynamic: piece.is_dynamic || false,
-                parameters: piece.parameters || {},
-                parity_check_matrix: piece.parity_check_matrix || []
-              }
-            : {
-                type_id: piece.id,
-                name: piece.name || piece.id,
-                short_name: piece.short_name || piece.id,
-                description: piece.description || "",
-
-                is_dynamic: piece.is_dynamic || false,
-                parameters: piece.parameters || {},
-                parity_check_matrix: piece.parity_check_matrix || [],
-                logical_legs: piece.logical_legs || [],
-                gauge_legs: piece.gauge_legs || []
-              };
-
-          // For regular legos, use the template
-          return new DroppedLego(
-            legoPrototype,
-            new LogicalPoint(piece.x, piece.y),
-            piece.instance_id,
-            {
-              selectedMatrixRows: piece.selectedMatrixRows || [],
-              highlightedLegConstraints: piece.highlightedLegConstraints || []
-            }
-          );
-        }
-      );
       result.droppedLegos = reconstructedPieces;
       result.connections = rawCanvasStateObj.connections.map(
         (conn: Connection) => new Connection(conn.from, conn.to)
@@ -488,6 +567,11 @@ export class CanvasStateSerializer {
     if (Object.keys(store.weightEnumerators).length > 0) {
       compressed[7] = Object.entries(store.weightEnumerators);
     }
+    if (Object.keys(store.cachedTensorNetworks).length > 0) {
+      compressed[14] = Object.entries(store.cachedTensorNetworks).map(
+        ([key, value]) => [key, this.toSerializableCachedTensorNetwork(value)]
+      );
+    }
     if (Object.keys(store.highlightedTensorNetworkLegs).length > 0) {
       compressed[8] = Object.entries(store.highlightedTensorNetworkLegs);
     }
@@ -583,6 +667,10 @@ export class CanvasStateSerializer {
         value
       })),
       weightEnumerators: (compressed[7] || []).map(([key, value]) => ({
+        key,
+        value
+      })),
+      cachedTensorNetworks: (compressed[14] || []).map(([key, value]) => ({
         key,
         value
       })),

@@ -1,10 +1,10 @@
-import { Connection } from "../stores/connectionStore";
-import { Operation } from "../features/canvas/OperationHistory.ts";
-import { Z_REP_CODE, X_REP_CODE } from "../features/lego/LegoStyles.ts";
+import { Connection } from "@/stores/connectionStore.ts";
+import { Operation } from "@/features/canvas/OperationHistory.ts";
+import { Z_REP_CODE, X_REP_CODE } from "@/features/lego/LegoStyles.ts";
 import _ from "lodash";
-import { Legos } from "../features/lego/Legos.ts";
-import { DroppedLego } from "../stores/droppedLegoStore.ts";
-import { LogicalPoint } from "../types/coordinates.ts";
+import { Legos } from "@/features/lego/Legos.ts";
+import { DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { LogicalPoint } from "@/types/coordinates.ts";
 
 export function canDoInverseBialgebra(
   selectedLegos: DroppedLego[],
@@ -25,15 +25,18 @@ export function canDoInverseBialgebra(
     return false;
   }
 
-  // Check if partitions are fully connected
+  // Check if partitions are fully connected via odd number of connections
   for (const zLego of zLegos) {
     for (const xLego of xLegos) {
-      const hasConnection = connections.some(
-        (conn) =>
-          conn.containsLego(zLego.instance_id) &&
-          conn.containsLego(xLego.instance_id)
-      );
-      if (!hasConnection) return false;
+      const hasOddNumberOfConnections =
+        connections.filter(
+          (conn) =>
+            conn.containsLego(zLego.instance_id) &&
+            conn.containsLego(xLego.instance_id)
+        ).length %
+          2 ===
+        1;
+      if (!hasOddNumberOfConnections) return false;
     }
   }
 
@@ -70,15 +73,15 @@ export function canDoInverseBialgebra(
   return true;
 }
 
-export async function applyInverseBialgebra(
+export function applyInverseBialgebra(
   selectedLegos: DroppedLego[],
   droppedLegos: DroppedLego[],
   connections: Connection[]
-): Promise<{
+): {
   connections: Connection[];
   droppedLegos: DroppedLego[];
   operation: Operation;
-}> {
+} {
   // Partition legos by type
   const zLegos = selectedLegos.filter((lego) => lego.type_id === Z_REP_CODE);
   const xLegos = selectedLegos.filter((lego) => lego.type_id === X_REP_CODE);

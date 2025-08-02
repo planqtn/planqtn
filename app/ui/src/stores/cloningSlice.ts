@@ -5,10 +5,16 @@ import { DraggingStage } from "./legoDragState";
 import { Connection } from "./connectionStore";
 import { LogicalPoint, WindowPoint } from "../types/coordinates";
 
+const cloneOffset = new LogicalPoint(20, 20);
+
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
   cloneMapping: Map<string, string>; // new instance ID -> original instance ID
   clearCloneMapping: () => void;
+  cloneLegos: (
+    legosToClone: DroppedLego[],
+    connections: Connection[]
+  ) => { newLegos: DroppedLego[]; newConnections: Connection[] };
 }
 
 export const useCloningSlice: StateCreator<
@@ -25,19 +31,7 @@ export const useCloningSlice: StateCreator<
     });
   },
 
-  handleClone: (clickedLego, x, y) => {
-    const tensorNetwork = get().tensorNetwork;
-    const connections = get().connections;
-    const isSelected =
-      tensorNetwork &&
-      tensorNetwork?.legos.some(
-        (l) => l.instance_id === clickedLego.instance_id
-      );
-
-    const cloneOffset = new LogicalPoint(20, 20);
-    // Check if we're cloning multiple legos
-    const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
-
+  cloneLegos: (legosToClone: DroppedLego[], connections: Connection[]) => {
     // Get a single starting ID for all new legos
     const startingId = parseInt(get().newInstanceId());
 
@@ -86,6 +80,31 @@ export const useCloningSlice: StateCreator<
     get().addDroppedLegos(newLegos);
     get().addConnections(newConnections);
 
+    // Add to history
+    get().addOperation({
+      type: "add",
+      data: {
+        legosToAdd: newLegos,
+        connectionsToAdd: newConnections
+      }
+    });
+
+    return { newLegos, newConnections };
+  },
+
+  handleClone: (clickedLego, x, y) => {
+    const tensorNetwork = get().tensorNetwork;
+    const connections = get().connections;
+    const isSelected =
+      tensorNetwork &&
+      tensorNetwork?.legos.some(
+        (l) => l.instance_id === clickedLego.instance_id
+      );
+
+    // Check if we're cloning multiple legos
+    const legosToClone = isSelected ? tensorNetwork?.legos : [clickedLego];
+
+    const { newLegos } = get().cloneLegos(legosToClone, connections);
     // Set up drag state for the group
     const positions: { [instance_id: string]: LogicalPoint } = {};
     newLegos.forEach((l) => {
@@ -104,15 +123,6 @@ export const useCloningSlice: StateCreator<
       draggedLegoInstanceId: newLegos[0].instance_id,
       startMouseWindowPoint: new WindowPoint(x, y).plus(cloneOffset),
       startLegoLogicalPoint: clickedLego.logicalPosition.plus(cloneOffset)
-    });
-
-    // Add to history
-    get().addOperation({
-      type: "add",
-      data: {
-        legosToAdd: newLegos,
-        connectionsToAdd: newConnections
-      }
     });
   }
 });

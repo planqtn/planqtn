@@ -20,7 +20,7 @@ const TaskStateLabel: React.FC<{ state: number }> = ({ state }) => {
 
   const { label, color } = getStateInfo(state);
   return (
-    <Badge colorScheme={color} fontSize="sm" px={2} py={1} borderRadius="md">
+    <Badge colorScheme={color} fontSize="xs" px={1} py={0.5} borderRadius="md">
       {label}
     </Badge>
   );
