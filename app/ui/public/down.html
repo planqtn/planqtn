@@ -1,90 +1,117 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PlanqTN - Maintenance</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #000;
-            font-family: 'Arial', sans-serif;
-            color: #fff;
-        }
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #000;
+        font-family: "Arial", sans-serif;
+        color: #fff;
+      }
 
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
+      .container {
+        text-align: center;
+        padding: 2rem;
+      }
 
-        .logo {
-            width: 300px;
-            height: auto;
-            margin-bottom: 2rem;
-        }
+      .logo {
+        width: 300px;
+        height: auto;
+        margin-bottom: 2rem;
+      }
 
-        h1 {
-            font-size: 2.5rem;
-            margin: 0 0 1rem 0;
-            color: #f05e0c;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
+      h1 {
+        font-size: 2.5rem;
+        margin: 0 0 1rem 0;
+        color: #f05e0c;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
 
-        .message {
-            font-size: 1.5rem;
-            margin: 1rem 0;
-            color: #fff;
-        }
+      .message {
+        font-size: 1.5rem;
+        margin: 1rem 0;
+        color: #fff;
+      }
 
-        .emoji {
-            font-size: 2rem;
-            margin: 1rem 0;
-        }
+      .emoji {
+        font-size: 2rem;
+        margin: 1rem 0;
+      }
 
-        .loading {
-            width: 100px;
-            height: 4px;
-            background: #333;
-            margin: 2rem auto;
-            position: relative;
-            overflow: hidden;
-        }
+      .loading {
+        width: 100px;
+        height: 4px;
+        background: #333;
+        margin: 2rem auto;
+        position: relative;
+        overflow: hidden;
+      }
 
-        .loading::after {
-            content: '';
-            position: absolute;
-            left: -50%;
-            height: 100%;
-            width: 50%;
-            background: #f05e0c;
-            animation: loading 1.5s infinite;
-        }
+      .loading::after {
+        content: "";
+        position: absolute;
+        left: -50%;
+        height: 100%;
+        width: 50%;
+        background: #f05e0c;
+        animation: loading 1.5s infinite;
+      }
 
-        @keyframes loading {
-            0% { left: -50%; }
-            100% { left: 100%; }
+      @keyframes loading {
+        0% {
+          left: -50%;
         }
+        100% {
+          left: 100%;
+        }
+      }
 
-        a { color: #f05e0c; text-decoration: underline; }
-        a:hover { color: #fff; background: #f05e0c; }
+      a {
+        color: #f05e0c;
+        text-decoration: underline;
+      }
+      a:hover {
+        color: #fff;
+        background: #f05e0c;
+      }
     </style>
-</head>
-<body>
+    <script
+      defer
+      src="https://cloud.umami.is/script.js"
+      data-website-id="46b9144e-dffa-43ad-a731-0bf70ae10a79"
+    ></script>
+  </head>
+  <body>
     <div class="container">
-        <img src="planqtn_logo.png" alt="PlanqTN Logo" class="logo">
-        <h1>PlanqTN is down for maintenance</h1>
-        <div class="message">We're busy untangling some quantum spaghetti! 🍝⚛️</div>
-        <div class="emoji">🔧🛠️</div>
-        <div class="message">Our qubits are getting a fresh calibration. Please check back soon!</div>
-        <div class="loading"></div>
-        <div class="message">In the meantime, read <a href="https://arxiv.org/abs/2109.08158">the quantum LEGO arXiv paper</a>.</div>
-        <div class="message">We are supported by the <a href="https://unitary.fund">Unitary Foundation</a>.</div>
+      <img src="planqtn_logo.png" alt="PlanqTN Logo" class="logo" />
+      <h1>PlanqTN is down for maintenance</h1>
+      <div class="message">
+        We're busy untangling some quantum spaghetti! 🍝⚛️
+      </div>
+      <div class="emoji">🔧🛠️</div>
+      <div class="message">
+        Our qubits are getting a fresh calibration. Please check back soon!
+      </div>
+      <div class="loading"></div>
+      <div class="message">
+        In the meantime, read
+        <a href="https://arxiv.org/abs/2109.08158"
+          >the quantum LEGO arXiv paper</a
+        >.
+      </div>
+      <div class="message">
+        We are supported by the
+        <a href="https://unitary.fund">Unitary Foundation</a>.
+      </div>
     </div>
-</body>
+  </body>
 </html>
