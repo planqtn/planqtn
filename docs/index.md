@@ -4,13 +4,13 @@
 
 PlanqTN is the [`planqtn`](https://pypyi.org/planqtn) python library and the
 [PlanqTN Studio (https://planqtn.com)](https://planqtn.com), an interactive
-studio to create, manipulate and analyze tensor network base quantum error
+studio to create, manipulate and analyze tensor network-based quantum error
 correcting codes.
 
 The name is a triple entendre on Planck, quantum and TensorNetworks (TN). It is
 pronounced "plankton", and was inspired by the fact that each of the little
-tensors look like a unique plankter. Also, we didn't want to get into trouble
-naming the website quantum LEGO.
+tensors look like a unique plankter. Also, while we love the quantum LEGO name,
+we did not want to get into trademark problems.
 
 The features are an implementation of the
 [quantum LEGO framework by Charles Cao and Brad Lackey](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.3.020332)

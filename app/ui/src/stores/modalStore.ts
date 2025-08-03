@@ -34,6 +34,7 @@ export interface ModalState {
   pythonCodeModal: boolean;
   aboutDialog: boolean;
   showLegPartitionDialog: boolean;
+  quotasDialog: boolean;
 }
 
 export interface LoadingState {
@@ -131,6 +132,10 @@ export interface ModalSlice extends ModalState {
 
   // Runtime toggle actions
   handleRuntimeToggle: () => void;
+
+  // Quotas dialog actions
+  openQuotasDialog: () => void;
+  closeQuotasDialog: () => void;
 }
 
 const initialState: ModalState = {
@@ -147,7 +152,8 @@ const initialState: ModalState = {
   weightEnumeratorDialog: false,
   pythonCodeModal: false,
   aboutDialog: false,
-  showLegPartitionDialog: false
+  showLegPartitionDialog: false,
+  quotasDialog: false
 };
 
 const initialLoadingState: LoadingState = {
@@ -304,5 +310,8 @@ export const createModalsSlice: StateCreator<
         }
       });
     }
-  }
+  },
+
+  openQuotasDialog: () => set({ quotasDialog: true }),
+  closeQuotasDialog: () => set({ quotasDialog: false })
 });

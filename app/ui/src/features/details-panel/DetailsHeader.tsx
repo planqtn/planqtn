@@ -58,14 +58,14 @@ const DetailsHeader: React.FC<DetailsHeaderProps> = ({
       if (!(networkSignature in cachedTensorNetworks)) {
         cacheTensorNetwork({
           tensorNetwork: tensorNetwork,
-          name: newName.trim(),
+          name: newName,
           isActive: true,
           svg: "<svg>render me</svg>",
           isLocked: false,
           lastUpdated: new Date()
         });
       } else {
-        updateCachedTensorNetworkName(networkSignature, newName.trim());
+        updateCachedTensorNetworkName(networkSignature, newName);
       }
     }
   };
