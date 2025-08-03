@@ -38,6 +38,10 @@ export abstract class Coordinate {
       this.y * scalar
     );
   }
+
+  length(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
 }
 
 /**

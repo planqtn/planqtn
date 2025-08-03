@@ -3,9 +3,9 @@ import { CanvasStore } from "./canvasStateStore";
 import { DroppedLego } from "./droppedLegoStore";
 import { DraggingStage } from "./legoDragState";
 import { Connection } from "./connectionStore";
-import { LogicalPoint, WindowPoint } from "../types/coordinates";
+import { CanvasPoint, LogicalPoint, WindowPoint } from "../types/coordinates";
 
-const cloneOffset = new LogicalPoint(20, 20);
+const cloneOffsetCanvas = new CanvasPoint(20, 20);
 
 export interface CloningSlice {
   handleClone: (lego: DroppedLego, x: number, y: number) => void;
@@ -35,6 +35,7 @@ export const useCloningSlice: StateCreator<
     // Get a single starting ID for all new legos
     const startingId = parseInt(get().newInstanceId());
 
+    const viewport = get().viewport;
     // Create a mapping from old instance IDs to new ones
     const instanceIdMap = new Map<string, string>();
     const newLegos = legosToClone.map((l, idx) => {
@@ -42,7 +43,11 @@ export const useCloningSlice: StateCreator<
       instanceIdMap.set(l.instance_id, newId);
       return l.with({
         instance_id: newId,
-        logicalPosition: l.logicalPosition.plus(cloneOffset)
+        logicalPosition: viewport.fromCanvasToLogical(
+          viewport
+            .fromLogicalToCanvas(l.logicalPosition)
+            .plus(cloneOffsetCanvas)
+        )
       });
     });
 
@@ -117,12 +122,17 @@ export const useCloningSlice: StateCreator<
         originalPositions: positions
       });
     }
+    const viewport = get().viewport;
 
     get().setLegoDragState({
       draggingStage: DraggingStage.MAYBE_DRAGGING,
       draggedLegoInstanceId: newLegos[0].instance_id,
-      startMouseWindowPoint: new WindowPoint(x, y).plus(cloneOffset),
-      startLegoLogicalPoint: clickedLego.logicalPosition.plus(cloneOffset)
+      startMouseWindowPoint: new WindowPoint(x, y).plus(cloneOffsetCanvas),
+      startLegoLogicalPoint: viewport.fromCanvasToLogical(
+        viewport
+          .fromLogicalToCanvas(clickedLego.logicalPosition)
+          .plus(cloneOffsetCanvas)
+      )
     });
   }
 });

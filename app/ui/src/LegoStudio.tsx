@@ -25,7 +25,6 @@ import {
   SelectionManager,
   SelectionManagerRef
 } from "./features/canvas/SelectionManager.tsx";
-import { DynamicLegoDialog } from "./features/building-blocks-panel/DynamicLegoDialog.tsx";
 
 import { randomPlankterName } from "./lib/RandomPlankterNames";
 import { UserMenu } from "./features/auth/UserMenu.tsx";
@@ -36,7 +35,6 @@ import { useUserStore } from "./stores/userStore";
 
 import { checkSupabaseStatus } from "./lib/errors.ts";
 
-import PythonCodeModal from "./features/python-export/PythonCodeModal.tsx";
 import { ModalRoot } from "./components/ModalRoot";
 import { DragProxy } from "./features/lego/DragProxy.tsx";
 import { CanvasMouseHandler } from "./features/canvas/CanvasMouseHandler.tsx";
@@ -102,35 +100,11 @@ const LegoStudioView: React.FC = () => {
   }, []);
 
   const decodeCanvasState = useCanvasStore((state) => state.decodeCanvasState);
-  const handleDynamicLegoSubmit = useCanvasStore(
-    (state) => state.handleDynamicLegoSubmit
-  );
+
   const handleDynamicLegoDrop = useCanvasStore(
     (state) => state.handleDynamicLegoDrop
   );
 
-  const showPythonCodeModal = useCanvasStore(
-    (state) => state.showPythonCodeModal
-  );
-  const setShowPythonCodeModal = useCanvasStore(
-    (state) => state.setShowPythonCodeModal
-  );
-  const pythonCode = useCanvasStore((state) => state.pythonCode);
-  const selectedDynamicLego = useCanvasStore(
-    (state) => state.selectedDynamicLego
-  );
-  const isDynamicLegoDialogOpen = useCanvasStore(
-    (state) => state.isDynamicLegoDialogOpen
-  );
-  const setIsDynamicLegoDialogOpen = useCanvasStore(
-    (state) => state.setIsDynamicLegoDialogOpen
-  );
-  const setSelectedDynamicLego = useCanvasStore(
-    (state) => state.setSelectedDynamicLego
-  );
-  const setPendingDropPosition = useCanvasStore(
-    (state) => state.setPendingDropPosition
-  );
   const setError = useCanvasStore((state) => state.setError);
   const title = useCanvasStore((state) => state.title);
   const setTitle = useCanvasStore((state) => state.setTitle);
@@ -572,32 +546,10 @@ const LegoStudioView: React.FC = () => {
         </Box>
 
         <FloatingPanelHandler />
-
-        {isDynamicLegoDialogOpen && (
-          <DynamicLegoDialog
-            isOpen={isDynamicLegoDialogOpen}
-            onClose={() => {
-              setIsDynamicLegoDialogOpen(false);
-              setSelectedDynamicLego(null);
-              setPendingDropPosition(null);
-            }}
-            onSubmit={handleDynamicLegoSubmit}
-            legoId={selectedDynamicLego?.type_id || ""}
-            parameters={selectedDynamicLego?.parameters || {}}
-          />
-        )}
-        {/* Network dialogs managed by ModalRoot */}
-        <ModalRoot currentUser={currentUser} setError={setError} />
       </VStack>
 
-      {showPythonCodeModal && (
-        <PythonCodeModal
-          isOpen={showPythonCodeModal}
-          onClose={() => setShowPythonCodeModal(false)}
-          code={pythonCode}
-          title="Python Network Construction Code"
-        />
-      )}
+      {/* Network dialogs managed by ModalRoot */}
+      <ModalRoot currentUser={currentUser} setError={setError} />
     </>
   );
 };

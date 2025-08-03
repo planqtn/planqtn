@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { Connection } from "../../stores/connectionStore";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { LegStyle } from "./LegoStyles";
@@ -21,7 +21,9 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
   const removeConnections = useCanvasStore((state) => state.removeConnections);
   const connectedLegos = useCanvasStore((state) => state.connectedLegos);
   const legDragState = useCanvasStore((state) => state.legDragState);
-  const hoveredConnection = useCanvasStore((state) => state.hoveredConnection);
+  const setHoveredConnection = useCanvasStore(
+    (state) => state.setHoveredConnection
+  );
   const visibleLegoIds = useVisibleLegoIds();
   const isDraggedLego = useCanvasStore((state) => state.isDraggedLego);
   const legoDragState = useCanvasStore((state) => state.legoDragState);
@@ -86,20 +88,6 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
     });
     return map;
   }, [connectedLegos]);
-
-  // Memoize connection hover check
-  const isConnectionHovered = useCallback(
-    (conn: Connection): boolean => {
-      return !!(
-        hoveredConnection &&
-        hoveredConnection.from.legoId === conn.from.legoId &&
-        hoveredConnection.from.leg_index === conn.from.leg_index &&
-        hoveredConnection.to.legoId === conn.to.legoId &&
-        hoveredConnection.to.leg_index === conn.to.leg_index
-      );
-    },
-    [hoveredConnection]
-  );
 
   // Memoize rendered connections with optimized calculations
   const renderedConnections = useMemo(() => {
@@ -260,12 +248,6 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
       const sharedColor = colorsMatch ? fromLegColor : "yellow";
       const connectorColor = colorsMatch ? sharedColor : "yellow";
 
-      // Check if this connection is being hovered
-      const isHovered = isConnectionHovered(conn);
-
-      // Scale stroke width slightly with zoom for better visibility using central system
-      const strokeWidth = getZoomAwareStrokeWidth(2, zoomLevel);
-
       return (
         <g key={connKey}>
           {/* Invisible wider path for easier clicking */}
@@ -286,6 +268,7 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
                 visiblePath.style.strokeWidth = "3";
                 visiblePath.style.filter =
                   "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))";
+                setHoveredConnection(conn);
               }
             }}
             onMouseLeave={(e) => {
@@ -295,6 +278,7 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
                 visiblePath.style.stroke = connectorColor;
                 visiblePath.style.strokeWidth = "2";
                 visiblePath.style.filter = "none";
+                setHoveredConnection(null);
               }
             }}
           />
@@ -302,14 +286,10 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
           <path
             d={pathString}
             stroke={connectorColor}
-            strokeWidth={isHovered ? strokeWidth * 1.5 : strokeWidth}
             fill="none"
             style={{
               pointerEvents: "none",
-              stroke: connectorColor,
-              filter: isHovered
-                ? "drop-shadow(0 0 2px rgba(66, 153, 225, 0.5))"
-                : "none"
+              stroke: connectorColor
             }}
           />
           {/* Warning sign if operators don't match */}
@@ -336,7 +316,6 @@ export const ConnectionsLayer: React.FC<{ bodyOrder: "front" | "behind" }> = ({
     visibleLegoIds,
     legStylesMap,
     hideConnectedLegs,
-    isConnectionHovered,
     zoomLevel,
     viewport,
     legoDragState.draggingStage === DraggingStage.DRAGGING,

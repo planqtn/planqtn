@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,8 @@ import {
 import { User, PieChart, AlertCircle } from "lucide-react";
 import { Box, Icon } from "@chakra-ui/react";
 import { userContextSupabase } from "../../config/supabaseClient";
-import { QuotasModal } from "../quotas/QuotasModal";
 import { useUserStore } from "@/stores/userStore";
+import { useCanvasStore } from "@/stores/canvasStateStore";
 
 interface UserMenuProps {
   onSignIn?: () => void;
@@ -22,7 +22,7 @@ interface UserMenuProps {
 
 export const UserMenu: React.FC<UserMenuProps> = ({ onSignIn }) => {
   const { currentUser, setCurrentUser } = useUserStore();
-  const [isQuotasModalOpen, setIsQuotasModalOpen] = useState(false);
+  const { openQuotasDialog } = useCanvasStore();
 
   if (!currentUser) {
     return (
@@ -90,20 +90,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onSignIn }) => {
         </Tooltip>
 
         <DropdownMenuContent className="high-z">
-          <DropdownMenuItem onClick={() => setIsQuotasModalOpen(true)}>
+          <DropdownMenuItem onClick={() => openQuotasDialog()}>
             <PieChart className="mr-2 h-4 w-4" />
             My quotas
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {isQuotasModalOpen && (
-        <QuotasModal
-          isOpen={isQuotasModalOpen}
-          onClose={() => setIsQuotasModalOpen(false)}
-        />
-      )}
     </>
   );
 };

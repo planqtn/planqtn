@@ -2,10 +2,7 @@ import React, { useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useCanvasDragStateStore } from "../../stores/canvasDragStateStore";
 import { TensorNetwork } from "../../lib/TensorNetwork";
-import {
-  findClosestDanglingLeg,
-  findClosestConnection
-} from "./canvasCalculations";
+import { findClosestDanglingLeg } from "./canvasCalculations";
 import { useDraggedLegoStore } from "../../stores/draggedLegoProtoStore";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { DroppedLego, LegoPiece } from "../../stores/droppedLegoStore";
@@ -63,7 +60,9 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     updateResize,
     endResize,
     suppressNextCanvasClick,
-    setSuppressNextCanvasClick
+    setSuppressNextCanvasClick,
+    hoveredConnection,
+    setHoveredConnection
   } = useCanvasStore();
 
   const { canvasDragState, setCanvasDragState, resetCanvasDragState } =
@@ -428,18 +427,12 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
       existingLegoToRemove?: DroppedLego
     ): Promise<boolean> => {
       try {
-        const closestConnection = findClosestConnection(
-          dropPosition,
-          droppedLegos,
-          connections
-        );
-
         // Check if this lego already has connections - if so, just do regular move
         const hasExistingConnections = connectedLegos.some(
           (connectedLego) => connectedLego.instance_id === lego.instance_id
         );
 
-        if (hasExistingConnections || !closestConnection) {
+        if (hasExistingConnections || !hoveredConnection) {
           return false;
         }
 
@@ -458,10 +451,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
           : droppedLegos;
 
         const trafo = new InjectTwoLegged(connections, legosForCalculation);
-        const result = await trafo.apply(repositionedLego, closestConnection);
+        const result = await trafo.apply(repositionedLego, hoveredConnection);
 
         addOperation(result.operation);
         setLegosAndConnections(result.droppedLegos, result.connections);
+        setHoveredConnection(null);
         return true;
       } catch (error) {
         setError(`${error instanceof Error ? error.message : String(error)}`);
@@ -479,7 +473,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         const closestLeg = findClosestDanglingLeg(
           dropPosition,
           droppedLegos,
-          connections
+          connections,
+          viewport
         );
 
         if (
@@ -656,7 +651,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     addOperation,
     addConnections,
     suppressNextCanvasClick,
-    setSuppressNextCanvasClick
+    setSuppressNextCanvasClick,
+    hoveredConnection
   ]);
 
   return null;
