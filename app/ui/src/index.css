@@ -130,7 +130,14 @@ body {
 }
 
 .high-z {
-  z-index: 10000 !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure Chakra UI modals appear above all floating panels */
+.chakra-modal_overlay,
+.chakra-modal_content-container,
+.chakra-modal_content {
+  z-index: 100000 !important;
 }
 
 /* Leg endpoint hover effects */

@@ -1,12 +1,23 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
+import { ChakraProvider, ColorModeScript, extendTheme } from "@chakra-ui/react";
 import "./index.css";
 
 import { BrowserRouter, Routes, Route } from "react-router";
 import LegoStudioView from "./LegoStudio";
 import AuthCallback from "./features/auth/AuthCallback";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+// Create a custom theme that configures the portal container
+const theme = extendTheme({
+  config: {
+    initialColorMode: "light",
+    useSystemColorMode: false
+  },
+  zIndices: {
+    modal: 100000 // Ensure modals have higher z-index than modal-root
+  }
+});
 
 // While this is handled in serve.js in production time, for the dev server mode we need to handle it here
 
@@ -19,7 +30,7 @@ if (import.meta.env.VITE_ENV === "TEASER") {
     <React.StrictMode>
       <ErrorBoundary>
         <ColorModeScript initialColorMode="light" />
-        <ChakraProvider>
+        <ChakraProvider theme={theme}>
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LegoStudioView />} />

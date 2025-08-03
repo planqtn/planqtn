@@ -16,6 +16,9 @@ import { User } from "@supabase/supabase-js";
 import { TensorNetworkLeg } from "../lib/TensorNetwork";
 import { useCanvasStore } from "../stores/canvasStateStore";
 import { LegPartitionDialog } from "@/features/details-panel/LegPartitionDialog";
+import { QuotasModal } from "@/features/quotas/QuotasModal";
+import { DynamicLegoDialog } from "@/features/building-blocks-panel/DynamicLegoDialog";
+import { PythonCodeModal } from "@/features/python-export/PythonCodeModal";
 
 interface ModalRootProps {
   // Weight enumerator dependencies
@@ -58,7 +61,18 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     closeLegPartitionDialog,
     handleLegPartitionDialogClose,
     handleUnfuseTo2LegosPartitionConfirm,
-    unfuseLego
+    unfuseLego,
+    quotasDialog,
+    closeQuotasDialog,
+    isDynamicLegoDialogOpen,
+    setIsDynamicLegoDialogOpen,
+    selectedDynamicLego,
+    setSelectedDynamicLego,
+    setPendingDropPosition,
+    handleDynamicLegoSubmit,
+    showPythonCodeModal,
+    setShowPythonCodeModal,
+    pythonCode
   } = useCanvasStore();
 
   const toast = useToast();
@@ -291,6 +305,33 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
             handleUnfuseTo2LegosPartitionConfirm(legPartition);
           }}
           numLegs={unfuseLego ? unfuseLego.numberOfLegs : 0}
+        />
+      )}
+
+      {quotasDialog && (
+        <QuotasModal isOpen={quotasDialog} onClose={closeQuotasDialog} />
+      )}
+
+      {isDynamicLegoDialogOpen && (
+        <DynamicLegoDialog
+          isOpen={isDynamicLegoDialogOpen}
+          onClose={() => {
+            setIsDynamicLegoDialogOpen(false);
+            setSelectedDynamicLego(null);
+            setPendingDropPosition(null);
+          }}
+          onSubmit={handleDynamicLegoSubmit}
+          legoId={selectedDynamicLego?.type_id || ""}
+          parameters={selectedDynamicLego?.parameters || {}}
+        />
+      )}
+
+      {showPythonCodeModal && (
+        <PythonCodeModal
+          isOpen={showPythonCodeModal}
+          onClose={() => setShowPythonCodeModal(false)}
+          code={pythonCode}
+          title="Python Network Construction Code"
         />
       )}
     </>,
