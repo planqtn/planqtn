@@ -479,7 +479,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         const closestLeg = findClosestDanglingLeg(
           dropPosition,
           droppedLegos,
-          connections
+          connections,
+          viewport
         );
 
         if (
