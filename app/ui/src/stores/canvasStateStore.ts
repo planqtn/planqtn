@@ -135,7 +135,6 @@ export const createGlobalTensorNetworkStore: StateCreator<
     get().updateAllLegConnectionStates();
     get().updateAllLegHideStates();
 
-    get().setHoveredConnection(null);
     get().setTensorNetwork(null);
     get().updateIsActiveForCachedTensorNetworks(
       [
