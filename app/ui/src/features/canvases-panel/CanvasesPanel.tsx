@@ -110,13 +110,12 @@ const CanvasesPanel: React.FC = () => {
   const handleDeleteCanvas = (canvasId: string, canvasTitle: string) => {
     if (
       window.confirm(
-        `Are you sure you want to delete "${canvasTitle}"? This action cannot be undone.`
+        `Are you sure you want to delete "${canvasTitle}" - ${canvasId}? This action cannot be undone.`
       )
     ) {
       try {
         // Remove from localStorage
         localStorage.removeItem(`canvas-state-${canvasId}`);
-        localStorage.removeItem(`canvas-state-${canvasId}-backup`);
 
         // If deleting current canvas, navigate to next available canvas
         if (canvasId === currentCanvasId) {
@@ -189,7 +188,6 @@ const CanvasesPanel: React.FC = () => {
         selectedCanvases.forEach((canvasId) => {
           try {
             localStorage.removeItem(`canvas-state-${canvasId}`);
-            localStorage.removeItem(`canvas-state-${canvasId}-backup`);
             deletedCount++;
           } catch {
             errorCount++;

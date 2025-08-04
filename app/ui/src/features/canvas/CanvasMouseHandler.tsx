@@ -200,12 +200,11 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
-
       if (import.meta.env.DEV) {
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+
         useDebugStore.getState().setDebugMousePos(mouseWindowPoint);
       }
-      useCanvasStore.getState().setMousePos(mouseWindowPoint);
 
       // Handle resize if active
       if (resizeState.isResizing) {
@@ -244,6 +243,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         legoDragState.draggingStage === DraggingStage.MAYBE_DRAGGING
       ) {
         const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        useCanvasStore.getState().setMousePos(mouseWindowPoint);
+
         const mouseDelta = mouseWindowPoint.minus(
           legoDragState.startMouseWindowPoint
         );
@@ -271,11 +272,16 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
         legoDragState &&
         legoDragState.draggingStage === DraggingStage.DRAGGING
       ) {
+        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        useCanvasStore.getState().setMousePos(mouseWindowPoint);
+
         // drag proxy handles the mouse move, we call performDragUpdate on mouseup
         return;
       }
       if (legDragState?.isDragging) {
         const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+        useCanvasStore.getState().setMousePos(mouseWindowPoint);
+
         setLegDragState({
           ...legDragState,
           currentMouseWindowPoint: mouseWindowPoint
