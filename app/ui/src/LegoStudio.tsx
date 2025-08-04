@@ -444,7 +444,7 @@ const LegoStudioView: React.FC = () => {
                           }}
                           transition="opacity 0.2s"
                           cursor="pointer"
-                          onClick={() => window.open("/docs", "_blank")}
+                          onClick={() => window.open("/docs/", "_blank")}
                           alignItems="center"
                           display="flex"
                         >

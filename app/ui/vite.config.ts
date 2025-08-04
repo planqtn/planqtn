@@ -54,6 +54,14 @@ function docsPlugin() {
             return;
           }
 
+          // If it's a directory request, serve index.html
+          const indexPath = path.join(fullPath, "index.html");
+          if (fs.existsSync(indexPath)) {
+            res.setHeader("Content-Type", "text/html");
+            res.end(fs.readFileSync(indexPath, "utf8"));
+            return;
+          }
+
           // If file doesn't exist, serve 404.html
           const notFoundPath = path.join(
             process.cwd(),

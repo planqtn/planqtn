@@ -22,6 +22,9 @@ const FloatingCanvasesPanel: React.FC<FloatingCanvasesPanelProps> = ({
       onConfigChange={onConfigChange}
       onClose={onClose}
       icon={FaLayerGroup}
+      showHelpButton={true}
+      helpUrl="/docs/planqtn-studio/ui-controls/#canvases-panel"
+      helpTitle="Canvases Panel Help"
     >
       <CanvasesPanel />
     </FloatingPanelWrapper>

@@ -18,11 +18,13 @@ import {
   CloseIcon,
   DragHandleIcon,
   ChevronUpIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  QuestionIcon
 } from "@chakra-ui/icons";
 import { RiDragMove2Fill } from "react-icons/ri";
 import { FloatingPanelConfigManager, PanelLayout } from "./FloatingPanelConfig";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 import { IconType } from "react-icons/lib";
 
 interface FloatingPanelWrapperProps {
@@ -34,6 +36,9 @@ interface FloatingPanelWrapperProps {
   showCollapseButton?: boolean;
   showResizeHandle?: boolean;
   icon?: IconType;
+  showHelpButton?: boolean;
+  helpUrl?: string;
+  helpTitle?: string;
 }
 
 const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
@@ -44,7 +49,10 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   children,
   showCollapseButton = true,
   showResizeHandle = true,
-  icon
+  icon,
+  showHelpButton = false,
+  helpUrl,
+  helpTitle
 }) => {
   // Safety check: ensure config has valid layout data
   const safeConfig = useMemo(() => {
@@ -90,6 +98,7 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
   const resizeHandleRef = useRef<HTMLDivElement>(null);
 
   const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   // Function to bring panel to front
   const bringToFront = useCallback(() => {
@@ -362,6 +371,13 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
     return () => window.removeEventListener("resize", handleWindowResize);
   }, [safeConfig, onConfigChange]);
 
+  // Handle help button click
+  const handleHelpClick = useCallback(() => {
+    if (helpUrl) {
+      openHelpDialog(helpUrl, helpTitle || `${title} Help`);
+    }
+  }, [helpUrl, helpTitle, title, openHelpDialog]);
+
   // Handle collapse toggle
   const handleToggleCollapse = useCallback(() => {
     const newConfig = new FloatingPanelConfigManager(safeConfig.toJSON());
@@ -452,6 +468,16 @@ const FloatingPanelWrapper: React.FC<FloatingPanelWrapperProps> = ({
             size="sm"
             variant="ghost"
             onClick={handleToggleCollapse}
+            _hover={{ bg: closeButtonHoverBg }}
+          />
+        )}
+        {showHelpButton && helpUrl && (
+          <IconButton
+            aria-label="Help"
+            icon={<QuestionIcon />}
+            size="sm"
+            variant="ghost"
+            onClick={handleHelpClick}
             _hover={{ bg: closeButtonHoverBg }}
           />
         )}
