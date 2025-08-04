@@ -80,7 +80,7 @@ export async function createProxy(
   return await kubectl(
     `k8sproxy${postfix}`,
     [],
-    ["proxy", "--accept-hosts", "'.*'", "--address=0.0.0.0"],
+    ["proxy", "--accept-hosts", ".*", "--address=0.0.0.0"],
     kubeconfigPath,
     verbose,
     clusterName,
