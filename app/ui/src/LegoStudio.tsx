@@ -44,6 +44,7 @@ import { ViewportDebugOverlay } from "./features/canvas/ViewportDebugOverlay.tsx
 import { CanvasMenu } from "./features/canvas/CanvasMenu.tsx";
 import { FloatingPanelsToolbar } from "./features/canvas/FloatingPanelsToolbar.tsx";
 import { FiShare2, FiFileText } from "react-icons/fi";
+import { QuestionIcon } from "@chakra-ui/icons";
 import { SubnetToolbarOverlay } from "./features/lego/SubnetToolbarOverlay";
 import { FocusBoundingBox } from "./features/canvas/FocusBoundingBox";
 
@@ -125,6 +126,7 @@ const LegoStudioView: React.FC = () => {
   const closeLoadingModal = useCanvasStore((state) => state.closeLoadingModal);
   const openAuthDialog = useCanvasStore((state) => state.openAuthDialog);
   const openShareDialog = useCanvasStore((state) => state.openShareDialog);
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   const panelGroupContainerRef = useRef<HTMLDivElement>(null);
 
@@ -337,6 +339,13 @@ const LegoStudioView: React.FC = () => {
     }
   };
 
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/ui-controls/#canvas-controls",
+      "Canvas Controls Help"
+    );
+  };
+
   function handleTitleKeyDown(
     event: React.KeyboardEvent<HTMLDivElement>
   ): void {
@@ -444,7 +453,7 @@ const LegoStudioView: React.FC = () => {
                           }}
                           transition="opacity 0.2s"
                           cursor="pointer"
-                          onClick={() => window.open("/docs", "_blank")}
+                          onClick={() => window.open("/docs/", "_blank")}
                           alignItems="center"
                           display="flex"
                         >
@@ -537,6 +546,35 @@ const LegoStudioView: React.FC = () => {
 
                   {/* Mini-map with zoom level display */}
                   <CanvasMiniMap />
+
+                  {/* Help button in bottom left corner */}
+                  <Box position="absolute" bottom={2} left={2} zIndex={1000}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Box
+                          bg="transparent"
+                          borderRadius="md"
+                          px={2}
+                          py={2}
+                          opacity={0.7}
+                          _hover={{
+                            opacity: 1,
+                            bg: useColorModeValue("gray.100", "gray.700")
+                          }}
+                          transition="opacity 0.2s"
+                          cursor="pointer"
+                          onClick={handleHelpClick}
+                          alignItems="center"
+                          display="flex"
+                        >
+                          <Icon as={QuestionIcon} boxSize={5} />
+                        </Box>
+                      </TooltipTrigger>
+                      <TooltipContent className="high-z">
+                        Canvas Help
+                      </TooltipContent>
+                    </Tooltip>
+                  </Box>
                 </Box>
               </Box>
             </Panel>

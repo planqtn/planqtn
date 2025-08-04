@@ -1,15 +1,16 @@
 import React from "react";
 import { Box, Icon, useColorModeValue, HStack } from "@chakra-ui/react";
+import { QuestionIcon } from "@chakra-ui/icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 import {
-  FaBarsProgress,
   FaFolderTree,
   FaInfo,
   FaLayerGroup,
@@ -58,15 +59,18 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
     (state) => state.setSubnetsPanelConfig
   );
 
-  const taskPanelConfig = usePanelConfigStore((state) => state.taskPanelConfig);
-  const setTaskPanelConfig = usePanelConfigStore(
-    (state) => state.setTaskPanelConfig
-  );
+  // const taskPanelConfig = usePanelConfigStore((state) => state.taskPanelConfig);
+  // const setTaskPanelConfig = usePanelConfigStore(
+  //   (state) => state.setTaskPanelConfig
+  // );
 
   // Canvas store for showToolbar setting
   const showToolbar = usePanelConfigStore((state) => state.showToolbar);
   const setShowToolbar = usePanelConfigStore((state) => state.setShowToolbar);
   const nextZIndex = usePanelConfigStore((state) => state.nextZIndex);
+
+  // Help dialog functionality
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   // Helper function to toggle panel
   const togglePanel = (
@@ -81,6 +85,14 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
     newConfig.setIsOpen(!currentConfig.isOpen);
 
     setConfig(newConfig);
+  };
+
+  // Handle help button click
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/ui-controls/#panel-toolbar",
+      "Panel Toolbar Help"
+    );
   };
 
   return (
@@ -216,7 +228,7 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
         </Tooltip>
 
         {/* Task Panel */}
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <Box
               bg={taskPanelConfig.isOpen ? activeBgColor : "transparent"}
@@ -238,7 +250,7 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
             </Box>
           </TooltipTrigger>
           <TooltipContent className="high-z">Task Panel</TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
         {/* Show Toolbar Toggle */}
         <Tooltip>
@@ -265,6 +277,31 @@ export const FloatingPanelsToolbar: React.FC<FloatingPanelsToolbarProps> = ({
           <TooltipContent className="high-z">
             Show Floating Toolbar
           </TooltipContent>
+        </Tooltip>
+
+        {/* Help Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Box
+              bg="transparent"
+              borderRadius="md"
+              px={2}
+              py={2}
+              opacity={0.8}
+              _hover={{
+                opacity: 1,
+                bg: hoverBgColor
+              }}
+              transition="all 0.2s"
+              cursor="pointer"
+              onClick={handleHelpClick}
+              alignItems="center"
+              display="flex"
+            >
+              <Icon as={QuestionIcon} boxSize={4} />
+            </Box>
+          </TooltipTrigger>
+          <TooltipContent className="high-z">Panel Toolbar Help</TooltipContent>
         </Tooltip>
       </HStack>
     </Box>

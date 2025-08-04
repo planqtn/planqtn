@@ -267,7 +267,8 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
               >
                 Show Canvases Panel
               </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
+
+              {/* <DropdownMenuCheckboxItem
                 checked={usePanelConfigStore.getState().taskPanelConfig.isOpen}
                 onClick={() => {
                   const newConfig = new FloatingPanelConfigManager(
@@ -280,7 +281,7 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
                 }}
               >
                 Show Task Panel
-              </DropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem> */}
               <DropdownMenuCheckboxItem
                 checked={
                   usePanelConfigStore.getState().subnetsPanelConfig.isOpen

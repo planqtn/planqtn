@@ -13,7 +13,7 @@ import {
   Checkbox,
   Button
 } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon, AddIcon } from "@chakra-ui/icons";
 import {
   getCanvasIdFromUrl,
   useCanvasStore
@@ -108,18 +108,6 @@ const CanvasesPanel: React.FC = () => {
   };
 
   const handleDeleteCanvas = (canvasId: string, canvasTitle: string) => {
-    if (canvasId === currentCanvasId) {
-      toast({
-        title: "Cannot delete current canvas",
-        description:
-          "Please switch to a different canvas before deleting this one.",
-        status: "warning",
-        duration: 3000,
-        isClosable: true
-      });
-      return;
-    }
-
     if (
       window.confirm(
         `Are you sure you want to delete "${canvasTitle}"? This action cannot be undone.`
@@ -129,6 +117,26 @@ const CanvasesPanel: React.FC = () => {
         // Remove from localStorage
         localStorage.removeItem(`canvas-state-${canvasId}`);
         localStorage.removeItem(`canvas-state-${canvasId}-backup`);
+
+        // If deleting current canvas, navigate to next available canvas
+        if (canvasId === currentCanvasId) {
+          const remainingCanvases = savedCanvases.filter(
+            (canvas) => canvas.id !== canvasId
+          );
+
+          if (remainingCanvases.length > 0) {
+            // Navigate to the first remaining canvas
+            const nextCanvasId = remainingCanvases[0].id;
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set("canvasId", nextCanvasId);
+            window.location.href = currentUrl.toString();
+          } else {
+            // No canvases left, create a new one
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete("canvasId");
+            window.location.href = currentUrl.toString();
+          }
+        }
 
         toast({
           title: "Canvas deleted",
@@ -176,6 +184,7 @@ const CanvasesPanel: React.FC = () => {
       try {
         let deletedCount = 0;
         let errorCount = 0;
+        const isCurrentCanvasSelected = selectedCanvases.has(currentCanvasId);
 
         selectedCanvases.forEach((canvasId) => {
           try {
@@ -186,6 +195,26 @@ const CanvasesPanel: React.FC = () => {
             errorCount++;
           }
         });
+
+        // If current canvas was deleted, navigate to next available canvas
+        if (isCurrentCanvasSelected) {
+          const remainingCanvases = savedCanvases.filter(
+            (canvas) => !selectedCanvases.has(canvas.id)
+          );
+
+          if (remainingCanvases.length > 0) {
+            // Navigate to the first remaining canvas
+            const nextCanvasId = remainingCanvases[0].id;
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set("canvasId", nextCanvasId);
+            window.location.href = currentUrl.toString();
+          } else {
+            // No canvases left, create a new one
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.delete("canvasId");
+            window.location.href = currentUrl.toString();
+          }
+        }
 
         if (errorCount > 0) {
           toast({
@@ -246,6 +275,12 @@ const CanvasesPanel: React.FC = () => {
     }
   };
 
+  const handleNewCanvas = () => {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("canvasId");
+    window.location.href = currentUrl.toString();
+  };
+
   return (
     <Box
       bg={bgColor}
@@ -258,7 +293,7 @@ const CanvasesPanel: React.FC = () => {
       display="flex"
       flexDirection="column"
     >
-      {/* Bulk Delete Controls */}
+      {/* Header Controls */}
       <HStack justify="space-between" mb={3}>
         <HStack spacing={2}>
           <Box
@@ -277,7 +312,7 @@ const CanvasesPanel: React.FC = () => {
                   savedCanvases.filter((c) => c.id !== currentCanvasId).length
               }
               onChange={handleSelectAll}
-              size="sm"
+              size="md"
             >
               Select All
             </Checkbox>
@@ -291,17 +326,28 @@ const CanvasesPanel: React.FC = () => {
             </Text>
           )}
         </HStack>
-        {selectedCanvases.size > 0 && (
+        <HStack spacing={2}>
           <Button
             size="sm"
-            colorScheme="red"
+            colorScheme="blue"
             variant="outline"
-            onClick={handleBulkDelete}
-            leftIcon={<DeleteIcon />}
+            onClick={handleNewCanvas}
+            leftIcon={<AddIcon />}
           >
-            Delete Selected
+            New Canvas
           </Button>
-        )}
+          {selectedCanvases.size > 0 && (
+            <Button
+              size="sm"
+              colorScheme="red"
+              variant="outline"
+              onClick={handleBulkDelete}
+              leftIcon={<DeleteIcon />}
+            >
+              Delete Selected
+            </Button>
+          )}
+        </HStack>
       </HStack>
 
       <VStack spacing={2} flex={1} overflow="auto">
@@ -338,32 +384,39 @@ const CanvasesPanel: React.FC = () => {
                         ? useColorModeValue("blue.100", "blue.800")
                         : useColorModeValue("gray.50", "gray.700")
                   }}
-                  onClick={() => handleCanvasClick(canvas.id)}
+                  onClick={() => {
+                    if (selectedCanvases.size > 0) {
+                      // In selection mode, toggle selection instead of navigating
+                      handleCanvasSelection(canvas.id, !isSelected);
+                    } else {
+                      // Normal mode, navigate to canvas
+                      handleCanvasClick(canvas.id);
+                    }
+                  }}
                 >
                   <VStack align="start" spacing={1}>
                     <HStack justify="space-between" width="100%">
                       <HStack spacing={2} flex={1}>
-                        {!isCurrent && (
-                          <Box
-                            onClick={(e) => {
-                              e.stopPropagation();
+                        <Box
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          <Checkbox
+                            isChecked={isSelected}
+                            onChange={(e) => {
+                              handleCanvasSelection(
+                                canvas.id,
+                                e.target.checked
+                              );
                             }}
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <Checkbox
-                              isChecked={isSelected}
-                              onChange={(e) => {
-                                handleCanvasSelection(
-                                  canvas.id,
-                                  e.target.checked
-                                );
-                              }}
-                              size="sm"
-                            />
-                          </Box>
-                        )}
+                            size="md"
+                          />
+                        </Box>
+
                         <Text
                           fontWeight={isCurrent ? "bold" : "normal"}
                           color={isCurrent ? selectedTextColor : textColor}
@@ -382,7 +435,7 @@ const CanvasesPanel: React.FC = () => {
                         >
                           {canvas.legoCount} legos
                         </Badge>
-                        {!isCurrent && selectedCanvases.size === 0 && (
+                        {selectedCanvases.size === 0 && (
                           <IconButton
                             aria-label={`Delete ${canvas.title}`}
                             icon={<DeleteIcon />}

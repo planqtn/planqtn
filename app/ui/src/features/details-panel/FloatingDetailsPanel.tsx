@@ -22,6 +22,9 @@ const FloatingDetailsPanel: React.FC<FloatingDetailsPanelProps> = ({
       onConfigChange={onConfigChange}
       onClose={onClose}
       icon={FaInfo}
+      showHelpButton={true}
+      helpUrl="/docs/planqtn-studio/ui-controls/#details-panel"
+      helpTitle="Details Panel Help"
     >
       <DetailsPanel />
     </FloatingPanelWrapper>

@@ -77,14 +77,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
       currentUrl.searchParams.delete("canvasId");
       const newShareUrl = currentUrl.toString();
       setShareUrl(newShareUrl);
-
-      toast({
-        title: "Share URL Generated",
-        description: "The share URL has been generated successfully",
-        status: "success",
-        duration: 3000,
-        isClosable: true
-      });
     } catch {
       toast({
         title: "Error",
@@ -99,11 +91,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   };
 
   const copyShareUrl = async () => {
-    if (!shareUrl) {
-      await generateShareUrl();
-      return;
-    }
-
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast({
@@ -159,9 +146,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Reset shareUrl when modal closes
+  // Generate URL when modal opens and reset when it closes
   React.useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      generateShareUrl();
+    } else {
       setShareUrl("");
     }
   }, [isOpen]);

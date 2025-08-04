@@ -28,6 +28,9 @@ export interface ModalState {
   // Import canvas dialog
   importCanvasDialog: boolean;
 
+  // Help dialog
+  helpDialog: boolean;
+
   // Other modals can be added here later
   dynamicLegoDialog: boolean;
   weightEnumeratorDialog: boolean;
@@ -35,6 +38,11 @@ export interface ModalState {
   aboutDialog: boolean;
   showLegPartitionDialog: boolean;
   quotasDialog: boolean;
+}
+
+export interface HelpState {
+  helpUrl?: string;
+  title?: string;
 }
 
 export interface LoadingState {
@@ -75,6 +83,9 @@ export interface ModalSlice extends ModalState {
   // Weight enumerator state
   weightEnumeratorState: WeightEnumeratorState;
 
+  // Help state
+  helpState: HelpState;
+
   // Network dialog actions
   openCssTannerDialog: () => void;
   closeCssTannerDialog: () => void;
@@ -109,6 +120,10 @@ export interface ModalSlice extends ModalState {
   // Import canvas dialog actions
   openImportCanvasDialog: () => void;
   closeImportCanvasDialog: () => void;
+
+  // Help dialog actions
+  openHelpDialog: (helpUrl?: string, title?: string) => void;
+  closeHelpDialog: () => void;
 
   // About dialog actions
   openAboutDialog: () => void;
@@ -149,6 +164,7 @@ const initialState: ModalState = {
   runtimeConfigDialog: false,
   shareDialog: false,
   importCanvasDialog: false,
+  helpDialog: false,
   weightEnumeratorDialog: false,
   pythonCodeModal: false,
   aboutDialog: false,
@@ -178,6 +194,11 @@ const initialWeightEnumeratorState: WeightEnumeratorState = {
   mainNetworkConnections: []
 };
 
+const initialHelpState: HelpState = {
+  helpUrl: "/docs/planqtn-studio/ui-controls/#canvases-panel",
+  title: "Help"
+};
+
 export const createModalsSlice: StateCreator<
   CanvasStore,
   [["zustand/immer", never]],
@@ -190,6 +211,7 @@ export const createModalsSlice: StateCreator<
   authState: initialAuthState,
   runtimeConfigState: initialRuntimeConfigState,
   weightEnumeratorState: initialWeightEnumeratorState,
+  helpState: initialHelpState,
 
   // Network dialog actions
   openCssTannerDialog: () => set({ cssTannerDialog: true }),
@@ -257,6 +279,18 @@ export const createModalsSlice: StateCreator<
   // Import canvas dialog actions
   openImportCanvasDialog: () => set({ importCanvasDialog: true }),
   closeImportCanvasDialog: () => set({ importCanvasDialog: false }),
+
+  // Help dialog actions
+  openHelpDialog: (helpUrl?: string, title?: string) =>
+    set({
+      helpDialog: true,
+      helpState: { helpUrl, title }
+    }),
+  closeHelpDialog: () =>
+    set({
+      helpDialog: false,
+      helpState: initialHelpState
+    }),
 
   // About dialog actions
   openAboutDialog: () => set({ aboutDialog: true }),

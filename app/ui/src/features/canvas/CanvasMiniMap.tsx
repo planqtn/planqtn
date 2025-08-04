@@ -422,7 +422,7 @@ export const CanvasMiniMap: React.FC = () => {
             Canvas Map - {zoomPercentage}%
           </Text>
           <Tooltip
-            label="Ctrl+Scroll to zoom • Drag viewport"
+            label="Ctrl+Scroll to zoom • Alt+Drag to pan"
             fontSize="xs"
             placement="top"
             hasArrow

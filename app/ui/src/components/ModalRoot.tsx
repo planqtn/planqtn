@@ -19,6 +19,7 @@ import { LegPartitionDialog } from "@/features/details-panel/LegPartitionDialog"
 import { QuotasModal } from "@/features/quotas/QuotasModal";
 import { DynamicLegoDialog } from "@/features/building-blocks-panel/DynamicLegoDialog";
 import { PythonCodeModal } from "@/features/python-export/PythonCodeModal";
+import HelpModal from "@/features/help-modal/HelpModal";
 
 interface ModalRootProps {
   // Weight enumerator dependencies
@@ -40,6 +41,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     runtimeConfigDialog,
     shareDialog,
     importCanvasDialog,
+    helpDialog,
     weightEnumeratorDialog,
     aboutDialog,
     loadingState,
@@ -47,6 +49,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     authState,
     runtimeConfigState,
     weightEnumeratorState,
+    helpState,
     closeCssTannerDialog,
     closeTannerDialog,
     closeMspDialog,
@@ -55,6 +58,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     closeRuntimeConfigDialog,
     closeShareDialog,
     closeImportCanvasDialog,
+    closeHelpDialog,
     closeWeightEnumeratorDialog,
     closeAboutDialog,
     showLegPartitionDialog,
@@ -332,6 +336,15 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onClose={() => setShowPythonCodeModal(false)}
           code={pythonCode}
           title="Python Network Construction Code"
+        />
+      )}
+
+      {helpDialog && (
+        <HelpModal
+          isOpen={helpDialog}
+          onClose={closeHelpDialog}
+          helpUrl={helpState.helpUrl}
+          title={helpState.title}
         />
       )}
     </>,

@@ -24,6 +24,9 @@ const FloatingSubnetsPanel: React.FC<FloatingSubnetsPanelProps> = ({
       showCollapseButton={true}
       showResizeHandle={true}
       icon={FaFolderTree}
+      showHelpButton={true}
+      helpUrl="/docs/planqtn-studio/ui-controls/#subnets-panel"
+      helpTitle="Subnets Panel Help"
     >
       <SubnetsPanel />
     </FloatingPanelWrapper>
