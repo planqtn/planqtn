@@ -11,7 +11,6 @@ import { useCanvasStore } from "../../stores/canvasStateStore";
 import { FloatingPanelConfigManager } from "../floating-panel/FloatingPanelConfig";
 
 import {
-  FaBarsProgress,
   FaFolderTree,
   FaInfo,
   FaLayerGroup,
