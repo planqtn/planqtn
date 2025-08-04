@@ -1,11 +1,10 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "../../stores/userStore";
 import { SubnetToolbar } from "./SubnetToolbar";
 import { DraggingStage } from "../../stores/legoDragState";
 import { calculateBoundingBoxForLegos } from "../../stores/canvasUISlice";
-import { WindowPoint } from "../../types/coordinates";
 
 export const SubnetToolbarOverlay: React.FC = () => {
   const { isUserLoggedIn } = useUserStore();

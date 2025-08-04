@@ -142,7 +142,7 @@ export async function copyDir(
     }
 
     const proc = spawn("rsync", ["-av", "--delete", src + "/", dest + "/"], {
-      shell: true,
+      shell: false,
       stdio: [
         "pipe",
         options.verbose ? "inherit" : "pipe",

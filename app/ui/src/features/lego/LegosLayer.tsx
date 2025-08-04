@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 import { LogicalPoint } from "../../types/coordinates";

@@ -144,7 +144,7 @@ export function setupKernelRemoveCommand(kernelCommand: Command) {
                 "-q"
               ],
               {
-                shell: true,
+                shell: false,
                 stdio: ["pipe", "pipe", options.verbose ? "inherit" : "pipe"]
               }
             );
