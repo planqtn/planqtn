@@ -12,7 +12,7 @@ tensornetworks:
 -   custom legos, that can be defined based on a parity check matrix
 -   universal tensor network layouts
     -   CSS code Tanner layout
-    -   General stabilzier code Tanner layout
+    -   General stabilizer code Tanner layout
     -   Measurement state preparation circuit layout
 
 ## Predefined tensors

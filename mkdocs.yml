@@ -76,7 +76,7 @@ nav:
       - Transform tensor networks: planqtn-studio/transform.md
       - Analyze tensor networks: planqtn-studio/analyze.md
       - Share tensor networks: planqtn-studio/share.md
-
+      - Runtime kernels: planqtn-studio/runtimes.md
   - FAQ: faq.md
 
 markdown_extensions:

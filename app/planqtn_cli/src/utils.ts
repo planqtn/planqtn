@@ -59,7 +59,7 @@ export async function runCommand(
     }
 
     const proc = spawn(command, args, {
-      shell: true,
+      shell: false,
 
       cwd: options.cwd,
       env: options.env,
