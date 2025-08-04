@@ -1,10 +1,9 @@
-import React, { useRef, useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { DraggingStage } from "../../stores/legoDragState";
 import { useBuildingBlockDragStateStore } from "../../stores/buildingBlockDragStateStore";
 import { LogicalPoint, WindowPoint } from "../../types/coordinates.ts";
-import { useDebugStore } from "../../stores/debugStore.ts";
 import DroppedLegoDisplay, {
   getLegoBodyBoundingBox
 } from "./DroppedLegoDisplay";
@@ -188,7 +187,6 @@ const GroupDragProxy: React.FC<{
 
           // If not found, check if this is a cloned lego and try to use the original lego's DOM element
           if (!bodyElement) {
-            console.log("no body element found for lego", lego.instance_id);
             const cloneMapping = useCanvasStore.getState().cloneMapping;
             const originalLegoId = cloneMapping.get(lego.instance_id);
             if (originalLegoId) {
@@ -425,60 +423,25 @@ const ResizeGroupProxy: React.FC<{
   );
 };
 
-// Shared hook for mouse tracking with debug integration
-const useMouseTracking = (shouldTrack: boolean = true) => {
-  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
-  const animationFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!shouldTrack) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      animationFrameRef.current = requestAnimationFrame(() => {
-        setMousePos(WindowPoint.fromMouseEvent(e));
-        if (import.meta.env.VITE_ENV === "debug") {
-          useDebugStore
-            .getState()
-            .setDebugMousePos(new WindowPoint(e.clientX, e.clientY));
-        }
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [shouldTrack]);
-
-  return mousePos;
-};
-
 export const DragProxy: React.FC = () => {
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
-  const dragStateStage = useCanvasStore(
-    (state) => state.legoDragState?.draggingStage
-  );
+  // const dragStateStage = useCanvasStore(
+  //   (state) => state.legoDragState?.draggingStage
+  // );
   const groupDragState = useCanvasStore((state) => state.groupDragState);
   const buildingBlockDragState = useBuildingBlockDragStateStore(
     (state) => state.buildingBlockDragState
   );
   const resizeProxyLegos = useCanvasStore((state) => state.resizeProxyLegos);
 
-  // Use shared mouse tracking - track when canvas lego or group dragging is happening
-  // Building block dragging uses its own mouse tracking via dragover events
-  const shouldTrackMouse =
-    dragStateStage === DraggingStage.MAYBE_DRAGGING ||
-    dragStateStage === DraggingStage.DRAGGING ||
-    !!groupDragState;
+  // // Use shared mouse tracking - track when canvas lego or group dragging is happening
+  // // Building block dragging uses its own mouse tracking via dragover events
+  // const shouldTrackMouse =
+  //   dragStateStage === DraggingStage.MAYBE_DRAGGING ||
+  //   dragStateStage === DraggingStage.DRAGGING ||
+  //   !!groupDragState;
 
-  const mousePos = useMouseTracking(shouldTrackMouse);
+  const mousePos = useCanvasStore((state) => state.mousePos);
 
   const canvasRef = useCanvasStore((state) => state.canvasRef);
 
@@ -505,6 +468,10 @@ export const DragProxy: React.FC = () => {
     }
   }, [canvasRef]);
 
+  const draggingStage = useCanvasStore(
+    (state) => state.legoDragState?.draggingStage
+  );
+
   return (
     <div
       style={{
@@ -526,12 +493,12 @@ export const DragProxy: React.FC = () => {
           )}
 
           {/* Group drag proxy */}
-          {groupDragState && (
+          {draggingStage === DraggingStage.DRAGGING && groupDragState && (
             <GroupDragProxy mousePos={mousePos} canvasRect={canvasRect} />
           )}
 
           {/* Single lego drag proxy - only show if not group dragging */}
-          {!groupDragState && (
+          {draggingStage === DraggingStage.DRAGGING && !groupDragState && (
             <SingleLegoDragProxy mousePos={mousePos} canvasRect={canvasRect} />
           )}
         </>

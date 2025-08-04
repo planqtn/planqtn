@@ -200,11 +200,12 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (import.meta.env.DEV) {
-        const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
+      const mouseWindowPoint = WindowPoint.fromMouseEvent(e);
 
+      if (import.meta.env.DEV) {
         useDebugStore.getState().setDebugMousePos(mouseWindowPoint);
       }
+      useCanvasStore.getState().setMousePos(mouseWindowPoint);
 
       // Handle resize if active
       if (resizeState.isResizing) {
