@@ -20,6 +20,9 @@ const FloatingBuildingBlocksPanel: React.FC<
       onConfigChange={onConfigChange}
       onClose={onClose}
       icon={FaCubes}
+      showHelpButton={true}
+      helpUrl="/docs/planqtn-studio/ui-controls/#building-blocks-panel"
+      helpTitle="Building Blocks Panel Help"
     >
       <BuildingBlocksPanel />
     </FloatingPanelWrapper>

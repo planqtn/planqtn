@@ -102,7 +102,7 @@ body {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(0.556 0 0);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -116,7 +116,7 @@ body {
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(0.556 0 0);
   --sidebar-ring: oklch(0.556 0 0);
 }
 
@@ -149,4 +149,51 @@ body {
 .logical-leg-interactive:hover {
   stroke: currentColor !important;
   opacity: 0.3 !important;
+}
+
+/* Ensure Chakra UI checkboxes are visible in both light and dark modes */
+.chakra-checkbox__control {
+  border-color: var(--chakra-colors-gray-300) !important;
+}
+
+.dark .chakra-checkbox__control {
+  border-color: var(--chakra-colors-gray-600) !important;
+}
+
+/* Ensure checkbox borders are visible when checked */
+.chakra-checkbox__control[data-checked] {
+  border-color: var(--chakra-colors-blue-500) !important;
+}
+
+.dark .chakra-checkbox__control[data-checked] {
+  border-color: var(--chakra-colors-blue-400) !important;
+}
+
+/* Additional checkbox styling for better visibility */
+.chakra-checkbox {
+  border: 1px solid transparent;
+}
+
+.chakra-checkbox__control {
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+/* Ensure checkbox is visible when indeterminate */
+.chakra-checkbox__control[data-indeterminate] {
+  border-color: var(--chakra-colors-blue-500) !important;
+}
+
+.dark .chakra-checkbox__control[data-indeterminate] {
+  border-color: var(--chakra-colors-blue-400) !important;
+}
+
+/* Override any potential conflicting styles */
+.chakra-checkbox__control:not([data-checked]):not([data-indeterminate]) {
+  background-color: transparent !important;
+  border-color: var(--chakra-colors-gray-300) !important;
+}
+
+.dark .chakra-checkbox__control:not([data-checked]):not([data-indeterminate]) {
+  border-color: var(--chakra-colors-gray-600) !important;
 }

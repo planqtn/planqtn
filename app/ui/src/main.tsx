@@ -16,6 +16,30 @@ const theme = extendTheme({
   },
   zIndices: {
     modal: 100000 // Ensure modals have higher z-index than modal-root
+  },
+  components: {
+    Checkbox: {
+      baseStyle: {
+        control: {
+          borderColor: "gray.300",
+          _dark: {
+            borderColor: "gray.600"
+          },
+          _checked: {
+            borderColor: "blue.500",
+            _dark: {
+              borderColor: "blue.400"
+            }
+          },
+          _indeterminate: {
+            borderColor: "blue.500",
+            _dark: {
+              borderColor: "blue.400"
+            }
+          }
+        }
+      }
+    }
   }
 });
 

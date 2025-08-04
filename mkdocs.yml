@@ -70,6 +70,7 @@ nav:
       - API Reference: planqtn/reference.md
   - PlanqTN Studio:
       - index: planqtn-studio/index.md
+      - Anatomy of a quantum LEGO: planqtn-studio/anatomy.md
       - UI Controls: planqtn-studio/ui-controls.md
       - Build tensor networks: planqtn-studio/build.md
       - Transform tensor networks: planqtn-studio/transform.md
