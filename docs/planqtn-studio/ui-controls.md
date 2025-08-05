@@ -19,7 +19,7 @@ Ctrl + mouse wheel and **panning** with Alt + mousedrag. The collapsible minimap
 shows the content in a gray rectangle, with a red rectangle showing the
 currently selected part of the content.
 
-<div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1106954448?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0&share=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="canvas_zoom_video"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+<div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1106954448?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0&share=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="canvas_zoom_video"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 ### The user menu
 
@@ -84,6 +84,17 @@ With the panel toolbar the user can control the visibility of the
 <img src="/docs/fig/panel_toolbar.png" width="50%">
 </center>
 
+### Hotkeys
+
+| Hotkey             | Action                                                                 | Category              |
+| ------------------ | ---------------------------------------------------------------------- | --------------------- |
+| f                  | fuse LEGO                                                              | subnet transformation |
+| p                  | pull out same colored leg                                              | ZX transformation     |
+| Ctrl+A / Cmd+A     | select all LEGOs on canvas                                             | Canvas controls       |
+| Ctrl+C / Cmd+C     | copy selected LEGOs and their internal connections                     | Canvas controls       |
+| Ctrl+V / Cmd+V     | paste copied LEGOs and their internal connections at the mouse pointer | Canvas controls       |
+| Delete / Backspace | delete selected LEGOs and their internal and external connections      | Canvas controls       |
+
 ## Building Blocks Panel
 
 PlanqTN supports two types of building blocks, tensors and networks. They can be
@@ -91,7 +102,7 @@ accessed through the Building Blocks Panel accordion, Tensors on the top and
 Networks on the bottom.
 
 Tensors can be dragged from the Building Blocks Panel, to the canvas. See more
-details on the supported legos in [Build tensor networks](./build.md).
+details on the supported LEGOs in [Build tensor networks](./build.md).
 
 <center>
 <img src="/docs/fig/building_blocks_tensors.png" width="50%">
@@ -126,9 +137,78 @@ clicking the New Canvas button. The Canvases panel can be activated from the
 
 ## Details Panel
 
-!!! warning
+The Details Panel gives an overview of the canvas, the selected LEGO or the
+selected subnetwork.
 
-    Under construction [TODO: finish]
+For the canvas it shows the number of LEGOs.
+
+<center>
+<img src="/docs/fig/details-panel_canvas.png" width="70%">
+</center>
+
+For LEGOs and subnetworks it has 4 sections:
+
+1. **The toolbar**, with actions enabled specific to the selection. This is the
+   same as the [Floating toolbar](#floating-toolbar) next the selections when
+   it's enabled.
+2. **The Info panel**, with some details about the LEGO/subnetwork, allowing for
+   renaming the LEGO/subnetwork.
+3. The collapsible **Parity Check Matrix section** - for LEGOs, this has the
+   default parity check matrix. For a subnet the parity check matrix calculation
+   has to be requested and stored. This action caches the subnet and names it by
+   default by the number of LEGOs (of course the name can be changed
+   afterwards). The
+   [Parity Check Matrix widget](#the-parity-check-matrix-widget) is interactive,
+   and allows for highlighting connections / dangling legs and reconfiguring the
+   generators.
+4. The collapsible **Weight enumerator calculations section** - when
+   [calculating weight enumerators](./analyze.md#weight-enumerator-polynomial-calculations),
+   new tasks and their results appear here. They can be deleted and collapsed.
+
+<center>
+<img src="/docs/fig/details-panel-lego.png" width="70%">
+</center>
+
+### The Parity Check Matrix widget
+
+The Parity Check Matrix widget is an interactive tool to explore the Pauli
+stabilizers of a stabilizer state or subspace. It shows when the given
+stabilizer generators are CSS or non-CSS. It provides its own menu for
+interactions and allows for certain sorting the generators, combining the
+generators, selecting them for highlights in the tensor network and navigating
+to the columns corresponding to the LEGOs with the given legs.
+
+In these example video snippets we'll walk you through these.
+
+1. In this video we show the parity check matrix of a LEGO on the details panel
+   and then calculate the parity check matrix for a subnet, and name it My
+   network. Then we show how clicking with Alt + Click can give a temporary
+   highlight and navigation to the corresponding LEGO:
+     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107465592?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Parity Check Matrix for LEGOs and a subnet + navigation"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+2. Then, using the menu of the PCM widget, we'll CSS sort the generators, and
+   then we sort them by stabilizer weight. Dragging the rows, we recombine the
+   generators, while the weight label gets automatically updated. Finally, we
+   reset the by hitting "Recalculate".
+     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107473285?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="pcm_02_menu_sort_reset"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+3. We create a subspace tensor network with the identity stopper and copy the
+   PCM as a numpy array as well as a
+   [QDistRnd](https://github.com/QEC-pages/QDistRnd) instruction for distance
+   calculation.<div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107481001?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="pcm_03_menu_np_and_gap"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+4. Highlighting the tensor network is possible through LEGO-level row selections
+
+    1. by single click on a row - selects/unselects a single row
+    2. Ctrl+Click / Cmd + Click on a row adds/removes the row to/from the
+       selection
+    3. Clearing the selection is also possible by using the Clear highlights
+       button on the toolbar from the Details Panel
+       <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107484255?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight LEGO legs"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+
+5. Highlight the tensor network using tensor network level stabilizer generator
+   is possible for the dangling legs as of now, internal legs have to be
+   manually highlighted currently, track
+   [Github issue #129](https://github.com/planqtn/planqtn/issues/129) for
+   updates on automated internal leg highlights.
+     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107487481?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight dangling legs of tensor network"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 ## Subnets Panel
 

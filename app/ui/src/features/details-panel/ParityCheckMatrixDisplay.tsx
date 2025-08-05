@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
-import { FaEllipsisV } from "react-icons/fa";
+import { FaEllipsisV, FaQuestion } from "react-icons/fa";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork.ts";
 import { FixedSizeList as List } from "react-window";
 import { useCanvasStore } from "@/stores/canvasStateStore.ts";
@@ -293,6 +293,7 @@ export const ParityCheckMatrixDisplay: React.FC<
   lego
 }) => {
   const [draggedRowIndex] = useState<number | null>(null);
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
   const setError = useCanvasStore((state) => state.setError);
   const focusOnTensorNetwork = useCanvasStore(
     (state) => state.focusOnTensorNetwork
@@ -791,6 +792,18 @@ export const ParityCheckMatrixDisplay: React.FC<
             variant="outline"
             onClick={() => {
               onRowSelectionChange?.([]);
+            }}
+          />
+          <IconButton
+            icon={<FaQuestion />}
+            aria-label="Help"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              openHelpDialog(
+                "docs/planqtn-studio/ui-controls/#the-parity-check-matrix-widget",
+                "Parity Check Matrix Widget Help"
+              );
             }}
           />
         </HStack>

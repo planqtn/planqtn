@@ -8,7 +8,7 @@ Zero installation calculations (studio): PlanqTN Studio is deployed as a cloud
 native architecture on Google Cloud and Supabase, and you can run small
 calculations for free, forever!
 
-## Calculate Pauli stabilizers (parity check matrix) of a tensor network
+## Calculate Pauli stabilizers of a tensor network
 
 Select LEGOs and hit Calculate Parity check matrix.
 
