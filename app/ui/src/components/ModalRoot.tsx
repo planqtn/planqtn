@@ -20,6 +20,7 @@ import { QuotasModal } from "@/features/quotas/QuotasModal";
 import { DynamicLegoDialog } from "@/features/building-blocks-panel/DynamicLegoDialog";
 import { PythonCodeModal } from "@/features/python-export/PythonCodeModal";
 import HelpModal from "@/features/help-modal/HelpModal";
+import { usePanelConfigStore } from "@/stores/panelConfigStore";
 
 interface ModalRootProps {
   // Weight enumerator dependencies
@@ -78,6 +79,9 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
     setShowPythonCodeModal,
     pythonCode
   } = useCanvasStore();
+  const openWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.openWeightEnumeratorPanel
+  );
 
   const toast = useToast();
 
@@ -190,9 +194,17 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
       return;
     }
 
-    await useCanvasStore
+    const { cachedTensorNetwork, weightEnumerator } = await useCanvasStore
       .getState()
       .calculateWeightEnumerator(currentUser!, toast, truncateLength, openLegs);
+    console.log("weightEnumerator", weightEnumerator);
+    console.log("cachedTensorNetwork", cachedTensorNetwork);
+    if (weightEnumerator && cachedTensorNetwork) {
+      openWeightEnumeratorPanel(
+        weightEnumerator.taskId!,
+        "WEP for " + cachedTensorNetwork.name
+      );
+    }
   };
 
   return ReactDOM.createPortal(

@@ -9,16 +9,18 @@ exploring all the building blocks.
 
 ## Basic canvas interactions
 
--   **Dragging LEGOs**: The user can add a lego to the canvas by dragging it
+-   **Dragging LEGOs**: The user can add a LEGO to the canvas by dragging it
     from the [Building blocks panel](./ui-controls.md#building-blocks-panel).
 -   **Selecting LEGOs**:
-    -   clicking on a lego selects it, details of the lego can be viewed in the
+    -   clicking on a LEGO selects it, details of the LEGO can be viewed in the
         [Details panel](./ui-controls.md#details-panel)
     -   click and drag on the canvas, will start the selection box, covered
-        legos are selected
+        LEGOs are selected
     -   Shift + click adds to/removes from the active the selection
+    -   Clicking on a selected LEGO selects the connected component of that
+        LEGO - very useful for selecting tensor networks
 -   **Cloning LEGOs**:
-    -   Shift + mouse drag will clone a lego or a selected set of legos
+    -   Shift + mouse drag will clone a LEGO or a selected set of LEGOs
     -   selected LEGOs can be copy-pasted as well, after hitting Ctrl+C (Cmd+C
         on MacOSX) and pointing the mouse to the desired location on the canvas,
         Cltr+V (Cmd+V) will paste the content to the canvas. This works across
@@ -28,11 +30,11 @@ exploring all the building blocks.
 
 The following are the categories of predefined tensors:
 
--   rank-1 tensors which are basically states or subspaces called "stoppers"
--   the rank-2 (two legged) tensors
--   dynamic Z/X tensors
--   the [[4,2,2]] code's encoding tensor and its variants
--   other higher rank tensors.
+-   Rank-1 tensors which are basically states or subspaces called "stoppers".
+-   The rank-2 (two legged) tensors.
+-   Dynamic Z/X tensors.
+-   The [[4,2,2]] code's encoding tensor and its variants.
+-   Other higher rank tensors.
 
 ### Stoppers
 
@@ -73,7 +75,7 @@ The rank-2 (two-legged) tensors are:
     transformations on them (e.g. pull out a leg of same color)
 
 <center>
-<img src="/docs/fig/rank-2-legos.png" width="50%">
+<img src="/docs/fig/rank-2-LEGOs.png" width="50%">
 </center>
 
 !!! tip
@@ -86,18 +88,18 @@ These are the repetition codes, and are also completely equivalent definitions
 to the X and Z spiders in ZX calculus.
 
 <center>
-<img src="/docs/fig/zx-legos.png" width="50%">
+<img src="/docs/fig/zx-LEGOs.png" width="50%">
 </center>
 
-When these legos are dragged on the canvas, the distance can be entered and a
-lego with that many legs will be created.
+When these LEGOs are dragged on the canvas, the distance can be entered and a
+LEGO with that many legs will be created.
 
 ### The [[4,2,2]] code LEGOs
 
 The [[4,2,2]] code plays a special role as it was the first LEGO to describe the
 surface code, the toric code, the rotated surface code, Bacon-Shor codes. These
 codes leverage the hand-built SVG design capability of PlanqTN (see
-[source](https://github.com/planqtn/planqtn/tree/main/app/ui/src/features/lego/svg-legos))
+[source](https://github.com/planqtn/planqtn/tree/main/app/ui/src/features/LEGO/svg-LEGOs))
 to follow closely the original paper's intuitive design.
 
 <center>
@@ -132,7 +134,7 @@ Creating a custom LEGO is as easy as providing the parity check matrix and
 specifying the logical legs after dragging the custom LEGO to the canvas:
 
 <center>
-<img src="/docs/fig/custom-lego.png" width="50%">
+<img src="/docs/fig/custom-LEGO.png" width="50%">
 </center>
 
 ## Automated network layouts
@@ -143,7 +145,7 @@ This tensor network layout compiles a parity check matrix for a CSS stabilizer
 code into a layout as defined in Fig 6 of the following work:
 
     Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
-    “Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+    “Quantum LEGO Expansion Pack: Enumerators from Tensor Networks.”
     PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 
 For example, for the [[4,2,2]] code the user would enter:
@@ -183,7 +185,7 @@ stabilizer codes, and a such it is a universal stabilizer code layout based on
 
 ```
 Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
-“Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+“Quantum LEGO Expansion Pack: Enumerators from Tensor Networks.”
 PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 ```
 
@@ -218,7 +220,7 @@ The Measurement State Prep (MSP) layout is a universal layout defined in
 
 ```
 Cao, ChunJun, Michael J. Gullans, Brad Lackey, and Zitao Wang. 2024.
-“Quantum Lego Expansion Pack: Enumerators from Tensor Networks.”
+“Quantum LEGO Expansion Pack: Enumerators from Tensor Networks.”
 PRX Quantum 5 (3): 030313. https://doi.org/10.1103/PRXQuantum.5.030313.
 ```
 

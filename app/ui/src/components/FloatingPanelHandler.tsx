@@ -8,6 +8,7 @@ import FloatingDetailsPanel from "../features/details-panel/FloatingDetailsPanel
 import FloatingCanvasesPanel from "../features/canvases-panel/FloatingCanvasesPanel";
 import FloatingSubnetsPanel from "../features/subnets-panel/FloatingSubnetsPanel";
 import FloatingPCMPanel from "../features/pcm-panel/FloatingPCMPanel";
+import FloatingWeightEnumeratorPanel from "../features/weight-enumerator-panel/FloatingWeightEnumeratorPanel";
 
 // Individual panel components that only subscribe to their own configs
 const TaskPanelWrapper: React.FC = () => {
@@ -159,6 +160,24 @@ const SingleLegoPCMPanelsWrapper: React.FC = () => {
   );
 };
 
+const WeightEnumeratorPanelsWrapper: React.FC = () => {
+  const openWeightEnumeratorPanels = usePanelConfigStore(
+    (state) => state.openWeightEnumeratorPanels
+  );
+
+  return (
+    <>
+      {Object.entries(openWeightEnumeratorPanels).map(([taskId, config]) => (
+        <WeightEnumeratorPanelWrapper
+          key={taskId}
+          taskId={taskId}
+          config={config}
+        />
+      ))}
+    </>
+  );
+};
+
 const PCMPanelWrapper: React.FC<{
   networkSignature: string;
   config: FloatingPanelConfigManager;
@@ -230,6 +249,51 @@ const SingleLegoPCMPanelWrapper: React.FC<{
   );
 };
 
+const WeightEnumeratorPanelWrapper: React.FC<{
+  taskId: string;
+  config: FloatingPanelConfigManager;
+}> = ({ taskId, config }) => {
+  const updateWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.updateWeightEnumeratorPanel
+  );
+  const removeWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.removeWeightEnumeratorPanel
+  );
+  const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
+
+  // Find the weight enumerator and its network signature
+  let weightEnumerator = null;
+  let tensorNetworkSignature = "";
+
+  // Search through all weight enumerators to find the one with this taskId
+  for (const [signature, enumerators] of Object.entries(weightEnumerators)) {
+    const found = enumerators.find(
+      (enumerator) => enumerator.taskId === taskId
+    );
+    if (found) {
+      weightEnumerator = found;
+      tensorNetworkSignature = signature;
+      break;
+    }
+  }
+
+  if (!weightEnumerator) {
+    return null; // Weight enumerator not found, don't render panel
+  }
+
+  return (
+    <FloatingWeightEnumeratorPanel
+      config={config}
+      onConfigChange={(newConfig) =>
+        updateWeightEnumeratorPanel(taskId, newConfig)
+      }
+      onClose={() => removeWeightEnumeratorPanel(taskId)}
+      taskId={taskId}
+      taskName={config.title}
+    />
+  );
+};
+
 const FloatingPanelHandler: React.FC = () => {
   const droppedLegos = useCanvasStore((state) => state.droppedLegos);
   const cachedTensorNetworks = useCanvasStore(
@@ -239,10 +303,17 @@ const FloatingPanelHandler: React.FC = () => {
   const openSingleLegoPCMPanels = usePanelConfigStore(
     (state) => state.openSingleLegoPCMPanels
   );
+  const openWeightEnumeratorPanels = usePanelConfigStore(
+    (state) => state.openWeightEnumeratorPanels
+  );
   const removePCMPanel = usePanelConfigStore((state) => state.removePCMPanel);
   const removeSingleLegoPCMPanel = usePanelConfigStore(
     (state) => state.removeSingleLegoPCMPanel
   );
+  const removeWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.removeWeightEnumeratorPanel
+  );
+  const weightEnumerators = useCanvasStore((state) => state.weightEnumerators);
 
   // Clean up PCM panels when tensor networks are removed
   useEffect(() => {
@@ -270,6 +341,31 @@ const FloatingPanelHandler: React.FC = () => {
     });
   }, [droppedLegos, openSingleLegoPCMPanels, removeSingleLegoPCMPanel]);
 
+  // Clean up weight enumerator panels when weight enumerators are removed
+  useEffect(() => {
+    const availableTaskIds = new Set<string>();
+
+    // Collect all available task IDs from weight enumerators
+    Object.values(weightEnumerators).forEach((enumerators) => {
+      enumerators.forEach((enumerator) => {
+        if (enumerator.taskId) {
+          availableTaskIds.add(enumerator.taskId);
+        }
+      });
+    });
+
+    // Close weight enumerator panels for tasks that no longer exist
+    Object.keys(openWeightEnumeratorPanels).forEach((taskId) => {
+      if (!availableTaskIds.has(taskId)) {
+        removeWeightEnumeratorPanel(taskId);
+      }
+    });
+  }, [
+    openWeightEnumeratorPanels,
+    removeWeightEnumeratorPanel,
+    weightEnumerators
+  ]);
+
   return (
     <>
       <TaskPanelWrapper />
@@ -279,6 +375,7 @@ const FloatingPanelHandler: React.FC = () => {
       <SubnetsPanelWrapper />
       <PCMPanelsWrapper />
       <SingleLegoPCMPanelsWrapper />
+      <WeightEnumeratorPanelsWrapper />
     </>
   );
 };

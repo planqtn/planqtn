@@ -184,12 +184,12 @@ In these example video snippets we'll walk you through these.
    and then calculate the parity check matrix for a subnet, and name it My
    network. Then we show how clicking with Alt + Click can give a temporary
    highlight and navigation to the corresponding LEGO:
-     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107465592?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Parity Check Matrix for LEGOs and a subnet + navigation"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+      <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107465592?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Parity Check Matrix for LEGOs and a subnet + navigation"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 2. Then, using the menu of the PCM widget, we'll CSS sort the generators, and
    then we sort them by stabilizer weight. Dragging the rows, we recombine the
    generators, while the weight label gets automatically updated. Finally, we
    reset the by hitting "Recalculate".
-     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107473285?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="pcm_02_menu_sort_reset"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+      <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107473285?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="pcm_02_menu_sort_reset"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 3. We create a subspace tensor network with the identity stopper and copy the
    PCM as a numpy array as well as a
    [QDistRnd](https://github.com/QEC-pages/QDistRnd) instruction for distance
@@ -201,20 +201,18 @@ In these example video snippets we'll walk you through these.
        selection
     3. Clearing the selection is also possible by using the Clear highlights
        button on the toolbar from the Details Panel
-       <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107484255?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight LEGO legs"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+        <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107484255?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight LEGO legs"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 5. Highlight the tensor network using tensor network level stabilizer generator
    is possible for the dangling legs as of now, internal legs have to be
    manually highlighted currently, track
    [Github issue #129](https://github.com/planqtn/planqtn/issues/129) for
    updates on automated internal leg highlights.
-     <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107487481?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight dangling legs of tensor network"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+      <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107487481?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight dangling legs of tensor network"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 ## Subnets Panel
 
-!!! warning
-
-    Under construction [TODO: finish]
+Calculations are
 
 ## Floating Toolbar
 
