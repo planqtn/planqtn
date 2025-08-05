@@ -696,26 +696,16 @@ export const useTensorNetworkSlice: StateCreator<
 
       // Check for HTTP error status codes
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch {
-          // If we can't parse the error response, use the raw text
-          if (errorText) {
-            errorMessage = errorText;
-          }
-        }
+        const data = await response.json();
+        let errorMessage = `HTTP ${response.status}: ${data.error}`;
+
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
 
       if (data.status === "error") {
-        throw new Error(data.message);
+        throw new Error(data.error);
       }
 
       const taskId = data.task_id;
@@ -773,6 +763,7 @@ export const useTensorNetworkSlice: StateCreator<
       }
 
       get().setError(`Failed to calculate weight enumerator: ${errorMessage}`);
+
       return {
         cachedTensorNetwork: get().getCachedTensorNetwork(
           tensorNetwork.signature
