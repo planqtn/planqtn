@@ -1480,5 +1480,221 @@ describe("CanvasStateSerializer", () => {
       const rehydrated = await serializer.rehydrate(JSON.stringify(serialized));
       expect(rehydrated.cachedTensorNetworks).toEqual({});
     });
+
+    it("should properly rehydrate cachedTensorNetworks from compressed URL format", async () => {
+      // Add debugging to understand the issue
+      console.log("=== DEBUGGING CACHED TENSOR NETWORKS ===");
+      // Create a mock cached tensor network
+      const mockCachedTensorNetwork = {
+        isActive: true,
+        tensorNetwork: {
+          legos: [
+            {
+              instance_id: "lego-1",
+              type_id: "h",
+              logicalPosition: { x: 100, y: 200 },
+              parity_check_matrix: [
+                [1, 0],
+                [0, 1]
+              ],
+              logical_legs: [0, 1],
+              gauge_legs: [],
+              short_name: "H",
+              is_dynamic: false,
+              parameters: {},
+              selectedMatrixRows: [],
+              highlightedLegConstraints: []
+            }
+          ],
+          connections: [
+            {
+              from: { legoId: "lego-1", leg_index: 0 },
+              to: { legoId: "lego-2", leg_index: 1 }
+            }
+          ],
+          signature: "test-signature-123"
+        },
+        svg: "<svg><rect width='100%' height='100%' fill='blue'/></svg>",
+        name: "Test Network",
+        isLocked: false,
+        lastUpdated: new Date("2023-01-01T00:00:00.000Z")
+      } as unknown as CachedTensorNetwork;
+
+      const mockStore = createMockCanvasStore({
+        cachedTensorNetworks: {
+          "test-signature-123": mockCachedTensorNetwork
+        }
+      });
+
+      // Test the full compressed URL pipeline
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+      console.log("Compressed state cachedTensorNetworks:", compressed[14]);
+
+      const urlEncoded = serializer.encodeCompressedForUrl(compressed);
+      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
+      console.log("URL decoded cachedTensorNetworks:", urlDecoded[14]);
+
+      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+      console.log(
+        "Final state cachedTensorNetworks:",
+        finalState.cachedTensorNetworks
+      );
+
+      const rehydrated = await serializer.rehydrate(JSON.stringify(finalState));
+      console.log(
+        "Rehydrated cachedTensorNetworks:",
+        rehydrated.cachedTensorNetworks
+      );
+
+      // This should work - cachedTensorNetworks should be properly rehydrated
+      expect(rehydrated.cachedTensorNetworks).toHaveProperty(
+        "test-signature-123"
+      );
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].isActive
+      ).toBe(true);
+      expect(rehydrated.cachedTensorNetworks["test-signature-123"].name).toBe(
+        "Test Network"
+      );
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].tensorNetwork
+          .signature
+      ).toBe("test-signature-123");
+      expect(
+        rehydrated.cachedTensorNetworks["test-signature-123"].lastUpdated
+      ).toBeInstanceOf(Date);
+
+      // Verify the non-compressed pipeline also works
+      const serialized = serializer.toSerializableCanvasState(mockStore);
+      const directRehydrated = await serializer.rehydrate(
+        JSON.stringify(serialized)
+      );
+      expect(directRehydrated.cachedTensorNetworks).toHaveProperty(
+        "test-signature-123"
+      );
+    });
+
+    it("should properly handle cachedTensorNetworks in compressed format conversion", () => {
+      // Create a mock cached tensor network
+      const mockCachedTensorNetwork = {
+        isActive: true,
+        tensorNetwork: {
+          legos: [
+            {
+              instance_id: "lego-1",
+              type_id: "h",
+              logicalPosition: { x: 100, y: 200 },
+              parity_check_matrix: [
+                [1, 0],
+                [0, 1]
+              ],
+              logical_legs: [0, 1],
+              gauge_legs: [],
+              short_name: "H",
+              is_dynamic: false,
+              parameters: {},
+              selectedMatrixRows: [],
+              highlightedLegConstraints: []
+            }
+          ],
+          connections: [
+            {
+              from: { legoId: "lego-1", leg_index: 0 },
+              to: { legoId: "lego-2", leg_index: 1 }
+            }
+          ],
+          signature: "test-signature-123"
+        },
+        svg: "<svg><rect width='100%' height='100%' fill='blue'/></svg>",
+        name: "Test Network",
+        isLocked: false,
+        lastUpdated: new Date("2023-01-01T00:00:00.000Z")
+      } as unknown as CachedTensorNetwork;
+
+      const mockStore = createMockCanvasStore({
+        cachedTensorNetworks: {
+          "test-signature-123": mockCachedTensorNetwork
+        }
+      });
+
+      // Test compressed format conversion
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+      expect(compressed[14]).toBeDefined(); // cachedTensorNetworks should be present
+      expect(compressed[14]!).toHaveLength(1);
+      expect(compressed[14]![0][0]).toBe("test-signature-123"); // key
+      expect(compressed[14]![0][1].name).toBe("Test Network"); // value.name
+
+      // Test decompression
+      const decompressed = serializer.fromCompressedCanvasState(compressed);
+      expect(decompressed.cachedTensorNetworks).toHaveLength(1);
+      expect(decompressed.cachedTensorNetworks[0].key).toBe(
+        "test-signature-123"
+      );
+      expect(decompressed.cachedTensorNetworks[0].value.name).toBe(
+        "Test Network"
+      );
+    });
+
+    it("should include cachedTensorNetworks in shared URL format", () => {
+      // Create a mock cached tensor network
+      const mockCachedTensorNetwork = {
+        isActive: true,
+        tensorNetwork: {
+          legos: [
+            {
+              instance_id: "lego-1",
+              type_id: "h",
+              logicalPosition: { x: 100, y: 200 },
+              parity_check_matrix: [
+                [1, 0],
+                [0, 1]
+              ],
+              logical_legs: [0, 1],
+              gauge_legs: [],
+              short_name: "H",
+              is_dynamic: false,
+              parameters: {},
+              selectedMatrixRows: [],
+              highlightedLegConstraints: []
+            }
+          ],
+          connections: [
+            {
+              from: { legoId: "lego-1", leg_index: 0 },
+              to: { legoId: "lego-2", leg_index: 1 }
+            }
+          ],
+          signature: "test-signature-123"
+        },
+        svg: "<svg><rect width='100%' height='100%' fill='blue'/></svg>",
+        name: "Test Network",
+        isLocked: false,
+        lastUpdated: new Date("2023-01-01T00:00:00.000Z")
+      } as unknown as CachedTensorNetwork;
+
+      const mockStore = createMockCanvasStore({
+        cachedTensorNetworks: {
+          "test-signature-123": mockCachedTensorNetwork
+        }
+      });
+
+      // Test the sharing format using the new forSharing parameter
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      // Test URL encoding/decoding
+      const urlEncoded = serializer.encodeCompressedForUrl(compressed);
+      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
+      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+
+      // Verify cachedTensorNetworks are included
+      expect(finalState.cachedTensorNetworks).toHaveLength(1);
+      expect(finalState.cachedTensorNetworks[0].key).toBe("test-signature-123");
+      expect(finalState.cachedTensorNetworks[0].value.name).toBe(
+        "Test Network"
+      );
+
+      // Verify title is handled correctly for shared URLs
+      expect(finalState.title).toBe("Test Canvas"); // Should use fallback for empty title
+    });
   });
 });
