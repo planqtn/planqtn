@@ -59,7 +59,7 @@ export async function runCommand(
     }
 
     const proc = spawn(command, args, {
-      shell: true,
+      shell: false,
 
       cwd: options.cwd,
       env: options.env,
@@ -136,13 +136,13 @@ export async function copyDir(
   options: { verbose?: boolean } = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const fullCommand = `rsync -av --delete ${src}/ ${dest}/`;
+    const fullCommand = `rsync -a --delete ${src}/ ${dest}/`;
     if (options.verbose) {
       console.log(`\nExecuting: ${fullCommand}`);
     }
 
-    const proc = spawn("rsync", ["-av", "--delete", src + "/", dest + "/"], {
-      shell: true,
+    const proc = spawn("rsync", ["-a", "--delete", src + "/", dest + "/"], {
+      shell: false,
       stdio: [
         "pipe",
         options.verbose ? "inherit" : "pipe",

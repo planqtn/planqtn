@@ -1,15 +1,46 @@
 # UI Controls
 
-## Canvas controls
+## The Canvas
 
-The tensors are on an infinite canvas that allows users to zoom with Ctrl +
-mousewheel and drag (with Alt + drag). The collapsible minimap shows the content
-in gray box with a red rectangle showing the currently selected part of the
-tensornetwork.
+The canvas is an infinitely large space, that allows users to construct tensor
+networks freely. It was designed to hold multiple tensor networks so that users
+can create, clone, modify, analyze and compare multiple constructions on the
+same workspace. On the top right the users will see the
+[User menu](#the-user-menu), link to the [Documentation](#documentation) and
+[Share the canvas](#sharing-the-canvas) buttons. The [Canvas menu](#canvas-menu)
+and the [Panel toolbar](#panel-toolbar) are on the top left corner and the
+canvas minimap is on the bottom right corner to facilitate
+[Navigating the canvas](#navigating-the-canvas).
+
+### Navigating the canvas
+
+The canvas can grow large, and so navigation is facilitated by **zoom** - using
+Ctrl + mouse wheel and **panning** with Alt + mousedrag. The collapsible minimap
+shows the content in a gray rectangle, with a red rectangle showing the
+currently selected part of the content.
 
 <div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1106954448?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&autoplay=1&loop=1&unmute_button=0&byline=0&portrait=0&share=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="canvas_zoom_video"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
-## Canvas menu
+### The user menu
+
+<center>
+<img src="/docs/fig/user_menu.png" width="25%">
+</center>
+
+The user menu allows for signing up and signing in via Github and Google
+accounts, and signing out. See [FAQ](../faq.md) for what features require
+authentication. Only the email address of the user is stored, no other
+information is used from the accounts.
+
+This menu also allows to investigate the monthly quota left for the user. See
+[Cloud Runtimes](./runtimes.md/#free-planqtn-cloud-runtime) to understand how
+quotas work.
+
+### Sharing the canvas
+
+### Documentation
+
+### Canvas menu
 
 To find the canvas menu, hit the triple-dot button on the top left of the
 canvas.
@@ -18,25 +49,25 @@ canvas.
 <img src="/docs/fig/canvas_menu.png" width="50%">
 </center>
 
-### Canvas menu - Display settings
+#### Canvas menu - Display settings
 
 <center>
 <img src="/docs/fig/canvas_menu_display_settings.png" width="50%">
 </center>
 
-### Canvas menu - Panel settings
+#### Canvas menu - Panel settings
 
 <center>
 <img src="/docs/fig/canvas_menu_panel_settings.png" width="50%">
 </center>
 
-### Canvas menu - Export
+#### Canvas menu - Export
 
 <center>
 <img src="/docs/fig/canvas_menu_export.png" width="50%">
 </center>
 
-## Panel Toolbar
+### Panel Toolbar
 
 With the panel toolbar the user can control the visibility of the
 

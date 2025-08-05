@@ -341,8 +341,8 @@ const LegoStudioView: React.FC = () => {
 
   const handleHelpClick = () => {
     openHelpDialog(
-      "/docs/planqtn-studio/ui-controls/#canvas-controls",
-      "Canvas Controls Help"
+      "/docs/planqtn-studio/ui-controls/#the-canvas",
+      "Canvas Help"
     );
   };
 

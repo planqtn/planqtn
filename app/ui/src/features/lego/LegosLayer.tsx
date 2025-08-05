@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useVisibleLegoIds } from "../../hooks/useVisibleLegos";
 import { LogicalPoint } from "../../types/coordinates";
@@ -242,79 +242,14 @@ export const LegosLayer: React.FC = () => {
     ? calculateBoundingBoxForLegos(resizeProxyLegos)
     : null;
 
-  // Track mouse position for drag operations (same as DragProxy)
-  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
-  const animationFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const shouldTrackMouse =
-      legoDragState.draggingStage === DraggingStage.DRAGGING &&
-      (!!groupDragState || !!legoDragState.draggedLegoInstanceId);
-
-    if (import.meta.env.VITE_ENV === "debug") {
-      console.log("Mouse tracking effect:", {
-        shouldTrackMouse,
-        draggingStage: legoDragState.draggingStage,
-        hasGroupDrag: !!groupDragState,
-        hasSingleDrag: !!legoDragState.draggedLegoInstanceId
-      });
-    }
-
-    if (!shouldTrackMouse) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const newMousePos = WindowPoint.fromMouseEvent(e);
-        setMousePos(newMousePos);
-        if (import.meta.env.VITE_ENV === "debug") {
-          console.log(
-            "Mouse pos updated:",
-            newMousePos,
-            "shouldTrack:",
-            shouldTrackMouse,
-            "draggingStage:",
-            legoDragState.draggingStage,
-            "hasGroupDrag:",
-            !!groupDragState,
-            "hasSingleDrag:",
-            !!legoDragState.draggedLegoInstanceId
-          );
-        }
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [legoDragState.draggingStage, groupDragState]);
+  const mousePos = useCanvasStore((state) => state.mousePos);
 
   // Calculate bounding box for dragged legos with their current positions
   const setDragOffset = useCanvasStore((state) => state.setDragOffset);
 
   const draggedLegosBoundingBoxLogical = useMemo(() => {
     if (draggedLegos.length === 0) {
-      setDragOffset(null);
       return null;
-    }
-
-    if (import.meta.env.VITE_ENV === "debug") {
-      console.log("Calculating dragged legos bounding box:", {
-        draggedLegosCount: draggedLegos.length,
-        groupDragState: !!groupDragState,
-        singleDragId: legoDragState.draggedLegoInstanceId,
-        mousePos,
-        draggingStage: legoDragState.draggingStage,
-        startMousePoint: legoDragState.startMouseWindowPoint,
-        startLegoPoint: legoDragState.startLegoLogicalPoint
-      });
     }
 
     // Calculate the delta from original positions to current positions (same logic as DragProxy)
@@ -359,94 +294,49 @@ export const LegosLayer: React.FC = () => {
       // Convert back to logical position for bounding box calculation
       const newLogicalPos = viewport.fromCanvasToLogical(proxyCanvasPos);
 
-      if (import.meta.env.VITE_ENV === "debug") {
-        console.log("Single lego drag calculation:", {
-          originalPos: lego.logicalPosition,
-          newLogicalPos,
-          mouseStartingGrabDeltaWindow,
-          proxyCanvasPos,
-          mousePos
-        });
-      }
-
       const updatedLego = lego.with({
         logicalPosition: newLogicalPos
       });
 
-      const boundingBox = calculateBoundingBoxForLegos([updatedLego]);
-
-      // Calculate drag offset for floating panels
-      const originalBoundingBox = calculateBoundingBoxForLegos([lego]);
-      if (originalBoundingBox && boundingBox) {
-        const originalCenter = new LogicalPoint(
-          originalBoundingBox.minX + originalBoundingBox.width / 2,
-          originalBoundingBox.minY + originalBoundingBox.height / 2
-        );
-        const newCenter = new LogicalPoint(
-          boundingBox.minX + boundingBox.width / 2,
-          boundingBox.minY + boundingBox.height / 2
-        );
-        const originalCanvasPos = viewport.fromLogicalToCanvas(originalCenter);
-        const newCanvasPos = viewport.fromLogicalToCanvas(newCenter);
-        const offset = {
-          x: newCanvasPos.x - originalCanvasPos.x,
-          y: newCanvasPos.y - originalCanvasPos.y
-        };
-        setDragOffset(offset);
-      }
-
-      return boundingBox;
-    }
-
-    // Handle group drag (multiple legos)
-    if (groupDragState && groupDragState.originalPositions) {
-      // Create legos with updated positions for bounding box calculation (same as DragProxy)
-      const legosWithUpdatedPositions = draggedLegos.map((lego) => {
-        const originalPos = groupDragState.originalPositions[lego.instance_id];
-        if (originalPos) {
-          return lego.with({
-            logicalPosition: originalPos.plus(deltaLogical)
-          });
-        }
-        return lego;
-      });
-
-      const boundingBox = calculateBoundingBoxForLegos(
-        legosWithUpdatedPositions
-      );
-
-      // Calculate drag offset for floating panels
-      const originalBoundingBox = calculateBoundingBoxForLegos(draggedLegos);
-      if (originalBoundingBox && boundingBox) {
-        const originalCenter = new LogicalPoint(
-          originalBoundingBox.minX + originalBoundingBox.width / 2,
-          originalBoundingBox.minY + originalBoundingBox.height / 2
-        );
-        const newCenter = new LogicalPoint(
-          boundingBox.minX + boundingBox.width / 2,
-          boundingBox.minY + boundingBox.height / 2
-        );
-        const originalCanvasPos = viewport.fromLogicalToCanvas(originalCenter);
-        const newCanvasPos = viewport.fromLogicalToCanvas(newCenter);
-        const offset = {
-          x: newCanvasPos.x - originalCanvasPos.x,
-          y: newCanvasPos.y - originalCanvasPos.y
-        };
-        setDragOffset(offset);
-      }
-
-      return boundingBox;
+      return calculateBoundingBoxForLegos([updatedLego]);
     }
 
     return calculateBoundingBoxForLegos(draggedLegos);
-  }, [
-    draggedLegos,
-    groupDragState,
-    legoDragState,
-    viewport,
-    mousePos,
-    setDragOffset
-  ]);
+  }, [draggedLegos, groupDragState, legoDragState, viewport, mousePos]);
+
+  // Handle drag offset updates in a separate effect to avoid setState during render
+  useEffect(() => {
+    if (draggedLegos.length === 0) {
+      setDragOffset(null);
+      return;
+    }
+
+    const draggedLegosBoundingBox = draggedLegosBoundingBoxLogical;
+    if (!draggedLegosBoundingBox) {
+      setDragOffset(null);
+      return;
+    }
+
+    // Calculate drag offset for floating panels
+    const originalBoundingBox = calculateBoundingBoxForLegos(draggedLegos);
+    if (originalBoundingBox && draggedLegosBoundingBox) {
+      const originalCenter = new LogicalPoint(
+        originalBoundingBox.minX + originalBoundingBox.width / 2,
+        originalBoundingBox.minY + originalBoundingBox.height / 2
+      );
+      const newCenter = new LogicalPoint(
+        draggedLegosBoundingBox.minX + draggedLegosBoundingBox.width / 2,
+        draggedLegosBoundingBox.minY + draggedLegosBoundingBox.height / 2
+      );
+      const originalCanvasPos = viewport.fromLogicalToCanvas(originalCenter);
+      const newCanvasPos = viewport.fromLogicalToCanvas(newCenter);
+      const offset = {
+        x: newCanvasPos.x - originalCanvasPos.x,
+        y: newCanvasPos.y - originalCanvasPos.y
+      };
+      setDragOffset(offset);
+    }
+  }, [draggedLegos, draggedLegosBoundingBoxLogical, viewport, setDragOffset]);
 
   const boundingBoxLogical =
     proxyBoundingBoxLogical ||

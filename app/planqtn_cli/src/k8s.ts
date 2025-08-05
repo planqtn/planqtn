@@ -15,7 +15,7 @@ export async function kubectl(
   postfix: string
 ) {
   const uid = await new Promise<string>((resolve, reject) => {
-    const proc = spawn("id", ["-u"], { shell: true });
+    const proc = spawn("id", ["-u"], { shell: false });
     let output = "";
     proc.stdout?.on("data", (data) => {
       output += data.toString();
@@ -80,7 +80,7 @@ export async function createProxy(
   return await kubectl(
     `k8sproxy${postfix}`,
     [],
-    ["proxy", "--accept-hosts", "'.*'", "--address=0.0.0.0"],
+    ["proxy", "--accept-hosts", ".*", "--address=0.0.0.0"],
     kubeconfigPath,
     verbose,
     clusterName,

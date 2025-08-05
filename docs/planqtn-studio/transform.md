@@ -4,9 +4,9 @@
 
     Under construction [TODO: expand all these bulletpoints]
 
-## Fusing legos
+## Fusing LEGOs
 
-To fuse legos, select legos and click "Fuse legos" or press the (f) button.
+To fuse LEGOs, select LEGOs and click "Fuse LEGOs" or press the (f) button.
 
 ## ZX-calculus transformations
 
@@ -15,18 +15,18 @@ To fuse legos, select legos and click "Fuse legos" or press the (f) button.
     -   unfuse:
         -   pull out a leg of the same color
         -   unfuse to legs
-        -   unfuse to two legos
-    -   change color by adding Hadamard legos on legs
+        -   unfuse to two LEGOs
+    -   change color by adding Hadamard LEGOs on legs
 
 ## Graph state transformations
 
-`Z`-repetition code legos are graph nodes that need to be connected through
-links with a Hadamard lego on it.
+`Z`-repetition code LEGOs are graph nodes that need to be connected through
+links with a Hadamard LEGO on it.
 
 -   create complete graph from nodes
 -   connect nodes with a central node
 
 ## Visual transformations
 
--   "resize" groups of legos - this is reposition based on the bounding box of
-    selected legos
+-   "resize" groups of LEGOs - this is reposition based on the bounding box of
+    selected LEGOs

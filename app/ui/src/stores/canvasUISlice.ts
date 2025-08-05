@@ -184,6 +184,8 @@ export interface CanvasUISlice {
   showFocusBoundingBox: (boundingBox: BoundingBox) => void;
   hoveredConnection: Connection | null;
   setHoveredConnection: (hoveredConnection: Connection | null) => void;
+  setMousePos: (mousePos: WindowPoint) => void;
+  mousePos: WindowPoint;
   setError: (error: string | null) => void;
   error: string | null;
   setZoomLevel: (zoomLevel: number) => void;
@@ -267,6 +269,12 @@ export const createCanvasUISlice: StateCreator<
         currentY: 0,
         justFinished: false
       }
+    });
+  },
+  mousePos: new WindowPoint(0, 0),
+  setMousePos: (mousePos) => {
+    set((state) => {
+      state.mousePos = mousePos;
     });
   },
   setFocusBoundingBox: (focusBoundingBox) =>

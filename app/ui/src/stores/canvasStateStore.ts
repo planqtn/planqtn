@@ -53,6 +53,7 @@ import {
   createGraphStateTransformationsSlice,
   GraphStateTransformationsSlice
 } from "./graphStateTransformationsSlice";
+import { v4 } from "uuid";
 
 // Helper function to get canvasId from URL
 export const getCanvasIdFromUrl = (): string => {
@@ -60,7 +61,7 @@ export const getCanvasIdFromUrl = (): string => {
   const canvasId = params.get("canvasId");
   if (!canvasId) {
     // Generate a new canvasId if none exists (fallback)
-    const newCanvasId = crypto.randomUUID();
+    const newCanvasId = v4();
     const newParams = new URLSearchParams(params);
     newParams.set("canvasId", newCanvasId);
     // Update URL with the new canvasId

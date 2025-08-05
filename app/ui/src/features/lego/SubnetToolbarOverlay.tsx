@@ -1,11 +1,10 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { useUserStore } from "../../stores/userStore";
 import { SubnetToolbar } from "./SubnetToolbar";
 import { DraggingStage } from "../../stores/legoDragState";
 import { calculateBoundingBoxForLegos } from "../../stores/canvasUISlice";
-import { WindowPoint } from "../../types/coordinates";
 
 export const SubnetToolbarOverlay: React.FC = () => {
   const { isUserLoggedIn } = useUserStore();
@@ -52,35 +51,7 @@ export const SubnetToolbarOverlay: React.FC = () => {
   }, [groupDragState, legoDragState, droppedLegos]);
 
   // Track mouse position for drag operations (same as LegosLayer)
-  const [mousePos, setMousePos] = useState(new WindowPoint(0, 0));
-  const animationFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const shouldTrackMouse =
-      legoDragState.draggingStage === DraggingStage.DRAGGING &&
-      (!!groupDragState || !!legoDragState.draggedLegoInstanceId);
-
-    if (!shouldTrackMouse) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const newMousePos = WindowPoint.fromMouseEvent(e);
-        setMousePos(newMousePos);
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [legoDragState.draggingStage, groupDragState]);
+  const mousePos = useCanvasStore((state) => state.mousePos);
 
   // Calculate bounding box for dragged legos (same logic as LegosLayer)
   const draggedLegosBoundingBoxLogical = useMemo(() => {

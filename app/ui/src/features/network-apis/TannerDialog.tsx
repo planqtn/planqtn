@@ -15,9 +15,12 @@ import {
   FormLabel,
   Switch,
   Checkbox,
-  HStack
+  HStack,
+  IconButton
 } from "@chakra-ui/react";
+import { QuestionIcon } from "@chakra-ui/icons";
 import { useState } from "react";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface TannerDialogProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ interface TannerDialogProps {
   title?: string;
   cssOnly?: boolean;
   showLogicalLegs?: boolean;
+  helpUrl?: string;
 }
 
 export const TannerDialog: React.FC<TannerDialogProps> = ({
@@ -36,15 +40,23 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   title = "Create Tanner Network",
   cssOnly = false,
   showLogicalLegs = true,
-  defaultStabilizer = `XXXX\nZZZZ`
+  defaultStabilizer = `XXXX\nZZZZ`,
+  helpUrl
 }) => {
   const [matrixText, setMatrixText] = useState("");
   const [error, setError] = useState("");
   const [useStabilizer, setUseStabilizer] = useState(true);
   const [logical_legs, setLogicalLegs] = useState<number[]>([]);
   const [numLegs, setNumLegs] = useState(0);
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   const toast = useToast();
+
+  const handleHelpClick = () => {
+    if (helpUrl) {
+      openHelpDialog(helpUrl, `${title} Help`);
+    }
+  };
 
   const pauliToSymplectic = (pauliString: string): number[] => {
     const n = pauliString.length;
@@ -251,7 +263,20 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>{title}</ModalHeader>
+        <ModalHeader>
+          <HStack spacing={2} align="center">
+            <Text>{title}</Text>
+            {helpUrl && (
+              <IconButton
+                aria-label="Help"
+                icon={<QuestionIcon />}
+                size="sm"
+                variant="ghost"
+                onClick={handleHelpClick}
+              />
+            )}
+          </HStack>
+        </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4}>
