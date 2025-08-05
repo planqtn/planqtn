@@ -15,9 +15,12 @@ import {
   Spinner,
   Alert,
   AlertIcon,
-  Badge
+  Badge,
+  IconButton
 } from "@chakra-ui/react";
+import { QuestionIcon } from "@chakra-ui/icons";
 import { userContextSupabase } from "../../config/supabaseClient";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface Quota {
   id: string;
@@ -40,6 +43,7 @@ export const QuotasModal: React.FC<QuotasModalProps> = ({
   const [quotaUsage, setQuotaUsage] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -161,11 +165,29 @@ export const QuotasModal: React.FC<QuotasModalProps> = ({
     }
   };
 
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/runtimes/#free-planqtn-cloud-runtime",
+      "Free PlanQTN Cloud Runtime Help"
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalOverlay />
       <ModalContent bg={bgColor} borderColor={borderColor}>
-        <ModalHeader>My Quotas</ModalHeader>
+        <ModalHeader>
+          <HStack spacing={2} align="center">
+            <Text>My Quotas</Text>
+            <IconButton
+              aria-label="Help"
+              icon={<QuestionIcon />}
+              size="sm"
+              variant="ghost"
+              onClick={handleHelpClick}
+            />
+          </HStack>
+        </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
           {loading ? (

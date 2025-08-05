@@ -12,32 +12,32 @@ hear it!
 
 -   create a tensor network manually from smaller encoding tensors with
     predefined Pauli stabilizers (lib, studio)
--   create a custom lego based on parity check matrix (lib, studio)
+-   create a custom LEGO based on parity check matrix (lib, studio)
 
 ## Transform tensor networks
 
--   fuse legos into a single lego
--   ZX calculus transformations on Z and X repetition code legos (studio)
+-   fuse LEGOs into a single LEGO
+-   ZX calculus transformations on Z and X repetition code LEGOs (studio)
     -   fuse rule
     -   bialgebra and inverse bialgebra rule
     -   unfuse:
         -   pull out a leg of the same color
         -   unfuse to legs
-        -   unfuse to two legos
-    -   change color by adding Hadamard legos on legs
--   Graph state transformations: `Z`-repetition code legos are graph nodes that
-    need to be connected through links with a Hadamard lego on it (studio)
+        -   unfuse to two LEGOs
+    -   change color by adding Hadamard LEGOs on legs
+-   Graph state transformations: `Z`-repetition code LEGOs are graph nodes that
+    need to be connected through links with a Hadamard LEGO on it (studio)
     -   create complete graph from nodes
     -   connect nodes with a central node
--   "resize" groups of legos - this is reposition based on the bounding box of
-    selected legos
+-   "resize" groups of LEGOs - this is reposition based on the bounding box of
+    selected LEGOs
 
 ## Analyze tensor networks
 
 -   Zero installation calculations (studio): PlanqTN Studio is deployed as a
     cloud native architecture on Google Cloud and Supabase, and you can run
     small calculations for free, forever!
--   calculate Pauli stabilizers (parity check matrix) of a tensor network (lib,
+-   Calculate Pauli stabilizers (parity check matrix) of a tensor network (lib,
     studio)
 -   calculate coset weight enumerators (lib)
 -   weight enumerator polynomial calculations (lib, studio):
@@ -48,14 +48,14 @@ hear it!
         the contraction significantly, making the tensors very sparse
     -   MacWilliams dual (normalizer WEP) for scalar WEP
     -   using [Cotengra](https://cotengra.readthedocs.io/) calculate a
-        hyperoptimized contraction schedule for any tensornetwork based on our
+        hyper-optimized contraction schedule for any tensor network based on our
         own stabilizer code specific cost function (publication pending)
 -   operator pushing and matching (studio)
 
     -   highlighting tensor network stabilizer legs (dangling legs)
     -   highlight local stabilizers on individual tensors
 
--   export tensor network as Python code and contine working on it on your own
+-   export tensor network as Python code and continue working on it on your own
     computer (studio)
 -   export parity check matrices as numpy array (studio)
 -   export parity check matrix for `QDistRnd` for distance calculations (studio)

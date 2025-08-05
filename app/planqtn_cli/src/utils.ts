@@ -136,12 +136,12 @@ export async function copyDir(
   options: { verbose?: boolean } = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const fullCommand = `rsync -av --delete ${src}/ ${dest}/`;
+    const fullCommand = `rsync -a --delete ${src}/ ${dest}/`;
     if (options.verbose) {
       console.log(`\nExecuting: ${fullCommand}`);
     }
 
-    const proc = spawn("rsync", ["-av", "--delete", src + "/", dest + "/"], {
+    const proc = spawn("rsync", ["-a", "--delete", src + "/", dest + "/"], {
       shell: false,
       stdio: [
         "pipe",

@@ -101,6 +101,55 @@ export class Legos {
 
   public static listAvailableLegos(): LegoPiece[] {
     return [
+      this.stopper_x(),
+      this.stopper_z(),
+      this.stopper_i(),
+      {
+        type_id: LegoType.H,
+        name: "Hadamard",
+        short_name: "H",
+        description: "Hadamard tensor",
+        parity_check_matrix: this.h,
+        logical_legs: [],
+        gauge_legs: [],
+        is_dynamic: false,
+        parameters: {}
+      },
+      {
+        type_id: LegoType.ID,
+        name: "Identity",
+        short_name: "I",
+        description: "Identity tensor",
+        parity_check_matrix: this.identity,
+        logical_legs: [],
+        gauge_legs: [],
+        is_dynamic: false,
+        parameters: {}
+      },
+
+      {
+        type_id: LegoType.ZREP,
+        name: "Z-Repetition Code",
+        short_name: "ZREP3",
+        description: "Bitflip code, ZZ stabilizers",
+        is_dynamic: true,
+        parameters: { d: 3 },
+        parity_check_matrix: this.z_rep_code(),
+        logical_legs: [],
+        gauge_legs: []
+      },
+      {
+        type_id: LegoType.XREP,
+        name: "X-Repetition Code",
+        short_name: "XREP3",
+        description: "Phase flip code, XX stabilizers",
+        is_dynamic: true,
+        parameters: { d: 3 },
+        parity_check_matrix: this.x_rep_code(),
+        logical_legs: [],
+        gauge_legs: []
+      },
+
       {
         type_id: LegoType.T6,
         name: "[[6,0,3]] tensor",
@@ -141,53 +190,6 @@ export class Legos {
         description: "[[5,1,2]] flipped subspace tensor",
         parity_check_matrix: this.encoding_tensor_512,
         logical_legs: [4],
-        gauge_legs: [],
-        is_dynamic: false,
-        parameters: {}
-      },
-      {
-        type_id: LegoType.H,
-        name: "Hadamard",
-        short_name: "H",
-        description: "Hadamard tensor",
-        parity_check_matrix: this.h,
-        logical_legs: [],
-        gauge_legs: [],
-        is_dynamic: false,
-        parameters: {}
-      },
-      this.stopper_x(),
-      this.stopper_z(),
-      this.stopper_i(),
-      {
-        type_id: LegoType.ZREP,
-        name: "Z-Repetition Code",
-        short_name: "ZREP3",
-        description: "Bitflip code, ZZ stabilizers",
-        is_dynamic: true,
-        parameters: { d: 3 },
-        parity_check_matrix: this.z_rep_code(),
-        logical_legs: [],
-        gauge_legs: []
-      },
-      {
-        type_id: LegoType.XREP,
-        name: "X-Repetition Code",
-        short_name: "XREP3",
-        description: "Phase flip code, XX stabilizers",
-        is_dynamic: true,
-        parameters: { d: 3 },
-        parity_check_matrix: this.x_rep_code(),
-        logical_legs: [],
-        gauge_legs: []
-      },
-      {
-        type_id: LegoType.ID,
-        name: "Identity",
-        short_name: "I",
-        description: "Identity tensor",
-        parity_check_matrix: this.identity,
-        logical_legs: [],
         gauge_legs: [],
         is_dynamic: false,
         parameters: {}

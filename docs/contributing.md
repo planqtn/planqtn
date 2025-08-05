@@ -1,6 +1,6 @@
 # Contributing
 
-PlanqTN is an open source project and we would love to see contributions from
+PlanqTN is an open source project, and we would love to see contributions from
 you!
 
 To get started with contributions, check out

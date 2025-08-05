@@ -13,10 +13,13 @@ import {
   useToast,
   Code,
   HStack,
-  Icon
+  Icon,
+  IconButton
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { FiCopy } from "react-icons/fi";
+import { QuestionIcon } from "@chakra-ui/icons";
+import { useCanvasStore } from "../../stores/canvasStateStore";
 
 interface RuntimeConfigDialogProps {
   isOpen: boolean;
@@ -36,6 +39,7 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
   const [configText, setConfigText] = useState("");
   const [error, setError] = useState("");
   const toast = useToast();
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
 
   // Prefill with initial config when dialog opens
   useEffect(() => {
@@ -85,12 +89,30 @@ export const RuntimeConfigDialog: React.FC<RuntimeConfigDialogProps> = ({
     }
   };
 
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/runtimes/#local-runtime",
+      "Local Runtime Help"
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>
-          {isLocal ? "Switch to Cloud Runtime" : "Switch to Local Runtime"}
+          <HStack spacing={2} align="center">
+            <Text>
+              {isLocal ? "Switch to Cloud Runtime" : "Switch to Local Runtime"}
+            </Text>
+            <IconButton
+              aria-label="Help"
+              icon={<QuestionIcon />}
+              size="sm"
+              variant="ghost"
+              onClick={handleHelpClick}
+            />
+          </HStack>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>

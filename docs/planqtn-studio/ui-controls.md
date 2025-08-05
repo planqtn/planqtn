@@ -23,12 +23,18 @@ currently selected part of the content.
 
 ### The user menu
 
+<center>
+<img src="/docs/fig/user_menu.png" width="25%">
+</center>
+
 The user menu allows for signing up and signing in via Github and Google
 accounts, and signing out. See [FAQ](../faq.md) for what features require
 authentication. Only the email address of the user is stored, no other
 information is used from the accounts.
 
-This menu also allows to investigate the monthly quota left for the user.
+This menu also allows to investigate the monthly quota left for the user. See
+[Cloud Runtimes](./runtimes.md/#free-planqtn-cloud-runtime) to understand how
+quotas work.
 
 ### Sharing the canvas
 

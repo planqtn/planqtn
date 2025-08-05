@@ -206,6 +206,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           title="Create CSS Tanner Network"
           cssOnly={true}
           showLogicalLegs={false}
+          helpUrl="/docs/planqtn-studio/build/#css-tanner-layout"
         />
       )}
 
@@ -217,6 +218,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onSubmit={handleTannerSubmit}
           title="Create Tanner Network"
           showLogicalLegs={false}
+          helpUrl="/docs/planqtn-studio/build/#tanner-layout"
         />
       )}
 
@@ -228,6 +230,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onSubmit={handleMspSubmit}
           title="Measurement State Prep Network"
           showLogicalLegs={false}
+          helpUrl="/docs/planqtn-studio/build/#measurement-state-preparation-layout"
         />
       )}
 

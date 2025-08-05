@@ -12,8 +12,12 @@ function docsPlugin() {
       // Intercept docs requests before history fallback
       server.middlewares.use((req, res, next) => {
         if (req.url && req.url.startsWith("/docs")) {
+          // Parse the URL to extract just the path component (remove query params and hash)
+          const url = new URL(req.url, `http://${req.headers.host}`);
+          const pathWithoutParams = url.pathname;
+
           // Remove the /docs prefix to get the file path
-          const filePath = req.url.replace(/^\/docs/, "");
+          const filePath = pathWithoutParams.replace(/^\/docs/, "");
           const fullPath = path.join(process.cwd(), "public", "docs", filePath);
 
           // If it's a directory request, serve index.html
