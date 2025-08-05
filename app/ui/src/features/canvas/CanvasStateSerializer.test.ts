@@ -1140,7 +1140,7 @@ describe("CanvasStateSerializer", () => {
 
       const result = serializer.fromCompressedCanvasState(compressed);
 
-      expect(result.title).toBe("");
+      expect(result.title).toBe("Untitled canvas");
       expect(result.pieces).toHaveLength(0);
       expect(result.connections).toHaveLength(0);
       expect(result.hideConnectedLegs).toBe(false);

@@ -1,6 +1,14 @@
 ## API Reference
 
-:::planqtn
+::: planqtn 
+
+::: planqtn.stabilizer_tensor_enumerator
+    options: 
+        members: 
+            - TensorId
+            - TensorLeg
+            - TensorEnumerator
+        
 
 ## The `planqtn.networks` package
 

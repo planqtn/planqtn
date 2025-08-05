@@ -697,7 +697,7 @@ export const useTensorNetworkSlice: StateCreator<
       // Check for HTTP error status codes
       if (!response.ok) {
         const data = await response.json();
-        let errorMessage = `HTTP ${response.status}: ${data.error}`;
+        const errorMessage = `HTTP ${response.status}: ${data.error}`;
 
         throw new Error(errorMessage);
       }

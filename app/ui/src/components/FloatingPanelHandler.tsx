@@ -263,16 +263,14 @@ const WeightEnumeratorPanelWrapper: React.FC<{
 
   // Find the weight enumerator and its network signature
   let weightEnumerator = null;
-  let tensorNetworkSignature = "";
 
   // Search through all weight enumerators to find the one with this taskId
-  for (const [signature, enumerators] of Object.entries(weightEnumerators)) {
+  for (const enumerators of Object.values(weightEnumerators)) {
     const found = enumerators.find(
       (enumerator) => enumerator.taskId === taskId
     );
     if (found) {
       weightEnumerator = found;
-      tensorNetworkSignature = signature;
       break;
     }
   }

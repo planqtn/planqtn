@@ -1,13 +1,17 @@
 import { Connection } from "@/stores/connectionStore.ts";
 import { Operation } from "@/features/canvas/OperationHistory.ts";
 import { zip } from "lodash";
-import { Legos } from "@/features/lego/Legos.ts";
+import { Legos, LegoType } from "@/features/lego/Legos.ts";
 import { DroppedLego } from "@/stores/droppedLegoStore.ts";
 import { LogicalPoint } from "@/types/coordinates.ts";
 
 export const canDoConnectGraphNodes = (legos: DroppedLego[]): boolean => {
   return (
-    legos.length > 0 && legos.every((lego) => lego.type_id === "z_rep_code")
+    legos.length > 0 &&
+    legos.every(
+      (lego) =>
+        lego.type_id === LegoType.ZREP || lego.type_id === LegoType.STOPPER_X
+    )
   );
 };
 

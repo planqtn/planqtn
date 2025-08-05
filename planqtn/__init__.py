@@ -68,6 +68,8 @@ from planqtn.legos import Legos
 
 __all__ = [
     "TensorNetwork",
+    "TensorId",
+    "TensorLeg",
     "StabilizerCodeTensorEnumerator",
     "Legos",
     "UnivariatePoly",
