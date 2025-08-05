@@ -65,6 +65,9 @@ nav:
       - Welcome to PlanqTN!: index.md
       - Features: features.md
       - Contributing: contributing.md
+      - Legal:
+          - Privacy Policy: legal/privacy-policy.md
+          - Terms of Service: legal/terms-of-service.md
   - Python API:
       - index: planqtn/index.md
       - API Reference: planqtn/reference.md
