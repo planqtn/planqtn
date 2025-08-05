@@ -43,6 +43,7 @@ interface TensorNetworkNode extends TreeNode {
 }
 
 interface WeightEnumeratorNode extends TreeNode {
+  index: number;
   signature: string;
   nodeContentType: "weightEnumerator";
   taskId: string;
@@ -94,6 +95,9 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     (state) => state.focusOnTensorNetwork
   );
   const openPCMPanel = usePanelConfigStore((state) => state.openPCMPanel);
+  const openWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.openWeightEnumeratorPanel
+  );
 
   // State for editing subnet names
   const [editingNodeId, setEditingNodeId] = React.useState<string | null>(null);
@@ -155,10 +159,9 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           ({
             id: `${network.tensorNetwork.signature}-enumerator-${index}`,
             signature: network.tensorNetwork.signature,
-            name: enumerator.taskId
-              ? `Task ${enumerator.taskId.slice(0, 8)}...`
-              : `Weight Enumerator ${index + 1}`,
+            name: `WEP #${index + 1}`,
             nodeContentType: "weightEnumerator",
+            index: index,
             taskId: enumerator.taskId,
             openLegsCount: enumerator.openLegs.length,
             truncateLength: enumerator.truncateLength,
@@ -237,6 +240,18 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
     e.stopPropagation(); // Prevent triggering the parent click
 
     openPCMPanel(node.signature, cachedTensorNetworks[node.signature].name);
+  };
+
+  const handleOpenWeightEnumeratorPanel = (
+    node: WeightEnumeratorNode,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation(); // Prevent triggering the parent click
+
+    openWeightEnumeratorPanel(
+      node.taskId,
+      `WEP #${node.index + 1} for ${node.cachedTensorNetwork.name}`
+    );
   };
 
   const handleUncacheClick = (node: TensorNetworkNode, e: React.MouseEvent) => {
@@ -407,6 +422,12 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
       if (node.nodeContentType === "pcm") {
         // For PCM nodes, open the PCM panel
         handleOpenPCMPanel(node as PCMNode, e as React.MouseEvent);
+      } else if (node.nodeContentType === "weightEnumerator") {
+        // For weight enumerator nodes, open the weight enumerator panel
+        handleOpenWeightEnumeratorPanel(
+          node as WeightEnumeratorNode,
+          e as React.MouseEvent
+        );
       } else if (node.nodeContentType === "tensorNetwork") {
         // For tensor network nodes, toggle expansion if they have children if the node is selected
         if (hasChildren && isCurrentNetwork) {
@@ -435,7 +456,8 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           cursor={
             (node.nodeContentType === "tensorNetwork" &&
               (node as TensorNetworkNode).isActive) ||
-            node.nodeContentType === "pcm"
+            node.nodeContentType === "pcm" ||
+            node.nodeContentType === "weightEnumerator"
               ? "pointer"
               : "default"
           }
@@ -448,8 +470,10 @@ const SubnetsPanel: React.FC<SubnetsPanelProps> = () => {
           borderRadius="md"
           _hover={{
             bg:
-              node.nodeContentType === "tensorNetwork" &&
-              (node as TensorNetworkNode).isActive
+              (node.nodeContentType === "tensorNetwork" &&
+                (node as TensorNetworkNode).isActive) ||
+              node.nodeContentType === "pcm" ||
+              node.nodeContentType === "weightEnumerator"
                 ? hoverBgColor
                 : "transparent"
           }}

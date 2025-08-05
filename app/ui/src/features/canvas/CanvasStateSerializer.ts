@@ -653,7 +653,7 @@ export class CanvasStateSerializer {
     const booleanFlags = unpackBooleanFlags(compressed[3]);
 
     const result: SerializableCanvasState = {
-      title: compressed[0],
+      title: compressed[0] || "Untitled canvas", // Handle empty title from shared URLs
       pieces,
       connections,
       hideConnectedLegs: booleanFlags.hideConnectedLegs,

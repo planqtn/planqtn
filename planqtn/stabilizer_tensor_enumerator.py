@@ -29,8 +29,13 @@ from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
 
 
 TensorId = str | int | Tuple[int, int]
+"""The tensor id can be a string, an integer, or a tuple of two integers."""
+
 TensorLeg = Tuple[TensorId, int]
+"""The tensor leg is a tuple of a tensor id and a leg index."""
+
 TensorEnumerator = Dict[Tuple[int, ...], UnivariatePoly]
+"""The tensor enumerator is a dictionary of tuples of integers and univariate polynomials."""
 
 
 def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:

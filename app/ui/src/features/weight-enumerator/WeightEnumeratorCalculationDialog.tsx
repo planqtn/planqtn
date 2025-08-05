@@ -8,15 +8,16 @@ import {
   Input,
   Text,
   VStack,
-  Tooltip,
   HStack,
   Checkbox,
-  Box
+  Box,
+  IconButton
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
-import { QuestionOutlineIcon } from "@chakra-ui/icons";
 import { TensorNetwork, TensorNetworkLeg } from "../../lib/TensorNetwork";
 import { Connection } from "../../stores/connectionStore";
+import { useCanvasStore } from "../../stores/canvasStateStore";
+import { HelpCircle } from "lucide-react";
 
 interface WeightEnumeratorCalculationDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ interface WeightEnumeratorCalculationDialogProps {
 const WeightEnumeratorCalculationDialog: React.FC<
   WeightEnumeratorCalculationDialogProps
 > = ({ open, onClose, onSubmit, subNetwork, mainNetworkConnections }) => {
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
   const { externalLegs, danglingLegs } = subNetwork.getExternalAndDanglingLegs(
     mainNetworkConnections
   );
@@ -123,10 +125,28 @@ const WeightEnumeratorCalculationDialog: React.FC<
     onClose();
   };
 
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/analyze/#weight-enumerator-polynomial-calculations",
+      "Weight Enumerator Help"
+    );
+  };
+
   return (
     <Modal isOpen={open} onClose={onClose}>
       <ModalContent maxHeight="90vh" overflowY="auto" className="modal-high-z">
-        <ModalHeader>Weight Enumerator Calculation</ModalHeader>
+        <ModalHeader>
+          <HStack justify="space-between" align="center">
+            <Text>Weight Enumerator Calculation</Text>
+            <IconButton
+              aria-label="Help"
+              icon={<HelpCircle size={16} />}
+              size="sm"
+              variant="ghost"
+              onClick={handleHelpClick}
+            />
+          </HStack>
+        </ModalHeader>
         <ModalBody>
           <VStack spacing={4} align="stretch">
             <Text fontSize="md" fontWeight="semibold">
@@ -134,12 +154,6 @@ const WeightEnumeratorCalculationDialog: React.FC<
             </Text>
             <HStack>
               <Text>Truncation level (leave empty for no truncation):</Text>
-              <Tooltip
-                label="Truncation level limits the maximum weight in the weight enumerator, making the calculation faster. Note: Normalizer calculation is not available yet when truncation is used."
-                fontSize="sm"
-              >
-                <QuestionOutlineIcon ml={2} />
-              </Tooltip>
             </HStack>
             <Input
               value={truncateLength}

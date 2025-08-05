@@ -52,19 +52,19 @@ Welcome to the development guide. Here's a table of contents:
 </p>
 
 PlanqTN features largely live in the user's browser. However, for background
-jobs and more complicated tensornetwork/lego database we offer the PlanqTN Jobs
-and the PlaqnTN API features. Key points to understand about the architecture:
+jobs and more complicated tensor network/LEGO database we offer the PlanqTN Jobs
+and the PlanqTN API features. Key points to understand about the architecture:
 
 -   the UI only talks to the Supabase instance, for 4 reasons: authentication,
-    edge functions (logic), the database for retrieval and realtime messages
+    edge functions (logic), the database for retrieval and real-time messages
 -   Supabase functions contain the logic to talk to the API and the Job API of
     Cloud Run
 
 # Developer Setup
 
 Depending on what you want to work on, your setup might require very minimal
-time/resouce investment or quite a bit, including setting up a local cloud on
-your laptop and/or a personal cloud infrastructure hooked up to Github Actions.
+time/resource investment or quite a bit, including setting up a local cloud on
+your laptop and/or a personal cloud infrastructure hooked up to GitHub Actions.
 Please review the development workflows below, and pick the required setup based
 on the component you want to contribute to.
 
@@ -225,7 +225,7 @@ check/ui
 ## PlanqTN API
 
 API calls are meant for features that return tensor network structures and/or
-legos, and are relatively fast, and don't need extensively long computation to
+LEGOs, and are relatively fast, and don't need extensively long computation to
 work, for which jobs are a better mechanism.
 
 ### Components
@@ -236,7 +236,7 @@ we will develop quota functionality soon, which will involve database tables).
 
 ### Development setup
 
-After you cloned the repo, you can setup the python dependencies with:
+After you cloned the repo, you can set up the python dependencies with:
 
 ```
 pip install -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt -r app/planqtn_api/requirements.dev.txt

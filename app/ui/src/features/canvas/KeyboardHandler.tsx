@@ -5,6 +5,7 @@ import * as _ from "lodash";
 import { DroppedLego } from "../../stores/droppedLegoStore";
 import { WindowPoint } from "../../types/coordinates";
 import { useToast } from "@chakra-ui/react";
+import { canDoPullOutSameColoredLeg } from "@/transformations/zx/PullOutSameColoredLeg";
 
 interface KeyboardHandlerProps {
   onSetAltKeyPressed: (pressed: boolean) => void;
@@ -164,11 +165,7 @@ export const KeyboardHandler: React.FC<KeyboardHandlerProps> = ({
         }
       } else if (e.key === "p") {
         e.preventDefault();
-        if (
-          tensorNetwork &&
-          (tensorNetwork.legos[0].type_id === "x_rep_code" ||
-            tensorNetwork.legos[0].type_id === "z_rep_code")
-        ) {
+        if (tensorNetwork && canDoPullOutSameColoredLeg(tensorNetwork.legos)) {
           handlePullOutSameColoredLeg(tensorNetwork.legos[0]);
         }
       }

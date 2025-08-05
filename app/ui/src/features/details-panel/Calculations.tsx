@@ -70,7 +70,7 @@ const Calculations: React.FC<CalculationsProps> = ({
   }
 
   return (
-    <Accordion allowMultiple defaultIndex={[0, 1]} p={0}>
+    <Accordion allowMultiple defaultIndex={[]} p={0}>
       <AccordionItem border="none">
         <AccordionButton
           px={4}

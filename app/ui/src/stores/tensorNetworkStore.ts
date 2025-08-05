@@ -10,6 +10,18 @@ import { getApiUrl } from "../config/config";
 import { config } from "../config/config";
 import { Connection } from "./connectionStore";
 
+function defaultNameForTensorNetwork(tensorNetwork: TensorNetwork): string {
+  if (tensorNetwork.legos.length === 1) {
+    return `Lego ${tensorNetwork.legos[0].instance_id} | ${tensorNetwork.legos[0].short_name}`;
+  }
+  if (tensorNetwork.legos.length < 5) {
+    return tensorNetwork.legos
+      .map((lego) => `${lego.instance_id} | ${lego.short_name}`)
+      .join(", ");
+  }
+  return `${tensorNetwork.legos.length} legos`;
+}
+
 export class WeightEnumerator {
   taskId?: string;
   polynomial?: string;
@@ -159,7 +171,10 @@ export interface TensorNetworkSlice {
     toast: ReturnType<typeof useToast>,
     truncateLength?: number,
     openLegs?: TensorNetworkLeg[]
-  ) => Promise<void>;
+  ) => Promise<{
+    cachedTensorNetwork: CachedTensorNetwork | null;
+    weightEnumerator: WeightEnumerator | null;
+  }>;
 
   calculateParityCheckMatrix: (
     onSuccess?: (networkSignature: string, networkName: string) => void
@@ -599,9 +614,16 @@ export const useTensorNetworkSlice: StateCreator<
     toast: ReturnType<typeof useToast>,
     truncateLength?: number,
     openLegs?: TensorNetworkLeg[]
-  ): Promise<void> => {
+  ): Promise<{
+    cachedTensorNetwork: CachedTensorNetwork | null;
+    weightEnumerator: WeightEnumerator | null;
+  }> => {
     const tensorNetwork = get().tensorNetwork;
-    if (!tensorNetwork) return;
+    if (!tensorNetwork)
+      return {
+        cachedTensorNetwork: null,
+        weightEnumerator: null
+      };
 
     const newEnumerator = new WeightEnumerator({
       truncateLength: truncateLength,
@@ -623,7 +645,12 @@ export const useTensorNetworkSlice: StateCreator<
         duration: 5000,
         isClosable: true
       });
-      return;
+      return {
+        cachedTensorNetwork: get().getCachedTensorNetwork(
+          tensorNetwork.signature
+        ),
+        weightEnumerator: cachedEnumerator
+      };
     }
 
     try {
@@ -669,26 +696,16 @@ export const useTensorNetworkSlice: StateCreator<
 
       // Check for HTTP error status codes
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch {
-          // If we can't parse the error response, use the raw text
-          if (errorText) {
-            errorMessage = errorText;
-          }
-        }
+        const data = await response.json();
+        const errorMessage = `HTTP ${response.status}: ${data.error}`;
+
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
 
       if (data.status === "error") {
-        throw new Error(data.message);
+        throw new Error(data.error);
       }
 
       const taskId = data.task_id;
@@ -709,7 +726,7 @@ export const useTensorNetworkSlice: StateCreator<
         svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
         name:
           cachedTensorNetwork?.name ||
-          `${tensorNetwork.legos.length} legos | ${new Date().toISOString()}`,
+          defaultNameForTensorNetwork(tensorNetwork),
         isLocked: cachedTensorNetwork?.isLocked || false,
         lastUpdated: new Date()
       });
@@ -721,6 +738,15 @@ export const useTensorNetworkSlice: StateCreator<
         duration: 5000,
         isClosable: true
       });
+      return {
+        cachedTensorNetwork: get().getCachedTensorNetwork(
+          tensorNetwork.signature
+        ),
+        weightEnumerator: get().getWeightEnumerator(
+          tensorNetwork.signature,
+          taskId
+        )
+      };
     } catch (err) {
       console.error("Error calculating weight enumerator:", err);
       const errorMessage =
@@ -737,6 +763,18 @@ export const useTensorNetworkSlice: StateCreator<
       }
 
       get().setError(`Failed to calculate weight enumerator: ${errorMessage}`);
+
+      return {
+        cachedTensorNetwork: get().getCachedTensorNetwork(
+          tensorNetwork.signature
+        ),
+        weightEnumerator: newEnumerator.taskId
+          ? get().getWeightEnumerator(
+              tensorNetwork.signature,
+              newEnumerator.taskId
+            )
+          : null
+      };
     }
   },
 
@@ -778,7 +816,7 @@ export const useTensorNetworkSlice: StateCreator<
         svg: `<svg><circle cx='100' cy='100' r='100' fill='red'/><text x='100' y='100' fill='white'>Hello updated ${new Date().toISOString()}</text></svg>`,
         name:
           cachedTensorNetwork?.name ||
-          `${tensorNetwork.legos.length} legos | ${new Date().toISOString()}`,
+          defaultNameForTensorNetwork(tensorNetwork),
         isLocked: cachedTensorNetwork?.isLocked || false,
         lastUpdated: new Date()
       });

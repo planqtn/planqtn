@@ -30,6 +30,11 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
               ([key, config]) => [key, config.toJSON()]
             )
           ),
+          openWeightEnumeratorPanels: Object.fromEntries(
+            Object.entries(state.openWeightEnumeratorPanels).map(
+              ([key, config]) => [key, config.toJSON()]
+            )
+          ),
           nextZIndex: state.nextZIndex
         };
       },
@@ -46,6 +51,7 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
           pcmPanelConfig?: any;
           openPCMPanels?: Record<string, any>;
           openSingleLegoPCMPanels?: Record<string, any>;
+          openWeightEnumeratorPanels?: Record<string, any>;
         };
 
         if (panelConfigs.buildingBlocksPanelConfig) {
@@ -92,6 +98,16 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
             )
           );
         }
+        if (panelConfigs.openWeightEnumeratorPanels) {
+          state.openWeightEnumeratorPanels = Object.fromEntries(
+            Object.entries(panelConfigs.openWeightEnumeratorPanels).map(
+              ([key, config]) => [
+                key,
+                FloatingPanelConfigManager.fromJSON(config)
+              ]
+            )
+          );
+        }
 
         // Ensure nextZIndex is higher than the highest panel z-index
         const panelZIndices = [
@@ -104,6 +120,9 @@ export const usePanelConfigStore = create<PanelConfigSlice>()(
             (config) => config.zIndex
           ),
           ...Object.values(state.openSingleLegoPCMPanels || {}).map(
+            (config) => config.zIndex
+          ),
+          ...Object.values(state.openWeightEnumeratorPanels || {}).map(
             (config) => config.zIndex
           )
         ].filter((zIndex): zIndex is number => zIndex !== undefined);

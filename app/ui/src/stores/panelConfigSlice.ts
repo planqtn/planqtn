@@ -37,6 +37,15 @@ export interface PanelConfigSlice {
   ) => void;
   openSingleLegoPCMPanel: (legoInstanceId: string, legoName: string) => void;
 
+  // Weight enumerator panel state
+  openWeightEnumeratorPanels: Record<string, FloatingPanelConfigManager>;
+  removeWeightEnumeratorPanel: (taskId: string) => void;
+  updateWeightEnumeratorPanel: (
+    taskId: string,
+    config: FloatingPanelConfigManager
+  ) => void;
+  openWeightEnumeratorPanel: (taskId: string, taskName: string) => void;
+
   // Z-index management for floating panels
   nextZIndex: number;
   bringPanelToFront: (panelId: string) => void;
@@ -260,6 +269,56 @@ export const createPanelConfigSlice: StateCreator<
       state.openSingleLegoPCMPanels[legoInstanceId] = config;
     }),
 
+  // Weight enumerator panel state
+  openWeightEnumeratorPanels: {},
+  removeWeightEnumeratorPanel: (taskId: string) =>
+    set((state) => {
+      delete state.openWeightEnumeratorPanels[taskId];
+    }),
+  updateWeightEnumeratorPanel: (
+    taskId: string,
+    config: FloatingPanelConfigManager
+  ) =>
+    set((state) => {
+      state.openWeightEnumeratorPanels[taskId] = config;
+    }),
+  openWeightEnumeratorPanel: (taskId: string, taskName: string) =>
+    set((state) => {
+      // Check if weight enumerator panel is already open for this task
+      if (state.openWeightEnumeratorPanels[taskId]) {
+        // Panel is already open, just bring it to front
+        const nextZ = state.nextZIndex++;
+        const newConfig = new FloatingPanelConfigManager({
+          ...state.openWeightEnumeratorPanels[taskId].toJSON(),
+          zIndex: nextZ
+        });
+        state.openWeightEnumeratorPanels[taskId] = newConfig;
+        return;
+      }
+
+      // Create new weight enumerator panel configuration
+      const config = new FloatingPanelConfigManager({
+        id: `weight-enumerator-${taskId}`,
+        title: taskName,
+        isOpen: true,
+        isCollapsed: false,
+        layout: {
+          position: {
+            x: 200 + Math.random() * 100,
+            y: 200 + Math.random() * 100
+          },
+          size: { width: 400, height: 500 }
+        },
+        minWidth: 300,
+        minHeight: 400,
+        defaultWidth: 400,
+        defaultHeight: 500,
+        zIndex: state.nextZIndex++
+      });
+
+      state.openWeightEnumeratorPanels[taskId] = config;
+    }),
+
   // Z-index management for floating panels
   nextZIndex: 1100,
   bringPanelToFront: (panelId: string) => {
@@ -333,6 +392,22 @@ export const createPanelConfigSlice: StateCreator<
               zIndex: nextZ
             });
             state.openSingleLegoPCMPanels[singleLegoPcmKey] = newConfig;
+          } else {
+            // Check if it's a weight enumerator panel with a different ID format (e.g., "weight-enumerator-taskId")
+            const weightEnumeratorKey = Object.keys(
+              state.openWeightEnumeratorPanels
+            ).find(
+              (key) => state.openWeightEnumeratorPanels[key].id === panelId
+            );
+            if (weightEnumeratorKey) {
+              const newConfig = new FloatingPanelConfigManager({
+                ...state.openWeightEnumeratorPanels[
+                  weightEnumeratorKey
+                ].toJSON(),
+                zIndex: nextZ
+              });
+              state.openWeightEnumeratorPanels[weightEnumeratorKey] = newConfig;
+            }
           }
         }
       }

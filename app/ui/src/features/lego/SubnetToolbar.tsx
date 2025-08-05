@@ -7,7 +7,8 @@ import {
   Scissors,
   Network,
   Link,
-  Trash2
+  Trash2,
+  HelpCircle
 } from "lucide-react";
 import { FaDropletSlash, FaMinimize, FaYinYang } from "react-icons/fa6";
 import { useCanvasStore } from "../../stores/canvasStateStore";
@@ -153,7 +154,15 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
   const openSingleLegoPCMPanel = usePanelConfigStore(
     (state) => state.openSingleLegoPCMPanel
   );
+  const openHelpDialog = useCanvasStore((state) => state.openHelpDialog);
   const isDisabled = !tensorNetwork;
+
+  const handleHelpClick = () => {
+    openHelpDialog(
+      "/docs/planqtn-studio/ui-controls/#floating-toolbar",
+      "Floating Toolbar Help"
+    );
+  };
 
   const handleParityCheckMatrix = async () => {
     if (tensorNetwork?.isSingleLego) {
@@ -382,6 +391,17 @@ export const SubnetToolbar: React.FC<SubnetToolbarProps> = ({
             disabled={!canDoConnectGraphNodes(tensorNetwork?.legos || [])}
           />
         </div>
+      </div>
+
+      <ToolbarSeparator />
+
+      {/* Help Button */}
+      <div className="toolbar-group">
+        <ToolbarButton
+          icon={<HelpCircle size={16} />}
+          tooltip="Help - Floating Toolbar documentation"
+          onClick={handleHelpClick}
+        />
       </div>
     </>
   );

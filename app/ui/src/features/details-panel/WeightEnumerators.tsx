@@ -20,7 +20,7 @@ import {
   AccordionIcon,
   IconButton
 } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { Task } from "../../lib/types";
 import TaskDetailsDisplay from "../tasks/TaskDetailsDisplay";
 import TaskStateLabel from "../tasks/TaskStateLabel";
@@ -28,6 +28,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { TaskUpdateIterationStatus } from "../../lib/types";
 import { useCanvasStore } from "../../stores/canvasStateStore";
 import { useUserStore } from "@/stores/userStore";
+import { usePanelConfigStore } from "../../stores/panelConfigStore";
 import { TensorNetwork, TensorNetworkLeg } from "@/lib/TensorNetwork";
 import { WeightEnumerator } from "@/stores/tensorNetworkStore";
 
@@ -61,6 +62,9 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
   const deleteWeightEnumerator = useCanvasStore(
     (state) => state.deleteWeightEnumerator
   );
+  const openWeightEnumeratorPanel = usePanelConfigStore(
+    (state) => state.openWeightEnumeratorPanel
+  );
 
   const handleRunWeightEnumerator = () => {
     if (tensorNetwork) {
@@ -72,6 +76,13 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
     if (tensorNetwork) {
       deleteWeightEnumerator(tensorNetwork.signature, taskId);
     }
+  };
+
+  const handleOpenWeightEnumeratorPanel = (
+    taskId: string,
+    taskName: string
+  ) => {
+    openWeightEnumeratorPanel(taskId, taskName);
   };
 
   const isUserLoggedIn = useUserStore((state) => state.isUserLoggedIn);
@@ -221,6 +232,17 @@ const WeightEnumerators: React.FC<WeightEnumeratorsProps> = ({
                   </Box>
                   <AccordionIcon />
                 </AccordionButton>
+                <IconButton
+                  aria-label="Open in separate panel"
+                  icon={<ExternalLinkIcon />}
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() =>
+                    handleOpenWeightEnumeratorPanel(taskId, `Task ${index + 1}`)
+                  }
+                  mt={2}
+                />
                 <IconButton
                   aria-label="Delete task"
                   icon={<DeleteIcon />}
