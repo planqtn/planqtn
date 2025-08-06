@@ -99,7 +99,7 @@ class TensorNetwork:
         }
         # self.open_legs = [n.legs for n in self.nodes]
 
-        self._wep: Optional[TensorEnumerator] = None
+        self._wep: Optional[TensorEnumerator | UnivariatePoly] = None
         self._ptes: Dict[TensorId, _PartiallyTracedEnumerator] = {}
         self._coset: Optional[GF2] = None
         self.truncate_length: Optional[int] = truncate_length
@@ -227,15 +227,15 @@ class TensorNetwork:
         Sets the coset error that will be used for coset weight enumerator calculations.
         The coset error should follow the qubit numbering defined in
          [`qubit_to_node_and_leg`][planqtn.TensorNetwork.qubit_to_node_and_leg] which maps the index
-        to a node ID. Both [`qubit_to_node_and_leg`][planqtn.TensorNetwork.qubit_to_node_and_leg] and 
-          [`n_qubits`][planqtn.TensorNetwork.n_qubits] are abstract classes, and thus this method 
-        can only be called on a subclass that implements these methods, see the 
+        to a node ID. Both [`qubit_to_node_and_leg`][planqtn.TensorNetwork.qubit_to_node_and_leg]
+        and [`n_qubits`][planqtn.TensorNetwork.n_qubits] are abstract classes, and thus this method
+        can only be called on a subclass that implements these methods, see the
         [`planqtn.networks`][planqtn.networks] module for examples.
 
         There are two possible ways to pass the coset_error:
 
         - a tuple of two lists of qubit indices, one for the `Z` errors and one for the `X` errors
-        - a `galois.GF2` array of length `2 * tn.n_qubits()` for the `tn` tensor network. This is a 
+        - a `galois.GF2` array of length `2 * tn.n_qubits()` for the `tn` tensor network. This is a
             symplectic operator representation on the `n` qubits of the tensor network.
 
         Args:
@@ -411,7 +411,7 @@ class TensorNetwork:
         # pylint: disable=W0212
         new_tn._traces = deepcopy(self._traces)
         if cotengra:
-            
+
             new_tn._traces, tree = self._cotengra_contraction(
                 free_legs,
                 leg_indices,
@@ -507,7 +507,8 @@ class TensorNetwork:
                 f"and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
             )
             print(
-                f"Total legs to trace: {sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
+                f"Total legs to trace: "
+                f"{sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
             )
             print(f"PTEs num tracable legs: {dict(pte_leg_numbers)}")
             print(f"Maximum PTE legs: {max_pte_legs}")
@@ -521,10 +522,10 @@ class TensorNetwork:
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
         Executes all the trace operations defined in the tensor network to produce
-        a single tensor enumerator. This tensor enumerator will have the conjoined parity check 
+        a single tensor enumerator. This tensor enumerator will have the conjoined parity check
         matrix. However, running weight enumerator calculation on this conjoined node would use the
-        brute force method, and as such would be typically more expensive than using the 
-        [`stabilizer_enumerator_polynomial`][planqtn.TensorNetwork.stabilizer_enumerator_polynomial] 
+        brute force method, and as such would be typically more expensive than using the
+        [`stabilizer_enumerator_polynomial`][planqtn.TensorNetwork.stabilizer_enumerator_polynomial]
         method.
 
         Args:
@@ -770,7 +771,7 @@ class TensorNetwork:
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
-    ) -> TensorEnumerator:
+    ) -> TensorEnumerator | UnivariatePoly:
         """Returns the reduced stabilizer enumerator polynomial for the tensor network.
 
         If open_legs is not empty, then the returned tensor enumerator polynomial is a dictionary of
