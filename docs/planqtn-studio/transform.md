@@ -11,8 +11,8 @@ provide a list here for the sake of completeness.
 
 ## ZX-calculus transformations
 
--   fuse rule
--   bialgebra and inverse bialgebra rule
+-   [fuse rule (just by fusing LEGOs)](#fusing-legos)
+-   [bialgebra and inverse bialgebra rule](./ui-controls.md#bialgebra-and-inverse-bialgebra)
 -   unfuse:
     -   [pull out a leg](./ui-controls.md#pull-out-a-leg-of-the-same-color) of
         the same color

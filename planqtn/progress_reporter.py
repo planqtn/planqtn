@@ -290,10 +290,6 @@ class ProgressReporter(abc.ABC):
 
         Returns:
             Context manager that can be used with 'with' statement.
-
-        Example:
-            with progress_reporter.enter_phase("Initializing"):
-                initialize_system()
         """
 
         @contextlib.contextmanager

@@ -7,6 +7,7 @@
         members: 
             - TensorId
             - TensorLeg
+            - TensorEnumeratorKey
             - TensorEnumerator
         
 
