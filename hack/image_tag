@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMMIT_HASH=$(git rev-parse --short HEAD)
+COMMIT_HASH=$(git rev-parse HEAD)
 
 if [[ -n $(git status -s) ]]; then
     TAG="${COMMIT_HASH}-dirty"

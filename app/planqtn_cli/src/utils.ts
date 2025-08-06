@@ -27,11 +27,9 @@ export async function getGitTag(): Promise<string> {
   }
 
   // If no tag exists, fall back to commit hash
-  const commitHash = (await runCommand(
-    "git",
-    ["rev-parse", "--short", "HEAD"],
-    { returnOutput: true }
-  )) as string;
+  const commitHash = (await runCommand("git", ["rev-parse", "HEAD"], {
+    returnOutput: true
+  })) as string;
   const status = (await runCommand("git", ["status", "-s"], {
     returnOutput: true
   })) as string;
