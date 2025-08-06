@@ -25,6 +25,13 @@ exploring all the building blocks.
         on MacOSX) and pointing the mouse to the desired location on the canvas,
         Cltr+V (Cmd+V) will paste the content to the canvas. This works across
         different tabs as well.
+-   **Connecting LEGOs**:
+    -   To connect two legos, click and drag at the leg endpoint of a LEGO and
+        drag the temporary connection line to the other LEGOs leg endpoint
+-   **Undo/Redo**:
+    -   Most operations (except highlights and subnet operations) are stored in
+        the operation history, and as such, you can hit Ctrl+Z (Cmd+Z in OSX)
+        for undo and Ctrl+Y (Cmd+Y in OSX) for redo
 
 ## Predefined tensors
 
@@ -32,7 +39,7 @@ The following are the categories of predefined tensors:
 
 -   Rank-1 tensors which are basically states or subspaces called "stoppers".
 -   The rank-2 (two legged) tensors.
--   Dynamic Z/X tensors.
+-   Dynamic X/X tensors.
 -   The [[4,2,2]] code's encoding tensor and its variants.
 -   Other higher rank tensors.
 
@@ -75,7 +82,7 @@ The rank-2 (two-legged) tensors are:
     transformations on them (e.g. pull out a leg of same color)
 
 <center>
-<img src="/docs/fig/rank-2-LEGOs.png" width="50%">
+<img src="/docs/fig/rank-2-legos.png" width="50%">
 </center>
 
 !!! tip
@@ -88,7 +95,7 @@ These are the repetition codes, and are also completely equivalent definitions
 to the X and Z spiders in ZX calculus.
 
 <center>
-<img src="/docs/fig/zx-LEGOs.png" width="50%">
+<img src="/docs/fig/zx-legos.png" width="50%">
 </center>
 
 When these LEGOs are dragged on the canvas, the distance can be entered and a
@@ -134,7 +141,7 @@ Creating a custom LEGO is as easy as providing the parity check matrix and
 specifying the logical legs after dragging the custom LEGO to the canvas:
 
 <center>
-<img src="/docs/fig/custom-LEGO.png" width="50%">
+<img src="/docs/fig/custom-lego.png" width="50%">
 </center>
 
 ## Automated network layouts

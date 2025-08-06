@@ -34,7 +34,10 @@ TensorId = str | int | Tuple[int, int]
 TensorLeg = Tuple[TensorId, int]
 """The tensor leg is a tuple of a tensor id and a leg index."""
 
-TensorEnumerator = Dict[Tuple[int, ...], UnivariatePoly]
+TensorEnumeratorKey = Tuple[int, ...]
+"""The tensor enumerator key is a tuple of integers."""
+
+TensorEnumerator = Dict[TensorEnumeratorKey, UnivariatePoly] | UnivariatePoly
 """The tensor enumerator is a dictionary of tuples of integers and univariate polynomials."""
 
 

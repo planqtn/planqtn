@@ -64,12 +64,14 @@ nav:
   - Home:
       - Welcome to PlanqTN!: index.md
       - Features: features.md
+      - Roadmap: roadmap.md
       - Contributing: contributing.md
       - Legal:
           - Privacy Policy: legal/privacy-policy.md
           - Terms of Service: legal/terms-of-service.md
   - Python API:
       - index: planqtn/index.md
+      - Tensor network contraction: planqtn/contraction.md
       - API Reference: planqtn/reference.md
   - PlanqTN Studio:
       - index: planqtn-studio/index.md

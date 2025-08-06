@@ -34,12 +34,13 @@ from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     TensorId,
     TensorLeg,
+    TensorEnumerator,
+    TensorEnumeratorKey,
     _index_leg,
     _index_legs,
 )
 
-TensorEnumeratorKey = Tuple[int, ...]
-TensorEnumerator = Dict[TensorEnumeratorKey, UnivariatePoly] | UnivariatePoly
+
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
@@ -225,11 +226,17 @@ class TensorNetwork:
 
         Sets the coset error that will be used for coset weight enumerator calculations.
         The coset error should follow the qubit numbering defined in
-        `qubit_to_node_and_leg` which maps the index to a node ID.
+         [`qubit_to_node_and_leg`][planqtn.TensorNetwork.qubit_to_node_and_leg] which maps the index
+        to a node ID. Both [`qubit_to_node_and_leg`][planqtn.TensorNetwork.qubit_to_node_and_leg] and 
+          [`n_qubits`][planqtn.TensorNetwork.n_qubits] are abstract classes, and thus this method 
+        can only be called on a subclass that implements these methods, see the 
+        [`planqtn.networks`][planqtn.networks] module for examples.
 
         There are two possible ways to pass the coset_error:
-        - a tuple of two lists of qubit indices, one for the Z errors and one for the X errors
-        - a GF2 array of length 2 * self.n_qubits()
+
+        - a tuple of two lists of qubit indices, one for the `Z` errors and one for the `X` errors
+        - a `galois.GF2` array of length `2 * tn.n_qubits()` for the `tn` tensor network. This is a 
+            symplectic operator representation on the `n` qubits of the tensor network.
 
         Args:
             coset_error: The coset error specification.
@@ -404,13 +411,13 @@ class TensorNetwork:
         # pylint: disable=W0212
         new_tn._traces = deepcopy(self._traces)
         if cotengra:
-            print("Calculating best contraction path...")
+            
             new_tn._traces, tree = self._cotengra_contraction(
                 free_legs,
                 leg_indices,
                 index_to_legs,
                 details,
-                TqdmProgressReporter(),
+                TqdmProgressReporter() if details else DummyProgressReporter(),
                 **cotengra_opts,
             )
         else:
@@ -421,19 +428,20 @@ class TensorNetwork:
 
         pte_nodes: Dict[TensorId, int] = {}
         max_pte_legs = 0
-        print(
-            "========================== ======= === === === == ==============================="
-        )
-        print(
-            "========================== TRACE SCHEDULE ANALYSIS ============================="
-        )
-        print(
-            "========================== ======= === === === == ==============================="
-        )
-        print(
-            f"    Total legs to trace: "
-            f"{sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
-        )
+        if details:
+            print(
+                "========================== ======= === === === == ==============================="
+            )
+            print(
+                "========================== TRACE SCHEDULE ANALYSIS ============================="
+            )
+            print(
+                "========================== ======= === === === == ==============================="
+            )
+            print(
+                f"    Total legs to trace: "
+                f"{sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
+            )
         pte_leg_numbers: Dict[TensorId, int] = defaultdict(int)
 
         for node_idx1, node_idx2, join_legs1, join_legs2 in new_tn._traces:
@@ -490,20 +498,19 @@ class TensorNetwork:
             max_pte_legs = max(max_pte_legs, biggest_legs)
             if each_step:
                 print(f"    Biggest PTE legs: {biggest_legs} vs MAX: {max_pte_legs}")
-
-        print("=== Final state ==== ")
         if details:
+            print("=== Final state ==== ")
             print(f"pte nodes: {pte_nodes}")
 
-        print(
-            f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} "
-            f"and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
-        )
-        print(
-            f"Total legs to trace: {sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
-        )
-        print(f"PTEs num tracable legs: {dict(pte_leg_numbers)}")
-        print(f"Maximum PTE legs: {max_pte_legs}")
+            print(
+                f"all nodes {set(pte_nodes.keys()) == set(new_tn.nodes.keys())} "
+                f"and all nodes are in a single PTE: {len(set(pte_nodes.values())) == 1}"
+            )
+            print(
+                f"Total legs to trace: {sum(len(legs) for legs in new_tn._legs_left_to_join.values())}"
+            )
+            print(f"PTEs num tracable legs: {dict(pte_leg_numbers)}")
+            print(f"Maximum PTE legs: {max_pte_legs}")
         return tree, max_pte_legs
 
     def conjoin_nodes(
@@ -514,8 +521,11 @@ class TensorNetwork:
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
         Executes all the trace operations defined in the tensor network to produce
-        a single tensor enumerator. This is the main method for contracting the
-        tensor network.
+        a single tensor enumerator. This tensor enumerator will have the conjoined parity check 
+        matrix. However, running weight enumerator calculation on this conjoined node would use the
+        brute force method, and as such would be typically more expensive than using the 
+        [`stabilizer_enumerator_polynomial`][planqtn.TensorNetwork.stabilizer_enumerator_polynomial] 
+        method.
 
         Args:
             verbose: If True, print verbose output during contraction.
