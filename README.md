@@ -12,13 +12,6 @@
 -   [planqtn.com/docs](https://planqtn.com/docs): Documentation for both PlanqTN
     Studio and the Python library
 
-# Public preview
-
-You are looking at a soft-launch preview of PlanqTN. We are before the v0.1.0
-public release, which is scheduled around end of July/early Aug of 2025. Check
-out the issues for the
-[milestone](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A%222025.1.0%20-%20The%20first%20release%22).
-
 # Welcome to PlanqTN!
 
 PlanqTN is the [`planqtn`](https://pypyi.org/planqtn) python library and the
