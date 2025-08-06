@@ -1,5 +1,15 @@
 [![Unitary Foundation](https://img.shields.io/badge/Supported%20By-UNITARY%20FOUNDATION-brightgreen.svg?style=for-the-badge)](https://unitary.foundation)
 
+[![Library Checks](https://github.com/planqtn/planqtn/workflows/planqtn%20Library%20Checks/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/lib_checks.yml)
+[![UI & Docs Checks](https://github.com/planqtn/planqtn/workflows/UI%20&%20Docs%20Checks/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/ui_checks.yml)
+[![License Check](https://github.com/planqtn/planqtn/workflows/License%20Check/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/license-check.yml)
+[![API Server Checks](https://github.com/planqtn/planqtn/workflows/API%20Server%20Checks/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/api_server_checks.yml)
+[![CLI Checks](https://github.com/planqtn/planqtn/workflows/CLI%20Checks/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/cli_checks.yml)
+[![Jobs Checks](https://github.com/planqtn/planqtn/workflows/Job%20Execution%20Checks/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/jobs_checks.yml)
+[![Cloud Integration Tests](https://github.com/planqtn/planqtn/workflows/Cloud%20Integration%20Tests/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/cloud_integration_tests.yml)
+[![Local Integration Tests](https://github.com/planqtn/planqtn/workflows/Local%20Integration%20Tests/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/local_integration_tests.yml)
+[![Package Publishing](https://github.com/planqtn/planqtn/workflows/Publish%20Packages/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/publish_packages.yml)
+
 <p align="center">
 <img src="docs/fig/planqtn_logo.png" width="300"></img>
 </p>
