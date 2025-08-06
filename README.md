@@ -14,13 +14,13 @@
 [![Package Publishing](https://github.com/planqtn/planqtn/workflows/Publish%20Packages/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/publish_packages.yml)
 
 -   [planqtn.com](https://planqtn.com): PlanqTN Studio
--   [`planqtn` on Pypi](https://pypi.org/planqtn): the official PlanqTN Python
+-   [`planqtn` on Pypi](https://pypi.org/project/planqtn/): the official PlanqTN Python
     library
 -   [planqtn.com/docs](https://planqtn.com/docs): Documentation for both PlanqTN
     Studio and the Python library
 
 # Welcome to PlanqTN!
-PlanqTN is the [`planqtn`](https://pypyi.org/planqtn) python library and the
+PlanqTN is the [`planqtn`](https://pypi.org/project/planqtn/) python library and the
 [PlanqTN Studio (https://planqtn.com)](https://planqtn.com), an interactive
 studio to create, manipulate and analyze tensor network-based quantum error
 correcting codes.
