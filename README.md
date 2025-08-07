@@ -58,6 +58,28 @@ and follow the
 [DEVELOPMENT.md](https://github.com/planqtn/planqtn/blob/main/DEVELOPMENT.md)
 for setup, developer workflows, and design concepts.
 
+# Citing PlanqTN 
+
+Please use the following Zenodo citation to cite PlanqTN:
+
+```
+@software{pato_2025_16761072,
+  author       = {Pato, Balint and
+                  Vanlerberghe, June and
+                  Cao, ChunJun and
+                  Lackey, Brad and
+                  Brown, Kenneth},
+  title        = {PlanqTN, a Python library and interactive web app
+                   implementing the quantum LEGO framework
+                  },
+  month        = aug,
+  year         = 2025,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.16761072},
+  url          = {https://doi.org/10.5281/zenodo.16761072},
+}
+```
+
 # License
 
 Copyright 2025 Balint Pato
