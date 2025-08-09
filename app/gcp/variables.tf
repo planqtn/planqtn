@@ -52,4 +52,11 @@ variable "google_credentials" {
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "expose_api_service_account_key_output" {
+  description = "If true, exposes the API service account private key via Terraform output (not recommended for prod)."
+  type        = bool
+  default     = false
+  sensitive   = true
 } 

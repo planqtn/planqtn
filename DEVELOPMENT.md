@@ -387,6 +387,11 @@ Use terraform to get the Cloud Run service account key:
 
 ```
 cd app/gcp
+# Recommended: retrieve from Secret Manager (production-safe)
+# gcloud secrets versions access latest --secret=api_service_account_key --format='get(payload.data)' | tr '_-' '/+' | base64 --decode
+
+# Ephemeral/dev only: expose via Terraform output by passing an explicit flag
+# (not recommended for production)
 $HOME/.planqtn/bin/terraform output -raw api_service_account_key | base64 --decode
 ```
 
