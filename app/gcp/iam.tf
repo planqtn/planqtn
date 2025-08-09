@@ -9,7 +9,6 @@ resource "google_service_account" "cloud_run_svc" {
 resource "google_project_iam_member" "cloud_run_svc_roles" {
   for_each = toset([
     "roles/secretmanager.secretAccessor",
-    "roles/run.admin",           # To manage Cloud Run services
     "roles/run.invoker",         # To invoke Cloud Run services
     "roles/run.jobsExecutor",    # To execute Cloud Run jobs
     "roles/logging.logWriter",   # To write logs
