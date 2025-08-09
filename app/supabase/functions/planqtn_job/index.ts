@@ -100,7 +100,23 @@ Deno.serve(async (req) => {
     }
 
     // Lock down: always use server-side SUPABASE_URL for Task Store
-    const taskStoreUrl = taskUpdatesUrl;
+    const requestedUrl = jobRequest.task_store_url || "";
+    const allowedHosts = new Set([
+      new URL(taskUpdatesUrl).hostname,
+      "localhost",
+      "127.0.0.1"
+    ]);
+    let taskStoreUrl = taskUpdatesUrl;
+    try {
+      if (requestedUrl) {
+        const u = new URL(requestedUrl);
+        if (allowedHosts.has(u.hostname)) {
+          taskStoreUrl = requestedUrl;
+        }
+      }
+    } catch (_) {
+      // ignore malformed URL; default to taskUpdatesUrl
+    }
 
     const taskStore = createClient(
       taskStoreUrl,

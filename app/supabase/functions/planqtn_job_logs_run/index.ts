@@ -55,6 +55,28 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Verify ownership
+    const token = authHeader.split(" ")[1];
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("uuid,user_id,execution_id")
+      .eq("execution_id", jobLogsRequest.execution_id)
+      .eq("user_id", userData.user.id)
+      .single();
+    if (taskError || !task) {
+      return new Response(
+        JSON.stringify({ error: "Execution not found for this user" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const client = new CloudRunClient();
 
     const logs = await client.getJobLogs(jobLogsRequest.execution_id);
