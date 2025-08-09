@@ -42,25 +42,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Initialize Supabase client
-    const taskStore = createClient(
-      cancelJobRequest.task_store_url,
-      cancelJobRequest.task_store_anon_key,
-      {
-        global: {
-          headers: {
-            Authorization: `${authHeader}`
-          }
-        }
-      }
-    );
+      // Initialize Supabase client (locked to server's SUPABASE_URL)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const taskStore = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the task from the database
-    const { data: task, error: taskError } = await taskStore
-      .from("tasks")
-      .select("*")
-      .eq("uuid", cancelJobRequest.task_uuid)
-      .single();
+  // Verify task ownership
+  const token = authHeader.split(" ")[1];
+  const { data: userData, error: userError } = await taskStore.auth.getUser(token);
+  if (userError || !userData) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Get the task from the database (owned by caller)
+  const { data: task, error: taskError } = await taskStore
+    .from("tasks")
+    .select("*")
+    .eq("uuid", cancelJobRequest.task_uuid)
+    .eq("user_id", userData.user.id)
+    .single();
 
     if (taskError) {
       return new Response(
