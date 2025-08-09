@@ -23,12 +23,19 @@ def _validate_matrix_shape(matrix: list[list[int]]):
     rows = len(matrix)
     if rows > MAX_MATRIX_DIM:
         raise HTTPException(status_code=413, detail="matrix too many rows")
-    cols = len(matrix[0]) if isinstance(matrix[0], list) else 0
-    if cols > MAX_MATRIX_DIM:
+    first_len = len(matrix[0]) if isinstance(matrix[0], list) else 0
+    if first_len > MAX_MATRIX_DIM:
         raise HTTPException(status_code=413, detail="matrix too many columns")
-    total = rows * cols
+    total = rows * first_len
     if total > MAX_MATRIX_CELLS:
         raise HTTPException(status_code=413, detail="matrix too large")
+    # ensure rectangular and 0/1 entries
+    for r, row in enumerate(matrix):
+        if not isinstance(row, list) or len(row) != first_len:
+            raise HTTPException(status_code=400, detail="matrix rows must be equal length")
+        for v in row:
+            if v not in (0, 1):
+                raise HTTPException(status_code=400, detail="matrix must contain only 0/1 values")
 
 
 @router.post("/tannernetwork", response_model=TensorNetworkResponse)
