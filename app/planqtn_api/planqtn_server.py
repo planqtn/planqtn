@@ -16,12 +16,21 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+allowed_origins_env = os.getenv("PLANQTN_API_ALLOWED_ORIGINS", "*")
+allow_credentials = os.getenv("PLANQTN_API_ALLOW_CREDENTIALS", "false").lower() == "true"
+
+if allowed_origins_env == "*" and allow_credentials:
+    # If credentials are enabled, '*' is invalid and insecure; force no credentials
+    allow_credentials = False
+
+allow_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 # Include the API router
