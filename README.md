@@ -14,13 +14,13 @@
 [![Package Publishing](https://github.com/planqtn/planqtn/workflows/Publish%20Packages/badge.svg)](https://github.com/planqtn/planqtn/actions/workflows/publish_packages.yml)
 
 -   [planqtn.com](https://planqtn.com): PlanqTN Studio
--   [`planqtn` on Pypi](https://pypi.org/planqtn): the official PlanqTN Python
+-   [`planqtn` on Pypi](https://pypi.org/project/planqtn/): the official PlanqTN Python
     library
 -   [planqtn.com/docs](https://planqtn.com/docs): Documentation for both PlanqTN
     Studio and the Python library
 
 # Welcome to PlanqTN!
-PlanqTN is the [`planqtn`](https://pypyi.org/planqtn) python library and the
+PlanqTN is the [`planqtn`](https://pypi.org/project/planqtn/) python library and the
 [PlanqTN Studio (https://planqtn.com)](https://planqtn.com), an interactive
 studio to create, manipulate and analyze tensor network-based quantum error
 correcting codes.
@@ -52,11 +52,35 @@ We are supported by the [Unitary Foundation](https://unitary.foundation/).
 PlanqTN is an open source project and we would love to see contributions from
 you!
 
+To chat: Find us on the [#planqtn channel on the Unitary Foundation's discord server](https://discordapp.com/channels/764231928676089909/1379202741288566844)! 
+
 To get started with contributions, check out
 [good first issues](https://github.com/planqtn/planqtn/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22),
 and follow the
 [DEVELOPMENT.md](https://github.com/planqtn/planqtn/blob/main/DEVELOPMENT.md)
 for setup, developer workflows, and design concepts.
+
+# Citing PlanqTN 
+
+Please use the following Zenodo citation to cite PlanqTN:
+
+```
+@software{pato_2025_16761072,
+  author       = {Pato, Balint and
+                  Vanlerberghe, June and
+                  Cao, ChunJun and
+                  Lackey, Brad and
+                  Brown, Kenneth},
+  title        = {PlanqTN, a Python library and interactive web app
+                   implementing the quantum LEGO framework
+                  },
+  month        = aug,
+  year         = 2025,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.16761072},
+  url          = {https://doi.org/10.5281/zenodo.16761072},
+}
+```
 
 # License
 
