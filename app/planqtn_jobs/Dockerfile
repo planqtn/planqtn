@@ -1,6 +1,7 @@
 # Multi-stage build for optimized image size
 # Build stage
-FROM python:3.12-slim AS builder
+# TODO: switch to a venv based solution instead of copying directories
+FROM python:3.12-slim@sha256:9c1d9ed7593f2552a4ea47362ec0d2ddf5923458a53d0c8e30edf8b398c94a31 AS builder
 
 WORKDIR /app
 
