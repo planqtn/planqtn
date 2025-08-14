@@ -20,7 +20,7 @@ COPY ./app/planqtn_api /app/planqtn_api
 COPY ./app/planqtn_types /app/planqtn_types
 
 # Runtime stage using distroless Python
-FROM gcr.io/distroless/python3-debian12:4eacfbbbf378a5416d7fd2bdab169737dbec4ee1e5f90c72fab5ce6907362fed
+FROM gcr.io/distroless/python3-debian12@sha256:4eacfbbbf378a5416d7fd2bdab169737dbec4ee1e5f90c72fab5ce6907362fed
 
 # Copy Python from builder stage
 COPY --from=builder /usr/local/bin/python /usr/local/bin/python
