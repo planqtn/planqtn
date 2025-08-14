@@ -49,5 +49,5 @@ ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/venv/bin:$PATH"
 
 # Use distroless entrypoint
-ENTRYPOINT ["python", "/app/planqtn_jobs/planqtn_jobs.py"]
+ENTRYPOINT ["python"]
 
