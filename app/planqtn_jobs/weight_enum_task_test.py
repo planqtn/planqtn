@@ -611,7 +611,7 @@ def test_e2e_through_function_call(
 
         assert len(task.data) == 1, f"Task not found, task: {task.data}"
 
-        for _ in range(40):
+        for _ in range(80):
             task = (
                 user_sb_client.table("tasks")
                 .select("*")
