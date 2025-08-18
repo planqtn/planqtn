@@ -16,12 +16,15 @@ The main methods are:
 import importlib.util
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
 
 import cotengra as ctg
+from cotengra.scoring import ensure_basic_quantities_are_computed
 import numpy as np
 from galois import GF2
 
+from planqtn.contraction_visitor import ContractionVisitor
+from planqtn.stabilizer_code_cost_fn import custom_cost_stabilizer_codes
 from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (
@@ -400,11 +403,12 @@ class TensorNetwork:
         free_legs, leg_indices, index_to_legs = self._collect_legs()
         tree = None
 
-        node_to_free_legs = defaultdict(list)
-        for leg in free_legs:
-            for node_idx, node in self.nodes.items():
-                if leg in node.legs:
-                    node_to_free_legs[node.tensor_id].append(leg)
+        open_legs_per_node = defaultdict(list)
+        for node_idx, node in self.nodes.items():
+            for leg in node.legs:
+                if leg not in free_legs:
+                    open_legs_per_node[node_idx].append(_index_leg(node_idx, leg))
+
 
         new_tn = TensorNetwork(deepcopy(self.nodes))
 
@@ -416,6 +420,7 @@ class TensorNetwork:
                 free_legs,
                 leg_indices,
                 index_to_legs,
+                open_legs_per_node,
                 details,
                 TqdmProgressReporter() if details else DummyProgressReporter(),
                 **cotengra_opts,
@@ -518,6 +523,7 @@ class TensorNetwork:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
+        visitor: ContractionVisitor = None,
     ) -> "StabilizerCodeTensorEnumerator":
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
@@ -570,6 +576,11 @@ class TensorNetwork:
                 new_pte = pte.self_trace(join_legs1, join_legs2)
                 ptes[pte1_idx] = (new_pte, nodes_in_pte)
 
+                if visitor is not None:
+                    visitor.on_self_trace(
+                        node_idx1, join_legs1, join_legs2, pte, nodes_in_pte
+                    )
+
             # Case 2: Nodes are in different PTEs - merge them
             else:
                 if verbose:
@@ -591,6 +602,17 @@ class TensorNetwork:
                 for node_idx, pte_idx in node_to_pte.items():
                     if pte_idx > pte2_idx:
                         node_to_pte[node_idx] = pte_idx - 1
+
+                if visitor is not None:
+                    visitor.on_merge(
+                        node_idx1,
+                        node_idx2,
+                        join_legs1,
+                        join_legs2,
+                        pte1,
+                        pte2,
+                        merged_nodes,
+                    )
 
             if verbose:
                 print("H:")
@@ -716,12 +738,31 @@ class TensorNetwork:
             ]
         )
         return traces
+    
+    def _make_custom_cost_fn(
+        self,
+        index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
+        inputs: List[Tuple[str, ...]],
+        open_legs_per_node: Dict[TensorId, List[TensorLeg]],
+    ) -> Callable[[Dict], float]:
+        def stabilizer_cost_fn(trial_dict):
+            tree = trial_dict["tree"]
+            ensure_basic_quantities_are_computed(trial_dict)
+
+            traces = self._traces_from_cotengra_tree(
+                tree, index_to_legs=index_to_legs, inputs=inputs
+            )
+            self._traces = traces
+            return np.log2(custom_cost_stabilizer_codes(self, open_legs_per_node))
+
+        return stabilizer_cost_fn
 
     def _cotengra_contraction(
         self,
         free_legs: List[TensorLeg],
         leg_indices: Dict[TensorLeg, str],
         index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
+        open_legs_per_node: Dict[TensorId, List[TensorLeg]],
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         **cotengra_opts: Any,
@@ -737,9 +778,11 @@ class TensorNetwork:
             leg_indices, free_legs, verbose
         )
 
+        custom = self._make_custom_cost_fn(index_to_legs, inputs, open_legs_per_node)
+        
         contengra_params = {
-            "minimize": "combo",
-            "parallel": False,
+            "minimize": custom,
+            "parallel": True,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
             "methods": [

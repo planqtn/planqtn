@@ -1,4 +1,4 @@
-"""Calculates the cost of contracting a stabilizer code tensor network based only on the paei."""
+"""Calculates the cost of contracting a stabilizer code tensor network based only on the parity check matrix."""
 
 from typing import TYPE_CHECKING, Dict, Set, List, Tuple
 from itertools import product
