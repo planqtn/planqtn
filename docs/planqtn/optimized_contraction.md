@@ -3,12 +3,13 @@
 In PlanqTN v0.1.0, tensor network contraction was done using [Cotengra](https://cotengra.readthedocs.io/)'s hyper-optimized tensor network contraction algorithms using "flops" as the minimizer. While these schedules still outperformed the brute force method, we noticed that Cotengra was not accurately estimating how costly a contraction would be, and therefore not giving the best results.
 
 
-## How does Cotengra's flops calculation work?
+## Cotengra flops calculation
 In order to find a good contraction schedule, Cotengra will sample many different schedules and give them each a score, using the specified minimizer (flops in v0.1.0). It then returns the best schedule found. However, we noticed that, for the same code, there were vast differences in how long the contraction was taking. This led us to believe that Cotengra was having trouble accurately estimating the "score" of the contraction schedule.
 
 Cotengra's flops calculation comes from multiplying the full dimensions of all the tensors. However, our tensors are very sparse and therefore we suspected that a cost calculation based on the full dimensions would not be accurate.
 
------ plot of default cotengra score for each representation here ---- 
+![Default Cotengra Scores](/docs/fig/default_scatter_results.png)
+
 
 As you can see, Cotengra can generally approximate the cost, but fails when differentiating between different contraction orders for the same tensor network.
 
