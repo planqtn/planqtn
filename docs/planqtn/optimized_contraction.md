@@ -6,72 +6,96 @@ In PlanqTN v0.1.0, tensor network contraction was done using [Cotengra](https://
 ## How does Cotengra's flops calculation work?
 In order to find a good contraction schedule, Cotengra will sample many different schedules and give them each a score, using the specified minimizer (flops in v0.1.0). It then returns the best schedule found. However, we noticed that, for the same code, there were vast differences in how long the contraction was taking. This led us to believe that Cotengra was having trouble accurately estimating the "score" of the contraction schedule.
 
-Cotengra's flops calculation comes from multiplying the full dimensions of all the tensors. However, our tensors are sparse and therefore we suspected that a cost calculation based on the full dimensions is not accurate.
+Cotengra's flops calculation comes from multiplying the full dimensions of all the tensors. However, our tensors are very sparse and therefore we suspected that a cost calculation based on the full dimensions would not be accurate.
 
 ----- plot of default cotengra score for each representation here ---- 
 
-As you can see, Cotengra gives the same score for a large range of contraction costs. Given the same traces but a different order, Cotengra's full dimensional cost calculation cannot tell the difference.
+As you can see, Cotengra can generally approximate the cost, but fails when differentiating between different contraction orders for the same tensor network.
 
 
 ## Custom Cost Calculation for Stabilizer Codes
-Calculating the parity check matrices throughout the contraction is relatively fast and can therefore help give us insight into how large the tensors will be throughout the contraction. At each step of the contraction, using only the parity check matrices and the legs that are left open, we can exactly calculate what the resulting tensor size will be as well as the number of flops it will take to calculate in our method.
+Calculating the parity check matrices throughout the contraction is relatively fast and can therefore help give us insight into how large the tensors will be throughout the contraction. At each step of the contraction, using only the parity check matrices and the legs that are left open, we can exactly calculate what the resulting tensor size will be as well as the number of flops it will take to calculate with our current method.
 
 ### Size of weight enumerator polynomial <-> rank of parity check matrix
-The biggest factor in how expensive a weight enumerator polynomial calculation will be is how large the intermediate tensors get. We found that we will know the exact size of these tensors are each step of the contraction simply from the parity check matrix. In PlanqTN versions v0.1.0 and v0.2.0, the weight enumerator polynomials are stored as dictionaries based on the Pauli operators acting on the open legs. So, the length of the polynomial depends on how many different combinations of Pauli operators are acting on the open legs. This means that a fully dense tensor would have 4^(# open legs). In almost every case, our tensors are not close to being fully dense, which is why Cotengra is unable to find the best contraction schedule.
+The biggest factor in how expensive a tensor network contraction will be is how large the intermediate tensors get. We found that we will know the exact size of these tensors at each step of the contraction simply from the parity check matrix. In PlanqTN versions v0.1.0 and v0.2.0, the weight enumerator polynomials are stored as dictionaries based on the Pauli operators acting on the open legs. The keys of this dictionary are tuples that represent the Pauli operators that act on the open legs. So, the length of the tensor depends on how many different combinations of these Pauli operators keys we have. This means that a fully dense tensor would have 4^(# open legs). In almost every case, our tensors are not close to being fully dense.
 
-We can know how many of these combinations we will have by only looking at the open legs of the parity check matrix (without brute force calculating all of the stabilizers). The rank of only those columns will be how many keys we will have in the tensor (2**rank). An example is shown below.
+We can know how many keys (so the length of the tensor) we will have by only looking at the open legs of the parity check matrix without brute force calculating all of the stabilizers. The number of keys is exactly 2^r where r is the rank of the matrix consisting only of the columns corresponding to open legs. An example is shown below.
 
 #### Example 1
 Let's start with a parity check matrix given by:
 
-H = [[X I X],
-     [I I Z],
+H = [[X I X], \
+     [I I Z], \
      [I X X]]
 
 and given that the open legs are columns 1 and 2 (0-indexed). If we were to do the brute force calculation of our tensor, we would have to find all the stabilizers that the parity check matrix generates:
 
-S = [[X I X],
-     [I I I],
-     [I I Z],
-     [X I Y],
-     [I X X],
-     [I X Y],
-     [X X I],
-     [X X Z]]
+S = {XIX, III, IIZ, XIY, IXX, IXY, XXI, XXZ}
 
-Then find the keys representing the Pauli operators that are acting on the open legs (where the keys are 0, 1, 2, 3 corresponding to I, X, Y, Z respectively). These are: (0, 1), (0, 0), (0, 2), (0, 3), (1, 1), (1, 3), (1, 0), (1, 2). So, the size of our tensor will be 8. 
+Then find the keys representing the Pauli operators acting on the open legs (where the keys are 0, 1, 2, 3 corresponding to I, X, Y, Z respectively). These are: (0, 1), (0, 0), (0, 2), (0, 3), (1, 1), (1, 3), (1, 0), (1, 2). So, the size of our tensor will be 8. 
 
-Instead of brute force calculating all of the stabilizer, we can calculate this length given only the parity check matrix. Take only the columns of the open legs:
+Instead of finding all of the stabilizers, we can calculate this length given only the parity check matrix. Take only the columns of the open legs:
 
-H_open = [[I X],
-          [I Z],
+H_open = [[I X], \
+          [I Z], \
           [X X]]
 
-The rank of this matrix is 3. So, we know the size of the tensor will be 2^3 = 8.
+The rank of this matrix is 3, meaning we have 3 independent generators. So, we know the number of unique combinations of Pauli operators will be the number of stabilizers that are generated: 2^3 = 8.
 
 #### Example 2
-Here is another example where we show the rank calculation is truly necessary.
+Here is another example where we show the rank calculation makes a difference.
 
-H = [[X I X],
-     [I I X],
+H = [[X I X], \
+     [I I X], \
      [I I Z]]
 
 All stabilizers are:
-S = [[X I X],
-     [I I X],
-     [X I I],
-     [I I I],
-     [I I Z],
-     [I I Y],
-     [X I Y],
-     [X I Z]]
+S = {XIX, IIX, III,  IIZ, IIY, XIY, XIZ}
 
-And the unique Pauli operator keys are this time: (0, 1), (0, 0), (0, 2), (0, 3). Notice how the length this time is only 4 since there are duplicated Pauli operators on the open legs.
+The unique Pauli operator keys are this time: (0, 1), (0, 0), (0, 2), (0, 3). Notice how the length this time is only 4 since there are duplicated Pauli operators on the open legs.
 
 This can be efficiently calculated again by looking only at the parity check matrix open columns:
 
-H_open = [[I X],
-          [I X],
+H_open = [[I X], \
+          [I X], \
           [I Z]]
 
 The rank of this matrix is only 2, so we know the size of the tensor will be 2^2 = 4.
+
+### Ratio of Matching Keys
+The next key to finding the exact tensor network contraction cost is how many of the keys will match when merging two tensors. This is implemented by a double for loop over the tensor keys and only performing an operation if all elements of the keys match. 
+
+We will know exactly how many of the keys will match given only the parity check matrices and the legs that are being joined. First, find the columns of each parity check matrix that corresponds to the legs being joined. Find the tensor product of these columns, then perform a row reduction to get a simplified matrix. This will result in a matrix with two columns (1 join leg from each tensor), or 4 if in symplectic form. Then, generate all stabilizers (will be a maximum of 16 -> 4^2) and find the ratio of stabilizers that match on both join legs. This ratio will be the same as when we are enumerating the full tensors during the actual contraction. 
+
+#### Example
+Define two tensors we want to merge by their parity check matrices:
+
+H_1 = [[X X X], \
+       [Z I Z]]
+
+H_2 = [[X I I X], \
+       [I X X X], \
+       [Z I Z Z]]
+
+Tensor 1 has two open legs (the first two). Tensor 2 has 3 open legs (the first three). The join legs are the second column of each tensor: [[X], [I]] and [[I], [X], [I]]. Next, compute their tensor product:
+
+H_prod = [[X I], \
+        [I I], \
+        [I I], \
+        [I X], \
+        [I I]]
+
+Generate all stabilizers from these generators: 
+
+S = {XI, XX, IX, II}
+
+2/4 = 0.5 of the stabilizers match on both join legs. So, we know that half of the keys in our tensors will match as well. 
+
+### Putting it all together
+In our current weight enumerator polynomial calculation, the tensors get merged in a specific order given by Cotengra. To merge these tensors, we use a double for loop over the keys and skip if not all of the legs match in the keys. So, cost for a merge operation is given by 2^(r1 + r2) * matches_ratio. r1 and r2 are the ranks calculated from the open legs and matches_ratio is the matching stabilizer ratio calculated from the join legs. 
+
+This metric exactly calculates the cost of our contraction and when given to Cotengra to minimize, we get much better contraction schedules. 
+
+-- put the scatter plot of custom results here -- 
+
+-- then also the bar chart of results -- 
