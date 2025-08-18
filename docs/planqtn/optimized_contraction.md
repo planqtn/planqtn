@@ -8,7 +8,10 @@ In order to find a good contraction schedule, Cotengra will sample many differen
 
 Cotengra's flops calculation comes from multiplying the full dimensions of all the tensors. However, our tensors are very sparse and therefore we suspected that a cost calculation based on the full dimensions would not be accurate.
 
-![Default Cotengra Scores](/docs/fig/default_scatter_results.png)
+
+<center>
+<img src="/docs/fig/default_scatter_results.png" width="50%">
+</center>
 
 
 As you can see, Cotengra can generally approximate the cost, but fails when differentiating between different contraction orders for the same tensor network.
@@ -95,8 +98,10 @@ S = {XI, XX, IX, II}
 ### Putting it all together
 In our current weight enumerator polynomial calculation, the tensors get merged in a specific order given by Cotengra. To merge these tensors, we use a double for loop over the keys and skip if not all of the legs match in the keys. So, cost for a merge operation is given by 2^(r1 + r2) * matches_ratio. r1 and r2 are the ranks calculated from the open legs and matches_ratio is the matching stabilizer ratio calculated from the join legs. 
 
-This metric exactly calculates the cost of our contraction and when given to Cotengra to minimize, we get much better contraction schedules. 
+This metric exactly calculates the cost of our contraction and when given to Cotengra to minimize, we get much better contraction schedules. Below is a plot showing how our custom score much more accurately calculates the cost of the contraction.
 
--- put the scatter plot of custom results here -- 
+<center>
+<img src="/docs/fig/custom_scatter_results.png" width="50%">
+</center>
 
 -- then also the bar chart of results -- 
