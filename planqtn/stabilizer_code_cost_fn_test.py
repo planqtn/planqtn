@@ -3,7 +3,8 @@ from galois import GF2
 import numpy as np
 
 from planqtn.legos import Legos
-from planqtn.networks.compass_code import CompassCodeConcatenateAndSparsifyTN, CompassCodeDualSurfaceCodeLayoutTN
+from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
+from planqtn.networks.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.networks.stabilizer_measurement_state_prep import StabilizerMeasurementStatePrepTN
 from planqtn.stabilizer_code_cost_fn import count_matching_stabilizers_ratio, custom_cost_stabilizer_codes
 from planqtn.stabilizer_tensor_enumerator import _index_leg
@@ -45,12 +46,10 @@ def get_open_legs(tn):
 def test_custom_cost_stabilizer_codes():
     """Test the custom cost function for stabilizer codes. Should always be consistent
     if no contraction order is changed (e.g. by using cotengra)."""
-
-    # make concatenated shors tensor network - easy contraction, always 10
-    d = 3
-    compass_code_shor = CompassCodeConcatenateAndSparsifyTN(np.full((d-1, d-1), 2))
-    cost = custom_cost_stabilizer_codes(compass_code_shor, get_open_legs(compass_code_shor))
-    assert cost == 10.0
+    # Rotated Surface Code 
+    rotated_surface_tn = RotatedSurfaceCodeTN(d=3)
+    cost = custom_cost_stabilizer_codes(rotated_surface_tn, get_open_legs(rotated_surface_tn))
+    assert cost == 254.0
 
 
     # Compass code, dual surface layout

@@ -1,4 +1,5 @@
-"""Calculates the cost of contracting a stabilizer code tensor network based only on the parity check matrix."""
+"""Calculates the cost of contracting a stabilizer code tensor network 
+based only on the parity check matrix."""
 
 from typing import TYPE_CHECKING, Dict, Set, List, Tuple
 from itertools import product
@@ -42,6 +43,7 @@ def count_matching_stabilizers_ratio(generators: GF2) -> float:
         stabilizers[i] = combo
         x = combo[:n]
         z = combo[n:]
+        # If all pauli operators are the same, we have a match
         if np.all(x == x[0]) and np.all(z == z[0]):
             count += 1
     return count / 2**r
@@ -126,8 +128,6 @@ class StabilizerCodeCostVisitor(ContractionVisitor):
 
         for node in nodes_in_pte:
             self.traceable_legs[node] = new_traceable_legs
-
-        
 
         prev_rank_submatrix = get_rank_for_matrix_legs(
             pte, new_traceable_legs + join_legs1 + join_legs2
