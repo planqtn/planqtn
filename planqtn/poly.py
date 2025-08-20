@@ -1,6 +1,6 @@
 """Minimal polynomial representations for the weight enumerator polynomials."""
 
-from typing import Dict, Tuple, Union, Any, Generator, Optional, Callable, List
+from typing import Dict, Tuple, Union, Any, Generator, Optional
 
 from sympy import Poly, symbols
 import sympy
@@ -180,20 +180,6 @@ class UnivariatePoly:
             return res
         raise TypeError(f"Cannot multiply UnivariatePoly by {type(n)}")
 
-    def _homogenize(self, n: int) -> "BivariatePoly":
-        """Homogenize a univariate polynomial to a bivariate polynomial.
-
-        Converts A(z) to A(w,z) = w^n * A(z/w), where w represents the dual weight
-        and z represents the actual weight. This is used in MacWilliams duality.
-
-        Args:
-            n: The degree of homogenization.
-
-        Returns:
-            BivariatePoly: The homogenized bivariate polynomial.
-        """
-        return BivariatePoly({Monomial((n - k, k)): v for k, v in self.dict.items()})
-
     def truncate_inplace(self, n: int) -> None:
         """Truncate the polynomial to terms with power <= n in-place.
 
@@ -206,18 +192,13 @@ class UnivariatePoly:
         """Convert this polynomial to a sympy Poly object.
 
         Args:
-            variables: List of sympy symbols representing the variables.
+            variable: sympy symbol representing the variable.
 
         Returns:
             Poly: The sympy polynomial representation.
-
-        Raises:
-            AssertionError: If the polynomial is not bivariate (2 variables).
         """
-
         res = Poly(0, variable)
         for k, v in self.dict.items():
-            print(f"adding {v} * {variable}^{k}: ", v * variable**k)
             res += Poly(f"{v} * {variable}^{k}")
         return res
 
@@ -261,7 +242,6 @@ class UnivariatePoly:
         Returns:
             UnivariatePoly: The MacWilliams dual weight enumerator polynomial.
         """
-
         z = symbols("z")
         spoly = self.to_sympy(z)
 
