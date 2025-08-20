@@ -19,12 +19,12 @@ and the
 but we also integrate with features that automate tensor network contraction
 with [Cotengra](https://cotengra.readthedocs.io/) and take a unified approach to
 quantum LEGO, ZX calculus and graph states. Check out the detailed list of
-[PlanqTN features](features.md)!
+[PlanqTN features](https://planqtn.com/docs/features)!
 
 PlanqTN is open source under Apache 2.0 license and free for all, built with ❤️
 by [@balopat](https://github.com/balopat), June Vanlerberghe and hopefully a lot
 more future collaborators under the guiding council of Charles Cao, Brad Lackey,
 and Kenneth R. Brown. If building tools like this sounds like fun to you, please
-consider [contributing](contributing.md)!
+consider [contributing](https://planqtn.com/docs/contributing)!
 
 We are supported by the [Unitary Foundation](https://unitary.foundation/).
