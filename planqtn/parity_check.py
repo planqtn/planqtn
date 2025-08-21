@@ -7,21 +7,6 @@ import scipy
 from planqtn.linalg import gauss
 
 
-def bring_col_to_front(h: GF2, col: int, target_col: int) -> None:
-    """Move a column to a target position by swapping adjacent columns.
-
-    Moves the specified column to the target position by performing
-    adjacent column swaps. This operation modifies the matrix in-place.
-
-    Args:
-        h: Parity check matrix to modify.
-        col: Index of the column to move.
-        target_col: Target position for the column.
-    """
-    for c in range(col - 1, target_col - 1, -1):
-        h[:, [c, c + 1]] = h[:, [c + 1, c]]
-
-
 def _normalize_emtpy_matrices_to_zero(h: GF2) -> GF2:
     if len(h) == 0 or h.shape == (0, 0) or h.shape == (1, 0):
         h = GF2([[0]])
