@@ -132,6 +132,7 @@ const CanvasesPanel: React.FC = () => {
           } else {
             // No canvases left, create a new one
             const currentUrl = new URL(window.location.href);
+            currentUrl.pathname = "/new-canvas";
             currentUrl.searchParams.delete("canvasId");
             window.location.href = currentUrl.toString();
           }
@@ -209,6 +210,7 @@ const CanvasesPanel: React.FC = () => {
           } else {
             // No canvases left, create a new one
             const currentUrl = new URL(window.location.href);
+            currentUrl.pathname = "/new-canvas";
             currentUrl.searchParams.delete("canvasId");
             window.location.href = currentUrl.toString();
           }
@@ -275,6 +277,7 @@ const CanvasesPanel: React.FC = () => {
 
   const handleNewCanvas = () => {
     const currentUrl = new URL(window.location.href);
+    currentUrl.pathname = "/new-canvas";
     currentUrl.searchParams.delete("canvasId");
     window.location.href = currentUrl.toString();
   };
