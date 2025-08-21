@@ -979,9 +979,15 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
     try {
       // Get Terraform outputs
       const apiUrl = await terraform(`output -raw api_service_url`);
-      const rawServiceAccountKey = await terraform(
-        `output -raw api_service_account_key`
-      );
+      let rawServiceAccountKey: string | undefined;
+      try {
+        rawServiceAccountKey = await terraform(
+          `output -raw api_service_account_key`
+        );
+      } catch (e) {
+        // Output may be disabled by default; instruct how to enable for ephemeral/dev if needed
+        rawServiceAccountKey = undefined;
+      }
       // Set values on the Variable instances
       const apiUrlVar = this.variables.find((v) => v.getName() === "apiUrl");
       const gcpSvcAccountKeyVar = this.variables.find(
@@ -991,7 +997,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
       if (apiUrlVar) {
         apiUrlVar.setValue(apiUrl!);
       }
-      if (gcpSvcAccountKeyVar) {
+      if (gcpSvcAccountKeyVar && rawServiceAccountKey) {
         gcpSvcAccountKeyVar.setValue(rawServiceAccountKey!);
       }
     } catch {
