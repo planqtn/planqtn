@@ -1,27 +1,22 @@
 # Optimized Contraction Schedules for Stabilizer Codes
 
-In PlanqTN v0.1.0, tensor network contraction was done using [Cotengra](https://cotengra.readthedocs.io/)'s hyper-optimized tensor network contraction algorithms using "flops" as the minimizer. While these schedules still outperformed the brute force method, we noticed that Cotengra was not accurately estimating how costly a contraction would be, and therefore not giving the best results.
+In PlanqTN v0.1.0, tensor network contraction was done using [Cotengra](https://cotengra.readthedocs.io/)'s hyper-optimized tensor network contraction algorithms using "combo" (flops and write) as the minimizer. While these schedules still outperformed the brute force method, we noticed that Cotengra was not accurately estimating how costly a contraction would be, and therefore not giving the best results.
 
 
 ## Cotengra flops calculation
-In order to find a good contraction schedule, Cotengra will sample many different schedules and give them each a score, using the specified minimizer (flops in v0.1.0). It then returns the best schedule found. However, we noticed that, for the same code, there were vast differences in how long the contraction was taking. This led us to believe that Cotengra was having trouble accurately estimating the "score" of the contraction schedule.
+In order to find a good contraction schedule, Cotengra will sample many different schedules and give them each a score, using the specified minimizer. It then returns the best schedule found. However, we noticed that, for the same code, there were vast differences in how long the contraction was taking. This led us to believe that Cotengra was having trouble accurately estimating the "score" of the contraction schedule.
 
-Cotengra's flops calculation comes from multiplying the full dimensions of all the tensors. However, our tensors are very sparse and therefore we suspected that a cost calculation based on the full dimensions would not be accurate.
-
+Cotengra's combo score is calculated as the sum of flops and write. The flops calculation is the total number of scalar operations, which comes from multiplying the full dimensions of all the tensors. The write metric is the sum of sizes of all intermediate tensors. However, our tensors are very sparse and therefore we suspected that a cost and size calculation based on the full dimensions would not be accurate. The plot below shows the scores that Cotengra gave a specific contraction schedule and the computational cost it took to actually perform the contraction. As you can see, Cotengra can generally approximate the cost, but fails when differentiating between different contraction orders for the same tensor network.
 
 <center>
 <img src="/docs/fig/default_scatter_results.png" width="30%">
 </center>
 
 
-As you can see, Cotengra can generally approximate the cost, but fails when differentiating between different contraction orders for the same tensor network.
-
-
 ## Custom Cost Calculation for Stabilizer Codes
-Calculating the parity check matrices throughout the contraction is relatively fast and can therefore help give us insight into how large the tensors will be throughout the contraction. At each step of the contraction, using only the parity check matrices and the legs that are left open, we can exactly calculate what the resulting tensor size will be as well as the number of flops it will take to calculate with our current method.
+The biggest factor in how expensive a tensor network contraction will be is how large the intermediate tensors get. Calculating the parity check matrices throughout the contraction is relatively fast and can therefore help give us insight into how large these tensors will be. At each step of the contraction, using only the parity check matrices and the legs that are left open, we can exactly calculate what the resulting tensor size will be as well as the number of flops it will take to calculate with our current method.
 
-### Size of weight enumerator polynomial <-> rank of parity check matrix
-The biggest factor in how expensive a tensor network contraction will be is how large the intermediate tensors get. We found that we will know the exact size of these tensors at each step of the contraction simply from the parity check matrix. In PlanqTN versions v0.1.0 and v0.2.0, the weight enumerator polynomials are stored as dictionaries based on the Pauli operators acting on the open legs. The keys of this dictionary are tuples that represent the Pauli operators that act on the open legs. So, the length of the tensor depends on how many different combinations of these Pauli operators keys we have. This means that a fully dense tensor would have $4^{n}$ where n is the number of open legs. In almost every case, our tensors are not close to being fully dense.
+In PlanqTN versions v0.1.0 and v0.2.0, the weight enumerator polynomials are stored as dictionaries where the keys are tuples that represent the Pauli operators that act on the open legs. So, the length of the tensor depends on how many different combinations of these Pauli operators keys we have. This means that a fully dense tensor would have $4^{n}$ keys where n is the number of open legs. In almost every case, our tensors are not close to being fully dense.
 
 We can know how many keys (so the length of the tensor) we will have by only looking at the open legs of the parity check matrix without brute force calculating all of the stabilizers. The number of keys is exactly $2^r$ where r is the rank of the matrix consisting only of the columns corresponding to open legs. An example is shown below.
 
@@ -36,7 +31,8 @@ I & X & X
 \end{pmatrix}
 $$
 
-and given that the open legs are columns 1 and 2 (0-indexed). If we were to do the brute force calculation of our tensor, we would have to find all the stabilizers that the parity check matrix generates:
+
+The open legs are columns 1 and 2 (0-indexed). If we were to do the brute force calculation of our tensor, we would have to find all the stabilizers that the parity check matrix generates:
 
 ```
 S = {XIX, III, IIZ, XIY, IXX, IXY, XXI, XXZ}

@@ -113,12 +113,11 @@ class StabilizerCodeCostVisitor(ContractionVisitor):
 
     def on_self_trace(
         self,
-        node_idx1: TensorId,
-        join_legs1: List[TensorLeg],
-        join_legs2: List[TensorLeg],
+        trace: Trace,
         pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
     ):
+        node_idx1, node_idx2, join_legs1, join_legs2 = trace
         # Removing joined legs from traced pte
         new_traceable_legs = [
             leg
@@ -145,14 +144,12 @@ class StabilizerCodeCostVisitor(ContractionVisitor):
 
     def on_merge(
         self,
-        node_idx1: TensorId,
-        node_idx2: TensorId,
-        join_legs1: List[TensorLeg],
-        join_legs2: List[TensorLeg],
+        trace: Trace,
         pte1: StabilizerCodeTensorEnumerator,
         pte2: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
     ):
+        node_idx1, node_idx2, join_legs1, join_legs2 = trace
         prev_submatrix1 = get_rank_for_matrix_legs(pte1, self.traceable_legs[node_idx1])
         prev_submatrix2 = get_rank_for_matrix_legs(pte2, self.traceable_legs[node_idx2])
 

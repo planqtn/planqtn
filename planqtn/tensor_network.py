@@ -523,7 +523,7 @@ class TensorNetwork:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        visitor: ContractionVisitor = None,
+        visitors: List[ContractionVisitor] = [],
     ) -> "StabilizerCodeTensorEnumerator":
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
@@ -552,9 +552,10 @@ class TensorNetwork:
         ]
         node_to_pte = {node.tensor_id: i for i, node in enumerate(nodes)}
 
-        for node_idx1, node_idx2, join_legs1, join_legs2 in progress_reporter.iterate(
+        for trace in progress_reporter.iterate(
             self._traces, "Conjoining nodes", len(self._traces)
         ):
+            node_idx1, node_idx2, join_legs1, join_legs2 = trace
             if verbose:
                 print(
                     f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
@@ -576,9 +577,9 @@ class TensorNetwork:
                 new_pte = pte.self_trace(join_legs1, join_legs2)
                 ptes[pte1_idx] = (new_pte, nodes_in_pte)
 
-                if visitor is not None:
+                for visitor in visitors:
                     visitor.on_self_trace(
-                        node_idx1, join_legs1, join_legs2, pte, nodes_in_pte
+                        trace, pte, nodes_in_pte
                     )
 
             # Case 2: Nodes are in different PTEs - merge them
@@ -603,12 +604,9 @@ class TensorNetwork:
                     if pte_idx > pte2_idx:
                         node_to_pte[node_idx] = pte_idx - 1
 
-                if visitor is not None:
+                for visitor in visitors:
                     visitor.on_merge(
-                        node_idx1,
-                        node_idx2,
-                        join_legs1,
-                        join_legs2,
+                        trace,
                         pte1,
                         pte2,
                         merged_nodes,

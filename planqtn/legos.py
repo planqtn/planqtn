@@ -230,6 +230,15 @@ class Legos:
     )
     """the Hadamard tensor"""
 
+    perf513 = GF2(
+        [
+            [1, 0, 0, 1, 0, 0, 1, 1, 0, 0],
+            [0, 1, 0, 0, 1, 0, 0, 1, 1, 0],
+            [1, 0, 1, 0, 0, 0, 0, 0, 1, 1],
+            [0, 1, 0, 1, 0, 1, 0, 0, 0, 1],
+        ]
+    )
+
     stopper_x = GF2([Pauli.X.to_gf2()])
     """the X-type stopper tensor, the |+> state, corresponds to the Pauli X operator."""
 
