@@ -58,6 +58,7 @@ if (import.meta.env.VITE_ENV === "TEASER") {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LegoStudioView />} />
+              <Route path="/new-canvas" element={<LegoStudioView />} />
               <Route path="/auth-callback" element={<AuthCallback />} />
             </Routes>
           </BrowserRouter>

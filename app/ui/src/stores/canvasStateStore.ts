@@ -59,8 +59,34 @@ import { v4 } from "uuid";
 export const getCanvasIdFromUrl = (): string => {
   const params = new URLSearchParams(window.location.search);
   const canvasId = params.get("canvasId");
+
   if (!canvasId) {
-    // Generate a new canvasId if none exists (fallback)
+    // Check if we're on the /new-canvas route - if so, always create a new canvas
+    if (window.location.pathname === "/new-canvas") {
+      const newCanvasId = v4();
+      const newParams = new URLSearchParams(params);
+      newParams.set("canvasId", newCanvasId);
+      // Update URL with the new canvasId
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}?${newParams.toString()}${window.location.hash}`
+      );
+      return newCanvasId;
+    }
+
+    // On root route, try to find the last opened canvas
+    const lastOpenedCanvasId = getLastOpenedCanvasId();
+    if (lastOpenedCanvasId) {
+      // Redirect to the last opened canvas
+      const newParams = new URLSearchParams(params);
+      newParams.set("canvasId", lastOpenedCanvasId);
+      const newUrl = `/?${newParams.toString()}${window.location.hash}`;
+      window.history.replaceState(null, "", newUrl);
+      return lastOpenedCanvasId;
+    }
+
+    // No existing canvases, create a new one
     const newCanvasId = v4();
     const newParams = new URLSearchParams(params);
     newParams.set("canvasId", newCanvasId);
@@ -73,6 +99,46 @@ export const getCanvasIdFromUrl = (): string => {
     return newCanvasId;
   }
   return canvasId;
+};
+
+// Helper function to find the last opened canvas from localStorage
+const getLastOpenedCanvasId = (): string | null => {
+  try {
+    const canvases: Array<{ id: string; lastModified: number }> = [];
+
+    // Iterate through localStorage to find all canvas states
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("canvas-state-")) {
+        try {
+          const canvasId = key.replace("canvas-state-", "");
+          const storedData = localStorage.getItem(key);
+
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            const timestamp = parsedData.state?._timestamp || Date.now();
+
+            canvases.push({
+              id: canvasId,
+              lastModified: timestamp
+            });
+          }
+        } catch (error) {
+          console.error(`Error parsing canvas state for key ${key}:`, error);
+        }
+      }
+    }
+
+    // Sort by last modified date (newest first) and return the most recent
+    if (canvases.length > 0) {
+      canvases.sort((a, b) => b.lastModified - a.lastModified);
+      return canvases[0].id;
+    }
+  } catch (error) {
+    console.error("Error finding last opened canvas:", error);
+  }
+
+  return null;
 };
 
 export interface CanvasStore

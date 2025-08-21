@@ -85,7 +85,9 @@ export const CanvasMenu: React.FC<CanvasMenuProps> = ({ handleExportSvg }) => {
           <Text>Canvas</Text>
         </DropdownMenuLabel>
 
-        <DropdownMenuItem onClick={() => (window.location.href = "/")}>
+        <DropdownMenuItem
+          onClick={() => (window.location.href = "/new-canvas")}
+        >
           <Icon as={FiFile} />
           New Canvas
         </DropdownMenuItem>
