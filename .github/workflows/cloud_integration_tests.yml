@@ -41,7 +41,7 @@ on:
       - ".github/workflows/cloud_integration_tests.yml"
 jobs:
   Cloud-Integration-Tests:
-    # Only run on PRs from the same repo (not forks) or on push events
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       statuses: write
       checks: write
