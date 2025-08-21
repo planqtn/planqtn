@@ -75,12 +75,23 @@ if (fs.existsSync(distPath)) {
 // Load environment variables
 dotenv.config();
 
-
 const app = express();
 const port = process.env.PORT || 5173;
 
 const env = process.env.VITE_ENV;
 const entryPointFile = env === "TEASER" ? "teaser.html" : env === "DOWN" ? "down.html" : "index.html";
+
+// Redirect www.planqtn.com to planqtn.com
+app.use((req, res, next) => {
+  const host = req.get('host');
+  if (host && host.startsWith('www.')) {
+    const newHost = host.replace(/^www\./, '');
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const redirectUrl = `${protocol}://${newHost}${req.url}`;
+    return res.redirect(301, redirectUrl);
+  }
+  next();
+});
 
 app.use(express.static(path.join(__dirname, "dist"), {index: [entryPointFile]}));
 
