@@ -9,7 +9,8 @@ from galois import GF2
 import numpy as np
 from planqtn.legos import Legos
 from planqtn.networks.surface_code import SurfaceCodeTN
-from planqtn.tensor_network import TensorId
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.tensor_network import TensorId, TensorNetwork
 
 
 class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
@@ -64,3 +65,202 @@ class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
         self.set_coset(
             coset_error if coset_error is not None else GF2.Zeros(2 * self.n)
         )
+
+
+class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
+    def __init__(
+        self,
+        coloring,
+        *,
+        coset_error: GF2 = None,
+        truncate_length: int = None
+    ):
+        d = len(coloring) + 1
+        nodes = {}
+        attachments = {}
+        nodes[(0,0)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(d+1), tensor_id=(0,0))
+            
+        for c in range(d):
+            nodes[(1,c)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(d+1), tensor_id=(1,c))
+            for leg in range(d):
+                attachments[(leg,c)] = ((1, c), leg)
+
+        nodes[(0, 0)] = (
+            nodes[(0, 0)]
+            .trace_with_stopper(Legos.stopper_i, d)
+        )
+
+        connections_to_trace = set()
+        trace_with_stopper = set()
+
+        for col in range(len(coloring[0])):
+            # Skip this column if there are no 1s in it
+            if not any(coloring[row][col] == 1 for row in range(len(coloring))):
+                continue
+            
+            row = 0
+            while row < len(coloring):
+                if coloring[row][col] == 2:
+                    start_row = row
+                    while row + 1 < len(coloring) and coloring[row + 1][col] == 2:
+                        row += 1
+                    end_row = row + 1
+                    block_size = end_row - start_row + 1
+                    last_zero_row = start_row - 1
+                    next_one = next((r for r in range(end_row + 1, len(coloring)) if coloring[r][col] == 1), len(coloring) + 1)
+
+                    gap_above = max(0, start_row - (last_zero_row + 1))  
+                    gap_below = max(0, next_one - end_row - 1)
+                    if gap_above <= gap_below:
+                        # Merge upward (use rows from start_row to end_row)
+                        z_merge_key = ("z_merge", start_row, col)
+                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(block_size), tensor_id=z_merge_key)
+
+                        for offset, j in enumerate(range(start_row, end_row + 1)):
+
+                            nodes[("x1", j, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x1", j, col))
+                            nodes[("z", j, col)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), tensor_id=("z", j, col))
+                            nodes[("x2", j, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x2", j, col))
+
+                            connections_to_trace.add((("x1", j, col), ("z", j, col), 0, 1))
+                            connections_to_trace.add((("z", j, col), ("x2", j, col), 0, 1))
+
+                            qubit1, leg1 = attachments[(j, col)]
+                            qubit2, leg2 = attachments[(j, col + 1)]
+                            print("\t adding non-isometry between qubits", qubit1, "and", qubit2, "at row", j, "col", col)
+                            connections_to_trace.add((qubit1, ("x1", j, col), leg1, 2))
+                            connections_to_trace.add((qubit2, ("x2", j, col), leg2, 2))
+
+                            attachments[(j, col)] = (("x1", j, col), 1)
+                            attachments[(j, col + 1)] = (("x2", j, col), 0)
+
+                            connections_to_trace.add((("z", j, col), z_merge_key, 2, offset))
+
+                    else:
+                        extra_rows = next_one - (end_row + 1)
+                        z_merge_key = ("z_merge", end_row + 1, col)
+                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(extra_rows), tensor_id=z_merge_key)
+
+                        for offset, j in enumerate(range(end_row + 1, next_one)):
+                            nodes[("x1", j, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x1", j, col))
+                            nodes[("z", j, col)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), tensor_id=("z", j, col))
+                            nodes[("x2", j, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x2", j, col))
+
+                            connections_to_trace.add((("x1", j, col), ("z", j, col), 0, 1))
+                            connections_to_trace.add((("z", j, col), ("x2", j, col), 0, 1))
+
+                            qubit1, leg1 = attachments[(j, col)]
+                            qubit2, leg2 = attachments[(j, col + 1)]
+                            print("\t adding non-isometry between qubits", qubit1, "and", qubit2, "at row", j, "col", col)
+                            connections_to_trace.add((qubit1, ("x1", j, col), leg1, 2))
+                            connections_to_trace.add((qubit2, ("x2", j, col), leg2, 2))
+
+                            attachments[(j, col)] = (("x1", j, col), 1)
+                            attachments[(j, col + 1)] = (("x2", j, col), 0)
+
+                            connections_to_trace.add((("z", j, col), z_merge_key, 2, offset))
+
+                        row = next_one - 1  
+
+                row += 1 
+
+            top_rows = []
+            bottom_rows = []
+            height = coloring.shape[0]
+
+            # --- Find contiguous top block of 1s ---
+            row = 0
+            while row < height and coloring[row][col] == 1:
+                top_rows.append(row)
+                row += 1
+     
+            # --- Find contiguous bottom block of 1s ---
+            row = height - 1
+            while row >= 0 and coloring[row][col] == 1:
+                bottom_rows.append(row + 1)
+                row -= 1
+
+            bottom_rows = list(reversed(bottom_rows))  # ensure increasing order
+
+            # --- Avoid duplication if full column is 1s ---
+            full_column_ones = len(top_rows) + len(bottom_rows) > height
+            if full_column_ones:
+                # Only apply from the top to avoid duplication
+                bottom_rows = []
+                if(len(top_rows) > 1):
+                    top_rows.append(top_rows[-1] + 1)
+
+            # --- Apply non-isometry at top rows ---
+            for r in top_rows:
+                print(f"adding non-isometry at col {col}, row {r} (top)")
+                nodes[("x1", r, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x1", r, col))
+                nodes[("z", r, col)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), tensor_id=("z", r, col))
+                nodes[("x2", r, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x2", r, col))
+
+                connections_to_trace.add((("x1", r, col), ("z", r, col), 0, 1))
+                connections_to_trace.add((("z", r, col), ("x2", r, col), 0, 1))
+
+                qubit1, leg1 = attachments[(r, col)]
+                qubit2, leg2 = attachments[(r, col + 1)]
+                print("\t qubit1: ", qubit1, " leg1: ", leg1)
+                print("\t qubit2: ", qubit2, " leg2: ", leg2)
+                connections_to_trace.add((qubit1, ("x1", r, col), leg1, 2))
+                connections_to_trace.add((qubit2, ("x2", r, col), leg2, 2))
+
+                attachments[(r, col)] = (("x1", r, col), 1)
+                attachments[(r, col + 1)] = (("x2", r, col), 0)
+
+                trace_with_stopper.add(("z", r, col))
+
+            # --- Apply non-isometry at bottom rows ---
+            for r in bottom_rows:
+                print(f"adding non-isometry at col {col}, row {r} (bottom)")
+                nodes[("x1", r, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x1", r, col))
+                nodes[("z", r, col)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), tensor_id=("z", r, col))
+                nodes[("x2", r, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x2", r, col))
+
+                connections_to_trace.add((("x1", r, col), ("z", r, col), 0, 1))
+                connections_to_trace.add((("z", r, col), ("x2", r, col), 0, 1))
+
+                qubit1, leg1 = attachments[(r, col)]
+                qubit2, leg2 = attachments[(r, col + 1)]
+
+                connections_to_trace.add((qubit1, ("x1", r, col), leg1, 2))
+                connections_to_trace.add((qubit2, ("x2", r, col), leg2, 2))
+
+                attachments[(r, col)] = (("x1", r, col), 1)
+                attachments[(r, col + 1)] = (("x2", r, col), 0)
+
+                trace_with_stopper.add(("z", r, col))
+
+        
+        super().__init__(nodes, truncate_length=truncate_length)
+
+        for leg in range(d):
+            self.self_trace((0,0), (1,leg), [leg], [d])
+ 
+        for connection in connections_to_trace:
+            self.self_trace(connection[0], connection[1], [connection[2]], [connection[3]])  
+
+        for node in trace_with_stopper:
+            self.nodes[node] = (
+                self.nodes[node]
+                .trace_with_stopper(Legos.stopper_x, 2)
+            )      
+
+        self.n = d * d
+        self.d = d
+        print(attachments)
+        self.attachments = attachments
+        self.set_coset(
+            coset_error if coset_error is not None else GF2.Zeros(2 * self.n)
+        )
+
+    def qubit_to_node_and_leg(self, q):
+        idx_leg = q % self.d
+        idx_node = q // self.d
+        node, leg = self.attachments[(idx_leg, idx_node)]
+        return node, (node, leg)
+
+    def n_qubits(self):
+        return self.n
