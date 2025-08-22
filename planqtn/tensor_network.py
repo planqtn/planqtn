@@ -579,7 +579,7 @@ class TensorNetwork:
 
                 for visitor in visitors:
                     visitor.on_self_trace(
-                        trace, pte, nodes_in_pte
+                        trace, pte, new_pte, nodes_in_pte
                     )
 
             # Case 2: Nodes are in different PTEs - merge them
@@ -609,6 +609,7 @@ class TensorNetwork:
                         trace,
                         pte1,
                         pte2,
+                        new_pte,
                         merged_nodes,
                     )
 
@@ -776,10 +777,10 @@ class TensorNetwork:
             leg_indices, free_legs, verbose
         )
 
-        custom = self._make_custom_cost_fn(index_to_legs, inputs, open_legs_per_node)
-        
+        stabilizer_fn = self._make_custom_cost_fn(index_to_legs, inputs, open_legs_per_node)
+
         contengra_params = {
-            "minimize": custom,
+            "minimize": stabilizer_fn,
             "parallel": True,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
@@ -789,7 +790,12 @@ class TensorNetwork:
             ],
             "optlib": "cmaes",
         }
+
+        if cotengra_opts.get("minimize") == "custom":
+            cotengra_opts["minimize"] = stabilizer_fn
+
         contengra_params.update(cotengra_opts)
+        print("cotengra parameters: ", contengra_params)
         opt = ctg.HyperOptimizer(
             **contengra_params,
             progbar=not isinstance(progress_reporter, DummyProgressReporter),
@@ -1270,6 +1276,7 @@ class _PartiallyTracedEnumerator:
                 f"legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}"
             )
 
+        ops_count = 0
         for k1 in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=(
@@ -1283,7 +1290,7 @@ class _PartiallyTracedEnumerator:
                     k1[i1] == k2[i2] for i1, i2 in zip(join_indices1, join_indices2)
                 ):
                     continue
-
+                ops_count += 1
                 wep1 = self.tensor[k1]
                 wep2 = pte2.tensor[k2]
 
@@ -1307,7 +1314,7 @@ class _PartiallyTracedEnumerator:
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
-        )
+        ), ops_count
 
     def self_trace(
         self,
@@ -1356,6 +1363,7 @@ class _PartiallyTracedEnumerator:
         if verbose:
             print(f"[self_trace] kept indices: {kept_indices}")
 
+        ops_count = 0
         for old_key in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=(
@@ -1371,7 +1379,7 @@ class _PartiallyTracedEnumerator:
                 continue
 
             wep1 = self.tensor[old_key]
-
+            ops_count += 1
             # we have to cut off the join legs from both keys and concatenate them
 
             key = tuple(old_key[i] for i in kept_indices)
@@ -1392,8 +1400,8 @@ class _PartiallyTracedEnumerator:
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
-        )
-
+        ), ops_count
+    
     def truncate_if_needed(
         self, key: TensorEnumeratorKey, wep: Dict[TensorEnumeratorKey, UnivariatePoly]
     ) -> None:

@@ -99,7 +99,7 @@ def custom_cost_stabilizer_codes(
         int: The total number of operations of the tensor network contraction.
     """
     visitor = StabilizerCodeCostVisitor(open_legs_per_node)
-    tn.conjoin_nodes(verbose=False, visitor=visitor)
+    tn.conjoin_nodes(verbose=False, visitors=[visitor])
     return visitor.total_cost
 
 
@@ -115,6 +115,7 @@ class StabilizerCodeCostVisitor(ContractionVisitor):
         self,
         trace: Trace,
         pte: StabilizerCodeTensorEnumerator,
+        new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
     ):
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
@@ -147,6 +148,7 @@ class StabilizerCodeCostVisitor(ContractionVisitor):
         trace: Trace,
         pte1: StabilizerCodeTensorEnumerator,
         pte2: StabilizerCodeTensorEnumerator,
+        new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
     ):
         node_idx1, node_idx2, join_legs1, join_legs2 = trace

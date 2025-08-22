@@ -45,6 +45,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
         self,
         trace: Trace,
         pte: StabilizerCodeTensorEnumerator,
+        new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
     ):
         node_idx1, _, _, _ = trace
@@ -63,6 +64,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
         trace: Trace,
         pte1: StabilizerCodeTensorEnumerator,
         pte2: StabilizerCodeTensorEnumerator,
+        new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
     ):
         node_idx1, node_idx2, _, _ = trace
