@@ -784,11 +784,10 @@ class TensorNetwork:
             "parallel": True,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
-            "methods": [
-                "kahypar" if importlib.util.find_spec("kahypar") else "greedy",
-                "labels",
-            ],
-            "optlib": "cmaes",
+            "optlib" : "cmaes",
+            "methods" : [
+                "greedy"
+            ]
         }
 
         if cotengra_opts.get("minimize") == "custom":
