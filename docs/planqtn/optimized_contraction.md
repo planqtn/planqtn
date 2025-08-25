@@ -15,12 +15,19 @@ The figure below demonstrates this issue. Each color corresponds to a different 
 </center>
 
 
-## Custom Cost Calculation for Stabilizer Codes
-The biggest factor in how expensive a tensor network contraction will be is how large the intermediate tensors get. Calculating the parity check matrices throughout the contraction is relatively fast and can therefore help give us insight into how large these tensors will be. At each step of the contraction, using only the parity check matrices and the legs that are left open, we can exactly calculate what the resulting tensor size will be as well as the number of flops it will take to calculate with our current method.
+## Custom Cost Calculation for Stabilizer Code Tensor Networks
+The biggest factor in how expensive a tensor network contraction will be is the size of the intermediate tensors. In our setting, evaluating parity check matrices throughout a contraction is relatively inexpensive, and it provides powerful information about how large intermediate tensors will become. By using only the parity check matrices and the specification of open legs, we can exactly compute both the size of the resulting tensor and the number of floating-point operations (flops) required by our current contraction method.
 
-In PlanqTN versions v0.1.0 and v0.2.0, the weight enumerator polynomials are stored as dictionaries where the keys are tuples that represent the Pauli operators that act on the open legs. So, the length of the tensor depends on how many different combinations of these Pauli operators keys we have. This means that a fully dense tensor would have $4^{n}$ keys where n is the number of open legs. In almost every case, our tensors are not close to being fully dense.
+### Tensor Size from Parity Check Matrices
+In PlanqTN (versions v0.1.0 and v0.2.0), weight enumerator polynomials are stored as dictionaries. The keys are tuples of Pauli operators acting on the open legs. A fully dense tensor with *n* open legs would therefore contain $4^n$ keys. In practice, our tensors are very sparse.
 
-We can know how many keys (so the length of the tensor) we will have by only looking at the open legs of the parity check matrix without brute force calculating all of the stabilizers. The number of keys is exactly $2^r$ where r is the rank of the matrix consisting only of the columns corresponding to open legs. An example is shown below.
+The key insight is that the number of keys can be determined without brute force enumeration of stabilizers. Let *H* be the parity check matrix, and $H_{open}$ denote the submatrix containing only the columns of *H* corresponding to the open legs. Then, the number of unique keys is exactly:
+
+$$
+\text{Tensor size} = 2^{\text{rank}(H_{\text{open}})}
+$$
+
+This avoids explicit stabilizer enumeration and immediately yields the tensor size.
 
 #### Example 1
 Let's start with a parity check matrix given by:
@@ -33,15 +40,7 @@ I & X & X
 \end{pmatrix}
 $$
 
-
-The open legs are columns 1 and 2 (0-indexed). If we were to do the brute force calculation of our tensor, we would have to find all the stabilizers that the parity check matrix generates:
-
-```
-S = {XIX, III, IIZ, XIY, IXX, IXY, XXI, XXZ}
-```
-Then find the keys representing the Pauli operators acting on the open legs (where the keys are 0, 1, 2, 3 corresponding to I, X, Y, Z respectively). These are: (0, 1), (0, 0), (0, 2), (0, 3), (1, 1), (1, 3), (1, 0), (1, 2). So, the size of our tensor will be 8. 
-
-Instead of finding all of the stabilizers, we can calculate this length given only the parity check matrix. Take only the columns of the open legs:
+The open legs are columns 1 and 2 (0-indexed). Brute force stabilizer generation yields 8 unique keys. Instead, restricting to the open legs gives:
 
 $$
 H_{open} = \begin{pmatrix}
@@ -51,11 +50,9 @@ X & X
 \end{pmatrix}
 $$
 
-The rank of this matrix is 3, meaning we have 3 independent generators. So, we know the number of unique combinations of Pauli operators will be the number of stabilizers that are generated: $2^3 = 8$.
+which has rank 3. $2^3 = 8$, which is consistent with the brute force result.
 
 #### Example 2
-Here is another example where we show the rank calculation makes a difference.
-
 $$
 H = \begin{pmatrix}
 X & I & X \\
@@ -64,13 +61,7 @@ I & I & Z
 \end{pmatrix}
 $$
 
-All stabilizers are:
-```
-S = {XIX, IIX, III,  IIZ, IIY, XIY, XIZ}
-```
-The unique Pauli operator keys are this time: (0, 1), (0, 0), (0, 2), (0, 3). Notice how the length this time is only 4 since there are duplicated Pauli operators on the open legs.
-
-This can be efficiently calculated again by looking only at the parity check matrix open columns:
+The open columns are again 1 and 2. Here, brute force yields only 4 unique keys. From
 
 $$
 H_{open} = \begin{pmatrix}
@@ -80,13 +71,17 @@ I & Z
 \end{pmatrix}
 $$
 
-
-The rank of this matrix is only 2, so we know the size of the tensor will be $2^2 = 4$.
+we compute $rank(H_{open})$ = 2, resulting in tensor size: $2^2 = 4$. This again matches the brute force calculation.
 
 ### Ratio of Matching Keys
-The next key to finding the exact tensor network contraction cost is how many of the keys will match when merging two tensors. This is implemented by a double for loop over the tensor keys and only performing an operation if all elements of the keys match. 
+The second factor in contraction cost is how many keys from two tensors match when they are merged. In our implementation, merging proceeds by iterating over the keys of both tensors and performing an operation only if all open-leg operators agree.
 
-We will know exactly how many of the keys will match given only the parity check matrices and the legs that are being joined. First, find the columns of each parity check matrix that corresponds to the legs being joined and find their tensor product. This will result in a matrix with two columns (1 join leg from each tensor), or 4 if in symplectic form. Then, generate all stabilizers (will be a maximum of 16) and find the ratio of stabilizers that match on both join legs. This ratio will be the same as when we are enumerating the full tensors during the actual contraction. 
+We can determine the fraction of matching keys using only the parity check matrices. Specifically:
+
+1. Extract the columns corresponding to the join legs.
+2. Form their tensor product (two columns in standard form, or four in symplectic form).
+3. Generate all stabilizers of this small product matrix (at most 16).
+4. The ratio of stabilizers consistent across both join legs equals the ratio of matching keys during contraction.
 
 #### Example
 Define two tensors we want to merge by their parity check matrices:
@@ -95,10 +90,7 @@ $$
 H_{1} = \begin{pmatrix}
 X & X & X \\
 Z & I & Z
-\end{pmatrix}
-$$
-
-$$
+\end{pmatrix}, \quad
 H_{2} = \begin{pmatrix}
 X & I & I & X \\
 I & X & X & X \\
@@ -106,8 +98,7 @@ Z & I & Z & Z
 \end{pmatrix}
 $$
 
-
-Tensor 1 has two open legs (the first two). Tensor 2 has 3 open legs (the first three). The join legs are the second column of each tensor: [[X], [I]] and [[I], [X], [I]]. Next, compute their tensor product:
+Tensor 1 has open legs at columns 0 and 1. Tensor 2 has open legs at columns 0, 1, 2. Suppose we join column 2 of each tensor. The tensor product of these columns yields:
 
 $$
 H_{prod} = \begin{pmatrix}
@@ -118,22 +109,25 @@ I & I
 \end{pmatrix}
 $$
 
-Generate all stabilizers from these generators: 
+Stabilizer generation gives: 
 
 ```
 S = {XI, XX, IX, II}
 ```
 
-$2/4 = 0.5$ of the stabilizers match on both join legs. So, we know that half of the keys in our tensors will match as well. 
+Two out of the four stabilizers match on both join legs, so the matching ratio is $m = 0.5$.
 
-### Putting it all together
-In our current weight enumerator polynomial calculation, the tensors get merged in a specific order given by Cotengra. To merge these tensors, we use a double for loop over the keys and skip if not all of the legs match in the keys. So, cost for a merge operation is given by:
+### Final Cost Expression
+Combining these two ingredients, the cost of a merge operation is
 
- $Cost = 2^{r_1 + r_2} * m$ 
- 
- $r_1$ and $r_2$ are the ranks calculated from the open legs and m is the matching stabilizer ratio calculated from the join legs. 
+$$
+\text{Cost} = 2^{r_1 + r_2}*m
+$$
 
-This metric exactly calculates the cost of our contraction and when given to Cotengra to minimize, we get much better contraction schedules. Below is a plot showing how our custom score much more accurately calculates the cost of the contraction.
+where $r_1$ and $r_2$ are the ranks of the open-leg submatrices of the two tensors, and $m$ is the matching ratio determined from the join legs.
+
+This metric yields an exact calculation of the contraction cost. When used as a cost function in Cotengra’s contraction path optimizer, it produces significantly improved contraction schedules. The figure below shows that our custom score correlates far more closely with the true contraction cost than the default heuristic.
+
 
 <center>
 <img src="/docs/fig/custom_scatter_results.png" width="30%">
