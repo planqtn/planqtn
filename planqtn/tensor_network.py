@@ -24,6 +24,7 @@ import numpy as np
 from galois import GF2
 
 from planqtn.contraction_visitor import ContractionVisitor
+from planqtn.max_size_cost_visitor import max_tensor_size_cost
 from planqtn.stabilizer_code_cost_fn import custom_cost_stabilizer_codes
 from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
@@ -738,7 +739,7 @@ class TensorNetwork:
         )
         return traces
     
-    def _make_custom_cost_fn(
+    def _make_flops_cost_fn(
         self,
         index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
         inputs: List[Tuple[str, ...]],
@@ -753,6 +754,24 @@ class TensorNetwork:
             )
             self._traces = traces
             return np.log2(custom_cost_stabilizer_codes(self, open_legs_per_node))
+
+        return stabilizer_cost_fn
+    
+    def _make_max_size_cost_fn(
+        self,
+        index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
+        inputs: List[Tuple[str, ...]],
+        open_legs_per_node: Dict[TensorId, List[TensorLeg]],
+    ) -> Callable[[Dict], float]:
+        def stabilizer_cost_fn(trial_dict):
+            tree = trial_dict["tree"]
+            ensure_basic_quantities_are_computed(trial_dict)
+
+            traces = self._traces_from_cotengra_tree(
+                tree, index_to_legs=index_to_legs, inputs=inputs
+            )
+            self._traces = traces
+            return np.log2(max_tensor_size_cost(self, open_legs_per_node))
 
         return stabilizer_cost_fn
 
@@ -777,10 +796,11 @@ class TensorNetwork:
             leg_indices, free_legs, verbose
         )
 
-        stabilizer_fn = self._make_custom_cost_fn(index_to_legs, inputs, open_legs_per_node)
+        stabilizer_flops_fn = self._make_flops_cost_fn(index_to_legs, inputs, open_legs_per_node)
+        stabilizer_max_size_fn = self._make_max_size_cost_fn(index_to_legs, inputs, open_legs_per_node)
 
         contengra_params = {
-            "minimize": stabilizer_fn,
+            "minimize": stabilizer_flops_fn,
             "parallel": True,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
@@ -790,10 +810,13 @@ class TensorNetwork:
             ]
         }
 
-        if cotengra_opts.get("minimize") == "custom":
-            cotengra_opts["minimize"] = stabilizer_fn
+        if cotengra_opts.get("minimize") == "custom_flops":
+            cotengra_opts["minimize"] = stabilizer_flops_fn
+        elif cotengra_opts.get("minimize") == "custom_max_size":
+            cotengra_opts["minimize"] = stabilizer_max_size_fn
 
         contengra_params.update(cotengra_opts)
+        
         print("cotengra parameters: ", contengra_params)
         opt = ctg.HyperOptimizer(
             **contengra_params,
