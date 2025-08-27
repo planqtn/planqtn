@@ -763,7 +763,7 @@ class TensorNetwork:
         inputs: List[Tuple[str, ...]],
         open_legs_per_node: Dict[TensorId, List[TensorLeg]],
     ) -> Callable[[Dict], float]:
-        def stabilizer_cost_fn(trial_dict):
+        def max_size_cost_fn(trial_dict):
             tree = trial_dict["tree"]
             ensure_basic_quantities_are_computed(trial_dict)
 
@@ -773,7 +773,7 @@ class TensorNetwork:
             self._traces = traces
             return np.log2(max_tensor_size_cost(self, open_legs_per_node))
 
-        return stabilizer_cost_fn
+        return max_size_cost_fn
 
     def _cotengra_contraction(
         self,
@@ -816,8 +816,6 @@ class TensorNetwork:
             cotengra_opts["minimize"] = stabilizer_max_size_fn
 
         contengra_params.update(cotengra_opts)
-        
-        print("cotengra parameters: ", contengra_params)
         opt = ctg.HyperOptimizer(
             **contengra_params,
             progbar=not isinstance(progress_reporter, DummyProgressReporter),
