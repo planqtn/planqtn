@@ -2,11 +2,12 @@ from collections import defaultdict
 from galois import GF2
 import numpy as np
 
+from planqtn.contraction_visitors.stabilizer_flops_cost_fn import custom_flops_cost_stabilizer_codes
 from planqtn.legos import Legos
 from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
 from planqtn.networks.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.networks.stabilizer_measurement_state_prep import StabilizerMeasurementStatePrepTN
-from planqtn.stabilizer_code_cost_fn import count_matching_stabilizers_ratio, custom_cost_stabilizer_codes
+from planqtn.contraction_visitors.utils import count_matching_stabilizers_ratio
 from planqtn.stabilizer_tensor_enumerator import _index_leg
 
 
@@ -48,14 +49,14 @@ def test_custom_cost_stabilizer_codes():
     if no contraction order is changed (e.g. by using cotengra)."""
     # Rotated Surface Code 
     rotated_surface_tn = RotatedSurfaceCodeTN(d=3)
-    cost = custom_cost_stabilizer_codes(rotated_surface_tn, get_open_legs(rotated_surface_tn))
+    cost = custom_flops_cost_stabilizer_codes(rotated_surface_tn, get_open_legs(rotated_surface_tn))
     assert cost == 254.0
 
 
     # Compass code, dual surface layout
     coloring = [[1, 2], [2, 1]]
     compass_code_dual = CompassCodeDualSurfaceCodeLayoutTN(coloring)
-    cost = custom_cost_stabilizer_codes(compass_code_dual, get_open_legs(compass_code_dual))
+    cost = custom_flops_cost_stabilizer_codes(compass_code_dual, get_open_legs(compass_code_dual))
     assert cost == 1052.0
 
     # 7 qubit Hamming code, measurement state prep
@@ -78,7 +79,7 @@ def test_custom_cost_stabilizer_codes():
             0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1.]])
     
     tn_hamming = StabilizerMeasurementStatePrepTN(H_hamming)
-    cost = custom_cost_stabilizer_codes(tn_hamming, get_open_legs(tn_hamming))
+    cost = custom_flops_cost_stabilizer_codes(tn_hamming, get_open_legs(tn_hamming))
     assert cost == 1191059185930.0
 
 

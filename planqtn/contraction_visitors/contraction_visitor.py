@@ -1,5 +1,5 @@
 """Contains the abstract class ContractionVisitor that can be passed into
-a contraction operation of a TensorNetwork."""
+conjoin_nodes of a TensorNetwork to collect various information."""
 
 import abc
 from typing import List, Set, Tuple

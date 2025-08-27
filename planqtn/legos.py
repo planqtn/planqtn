@@ -24,6 +24,7 @@ class LegoType(enum.Enum):
         T5: [[5,1,2]] subspace tensor.
         T5X: X-component of [[5,1,2]] tensor.
         T5Z: Z-component of [[5,1,2]] tensor.
+        PERF5: Perfect [[5,1,3]] code tensor.
         STOPPER_X: X-type stopper tensor, the |+> state, the Pauli X operator.
         STOPPER_Z: Z-type stopper tensor, the |0> state, the Pauli Z operator.
         STOPPER_Y: Y-type stopper tensor, the |+i> state, the Pauli Y operator.
@@ -38,6 +39,7 @@ class LegoType(enum.Enum):
     T5 = "t5"
     T5X = "t5x"
     T5Z = "t5z"
+    PERF5 = "perf513"
     STOPPER_X = "stopper_x"
     STOPPER_Z = "stopper_z"
     STOPPER_Y = "stopper_y"
@@ -238,6 +240,7 @@ class Legos:
             [0, 1, 0, 1, 0, 1, 0, 0, 0, 1],
         ]
     )
+    """the perfect [[5,1,3]] code tensor"""
 
     stopper_x = GF2([Pauli.X.to_gf2()])
     """the X-type stopper tensor, the |+> state, corresponds to the Pauli X operator."""

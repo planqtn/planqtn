@@ -1,46 +1,26 @@
-"""Calculates the cost of contracting a stabilizer code tensor network 
-based only on the parity check matrix."""
+"""Finds the sparsity of the tensors throughout the contraction."""
 
-from typing import TYPE_CHECKING, Dict, Set, List, Tuple
+from typing import Dict, Set, List, Tuple
 
-from planqtn.contraction_visitor import ContractionVisitor
-from planqtn.stabilizer_code_cost_fn import get_rank_for_matrix_legs
+from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
+from planqtn.linalg import rank
+from planqtn.contraction_visitors.stabilizer_code_cost_fn import get_rank_for_matrix_legs
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     TensorId,
     TensorLeg,
 )
 
-if TYPE_CHECKING:
-    from planqtn.tensor_network import TensorNetwork
 
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
-def max_tensor_size_cost(
-    tn: "TensorNetwork", open_legs_per_node: Dict[TensorId, List[TensorLeg]]
-) -> int:
-    """This function uses the MaxTensorSizeCostVisitor to compute the maximum intermediate
-    tensor size during a stabilizer code tensor network contraction. 
-
-    Args:
-        tn (TensorNetwork): The tensor network to analyze.
-        open_legs_per_node (dict): A dictionary mapping node indices to lists of open legs.
-
-    Returns:
-        int: The largest intermediate tensor size during the contraction.
-    """
-    visitor = MaxTensorSizeCostVisitor(open_legs_per_node)
-    tn.conjoin_nodes(verbose=False, visitors=[visitor])
-    return visitor.max_size
-
-class MaxTensorSizeCostVisitor(ContractionVisitor):
-    """A contraction visitor that calculates the cost of contracting a stabilizer code
-    tensor network from the parity check matrices of the nodes."""
+class SparsityVisitor(ContractionVisitor):
+    """A contraction visitor that calculates the sparsity of the tensors
+    throughout the contraction of a stabilizer code tensor network."""
 
     def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
         self.traceable_legs = dict(open_legs_per_node)
-        self.max_size = 0
-        self.total_cost = 0
+        self.tensor_sparsity = []
 
     def on_self_trace(
         self,
@@ -64,10 +44,10 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
             new_pte, new_traceable_legs
         )
 
-        new_size = 2**new_tensor_rank
-        if(new_size > self.max_size):
-            self.max_size = new_size
-        
+        dense_size = 4**len(new_traceable_legs)
+        self.tensor_sparsity.append(
+            (2**new_tensor_rank) / dense_size
+        )
 
     def on_merge(
         self,
@@ -97,7 +77,8 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
             new_pte, new_traceable_legs
         )
 
-        new_size = 2**new_tensor_rank
-        if(new_size > self.max_size):
-            self.max_size = new_size
+        dense_size = 4**len(new_traceable_legs)
+        self.tensor_sparsity.append(
+            (2**new_tensor_rank) / dense_size
+        )
 

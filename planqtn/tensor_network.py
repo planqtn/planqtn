@@ -23,9 +23,9 @@ from cotengra.scoring import ensure_basic_quantities_are_computed
 import numpy as np
 from galois import GF2
 
-from planqtn.contraction_visitor import ContractionVisitor
-from planqtn.max_size_cost_visitor import max_tensor_size_cost
-from planqtn.stabilizer_code_cost_fn import custom_cost_stabilizer_codes
+from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
+from planqtn.contraction_visitors.max_size_cost_visitor import max_tensor_size_cost
+from planqtn.contraction_visitors.stabilizer_flops_cost_fn import custom_cost_stabilizer_codes
 from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (

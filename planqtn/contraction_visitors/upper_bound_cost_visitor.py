@@ -1,41 +1,18 @@
+"""Calculates the upper bound cost of contracting a stabilizer code tensor network."""
+from typing import Dict, Set, List, Tuple
 
-from typing import TYPE_CHECKING, Dict, Set, List, Tuple
-
-from planqtn.contraction_visitor import ContractionVisitor
+from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     TensorId,
     TensorLeg,
 )
 
-if TYPE_CHECKING:   
-    from planqtn.tensor_network import TensorNetwork
-    
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
-
-def upper_bound_cost_stabilizer_codes(
-    tn: "TensorNetwork", open_legs_per_node: Dict[TensorId, List[TensorLeg]]
-) -> int:
-    """This function uses the StabilizerCodeCostVisitor to compute the total cost of a stabilizer
-    code tensor network contraction. The visitor calculates the cost of a contraction step during
-    the conjoining of nodes in the tensor network.
-
-    Args:
-        tn (TensorNetwork): The tensor network to analyze.
-        open_legs_per_node (dict): A dictionary mapping node indices to lists of open legs.
-
-    Returns:
-        int: The total number of operations of the tensor network contraction.
-    """
-    visitor = UpperBoundCostVisitor(open_legs_per_node)
-    tn.conjoin_nodes(verbose=False, visitor=visitor)
-    return visitor.total_cost
-
-
 class UpperBoundCostVisitor(ContractionVisitor):
-    """A contraction visitor that calculates the cost of contracting a stabilizer code
-    tensor network from the parity check matrices of the nodes."""
+    """A contraction visitor that calculates the upper bound cost of contracting a stabilizer code
+    tensor network. Uses the upper bound metric for each contraction from arXiv:2308.05152"""
 
     def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
         self.open_legs_count = {node_idx: len(legs) for node_idx, legs in open_legs_per_node.items()}
