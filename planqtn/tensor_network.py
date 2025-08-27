@@ -25,7 +25,7 @@ from galois import GF2
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.contraction_visitors.max_size_cost_visitor import max_tensor_size_cost
-from planqtn.contraction_visitors.stabilizer_flops_cost_fn import custom_cost_stabilizer_codes
+from planqtn.contraction_visitors.stabilizer_flops_cost_fn import custom_flops_cost_stabilizer_codes
 from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (
@@ -753,7 +753,7 @@ class TensorNetwork:
                 tree, index_to_legs=index_to_legs, inputs=inputs
             )
             self._traces = traces
-            return np.log2(custom_cost_stabilizer_codes(self, open_legs_per_node))
+            return np.log2(custom_flops_cost_stabilizer_codes(self, open_legs_per_node))
 
         return stabilizer_cost_fn
     
@@ -801,13 +801,14 @@ class TensorNetwork:
 
         contengra_params = {
             "minimize": stabilizer_flops_fn,
-            "parallel": True,
+            "parallel": False,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
             "optlib" : "cmaes",
             "methods" : [
                 "greedy"
-            ]
+            ],
+            "on_trial_error": "raise",
         }
 
         if cotengra_opts.get("minimize") == "custom_flops":
@@ -884,7 +885,7 @@ class TensorNetwork:
         if cotengra and len(self.nodes) > 0 and len(self._traces) > 0:
             with progress_reporter.enter_phase("cotengra contraction"):
                 traces, _ = self._cotengra_contraction(
-                    free_legs, leg_indices, index_to_legs, verbose, progress_reporter
+                    free_legs, leg_indices, index_to_legs, open_legs_per_node, verbose, progress_reporter
                 )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
 
@@ -1296,7 +1297,6 @@ class _PartiallyTracedEnumerator:
                 f"legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}"
             )
 
-        ops_count = 0
         for k1 in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=(
@@ -1310,7 +1310,7 @@ class _PartiallyTracedEnumerator:
                     k1[i1] == k2[i2] for i1, i2 in zip(join_indices1, join_indices2)
                 ):
                     continue
-                ops_count += 1
+
                 wep1 = self.tensor[k1]
                 wep2 = pte2.tensor[k2]
 
@@ -1334,7 +1334,7 @@ class _PartiallyTracedEnumerator:
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
-        ), ops_count
+        )
 
     def self_trace(
         self,
@@ -1383,7 +1383,6 @@ class _PartiallyTracedEnumerator:
         if verbose:
             print(f"[self_trace] kept indices: {kept_indices}")
 
-        ops_count = 0
         for old_key in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=(
@@ -1399,7 +1398,6 @@ class _PartiallyTracedEnumerator:
                 continue
 
             wep1 = self.tensor[old_key]
-            ops_count += 1
             # we have to cut off the join legs from both keys and concatenate them
 
             key = tuple(old_key[i] for i in kept_indices)
@@ -1420,7 +1418,7 @@ class _PartiallyTracedEnumerator:
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
-        ), ops_count
+        )
     
     def truncate_if_needed(
         self, key: TensorEnumeratorKey, wep: Dict[TensorEnumeratorKey, UnivariatePoly]
