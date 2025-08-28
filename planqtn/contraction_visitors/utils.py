@@ -1,3 +1,5 @@
+"""Utils for contraction visitors."""
+
 from itertools import product
 from typing import List
 from galois import GF2

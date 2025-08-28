@@ -2,7 +2,7 @@
 conjoin_nodes of a TensorNetwork to collect various information."""
 
 import abc
-from typing import List, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
@@ -15,6 +15,9 @@ Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 class ContractionVisitor(abc.ABC):
     """Abstract base class for visitors that can be called during contraction."""
+
+    def __init__(self):
+        self.traceable_legs: Dict[TensorId, List[TensorLeg]] = {}
 
     @abc.abstractmethod
     def on_self_trace(
@@ -36,3 +39,23 @@ class ContractionVisitor(abc.ABC):
         merged_nodes: Set[TensorId],
     ):
         """Called when two PTEs are merged."""
+
+    def _update_traceable_legs(
+        self,
+        nodes_to_update: Set[TensorId],
+        join_legs1: List[TensorLeg],
+        join_legs2: List[TensorLeg],
+        current_traceable_legs: List[List[TensorLeg]],
+    ):
+        """Helper method to update the traceable legs after a contraction."""
+        new_traceable_legs = [
+            leg
+            for node_legs in current_traceable_legs
+            for leg in node_legs
+            if leg not in join_legs1 and leg not in join_legs2
+        ]
+
+        for node in nodes_to_update:
+            self.traceable_legs[node] = new_traceable_legs
+
+        return new_traceable_legs

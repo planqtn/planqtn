@@ -18,6 +18,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
     """
 
     def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
+        super().__init__()
         self.open_legs_count = {
             node_idx: len(legs) for node_idx, legs in open_legs_per_node.items()
         }

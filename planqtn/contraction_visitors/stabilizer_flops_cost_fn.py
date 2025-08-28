@@ -46,6 +46,7 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
     tensor network from the parity check matrices of the nodes."""
 
     def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
+        super().__init__()
         self.traceable_legs = dict(open_legs_per_node)
         self.total_cost = 0
 
@@ -56,16 +57,14 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
     ):
-        node_idx1, node_idx2, join_legs1, join_legs2 = trace
-        # Removing joined legs from traced pte
-        new_traceable_legs = [
-            leg
-            for leg in self.traceable_legs[node_idx1]
-            if leg not in join_legs1 and leg not in join_legs2
-        ]
+        node_idx1, _, join_legs1, join_legs2 = trace
 
-        for node in nodes_in_pte:
-            self.traceable_legs[node] = new_traceable_legs
+        new_traceable_legs = self._update_traceable_legs(
+            nodes_in_pte,
+            join_legs1,
+            join_legs2,
+            [self.traceable_legs[node_idx1]],
+        )
 
         prev_rank_submatrix = get_rank_for_matrix_legs(
             pte, new_traceable_legs + join_legs1 + join_legs2
@@ -103,16 +102,9 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         matches = count_matching_stabilizers_ratio(tensor_prod)
         self.total_cost += (2 ** (prev_submatrix1 + prev_submatrix2)) * matches
 
-        # Merge open legs and remove the join legs for merged pte
-        new_traceable_legs = [
-            leg
-            for node_legs in (
-                self.traceable_legs[node_idx1],
-                self.traceable_legs[node_idx2],
-            )
-            for leg in node_legs
-            if leg not in join_legs1 and leg not in join_legs2
-        ]
-
-        for node in merged_nodes:
-            self.traceable_legs[node] = new_traceable_legs
+        self._update_traceable_legs(
+            merged_nodes,
+            join_legs1,
+            join_legs2,
+            [self.traceable_legs[node_idx1], self.traceable_legs[node_idx2]],
+        )
