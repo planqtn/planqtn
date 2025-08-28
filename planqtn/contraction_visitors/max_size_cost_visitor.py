@@ -65,8 +65,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         new_size = 2**new_tensor_rank
-        if new_size > self.max_size:
-            self.max_size = new_size
+        self.max_size = max(self.max_size, new_size)
 
     def on_merge(
         self,
@@ -95,5 +94,4 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         new_size = 2**new_tensor_rank
-        if new_size > self.max_size:
-            self.max_size = new_size
+        self.max_size = max(self.max_size, new_size)
