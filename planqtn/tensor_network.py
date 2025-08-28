@@ -570,55 +570,81 @@ class TensorNetwork:
         ]
         node_to_pte = {node.tensor_id: i for i, node in enumerate(nodes)}
 
-        for trace in progress_reporter.iterate(
-            self._traces, "Conjoining nodes", len(self._traces)
+        free_legs, leg_indices, index_to_legs = self._collect_legs()
+        inputs, _, _, _ = self._prep_cotengra_inputs(leg_indices, free_legs, verbose)
+        tree = self._cotengra_tree_from_traces(free_legs, leg_indices, self._traces)
+        tree_len = tree.N
+
+        def legs_to_contract(l: frozenset, r: frozenset) -> List[Trace]:
+            res = []
+            left_indices = sum((list(inputs[leaf_idx]) for leaf_idx in l), [])
+            right_indices = sum((list(inputs[leaf_idx]) for leaf_idx in r), [])
+            for idx1 in left_indices:
+                if idx1 in right_indices:
+                    (node_idx1, leg1), (node_idx2, leg2) = index_to_legs[idx1]
+                    res.append((node_idx1, node_idx2, leg1, leg2))
+            return res
+
+        for _, l, r in progress_reporter.iterate(
+            tree.traverse(), f"Tracing {tree_len} nodes", tree_len
         ):
-            node_idx1, node_idx2, join_legs1, join_legs2 = trace
+            open_legs_to_contract = legs_to_contract(l, r)
+            if len(open_legs_to_contract) == 0:
+                continue
+            pte_ids = {
+                node_to_pte[node_idx1] for node_idx1, _, _, _ in open_legs_to_contract
+            }.union(
+                {node_to_pte[node_idx2] for _, node_idx2, _, _ in open_legs_to_contract}
+            )
+            assert len(pte_ids) == 2, f"Expected 2 PTEs, got {len(pte_ids)}"
+            pte1_idx, pte2_idx = pte_ids
+            join_legs1 = []
+            join_legs2 = []
+
+            node_join_legs = defaultdict(list)
+
+            for node_idx1, node_idx2, leg1, leg2 in open_legs_to_contract:
+                node_join_legs[node_idx1].append(leg1)
+                node_join_legs[node_idx2].append(leg2)
+
+                if node_idx1 in ptes[pte1_idx][1]:
+                    join_legs1.append(leg1)
+                else:
+                    join_legs2.append(leg1)
+
+                if node_idx2 in ptes[pte2_idx][1]:
+                    join_legs2.append(leg2)
+                else:
+                    join_legs1.append(leg2)
+
             if verbose:
                 print(
-                    f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                    f"==== trace {ptes[pte1_idx], ptes[pte2_idx], join_legs1, join_legs2} ==== "
+                )
+                print(
+                    f"Total legs left to join: "
+                    f"{sum(len(legs) for legs in self._legs_left_to_join.values())}"
                 )
 
-            join_legs1 = _index_legs(node_idx1, join_legs1)
-            join_legs2 = _index_legs(node_idx2, join_legs2)
+            if verbose:
+                print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
+            pte1, nodes1 = ptes[pte1_idx]
+            pte2, nodes2 = ptes[pte2_idx]
+            new_pte = pte1.conjoin(pte2, legs1=join_legs1, legs2=join_legs2)
+            merged_nodes = nodes1.union(nodes2)
 
-            pte1_idx = node_to_pte[node_idx1]
-            pte2_idx = node_to_pte[node_idx2]
+            # Update the first PTE with merged result
+            ptes[pte1_idx] = (new_pte, merged_nodes)
+            # Remove the second PTE
+            ptes.pop(pte2_idx)
 
-            # Case 1: Both nodes are in the same PTE
-            if pte1_idx == pte2_idx:
-                if verbose:
-                    print(
-                        f"Self trace in PTE containing both {node_idx1} and {node_idx2}"
-                    )
-                pte, nodes_in_pte = ptes[pte1_idx]
-                new_pte = pte.self_trace(join_legs1, join_legs2)
-                ptes[pte1_idx] = (new_pte, nodes_in_pte)
-
-                for visitor in visitors or []:
-                    visitor.on_self_trace(trace, pte, new_pte, nodes_in_pte)
-
-            # Case 2: Nodes are in different PTEs - merge them
-            else:
-                if verbose:
-                    print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
-                pte1, nodes1 = ptes[pte1_idx]
-                pte2, nodes2 = ptes[pte2_idx]
-                new_pte = pte1.conjoin(pte2, legs1=join_legs1, legs2=join_legs2)
-                merged_nodes = nodes1.union(nodes2)
-
-                # Update the first PTE with merged result
-                ptes[pte1_idx] = (new_pte, merged_nodes)
-                # Remove the second PTE
-                ptes.pop(pte2_idx)
-
-                # Update node_to_pte mappings
-                for node_idx in nodes2:
-                    node_to_pte[node_idx] = pte1_idx
-                # Adjust indices for all nodes in PTEs after the removed one
-                for node_idx, pte_idx in node_to_pte.items():
-                    if pte_idx > pte2_idx:
-                        node_to_pte[node_idx] = pte_idx - 1
+            # Update node_to_pte mappings
+            for node_idx in nodes2:
+                node_to_pte[node_idx] = pte1_idx
+            # Adjust indices for all nodes in PTEs after the removed one
+            for node_idx, pte_idx in node_to_pte.items():
+                if pte_idx > pte2_idx:
+                    node_to_pte[node_idx] = pte_idx - 1
 
                 for visitor in visitors or []:
                     visitor.on_merge(
@@ -974,7 +1000,6 @@ class TensorNetwork:
             return res
 
         # We convert the tree back to a list of traces
-        traces = []
         tree_len = self._cot_tree.N
 
         for _, l, r in progress_reporter.iterate(

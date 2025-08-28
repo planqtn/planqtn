@@ -8,7 +8,6 @@ The main methods are:
     polynomial for the stabilizer code.
 - `trace_with_stopper`: Traces the lego leg with a stopper.
 - `conjoin`: Conjoins two lego pieces into a new lego piece.
-- `self_trace`: Traces a leg with itself.
 - `with_coset_flipped_legs`: Adds coset flipped legs to the lego piece.
 - `tensor_with`: Tensor product of two lego pieces.
 """
@@ -283,43 +282,6 @@ class StabilizerCodeTensorEnumerator:
             new_h, tensor_id=self.tensor_id, legs=self.legs + other.legs
         )
 
-    def self_trace(
-        self, legs1: Sequence[int | TensorLeg], legs2: Sequence[int | TensorLeg]
-    ) -> "StabilizerCodeTensorEnumerator":
-        """Perform self-tracing by contracting pairs of legs within this tensor.
-
-        Contracts pairs of legs within the same tensor, effectively performing
-        a partial trace operation. The legs are paired up and contracted together.
-
-        Args:
-            legs1: First set of legs to contract (must match length of legs2).
-            legs2: Second set of legs to contract (must match length of legs1).
-
-        Returns:
-            StabilizerCodeTensorEnumerator: New tensor with contracted legs removed.
-
-        Raises:
-            AssertionError: If legs1 and legs2 have different lengths.
-        """
-        assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs2)
-        leg2col = {leg: i for i, leg in enumerate(self.legs)}
-
-        new_h = self.h
-        for leg1, leg2 in zip(legs1_indexed, legs2_indexed):
-            new_h = self_trace(new_h, leg2col[leg1], leg2col[leg2])
-            self._remove_legs(leg2col, [leg1, leg2])
-
-        new_legs = [
-            leg
-            for leg in self.legs
-            if leg not in legs1_indexed and leg not in legs2_indexed
-        ]
-        return StabilizerCodeTensorEnumerator(
-            new_h, tensor_id=self.tensor_id, legs=new_legs
-        )
-
     def conjoin(
         self,
         other: "StabilizerCodeTensorEnumerator",
@@ -340,8 +302,6 @@ class StabilizerCodeTensorEnumerator:
         Returns:
             StabilizerCodeTensorEnumerator: The conjoined tensor enumerator.
         """
-        if self.tensor_id == other.tensor_id:
-            return self.self_trace(legs1, legs2)
         assert len(legs1) == len(legs2)
         legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
         legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, legs2)
