@@ -7,6 +7,7 @@ from planqtn.legos import Legos
 from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
+
 def test_compass_code():
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         [

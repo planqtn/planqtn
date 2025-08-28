@@ -71,8 +71,8 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         )
 
         # Get the columns of the parity check matrix corresponding to the join legs
-        join_idxs = get_col_indices(pte, join_legs1)
-        join_idxs2 = get_col_indices(pte, join_legs2)
+        join_idxs = get_col_indices(pte, set(join_legs1))
+        join_idxs2 = get_col_indices(pte, set(join_legs2))
         open_cols_matrix = pte.h[
             :, [join_idxs[0], join_idxs2[0], join_idxs[1], join_idxs2[1]]
         ]
@@ -93,8 +93,8 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         prev_submatrix2 = get_rank_for_matrix_legs(pte2, self.traceable_legs[node_idx2])
 
         # Get the columns of the parity check matrix corresponding to the join legs
-        join_idxs = get_col_indices(pte1, join_legs1)
-        join_idxs2 = get_col_indices(pte2, join_legs2)
+        join_idxs = get_col_indices(pte1, set(join_legs1))
+        join_idxs2 = get_col_indices(pte2, set(join_legs2))
         open_cols_matrix1 = pte1.h[:, join_idxs]
         open_cols_matrix2 = pte2.h[:, join_idxs2]
 

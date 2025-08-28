@@ -535,7 +535,7 @@ class TensorNetwork:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        visitors: List[ContractionVisitor] = None,
+        visitors: Optional[List[ContractionVisitor]] = None,
     ) -> "StabilizerCodeTensorEnumerator":
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
@@ -754,7 +754,7 @@ class TensorNetwork:
         inputs: List[Tuple[str, ...]],
         open_legs_per_node: Dict[TensorId, List[TensorLeg]],
     ) -> Callable[[Dict], float]:
-        def stabilizer_cost_fn(trial_dict):
+        def stabilizer_cost_fn(trial_dict: Dict[str, Any]) -> float:
             tree = trial_dict["tree"]
             ensure_basic_quantities_are_computed(trial_dict)
 
@@ -762,7 +762,9 @@ class TensorNetwork:
                 tree, index_to_legs=index_to_legs, inputs=inputs
             )
             self._traces = traces
-            return np.log2(custom_flops_cost_stabilizer_codes(self, open_legs_per_node))
+            return float(
+                np.log2(custom_flops_cost_stabilizer_codes(self, open_legs_per_node))
+            )
 
         return stabilizer_cost_fn
 
@@ -772,7 +774,7 @@ class TensorNetwork:
         inputs: List[Tuple[str, ...]],
         open_legs_per_node: Dict[TensorId, List[TensorLeg]],
     ) -> Callable[[Dict], float]:
-        def max_size_cost_fn(trial_dict):
+        def max_size_cost_fn(trial_dict: Dict[str, Any]) -> float:
             tree = trial_dict["tree"]
             ensure_basic_quantities_are_computed(trial_dict)
 
@@ -780,7 +782,7 @@ class TensorNetwork:
                 tree, index_to_legs=index_to_legs, inputs=inputs
             )
             self._traces = traces
-            return np.log2(max_tensor_size_cost(self, open_legs_per_node))
+            return float(np.log2(max_tensor_size_cost(self, open_legs_per_node)))
 
         return max_size_cost_fn
 

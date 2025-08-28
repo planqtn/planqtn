@@ -152,4 +152,4 @@ def invert(mx: GF2) -> GF2:
 
 def rank(mx: GF2) -> int:
     """Compute the rank of a GF2 matrix."""
-    return mx.row_space().shape[0]
+    return int(mx.row_space().shape[0])

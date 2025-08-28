@@ -6,7 +6,10 @@ from galois import GF2
 import numpy as np
 
 from planqtn.linalg import rank
-from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.stabilizer_tensor_enumerator import (
+    StabilizerCodeTensorEnumerator,
+    TensorLeg,
+)
 
 
 def count_matching_stabilizers_ratio(generators: GF2) -> float:
@@ -38,7 +41,7 @@ def count_matching_stabilizers_ratio(generators: GF2) -> float:
 
 
 def get_rank_for_matrix_legs(
-    pte: StabilizerCodeTensorEnumerator, open_legs: List[str]
+    pte: StabilizerCodeTensorEnumerator, open_legs: List[TensorLeg]
 ) -> int:
     """Finds the columns of the parity check matrix corresponding to the given open legs.
     Returns the rank of the submatrix formed by those columns.
@@ -56,7 +59,9 @@ def get_rank_for_matrix_legs(
     return rank(open_leg_submatrix)
 
 
-def get_col_indices(pte: StabilizerCodeTensorEnumerator, legs: set[str]) -> List[int]:
+def get_col_indices(
+    pte: StabilizerCodeTensorEnumerator, legs: set[TensorLeg]
+) -> List[int]:
     """Helper method to find the column indices in the parity check matrix
     corresponding to the given legs.
 

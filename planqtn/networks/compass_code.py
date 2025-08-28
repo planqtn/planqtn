@@ -9,8 +9,7 @@ from galois import GF2
 import numpy as np
 from planqtn.legos import Legos
 from planqtn.networks.surface_code import SurfaceCodeTN
-from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
-from planqtn.tensor_network import TensorId, TensorNetwork
+from planqtn.tensor_network import TensorId
 
 
 class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):

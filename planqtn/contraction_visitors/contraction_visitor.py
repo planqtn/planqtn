@@ -16,7 +16,7 @@ Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 class ContractionVisitor(abc.ABC):
     """Abstract base class for visitors that can be called during contraction."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.traceable_legs: Dict[TensorId, List[TensorLeg]] = {}
 
     @abc.abstractmethod
