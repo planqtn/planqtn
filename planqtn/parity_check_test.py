@@ -354,8 +354,16 @@ def test_self_trace_edge_case_with_repeated_pivot_row_removal():
     )
 
     res = self_trace(h, 1, 2)
-
-    assert self_trace(h, 1, 2) is not None
+    assert np.array_equal(
+        GF2(
+            [
+                [0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+                [0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1],
+            ]
+        ),
+        res,
+    )
 
     h = GF2(
         [
@@ -366,5 +374,17 @@ def test_self_trace_edge_case_with_repeated_pivot_row_removal():
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
         ]
     )
+
     res = self_trace(h, 4, 5)
-    assert res is not None
+    print(repr(res))
+    assert np.array_equal(
+        GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1],
+                [0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+            ]
+        ),
+        res,
+    )

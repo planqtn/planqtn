@@ -184,7 +184,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
   }
 
   // Handle ZZ measurement
-  let pivotRows = findPivotRows(keptRows, mx, legs);
+  const pivotRows = findPivotRows(keptRows, mx, legs);
   if (
     pivotRows[0] !== pivotRows[1] &&
     pivotRows[0] !== -1 &&

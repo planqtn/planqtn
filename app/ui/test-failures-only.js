@@ -118,7 +118,10 @@ try {
     } catch (parseError) {
       console.error('Failed to parse test results:', error.message);
     }
+    process.exit(1);
   } else {
     console.error('Test execution failed:', error.message);
+    process.exit(1);
+
   }
 } 
