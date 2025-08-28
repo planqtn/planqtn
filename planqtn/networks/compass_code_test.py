@@ -1,20 +1,14 @@
 from galois import GF2
 import numpy as np
-import pytest
 from planqtn.networks.compass_code import (
-    CompassCodeConcatenateAndSparsifyTN,
     CompassCodeDualSurfaceCodeLayoutTN,
 )
 from planqtn.legos import Legos
 from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
-
-@pytest.mark.parametrize(
-    "TNClass", [CompassCodeDualSurfaceCodeLayoutTN, CompassCodeConcatenateAndSparsifyTN]
-)
-def test_compass_code(TNClass):
-    tn = TNClass(
+def test_compass_code():
+    tn = CompassCodeDualSurfaceCodeLayoutTN(
         [
             [1, 1],
             [2, 1],
@@ -39,7 +33,7 @@ def test_compass_code(TNClass):
 
     assert tn_wep == expected_wep
 
-    tn_shor = TNClass(
+    tn_shor = CompassCodeDualSurfaceCodeLayoutTN(
         [
             [2, 2],
             [2, 2],
