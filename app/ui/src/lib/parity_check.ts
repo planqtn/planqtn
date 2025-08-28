@@ -196,6 +196,7 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
       newRow[j] = (mx.get(pivotRows[0], j) + mx.get(pivotRows[1], j)) % 2;
     }
     mx.setRow(pivotRows[0], newRow);
+
     keptRows = keptRows.filter((row) => row !== pivotRows[1]);
   } else if (pivotRows[0] === -1 && pivotRows[1] !== -1) {
     keptRows = keptRows.filter((row) => row !== pivotRows[1]);
@@ -203,22 +204,24 @@ export function self_trace(h: GF2, leg1: number = 0, leg2: number = 1): GF2 {
     keptRows = keptRows.filter((row) => row !== pivotRows[0]);
   }
 
-  // Recompute pivotRows for XX measurement
-  pivotRows = findPivotRows(keptRows, mx, legs);
-
   // Handle XX measurement
   if (
     pivotRows[2] !== pivotRows[3] &&
     pivotRows[2] !== -1 &&
     pivotRows[3] !== -1
   ) {
-    // Add rows if they're different
     const newRow = Array(n).fill(0);
     for (let j = 0; j < n; j++) {
       newRow[j] = (mx.get(pivotRows[2], j) + mx.get(pivotRows[3], j)) % 2;
     }
-    mx.setRow(pivotRows[2], newRow);
-    keptRows = keptRows.filter((row) => row !== pivotRows[3]);
+
+    if (keptRows.some((row) => row === pivotRows[3])) {
+      mx.setRow(pivotRows[2], newRow);
+      keptRows = keptRows.filter((row) => row !== pivotRows[3]);
+    } else {
+      mx.setRow(pivotRows[3], newRow);
+      keptRows = keptRows.filter((row) => row !== pivotRows[2]);
+    }
   } else if (pivotRows[2] === -1 && pivotRows[3] !== -1) {
     keptRows = keptRows.filter((row) => row !== pivotRows[3]);
   } else if (pivotRows[2] !== -1 && pivotRows[3] === -1) {
