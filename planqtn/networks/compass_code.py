@@ -175,18 +175,16 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
 
                 row += 1
 
-            top_rows = []
-            bottom_rows = []
-            height = len(coloring)
+            top_rows, bottom_rows = [], []
 
             # Find contiguous top block of 1s
             row = 0
-            while row < height and coloring[row][col] == 1:
+            while row < len(coloring) and coloring[row][col] == 1:
                 top_rows.append(row)
                 row += 1
 
             # Find contiguous bottom block of 1s
-            row = height - 1
+            row = len(coloring) - 1
             while row >= 0 and coloring[row][col] == 1:
                 bottom_rows.append(row + 1)
                 row -= 1
@@ -194,7 +192,7 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             bottom_rows = list(reversed(bottom_rows))  # ensure increasing order
 
             # Avoid duplication if full column is 1s
-            full_column_ones = len(top_rows) + len(bottom_rows) > height
+            full_column_ones = len(top_rows) + len(bottom_rows) > len(coloring)
             if full_column_ones:
                 # Only apply from the top to avoid duplication
                 bottom_rows = []
@@ -202,22 +200,14 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
                     top_rows.append(top_rows[-1] + 1)
 
             # Apply non-isometry at top rows
-            for r in top_rows:
-                print(f"adding non-isometry at col {col}, row {r} (top)")
-                self._make_non_isometric_tensor(nodes, r, col)
-                self._connect_non_isometric_tensor(
-                    r, col, None, None, attachments, connections_to_trace
-                )
-                trace_with_stopper.add(("z", r, col))
-
-            # Apply non-isometry at bottom rows
-            for r in bottom_rows:
-                print(f"adding non-isometry at col {col}, row {r} (bottom)")
-                self._make_non_isometric_tensor(nodes, r, col)
-                self._connect_non_isometric_tensor(
-                    r, col, None, None, attachments, connections_to_trace
-                )
-                trace_with_stopper.add(("z", r, col))
+            for label, rows in [("top", top_rows), ("bottom", bottom_rows)]:
+                for r in rows:
+                    print(f"adding non-isometry at col {col}, row {r} {label}")
+                    self._make_non_isometric_tensor(nodes, r, col)
+                    self._connect_non_isometric_tensor(
+                        r, col, None, None, attachments, connections_to_trace
+                    )
+                    trace_with_stopper.add(("z", r, col))
 
         super().__init__(nodes, truncate_length=truncate_length)
 
