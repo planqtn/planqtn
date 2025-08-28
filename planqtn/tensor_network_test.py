@@ -977,7 +977,7 @@ def test_disconnected_networks_truncate_length():
         (9, {0: 1, 4: 21, 6: 42}),
     ],
 )
-def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
+def test_trace_two_422_codes_into_steane_via_tn_truncated(
     truncate_length, expected_wep
 ):
     enc_tens_422 = GF2(
@@ -1166,3 +1166,91 @@ def test_single_node_with_open_legs_t6():
         (3, 1): UnivariatePoly({2: 1, 3: 2, 4: 1}),
         (3, 3): UnivariatePoly({2: 2, 3: 2}),
     }
+
+
+def test_cotengra_tree_back_and_forward_conversions():
+    nodes = {}
+    nodes["46"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        tensor_id="46",
+    )
+    nodes["47"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        tensor_id="47",
+    )
+    nodes["53"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0],
+            ]
+        ),
+        tensor_id="53",
+    )
+    nodes["59"] = StabilizerCodeTensorEnumerator(
+        h=GF2(
+            [
+                [1, 0, 0, 0, 0, 1, 1, 1],
+                [0, 0, 1, 1, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 0, 0, 0],
+            ]
+        ),
+        tensor_id="59",
+    )
+    nodes["60"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        tensor_id="60",
+    )
+    nodes["61"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        tensor_id="61",
+    )
+    nodes["62"] = StabilizerCodeTensorEnumerator(
+        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
+        tensor_id="62",
+    )
+
+    # Create TensorNetwork
+    tn = TensorNetwork(nodes, truncate_length=4)
+
+    # Add traces
+    tn.self_trace("46", "59", [1], [2])
+    tn.self_trace("47", "59", [1], [3])
+    tn.self_trace("47", "60", [0], [2])
+    tn.self_trace("53", "60", [1], [0])
+    tn.self_trace("46", "61", [0], [2])
+    tn.self_trace("53", "61", [0], [0])
+    tn.self_trace("47", "53", [3], [3])
+    tn.self_trace("62", "46", [2], [3])
+    tn.self_trace("60", "62", [1], [0])
+    tn.self_trace("62", "59", [1], [0])
+
+    free_legs, leg_indices, index_to_legs = tn._collect_legs()
+
+    traces, tree_from_cotengra = tn._cotengra_contraction(
+        free_legs,
+        leg_indices,
+        index_to_legs,
+        verbose=True,
+        progress_reporter=TqdmProgressReporter(),
+    )
+
+    cot_tree_from_traces = tn._cotengra_tree_from_traces(free_legs, leg_indices, traces)
+
+    assert cot_tree_from_traces.get_eq() == tree_from_cotengra.get_eq()

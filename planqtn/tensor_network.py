@@ -107,7 +107,7 @@ class TensorNetwork:
             self.nodes = nodes_dict
 
         self._traces: List[Trace] = []
-        self._cot_tree = None
+        self._cot_tree: Optional[ctg.ContractionTree] = None
         self._cot_traces: Optional[List[Trace]] = None
 
         self._legs_left_to_join: Dict[TensorId, List[TensorLeg]] = {
@@ -234,7 +234,7 @@ class TensorNetwork:
         self._coset = GF2.Zeros(2 * self.n_qubits())
 
         if keep_cot:
-            self._cot_tree = None
+            self._cot_tree: Optional[ctg.ContractionTree] = None
             self._cot_traces = None
 
     def set_coset(self, coset_error: GF2 | Tuple[List[int], List[int]]) -> None:
@@ -361,6 +361,7 @@ class TensorNetwork:
         self,
         free_legs: List[TensorLeg],
         leg_indices: Dict[TensorLeg, str],
+        traces: List[Trace],
     ) -> ctg.ContractionTree:
         inputs, output, size_dict, input_names = self._prep_cotengra_inputs(
             leg_indices, free_legs, True
@@ -371,14 +372,14 @@ class TensorNetwork:
 
         def idx(node_id: TensorId) -> int:
             for i, term in enumerate(terms):
-                if node_id in term:
+                if str(node_id) in term:
                     return i
             assert False, (
                 "This should not happen, nodes should be always present in at least one of the "
-                "terms."
+                f"terms, but could not find node_id: {node_id} in {terms}"
             )
 
-        for node_idx1, node_idx2, _, _ in self._traces:
+        for node_idx1, node_idx2, _, _ in traces:
             i, j = sorted([idx(node_idx1), idx(node_idx2)])
             # print((node_idx1, node_idx2), f"=> {i,j}", terms)
             if i == j:
@@ -388,7 +389,12 @@ class TensorNetwork:
             term1 = terms.pop(i)
             terms.append(term1.union(term2))
         return ctg.ContractionTree.from_path(
-            inputs, output, size_dict, path=path, check=True
+            inputs,
+            output,
+            size_dict,
+            path=path,
+            check=True,
+            autocomplete=True,
         )
 
     def analyze_traces(
@@ -835,7 +841,7 @@ class TensorNetwork:
             progbar=not isinstance(progress_reporter, DummyProgressReporter),
         )
 
-        self._cot_tree = opt.search(inputs, output, size_dict)
+        self._cot_tree: ctg.ContractionTree = opt.search(inputs, output, size_dict)
 
         self._cot_traces = self._traces_from_cotengra_tree(
             self._cot_tree, index_to_legs=index_to_legs, inputs=inputs
@@ -883,6 +889,8 @@ class TensorNetwork:
         with progress_reporter.enter_phase("collecting legs"):
             free_legs, leg_indices, index_to_legs = self._collect_legs()
 
+        inputs, _, _, _ = self._prep_cotengra_inputs(leg_indices, free_legs, verbose)
+
         open_legs_per_node = defaultdict(list)
         for node_idx, node in self.nodes.items():
             for leg in node.legs:
@@ -897,7 +905,7 @@ class TensorNetwork:
         traces = self._traces
         if cotengra and len(self.nodes) > 0 and len(self._traces) > 0:
             with progress_reporter.enter_phase("cotengra contraction"):
-                traces, _ = self._cotengra_contraction(
+                traces, tree = self._cotengra_contraction(
                     free_legs,
                     leg_indices,
                     index_to_legs,
@@ -905,6 +913,10 @@ class TensorNetwork:
                     verbose,
                     progress_reporter,
                 )
+        else:
+            self._cot_tree = self._cotengra_tree_from_traces(
+                free_legs, leg_indices, traces
+            )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
 
         if len(self._traces) == 0 and len(self.nodes) == 1:
@@ -951,19 +963,61 @@ class TensorNetwork:
                 truncate_length=self.truncate_length,
             )
 
-        for node_idx1, node_idx2, join_legs1, join_legs2 in progress_reporter.iterate(
-            traces, f"Tracing {len(traces)} legs", len(traces)
+        def legs_to_contract(l: frozenset, r: frozenset) -> List[Trace]:
+            res = []
+            left_indices = sum((list(inputs[leaf_idx]) for leaf_idx in l), [])
+            right_indices = sum((list(inputs[leaf_idx]) for leaf_idx in r), [])
+            for idx1 in left_indices:
+                if idx1 in right_indices:
+                    (node_idx1, leg1), (node_idx2, leg2) = index_to_legs[idx1]
+                    res.append((node_idx1, node_idx2, leg1, leg2))
+            return res
+
+        # We convert the tree back to a list of traces
+        traces = []
+        tree_len = self._cot_tree.N
+
+        for _, l, r in progress_reporter.iterate(
+            self._cot_tree.traverse(), f"Tracing {tree_len} nodes", tree_len
         ):
+            open_legs_to_contract = legs_to_contract(l, r)
+            if len(open_legs_to_contract) == 0:
+                continue
+            ptes = {
+                self._ptes[node_idx1] for node_idx1, _, _, _ in open_legs_to_contract
+            }.union(
+                {self._ptes[node_idx2] for _, node_idx2, _, _ in open_legs_to_contract}
+            )
+            assert len(ptes) == 2, f"Expected 2 PTEs, got {len(ptes)}"
+            node1_pte, node2_pte = ptes
+
+            join_legs1 = []
+            join_legs2 = []
+
+            node_join_legs = defaultdict(list)
+
+            for node_idx1, node_idx2, leg1, leg2 in open_legs_to_contract:
+                node_join_legs[node_idx1].append(leg1)
+                node_join_legs[node_idx2].append(leg2)
+
+                if node_idx1 in node1_pte.nodes:
+                    join_legs1.append(leg1)
+                else:
+                    join_legs2.append(leg1)
+
+                if node_idx2 in node2_pte.nodes:
+                    join_legs2.append(leg2)
+                else:
+                    join_legs1.append(leg2)
+
             if verbose:
                 print(
-                    f"==== trace {node_idx1, node_idx2, join_legs1, join_legs2} ==== "
+                    f"==== trace {node1_pte, node2_pte, join_legs1, join_legs2} ==== "
                 )
                 print(
                     f"Total legs left to join: "
                     f"{sum(len(legs) for legs in self._legs_left_to_join.values())}"
                 )
-            node1_pte = self._ptes[node_idx1]
-            node2_pte = self._ptes[node_idx2]
 
             # print(f"PTEs: {node1_pte}, {node2_pte}")
             # check that the length of the tensor is a power of 4
@@ -973,29 +1027,15 @@ class TensorNetwork:
                 if verbose:
                     print(f"self trace within PTE {node1_pte}")
                 pte = node1_pte.self_trace(
-                    join_legs1=[
-                        (node_idx1, leg) if isinstance(leg, int) else leg
-                        for leg in join_legs1
-                    ],
-                    join_legs2=[
-                        (node_idx2, leg) if isinstance(leg, int) else leg
-                        for leg in join_legs2
-                    ],
+                    join_legs1=join_legs1,
+                    join_legs2=join_legs2,
                     progress_reporter=progress_reporter,
                     verbose=verbose,
                 )
                 for node_idx in pte.nodes:
                     self._ptes[node_idx] = pte
-                self._legs_left_to_join[node_idx1] = [
-                    leg
-                    for leg in self._legs_left_to_join[node_idx1]
-                    if leg not in join_legs1
-                ]
-                self._legs_left_to_join[node_idx2] = [
-                    leg
-                    for leg in self._legs_left_to_join[node_idx2]
-                    if leg not in join_legs2
-                ]
+                    for leg in node_join_legs[node_idx]:
+                        self._legs_left_to_join[node_idx].remove(leg)
             else:
                 if verbose:
                     print(f"MERGING two components {node1_pte} and {node2_pte}")
@@ -1011,45 +1051,27 @@ class TensorNetwork:
                         print(v)
                 pte = node1_pte.merge_with(
                     node2_pte,
-                    join_legs1=[
-                        (node_idx1, leg) if isinstance(leg, int) else leg
-                        for leg in join_legs1
-                    ],
-                    join_legs2=[
-                        (node_idx2, leg) if isinstance(leg, int) else leg
-                        for leg in join_legs2
-                    ],
+                    join_legs1=join_legs1,
+                    join_legs2=join_legs2,
                     verbose=verbose,
                     progress_reporter=progress_reporter,
                 )
 
                 for node_idx in pte.nodes:
                     self._ptes[node_idx] = pte
-                self._legs_left_to_join[node_idx1] = [
-                    leg
-                    for leg in self._legs_left_to_join[node_idx1]
-                    if leg not in join_legs1
-                ]
-                self._legs_left_to_join[node_idx2] = [
-                    leg
-                    for leg in self._legs_left_to_join[node_idx2]
-                    if leg not in join_legs2
-                ]
-
-            node1_pte = self._ptes[node_idx1]
+                    for leg in node_join_legs[node_idx]:
+                        self._legs_left_to_join[node_idx].remove(leg)
 
             if verbose:
-                print(
-                    f"PTE nodes: {node1_pte.nodes if node1_pte is not None else None}"
-                )
+                print(f"PTE nodes: {pte.nodes if pte is not None else None}")
                 print(
                     f"PTE tracable legs: "
-                    f"{node1_pte.tracable_legs if node1_pte is not None else None}"
+                    f"{pte.tracable_legs if pte is not None else None}"
                 )
             if verbose:
                 print("PTE tensor: ")
-            for k in list(node1_pte.tensor.keys() if node1_pte is not None else []):
-                v = node1_pte.tensor[k] if node1_pte is not None else UnivariatePoly()
+            for k in list(pte.tensor.keys() if pte is not None else []):
+                v = pte.tensor[k] if pte is not None else UnivariatePoly()
                 # if not 0 in v:
                 #     continue
                 if verbose:
@@ -1328,7 +1350,6 @@ class _PartiallyTracedEnumerator:
                     k1[i1] == k2[i2] for i1, i2 in zip(join_indices1, join_indices2)
                 ):
                     continue
-
                 wep1 = self.tensor[k1]
                 wep2 = pte2.tensor[k2]
 
