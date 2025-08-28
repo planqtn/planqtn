@@ -123,7 +123,7 @@ def self_trace(h: GF2, leg1: int = 0, leg2: int = 1) -> GF2:
     mx: GF2 = gauss(h, col_subset=legs)
 
     non_zero_rows_for_legs: List[List[int]] = [
-        np.flatnonzero(mx[:, leg]).tolist() for leg in legs  # type: ignore[misc]
+        np.flatnonzero(mx[:, leg]).tolist() for leg in legs
     ]
 
     pivot_rows: List[int] = [
