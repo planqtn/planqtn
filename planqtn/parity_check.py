@@ -1,9 +1,10 @@
 """Symplectic parity check matrix utilities."""
 
+from typing import List
+
 from galois import GF2
 import numpy as np
 import scipy
-from typing import List
 
 from planqtn.linalg import gauss
 
