@@ -1022,45 +1022,30 @@ class TensorNetwork:
             # print(f"PTEs: {node1_pte}, {node2_pte}")
             # check that the length of the tensor is a power of 4
 
-            if node1_pte == node2_pte:
-                # both nodes are in the same PTE!
-                if verbose:
-                    print(f"self trace within PTE {node1_pte}")
-                pte = node1_pte.self_trace(
-                    join_legs1=join_legs1,
-                    join_legs2=join_legs2,
-                    progress_reporter=progress_reporter,
-                    verbose=verbose,
-                )
-                for node_idx in pte.nodes:
-                    self._ptes[node_idx] = pte
-                    for leg in node_join_legs[node_idx]:
-                        self._legs_left_to_join[node_idx].remove(leg)
-            else:
-                if verbose:
-                    print(f"MERGING two components {node1_pte} and {node2_pte}")
-                    print(f"node1_pte {node1_pte}:")
-                    for k in list(node1_pte.tensor.keys()):
-                        v = node1_pte.tensor[k]
-                        print(Pauli.to_str(*k), end=" ")
-                        print(v)
-                    print(f"node2_pte {node2_pte}:")
-                    for k in list(node2_pte.tensor.keys()):
-                        v = node2_pte.tensor[k]
-                        print(Pauli.to_str(*k), end=" ")
-                        print(v)
-                pte = node1_pte.merge_with(
-                    node2_pte,
-                    join_legs1=join_legs1,
-                    join_legs2=join_legs2,
-                    verbose=verbose,
-                    progress_reporter=progress_reporter,
-                )
+            if verbose:
+                print(f"MERGING two components {node1_pte} and {node2_pte}")
+                print(f"node1_pte {node1_pte}:")
+                for k in list(node1_pte.tensor.keys()):
+                    v = node1_pte.tensor[k]
+                    print(Pauli.to_str(*k), end=" ")
+                    print(v)
+                print(f"node2_pte {node2_pte}:")
+                for k in list(node2_pte.tensor.keys()):
+                    v = node2_pte.tensor[k]
+                    print(Pauli.to_str(*k), end=" ")
+                    print(v)
+            pte = node1_pte.merge_with(
+                node2_pte,
+                join_legs1=join_legs1,
+                join_legs2=join_legs2,
+                verbose=verbose,
+                progress_reporter=progress_reporter,
+            )
 
-                for node_idx in pte.nodes:
-                    self._ptes[node_idx] = pte
-                    for leg in node_join_legs[node_idx]:
-                        self._legs_left_to_join[node_idx].remove(leg)
+            for node_idx in pte.nodes:
+                self._ptes[node_idx] = pte
+                for leg in node_join_legs[node_idx]:
+                    self._legs_left_to_join[node_idx].remove(leg)
 
             if verbose:
                 print(f"PTE nodes: {pte.nodes if pte is not None else None}")
@@ -1087,8 +1072,8 @@ class TensorNetwork:
                     pte.tensor[k].truncate_inplace(self.truncate_length)
                     if verbose:
                         print(" -- truncated")
-            if verbose:
-                print(f"PTEs: {self._ptes}")
+        if verbose:
+            print(f"PTEs: {self._ptes}")
 
         if verbose:
             print("summed legs: ", summed_legs)
@@ -1370,90 +1355,6 @@ class _PartiallyTracedEnumerator:
 
         return _PartiallyTracedEnumerator(
             self.nodes.union(pte2.nodes),
-            tracable_legs=tracable_legs,
-            tensor=wep,
-            truncate_length=self.truncate_length,
-        )
-
-    def self_trace(
-        self,
-        join_legs1: List[TensorLeg],
-        join_legs2: List[TensorLeg],
-        progress_reporter: ProgressReporter = DummyProgressReporter(),
-        verbose: bool = False,
-    ) -> "_PartiallyTracedEnumerator":
-        """Perform self-tracing by contracting pairs of legs within this enumerator.
-
-        Contracts pairs of legs within the same partially traced enumerator,
-        effectively performing a partial trace operation. The legs are paired
-        up and contracted together.
-
-        Args:
-            join_legs1: First set of legs to contract.
-            join_legs2: Second set of legs to contract.
-            progress_reporter: Progress reporter for tracking the operation.
-            verbose: If True, print trace details.
-
-        Returns:
-            _PartiallyTracedEnumerator: New enumerator with contracted legs removed.
-        """
-        assert len(join_legs1) == len(join_legs2)
-
-        wep: Dict[TensorEnumeratorKey, UnivariatePoly] = defaultdict(UnivariatePoly)
-        open_legs = [
-            leg
-            for leg in self.tracable_legs
-            if leg not in join_legs1 and leg not in join_legs2
-        ]
-
-        if verbose:
-            print(f"[self_trace] traceable legs: {self.tracable_legs} <- {open_legs}")
-        join_indices1 = [self.tracable_legs.index(leg) for leg in join_legs1]
-
-        if verbose:
-            print(f"[self_trace] join indices1: {join_indices1}")
-        join_indices2 = [self.tracable_legs.index(leg) for leg in join_legs2]
-        if verbose:
-            print(f"[self_trace] join indices2: {join_indices2}")
-
-        kept_indices = [
-            i for i, leg in enumerate(self.tracable_legs) if leg in open_legs
-        ]
-        if verbose:
-            print(f"[self_trace] kept indices: {kept_indices}")
-
-        for old_key in progress_reporter.iterate(
-            iterable=self.tensor.keys(),
-            desc=(
-                f"PTE ({len(self.tracable_legs)} tracable legs) self trace on {len(self.tensor)}"
-                "elements"
-            ),
-            total_size=len(list(self.tensor.keys())),
-        ):
-            if not all(
-                old_key[i1] == old_key[i2]
-                for i1, i2 in zip(join_indices1, join_indices2)
-            ):
-                continue
-
-            wep1 = self.tensor[old_key]
-            # we have to cut off the join legs from both keys and concatenate them
-
-            key = tuple(old_key[i] for i in kept_indices)
-
-            assert len(key) == len(
-                open_legs
-            ), f"key length: {len(key)} != {len(open_legs)}"
-            # print(f"key: {key}")
-            # print(f"wep: {wep1}")
-
-            wep[key].add_inplace(wep1)
-
-            self.truncate_if_needed(key, wep)
-        tracable_legs = list(open_legs)
-
-        return _PartiallyTracedEnumerator(
-            self.nodes,
             tracable_legs=tracable_legs,
             tensor=wep,
             truncate_length=self.truncate_length,
