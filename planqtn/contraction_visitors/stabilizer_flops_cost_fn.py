@@ -56,7 +56,7 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         pte: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
-    ):
+    ) -> None:
         node_idx1, _, join_legs1, join_legs2 = trace
 
         new_traceable_legs = self._update_traceable_legs(
@@ -87,7 +87,7 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         pte2: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
-    ):
+    ) -> None:
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
         prev_submatrix1 = get_rank_for_matrix_legs(pte1, self.traceable_legs[node_idx1])
         prev_submatrix2 = get_rank_for_matrix_legs(pte2, self.traceable_legs[node_idx2])

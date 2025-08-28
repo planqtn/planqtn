@@ -50,7 +50,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         trace: Trace,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_to_update: Set[TensorId],
-    ):
+    ) -> None:
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
 
         open_legs = [self.traceable_legs[node_idx1]]
@@ -75,7 +75,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         pte: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
-    ):
+    ) -> None:
         self._record_contraction_step(trace, new_pte, nodes_in_pte)
 
     def on_merge(
@@ -85,5 +85,5 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         pte2: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
-    ):
+    ) -> None:
         self._record_contraction_step(trace, new_pte, merged_nodes)

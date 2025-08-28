@@ -30,7 +30,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
         pte: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
-    ):
+    ) -> None:
         node_idx1, _, _, _ = trace
         open_legs1 = self.open_legs_count.get(node_idx1, 0)
 
@@ -49,7 +49,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
         pte2: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
-    ):
+    ) -> None:
         node_idx1, node_idx2, _, _ = trace
         open_legs1 = self.open_legs_count.get(node_idx1, 0)
         open_legs2 = self.open_legs_count.get(node_idx2, 0)

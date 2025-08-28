@@ -26,7 +26,7 @@ class ContractionVisitor(abc.ABC):
         pte: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
-    ):
+    ) -> None:
         """Called when a self trace operation is performed."""
 
     @abc.abstractmethod
@@ -37,7 +37,7 @@ class ContractionVisitor(abc.ABC):
         pte2: StabilizerCodeTensorEnumerator,
         new_pte: StabilizerCodeTensorEnumerator,
         merged_nodes: Set[TensorId],
-    ):
+    ) -> None:
         """Called when two PTEs are merged."""
 
     def _update_traceable_legs(
@@ -46,7 +46,7 @@ class ContractionVisitor(abc.ABC):
         join_legs1: List[TensorLeg],
         join_legs2: List[TensorLeg],
         current_traceable_legs: List[List[TensorLeg]],
-    ):
+    ) -> List[TensorLeg]:
         """Helper method to update the traceable legs after a contraction."""
         new_traceable_legs = [
             leg

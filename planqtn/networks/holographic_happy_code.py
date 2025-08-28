@@ -38,7 +38,7 @@ class HolographicHappyTN(TensorNetwork):
         *,
         lego=Legos.perf513,
         coset_error: GF2 = None,
-        truncate_length: int = None
+        truncate_length: int = None,
     ):
         """Construct a HaPPY code tensor network.
 

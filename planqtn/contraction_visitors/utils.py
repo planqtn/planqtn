@@ -34,7 +34,7 @@ def count_matching_stabilizers_ratio(generators: GF2) -> float:
         # If all pauli operators are the same, we have a match
         if np.all(x == x[0]) and np.all(z == z[0]):
             count += 1
-    return count / 2**r
+    return float(count / 2**r)
 
 
 def get_rank_for_matrix_legs(
@@ -56,7 +56,7 @@ def get_rank_for_matrix_legs(
     return rank(open_leg_submatrix)
 
 
-def get_col_indices(pte: StabilizerCodeTensorEnumerator, legs: List[str]) -> List[int]:
+def get_col_indices(pte: StabilizerCodeTensorEnumerator, legs: set[str]) -> List[int]:
     """Helper method to find the column indices in the parity check matrix
     corresponding to the given legs.
 

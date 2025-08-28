@@ -3,6 +3,7 @@ from planqtn.legos import Legos
 from planqtn.poly import UnivariatePoly
 from planqtn.tensor_network import StabilizerCodeTensorEnumerator
 
+
 def test_layer1_happy():
     tn = HolographicHappyTN(num_layers=1)
     assert tn.n_qubits() == 5, f"Got {tn.n_qubits()} qubits, expected 5"
