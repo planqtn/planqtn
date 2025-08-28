@@ -1,10 +1,14 @@
-"""Calculates the cost of contracting a stabilizer code tensor network 
+"""Calculates the cost of contracting a stabilizer code tensor network
 based only on the parity check matrix."""
 
 from typing import TYPE_CHECKING, Dict, Set, List, Tuple
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
-from planqtn.contraction_visitors.utils import count_matching_stabilizers_ratio, get_col_indices, get_rank_for_matrix_legs
+from planqtn.contraction_visitors.utils import (
+    count_matching_stabilizers_ratio,
+    get_col_indices,
+    get_rank_for_matrix_legs,
+)
 from planqtn.parity_check import tensor_product
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,

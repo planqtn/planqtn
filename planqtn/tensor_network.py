@@ -13,19 +13,31 @@ The main methods are:
     tensor network into a single stabilizer code tensor.
 """
 
-import importlib.util
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
-
-import cotengra as ctg
-from cotengra.scoring import ensure_basic_quantities_are_computed
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 import numpy as np
 from galois import GF2
 
+import cotengra as ctg
+from cotengra.scoring import ensure_basic_quantities_are_computed
+
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.contraction_visitors.max_size_cost_visitor import max_tensor_size_cost
-from planqtn.contraction_visitors.stabilizer_flops_cost_fn import custom_flops_cost_stabilizer_codes
+from planqtn.contraction_visitors.stabilizer_flops_cost_fn import (
+    custom_flops_cost_stabilizer_codes,
+)
 from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (
@@ -410,7 +422,6 @@ class TensorNetwork:
                 if leg not in free_legs:
                     open_legs_per_node[node_idx].append(_index_leg(node_idx, leg))
 
-
         new_tn = TensorNetwork(deepcopy(self.nodes))
 
         # pylint: disable=W0212
@@ -524,7 +535,7 @@ class TensorNetwork:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        visitors: List[ContractionVisitor] = [],
+        visitors: List[ContractionVisitor] = None,
     ) -> "StabilizerCodeTensorEnumerator":
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
@@ -578,10 +589,8 @@ class TensorNetwork:
                 new_pte = pte.self_trace(join_legs1, join_legs2)
                 ptes[pte1_idx] = (new_pte, nodes_in_pte)
 
-                for visitor in visitors:
-                    visitor.on_self_trace(
-                        trace, pte, new_pte, nodes_in_pte
-                    )
+                for visitor in visitors or []:
+                    visitor.on_self_trace(trace, pte, new_pte, nodes_in_pte)
 
             # Case 2: Nodes are in different PTEs - merge them
             else:
@@ -605,7 +614,7 @@ class TensorNetwork:
                     if pte_idx > pte2_idx:
                         node_to_pte[node_idx] = pte_idx - 1
 
-                for visitor in visitors:
+                for visitor in visitors or []:
                     visitor.on_merge(
                         trace,
                         pte1,
@@ -738,7 +747,7 @@ class TensorNetwork:
             ]
         )
         return traces
-    
+
     def _make_flops_cost_fn(
         self,
         index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
@@ -756,7 +765,7 @@ class TensorNetwork:
             return np.log2(custom_flops_cost_stabilizer_codes(self, open_legs_per_node))
 
         return stabilizer_cost_fn
-    
+
     def _make_max_size_cost_fn(
         self,
         index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
@@ -796,18 +805,20 @@ class TensorNetwork:
             leg_indices, free_legs, verbose
         )
 
-        stabilizer_flops_fn = self._make_flops_cost_fn(index_to_legs, inputs, open_legs_per_node)
-        stabilizer_max_size_fn = self._make_max_size_cost_fn(index_to_legs, inputs, open_legs_per_node)
+        stabilizer_flops_fn = self._make_flops_cost_fn(
+            index_to_legs, inputs, open_legs_per_node
+        )
+        stabilizer_max_size_fn = self._make_max_size_cost_fn(
+            index_to_legs, inputs, open_legs_per_node
+        )
 
         contengra_params = {
             "minimize": stabilizer_flops_fn,
             "parallel": False,
             # kahypar is not installed by default, but if user has it they can use it by default
             # otherwise, our default is greedy right now
-            "optlib" : "cmaes",
-            "methods" : [
-                "greedy"
-            ],
+            "optlib": "cmaes",
+            "methods": ["greedy"],
             "on_trial_error": "raise",
         }
 
@@ -885,7 +896,12 @@ class TensorNetwork:
         if cotengra and len(self.nodes) > 0 and len(self._traces) > 0:
             with progress_reporter.enter_phase("cotengra contraction"):
                 traces, _ = self._cotengra_contraction(
-                    free_legs, leg_indices, index_to_legs, open_legs_per_node, verbose, progress_reporter
+                    free_legs,
+                    leg_indices,
+                    index_to_legs,
+                    open_legs_per_node,
+                    verbose,
+                    progress_reporter,
                 )
         summed_legs = [leg for leg in free_legs if leg not in open_legs]
 
@@ -1419,7 +1435,7 @@ class _PartiallyTracedEnumerator:
             tensor=wep,
             truncate_length=self.truncate_length,
         )
-    
+
     def truncate_if_needed(
         self, key: TensorEnumeratorKey, wep: Dict[TensorEnumeratorKey, UnivariatePoly]
     ) -> None:

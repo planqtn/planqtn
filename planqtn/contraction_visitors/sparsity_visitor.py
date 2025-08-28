@@ -3,8 +3,9 @@
 from typing import Dict, Set, List, Tuple
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
-from planqtn.linalg import rank
-from planqtn.contraction_visitors.stabilizer_code_cost_fn import get_rank_for_matrix_legs
+from planqtn.contraction_visitors.utils import (
+    get_rank_for_matrix_legs
+)
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
     TensorId,
@@ -13,6 +14,7 @@ from planqtn.stabilizer_tensor_enumerator import (
 
 
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
+
 
 class SparsityVisitor(ContractionVisitor):
     """A contraction visitor that calculates the sparsity of the tensors
@@ -40,14 +42,10 @@ class SparsityVisitor(ContractionVisitor):
         for node in nodes_in_pte:
             self.traceable_legs[node] = new_traceable_legs
 
-        new_tensor_rank = get_rank_for_matrix_legs(
-            new_pte, new_traceable_legs
-        )
+        new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
-        dense_size = 4**len(new_traceable_legs)
-        self.tensor_sparsity.append(
-            (2**new_tensor_rank) / dense_size
-        )
+        dense_size = 4 ** len(new_traceable_legs)
+        self.tensor_sparsity.append((2**new_tensor_rank) / dense_size)
 
     def on_merge(
         self,
@@ -58,7 +56,7 @@ class SparsityVisitor(ContractionVisitor):
         merged_nodes: Set[TensorId],
     ):
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
-        
+
         # Merge open legs and remove the join legs for merged pte
         new_traceable_legs = [
             leg
@@ -73,12 +71,7 @@ class SparsityVisitor(ContractionVisitor):
         for node in merged_nodes:
             self.traceable_legs[node] = new_traceable_legs
 
-        new_tensor_rank = get_rank_for_matrix_legs(
-            new_pte, new_traceable_legs
-        )
+        new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
-        dense_size = 4**len(new_traceable_legs)
-        self.tensor_sparsity.append(
-            (2**new_tensor_rank) / dense_size
-        )
-
+        dense_size = 4 ** len(new_traceable_legs)
+        self.tensor_sparsity.append((2**new_tensor_rank) / dense_size)

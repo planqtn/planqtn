@@ -70,20 +70,17 @@ class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
 class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
     """A tensor network representation of compass codes using concatenate and sparsify method.
 
-    This class implements a compass code using a concatenate and sparsify method described by 
-    Cao & Lackey in the following paper. The compass code is constructed by applying 
-    non-isometric tensors to "carve out" the desired stabilizers starting from a 
+    This class implements a compass code using a concatenate and sparsify method described by
+    Cao & Lackey in the following paper. The compass code is constructed by applying
+    non-isometric tensors to "carve out" the desired stabilizers starting from a
     Bacon-Shor code.
 
-    Cao, C., & Lackey, B. (2025). Growing sparse quantum codes from a seed. 
+    Cao, C., & Lackey, B. (2025). Growing sparse quantum codes from a seed.
     arXiv. https://arxiv.org/abs/2507.13496
     """
+
     def __init__(
-        self,
-        coloring,
-        *,
-        coset_error: GF2 = None,
-        truncate_length: int = None
+        self, coloring, *, coset_error: GF2 = None, truncate_length: int = None
     ):
         """Create a square compass code based on the coloring using the concatenate
         and sparsity method.
@@ -98,17 +95,18 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
         attachments = {}
 
         # Start with the base layer of Z and X repetition codes which forms the Bacon-Shor code
-        nodes[(0,0)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(d+1), tensor_id=(0,0))
-            
-        for c in range(d):
-            nodes[(1,c)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(d+1), tensor_id=(1,c))
-            for leg in range(d):
-                attachments[(leg,c)] = ((1, c), leg)
-
-        nodes[(0, 0)] = (
-            nodes[(0, 0)]
-            .trace_with_stopper(Legos.stopper_i, d)
+        nodes[(0, 0)] = StabilizerCodeTensorEnumerator(
+            Legos.x_rep_code(d + 1), tensor_id=(0, 0)
         )
+
+        for c in range(d):
+            nodes[(1, c)] = StabilizerCodeTensorEnumerator(
+                Legos.z_rep_code(d + 1), tensor_id=(1, c)
+            )
+            for leg in range(d):
+                attachments[(leg, c)] = ((1, c), leg)
+
+        nodes[(0, 0)] = nodes[(0, 0)].trace_with_stopper(Legos.stopper_i, d)
 
         connections_to_trace = set()
         trace_with_stopper = set()
@@ -118,7 +116,7 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             # Skip this column if there are no stabilizers to carve out
             if not any(coloring[row][col] == 1 for row in range(len(coloring))):
                 continue
-            
+
             row = 0
             while row < len(coloring):
                 if coloring[row][col] == 2:
@@ -128,29 +126,54 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
                     end_row = row + 1
                     block_size = end_row - start_row + 1
                     last_zero_row = start_row - 1
-                    next_one = next((r for r in range(end_row + 1, len(coloring)) if coloring[r][col] == 1), len(coloring) + 1)
+                    next_one = next(
+                        (
+                            r
+                            for r in range(end_row + 1, len(coloring))
+                            if coloring[r][col] == 1
+                        ),
+                        len(coloring) + 1,
+                    )
 
-                    gap_above = max(0, start_row - (last_zero_row + 1))  
+                    gap_above = max(0, start_row - (last_zero_row + 1))
                     gap_below = max(0, next_one - end_row - 1)
                     if gap_above <= gap_below:
                         # Merge upward (use rows from start_row to end_row)
                         z_merge_key = ("z_merge", start_row, col)
-                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(block_size), tensor_id=z_merge_key)
+                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(
+                            Legos.z_rep_code(block_size), tensor_id=z_merge_key
+                        )
 
                         for offset, j in enumerate(range(start_row, end_row + 1)):
                             self._make_non_isometric_tensor(nodes, j, col)
-                            self._connect_non_isometric_tensor(j, col, z_merge_key, offset, attachments, connections_to_trace)
-                            
+                            self._connect_non_isometric_tensor(
+                                j,
+                                col,
+                                z_merge_key,
+                                offset,
+                                attachments,
+                                connections_to_trace,
+                            )
+
                     else:
                         extra_rows = next_one - (end_row + 1)
                         z_merge_key = ("z_merge", end_row + 1, col)
-                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(extra_rows), tensor_id=z_merge_key)
+                        nodes[z_merge_key] = StabilizerCodeTensorEnumerator(
+                            Legos.z_rep_code(extra_rows), tensor_id=z_merge_key
+                        )
 
                         for offset, j in enumerate(range(end_row + 1, col)):
                             self._make_non_isometric_tensor(nodes, j, col)
-                            self._connect_non_isometric_tensor(j, col, z_merge_key, offset, attachments, connections_to_trace)
+                            self._connect_non_isometric_tensor(
+                                j,
+                                col,
+                                z_merge_key,
+                                offset,
+                                attachments,
+                                connections_to_trace,
+                            )
 
-                row += 1 
+                row += 1
 
             top_rows = []
             bottom_rows = []
@@ -161,7 +184,7 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             while row < height and coloring[row][col] == 1:
                 top_rows.append(row)
                 row += 1
-     
+
             # Find contiguous bottom block of 1s
             row = height - 1
             while row >= 0 and coloring[row][col] == 1:
@@ -175,37 +198,39 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             if full_column_ones:
                 # Only apply from the top to avoid duplication
                 bottom_rows = []
-                if(len(top_rows) > 1):
+                if len(top_rows) > 1:
                     top_rows.append(top_rows[-1] + 1)
 
             # Apply non-isometry at top rows
             for r in top_rows:
                 print(f"adding non-isometry at col {col}, row {r} (top)")
                 self._make_non_isometric_tensor(nodes, r, col)
-                self._connect_non_isometric_tensor(r, col, None, None, attachments, connections_to_trace)
+                self._connect_non_isometric_tensor(
+                    r, col, None, None, attachments, connections_to_trace
+                )
                 trace_with_stopper.add(("z", r, col))
 
             # Apply non-isometry at bottom rows
             for r in bottom_rows:
                 print(f"adding non-isometry at col {col}, row {r} (bottom)")
                 self._make_non_isometric_tensor(nodes, r, col)
-                self._connect_non_isometric_tensor(r, col, None, None, attachments, connections_to_trace)
+                self._connect_non_isometric_tensor(
+                    r, col, None, None, attachments, connections_to_trace
+                )
                 trace_with_stopper.add(("z", r, col))
 
-        
         super().__init__(nodes, truncate_length=truncate_length)
 
         for leg in range(d):
-            self.self_trace((0,0), (1,leg), [leg], [d])
- 
+            self.self_trace((0, 0), (1, leg), [leg], [d])
+
         for connection in connections_to_trace:
-            self.self_trace(connection[0], connection[1], [connection[2]], [connection[3]])  
+            self.self_trace(
+                connection[0], connection[1], [connection[2]], [connection[3]]
+            )
 
         for node in trace_with_stopper:
-            self.nodes[node] = (
-                self.nodes[node]
-                .trace_with_stopper(Legos.stopper_x, 2)
-            )      
+            self.nodes[node] = self.nodes[node].trace_with_stopper(Legos.stopper_x, 2)
 
         self.n = d * d
         self.d = d
@@ -215,7 +240,9 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             coset_error if coset_error is not None else GF2.Zeros(2 * self.n)
         )
 
-    def _connect_non_isometric_tensor(self, row, col, z_merge_key, offset, attachments, connections_to_trace):
+    def _connect_non_isometric_tensor(
+        self, row, col, z_merge_key, offset, attachments, connections_to_trace
+    ):
         connections_to_trace.add((("x1", row, col), ("z", row, col), 0, 1))
         connections_to_trace.add((("z", row, col), ("x2", row, col), 0, 1))
 
@@ -232,9 +259,15 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             connections_to_trace.add((("z", row, col), z_merge_key, 2, offset))
 
     def _make_non_isometric_tensor(self, nodes, row, col):
-        nodes[("x1", row, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x1", row, col))
-        nodes[("z", row, col)] = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3), tensor_id=("z", row, col))
-        nodes[("x2", row, col)] = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3), tensor_id=("x2", row, col))
+        nodes[("x1", row, col)] = StabilizerCodeTensorEnumerator(
+            Legos.x_rep_code(3), tensor_id=("x1", row, col)
+        )
+        nodes[("z", row, col)] = StabilizerCodeTensorEnumerator(
+            Legos.z_rep_code(3), tensor_id=("z", row, col)
+        )
+        nodes[("x2", row, col)] = StabilizerCodeTensorEnumerator(
+            Legos.x_rep_code(3), tensor_id=("x2", row, col)
+        )
 
     def qubit_to_node_and_leg(self, q):
         idx_leg = q % self.d

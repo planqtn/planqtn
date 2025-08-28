@@ -16,11 +16,12 @@ if TYPE_CHECKING:
 
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
+
 def max_tensor_size_cost(
     tn: "TensorNetwork", open_legs_per_node: Dict[TensorId, List[TensorLeg]]
 ) -> int:
     """This function uses the MaxTensorSizeCostVisitor to compute the maximum intermediate
-    tensor size during a stabilizer code tensor network contraction. 
+    tensor size during a stabilizer code tensor network contraction.
 
     Args:
         tn (TensorNetwork): The tensor network to analyze.
@@ -33,8 +34,9 @@ def max_tensor_size_cost(
     tn.conjoin_nodes(verbose=False, visitors=[visitor])
     return visitor.max_size
 
+
 class MaxTensorSizeCostVisitor(ContractionVisitor):
-    """A contraction visitor that finds the largest intermediate tensor size 
+    """A contraction visitor that finds the largest intermediate tensor size
     during the contraction."""
 
     def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
@@ -60,14 +62,11 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         for node in nodes_in_pte:
             self.traceable_legs[node] = new_traceable_legs
 
-        new_tensor_rank = get_rank_for_matrix_legs(
-            new_pte, new_traceable_legs
-        )
+        new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         new_size = 2**new_tensor_rank
-        if(new_size > self.max_size):
+        if new_size > self.max_size:
             self.max_size = new_size
-        
 
     def on_merge(
         self,
@@ -78,7 +77,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         merged_nodes: Set[TensorId],
     ):
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
-        
+
         # Merge open legs and remove the join legs for merged pte
         new_traceable_legs = [
             leg
@@ -93,11 +92,8 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         for node in merged_nodes:
             self.traceable_legs[node] = new_traceable_legs
 
-        new_tensor_rank = get_rank_for_matrix_legs(
-            new_pte, new_traceable_legs
-        )
+        new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         new_size = 2**new_tensor_rank
-        if(new_size > self.max_size):
+        if new_size > self.max_size:
             self.max_size = new_size
-
