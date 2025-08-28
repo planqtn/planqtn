@@ -51,6 +51,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_to_update: Set[TensorId],
     ) -> None:
+        # pylint: disable=duplicate-code
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
 
         open_legs = [self.traceable_legs[node_idx1]]
@@ -63,7 +64,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
             join_legs2,
             open_legs,
         )
-
+        # pylint: enable=duplicate-code
         new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         new_size = 2**new_tensor_rank
