@@ -28,7 +28,7 @@ from planqtn.poly import UnivariatePoly
 from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
 
 
-TensorId = str | int | Tuple[int, int]
+TensorId = str | int | Tuple[int, int] | Tuple[str, int, int]
 """The tensor id can be a string, an integer, or a tuple of two integers."""
 
 TensorLeg = Tuple[TensorId, int]

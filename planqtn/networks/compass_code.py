@@ -4,12 +4,15 @@ It contains the `CompassCodeDualSurfaceCodeLayoutTN` class, which implements a t
 representation of compass codes using dual surface code layout.
 """
 
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Set, Tuple
 from galois import GF2
 import numpy as np
 from planqtn.legos import Legos
 from planqtn.networks.surface_code import SurfaceCodeTN
-from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.stabilizer_tensor_enumerator import (
+    StabilizerCodeTensorEnumerator,
+    TensorLeg,
+)
 from planqtn.tensor_network import TensorId, TensorNetwork
 
 
@@ -80,7 +83,11 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
     """
 
     def __init__(
-        self, coloring, *, coset_error: GF2 = None, truncate_length: int = None
+        self,
+        coloring: np.ndarray,
+        *,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
     ):
         """Create a square compass code based on the coloring using the concatenate
         and sparsity method.
@@ -91,8 +98,8 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             truncate_length: Optional maximum weight for truncating enumerators.
         """
         d = len(coloring) + 1
-        nodes = {}
-        attachments = {}
+        nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = {}
+        attachments: Dict[TensorId, Tuple[TensorId, int]] = {}
 
         # Start with the base layer of Z and X repetition codes which forms the Bacon-Shor code
         nodes[(0, 0)] = StabilizerCodeTensorEnumerator(
@@ -108,8 +115,8 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
 
         nodes[(0, 0)] = nodes[(0, 0)].trace_with_stopper(Legos.stopper_i, d)
 
-        connections_to_trace = set()
-        trace_with_stopper = set()
+        connections_to_trace: Set[Tuple[TensorId, TensorId, int, int]] = set()
+        trace_with_stopper: Set[TensorId] = set()
 
         # Iterate over each column to apply non-isometries based on the coloring
         for col in range(len(coloring[0])):
@@ -231,8 +238,14 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
         )
 
     def _connect_non_isometric_tensor(
-        self, row, col, z_merge_key, offset, attachments, connections_to_trace
-    ):
+        self,
+        row: int,
+        col: int,
+        z_merge_key: Optional[Tuple[str, int, int]],
+        offset: Optional[int],
+        attachments: Dict[TensorId, Tuple[TensorId, int]],
+        connections_to_trace: Set[Tuple[TensorId, TensorId, int, int]],
+    ) -> None:
         connections_to_trace.add((("x1", row, col), ("z", row, col), 0, 1))
         connections_to_trace.add((("z", row, col), ("x2", row, col), 0, 1))
 
@@ -245,10 +258,12 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
         attachments[(row, col)] = (("x1", row, col), 1)
         attachments[(row, col + 1)] = (("x2", row, col), 0)
 
-        if z_merge_key is not None:
+        if z_merge_key is not None and offset is not None:
             connections_to_trace.add((("z", row, col), z_merge_key, 2, offset))
 
-    def _make_non_isometric_tensor(self, nodes, row, col):
+    def _make_non_isometric_tensor(
+        self, nodes: Dict[TensorId, StabilizerCodeTensorEnumerator], row: int, col: int
+    ) -> None:
         nodes[("x1", row, col)] = StabilizerCodeTensorEnumerator(
             Legos.x_rep_code(3), tensor_id=("x1", row, col)
         )
@@ -259,11 +274,11 @@ class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
             Legos.x_rep_code(3), tensor_id=("x2", row, col)
         )
 
-    def qubit_to_node_and_leg(self, q):
+    def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         idx_leg = q % self.d
         idx_node = q // self.d
         node, leg = self.attachments[(idx_leg, idx_node)]
         return node, (node, leg)
 
-    def n_qubits(self):
+    def n_qubits(self) -> int:
         return self.n

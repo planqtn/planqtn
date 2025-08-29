@@ -16,11 +16,16 @@ Gesteau, Elliott, and Monica Jinwoo Kang. 2020.
 arXiv preprint arXiv:2005.05971. https://arxiv.org/abs/2005.05971
 """
 
+from typing import Dict, List, Optional, Set, Tuple
 from galois import GF2
 import numpy as np
 
 from planqtn.legos import Legos
-from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
+from planqtn.stabilizer_tensor_enumerator import (
+    StabilizerCodeTensorEnumerator,
+    TensorLeg,
+    TensorId,
+)
 from planqtn.tensor_network import TensorNetwork
 
 
@@ -34,11 +39,11 @@ class HolographicHappyTN(TensorNetwork):
 
     def __init__(
         self,
-        num_layers,
+        num_layers: int,
         *,
-        lego=Legos.perf513,
-        coset_error: GF2 = None,
-        truncate_length: int = None,
+        lego: GF2 = Legos.perf513,
+        coset_error: Optional[GF2] = None,
+        truncate_length: Optional[int] = None,
     ):
         """Construct a HaPPY code tensor network.
 
@@ -49,8 +54,8 @@ class HolographicHappyTN(TensorNetwork):
             truncate_length: Optional maximum weight for truncating enumerators.
         """
         self.n = self._num_physical_qubits(num_layers)
-        nodes = {}
-        connections = []
+        nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = {}
+        connections: List[Tuple[TensorId, TensorId, int, int]] = []
 
         # Central lego
         nodes[(0, 0)] = StabilizerCodeTensorEnumerator(lego, tensor_id=(0, 0))
@@ -58,7 +63,14 @@ class HolographicHappyTN(TensorNetwork):
         # Add legos for the number of layers given
         for i in range(num_layers - 1):
             open_legs_per_node = self._find_open_legs(connections, nodes)
-            prev_layer_nodes = {k: v for k, v in nodes.items() if k[0] == i}
+            prev_layer_nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = {
+                k: v
+                for k, v in nodes.items()
+                if isinstance(k, tuple)
+                and len(k) == 2
+                and isinstance(k[0], int)
+                and k[0] == i
+            }
             count = 0
 
             # Add a lego for each open leg on each node in the previous layer
@@ -68,23 +80,30 @@ class HolographicHappyTN(TensorNetwork):
                     nodes[(i + 1, count)] = StabilizerCodeTensorEnumerator(
                         lego, tensor_id=(i + 1, count)
                     )
-                    connections.append([prev_node, (i + 1, count), leg, 0])
+                    connections.append((prev_node, (i + 1, count), leg, 0))
                     count += 1
 
             # Add legos between the newly added legos to form a ring
-            curr_layer_nodes = {k: v for k, v in nodes.items() if k[0] == i + 1}
+            curr_layer_nodes = {
+                k: v
+                for k, v in nodes.items()
+                if isinstance(k, tuple)
+                and len(k) == 2
+                and isinstance(k[0], int)
+                and k[0] == i + 1
+            }
             for j, node in enumerate(curr_layer_nodes.keys()):
                 new_idx = len(curr_layer_nodes) + j
                 nodes[(i + 1, new_idx)] = StabilizerCodeTensorEnumerator(
                     lego, tensor_id=(i + 1, new_idx)
                 )
-                connections.append([(i + 1, new_idx), node, 0, 1 if j == 0 else 2])
+                connections.append(((i + 1, new_idx), node, 0, 1 if j == 0 else 2))
 
                 # if on last node, wrap around back to first
                 if j == len(curr_layer_nodes.keys()) - 1:
-                    connections.append([(i + 1, new_idx), (i + 1, 0), 1, 2])
+                    connections.append(((i + 1, new_idx), (i + 1, 0), 1, 2))
                 else:
-                    connections.append([(i + 1, new_idx), (i + 1, j + 1), 1, 1])
+                    connections.append(((i + 1, new_idx), (i + 1, j + 1), 1, 1))
 
         super().__init__(nodes, truncate_length=truncate_length)
 
@@ -97,7 +116,7 @@ class HolographicHappyTN(TensorNetwork):
             coset_error if coset_error is not None else GF2.Zeros(2 * self.n)
         )
 
-    def _find_edges_vertices_at_layer(self, n):
+    def _find_edges_vertices_at_layer(self, n: int) -> Tuple[int, int]:
         """Finds the number of edges and vertices at a given layer n."""
         e = round(
             (-5 / 2)
@@ -115,34 +134,53 @@ class HolographicHappyTN(TensorNetwork):
         )
         return e, v
 
-    def _num_bulk(self, n):
+    def _num_bulk(self, n: int) -> int:
         """Finds the number of bulk qubits (vertices) at layer n."""
         e, v = self._find_edges_vertices_at_layer(n - 1)
         return e + v
 
-    def _num_physical_qubits(self, n):
+    def _num_physical_qubits(self, n: int) -> int:
         """Finds the number of boundary qubits (physical qubits) at layer n."""
         e, _ = self._find_edges_vertices_at_layer(n)
         return e
 
-    def qubit_to_node_and_leg(self, q):
+    def qubit_to_node_and_leg(self, q: int) -> Tuple[TensorId, TensorLeg]:
         # Physical qubits are all open legs left on last layer
         open_legs_per_node = self._find_open_legs(self.connections, self.nodes)
         qubit_count = 0
-        for key, _ in sorted(self.nodes.items(), key=lambda item: item[0][1]):
+
+        sorted_nodes = sorted(
+            (
+                (k, v)
+                for k, v in self.nodes.items()
+                if isinstance(k, tuple)
+                and len(k) == 2
+                and isinstance(k[0], int)
+                and isinstance(k[1], int)
+            ),
+            key=lambda item: item[0][1],
+        )
+
+        for key, _ in sorted_nodes:
             open_legs = list(open_legs_per_node[key])
             if qubit_count + len(open_legs) >= q + 1:
-                # qubit is in current node!
+                # qubit is in current node
                 leg_idx = q - qubit_count
                 return key, (key, open_legs[leg_idx])
             qubit_count += len(open_legs)
-        return None
 
-    def n_qubits(self):
+        # this should be unreachable
+        assert False, "unreachable: qubit index out of range"
+
+    def n_qubits(self) -> int:
         return self.n
 
-    def _find_open_legs(self, connections, nodes):
-        used_legs = {}
+    def _find_open_legs(
+        self,
+        connections: List[Tuple[TensorId, TensorId, int, int]],
+        nodes: Dict[TensorId, StabilizerCodeTensorEnumerator],
+    ) -> Dict[TensorId, Set[int]]:
+        used_legs: Dict[TensorId, Set[int]] = {}
 
         for coord1, coord2, leg1, leg2 in connections:
             if coord1 not in used_legs:
