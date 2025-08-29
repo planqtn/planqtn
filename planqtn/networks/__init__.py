@@ -22,15 +22,21 @@ from planqtn.networks.stabilizer_measurement_state_prep import (
     StabilizerMeasurementStatePrepTN,
 )
 from planqtn.networks.stabilizer_tanner_code import StabilizerTannerCodeTN
-from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
+from planqtn.networks.compass_code import (
+    CompassCodeDualSurfaceCodeLayoutTN,
+    CompassCodeConcatenateAndSparsifyTN,
+)
+from planqtn.networks.surface_code import SurfaceCodeTN
 from planqtn.networks.rotated_surface_code import RotatedSurfaceCodeTN
+from planqtn.networks.holographic_happy_code import HolographicHappyTN
 
 __all__ = [
     "CssTannerCodeTN",
     "StabilizerMeasurementStatePrepTN",
     "StabilizerTannerCodeTN",
     "CompassCodeDualSurfaceCodeLayoutTN",
-    "CompassCodeConcatenateAndSparsifyTN" "SurfaceCodeTN",
+    "CompassCodeConcatenateAndSparsifyTN",
+    "SurfaceCodeTN",
     "RotatedSurfaceCodeTN",
     "HolographicHappyTN",
 ]
