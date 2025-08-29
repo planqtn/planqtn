@@ -25,7 +25,7 @@ def test_tanner_graph_enumerator():
 
     tn = CssTannerCodeTN(hx, hz)
 
-    wep = tn.stabilizer_enumerator_polynomial(verbose=True)
+    wep = tn.stabilizer_enumerator_polynomial(verbose=True, cotengra=False)
     tn = CompassCodeDualSurfaceCodeLayoutTN(
         [
             [1, 1],
@@ -33,6 +33,6 @@ def test_tanner_graph_enumerator():
         ]
     )
 
-    expected_wep = tn.stabilizer_enumerator_polynomial()
+    expected_wep = tn.stabilizer_enumerator_polynomial(cotengra=False)
 
     assert wep == expected_wep

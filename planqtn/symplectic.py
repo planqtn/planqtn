@@ -1,5 +1,6 @@
 """Symplectic operations and utilities."""
 
+from itertools import product
 from typing import List, Sequence, Tuple
 from galois import GF2
 import numpy as np
@@ -186,3 +187,31 @@ def sprint(h: GF2, end: str = "\n") -> None:
         end: String to append at the end (default: newline).
     """
     print(sstr(h), end=end)
+
+
+def count_matching_stabilizers_ratio(generators: GF2) -> float:
+    """
+    Given k x 2n binary matrix of generators (symplectic form),
+    find all stabilizers that they generate. Returns the ratio
+    of stabilizers that match on all qubits.
+    """
+    basis = np.array(generators.row_space())
+    r, n2 = basis.shape
+    n = n2 // 2
+    count = 0
+
+    stabilizers = np.zeros((2**r, n2), dtype=int)
+    # Loop through all possible combinations of generators
+    for i, bits in enumerate(product([0, 1], repeat=r)):
+        combo = np.zeros(n2, dtype=int)
+        for j, b in enumerate(bits):
+            if b:
+                combo ^= basis[j]
+
+        stabilizers[i] = combo
+        x = combo[:n]
+        z = combo[n:]
+        # If all pauli operators are the same, we have a match
+        if np.all(x == x[0]) and np.all(z == z[0]):
+            count += 1
+    return float(count / 2**r)

@@ -1,6 +1,13 @@
 from galois import GF2
 import numpy as np
-from planqtn.symplectic import omega, symp_to_str, weight, sympl_to_pauli_repr
+from planqtn.legos import Legos
+from planqtn.symplectic import (
+    count_matching_stabilizers_ratio,
+    omega,
+    symp_to_str,
+    weight,
+    sympl_to_pauli_repr,
+)
 
 
 def test_weight():
@@ -55,3 +62,25 @@ def test_to_pauli_repr():
     assert sympl_to_pauli_repr((1, 0, 0, 0)) == (1, 0)
     assert sympl_to_pauli_repr((0, 1, 0, 0)) == (0, 1)
     assert sympl_to_pauli_repr((0, 1, 0, 1)) == (0, 3)
+
+
+def test_count_matching_stabilizer_ratio():
+    # Test with the [[4,2,2]] code
+    gens = Legos.stab_code_parity_422
+    ratio = count_matching_stabilizers_ratio(gens)
+    assert ratio == 1.0  # All stabilizers match
+
+    # Test with the Hadamard tensor
+    gens = Legos.h
+    ratio = count_matching_stabilizers_ratio(gens)
+    assert ratio == 0.5  # Half of the stabilizers match
+
+    # Test with a custom generator matrix
+    gens = GF2([[1, 0, 0, 0], [0, 0, 1, 1], [0, 1, 0, 0]])
+    ratio = count_matching_stabilizers_ratio(gens)
+    assert ratio == 0.5
+
+    # Test with a custom generator matrix
+    gens = GF2([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+    ratio = count_matching_stabilizers_ratio(gens)
+    assert ratio == 0.25

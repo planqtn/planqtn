@@ -8,6 +8,7 @@ from planqtn.pauli import Pauli
 from planqtn.progress_reporter import TqdmProgressReporter
 from planqtn.symplectic import sslice, weight
 from planqtn.tensor_network import (
+    Contraction,
     UnivariatePoly,
     StabilizerCodeTensorEnumerator,
     TensorNetwork,
@@ -81,7 +82,7 @@ def test_step_by_step_to_d2_surface_code():
 
     ### Getting Conjoined Parities brute force WEP
 
-    h_pte = t0.conjoin(t1, [2], [1])
+    h_pte = t0.merge_with(t1, [2], [1])
 
     print(h_pte.legs)
     print(h_pte.h)
@@ -141,7 +142,7 @@ def test_step_by_step_to_d2_surface_code():
     #  [0 0 0 0 | 1 1 1 0]
     #  [0 0 1 1 | 0 0 0 0]
     #  [1 1 0 0 | 0 0 0 0]
-    h_pte = h_pte.conjoin(t2, [1], [0])
+    h_pte = h_pte.merge_with(t2, [1], [0])
     print("H pte (t0,t1,t2)")
     print(h_pte.h)
     print(h_pte.legs)
@@ -214,7 +215,7 @@ def test_step_by_step_to_d2_surface_code():
     #  [0 1 1 0 0 0 0 0 0 0]]
 
     print(h_pte.legs)
-    h_pte = h_pte.conjoin(t3, [(2, 3), (1, 2)], [(3, 0), (3, 3)])
+    h_pte = h_pte.merge_with(t3, [(2, 3), (1, 2)], [(3, 0), (3, 3)])
     print("H pte (t0,t1,t2,t3)")
     print(h_pte.h)
     print(h_pte.legs)
@@ -1166,91 +1167,3 @@ def test_single_node_with_open_legs_t6():
         (3, 1): UnivariatePoly({2: 1, 3: 2, 4: 1}),
         (3, 3): UnivariatePoly({2: 2, 3: 2}),
     }
-
-
-def test_cotengra_tree_back_and_forward_conversions():
-    nodes = {}
-    nodes["46"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="46",
-    )
-    nodes["47"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="47",
-    )
-    nodes["53"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="53",
-    )
-    nodes["59"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [1, 0, 0, 0, 0, 1, 1, 1],
-                [0, 0, 1, 1, 0, 0, 0, 0],
-                [0, 1, 0, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="59",
-    )
-    nodes["60"] = StabilizerCodeTensorEnumerator(
-        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        tensor_id="60",
-    )
-    nodes["61"] = StabilizerCodeTensorEnumerator(
-        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        tensor_id="61",
-    )
-    nodes["62"] = StabilizerCodeTensorEnumerator(
-        h=GF2([[1, 0, 0, 0, 1, 1], [0, 1, 1, 0, 0, 0]]),
-        tensor_id="62",
-    )
-
-    # Create TensorNetwork
-    tn = TensorNetwork(nodes, truncate_length=4)
-
-    # Add traces
-    tn.self_trace("46", "59", [1], [2])
-    tn.self_trace("47", "59", [1], [3])
-    tn.self_trace("47", "60", [0], [2])
-    tn.self_trace("53", "60", [1], [0])
-    tn.self_trace("46", "61", [0], [2])
-    tn.self_trace("53", "61", [0], [0])
-    tn.self_trace("47", "53", [3], [3])
-    tn.self_trace("62", "46", [2], [3])
-    tn.self_trace("60", "62", [1], [0])
-    tn.self_trace("62", "59", [1], [0])
-
-    free_legs, leg_indices, index_to_legs = tn._collect_legs()
-
-    traces, tree_from_cotengra = tn._cotengra_contraction(
-        free_legs,
-        leg_indices,
-        index_to_legs,
-        verbose=True,
-        progress_reporter=TqdmProgressReporter(),
-    )
-
-    cot_tree_from_traces = tn._cotengra_tree_from_traces(free_legs, leg_indices, traces)
-
-    assert cot_tree_from_traces.get_eq() == tree_from_cotengra.get_eq()

@@ -71,7 +71,7 @@ class StabilizerTannerCodeTN(TensorNetwork):
                     continue
 
                 if op == (1, 0):
-                    q_tensor = q_tensor.conjoin(
+                    q_tensor = q_tensor.merge_with(
                         StabilizerCodeTensorEnumerator(
                             h=Legos.x_rep_code(3), tensor_id=f"q{q}.c{i}"
                         ),
@@ -90,14 +90,14 @@ class StabilizerTannerCodeTN(TensorNetwork):
                     physical_leg = (f"q{q}.c{i}", 2)
 
                 elif op == (0, 1):
-                    q_tensor = q_tensor.conjoin(
+                    q_tensor = q_tensor.merge_with(
                         StabilizerCodeTensorEnumerator(
                             h=Legos.z_rep_code(3), tensor_id=f"q{q}.z{i}"
                         ),
                         [physical_leg],
                         [0],
                     )
-                    q_tensor = q_tensor.conjoin(
+                    q_tensor = q_tensor.merge_with(
                         StabilizerCodeTensorEnumerator(
                             h=Legos.h, tensor_id=f"q{q}.c{i}"
                         ),
