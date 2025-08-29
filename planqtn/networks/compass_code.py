@@ -73,7 +73,7 @@ class CompassCodeDualSurfaceCodeLayoutTN(SurfaceCodeTN):
 class CompassCodeConcatenateAndSparsifyTN(TensorNetwork):
     """A tensor network representation of compass codes using concatenate and sparsify method.
 
-    This class implements a compass code using a concatenate and sparsify method described by
+    This class implements a compass code using the concatenate and sparsify method described by
     Cao & Lackey in the following paper. The compass code is constructed by applying
     non-isometric tensors to "carve out" the desired stabilizers starting from a
     Bacon-Shor code.

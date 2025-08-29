@@ -2,18 +2,6 @@
 
 It contains the `HolographicHappyTN` class, which implements a tensor network
 representation of the HaPPY code using the perfect [[5,1,3]] code tensors.
-
-The idea was first published in:
-
-Pastawski, Fernando, Beni Yoshida, Daniel Harlow, and John Preskill. 2015.
-“Holographic Quantum Error-Correcting Codes: Toy Models for the Bulk/Boundary Correspondence.”
-Journal of High Energy Physics 2015 (6): 149. https://doi.org/10.1007/JHEP06(2015)149
-
-This implementation is based on the following work:
-
-Gesteau, Elliott, and Monica Jinwoo Kang. 2020.
-“The Infinite-Dimensional HaPPY Code: Entanglement Wedge Reconstruction and Dynamics.”
-arXiv preprint arXiv:2005.05971. https://arxiv.org/abs/2005.05971
 """
 
 from typing import Dict, List, Optional, Set, Tuple
@@ -35,6 +23,18 @@ class HolographicHappyTN(TensorNetwork):
     This class constructs a tensor network for a HaPPY code given a number of layers.
     The HaPPY code uses the perfect [[5,1,3]] code tensors as building blocks,
     arranged in a hyperbolic tiling pattern.
+
+    The HaPPY code was first published in:
+
+    Pastawski, Fernando, Beni Yoshida, Daniel Harlow, and John Preskill. 2015.
+    “Holographic Quantum Error-Correcting Codes: Toy Models for the Bulk/Boundary Correspondence.”
+    Journal of High Energy Physics 2015 (6): 149. https://doi.org/10.1007/JHEP06(2015)149
+
+    This implementation is based on the following work:
+
+    Gesteau, Elliott, and Monica Jinwoo Kang. 2020.
+    “The Infinite-Dimensional HaPPY Code: Entanglement Wedge Reconstruction and Dynamics.”
+    arXiv preprint arXiv:2005.05971. https://arxiv.org/abs/2005.05971
     """
 
     def __init__(

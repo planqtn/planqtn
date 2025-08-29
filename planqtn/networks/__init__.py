@@ -10,8 +10,11 @@ For specific networks, see:
 
 - [planqtn.networks.CompassCodeDualSurfaceCodeLayoutTN][] for any compass code using the dual
   surface code layout.
+- [planqtn.networks.CompassCodeConcatenateAndSparsifyTN][] for any compass code using the concatenate
+  ans sparsify layout.
 - [planqtn.networks.SurfaceCodeTN][] for unrotated surface code family
 - [planqtn.networks.RotatedSurfaceCodeTN][] for the rotated surface code family
+- [planqtn.networks.HolographicHappyTN][] for the HaPPY code 
 """
 
 from planqtn.networks.css_tanner_code import CssTannerCodeTN
@@ -28,6 +31,8 @@ __all__ = [
     "StabilizerMeasurementStatePrepTN",
     "StabilizerTannerCodeTN",
     "CompassCodeDualSurfaceCodeLayoutTN",
+    "CompassCodeConcatenateAndSparsifyTN"
     "SurfaceCodeTN",
     "RotatedSurfaceCodeTN",
+    "HolographicHappyTN"
 ]
