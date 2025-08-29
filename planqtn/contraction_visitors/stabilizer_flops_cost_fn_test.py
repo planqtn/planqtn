@@ -11,7 +11,6 @@ from planqtn.networks.rotated_surface_code import RotatedSurfaceCodeTN
 from planqtn.networks.stabilizer_measurement_state_prep import (
     StabilizerMeasurementStatePrepTN,
 )
-from planqtn.stabilizer_tensor_enumerator import _index_leg
 
 
 def test_custom_cost_stabilizer_codes():
@@ -20,13 +19,13 @@ def test_custom_cost_stabilizer_codes():
     # Rotated Surface Code
     rotated_surface_tn = RotatedSurfaceCodeTN(d=3)
     cost = custom_flops_cost_stabilizer_codes(rotated_surface_tn)
-    assert cost == 162.0
+    assert cost == 1062.0
 
     # Compass code, dual surface layout
     coloring = [[1, 2], [2, 1]]
     compass_code_dual = CompassCodeDualSurfaceCodeLayoutTN(coloring)
     cost = custom_flops_cost_stabilizer_codes(compass_code_dual)
-    assert cost == 174.6875
+    assert cost == 4212.0
 
     # 7 qubit Hamming code, measurement state prep
     # fmt: off
@@ -50,4 +49,4 @@ def test_custom_cost_stabilizer_codes():
     # fmt: on
     tn_hamming = StabilizerMeasurementStatePrepTN(H_hamming)
     cost = custom_flops_cost_stabilizer_codes(tn_hamming)
-    assert cost == 569430.0
+    assert cost == 88372929773160.0

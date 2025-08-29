@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 import pytest
 from galois import GF2
@@ -912,36 +913,38 @@ def test_disconnected_networks():
 
 def test_disconnected_networks_truncate_length():
 
-    nodes = {}
-    nodes["25"] = StabilizerCodeTensorEnumerator(
-        h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
-        tensor_id="25",
-    )
-    nodes["27"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="27",
-    )
-    nodes["31"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="31",
-    )
+    def create_nodes():
+        nodes = {}
+        nodes["25"] = StabilizerCodeTensorEnumerator(
+            h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
+            tensor_id="25",
+        )
+        nodes["27"] = StabilizerCodeTensorEnumerator(
+            h=GF2(
+                [
+                    [0, 0, 0, 0, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 1, 1, 1, 0, 0, 0, 0],
+                ]
+            ),
+            tensor_id="27",
+        )
+        nodes["31"] = StabilizerCodeTensorEnumerator(
+            h=GF2(
+                [
+                    [0, 0, 0, 0, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 1, 1, 1, 0, 0, 0, 0],
+                ]
+            ),
+            tensor_id="31",
+        )
+        return nodes
 
     # Create TensorNetwork
-    tn = TensorNetwork(nodes, truncate_length=1)
+    tn = TensorNetwork(create_nodes(), truncate_length=1)
 
     # Add traces
     tn.self_trace("25", "31", [0], [2])
@@ -955,7 +958,7 @@ def test_disconnected_networks_truncate_length():
     }
 
     # Create TensorNetwork
-    tn = TensorNetwork(nodes, truncate_length=2)
+    tn = TensorNetwork(create_nodes(), truncate_length=2)
 
     # Add traces
     tn.self_trace("25", "31", [0], [2])
