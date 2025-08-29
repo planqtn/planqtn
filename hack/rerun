@@ -2,4 +2,4 @@
 
 export PYTHONPATH=`pwd`:`pwd`/app
 
-find . -type f \( -name '*.py' -o -name 'Dockerfile' -o -name '*.js' -o -name '*.ts*' -o -name '*.' -o -name '*.md' \) -not -path "*/app/planqtn_cli/dist/*"   -not -path "*/app/ui/public/docs/*" | entr -r $@
+find . -type f \( -name '*.py' -o -name 'Dockerfile' -o -name '*.js' -o -name '*.ts*' -o -name '*.' -o -name '*.md' \) -not -path "*/app/planqtn_cli/dist/*"   -not -path "*/app/ui/public/docs/*"  -not -path "*/node_modules/*" | entr -r $@

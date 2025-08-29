@@ -10,4 +10,4 @@ fi
 
 export PYTHONPATH="`pwd`/../.."
 
-find . -type f -name '*.ts*' -o -name '*.js' -o -name '*.tsx' | entr -r $@
+find src -type f -name '*.ts*' -o -name '*.js' -o -name '*.tsx' | entr -r $@

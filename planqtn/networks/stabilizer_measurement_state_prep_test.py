@@ -20,4 +20,5 @@ def test_5_qubit_code():
 
     assert wep.dict == {0: 1, 4: 15}
 
+    tn = StabilizerMeasurementStatePrepTN(h)
     assert np.array_equal(gauss(tn.conjoin_nodes().h), gauss(h))

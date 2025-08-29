@@ -1,6 +1,8 @@
 from galois import GF2
 import numpy as np
-from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
+from planqtn.networks.compass_code import (
+    CompassCodeDualSurfaceCodeLayoutTN,
+)
 from planqtn.legos import Legos
 from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
@@ -26,6 +28,31 @@ def test_compass_code():
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+            ]
+        )
+    ).stabilizer_enumerator_polynomial()
+
+    assert tn_wep == expected_wep
+
+    tn_shor = CompassCodeDualSurfaceCodeLayoutTN(
+        [
+            [2, 2],
+            [2, 2],
+        ]
+    )
+
+    tn_wep = tn_shor.stabilizer_enumerator_polynomial(cotengra=False)
+    expected_wep = StabilizerCodeTensorEnumerator(
+        GF2(
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                [1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+                [0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
             ]
         )
     ).stabilizer_enumerator_polynomial()
