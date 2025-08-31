@@ -28,11 +28,13 @@ class SparsityVisitor(ContractionVisitor):
         trace: Trace,
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_to_update: Set[TensorId],
+        self_trace: bool = False
     ) -> None:  # pylint: disable=duplicate-code
         node_idx1, node_idx2, join_legs1, join_legs2 = trace
 
         open_legs = [self.traceable_legs[node_idx1]]
-        if node_idx1 != node_idx2:
+
+        if not self_trace:
             open_legs.append(self.traceable_legs[node_idx2])
 
         new_traceable_legs = self._update_traceable_legs(
@@ -41,11 +43,11 @@ class SparsityVisitor(ContractionVisitor):
             join_legs2,
             open_legs,
         )
-
+        
         new_tensor_rank = get_rank_for_matrix_legs(new_pte, new_traceable_legs)
 
         dense_size = 4 ** len(new_traceable_legs)
-        self.tensor_sparsity.append((2**new_tensor_rank) / dense_size)
+        self.tensor_sparsity.append((len(new_traceable_legs), (2**new_tensor_rank), dense_size, (2**new_tensor_rank) / dense_size))
 
     def on_self_trace(
         self,
@@ -54,7 +56,7 @@ class SparsityVisitor(ContractionVisitor):
         new_pte: StabilizerCodeTensorEnumerator,
         nodes_in_pte: Set[TensorId],
     ) -> None:
-        self._record_contraction_step(trace, new_pte, nodes_in_pte)
+        self._record_contraction_step(trace, new_pte, nodes_in_pte, self_trace=True)
 
     def on_merge(
         self,
