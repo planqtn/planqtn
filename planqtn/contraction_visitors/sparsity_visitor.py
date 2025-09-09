@@ -17,7 +17,7 @@ class SparsityVisitor(ContractionVisitor):
     """A contraction visitor that calculates the sparsity of the tensors
     throughout the contraction of a stabilizer code tensor network."""
 
-    def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
+    def __init__(self):
         super().__init__()
         self.tensor_sparsity: List[float] = []
 

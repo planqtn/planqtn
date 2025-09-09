@@ -17,7 +17,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
     tensor network. Uses the upper bound metric for each contraction from arXiv:2308.05152
     """
 
-    def __init__(self, open_legs_per_node: Dict[TensorId, List[TensorLeg]]):
+    def __init__(self):
         super().__init__()
         self.total_cost = 0
 

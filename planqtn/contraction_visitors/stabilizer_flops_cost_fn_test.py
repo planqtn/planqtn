@@ -19,13 +19,13 @@ def test_custom_cost_stabilizer_codes():
     # Rotated Surface Code
     rotated_surface_tn = RotatedSurfaceCodeTN(d=3)
     cost = custom_flops_cost_stabilizer_codes(rotated_surface_tn)
-    assert cost == 1062.0
+    assert cost == 148.0
 
     # Compass code, dual surface layout
     coloring = [[1, 2], [2, 1]]
     compass_code_dual = CompassCodeDualSurfaceCodeLayoutTN(coloring)
     cost = custom_flops_cost_stabilizer_codes(compass_code_dual)
-    assert cost == 4212.0
+    assert cost == 380.0
 
     # 7 qubit Hamming code, measurement state prep
     # fmt: off
@@ -49,4 +49,4 @@ def test_custom_cost_stabilizer_codes():
     # fmt: on
     tn_hamming = StabilizerMeasurementStatePrepTN(H_hamming)
     cost = custom_flops_cost_stabilizer_codes(tn_hamming)
-    assert cost == 88372929773160.0
+    assert cost == 714219282658.0

@@ -3,8 +3,10 @@ based only on the parity check matrix."""
 
 from typing import TYPE_CHECKING, Dict, Set, List, Tuple
 
+import numpy as np
+
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
-from planqtn.symplectic import count_matching_stabilizers_ratio
+from planqtn.symplectic import count_matching_stabilizers_ratio, count_matching_stabilizers_ratio_all_pairs, find_matching_stabilizers
 from planqtn.parity_check import tensor_product
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
@@ -18,7 +20,7 @@ if TYPE_CHECKING:
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
-def custom_flops_cost_stabilizer_codes(tn: "TensorNetwork") -> int:
+def custom_flops_cost_stabilizer_codes(contraction) -> int:
     """This function uses the StabilizerCodeCostVisitor to compute the total cost of a stabilizer
     code tensor network contraction. The visitor calculates the cost of a contraction step during
     the conjoining of nodes in the tensor network.
@@ -31,7 +33,8 @@ def custom_flops_cost_stabilizer_codes(tn: "TensorNetwork") -> int:
         int: The total number of operations of the tensor network contraction.
     """
     visitor = StabilizerCodeFlopsCostVisitor()
-    tn.conjoin_nodes(verbose=False, visitors=[visitor])
+    contraction.contract(verbose=False, visitors=[visitor])
+    print("returning cost: ", visitor.total_cost, " log2 is: ", np.log2(visitor.total_cost))
     return visitor.total_cost
 
 
@@ -54,12 +57,5 @@ class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
         prev_submatrix1 = pte1.rank()
         prev_submatrix2 = pte2.rank()
 
-        # Get the columns of the parity check matrix corresponding to the join legs
-        join_idxs = pte1.get_col_indices(set(join_legs1))
-        join_idxs2 = pte2.get_col_indices(set(join_legs2))
-        open_cols_matrix1 = pte1.h[:, join_idxs]
-        open_cols_matrix2 = pte2.h[:, join_idxs2]
-
-        tensor_prod = tensor_product(open_cols_matrix1, open_cols_matrix2)
-        matches = count_matching_stabilizers_ratio(tensor_prod)
+        matches = count_matching_stabilizers_ratio_all_pairs(pte1, pte2, join_legs1, join_legs2) 
         self.total_cost += (2 ** (prev_submatrix1 + prev_submatrix2)) * matches
