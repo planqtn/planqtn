@@ -9,8 +9,7 @@ on:
       - main
     paths:
       - "planqtn/**"
-      - "requirements.txt"
-      - "requirements.dev.txt"
+      - "pyproject.toml"
       - "app/conftest.py"
 
       - "app/supabase/**"
