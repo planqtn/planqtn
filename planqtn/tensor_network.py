@@ -27,6 +27,8 @@ from typing import (
     Set,
     Tuple,
     Union,
+    TypeVar,
+    Generic,
 )
 import numpy as np
 from galois import GF2
@@ -53,9 +55,11 @@ from planqtn.stabilizer_tensor_enumerator import (
 from planqtn.tensor import TensorId, TensorLeg, TensorEnumerator, TensorEnumeratorKey
 from planqtn.tracable import Tracable, Trace
 
+T = TypeVar("T", bound=Tracable)
+
 
 # pylint: disable=too-few-public-methods
-class Contraction[T: Tracable]:
+class Contraction(Generic[T]):
     """A contraction of a tensor network.
 
     This class encompasses all the intermediate states and allows for a contraction to be performed,
