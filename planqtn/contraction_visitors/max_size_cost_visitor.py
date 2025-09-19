@@ -41,7 +41,7 @@ def max_tensor_size_cost(
     return visitor.max_size
 
 
-class MaxTensorSizeCostVisitor(ContractionVisitor):
+class MaxTensorSizeCostVisitor(ContractionVisitor[StabilizerCodeTensorEnumerator]):
     """A contraction visitor that finds the largest intermediate tensor size
     during the contraction."""
 

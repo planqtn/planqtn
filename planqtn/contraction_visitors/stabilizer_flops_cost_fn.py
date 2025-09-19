@@ -43,7 +43,9 @@ def custom_flops_cost_stabilizer_codes(
     return visitor.total_cost
 
 
-class StabilizerCodeFlopsCostVisitor(ContractionVisitor):
+class StabilizerCodeFlopsCostVisitor(
+    ContractionVisitor[StabilizerCodeTensorEnumerator]
+):
     """A contraction visitor that calculates the cost of contracting a stabilizer code
     tensor network from the parity check matrices of the nodes."""
 

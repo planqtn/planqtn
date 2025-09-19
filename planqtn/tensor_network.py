@@ -129,7 +129,7 @@ class Contraction[T: Tracable]:
 
     def contract(
         self,
-        visitors: Optional[List[ContractionVisitor]] = None,
+        visitors: Optional[List[ContractionVisitor[T]]] = None,
         cotengra: bool = True,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         open_legs: Optional[Sequence[TensorLeg]] = None,
@@ -801,7 +801,9 @@ class TensorNetwork:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        visitors: Optional[List[ContractionVisitor]] = None,
+        visitors: Optional[
+            List[ContractionVisitor["StabilizerCodeTensorEnumerator"]]
+        ] = None,
         open_legs: Sequence[TensorLeg] = (),
         cotengra=False,
         cotengra_opts: Any = {},
