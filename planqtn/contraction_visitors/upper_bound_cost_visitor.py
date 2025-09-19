@@ -12,6 +12,7 @@ from planqtn.stabilizer_tensor_enumerator import (
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
+# pylint: disable=too-few-public-methods
 class UpperBoundCostVisitor(ContractionVisitor[StabilizerCodeTensorEnumerator]):
     """A contraction visitor that calculates the upper bound cost of contracting a stabilizer code
     tensor network. Uses the upper bound metric for each contraction from arXiv:2308.05152

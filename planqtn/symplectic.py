@@ -199,11 +199,11 @@ def sprint(h: GF2, end: str = "\n") -> None:
 def to_symplectic(matrix: NDArray[Any]) -> NDArray[Any]:
     """Converts a matrix with interleaved X and Z columns to standard symplectic form."""
     # Split into X and Z columns
-    X_bits = matrix[:, ::2]
-    Z_bits = matrix[:, 1::2]
+    x_bits = matrix[:, ::2]
+    z_bits = matrix[:, 1::2]
 
     # Combine into X|Z form
-    return np.hstack([X_bits, Z_bits])
+    return np.hstack([x_bits, z_bits])
 
 
 def count_matching_stabilizers_ratio_all_pairs(
@@ -217,24 +217,26 @@ def count_matching_stabilizers_ratio_all_pairs(
     between two PTEs.
 
     Args:
-        pte1, pte2: StabilizerTensorEnumerator instances to calculate ratio for
-        join_legs1, join_legs2: lists of legs to join
+        pte1: StabilizerTensorEnumerator instance to calculate ratio for
+        pte2: StabilizerTensorEnumerator instance to calculate ratio for
+        join_legs1: lists of legs to join for pte1
+        join_legs2: lists of legs to join for pte2
 
     Returns:
         float: ratio of matching stabilizer pairs
     """
-    M1 = to_symplectic(
+    join_legs_matrix1 = to_symplectic(
         np.hstack(
             [pte1.h[:, pte1.get_col_indices({leg})] for leg in join_legs1]
         ).astype(np.uint8)
         & 1
     )
-    M2 = to_symplectic(
+    join_legs_matrix2 = to_symplectic(
         np.hstack(
             [pte2.h[:, pte2.get_col_indices({leg})] for leg in join_legs2]
         ).astype(np.uint8)
         & 1
     )
 
-    stacked = GF2(np.vstack([M1, M2]))
+    stacked = GF2(np.vstack([join_legs_matrix1, join_legs_matrix2]))
     return float(2 ** (-rank(stacked)))

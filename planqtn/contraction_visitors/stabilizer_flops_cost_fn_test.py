@@ -1,7 +1,7 @@
 import numpy as np
 
 from planqtn.contraction_visitors.stabilizer_flops_cost_fn import (
-    custom_flops_cost_stabilizer_codes,
+    StabilizerCodeFlopsCostVisitor,
 )
 
 from planqtn.networks.compass_code import CompassCodeDualSurfaceCodeLayoutTN
@@ -21,7 +21,14 @@ def test_custom_cost_stabilizer_codes():
         rotated_surface_tn,
         lambda node: node.copy(),
     )
-    cost = custom_flops_cost_stabilizer_codes(contraction, cotengra=False)
+
+    stabilizer_cost_visitor = StabilizerCodeFlopsCostVisitor()
+    contraction.contract(
+        visitors=[stabilizer_cost_visitor],
+        cotengra=False,
+        verbose=False,
+    )
+    cost = stabilizer_cost_visitor.total_cost
     assert cost == 148.0
 
     # Compass code, dual surface layout
@@ -31,7 +38,13 @@ def test_custom_cost_stabilizer_codes():
         compass_code_dual,
         lambda node: node.copy(),
     )
-    cost = custom_flops_cost_stabilizer_codes(contraction, cotengra=False)
+    stabilizer_cost_visitor = StabilizerCodeFlopsCostVisitor()
+    contraction.contract(
+        visitors=[stabilizer_cost_visitor],
+        cotengra=False,
+        verbose=False,
+    )
+    cost = stabilizer_cost_visitor.total_cost
     assert cost == 380.0
 
     # 7 qubit Hamming code, measurement state prep
@@ -59,5 +72,11 @@ def test_custom_cost_stabilizer_codes():
         tn_hamming,
         lambda node: node.copy(),
     )
-    cost = custom_flops_cost_stabilizer_codes(contraction, cotengra=False)
+    stabilizer_cost_visitor = StabilizerCodeFlopsCostVisitor()
+    contraction.contract(
+        visitors=[stabilizer_cost_visitor],
+        cotengra=False,
+        verbose=False,
+    )
+    cost = stabilizer_cost_visitor.total_cost
     assert cost == 714219282658.0

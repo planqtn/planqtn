@@ -1,9 +1,11 @@
+"""The planqtn.tensor module is a simple collection of type aliases."""
+
 from typing import Dict, Tuple
 
 from planqtn.poly import UnivariatePoly
 
 
-TensorId = str | int | Tuple[int, int]
+TensorId = str | int | Tuple[int, int] | Tuple[str, int, int]
 """The tensor id can be a string, an integer, or a tuple of two integers."""
 
 TensorLeg = Tuple[TensorId, int]

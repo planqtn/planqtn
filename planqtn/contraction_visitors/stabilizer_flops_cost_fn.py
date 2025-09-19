@@ -1,7 +1,7 @@
 """Calculates the cost of contracting a stabilizer code tensor network
 based only on the parity check matrix."""
 
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import List, Tuple
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.symplectic import count_matching_stabilizers_ratio_all_pairs
@@ -11,38 +11,11 @@ from planqtn.stabilizer_tensor_enumerator import (
     TensorLeg,
 )
 
-if TYPE_CHECKING:
-    from planqtn.tensor_network import Contraction
 
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
-def custom_flops_cost_stabilizer_codes(
-    contraction: "Contraction",
-    cotengra=True,
-    cotengra_opts: Optional[Dict[Any, Any]] = None,
-) -> int:
-    """This function uses the StabilizerCodeCostVisitor to compute the total cost of a stabilizer
-    code tensor network contraction. The visitor calculates the cost of a contraction step during
-    the conjoining of nodes in the tensor network.
-
-    Args:
-        tn (TensorNetwork): The tensor network to analyze.
-        open_legs_per_node (dict): A dictionary mapping node indices to lists of open legs.
-
-    Returns:
-        int: The total number of operations of the tensor network contraction.
-    """
-    visitor = StabilizerCodeFlopsCostVisitor()
-    contraction.contract(
-        verbose=False,
-        visitors=[visitor],
-        cotengra=cotengra,
-        cotengra_opts=cotengra_opts,
-    )
-    return visitor.total_cost
-
-
+# pylint: disable=too-few-public-methods
 class StabilizerCodeFlopsCostVisitor(
     ContractionVisitor[StabilizerCodeTensorEnumerator]
 ):

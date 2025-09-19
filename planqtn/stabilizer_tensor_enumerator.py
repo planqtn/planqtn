@@ -25,19 +25,8 @@ from planqtn.parity_check import conjoin, self_trace, tensor_product
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
 from planqtn.poly import UnivariatePoly
 from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
-
-
-TensorId = str | int | Tuple[int, int] | Tuple[str, int, int]
-"""The tensor id can be a string, an integer, or a tuple of two integers."""
-
-TensorLeg = Tuple[TensorId, int]
-"""The tensor leg is a tuple of a tensor id and a leg index."""
-
-TensorEnumeratorKey = Tuple[int, ...]
-"""The tensor enumerator key is a tuple of integers."""
-
-TensorEnumerator = Dict[TensorEnumeratorKey, UnivariatePoly]
-"""The tensor enumerator is a dictionary of tuples of integers and univariate polynomials."""
+from planqtn.tracable import Tracable
+from planqtn.tensor import TensorId, TensorLeg, TensorEnumerator
 
 
 def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:
@@ -130,7 +119,7 @@ class StabilizerCodeTensorEnumerator(Tracable):
         legs: Optional[List[TensorLeg]] = None,
         coset_flipped_legs: Optional[List[Tuple[Tuple[Any, int], GF2]]] = None,
         annotation: Optional[LegoAnnotation] = None,
-        open_legs: Optional[Tuple[TensorLeg]] = None,
+        open_legs: Optional[Tuple[TensorLeg, ...]] = None,
         node_ids: Optional[List[TensorId]] = None,
     ):
         """Construct a stabilizer code tensor enumerator.
@@ -194,6 +183,10 @@ class StabilizerCodeTensorEnumerator(Tracable):
             # print(f"Coset flipped legs validated. Setting to {self.coset_flipped_legs}")
 
     def copy(self) -> "StabilizerCodeTensorEnumerator":
+        """Create a copy of this object.
+        Returns:
+            StabilizerCodeTensorEnumerator: A copy of this stabilizer code tensor enumerator.
+        """
         return StabilizerCodeTensorEnumerator(
             self.h,
             self.tensor_id,
@@ -312,11 +305,11 @@ class StabilizerCodeTensorEnumerator(Tracable):
         )
 
     @property
-    def open_legs(self) -> Tuple[TensorLeg]:
+    def open_legs(self) -> Tuple[TensorLeg, ...]:
         return self._open_legs
 
     @open_legs.setter
-    def open_legs(self, value: Tuple[TensorLeg]) -> None:
+    def open_legs(self, value: Tuple[TensorLeg, ...]) -> None:
         self._open_legs = value
 
     @property
@@ -326,8 +319,8 @@ class StabilizerCodeTensorEnumerator(Tracable):
     def merge_with(
         self,
         other: "StabilizerCodeTensorEnumerator",
-        legs1: Sequence[int | TensorLeg],
-        legs2: Sequence[int | TensorLeg],
+        join_legs1: Sequence[int | TensorLeg],
+        join_legs2: Sequence[int | TensorLeg],
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         verbose: bool = False,
     ) -> "StabilizerCodeTensorEnumerator":
@@ -339,15 +332,17 @@ class StabilizerCodeTensorEnumerator(Tracable):
 
         Args:
             other: The other tensor enumerator to conjoin with.
-            legs1: Legs from this tensor to contract.
-            legs2: Legs from the other tensor to contract.
+            join_legs1: Legs from this tensor to contract.
+            join_legs2: Legs from the other tensor to contract.
+            progress_reporter: An optional progress reporter to report progress.
+            verbose: Whether to print verbose output during the operation.
 
         Returns:
             StabilizerCodeTensorEnumerator: The conjoined tensor enumerator.
         """
-        assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, legs2)
+        assert len(join_legs1) == len(join_legs2)
+        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, join_legs1)
+        legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, join_legs2)
 
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
         # for example 2 3 4 | 2 4 8 will become

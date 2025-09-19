@@ -13,6 +13,7 @@ from planqtn.stabilizer_tensor_enumerator import (
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
+# pylint: disable=too-few-public-methods
 class SparsityVisitor(ContractionVisitor[StabilizerCodeTensorEnumerator]):
     """A contraction visitor that calculates the sparsity of the tensors
     throughout the contraction of a stabilizer code tensor network."""
