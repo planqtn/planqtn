@@ -205,7 +205,7 @@ def test_trace_two_422_codes_into_steane():
     t2 = StabilizerCodeTensorEnumerator(enc_tens_422, tensor_id=2)
 
     # we join the two tensors via the tracked legs (4,4)
-    t3 = t2.conjoin(t1, [4, 5], [4, 5])
+    t3 = t2.merge_with(t1, [4, 5], [4, 5])
     steane = GF2(
         [
             # fmt: off
@@ -297,7 +297,7 @@ def test_422_logical_legs_enumerator():
 
 
 def test_conjoin_to_scalar():
-    joint = StabilizerCodeTensorEnumerator(Legos.stopper_x, tensor_id=0).conjoin(
+    joint = StabilizerCodeTensorEnumerator(Legos.stopper_x, tensor_id=0).merge_with(
         StabilizerCodeTensorEnumerator(Legos.stopper_x, tensor_id=1), [0], [0]
     )
     wep = joint.stabilizer_enumerator_polynomial().dict
@@ -317,8 +317,8 @@ def test_conjoin_to_scalar():
                 ]
             ),
         )
-        .conjoin(stopper_1, [(0, 0)], [(1, 0)])
-        .conjoin(stopper_2, [(0, 1)], [(2, 0)])
+        .merge_with(stopper_1, [(0, 0)], [(1, 0)])
+        .merge_with(stopper_2, [(0, 1)], [(2, 0)])
     )
 
     wep = joint.stabilizer_enumerator_polynomial().dict

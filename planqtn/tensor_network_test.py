@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 import pytest
 from galois import GF2
@@ -8,6 +9,7 @@ from planqtn.pauli import Pauli
 from planqtn.progress_reporter import TqdmProgressReporter
 from planqtn.symplectic import sslice, weight
 from planqtn.tensor_network import (
+    Contraction,
     UnivariatePoly,
     StabilizerCodeTensorEnumerator,
     TensorNetwork,
@@ -81,7 +83,7 @@ def test_step_by_step_to_d2_surface_code():
 
     ### Getting Conjoined Parities brute force WEP
 
-    h_pte = t0.conjoin(t1, [2], [1])
+    h_pte = t0.merge_with(t1, [2], [1])
 
     print(h_pte.legs)
     print(h_pte.h)
@@ -141,7 +143,7 @@ def test_step_by_step_to_d2_surface_code():
     #  [0 0 0 0 | 1 1 1 0]
     #  [0 0 1 1 | 0 0 0 0]
     #  [1 1 0 0 | 0 0 0 0]
-    h_pte = h_pte.conjoin(t2, [1], [0])
+    h_pte = h_pte.merge_with(t2, [1], [0])
     print("H pte (t0,t1,t2)")
     print(h_pte.h)
     print(h_pte.legs)
@@ -214,7 +216,7 @@ def test_step_by_step_to_d2_surface_code():
     #  [0 1 1 0 0 0 0 0 0 0]]
 
     print(h_pte.legs)
-    h_pte = h_pte.conjoin(t3, [(2, 3), (1, 2)], [(3, 0), (3, 3)])
+    h_pte = h_pte.merge_with(t3, [(2, 3), (1, 2)], [(3, 0), (3, 3)])
     print("H pte (t0,t1,t2,t3)")
     print(h_pte.h)
     print(h_pte.legs)
@@ -911,36 +913,38 @@ def test_disconnected_networks():
 
 def test_disconnected_networks_truncate_length():
 
-    nodes = {}
-    nodes["25"] = StabilizerCodeTensorEnumerator(
-        h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
-        tensor_id="25",
-    )
-    nodes["27"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="27",
-    )
-    nodes["31"] = StabilizerCodeTensorEnumerator(
-        h=GF2(
-            [
-                [0, 0, 0, 0, 1, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 1, 0, 0, 0, 0],
-            ]
-        ),
-        tensor_id="31",
-    )
+    def create_nodes():
+        nodes = {}
+        nodes["25"] = StabilizerCodeTensorEnumerator(
+            h=GF2([[1, 1, 0, 0], [0, 0, 1, 1]]),
+            tensor_id="25",
+        )
+        nodes["27"] = StabilizerCodeTensorEnumerator(
+            h=GF2(
+                [
+                    [0, 0, 0, 0, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 1, 1, 1, 0, 0, 0, 0],
+                ]
+            ),
+            tensor_id="27",
+        )
+        nodes["31"] = StabilizerCodeTensorEnumerator(
+            h=GF2(
+                [
+                    [0, 0, 0, 0, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 1, 1, 1, 0, 0, 0, 0],
+                ]
+            ),
+            tensor_id="31",
+        )
+        return nodes
 
     # Create TensorNetwork
-    tn = TensorNetwork(nodes, truncate_length=1)
+    tn = TensorNetwork(create_nodes(), truncate_length=1)
 
     # Add traces
     tn.self_trace("25", "31", [0], [2])
@@ -954,7 +958,7 @@ def test_disconnected_networks_truncate_length():
     }
 
     # Create TensorNetwork
-    tn = TensorNetwork(nodes, truncate_length=2)
+    tn = TensorNetwork(create_nodes(), truncate_length=2)
 
     # Add traces
     tn.self_trace("25", "31", [0], [2])
@@ -977,7 +981,7 @@ def test_disconnected_networks_truncate_length():
         (9, {0: 1, 4: 21, 6: 42}),
     ],
 )
-def test_trace_two_422_codes_into_steane_via_tensornetwork_truncated(
+def test_trace_two_422_codes_into_steane_via_tn_truncated(
     truncate_length, expected_wep
 ):
     enc_tens_422 = GF2(

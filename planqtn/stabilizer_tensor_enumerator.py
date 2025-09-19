@@ -8,7 +8,6 @@ The main methods are:
     polynomial for the stabilizer code.
 - `trace_with_stopper`: Traces the lego leg with a stopper.
 - `conjoin`: Conjoins two lego pieces into a new lego piece.
-- `self_trace`: Traces a leg with itself.
 - `with_coset_flipped_legs`: Adds coset flipped legs to the lego piece.
 - `tensor_with`: Tensor product of two lego pieces.
 """
@@ -21,24 +20,13 @@ import sympy
 
 from galois import GF2
 from planqtn.legos import LegoAnnotation
-from planqtn.linalg import gauss
+from planqtn.linalg import gauss, rank
 from planqtn.parity_check import conjoin, self_trace, tensor_product
 from planqtn.progress_reporter import DummyProgressReporter, ProgressReporter
 from planqtn.poly import UnivariatePoly
 from planqtn.symplectic import omega, sslice, weight, sympl_to_pauli_repr
-
-
-TensorId = str | int | Tuple[int, int] | Tuple[str, int, int]
-"""The tensor id can be a string, an integer, or a tuple of two integers."""
-
-TensorLeg = Tuple[TensorId, int]
-"""The tensor leg is a tuple of a tensor id and a leg index."""
-
-TensorEnumeratorKey = Tuple[int, ...]
-"""The tensor enumerator key is a tuple of integers."""
-
-TensorEnumerator = Dict[TensorEnumeratorKey, UnivariatePoly]
-"""The tensor enumerator is a dictionary of tuples of integers and univariate polynomials."""
+from planqtn.tracable import Tracable
+from planqtn.tensor import TensorId, TensorLeg, TensorEnumerator
 
 
 def _index_leg(tensor_id: TensorId, leg: int | TensorLeg) -> TensorLeg:
@@ -121,7 +109,7 @@ class _TensorElementCollector:
             self.tensor_wep[key].add_inplace(UnivariatePoly({stab_weight: 1}))
 
 
-class StabilizerCodeTensorEnumerator:
+class StabilizerCodeTensorEnumerator(Tracable):
     """Tensor enumerator for a stabilizer code."""
 
     def __init__(
@@ -131,6 +119,8 @@ class StabilizerCodeTensorEnumerator:
         legs: Optional[List[TensorLeg]] = None,
         coset_flipped_legs: Optional[List[Tuple[Tuple[Any, int], GF2]]] = None,
         annotation: Optional[LegoAnnotation] = None,
+        open_legs: Optional[Tuple[TensorLeg, ...]] = None,
+        node_ids: Optional[List[TensorId]] = None,
     ):
         """Construct a stabilizer code tensor enumerator.
 
@@ -154,9 +144,13 @@ class StabilizerCodeTensorEnumerator:
         Raises:
             AssertionError: If the legs are not valid.
         """
+        if open_legs is None:
+            open_legs = ()
         self.h = h
         self.annotation = annotation
-
+        if node_ids is None:
+            node_ids = [tensor_id]
+        self._node_ids = node_ids
         self.tensor_id = tensor_id
         if len(self.h.shape) == 1:
             self.n = self.h.shape[0] // 2
@@ -168,6 +162,7 @@ class StabilizerCodeTensorEnumerator:
         self.legs = (
             [(self.tensor_id, leg) for leg in range(self.n)] if legs is None else legs
         )
+        self._open_legs = open_legs
         # print(f"Legs: {self.legs} because n = {self.n}, {self.h.shape}")
         assert (
             len(self.legs) == self.n
@@ -186,6 +181,20 @@ class StabilizerCodeTensorEnumerator:
                     pauli, GF2
                 ), f"Invalid pauli in coset: {pauli} on leg {leg}"
             # print(f"Coset flipped legs validated. Setting to {self.coset_flipped_legs}")
+
+    def copy(self) -> "StabilizerCodeTensorEnumerator":
+        """Create a copy of this object.
+        Returns:
+            StabilizerCodeTensorEnumerator: A copy of this stabilizer code tensor enumerator.
+        """
+        return StabilizerCodeTensorEnumerator(
+            self.h,
+            self.tensor_id,
+            self.legs,
+            self.coset_flipped_legs,
+            self.annotation,
+            self.open_legs,
+        )
 
     def __str__(self) -> str:
         return f"TensorEnum({self.tensor_id})"
@@ -256,11 +265,19 @@ class StabilizerCodeTensorEnumerator:
             StabilizerCodeTensorEnumerator: New tensor enumerator with coset-flipped legs.
         """
         return StabilizerCodeTensorEnumerator(
-            self.h, self.tensor_id, self.legs, coset_flipped_legs
+            self.h,
+            self.tensor_id,
+            self.legs,
+            coset_flipped_legs,
+            annotation=self.annotation,
+            open_legs=self.open_legs,
         )
 
     def tensor_with(
-        self, other: "StabilizerCodeTensorEnumerator"
+        self,
+        other: "StabilizerCodeTensorEnumerator",
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+        verbose: bool = False,
     ) -> "StabilizerCodeTensorEnumerator":
         """Create the tensor product with another tensor enumerator.
 
@@ -280,51 +297,32 @@ class StabilizerCodeTensorEnumerator:
                 new_h, tensor_id=self.tensor_id, legs=[]
             )
         return StabilizerCodeTensorEnumerator(
-            new_h, tensor_id=self.tensor_id, legs=self.legs + other.legs
+            new_h,
+            tensor_id=self.tensor_id,
+            legs=self.legs + other.legs,
+            open_legs=self.open_legs + other.open_legs,
+            node_ids=self.node_ids + other.node_ids,
         )
 
-    def self_trace(
-        self, legs1: Sequence[int | TensorLeg], legs2: Sequence[int | TensorLeg]
-    ) -> "StabilizerCodeTensorEnumerator":
-        """Perform self-tracing by contracting pairs of legs within this tensor.
+    @property
+    def open_legs(self) -> Tuple[TensorLeg, ...]:
+        return self._open_legs
 
-        Contracts pairs of legs within the same tensor, effectively performing
-        a partial trace operation. The legs are paired up and contracted together.
+    @open_legs.setter
+    def open_legs(self, value: Tuple[TensorLeg, ...]) -> None:
+        self._open_legs = value
 
-        Args:
-            legs1: First set of legs to contract (must match length of legs2).
-            legs2: Second set of legs to contract (must match length of legs1).
+    @property
+    def node_ids(self) -> List[TensorId]:
+        return self._node_ids
 
-        Returns:
-            StabilizerCodeTensorEnumerator: New tensor with contracted legs removed.
-
-        Raises:
-            AssertionError: If legs1 and legs2 have different lengths.
-        """
-        assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs2)
-        leg2col = {leg: i for i, leg in enumerate(self.legs)}
-
-        new_h = self.h
-        for leg1, leg2 in zip(legs1_indexed, legs2_indexed):
-            new_h = self_trace(new_h, leg2col[leg1], leg2col[leg2])
-            self._remove_legs(leg2col, [leg1, leg2])
-
-        new_legs = [
-            leg
-            for leg in self.legs
-            if leg not in legs1_indexed and leg not in legs2_indexed
-        ]
-        return StabilizerCodeTensorEnumerator(
-            new_h, tensor_id=self.tensor_id, legs=new_legs
-        )
-
-    def conjoin(
+    def merge_with(
         self,
         other: "StabilizerCodeTensorEnumerator",
-        legs1: Sequence[int | TensorLeg],
-        legs2: Sequence[int | TensorLeg],
+        join_legs1: Sequence[int | TensorLeg],
+        join_legs2: Sequence[int | TensorLeg],
+        progress_reporter: ProgressReporter = DummyProgressReporter(),
+        verbose: bool = False,
     ) -> "StabilizerCodeTensorEnumerator":
         """Creates a new tensor enumerator by conjoining two of them.
 
@@ -334,17 +332,17 @@ class StabilizerCodeTensorEnumerator:
 
         Args:
             other: The other tensor enumerator to conjoin with.
-            legs1: Legs from this tensor to contract.
-            legs2: Legs from the other tensor to contract.
+            join_legs1: Legs from this tensor to contract.
+            join_legs2: Legs from the other tensor to contract.
+            progress_reporter: An optional progress reporter to report progress.
+            verbose: Whether to print verbose output during the operation.
 
         Returns:
             StabilizerCodeTensorEnumerator: The conjoined tensor enumerator.
         """
-        if self.tensor_id == other.tensor_id:
-            return self.self_trace(legs1, legs2)
-        assert len(legs1) == len(legs2)
-        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, legs1)
-        legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, legs2)
+        assert len(join_legs1) == len(join_legs2)
+        legs1_indexed: List[TensorLeg] = _index_legs(self.tensor_id, join_legs1)
+        legs2_indexed: List[TensorLeg] = _index_legs(other.tensor_id, join_legs2)
 
         leg2col = {leg: i for i, leg in enumerate(self.legs)}
         # for example 2 3 4 | 2 4 8 will become
@@ -367,8 +365,16 @@ class StabilizerCodeTensorEnumerator:
         new_legs = [leg for leg in self.legs if leg not in legs1_indexed]
         new_legs += [leg for leg in other.legs if leg not in legs2_indexed]
 
+        new_open_legs = tuple(
+            leg for leg in self.open_legs if leg not in legs1_indexed
+        ) + tuple(leg for leg in other.open_legs if leg not in legs2_indexed)
+
         return StabilizerCodeTensorEnumerator(
-            new_h, tensor_id=self.tensor_id, legs=new_legs
+            new_h,
+            tensor_id=self.tensor_id,
+            legs=new_legs,
+            open_legs=new_open_legs,
+            node_ids=self.node_ids + other.node_ids,
         )
 
     def _brute_force_stabilizer_enumerator_from_parity(
@@ -487,10 +493,37 @@ class StabilizerCodeTensorEnumerator:
         Returns:
             StabilizerCodeTensorEnumerator: New tensor with the stopper contraction applied.
         """
-        res = self.conjoin(
+        res = self.merge_with(
             StabilizerCodeTensorEnumerator(stopper, tensor_id="stopper"),
             [traced_leg],
             [0],
         )
         res.annotation = self.annotation
         return res
+
+    def rank(self) -> int:
+        """Finds the columns of the parity check matrix corresponding to the open legs.
+        Returns the rank of the submatrix formed by those columns.
+
+        Returns:
+            int: Rank of the submatrix formed by the columns corresponding to the open legs.
+        """
+        open_leg_indices = self.get_col_indices(set(self.open_legs))
+        open_leg_submatrix = self.h[:, open_leg_indices]
+        return rank(open_leg_submatrix)
+
+    def get_col_indices(self, legs: set[TensorLeg]) -> List[int]:
+        """Helper method to find the column indices in the parity check matrix
+        corresponding to the given legs.
+
+        Args:
+            legs (List[str]): List of legs to find indices for.
+
+        Returns:
+            List[int]: List of column indices that correspond to the given legs.
+        """
+        idxs = [i for i, leg in enumerate(self.legs) if leg in legs]
+        idxs += [
+            i + (self.h.shape[1] // 2) for i, leg in enumerate(self.legs) if leg in legs
+        ]
+        return idxs

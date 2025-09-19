@@ -10,17 +10,17 @@ def test_x_spider_h_is_z_spider():
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
 
-    x_spider = x_spider.conjoin(hs[0], [0], [1])
+    x_spider = x_spider.merge_with(hs[0], [0], [1])
     print("after H-ing leg 0")
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
 
-    x_spider = x_spider.conjoin(hs[1], [1], [1])
+    x_spider = x_spider.merge_with(hs[1], [1], [1])
     print("after H-ing leg 1")
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
 
-    x_spider = x_spider.conjoin(hs[2], [2], [1])
+    x_spider = x_spider.merge_with(hs[2], [2], [1])
     print("after H-ing leg 2")
     print(x_spider.h)
     print(x_spider.stabilizer_enumerator_polynomial())
