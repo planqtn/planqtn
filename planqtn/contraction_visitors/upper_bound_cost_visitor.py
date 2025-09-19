@@ -1,6 +1,6 @@
 """Calculates the upper bound cost of contracting a stabilizer code tensor network."""
 
-from typing import Dict, Set, List, Tuple
+from typing import List, Tuple
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.stabilizer_tensor_enumerator import (
@@ -17,7 +17,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
     tensor network. Uses the upper bound metric for each contraction from arXiv:2308.05152
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.total_cost = 0
 
@@ -28,6 +28,7 @@ class UpperBoundCostVisitor(ContractionVisitor):
         join_legs1: List[TensorLeg],
         join_legs2: List[TensorLeg],
         new_pte: StabilizerCodeTensorEnumerator,
+        tensor_with: bool = False,
     ) -> None:
         open_legs1 = len(pte1.open_legs)
         open_legs2 = len(pte2.open_legs)

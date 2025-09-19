@@ -13,10 +13,9 @@ The main methods are:
     tensor network into a single stabilizer code tensor.
 """
 
-import abc
 from collections import defaultdict
 from copy import deepcopy
-from enum import Enum
+import math
 from typing import (
     Any,
     Callable,
@@ -34,24 +33,21 @@ from galois import GF2
 
 import cotengra as ctg
 from cotengra.scoring import ensure_basic_quantities_are_computed
-from sympy import false
+from cotengra.presets import AutoOptimizer
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.contraction_visitors.max_size_cost_visitor import max_tensor_size_cost
 from planqtn.contraction_visitors.stabilizer_flops_cost_fn import (
     custom_flops_cost_stabilizer_codes,
 )
-from planqtn.symplectic import sprint
 from planqtn.pauli import Pauli
 from planqtn.progress_reporter import (
     DummyProgressReporter,
     ProgressReporter,
-    TqdmProgressReporter,
 )
 from planqtn.poly import UnivariatePoly
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
-    _index_leg,
     _index_legs,
 )
 from planqtn.tensor import TensorId, TensorLeg, TensorEnumerator, TensorEnumeratorKey
@@ -73,6 +69,7 @@ class Contraction[T: Tracable]:
         cotengra_tree: Optional[ctg.ContractionTree] = None,
     ):
         self.tn = tn
+        self.initialize_node = initialize_node
         self.nodes: Dict[TensorId, StabilizerCodeTensorEnumerator] = deepcopy(tn.nodes)
         self.traces: List[Trace] = deepcopy(tn._traces)
         # print("self.nodes: ")
@@ -98,20 +95,22 @@ class Contraction[T: Tracable]:
         use_cotengra: bool = True,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         verbose: bool = False,
-    ) -> None:
-
+        cotengra_opts: Optional[Any] = {},
+        search_params: Optional[Any] = {},
+    ) -> List[Tuple[List[Trace], TensorId, TensorId]]:
         if self._cot_tree is None:
             if use_cotengra and len(self.nodes) > 0 and len(self.traces) > 0:
-
                 with progress_reporter.enter_phase("cotengra contraction"):
                     self._cot_tree = self._cotengra_tree(
                         verbose,
                         progress_reporter,
+                        cotengra_opts,
+                        search_params,
                     )
             else:
                 self._cot_tree = self._cotengra_tree_from_traces(self.traces)
 
-        def legs_to_contract(l: frozenset, r: frozenset) -> List[Trace]:
+        def legs_to_contract(l: frozenset, r: frozenset) -> Tuple[Trace]:
             res = []
             left_indices = sum((list(self.inputs[leaf_idx]) for leaf_idx in l), [])
             right_indices = sum((list(self.inputs[leaf_idx]) for leaf_idx in r), [])
@@ -119,7 +118,10 @@ class Contraction[T: Tracable]:
                 if idx1 in right_indices:
                     (node_idx1, leg1), (node_idx2, leg2) = self.index_to_legs[idx1]
                     res.append((node_idx1, node_idx2, leg1, leg2))
-            return res
+
+            left_rep_node_id = self.input_names[next(iter(l))]
+            right_rep_node_id = self.input_names[next(iter(r))]
+            return (res, left_rep_node_id, right_rep_node_id)
 
         traces = [legs_to_contract(l, r) for _, l, r in self._cot_tree.traverse()]
 
@@ -130,8 +132,10 @@ class Contraction[T: Tracable]:
         visitors: Optional[List[ContractionVisitor]] = None,
         cotengra: bool = True,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        open_legs: Sequence[TensorLeg] = (),
+        open_legs: Optional[Sequence[TensorLeg]] = None,
         verbose: bool = False,
+        cotengra_opts: Any = {},
+        search_params: Any = {},
     ) -> T:
         assert (
             progress_reporter is not None
@@ -139,57 +143,77 @@ class Contraction[T: Tracable]:
 
         if len(self.traces) == 0 and len(self.nodes) == 1:
             return self.pte_list[0][0]
-
+        if open_legs is None:
+            open_legs = ()
         # We convert the tree back to a list of traces
         all_lists_of_traces = self._get_lists_of_traces_to_contract(
-            use_cotengra=cotengra, verbose=verbose, progress_reporter=progress_reporter
+            use_cotengra=cotengra,
+            verbose=verbose,
+            progress_reporter=progress_reporter,
+            cotengra_opts=cotengra_opts,
+            search_params=search_params,
         )
+
         tree_len = self._cot_tree.N
 
-        for traces in progress_reporter.iterate(
+        for traces, left_set, right_set in progress_reporter.iterate(
             all_lists_of_traces, f"Tracing {tree_len} nodes", tree_len
         ):
-            # print("legs to contract: ", traces)
             if len(traces) == 0:
-                continue
-            pte_ids = {
-                self.node_to_pte[node_idx1] for node_idx1, _, _, _ in traces
-            }.union({self.node_to_pte[node_idx2] for _, node_idx2, _, _ in traces})
-            assert len(pte_ids) == 2, f"Expected 2 PTEs, got {len(pte_ids)}"
-            pte1_idx, pte2_idx = pte_ids
-            join_legs1 = []
-            join_legs2 = []
+                pte1_idx = self.node_to_pte[left_set]
+                pte2_idx = self.node_to_pte[right_set]
 
-            node_join_legs = defaultdict(list)
+                join_legs1: List[TensorLeg] = []
+                join_legs2: List[TensorLeg] = []
+                pte1, nodes1 = self.pte_list[pte1_idx]
+                pte2, nodes2 = self.pte_list[pte2_idx]
+                merged_nodes = nodes1.union(nodes2)
 
-            for node_idx1, node_idx2, leg1, leg2 in traces:
-                node_join_legs[node_idx1].append(leg1)
-                node_join_legs[node_idx2].append(leg2)
+                new_pte = pte1.tensor_with(pte2, progress_reporter, verbose)
+                tensor_with = True
 
-                if node_idx1 in self.pte_list[pte1_idx][1]:
-                    join_legs1.append(leg1)
-                else:
-                    join_legs2.append(leg1)
+            else:
+                pte_ids = {
+                    self.node_to_pte[node_idx1] for node_idx1, _, _, _ in traces
+                }.union({self.node_to_pte[node_idx2] for _, node_idx2, _, _ in traces})
 
-                if node_idx2 in self.pte_list[pte2_idx][1]:
-                    join_legs2.append(leg2)
-                else:
-                    join_legs1.append(leg2)
+                assert len(pte_ids) == 2, f"Expected 2 PTEs, got {len(pte_ids)}"
+                pte1_idx, pte2_idx = pte_ids
+                join_legs1 = []
+                join_legs2 = []
 
-            if verbose:
-                print(
-                    f"==== trace {self.pte_list[pte1_idx], self.pte_list[pte2_idx], join_legs1, join_legs2} ==== "
+                node_join_legs = defaultdict(list)
+
+                for node_idx1, node_idx2, leg1, leg2 in traces:
+                    node_join_legs[node_idx1].append(leg1)
+                    node_join_legs[node_idx2].append(leg2)
+
+                    if node_idx1 in self.pte_list[pte1_idx][1]:
+                        join_legs1.append(leg1)
+                    else:
+                        join_legs2.append(leg1)
+
+                    if node_idx2 in self.pte_list[pte2_idx][1]:
+                        join_legs2.append(leg2)
+                    else:
+                        join_legs1.append(leg2)
+
+                if verbose:
+                    print(
+                        f"==== trace {self.pte_list[pte1_idx], self.pte_list[pte2_idx]}, "
+                        f"{join_legs1, join_legs2} ==== "
+                    )
+
+                if verbose:
+                    print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
+                pte1, nodes1 = self.pte_list[pte1_idx]
+                pte2, nodes2 = self.pte_list[pte2_idx]
+                merged_nodes = nodes1.union(nodes2)
+
+                new_pte = pte1.merge_with(
+                    pte2, join_legs1, join_legs2, progress_reporter, verbose
                 )
-
-            if verbose:
-                print(f"Merging PTEs containing {node_idx1} and {node_idx2}")
-            pte1, nodes1 = self.pte_list[pte1_idx]
-            pte2, nodes2 = self.pte_list[pte2_idx]
-            merged_nodes = nodes1.union(nodes2)
-
-            new_pte = pte1.merge_with(
-                pte2, join_legs1, join_legs2, progress_reporter, verbose
-            )
+                tensor_with = False
 
             for node_idx in new_pte.node_ids:
                 self.node_to_pte[node_idx] = pte1_idx
@@ -207,22 +231,28 @@ class Contraction[T: Tracable]:
                 if pte_idx > pte2_idx:
                     self.node_to_pte[node_idx] = pte_idx - 1
 
-                for visitor in visitors or []:
-                    visitor.on_merge(
-                        pte1,
-                        pte2,
-                        join_legs1,
-                        join_legs2,
-                        new_pte,
-                    )
+            for visitor in visitors or []:
+                visitor.on_merge(
+                    pte1, pte2, join_legs1, join_legs2, new_pte, tensor_with
+                )
         if len(self.pte_list) > 1:
             for other in self.pte_list[1:]:
+                curr_tensor = self.pte_list[0][0]
                 self.pte_list[0] = (
-                    self.pte_list[0][0].tensor_with(
-                        other[0], progress_reporter, verbose
-                    ),
+                    curr_tensor.tensor_with(other[0], progress_reporter, verbose),
                     self.pte_list[0][1].union(other[1]),
                 )
+
+                # add cost for remaining tensor products
+                for visitor in visitors or []:
+                    visitor.on_merge(
+                        curr_tensor,
+                        other[0],
+                        [],
+                        [],
+                        self.pte_list[0][0],
+                        tensor_with=True,
+                    )
 
         return self.pte_list[0][0]
 
@@ -276,10 +306,16 @@ class Contraction[T: Tracable]:
         self,
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
-        **cotengra_opts: Any,
+        cotengra_opts: Any = None,
+        search_params: Any = None,
     ) -> ctg.ContractionTree:
 
-        stabilizer_flops_fn = self._make_flops_cost_fn(self.index_to_legs, self.inputs)
+        contraction_for_conjoin = Contraction(
+            self.tn,
+            lambda node: node.copy(),
+        )
+
+        stabilizer_flops_fn = self._make_flops_cost_fn(contraction_for_conjoin)
 
         contengra_params = {
             "minimize": stabilizer_flops_fn,
@@ -291,19 +327,35 @@ class Contraction[T: Tracable]:
             "on_trial_error": "raise",
         }
 
-        if cotengra_opts.get("minimize") == "custom_flops":
-            cotengra_opts["minimize"] = stabilizer_flops_fn
-        elif cotengra_opts.get("minimize") == "custom_max_size":
-            stabilizer_max_size_fn = self._make_max_size_cost_fn()
-            cotengra_opts["minimize"] = stabilizer_max_size_fn
-
         contengra_params.update(cotengra_opts)
+
+        minimize = contengra_params.get("minimize")
+        if minimize == "custom_flops":
+            contengra_params["minimize"] = stabilizer_flops_fn
+        elif minimize == "custom_max_size":
+            stabilizer_max_size_fn = self._make_max_size_cost_fn(
+                contraction_for_conjoin
+            )
+            contengra_params["minimize"] = stabilizer_max_size_fn
+
         opt = ctg.HyperOptimizer(
             **contengra_params,
             progbar=not isinstance(progress_reporter, DummyProgressReporter),
         )
 
-        return opt.search(self.inputs, self.output, self.size_dict)
+        print("contengra params: ", contengra_params)
+
+        # Search params handling:
+        if search_params is None:
+            search_params = {}
+
+        if search_params.get("sub_optimize_minimizer"):
+            search_params["sub_optimize_minimizer"] = AutoOptimizer(
+                minimize=search_params.get("sub_optimize_minimizer")
+            )
+
+        search_params["contraction_info"] = contraction_for_conjoin
+        return opt.search(self.inputs, self.output, self.size_dict, search_params)
 
     def _prep_cotengra_inputs(
         self,
@@ -317,7 +369,7 @@ class Contraction[T: Tracable]:
 
         for node_idx, node in self.nodes.items():
             inputs.append(tuple(self.leg_indices[leg] for leg in node.legs))
-            input_names.append(str(node_idx))
+            input_names.append(node_idx)
             # if verbose:
             # Print the indices for each node
             # for leg in node.legs:
@@ -357,7 +409,7 @@ class Contraction[T: Tracable]:
 
         trace_indices = []
         for t in traces:
-            assert t in self.traces, f"{t} not in traces. Traces: {self._traces}"
+            assert t in self.traces, f"{t} not in traces. Traces: {self.traces}"
             idx = self.traces.index(t)
             trace_indices.append(idx)
 
@@ -373,25 +425,38 @@ class Contraction[T: Tracable]:
 
     def _make_flops_cost_fn(
         self,
-        index_to_legs: Dict[str, List[Tuple[TensorId, TensorLeg]]],
-        inputs: List[Tuple[str, ...]],
+        contraction_for_conjoin: "Contraction",
     ) -> Callable[[Dict], float]:
         def stabilizer_cost_fn(trial_dict: Dict[str, Any]) -> float:
-            tree = trial_dict["tree"]
             ensure_basic_quantities_are_computed(trial_dict)
+            contraction_for_conjoin._cot_tree = trial_dict["tree"]
 
-            return float(np.log2(custom_flops_cost_stabilizer_codes(self.tn)))
+            old_pte_list = list(contraction_for_conjoin.pte_list)
+            old_node_to_pte = dict(contraction_for_conjoin.node_to_pte)
+            cost = custom_flops_cost_stabilizer_codes(contraction_for_conjoin)
+
+            contraction_for_conjoin.pte_list = old_pte_list
+            contraction_for_conjoin.node_to_pte = old_node_to_pte
+            print("returning custom cost for trial: ", cost)
+            return float(math.log2(cost))
 
         return stabilizer_cost_fn
 
     def _make_max_size_cost_fn(
         self,
+        contraction_for_conjoin: "Contraction",
     ) -> Callable[[Dict], float]:
         def max_size_cost_fn(trial_dict: Dict[str, Any]) -> float:
-            tree = trial_dict["tree"]
             ensure_basic_quantities_are_computed(trial_dict)
+            contraction_for_conjoin._cot_tree = trial_dict["tree"]
 
-            return float(np.log2(max_tensor_size_cost(self.tn)))
+            old_pte_list = list(contraction_for_conjoin.pte_list)
+            old_node_to_pte = dict(contraction_for_conjoin.node_to_pte)
+            cost = max_tensor_size_cost(contraction_for_conjoin)
+
+            contraction_for_conjoin.pte_list = old_pte_list
+            contraction_for_conjoin.node_to_pte = old_node_to_pte
+            return float(math.log2(cost))
 
         return max_size_cost_fn
 
@@ -401,7 +466,7 @@ class Contraction[T: Tracable]:
     ) -> ctg.ContractionTree:
 
         path = []
-        terms = [{node_idx} for node_idx in self.input_names]
+        terms = [{str(node_idx)} for node_idx in self.input_names]
 
         def idx(node_id: TensorId) -> int:
             for i, term in enumerate(terms):
@@ -696,11 +761,17 @@ class TensorNetwork:
         assert (
             set(join_legs1_indexed).intersection(set(self.nodes[node_idx1].open_legs))
             == set()
-        ), f"Legs in {join_legs1_indexed} are already open for node {node_idx1} with open legs {self.nodes[node_idx1].open_legs}"
+        ), (
+            f"Legs in {join_legs1_indexed} are already open for node {node_idx1} "
+            f"with open legs {self.nodes[node_idx1].open_legs}"
+        )
         assert (
             set(join_legs2_indexed).intersection(set(self.nodes[node_idx2].open_legs))
             == set()
-        ), f"Legs in {join_legs2_indexed} are already open for node {node_idx2} with open legs {self.nodes[node_idx2].open_legs}"
+        ), (
+            f"Legs in {join_legs2_indexed} are already open for node {node_idx2} "
+            f"with open legs {self.nodes[node_idx2].open_legs}"
+        )
 
         self.nodes[node_idx1].open_legs = self.nodes[node_idx1].open_legs + tuple(
             join_legs1_indexed
@@ -732,6 +803,9 @@ class TensorNetwork:
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         visitors: Optional[List[ContractionVisitor]] = None,
         open_legs: Sequence[TensorLeg] = (),
+        cotengra=False,
+        cotengra_opts: Any = {},
+        search_params: Any = {},
     ) -> "StabilizerCodeTensorEnumerator":
         """Conjoin all nodes in the tensor network according to the trace schedule.
 
@@ -756,11 +830,13 @@ class TensorNetwork:
         )
 
         return contraction.contract(
-            cotengra=False,
+            cotengra=cotengra,
             progress_reporter=progress_reporter,
             open_legs=open_legs,
             verbose=verbose,
             visitors=visitors,
+            cotengra_opts=cotengra_opts,
+            search_params=search_params,
         )
 
     def stabilizer_enumerator_polynomial(
@@ -769,6 +845,8 @@ class TensorNetwork:
         verbose: bool = False,
         progress_reporter: ProgressReporter = DummyProgressReporter(),
         cotengra: bool = True,
+        cotengra_opts: Any = {},
+        search_params: Any = {},
     ) -> TensorEnumerator | UnivariatePoly:
         """Returns the reduced stabilizer enumerator polynomial for the tensor network.
 
@@ -831,6 +909,8 @@ class TensorNetwork:
             progress_reporter=progress_reporter,
             open_legs=open_legs,
             verbose=verbose,
+            cotengra_opts=cotengra_opts,
+            search_params=search_params,
         )
 
         # # parity_check_enums = {}
@@ -886,7 +966,8 @@ class TensorNetwork:
                 print(f"final PTE is a tensor: {final_tensor}")
                 if len(final_tensor.tensor) > 5000:
                     print(
-                        f"There are {len(final_tensor.tensor)} keys in the final PTE, skipping printing."
+                        f"There are {len(final_tensor.tensor)} keys in the final PTE"
+                        f", skipping printing."
                     )
                 else:
                     for k in list(final_tensor.tensor.keys()):
@@ -994,10 +1075,16 @@ class _PartiallyTracedEnumerator[Tracable]:
         )
 
     def __str__(self) -> str:
-        return f"PartiallyTracedEnumerator[nodes={self.node_ids}, tracable_legs={self.tracable_legs}]"
+        return (
+            f"PartiallyTracedEnumerator[nodes={self.node_ids}, "
+            f"tracable_legs={self.tracable_legs}]"
+        )
 
     def __repr__(self) -> str:
-        return f"PartiallyTracedEnumerator[nodes={self.node_ids}, tracable_legs={self.tracable_legs}]"
+        return (
+            f"PartiallyTracedEnumerator[nodes={self.node_ids}, "
+            f"tracable_legs={self.tracable_legs}]"
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, _PartiallyTracedEnumerator):
@@ -1139,6 +1226,7 @@ class _PartiallyTracedEnumerator[Tracable]:
                 f"legs: {len(self.tracable_legs)},{len(pte2.tracable_legs)}"
             )
 
+        ops_count = 0
         for k1 in progress_reporter.iterate(
             iterable=self.tensor.keys(),
             desc=(
@@ -1154,7 +1242,7 @@ class _PartiallyTracedEnumerator[Tracable]:
                     continue
                 wep1 = self.tensor[k1]
                 wep2 = pte2.tensor[k2]
-
+                ops_count += 1
                 # we have to cut off the join legs from both keys and concatenate them
                 key = tuple(k1[i] for i in kept_indices1) + tuple(
                     k2[i] for i in kept_indices2
@@ -1170,6 +1258,11 @@ class _PartiallyTracedEnumerator[Tracable]:
             (idx, leg) if isinstance(leg, int) else leg for idx, leg in open_legs2
         ]
 
+        print("Merged PTE ops count: ", ops_count)
+        print(
+            "\t pte lengths (1, 2, new): ", len(self.tensor), len(pte2.tensor), len(wep)
+        )
+        print("\t ratio: ", ops_count / (len(self.tensor) * len(pte2.tensor)))
         return _PartiallyTracedEnumerator(
             self.node_ids.union(pte2.node_ids),
             tracable_legs=tuple(tracable_legs),

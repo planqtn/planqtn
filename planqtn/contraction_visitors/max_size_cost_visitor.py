@@ -1,7 +1,7 @@
 """Finds the maximum intermediate tensor size during the contraction of
 a stabilizer code tensor network."""
 
-from typing import TYPE_CHECKING, Dict, Set, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from planqtn.contraction_visitors.contraction_visitor import ContractionVisitor
 from planqtn.stabilizer_tensor_enumerator import (
@@ -13,11 +13,14 @@ from planqtn.stabilizer_tensor_enumerator import (
 if TYPE_CHECKING:
     from planqtn.tensor_network import Contraction
 
-
 Trace = Tuple[TensorId, TensorId, List[TensorLeg], List[TensorLeg]]
 
 
-def max_tensor_size_cost(tn: "Contraction") -> int:
+def max_tensor_size_cost(
+    contraction: "Contraction",
+    cotengra: bool = True,
+    cotengra_opts: Optional[Dict[Any, Any]] = None,
+) -> int:
     """This function uses the MaxTensorSizeCostVisitor to compute the maximum intermediate
     tensor size during a stabilizer code tensor network contraction.
 
@@ -29,7 +32,12 @@ def max_tensor_size_cost(tn: "Contraction") -> int:
         int: The largest intermediate tensor size during the contraction.
     """
     visitor = MaxTensorSizeCostVisitor()
-    tn.contract(verbose=False, visitors=[visitor])
+    contraction.contract(
+        verbose=False,
+        visitors=[visitor],
+        cotengra=cotengra,
+        cotengra_opts=cotengra_opts,
+    )
     return visitor.max_size
 
 
@@ -37,7 +45,7 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
     """A contraction visitor that finds the largest intermediate tensor size
     during the contraction."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.max_size = 0
 
@@ -48,5 +56,6 @@ class MaxTensorSizeCostVisitor(ContractionVisitor):
         join_legs1: List[TensorLeg],
         join_legs2: List[TensorLeg],
         new_pte: StabilizerCodeTensorEnumerator,
+        tensor_with: bool = False,
     ) -> None:
         self.max_size = max(self.max_size, 2 ** new_pte.rank())

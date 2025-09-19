@@ -1,8 +1,9 @@
 from galois import GF2
 import numpy as np
 from planqtn.legos import Legos
+from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 from planqtn.symplectic import (
-    count_matching_stabilizers_ratio,
+    count_matching_stabilizers_ratio_all_pairs,
     omega,
     symp_to_str,
     weight,
@@ -64,23 +65,67 @@ def test_to_pauli_repr():
     assert sympl_to_pauli_repr((0, 1, 0, 1)) == (0, 3)
 
 
-def test_count_matching_stabilizer_ratio():
+def test_count_matching_stabilizer_ratio_single_leg():  # TODO: fix this test
     # Test with the [[4,2,2]] code
-    gens = Legos.stab_code_parity_422
-    ratio = count_matching_stabilizers_ratio(gens)
-    assert ratio == 1.0  # All stabilizers match
+    pte1 = StabilizerCodeTensorEnumerator(Legos.z_rep_code(3))
+    pte2 = StabilizerCodeTensorEnumerator(Legos.x_rep_code(3))
+    ratio = count_matching_stabilizers_ratio_all_pairs(pte1, pte2, [(0, 0)], [(0, 2)])
+    assert ratio == 0.25
 
     # Test with the Hadamard tensor
-    gens = Legos.h
-    ratio = count_matching_stabilizers_ratio(gens)
-    assert ratio == 0.5  # Half of the stabilizers match
+    pte1 = StabilizerCodeTensorEnumerator(Legos.stab_code_parity_422)
+    pte2 = StabilizerCodeTensorEnumerator(Legos.stab_code_parity_422)
+    ratio = count_matching_stabilizers_ratio_all_pairs(pte1, pte2, [(0, 1)], [(0, 1)])
+    assert ratio == 0.25
 
-    # Test with a custom generator matrix
-    gens = GF2([[1, 0, 0, 0], [0, 0, 1, 1], [0, 1, 0, 0]])
-    ratio = count_matching_stabilizers_ratio(gens)
+    h1 = [
+        [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 1, 1, 0, 1],
+        [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    ]
+    h2 = [[0, 0, 0, 0, 0, 1, 0, 1], [0, 0, 0, 0, 1, 0, 1, 1], [0, 1, 1, 1, 0, 0, 0, 0]]
+    pte1 = StabilizerCodeTensorEnumerator(GF2(h1))
+    pte2 = StabilizerCodeTensorEnumerator(GF2(h2))
+    ratio = count_matching_stabilizers_ratio_all_pairs(pte1, pte2, [(0, 0)], [(0, 0)])
     assert ratio == 0.5
 
-    # Test with a custom generator matrix
-    gens = GF2([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-    ratio = count_matching_stabilizers_ratio(gens)
+
+def test_count_matching_stabilizer_ratio_multiple_legs():
+    h1 = [
+        [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    ]
+    h2 = [
+        [1, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+        [0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 1, 0],
+        [0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+    ]
+    pte1 = StabilizerCodeTensorEnumerator(GF2(h1))
+    pte2 = StabilizerCodeTensorEnumerator(GF2(h2))
+    ratio = count_matching_stabilizers_ratio_all_pairs(
+        pte1, pte2, [(0, 4), (0, 1)], [(0, 2), (0, 0)]
+    )
+    assert ratio == 0.0625
+
+    h1 = [
+        [0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1],
+        [0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+    ]
+    h2 = [[1, 1, 0, 1, 0, 0, 0, 0], [0, 0, 1, 1, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 1, 1]]
+
+    pte1 = StabilizerCodeTensorEnumerator(GF2(h1))
+    pte2 = StabilizerCodeTensorEnumerator(GF2(h2))
+    ratio = count_matching_stabilizers_ratio_all_pairs(
+        pte1, pte2, [(0, 3), (0, 6)], [(0, 0), (0, 1)]
+    )
     assert ratio == 0.25

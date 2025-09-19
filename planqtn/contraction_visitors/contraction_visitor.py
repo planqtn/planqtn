@@ -2,7 +2,7 @@
 conjoin_nodes of a TensorNetwork to collect various information."""
 
 import abc
-from typing import Dict, List, Set, Tuple
+from typing import List, Tuple
 
 from planqtn.stabilizer_tensor_enumerator import (
     StabilizerCodeTensorEnumerator,
@@ -24,5 +24,6 @@ class ContractionVisitor(abc.ABC):
         join_legs1: List[TensorLeg],
         join_legs2: List[TensorLeg],
         new_pte: StabilizerCodeTensorEnumerator,
+        tensor_with: bool = False,
     ) -> None:
         """Called when two PTEs are merged."""

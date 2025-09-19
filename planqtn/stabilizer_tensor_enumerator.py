@@ -130,8 +130,8 @@ class StabilizerCodeTensorEnumerator(Tracable):
         legs: Optional[List[TensorLeg]] = None,
         coset_flipped_legs: Optional[List[Tuple[Tuple[Any, int], GF2]]] = None,
         annotation: Optional[LegoAnnotation] = None,
-        open_legs: List[TensorLeg] = (),
-        node_ids: List[TensorId] = [],
+        open_legs: Optional[Tuple[TensorLeg]] = None,
+        node_ids: Optional[List[TensorId]] = None,
     ):
         """Construct a stabilizer code tensor enumerator.
 
@@ -155,6 +155,8 @@ class StabilizerCodeTensorEnumerator(Tracable):
         Raises:
             AssertionError: If the legs are not valid.
         """
+        if open_legs is None:
+            open_legs = ()
         self.h = h
         self.annotation = annotation
         if node_ids is None:
@@ -310,20 +312,16 @@ class StabilizerCodeTensorEnumerator(Tracable):
         )
 
     @property
-    def open_legs(self) -> List[TensorLeg]:
+    def open_legs(self) -> Tuple[TensorLeg]:
         return self._open_legs
 
     @open_legs.setter
-    def open_legs(self, value: List[TensorLeg]):
+    def open_legs(self, value: Tuple[TensorLeg]) -> None:
         self._open_legs = value
 
     @property
     def node_ids(self) -> List[TensorId]:
         return self._node_ids
-
-    @property
-    def node_ids(self) -> List[TensorId]:
-        return [self.tensor_id]
 
     def merge_with(
         self,

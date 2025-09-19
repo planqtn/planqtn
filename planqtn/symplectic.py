@@ -1,9 +1,16 @@
 """Symplectic operations and utilities."""
 
-from itertools import product
-from typing import List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, List, Sequence, Tuple
+
 from galois import GF2
 import numpy as np
+from numpy.typing import NDArray
+
+from planqtn.linalg import rank
+from planqtn.tensor import TensorLeg
+
+if TYPE_CHECKING:
+    from planqtn.stabilizer_tensor_enumerator import StabilizerCodeTensorEnumerator
 
 
 def weight(op: GF2, skip_indices: Sequence[int] = ()) -> int:
@@ -189,111 +196,45 @@ def sprint(h: GF2, end: str = "\n") -> None:
     print(sstr(h), end=end)
 
 
-def count_matching_stabilizers_ratio(generators: GF2) -> float:
-    """
-    Given k x 2n binary matrix of generators (symplectic form),
-    find all stabilizers that they generate. Returns the ratio
-    of stabilizers that match on all qubits.
-    """
-    basis = np.array(generators.row_space())
-    r, n2 = basis.shape
-    n = n2 // 2
-    count = 0
+def to_symplectic(matrix: NDArray[Any]) -> NDArray[Any]:
+    """Converts a matrix with interleaved X and Z columns to standard symplectic form."""
+    # Split into X and Z columns
+    X_bits = matrix[:, ::2]
+    Z_bits = matrix[:, 1::2]
 
-    stabilizers = np.zeros((2**r, n2), dtype=int)
-    # Loop through all possible combinations of generators
-    for i, bits in enumerate(product([0, 1], repeat=r)):
-        combo = np.zeros(n2, dtype=int)
-        for j, b in enumerate(bits):
-            if b:
-                combo ^= basis[j]
-
-        stabilizers[i] = combo
-        x = combo[:n]
-        z = combo[n:]
-
-        # If all pauli operators are the same, we have a match
-        if np.all(x == x[0]) and np.all(z == z[0]):
-            count += 1
-    return float(count / 2**r)
-
-
-def find_matching_stabilizers(generators: GF2) -> float:
-    """
-    Given k x 2n binary matrix of generators (symplectic form),
-    find all stabilizers that they generate. Returns the ratio
-    of stabilizers that match on all qubits.
-    """
-    basis = np.array(generators.row_space())
-    r, n2 = basis.shape
-    n = n2 // 2
-    res = []
-
-    stabilizers = np.zeros((2**r, n2), dtype=int)
-    # Loop through all possible combinations of generators
-    for i, bits in enumerate(product([0, 1], repeat=r)):
-        combo = np.zeros(n2, dtype=int)
-        for j, b in enumerate(bits):
-            if b:
-                combo ^= basis[j]
-
-        stabilizers[i] = combo
-        x = combo[:n]
-        z = combo[n:]
-
-        # If all pauli operators are the same, we have a match
-        if np.all(x == x[0]) and np.all(z == z[0]):
-            res.append(True)
-        else:
-            res.append(False)
-    return res
-
-import numpy as np
-from itertools import product
-
-def generate_stabilizers_matrix(generators: np.ndarray) -> np.ndarray:
-    """
-    Given a k x n binary matrix of generators (symplectic form or parity columns),
-    generate all 2**k stabilizers as a 2**k x n binary matrix.
-    """
-    generators = np.array(generators.row_space())
-    r, n = generators.shape
-    stabilizers = np.zeros((2**r, n), dtype=int)
-
-    for i, bits in enumerate(product([0, 1], repeat=r)):
-        combo = np.zeros(n, dtype=int)
-        for j, b in enumerate(bits):
-            if b:
-                combo ^= generators[j]
-        stabilizers[i] = combo
-    return stabilizers
+    # Combine into X|Z form
+    return np.hstack([X_bits, Z_bits])
 
 
 def count_matching_stabilizers_ratio_all_pairs(
-    pte1, pte2, join_legs1: list[int], join_legs2: list[int]
+    pte1: "StabilizerCodeTensorEnumerator",
+    pte2: "StabilizerCodeTensorEnumerator",
+    join_legs1: list[TensorLeg],
+    join_legs2: list[TensorLeg],
 ) -> float:
     """
     Compute the ratio of stabilizers that match across all join-leg pairs
     between two PTEs.
 
     Args:
-        pte1, pte2: objects with `.h` attribute (generator matrix)
-        join_legs1, join_legs2: lists of qubit indices to join
+        pte1, pte2: StabilizerTensorEnumerator instances to calculate ratio for
+        join_legs1, join_legs2: lists of legs to join
 
     Returns:
         float: ratio of matching stabilizer pairs
     """
-    # Extract columns corresponding to all join legs and stack horizontally
-    mat1 = np.hstack([pte1.h[:, pte1.get_col_indices({leg})] for leg in join_legs1])
-    mat2 = np.hstack([pte2.h[:, pte2.get_col_indices({leg})] for leg in join_legs2])
+    M1 = to_symplectic(
+        np.hstack(
+            [pte1.h[:, pte1.get_col_indices({leg})] for leg in join_legs1]
+        ).astype(np.uint8)
+        & 1
+    )
+    M2 = to_symplectic(
+        np.hstack(
+            [pte2.h[:, pte2.get_col_indices({leg})] for leg in join_legs2]
+        ).astype(np.uint8)
+        & 1
+    )
 
-    # Generate all stabilizers for each PTE
-    S1 = generate_stabilizers_matrix(mat1)
-    S2 = generate_stabilizers_matrix(mat2)
-
-    # Compare all pairs of stabilizers; True only if they match on all columns
-    matches = (S1[:, None, :] == S2[None, :, :]).all(axis=2)
-
-    # Ratio = number of matching pairs / total number of pairs
-    ratio = matches.sum() / (S1.shape[0] * S2.shape[0])
-    return ratio
+    stacked = GF2(np.vstack([M1, M2]))
+    return float(2 ** (-rank(stacked)))
