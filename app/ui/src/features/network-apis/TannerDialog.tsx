@@ -370,7 +370,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
             Cancel (Esc)
           </Button>
           <Button colorScheme="blue" onClick={handleSubmit}>
-            Create Network (Ctrl+Enter)
+            {title === "Custom Lego Dialog" ? "Create Lego (Ctrl+Enter)" : "Create Network (Ctrl+Enter)"}
           </Button>
         </ModalFooter>
       </ModalContent>
