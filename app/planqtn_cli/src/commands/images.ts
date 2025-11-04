@@ -141,7 +141,7 @@ export async function buildAndPushImageAndUpdateEnvFile(
     console.log(`Building ${imageName}...`);
     const isTTY =
       process.stdout instanceof tty.WriteStream && process.stdout.isTTY;
-    const buildArgs = ["build", "-t", imageName, "--file", dockerfile];
+    const buildArgs = ["build", "-t", imageName, "--file", dockerfile, "--platform", "linux/amd64"];
 
     buildArgs.push("../..");
 
