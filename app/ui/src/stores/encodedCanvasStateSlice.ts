@@ -1,8 +1,5 @@
 import { StateCreator } from "zustand";
-import {
-  CanvasStateSerializer,
-  CompressedCanvasState
-} from "../features/canvas/CanvasStateSerializer";
+import { CanvasStateSerializer } from "../features/canvas/CanvasStateSerializer";
 import { CanvasStore, getCanvasIdFromUrl } from "./canvasStateStore";
 import * as LZString from "lz-string";
 
@@ -44,53 +41,9 @@ export const createEncodedCanvasStateSlice: StateCreator<
   hideDanglingLegs: false,
   hideLegLabels: false,
   decodeCanvasState: async (encoded: string) => {
-    try {
-      console.log("decoding canvas state", encoded);
-      // Try to decode as compressed format first (new format)
-      const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
-      console.log("decompressed", decompressed);
-      if (decompressed) {
-        try {
-          // Try to parse as compressed array format
-          const parsedData = JSON.parse(decompressed);
-          if (Array.isArray(parsedData) && parsedData.length >= 7) {
-            // This is the new compressed format
-            const serializer = get().canvasStateSerializer;
-            const standardFormat = serializer.fromCompressedCanvasState(
-              parsedData as CompressedCanvasState
-            );
-            const jsonString = JSON.stringify(standardFormat);
-            get().rehydrateCanvasState(jsonString);
-            return;
-          } else {
-            // This is legacy JSON format with lz-string compression
-            get().rehydrateCanvasState(decompressed);
-            return;
-          }
-        } catch {
-          console.log("JSON parsing failed, treating as raw string");
-          // If JSON parsing fails, treat as raw string
-          get().rehydrateCanvasState(decompressed);
-          return;
-        }
-      }
-    } catch (error) {
-      console.log(
-        "Failed to decode as lz-string, trying legacy base64 format",
-        error
-      );
-    }
-
-    try {
-      console.log("trying legacy base64 format");
-      // Fall back to legacy base64 format for backward compatibility
-      const decoded = atob(encoded);
-      console.log("decoded", decoded);
-      get().rehydrateCanvasState(decoded);
-    } catch (error) {
-      console.error("Failed to decode canvas state:", error);
-      throw new Error("Invalid canvas state format");
-    }
+    get().rehydrateCanvasState(
+      get().canvasStateSerializer.decodeCompressedFromUrl(encoded)
+    );
   },
 
   rehydrateCanvasState: async (jsonString: string) => {
