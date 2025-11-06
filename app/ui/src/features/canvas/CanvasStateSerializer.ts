@@ -243,7 +243,15 @@ export class CanvasStateSerializer {
       hideTypeIds: store.hideTypeIds,
       hideDanglingLegs: store.hideDanglingLegs,
       hideLegLabels: store.hideLegLabels,
-      viewport: store.viewport.with({ canvasRef: null }),
+      viewport: {
+        screenWidth: store.viewport.screenWidth,
+        screenHeight: store.viewport.screenHeight,
+        zoomLevel: store.viewport.zoomLevel,
+        logicalPanOffset: {
+          x: store.viewport.logicalPanOffset.x,
+          y: store.viewport.logicalPanOffset.y
+        }
+      } as unknown as Viewport,
       parityCheckMatrices: Object.entries(store.parityCheckMatrices).map(
         ([key, value]) => ({ key, value })
       ),
@@ -279,6 +287,7 @@ export class CanvasStateSerializer {
 
     try {
       // Validate the encoded state first
+      console.log("validating canvas state string", canvasStateString);
       const validationResult = validateCanvasStateString(canvasStateString);
       if (!validationResult.isValid) {
         console.error(
@@ -592,6 +601,7 @@ export class CanvasStateSerializer {
   public fromCompressedCanvasState(
     compressed: CompressedCanvasState
   ): SerializableCanvasState {
+    console.log("fromCompressedCanvasState", compressed);
     // Unpack boolean flags
     const unpackBooleanFlags = (flags: number) => ({
       hideConnectedLegs: !!(flags & 1),
@@ -632,23 +642,25 @@ export class CanvasStateSerializer {
       return piece;
     });
 
-    // Convert connections from compressed format
+    // Convert connections from compressed format - use plain objects to avoid class methods
     const connections: Connection[] = compressed[2].map(
       (compressedConn) =>
-        new Connection(
-          { legoId: compressedConn[0], leg_index: compressedConn[1] },
-          { legoId: compressedConn[2], leg_index: compressedConn[3] }
-        )
+        ({
+          from: { legoId: compressedConn[0], leg_index: compressedConn[1] },
+          to: { legoId: compressedConn[2], leg_index: compressedConn[3] }
+        }) as Connection
     );
 
-    // Convert viewport from compressed format
-    const viewport = new Viewport(
-      compressed[4][0], // screenWidth
-      compressed[4][1], // screenHeight
-      compressed[4][2], // zoomLevel
-      new LogicalPoint(compressed[4][3], compressed[4][4]), // logicalPanOffset
-      null
-    );
+    // Convert viewport from compressed format - use plain object to avoid class getters
+    const viewport = {
+      screenWidth: compressed[4][0],
+      screenHeight: compressed[4][1],
+      zoomLevel: compressed[4][2],
+      logicalPanOffset: {
+        x: compressed[4][3],
+        y: compressed[4][4]
+      }
+    };
 
     const booleanFlags = unpackBooleanFlags(compressed[3]);
 
@@ -661,7 +673,7 @@ export class CanvasStateSerializer {
       hideTypeIds: booleanFlags.hideTypeIds,
       hideDanglingLegs: booleanFlags.hideDanglingLegs,
       hideLegLabels: booleanFlags.hideLegLabels,
-      viewport,
+      viewport: viewport as unknown as Viewport,
       parityCheckMatrices: (compressed[6] || []).map(([key, value]) => ({
         key,
         value
@@ -701,11 +713,52 @@ export class CanvasStateSerializer {
   /**
    * Decode URL-safe string back to compressed canvas state
    */
-  public decodeCompressedFromUrl(encoded: string): CompressedCanvasState {
-    const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
-    if (!decompressed) {
-      throw new Error("Failed to decompress canvas state from URL");
+  public decodeCompressedFromUrl(encoded: string): string {
+    console.log("decoding canvas state", encoded);
+    try {
+      // Try to decode as compressed format first (new format)
+      const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
+      console.log("decompressed", decompressed);
+      if (decompressed) {
+        try {
+          // Try to parse as compressed array format
+          const parsedData = JSON.parse(decompressed);
+          if (Array.isArray(parsedData)) {
+            // This is the new compressed format (minimum 6 elements: title, pieces, connections, flags, viewport, matrixTable)
+
+            const standardFormat = this.fromCompressedCanvasState(
+              parsedData as CompressedCanvasState
+            );
+            const jsonString = JSON.stringify(standardFormat);
+
+            return jsonString;
+          } else {
+            console.log("decompressed is not an array, treating as raw string");
+            console.log("decompressed type", typeof decompressed);
+            return decompressed;
+          }
+        } catch {
+          console.log("JSON parsing failed, treating as raw string");
+          // If JSON parsing fails, treat as raw string
+          return decompressed;
+        }
+      }
+    } catch (error) {
+      console.log(
+        "Failed to decode as lz-string, trying legacy base64 format",
+        error
+      );
     }
-    return JSON.parse(decompressed) as CompressedCanvasState;
+
+    try {
+      console.log("trying legacy base64 format");
+      // Fall back to legacy base64 format for backward compatibility
+      const decoded = atob(encoded);
+      console.log("decoded", decoded);
+      return decoded;
+    } catch (error) {
+      console.error("Failed to decode canvas state:", error);
+      throw new Error("Failed to decode canvas state from URL");
+    }
   }
 }

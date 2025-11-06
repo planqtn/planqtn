@@ -15,6 +15,7 @@ import {
 import { TensorNetworkLeg } from "../../lib/TensorNetwork";
 import { validateCanvasStateString } from "../../schemas/v1/canvas-state-validator";
 import { CanvasStore } from "../../stores/canvasStateStore";
+import LZString from "lz-string";
 
 jest.mock("../../config/config");
 
@@ -1161,8 +1162,9 @@ describe("CanvasStateSerializer", () => {
 
       const compressed = serializer.toCompressedCanvasState(mockStore);
       const encoded = serializer.encodeCompressedForUrl(compressed);
-      const decoded = serializer.decodeCompressedFromUrl(encoded);
-
+      const decoded = JSON.parse(
+        LZString.decompressFromEncodedURIComponent(encoded)
+      );
       // Should be able to round-trip (with some type normalization)
       expect(decoded[0]).toBe("URL Test Canvas"); // title preserved
       expect(decoded[1]).toHaveLength(1); // pieces array preserved
@@ -1230,7 +1232,9 @@ describe("CanvasStateSerializer", () => {
 
       const compressed = serializer.toCompressedCanvasState(mockStore);
       const encoded = serializer.encodeCompressedForUrl(compressed);
-      const decoded = serializer.decodeCompressedFromUrl(encoded);
+      const decoded = JSON.parse(
+        LZString.decompressFromEncodedURIComponent(encoded)
+      );
 
       expect(decoded).toEqual(compressed);
 
@@ -1242,7 +1246,7 @@ describe("CanvasStateSerializer", () => {
     it("should throw error on invalid compressed URL data", () => {
       expect(() => {
         serializer.decodeCompressedFromUrl("invalid-compressed-data");
-      }).toThrow("Failed to decompress canvas state from URL");
+      }).toThrow("Failed to decode canvas state from URL");
     });
 
     it("should handle empty compressed state in URL format", () => {
@@ -1256,7 +1260,9 @@ describe("CanvasStateSerializer", () => {
       ];
 
       const encoded = serializer.encodeCompressedForUrl(minimal);
-      const decoded = serializer.decodeCompressedFromUrl(encoded);
+      const decoded = JSON.parse(
+        LZString.decompressFromEncodedURIComponent(encoded)
+      );
 
       expect(decoded).toEqual(minimal);
     });
@@ -1381,8 +1387,9 @@ describe("CanvasStateSerializer", () => {
       // Full pipeline
       const compressed = serializer.toCompressedCanvasState(mockStore);
       const urlEncoded = serializer.encodeCompressedForUrl(compressed);
-      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
-      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+      const finalState = JSON.parse(
+        serializer.decodeCompressedFromUrl(urlEncoded)
+      );
       const rehydrated = await serializer.rehydrate(JSON.stringify(finalState));
 
       // Verify end-to-end preservation
@@ -1531,10 +1538,10 @@ describe("CanvasStateSerializer", () => {
       console.log("Compressed state cachedTensorNetworks:", compressed[14]);
 
       const urlEncoded = serializer.encodeCompressedForUrl(compressed);
-      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
-      console.log("URL decoded cachedTensorNetworks:", urlDecoded[14]);
 
-      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+      const finalState = JSON.parse(
+        serializer.decodeCompressedFromUrl(urlEncoded)
+      );
       console.log(
         "Final state cachedTensorNetworks:",
         finalState.cachedTensorNetworks
@@ -1683,8 +1690,9 @@ describe("CanvasStateSerializer", () => {
 
       // Test URL encoding/decoding
       const urlEncoded = serializer.encodeCompressedForUrl(compressed);
-      const urlDecoded = serializer.decodeCompressedFromUrl(urlEncoded);
-      const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+      const finalState = JSON.parse(
+        serializer.decodeCompressedFromUrl(urlEncoded)
+      );
 
       // Verify cachedTensorNetworks are included
       expect(finalState.cachedTensorNetworks).toHaveLength(1);
@@ -1695,6 +1703,115 @@ describe("CanvasStateSerializer", () => {
 
       // Verify title is handled correctly for shared URLs
       expect(finalState.title).toBe("Test Canvas"); // Should use fallback for empty title
+    });
+
+    it("should handle minimal canvas with only legos and connections (no calculations)", async () => {
+      // This test reproduces the bug where a canvas with only legos and connections
+      // (no parity check matrices or other calculations) creates a 6-element compressed array.
+      // When the decoder checks for >= 7 elements, it treats this as legacy JSON format
+      // and tries to validate the array as an object, causing "root: must be object" error.
+      const lego1 = new DroppedLego(
+        {
+          type_id: "h",
+          name: "Hadamard",
+          short_name: "H",
+          description: "Hadamard gate",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [],
+          is_dynamic: false,
+          parameters: {}
+        },
+        new LogicalPoint(100, 200),
+        "lego-1"
+      );
+
+      const lego2 = new DroppedLego(
+        {
+          type_id: "h",
+          name: "Hadamard",
+          short_name: "H",
+          description: "Hadamard gate",
+          parity_check_matrix: [
+            [1, 0],
+            [0, 1]
+          ],
+          logical_legs: [0, 1],
+          gauge_legs: [],
+          is_dynamic: false,
+          parameters: {}
+        },
+        new LogicalPoint(300, 400),
+        "lego-2"
+      );
+
+      const connection = new Connection(
+        { legoId: "lego-1", leg_index: 0 },
+        { legoId: "lego-2", leg_index: 1 }
+      );
+
+      // Create a minimal store with NO calculations
+      const mockStore = createMockCanvasStore({
+        droppedLegos: [lego1, lego2],
+        connections: [connection],
+        title: "Minimal Canvas",
+        // Explicitly set all calculation fields to empty
+        parityCheckMatrices: {},
+        weightEnumerators: {},
+        cachedTensorNetworks: {},
+        highlightedTensorNetworkLegs: {},
+        selectedTensorNetworkParityCheckMatrixRows: {}
+      });
+
+      // Test the compression
+      const compressed = serializer.toCompressedCanvasState(mockStore);
+
+      // CRITICAL: A minimal canvas produces only 6 elements
+      // This is the root cause of the bug - the decoder was checking for >= 7
+      expect(compressed.length).toBe(6);
+      expect(compressed[0]).toBe("Minimal Canvas"); // title
+      expect(compressed[1]).toHaveLength(2); // 2 pieces
+      expect(compressed[2]).toHaveLength(1); // 1 connection
+      expect(typeof compressed[3]).toBe("number"); // boolean flags
+      expect(compressed[4]).toHaveLength(5); // viewport array
+      expect(Array.isArray(compressed[5])).toBe(true); // matrix table
+      // Elements 6-14 should be undefined for a minimal canvas
+      expect(compressed[6]).toBeUndefined();
+
+      const urlEncoded = serializer.encodeCompressedForUrl(compressed);
+      const decoded = serializer.decodeCompressedFromUrl(urlEncoded);
+      console.log("decoded", decoded);
+
+      const rehydrated = await serializer.rehydrate(decoded);
+
+      // // The bug: when encodedCanvasStateSlice checks for >= 7, this 6-element array
+      // // gets treated as legacy JSON and passed directly to rehydrate, which expects
+      // // an object, not an array. This causes validation to fail with "root: must be object"
+
+      // // The fix ensures fromCompressedCanvasState is called, converting to proper object format
+      // const finalState = serializer.fromCompressedCanvasState(urlDecoded);
+
+      // console.log("finalState", finalState);
+      // // Verify the conversion produces a valid object (not an array)
+      // expect(finalState).toBeInstanceOf(Object);
+      // expect(Array.isArray(finalState)).toBe(false);
+      // expect(finalState.title).toBe("Minimal Canvas");
+      // expect(finalState.pieces).toHaveLength(2);
+      // expect(finalState.connections).toHaveLength(1);
+
+      // // This should not throw an error (previously failed with "root: must be object")
+      // const rehydrated = await serializer.rehydrate(finalState);
+
+      // Verify the state was correctly rehydrated
+      expect(rehydrated.title).toBe("Minimal Canvas");
+      expect(rehydrated.droppedLegos).toHaveLength(2);
+      expect(rehydrated.connections).toHaveLength(1);
+      expect(rehydrated.parityCheckMatrices).toEqual({});
+      expect(rehydrated.weightEnumerators).toEqual({});
+      expect(rehydrated.cachedTensorNetworks).toEqual({});
     });
   });
 });

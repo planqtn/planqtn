@@ -54,7 +54,7 @@ export function validateCanvasStateString(
 ): CanvasStateValidationResult {
   try {
     const parsedCanvasStateObj = JSON.parse(canvasStateString);
-
+    console.log("parsedCanvasStateObj", parsedCanvasStateObj);
     // First try v1 schema validation
     const v1Result = validateCanvasStateV1(parsedCanvasStateObj);
     if (v1Result.isValid) {
