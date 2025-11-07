@@ -254,7 +254,7 @@ class ProgressReporter(abc.ABC):
         for item in iterable:
             yield item
             bottom_iterator_state.update()
-            if time.time() - time_last_report > self.iteration_report_frequency:
+            if time.time() - time_last_report >= self.iteration_report_frequency:
                 time_last_report = time.time()
 
                 self.log_result(
