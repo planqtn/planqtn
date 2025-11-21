@@ -13,13 +13,40 @@ from planqtn.networks.stabilizer_tanner_code import StabilizerTannerCodeTN
 
 router = APIRouter()
 
+MAX_MATRIX_DIM = int(os.getenv("PLANQTN_API_MAX_MATRIX_DIM", "2048"))
+MAX_MATRIX_CELLS = int(os.getenv("PLANQTN_API_MAX_MATRIX_CELLS", "2000000"))
+
+
+def _validate_matrix_shape(matrix: list[list[int]]):
+    if not isinstance(matrix, list) or not matrix:
+        raise HTTPException(status_code=400, detail="matrix must be a non-empty list")
+    rows = len(matrix)
+    if rows > MAX_MATRIX_DIM:
+        raise HTTPException(status_code=413, detail="matrix too many rows")
+    first_len = len(matrix[0]) if isinstance(matrix[0], list) else 0
+    if first_len > MAX_MATRIX_DIM:
+        raise HTTPException(status_code=413, detail="matrix too many columns")
+    total = rows * first_len
+    if total > MAX_MATRIX_CELLS:
+        raise HTTPException(status_code=413, detail="matrix too large")
+    # ensure rectangular and 0/1 entries
+    for r, row in enumerate(matrix):
+        if not isinstance(row, list) or len(row) != first_len:
+            raise HTTPException(status_code=400, detail="matrix rows must be equal length")
+        for v in row:
+            if v not in (0, 1):
+                raise HTTPException(status_code=400, detail="matrix must contain only 0/1 values")
+
 
 @router.post("/tannernetwork", response_model=TensorNetworkResponse)
 async def create_tanner_network(request: TannerRequest):
     try:
+        _validate_matrix_shape(request.matrix)
         matrix = GF2(request.matrix)
         tn = StabilizerTannerCodeTN(matrix)
         return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
@@ -28,6 +55,7 @@ async def create_tanner_network(request: TannerRequest):
 @router.post("/csstannernetwork", response_model=TensorNetworkResponse)
 async def create_css_tanner_network(request: TannerRequest):
     try:
+        _validate_matrix_shape(request.matrix)
         matrix = np.array(request.matrix)
 
         # Sort rows and separate into hx and hz
@@ -48,6 +76,8 @@ async def create_css_tanner_network(request: TannerRequest):
         tn = CssTannerCodeTN(hx=hx, hz=hz)
 
         return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
@@ -56,9 +86,12 @@ async def create_css_tanner_network(request: TannerRequest):
 @router.post("/mspnetwork", response_model=TensorNetworkResponse)
 def create_msp_network(request: TannerRequest):
     try:
+        _validate_matrix_shape(request.matrix)
         matrix = GF2(request.matrix)
         tn = StabilizerMeasurementStatePrepTN(matrix)
         return TensorNetworkResponse.from_tensor_network(tn, request.start_node_index)
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))

@@ -85,45 +85,31 @@ def main():
         )
         sys.exit(1)
 
-    # check user context
+    # Determine user context (prefer args, fallback to env injected by edge function)
+    task_store_url = args.task_store_url or os.environ.get("TASK_STORE_URL")
+    task_store_user_key = args.task_store_user_key or os.environ.get("TASK_STORE_USER_KEY")
+    task_store_anon_key = args.task_store_anon_key or os.environ.get("TASK_STORE_ANON_KEY")
 
     if args.task_uuid and not (
-        args.task_store_url and args.task_store_user_key and args.task_store_anon_key
+        task_store_url and task_store_user_key and task_store_anon_key
     ):
         print("Error: Task store credentials required for task-uuid mode")
         sys.exit(1)
 
-    # root = logging.getLogger()
-    # root.setLevel(
-    #     logging.DEBUG if args.debug else logging.INFO
-    # )  # Set the minimum logging level
-
-    # # Create a StreamHandler to output to stdout
-    # handler = logging.StreamHandler(sys.stdout)
-    # handler.setLevel(logging.DEBUG if args.debug else logging.INFO)
-
-    # # Create a formatter to customize the log message format
-    # formatter = logging.Formatter(
-    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    # )
-    # handler.setFormatter(formatter)
-
-    # # Add the handler to the root logger
-    # root.addHandler(handler)
     logger = logging.getLogger(__name__)
 
     if args.task_uuid:
-        logger.info(f"Starting task {args.task_uuid} with args {args}")
+        logger.info(f"Starting task {args.task_uuid} with args {args.action},{args.job_type}")
     else:
-        logger.info(f"Starting task with args {args}")
+        logger.info(f"Starting task with args {args.action},{args.job_type}")
 
     try:
         task_store = (
             SupabaseTaskStore(
                 task_db_credentials=SupabaseCredentials(
-                    url=args.task_store_url,
-                    user_key=args.task_store_user_key,
-                    anon_key=args.task_store_anon_key,
+                    url=task_store_url,
+                    user_key=task_store_user_key,
+                    anon_key=task_store_anon_key,
                 ),
                 task_updates_db_credentials=(
                     SupabaseCredentials(
@@ -140,8 +126,8 @@ def main():
             if args.job_type == "weightenumerator":
                 WeightEnumeratorTask(
                     task_details=TaskDetails(
-                        user_id=args.user_id,
-                        uuid=args.task_uuid,
+                        user_id=args.user_id or os.environ.get("TASK_USER_ID"),
+                        uuid=args.task_uuid or os.environ.get("TASK_ID"),
                         input_file=args.input_file,
                         output_file=args.output_file,
                     ),
@@ -156,11 +142,11 @@ def main():
         elif args.action == "monitor":
             JobMonitor(
                 task_details=TaskDetails(
-                    user_id=args.user_id,
-                    uuid=args.task_uuid,
+                    user_id=args.user_id or os.environ.get("TASK_USER_ID"),
+                    uuid=args.task_uuid or os.environ.get("TASK_ID"),
                     input_file=args.input_file,
                     output_file=args.output_file,
-                    execution_id=args.execution_id,
+                    execution_id=args.execution_id or os.environ.get("EXECUTION_ID"),
                 ),
                 task_store=task_store,
             ).monitor()
