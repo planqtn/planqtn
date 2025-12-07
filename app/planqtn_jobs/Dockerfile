@@ -1,6 +1,6 @@
 # Multi-stage build for optimized image size
 # Build stage
-FROM cgr.dev/chainguard/python:latest-dev as builder
+FROM cgr.dev/chainguard/python:3.13-dev as builder
 ENV LANG=C.UTF-8
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -32,7 +32,7 @@ COPY ./app/planqtn_types /app/planqtn_types
 COPY ./app/planqtn_jobs /app/planqtn_jobs
 
 # Runtime stage using distroless Python
-FROM cgr.dev/chainguard/python:latest
+FROM cgr.dev/chainguard/python:3.13
 
 COPY --from=builder /app/venv /app/venv
 
