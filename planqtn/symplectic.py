@@ -28,7 +28,7 @@ def weight(op: GF2, skip_indices: Sequence[int] = ()) -> int:
     z_inds = x_inds + n
     if len(x_inds) == 0 and len(z_inds) == 0:
         return 0
-    return np.count_nonzero(op[x_inds] | op[z_inds])
+    return int(np.count_nonzero(op[x_inds] | op[z_inds]))
 
 
 def symp_to_str(vec: GF2, swapxz: bool = False) -> str:
