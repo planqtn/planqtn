@@ -55,7 +55,7 @@ class StabilizerMeasurementStatePrepTN(TensorNetwork):
         checks = []
         check_stoppers = []
         for i in range(r):
-            weight = np.count_nonzero(parity_check_matrix[i])
+            weight = int(np.count_nonzero(parity_check_matrix[i]))
             check = StabilizerCodeTensorEnumerator(
                 h=Legos.z_rep_code(weight + 2),
                 tensor_id=f"check{i}",
