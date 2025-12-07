@@ -4,7 +4,6 @@ from typing import Dict, Tuple, Union, Any, Generator, Optional
 
 from sympy import Poly, symbols
 import sympy
-import numpy as np
 
 
 class UnivariatePoly:
