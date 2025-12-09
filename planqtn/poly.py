@@ -63,7 +63,7 @@ class UnivariatePoly:
                 first_key = list(self.dict.keys())[0]
                 assert isinstance(
                     first_key, int
-                ), f"First key is not an int: {first_key}"
+                ), f"First key is not an int: {first_key} is type {type(first_key)}"
         elif d is not None:
             raise ValueError(f"Unrecognized type: {type(d)}")
 
