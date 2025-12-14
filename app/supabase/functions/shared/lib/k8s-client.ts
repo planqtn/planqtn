@@ -230,7 +230,7 @@ export class K8sClient {
 
     try {
       console.log("Creating job with namespace:", namespace);
-      console.log("Job configuration:", JSON.stringify(job, null, 2));
+      console.log("Job configuration: [redacted env]");
 
       // Use the raw API client
       const response = await this.batchApi?.createJob(job);

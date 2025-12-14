@@ -14,6 +14,17 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+function redactSecrets(input: string): string {
+  const patterns = [
+    /([A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,})/g, // JWT-like
+    /(key|token|secret|password|authorization)=([^\s]+)/gi,
+    /(SUPABASE_[A-Z_]+|TASK_STORE_[A-Z_]+|RUNTIME_SUPABASE_[A-Z_]+):\s*[^\s]+/gi
+  ];
+  let out = input;
+  for (const p of patterns) out = out.replace(p, "$1[REDACTED]");
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -33,12 +44,44 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Verify ownership based on Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+    const token = authHeader.split(" ")[1];
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("uuid,user_id,execution_id")
+      .eq("execution_id", jobLogsRequest.execution_id)
+      .eq("user_id", userData.user.id)
+      .single();
+    if (taskError || !task) {
+      return new Response(
+        JSON.stringify({ error: "Execution not found for this user" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const client = new K8sClient();
     await client.connect();
 
     const logs = await client.getJobLogs(jobLogsRequest.execution_id);
-    console.log(`Found logs: ${logs}`);
-    return new Response(JSON.stringify({ logs: logs }), {
+    const safeLogs = redactSecrets(logs || "");
+    return new Response(JSON.stringify({ logs: safeLogs }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders }
     });
