@@ -56,6 +56,50 @@ const LegoStudioView: React.FC = () => {
   const [altKeyPressed, setAltKeyPressed] = useState(false);
   // const [message, setMessage] = useState<string>("Loading...");
 
+  // Cleanup function to remove old canvas states
+  const cleanupOldCanvasStates = useCallback(async () => {
+    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+    try {
+      // Find all canvas state keys
+      const keysToCheck = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("canvas-state-")) {
+          keysToCheck.push(key);
+        }
+      }
+
+      // Check each key and remove if older than a month
+      for (const key of keysToCheck) {
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+
+            // Check if it has a timestamp and if it's old
+            if (parsed.state && parsed.state._timestamp) {
+              if (parsed.state._timestamp < oneMonthAgo) {
+                localStorage.removeItem(key);
+                console.log(`Removed old canvas state: ${key}`);
+              }
+            } else {
+              // Remove states without timestamp (old format)
+              localStorage.removeItem(key);
+              console.log(`Removed canvas state without timestamp: ${key}`);
+            }
+          }
+        } catch {
+          // If we can't parse the stored data, remove it
+          localStorage.removeItem(key);
+          console.log(`Removed corrupted canvas state: ${key}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error during canvas state cleanup:", error);
+    }
+  }, []);
+
   const decodeCanvasState = useCanvasStore((state) => state.decodeCanvasState);
 
   const handleDynamicLegoDrop = useCanvasStore(
@@ -109,6 +153,11 @@ const LegoStudioView: React.FC = () => {
       setCurrentTitle(title);
     }
   }, [title, setTitle]);
+
+  // Cleanup old canvas states on component mount
+  useEffect(() => {
+    cleanupOldCanvasStates();
+  }, [cleanupOldCanvasStates]);
 
   // Handle URL state decoding for sharing feature
   useEffect(() => {
