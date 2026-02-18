@@ -197,10 +197,17 @@ const PauliRow = function PauliRow({
         e.stopPropagation();
         // Handle row selection on mouseup since react-window interferes with click events
         if (e.target === e.currentTarget || e.ctrlKey || e.metaKey) {
-          console.log("mouseup on row", rowIndex, "control key", e.ctrlKey, "meta", e.metaKey);
+          console.log(
+            "mouseup on row",
+            rowIndex,
+            "control key",
+            e.ctrlKey,
+            "meta",
+            e.metaKey
+          );
           // Only trigger if clicking directly on the row div, not on child elements
           handleRowClick(rowIndex, e.ctrlKey || e.metaKey);
-        } else {          
+        } else {
           console.log("handling cell click instead...", e.target);
         }
       }}
