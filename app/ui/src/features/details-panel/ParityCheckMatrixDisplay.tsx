@@ -196,9 +196,19 @@ const PauliRow = function PauliRow({
       onMouseUp={(e) => {
         e.stopPropagation();
         // Handle row selection on mouseup since react-window interferes with click events
-        if (e.target === e.currentTarget) {
+        if (e.target === e.currentTarget || e.ctrlKey || e.metaKey) {
+          console.log(
+            "mouseup on row",
+            rowIndex,
+            "control key",
+            e.ctrlKey,
+            "meta",
+            e.metaKey
+          );
           // Only trigger if clicking directly on the row div, not on child elements
-          handleRowClick(rowIndex, e.ctrlKey);
+          handleRowClick(rowIndex, e.ctrlKey || e.metaKey);
+        } else {
+          console.log("handling cell click instead...", e.target);
         }
       }}
       style={{
@@ -575,6 +585,8 @@ export const ParityCheckMatrixDisplay: React.FC<
   // Memoize handleRowClick with minimal dependencies
   const handleRowClick = useCallback(
     (rowIndex: number, ctrlKey: boolean) => {
+      console.log("handleRowClick", rowIndex, "control key", ctrlKey);
+      console.log(new Error().stack);
       if (isDisabled) {
         return;
       }
