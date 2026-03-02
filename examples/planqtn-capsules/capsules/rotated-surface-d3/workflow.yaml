@@ -1,0 +1,9 @@
+description: "Weight enumerator for rotated surface code d=3"
+entrypoint: "main"
+tasks:
+  main:
+    function: "surface_code_analysis:analyze_rotated_surface_code"
+    inputs:
+      distance:
+        type: int
+        default: 3

@@ -1,0 +1,5 @@
+description: "Weight enumerator for Steane [[7,1,3]] code"
+entrypoint: "main"
+tasks:
+  main:
+    function: "steane_code_analysis:analyze_steane_code"
