@@ -201,7 +201,7 @@ export class CloudRunClient {
     const requestBody = { overrides }; // The API expects an object with an 'overrides' key
 
     console.log(`Attempting to run job via REST API: POST ${restApiUrl}`);
-    console.log("Request Body:", JSON.stringify(requestBody, null, 2));
+    // console.log("Request Body: [redacted]");
 
     try {
       const token = await this.googleAuth.getAccessToken();
@@ -411,7 +411,7 @@ export class CloudRunClient {
     };
 
     console.log("Requesting logs with filter:", filter);
-    console.log("Logging request body:", JSON.stringify(requestBody, null, 2));
+    // console.log("Logging request body: [redacted]");
 
     try {
       const token = await this.googleAuth.getAccessToken();

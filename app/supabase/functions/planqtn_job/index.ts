@@ -81,16 +81,16 @@ Deno.serve(async (req) => {
       taskUpdatesServiceKey
     );
 
-    const taskStoreKey = authHeader.split(" ")[1];
-    if (!jobRequest.task_store_url || !taskStoreKey) {
+    const taskStoreUserToken = authHeader.split(" ")[1];
+    if (!jobRequest.task_store_anon_key || !taskStoreUserToken) {
       console.error(
-        "Missing task store URL or service key",
-        jobRequest.task_store_url,
-        taskStoreKey
+        "Missing task store anon key or user token",
+        Boolean(jobRequest.task_store_anon_key),
+        Boolean(taskStoreUserToken)
       );
       return new Response(
         JSON.stringify({
-          error: "Missing task store URL or service key"
+          error: "Missing task store anon key or user token"
         }),
         {
           status: 500,
@@ -99,12 +99,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const localRuntime =
-      jobRequest.task_store_url.includes("localhost") ||
-      jobRequest.task_store_url.includes("127.0.0.1");
-    const taskStoreUrl = localRuntime
-      ? taskUpdatesUrl
-      : jobRequest.task_store_url;
+    // Lock down: always use server-side SUPABASE_URL for Task Store
+    const taskStoreUrl = taskUpdatesUrl;
 
     const taskStore = createClient(
       taskStoreUrl,
@@ -112,20 +108,20 @@ Deno.serve(async (req) => {
       {
         global: {
           headers: {
-            Authorization: `Bearer ${taskStoreKey}`
+            Authorization: `Bearer ${taskStoreUserToken}`
           }
         }
       }
     );
 
     const { data: user, error: userError } =
-      await taskStore.auth.getUser(taskStoreKey);
+      await taskStore.auth.getUser(taskStoreUserToken);
     if (userError) {
       console.error("Failed to get user", userError);
       throw new Error(userError.message);
     }
 
-    console.info("Creating task in task store", taskStoreUrl, taskStoreKey);
+    console.info("Creating task in task store");
 
     // Insert the task into the database
     const { data: task, error: taskError } = await taskStore
@@ -184,7 +180,7 @@ Deno.serve(async (req) => {
       console.log("Creating job in Kubernetes");
       console.log("Job type:", jobRequest.job_type);
       console.log("Task UUID:", task.uuid);
-      console.log("Payload:", jobRequest.payload);
+      // console.log("Payload:", jobRequest.payload);
 
       const client = new K8sClient();
       await client.connect();
@@ -197,17 +193,6 @@ Deno.serve(async (req) => {
           "run", // action
           "--job-type",
           jobRequest.job_type, // job type
-          "--task-uuid",
-          task.uuid,
-          "--task-store-url",
-          taskStoreUrl,
-          "--task-store-user-key",
-          taskStoreKey,
-          "--task-store-anon-key",
-          jobRequest.task_store_anon_key,
-          "--user-id",
-          task.user_id,
-          "--debug",
           "--realtime",
           "--local-progress-bar"
         ],
@@ -224,7 +209,12 @@ Deno.serve(async (req) => {
         task.uuid,
         {
           RUNTIME_SUPABASE_URL: taskUpdatesUrl,
-          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey
+          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
+          TASK_STORE_URL: taskStoreUrl,
+          TASK_STORE_USER_KEY: taskStoreUserToken,
+          TASK_STORE_ANON_KEY: jobRequest.task_store_anon_key,
+          TASK_ID: task.uuid,
+          TASK_USER_ID: task.user_id
         }
       );
 
@@ -249,28 +239,20 @@ Deno.serve(async (req) => {
         ["python", "/app/planqtn_jobs/main.py"], // command
         [
           "--action",
-          "monitor", // action
-          "--execution-id",
-          executionId, // execution id
-          "--task-uuid",
-          task.uuid,
-          "--task-store-url",
-          taskStoreUrl,
-          "--task-store-user-key",
-          taskStoreKey,
-          "--task-store-anon-key",
-          jobRequest.task_store_anon_key,
-          "--user-id",
-          task.user_id,
-          "--debug",
-          "--realtime"
+          "monitor" // action
         ],
         JOBS_CONFIG["job-monitor"], // config
         "job-monitor", // service account name
         task.uuid, // postfix
         {
           RUNTIME_SUPABASE_URL: taskUpdatesUrl,
-          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey
+          RUNTIME_SUPABASE_KEY: taskUpdatesServiceKey,
+          TASK_STORE_URL: taskStoreUrl,
+          TASK_STORE_USER_KEY: taskStoreUserToken,
+          TASK_STORE_ANON_KEY: jobRequest.task_store_anon_key,
+          TASK_ID: task.uuid,
+          TASK_USER_ID: task.user_id,
+          EXECUTION_ID: executionId
         }
       );
       console.log(
