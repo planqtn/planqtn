@@ -13,6 +13,8 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v4
+        with: 
+          persist-credentials: false
       - uses: nwtgck/actions-comment-run@v3
         with:
           github-token: ${{ secrets.WORKFLOW_TOKEN }}
