@@ -292,6 +292,85 @@ describe("parity_check", () => {
 });
 
 describe("GF2 Linear Algebra Tests", () => {
+  describe("GF2.rank", () => {
+    it("returns 0 for zero matrix", () => {
+      const mx = new GF2([
+        [0, 0, 0],
+        [0, 0, 0]
+      ]);
+      expect(GF2.rank(mx)).toBe(0);
+    });
+
+    it("returns full rank for identity matrix", () => {
+      expect(GF2.rank(GF2.identity(3))).toBe(3);
+      expect(GF2.rank(GF2.eye(5))).toBe(5);
+    });
+
+    it("returns 1 for matrix with identical rows", () => {
+      const mx = new GF2([
+        [1, 0, 1],
+        [1, 0, 1],
+        [1, 0, 1]
+      ]);
+      expect(GF2.rank(mx)).toBe(1);
+    });
+
+    it("returns 2 for matrix with two independent rows", () => {
+      const mx = new GF2([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0]
+      ]);
+      expect(GF2.rank(mx)).toBe(2);
+    });
+
+    it("returns 2 when third row is sum of first two", () => {
+      const mx = new GF2([
+        [1, 0, 1],
+        [0, 1, 1],
+        [1, 1, 0] // row0 + row1
+      ]);
+      expect(GF2.rank(mx)).toBe(2);
+    });
+
+    it("returns full rank for invertible 3x3 matrix", () => {
+      const mx = new GF2([
+        [0, 1, 0],
+        [1, 0, 0],
+        [0, 0, 1]
+      ]);
+      expect(GF2.rank(mx)).toBe(3);
+    });
+
+    it("returns correct rank for tall matrix", () => {
+      const mx = new GF2([
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [0, 0]
+      ]);
+      expect(GF2.rank(mx)).toBe(2);
+    });
+
+    it("returns correct rank for wide matrix", () => {
+      const mx = new GF2([
+        [1, 0, 1, 0, 1],
+        [0, 1, 0, 1, 0]
+      ]);
+      expect(GF2.rank(mx)).toBe(2);
+    });
+
+    it("returns 0 for empty matrix", () => {
+      const mx = new GF2([[]]);
+      expect(GF2.rank(mx)).toBe(0);
+    });
+
+    it("returns 1 for single non-zero row", () => {
+      const mx = new GF2([[1, 1, 0, 1]]);
+      expect(GF2.rank(mx)).toBe(1);
+    });
+  });
+
   test("right kernel test case 1", () => {
     const mx = new GF2([
       [0, 1, 0],
