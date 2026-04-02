@@ -102,6 +102,7 @@ pip install -r app/planqtn_api/requirements.txt
 pip install -r app/planqtn_jobs/requirements.txt
 pip install -r app/planqtn_types/requirements.txt
 pip-licenses --format=csv --output-file=python-licenses.csv
+python licenses/scripts/check_licenses.py
 ```
 
 ### npm Dependencies
@@ -237,15 +238,12 @@ Periodically review and update:
 ### Common Issues
 
 1. **False Positives**: Some packages may report incorrect license information
-
    - Solution: Check package source and add exceptions
 
 2. **API Rate Limits**: Registry APIs may have rate limits
-
    - Solution: Run checks less frequently or implement caching
 
 3. **Network Issues**: Registry lookups may fail
-
    - Solution: Retry mechanism in workflows
 
 4. **Version Conflicts**: Different versions may have different licenses
