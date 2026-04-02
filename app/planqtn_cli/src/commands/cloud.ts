@@ -45,31 +45,44 @@ async function writeTerraformVars(
   await writeFile(filePath, content);
 }
 
+/** Host suffix after password: `@<prefix>.pooler.supabase.com:<port>/postgres`. */
+function supabasePoolerConnSuffix(
+  poolerRegionPrefix: string,
+  port: 6543 | 5432
+): string {
+  return `@${poolerRegionPrefix}.pooler.supabase.com:${port}/postgres`;
+}
+
 async function setupSupabase(
   configDir: string,
   projectId: string,
   dbPassword: string,
   _supabaseServiceKey: string,
-  nonInteractive: boolean
+  nonInteractive: boolean,
+  supabaseSessionPoolerRegion: string
 ): Promise<void> {
   // Run migrations
   console.log("\nRunning database migrations...");
-  // console.log(`DATABASE_URL: postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`);
+
   try {
     execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
       stdio: "inherit",
       env: {
         ...process.env,
-        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:6543/postgres`
+        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}${supabasePoolerConnSuffix(supabaseSessionPoolerRegion, 6543)}`
       }
     });
   } catch (error) {
-    console.log("Supabase failure for : ", error, "trying again with 5432");
+    console.log(
+      `Supabase failure for ${projectId}: `,
+      error,
+      "trying again with 5432"
+    );
     execSync(`npx node-pg-migrate up -m ${path.join(APP_DIR, "migrations")}`, {
       stdio: "inherit",
       env: {
         ...process.env,
-        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+        DATABASE_URL: `postgresql://postgres.${projectId}:${dbPassword}${supabasePoolerConnSuffix(supabaseSessionPoolerRegion, 5432)}`
       }
     });
   }
@@ -603,6 +616,13 @@ class PlainFileVar extends Variable {
       throw error;
     }
   }
+
+  async loadFromSavedOrEnv(vars: Variable[]): Promise<void> {
+    await super.loadFromSavedOrEnv(vars);
+    if (!this.getValue() && this.config.defaultValue !== undefined) {
+      this.setValue(this.config.defaultValue);
+    }
+  }
 }
 
 class DerivedVar extends Variable {
@@ -730,6 +750,18 @@ class VariableManager {
         },
         configDir,
         "db-password"
+      ),
+      new PlainFileVar(
+        {
+          name: "supabaseSessionPoolerRegion",
+          description:
+            "Supabase pooler hostname prefix (e.g. aws-1-us-west-2 for aws-1-us-west-2.pooler.supabase.com)",
+          defaultValue: "aws-1-us-west-2",
+          requiredFor: ["supabase"],
+          hint: `From Supabase: Project Settings → Database → Connection string (pooler). Use the segment before .pooler.supabase.com (same for transaction and session poolers).`
+        },
+        configDir,
+        "supabase-session-pooler-region"
       ),
       new PlainFileVar(
         {
@@ -931,10 +963,7 @@ cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0`,
 
   async loadExistingValues(): Promise<void> {
     for (const variable of this.variables) {
-      await variable.load(this.variables);
-      if (!variable.getValue()) {
-        await variable.loadFromEnv(this.variables);
-      }
+      await variable.loadFromSavedOrEnv(this.variables);
     }
     await this.loadGcpOutputs();
   }
@@ -1127,17 +1156,15 @@ async function checkCredentials(
 ): Promise<void> {
   console.log("\n=== Checking Credentials ===");
 
-  // Check Docker Hub credentials (needed for images phase)
-  if (!skipPhases.images) {
-    console.log("Checking Docker Hub credentials...");
-    try {
-      execSync("docker login", { stdio: "pipe" });
-    } catch {
-      throw new Error(
-        "Not logged in to Docker Hub. Please run 'docker login' first."
-      );
-    }
-  }
+  // // Check Docker Hub credentials (needed for images phase)
+  // if (!skipPhases.images) {
+  //   console.log("Checking Docker Hub credentials...");
+  //   try {
+  //     execSync("docker login", { stdio: "pipe" });
+  //   } catch {
+  //     throw new Error("Not logged in to Docker Hub.");
+  //   }
+  // }
 
   // Check Supabase credentials (needed for supabase and supabase-secrets phases)
   if (!skipPhases.supabase || !skipPhases["supabase-secrets"]) {
@@ -1147,11 +1174,12 @@ async function checkCredentials(
       // Test database connection using pg client
       const projectId = variableManager.getValue("supabaseProjectRef");
       const dbPassword = variableManager.getValue("dbPassword");
-      // `postgresql://postgres.jzyljfwifghyqglsflcj:[YOUR-PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres
-
+      const poolerRegion = variableManager.getRequiredValue(
+        "supabaseSessionPoolerRegion"
+      );
       const connectionStrings = [
-        `@aws-0-us-east-2.pooler.supabase.com:6543/postgres`,
-        `@aws-0-us-east-2.pooler.supabase.com:5432/postgres`
+        supabasePoolerConnSuffix(poolerRegion, 6543),
+        supabasePoolerConnSuffix(poolerRegion, 5432)
       ];
 
       let finalError = null;
@@ -1168,7 +1196,7 @@ async function checkCredentials(
           console.log("Supabase credentials are valid.");
           break;
         } catch (error) {
-          console.log("Supabase failure for : ", error);
+          console.log(`Supabase failure for ${projectId}: `, error);
           finalError = error;
         }
       }
@@ -1338,7 +1366,8 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("supabaseProjectRef"),
             variableManager.getRequiredValue("dbPassword"),
             variableManager.getRequiredValue("supabaseServiceKey"),
-            options.nonInteractive
+            options.nonInteractive,
+            variableManager.getRequiredValue("supabaseSessionPoolerRegion")
           );
         }
 
@@ -1580,7 +1609,7 @@ ${options.repoName ? `on repo ${options.repoName}` : ""}
         const gh =
           "gh" +
           (options.repoName ? ` -R ${options.repoName}` : "") +
-          (options.repoEnv ? ` -e ${options.repoEnv}` : "");
+          (options.repoEnv ? ` -e "${options.repoEnv}"` : "");
 
         for (const variable of userVars) {
           const config = variable.getConfig();
