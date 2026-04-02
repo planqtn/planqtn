@@ -15,5 +15,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: nwtgck/actions-comment-run@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.WORKFLOW_TOKEN }}
           allowed-associations: '["OWNER", "MEMBER"]'
