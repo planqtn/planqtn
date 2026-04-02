@@ -55,10 +55,10 @@ PlanqTN features largely live in the user's browser. However, for background
 jobs and more complicated tensor network/LEGO database we offer the PlanqTN Jobs
 and the PlanqTN API features. Key points to understand about the architecture:
 
--   the UI only talks to the Supabase instance, for 4 reasons: authentication,
-    edge functions (logic), the database for retrieval and real-time messages
--   Supabase functions contain the logic to talk to the API and the Job API of
-    Cloud Run
+- the UI only talks to the Supabase instance, for 4 reasons: authentication,
+  edge functions (logic), the database for retrieval and real-time messages
+- Supabase functions contain the logic to talk to the API and the Job API of
+  Cloud Run
 
 # Developer Setup
 
@@ -103,23 +103,23 @@ changes will trigger integration tests on Github Actions.
 
 The PlanqTN Studio involves a couple of components:
 
--   the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud
-    Run Service in the hosted version
--   the [API](#planqtn-api) is a web service to serve relatively fast, but
-    non-JS implemented logic
--   the [Jobs](#planqtn-background-jobs) are are for executing long running
-    computaitons
--   the [Edge functions](#planqtn-edge-functions)
--   the [Types](#planqtn-types)
+- the [Web UI](#web-ui-features) is a ReactJS/Vite web app, running as a Cloud
+  Run Service in the hosted version
+- the [API](#planqtn-api) is a web service to serve relatively fast, but
+  non-JS implemented logic
+- the [Jobs](#planqtn-background-jobs) are are for executing long running
+  computaitons
+- the [Edge functions](#planqtn-edge-functions)
+- the [Types](#planqtn-types)
 
 We use GCP Cloud Run for executing workloads and the API and we use Supabase for
 realtime messaging, database, authentication. It is important to understand the
 concepts of User context and Runtime context
 
--   **User context**: authentication, task store, quota function, user content
-    database
--   **Runtime context**: task management functions, api functions, realtime
-    messaging database
+- **User context**: authentication, task store, quota function, user content
+  database
+- **Runtime context**: task management functions, api functions, realtime
+  messaging database
 
 In the hosted version, a single Supabase instance takes care of both the User
 context and the Runtime context. However, the user can pick from the UI a local
@@ -168,9 +168,9 @@ options:
 
 1. Use the `dev` runtime kernel as your User context
 
--   See [Setting up `dev` kernel](#setting-up-dev-kernel)
--   start your ui with `hack/htn ui start --dev --dev-user-context` or manually
-    create/edit the `app/ui/.env` file
+- See [Setting up `dev` kernel](#setting-up-dev-kernel)
+- start your ui with `hack/htn ui start --dev --dev-user-context` or manually
+  create/edit the `app/ui/.env` file
 
 ```bash
 VITE_TASK_STORE_URL=http://127.0.0.1:54321
@@ -274,10 +274,10 @@ PlanqTN Jobs consists of the `app/planqtn_jobs`, which contains a job-monitor
 service for Cloud Run and the job execution entrypoint `main.py`, and the
 following Supabase edge functions:
 
--   `planqtn_job`/`planqtn_job_run` to kick off a job locally / Cloud Run
--   `cancel_job`/`cancel_job_run` to cancel a job locally / Cloud Run
--   `planqtn_job_logs`/`planqtn_job_logs_run` to retrieve job logs locally /
-    Cloud Run
+- `planqtn_job`/`planqtn_job_run` to kick off a job locally / Cloud Run
+- `cancel_job`/`cancel_job_run` to cancel a job locally / Cloud Run
+- `planqtn_job_logs`/`planqtn_job_logs_run` to retrieve job logs locally /
+  Cloud Run
 
 In the database the `tasks` table contains the task execution results and
 `task_updates` contain the realtime updates from the task execution.
@@ -294,23 +294,23 @@ check/jobs-integration
 This is the typical, fastest way to check that things are working, but it's
 heavy on local resources.
 
--   run `hack/htn kernel start` to spin up the `dev` kernel.
--   Then, to build the jobs images and load them into the k3d cluster, run
-    `hack/htn images jobs --build --load` (this will trigger the restart of the
-    Supabase cluster). To run without supabase restart, which is a bit slow, you
-    can instead run `hack/htn images jobs --build --load-no-restart`, but then
-    in order for the Edge Runtime to pick up the new image tag, you'll need to
-    manually run `npx supabase functions serve --no-verify-jwt` from the `app`
-    folder in the repo. This also has the benefit of showing the logs of the
-    functions. Use `--no-verify-jwt` when the dev kernel is only for runtime
-    context, otherwise if it's for both user/runtime contexts, then JWT
-    verification is fine. This is because runtime context is using the user JWT
-    to authenticate as the user in the task store when storing back the results.
-    However, if the runtime context supabase is separate from the task store
-    instance, then the Supabase JWT verification will fail on the runtime
-    context, as the JWT is valid only in the User Context Supabase instance.
--   After modifying `planqtn_jobs` or `planqtn` or the edge function
-    `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
+- run `hack/htn kernel start` to spin up the `dev` kernel.
+- Then, to build the jobs images and load them into the k3d cluster, run
+  `hack/htn images jobs --build --load` (this will trigger the restart of the
+  Supabase cluster). To run without supabase restart, which is a bit slow, you
+  can instead run `hack/htn images jobs --build --load-no-restart`, but then
+  in order for the Edge Runtime to pick up the new image tag, you'll need to
+  manually run `npx supabase functions serve --no-verify-jwt` from the `app`
+  folder in the repo. This also has the benefit of showing the logs of the
+  functions. Use `--no-verify-jwt` when the dev kernel is only for runtime
+  context, otherwise if it's for both user/runtime contexts, then JWT
+  verification is fine. This is because runtime context is using the user JWT
+  to authenticate as the user in the task store when storing back the results.
+  However, if the runtime context supabase is separate from the task store
+  instance, then the Supabase JWT verification will fail on the runtime
+  context, as the JWT is valid only in the User Context Supabase instance.
+- After modifying `planqtn_jobs` or `planqtn` or the edge function
+  `planqtn_job`, run `export KERNEL_ENV=dev; check/jobs-integration`
 
 ### Using the `dev` kernel as a local runtime context only - relaxation of authorization
 
@@ -319,11 +319,11 @@ cloud user context, the authorization must be relaxed - as the user information
 is not available in this local instance, given it is in a different supabase
 instance. This consists of two actions:
 
--   run edge functions with --no-verify-jwt:
-    `npx supabase functions serve --no-verify-jwt`
--   disable the Row Level Security on the `task_updates` table on the local UI
-    (http://127.0.0.1:54323/project/default/auth/policies) - otherwise progress
-    bars and realtime update for tasks won't work
+- run edge functions with --no-verify-jwt:
+  `npx supabase functions serve --no-verify-jwt`
+- disable the Row Level Security on the `task_updates` table on the local UI
+  (http://127.0.0.1:54323/project/default/auth/policies) - otherwise progress
+  bars and realtime update for tasks won't work
 
 ### The `local` workflow
 
@@ -331,12 +331,12 @@ This is a workflow tested automatically by Github Actions, and is only required
 for developers to run if there is an issue with the Github Actions. These steps
 basically follow the relevant steps from .github/local_integration_tests.yml:
 
--   install the `htn` tool: `hack/cli_build.sh --install`
--   run `htn kernel start` to spin up the `local` kernel.
--   Then, to build the jobs images and load them into the k3d cluster, run
-    `hack/htn images jobs --build --load-no-restart --k3d-cluster local`
--   After modifying `planqtn_jobs` or `planqtn`, run
-    `export KERNEL_ENV=local; check/jobs-integration`
+- install the `htn` tool: `hack/cli_build.sh --install`
+- run `htn kernel start` to spin up the `local` kernel.
+- Then, to build the jobs images and load them into the k3d cluster, run
+  `hack/htn images jobs --build --load-no-restart --k3d-cluster local`
+- After modifying `planqtn_jobs` or `planqtn`, run
+  `export KERNEL_ENV=local; check/jobs-integration`
 
 ### The `cloud` workflow
 
@@ -344,13 +344,13 @@ This is a workflow tested automatically by Github Actions, and is only required
 for developers to run if there is an issue with the Github Actions. These steps
 basically follow the relevant steps from .github/cloud_integration_tests.yml:
 
--   setup `gcloud` to have you logged in, see Personal GCP setup below
--   ensure that your Supabase env points to your personal Supabase project, see
-    Personal Supabase setup below
--   To build the jobs images and deploy them to Cloud Run, run
-    `hack/htn cloud deploy`
--   After modifying any of the components run
-    `export KERNEL_ENV=cloud; check/jobs-integration`
+- setup `gcloud` to have you logged in, see Personal GCP setup below
+- ensure that your Supabase env points to your personal Supabase project, see
+  Personal Supabase setup below
+- To build the jobs images and deploy them to Cloud Run, run
+  `hack/htn cloud deploy`
+- After modifying any of the components run
+  `export KERNEL_ENV=cloud; check/jobs-integration`
 
 ### The `broken-hybrid-cloud` workflow with local Supabase Edge Functions + Cloud Run testing
 
@@ -450,15 +450,15 @@ PlanqTN Types define the data interface between different components. The
 following categories of types are used in both Python components and Typescript
 components and hence need careful consideration when changing them.
 
--   PlanqTN API calls request and response JSON objects
--   PlanqTN Database Schema:
-    -   authentication and quotas
-    -   PlanqTN Jobs task management
-        -   task definitions and results
-        -   progress report update JSON objects that are stored in a Supabase
-            table
--   PlanqTN Studio encoded canvas state JSON objects - to export into JSON
-    files, encoded URL state and copy-paste features
+- PlanqTN API calls request and response JSON objects
+- PlanqTN Database Schema:
+  - authentication and quotas
+  - PlanqTN Jobs task management
+    - task definitions and results
+    - progress report update JSON objects that are stored in a Supabase
+      table
+- PlanqTN Studio encoded canvas state JSON objects - to export into JSON
+  files, encoded URL state and copy-paste features
 
 At the moment these are a bit all over the place, but eventually we should have
 a nice centralized, automated way of keeping in sync the Python and the
@@ -479,10 +479,10 @@ Supabase, then with GCP, and finally deploy the Supabase functions/secrets.
 
 Requirements:
 
--   NodeJS
--   Docker (Desktop)
--   DockerHub identifier, where you can push images to
-    -   run `docker login` to ensure you're logged in
+- NodeJS
+- Docker (Desktop)
+- DockerHub identifier, where you can push images to
+  - run `docker login` to ensure you're logged in
 
 From the root of the repo we'll start with installing some necessary tools in
 the `node_modules` directory locally.
@@ -491,8 +491,8 @@ the `node_modules` directory locally.
 npm install --include-dev
 ```
 
--   a free tier Supabase.com project and secrets (see below)
--   a free tier GCP project and secrets (see below)
+- a free tier Supabase.com project and secrets (see below)
+- a free tier GCP project and secrets (see below)
 
 ### 1. Personal Supabase setup for database storage, realtime messaging and authentication
 
@@ -501,13 +501,13 @@ npm install --include-dev
 3. Create a a new project e.g. "<yourname>-planqtn-dev" or similar
 4. Note down the following secrets:
 
--   note down the database password (though you can reset it from your
-    dashboard)
--   your project ref (which is in the `[project-ref].supabase.co` in the
-    "Connect" menu point) <img src="docs/fig/supabase_connect.png">
--   Get the `service_role` key and `anon_key` from your personal Supabase
-    project via Project Settings/API Keys, click Reveal for the service role
-    key: <img src="docs/fig/supabase_connect3.png">
+- note down the database password (though you can reset it from your
+  dashboard)
+- your project ref (which is in the `[project-ref].supabase.co` in the
+  "Connect" menu point) <img src="docs/fig/supabase_connect.png">
+- Get the `service_role` key and `anon_key` from your personal Supabase
+  project via Project Settings/API Keys, click Reveal for the service role
+  key: <img src="docs/fig/supabase_connect3.png">
 
 ### 2. Personal GCP setup for running workloads
 
@@ -571,6 +571,7 @@ hack/api-integrations
 
 If everything's good, you're ready to setup Github Actions! As we need to setup
 a bunch of secrets and variables, we tried to make this less of a pain as well.
+Ensure that you have `gh` installed (https://github.com/cli/cli), and that you ran `gh auth login`.
 Follow the prompts from this script:
 
 ```
@@ -626,20 +627,20 @@ hack/htn cloud unlock-terraform-state
 
 The CLI can be run in two modes:
 
--   `local` mode - this is what end users will use, and what the CLI is meant to
-    be used for in production and CI/CD environments. The tool operates in
-    $HOME/.planqtn and has prepackaged configuration definitions for the
-    supabase / k8s clusters. It does not need the project git repo to work. The
-    postfix on all objects (containers, docker network, supabase instance) is
-    `-local`.
+- `local` mode - this is what end users will use, and what the CLI is meant to
+  be used for in production and CI/CD environments. The tool operates in
+  $HOME/.planqtn and has prepackaged configuration definitions for the
+  supabase / k8s clusters. It does not need the project git repo to work. The
+  postfix on all objects (containers, docker network, supabase instance) is
+  `-local`.
 
--   `dev` mode - it works solely from the git repo, and is meant to "dog food"
-    our own CLI tool, but without the need to build the tool and install it
-    every time things change, also allowing for fast reload of function
-    development in supabase. The postfix on all objects (containers, docker
-    network, supabase instance) is `-dev`. The `dev` mode also allows for image
-    building (`images` subcommand), and deployment to the cloud environments.
-    the `dev` mode is what's used for cloud deployment as well.
+- `dev` mode - it works solely from the git repo, and is meant to "dog food"
+  our own CLI tool, but without the need to build the tool and install it
+  every time things change, also allowing for fast reload of function
+  development in supabase. The postfix on all objects (containers, docker
+  network, supabase instance) is `-dev`. The `dev` mode also allows for image
+  building (`images` subcommand), and deployment to the cloud environments.
+  the `dev` mode is what's used for cloud deployment as well.
 
 ### Dev mode - using htn for development (and cloud deployment)
 
@@ -680,12 +681,12 @@ KERNEL_ENV is used by the integration tests (`check/jobs-integration` and
 
 The options for KERNEL_ENV are:
 
--   `local` simulates the user's local environment, assuming that there is a
-    local kernel running and has the latest images.
--   `dev` for a locally running development kernel that allows "hot reload"
-    features from the repo directly
--   `cloud` will connect to the developer's personal cloud services, including
-    Supabase and Google Cloud Platform (GCP) project for Cloud Run.
+- `local` simulates the user's local environment, assuming that there is a
+  local kernel running and has the latest images.
+- `dev` for a locally running development kernel that allows "hot reload"
+  features from the repo directly
+- `cloud` will connect to the developer's personal cloud services, including
+  Supabase and Google Cloud Platform (GCP) project for Cloud Run.
 
 Note that `local` and `dev` are allowed to coexist, but currently ports are the
 same, so only one of them can be active at a time. If you try to start both of
@@ -770,29 +771,29 @@ your migrations!
 We use Material for MkDocs for the site, and it's deployed alongside the UI in
 the same container. To test it locally, you have a couple of options:
 
--   docs only: `mkdocs serve` from the repo root
--   docs alongside with the app in dev mode:
-    -   in one terminal I like to run
-        `hack/rerun mkdocs build --strict --site-dir app/ui/public/docs` (or run
-        it manually if you don't have entr setup for `hack/rerun`)
-    -   in the other one run `cd app/ui && npm run dev`
--   as the `npm run build` command packages the docs automatically, the
-    containerized and production build modes will follow the same steps as in
-    [Web UI features](#web-ui-features)
+- docs only: `mkdocs serve` from the repo root
+- docs alongside with the app in dev mode:
+  - in one terminal I like to run
+    `hack/rerun mkdocs build --strict --site-dir app/ui/public/docs` (or run
+    it manually if you don't have entr setup for `hack/rerun`)
+  - in the other one run `cd app/ui && npm run dev`
+- as the `npm run build` command packages the docs automatically, the
+  containerized and production build modes will follow the same steps as in
+  [Web UI features](#web-ui-features)
 
 # Reference for `.env` files
 
 It is a bit crazy how many `.env` files are in this project due to all the small
 tools. Here's a description of each of them.
 
--   `app/supabase/functions/.env` - Supabase Edge Function configuration for
-    local and dev look at `app/supabase/functions/.env.local/dev`, for cloud
-    `app/supabase/functions/.env.cloud` templates for documentation on the
-    variables.
--   `app/ui/.env` - UI configuration. See [Web UI features](#web-ui-features)
-    for instructions.
--   `app/planqtn_api/.env` - API config, only needs an `API_IMAGE` to report its
-    own version. We might remove this.
--   `app/planqtn_jobs/.env` - just kidding - no env file here, however
-    `RUNTIME_SUPABASE_URL` and `RUNTIME_SERVICE_KEY` are passed by the K8s job
-    edge function and they are setup as secrets for the Cloud Run version.
+- `app/supabase/functions/.env` - Supabase Edge Function configuration for
+  local and dev look at `app/supabase/functions/.env.local/dev`, for cloud
+  `app/supabase/functions/.env.cloud` templates for documentation on the
+  variables.
+- `app/ui/.env` - UI configuration. See [Web UI features](#web-ui-features)
+  for instructions.
+- `app/planqtn_api/.env` - API config, only needs an `API_IMAGE` to report its
+  own version. We might remove this.
+- `app/planqtn_jobs/.env` - just kidding - no env file here, however
+  `RUNTIME_SUPABASE_URL` and `RUNTIME_SERVICE_KEY` are passed by the K8s job
+  edge function and they are setup as secrets for the Cloud Run version.
