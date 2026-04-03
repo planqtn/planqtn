@@ -1,4 +1,29 @@
 # .github/workflows/comment-run.yml
+
+# name: Comment executor
+# on:
+#   issue_comment:
+#     types: [created, edited]
+# jobs:
+#   preview-pr-from-fork:    
+#     if: >
+#       github.event.comment.body == '/preview-pr' && 
+#       github.actor == 'balopat'
+#     permissions:
+#       contents: write
+#       issues: write
+#       pull-requests: write
+#       actions: write
+#     runs-on: ubuntu-latest    
+#     steps:   
+#       - uses: actions/checkout@v4
+#         with: 
+#           persist-credentials: false
+#       - name: create branch
+#         uses: 
+#         run: echo "Action triggered by authorized user's specific comment."
+
+
 name: "Comment run"
 on:
   issue_comment:
@@ -14,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: 
-          persist-credentials: false
+          token: ${{ secrets.WORKFLOW_TOKEN }}
       - uses: nwtgck/actions-comment-run@v3
         with:
           github-token: ${{ secrets.WORKFLOW_TOKEN }}
