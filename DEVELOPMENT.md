@@ -565,8 +565,8 @@ integration tests are passing:
 
 ```
 export KERNEL_ENV=cloud
-hack/job-integrations
-hack/api-integrations
+check/jobs-integration
+check/api-integration
 ```
 
 If everything's good, you're ready to setup Github Actions! As we need to setup

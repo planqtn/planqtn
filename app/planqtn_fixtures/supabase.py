@@ -8,6 +8,11 @@ from supabase import Client, create_client
 from planqtn_fixtures.env import getEnvironment
 
 
+def _strip_config_str(value: str) -> str:
+    """Trim whitespace from config values (safe no-op for well-formed files)."""
+    return value.strip() if isinstance(value, str) else value
+
+
 def create_supabase_setup():
     # Get local Supabase status
     env = getEnvironment()
@@ -43,9 +48,9 @@ def create_supabase_setup():
         config = json.loads(result.stdout)
 
     # Get service role key from status
-    api_url = config["API_URL"]
-    service_role_key = config["SERVICE_ROLE_KEY"]
-    anon_key = config["ANON_KEY"]
+    api_url = _strip_config_str(config["API_URL"])
+    service_role_key = _strip_config_str(config["SERVICE_ROLE_KEY"])
+    anon_key = _strip_config_str(config["ANON_KEY"])
 
     # Create Supabase client with service role
     service_client: Client = create_client(api_url, service_role_key)
@@ -65,8 +70,10 @@ def create_supabase_setup():
 
     test_user_id = auth_response.user.id
 
-    # Get user token
-    auth_response = service_client.auth.sign_in_with_password(
+    # Sign in with the anon key so the access token matches browser clients.
+    # Hosted Supabase edge-function JWT verification is stricter than local CLI defaults.
+    anon_client: Client = create_client(api_url, anon_key)
+    auth_response = anon_client.auth.sign_in_with_password(
         {"email": test_user_email, "password": test_user_password}
     )
 

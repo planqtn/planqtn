@@ -564,6 +564,7 @@ def request_job(supabase_setup, payload) -> requests.Response:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {supabase_user_key}",
+            "apikey": supabase_anon_key,
         },
     )
 

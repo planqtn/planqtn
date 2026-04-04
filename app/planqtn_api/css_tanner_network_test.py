@@ -94,6 +94,7 @@ def sample_tensornetwork_call(supabase_setup, network_type, matrix):
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {supabase_user_key}",
+            "apikey": supabase_setup["anon_key"],
         },
     )
 
