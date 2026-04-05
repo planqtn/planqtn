@@ -548,6 +548,13 @@ def request_job(supabase_setup, payload) -> requests.Response:
         else f"{supabase_url}/functions/v1/planqtn_job_run"
     )
 
+    print(
+        {
+            "user_id": supabase_setup["test_user_id"],
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {supabase_user_key}",
+        }
+    )
     response = requests.post(
         url,
         json={
@@ -564,7 +571,6 @@ def request_job(supabase_setup, payload) -> requests.Response:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {supabase_user_key}",
-            "apikey": supabase_anon_key,
         },
     )
 

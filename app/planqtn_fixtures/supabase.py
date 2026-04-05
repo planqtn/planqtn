@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import subprocess
 import uuid
+from urllib.parse import urlparse
+
 import pytest
 from supabase import Client, create_client
 from planqtn_fixtures.env import getEnvironment
@@ -13,6 +15,42 @@ def _strip_config_str(value: str) -> str:
     return value.strip() if isinstance(value, str) else value
 
 
+def _planqtn_config_dir() -> str:
+    return os.path.expanduser("~/.planqtn/.config")
+
+
+def _assert_cloud_api_url_matches_supabase_project_id_file(api_url: str) -> None:
+    """Fail fast if supabase_config.json points at a different project than ~/.planqtn/.config."""
+    project_id_path = os.path.join(_planqtn_config_dir(), "supabase-project-id")
+    try:
+        with open(project_id_path, encoding="utf-8") as f:
+            expected = f.read().strip()
+    except OSError as e:
+        raise AssertionError(
+            f"Cloud integration tests require {project_id_path} (Supabase project ref). {e}"
+        ) from e
+    if not expected:
+        raise AssertionError(
+            f"Cloud integration tests require a non-empty Supabase project ref in {project_id_path}"
+        )
+    parsed = urlparse(api_url if "://" in api_url else f"https://{api_url}")
+    host = (parsed.hostname or "").strip().lower()
+    suffix = ".supabase.co"
+    if not host.endswith(suffix):
+        raise AssertionError(
+            f"supabase-project-id is set but API_URL host {host!r} is not *{suffix}; "
+            f"cannot verify project ref. API_URL={api_url!r}"
+        )
+    actual = host[: -len(suffix)]
+    if actual != expected:
+        raise AssertionError(
+            f"Supabase API_URL project ref {actual!r} does not match "
+            f"supabase-project-id file ({expected!r}). API_URL={api_url!r}. "
+            "Align generated/supabase_config.json with ~/.planqtn/.config/supabase-project-id "
+            "(e.g. re-run `hack/htn cloud deploy` or `hack/htn cloud generate-integration-test-config`)."
+        )
+
+
 def create_supabase_setup():
     # Get local Supabase status
     env = getEnvironment()
@@ -20,7 +58,8 @@ def create_supabase_setup():
     if env == "cloud":
         # Load supabase_config.json
         with open(
-            os.path.expanduser("~/.planqtn/.config/generated/supabase_config.json"), "r"
+            os.path.join(_planqtn_config_dir(), "generated", "supabase_config.json"),
+            "r",
         ) as f:
             config = json.load(f)
     else:
@@ -51,6 +90,9 @@ def create_supabase_setup():
     api_url = _strip_config_str(config["API_URL"])
     service_role_key = _strip_config_str(config["SERVICE_ROLE_KEY"])
     anon_key = _strip_config_str(config["ANON_KEY"])
+
+    if env == "cloud":
+        _assert_cloud_api_url_matches_supabase_project_id_file(api_url)
 
     # Create Supabase client with service role
     service_client: Client = create_client(api_url, service_role_key)

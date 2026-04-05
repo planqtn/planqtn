@@ -34,7 +34,7 @@ def get_logs_run(task_id, supabase_setup):
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {supabase_user_key}",
-            "apikey": supabase_setup["anon_key"],
+            # "apikey": supabase_setup["anon_key"],
         },
     )
     return response.json()
@@ -72,7 +72,7 @@ def create_cloud_run_job(supabase_setup):
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {supabase_user_key}",
-            "apikey": supabase_anon_key,
+            # "apikey": supabase_user_key,
         },
     )
     assert (

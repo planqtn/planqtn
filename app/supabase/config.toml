@@ -309,7 +309,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.tensornetwork]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/tensornetwork/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -321,20 +321,20 @@ entrypoint = "./functions/tensornetwork/index.ts"
 
 [functions.planqtn_job]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
-static_files = [ "./functions/planqtn_job/gke-dev.pem"]
+static_files = ["./functions/planqtn_job/gke-dev.pem"]
 
 
 [functions.planqtn_job_logs]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job_logs/index.ts"
@@ -344,8 +344,8 @@ entrypoint = "./functions/planqtn_job_logs/index.ts"
 
 [functions.cancel_job]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/cancel_job/index.ts"
@@ -354,8 +354,8 @@ entrypoint = "./functions/cancel_job/index.ts"
 # static_files = [ "./functions/cancel_job/*.html" ]
 [functions.planqtn_job_run]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job_run/index.ts"
@@ -366,8 +366,8 @@ entrypoint = "./functions/planqtn_job_run/index.ts"
 
 [functions.planqtn_job_logs_run]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/planqtn_job_logs_run/index.ts"
@@ -377,8 +377,8 @@ entrypoint = "./functions/planqtn_job_logs_run/index.ts"
 
 [functions.cancel_job_run]
 enabled = true
-verify_jwt = true
-import_map = "./functions/import_map.json" 
+verify_jwt = false
+import_map = "./functions/import_map.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/cancel_job_run/index.ts"
@@ -387,7 +387,7 @@ entrypoint = "./functions/cancel_job_run/index.ts"
 # static_files = [ "./functions/cancel_job_run/*.html" ]
 [functions.version]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/version/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

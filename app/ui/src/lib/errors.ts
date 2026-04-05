@@ -26,8 +26,12 @@ export async function checkSupabaseStatus(
   retries = 1
 ): Promise<{ isHealthy: boolean; message: string }> {
   try {
-    // Try to make a simple query to check if Supabase is responding
-    const { error } = await supabaseClient.from("").select("1");
+    // Hit a real table path. `from("").select("1")` becomes `/rest/v1/?select=1`, which
+    // newer PostgREST / Supabase Data API rejects (401 / schema access errors).
+    const { error } = await supabaseClient
+      .from("tasks")
+      .select("uuid")
+      .limit(1);
 
     if (error) {
       return {

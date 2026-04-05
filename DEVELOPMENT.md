@@ -565,8 +565,8 @@ integration tests are passing:
 
 ```
 export KERNEL_ENV=cloud
-check/jobs-integration
-check/api-integration
+GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0) check/jobs-integration
+GCP_SVC_CREDENTIALS=$(cat ~/.planqtn/.config/tf-deployer-svc.json | base64 -w 0) check/api-integration
 ```
 
 If everything's good, you're ready to setup Github Actions! As we need to setup
