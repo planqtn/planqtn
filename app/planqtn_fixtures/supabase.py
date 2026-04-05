@@ -20,14 +20,19 @@ def _planqtn_config_dir() -> str:
 
 
 def _assert_cloud_api_url_matches_supabase_project_id_file(api_url: str) -> None:
-    """Fail fast if supabase_config.json points at a different project than ~/.planqtn/.config."""
+    """Fail fast if supabase_config.json points at a different project than ~/.planqtn/.config.
+
+    If ``supabase-project-id`` is missing (e.g. CI without local ~/.planqtn config), skip the check.
+    """
     project_id_path = os.path.join(_planqtn_config_dir(), "supabase-project-id")
+    if not os.path.isfile(project_id_path):
+        return
     try:
         with open(project_id_path, encoding="utf-8") as f:
             expected = f.read().strip()
     except OSError as e:
         raise AssertionError(
-            f"Cloud integration tests require {project_id_path} (Supabase project ref). {e}"
+            f"Cloud integration tests require reading {project_id_path} (Supabase project ref). {e}"
         ) from e
     if not expected:
         raise AssertionError(
