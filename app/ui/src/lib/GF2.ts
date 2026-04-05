@@ -271,6 +271,29 @@ export class GF2 {
   }
 
   /**
+   * Compute the rank of a GF2 matrix.
+   * The rank is the number of non-zero rows in the row echelon form.
+   */
+  static rank(mx: GF2): number {
+    const reduced = GF2.gauss(mx);
+    const [rows] = reduced.shape;
+    let count = 0;
+    for (let i = 0; i < rows; i++) {
+      let isZeroRow = true;
+      for (let j = 0; j < reduced.shape[1]; j++) {
+        if (reduced.get(i, j) === 1) {
+          isZeroRow = false;
+          break;
+        }
+      }
+      if (!isZeroRow) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
    * Computes the right kernel of the matrix
    */
   static right_kernel(matrix: GF2): GF2 {

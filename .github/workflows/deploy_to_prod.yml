@@ -74,6 +74,8 @@ jobs:
           # Description: Supabase project ID
           # Hint: Get it from your supabase project settings. Store it in /home/balopat/.planqtn/.config/supabase-project-id
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          # Description: Supabase pooler hostname prefix (e.g. aws-1-us-west-2); CLI appends .pooler.supabase.com and ports 6543/5432.
+          SUPABASE_SESSION_POOLER_REGION: ${{ vars.SUPABASE_SESSION_POOLER_REGION || 'aws-0-us-east-2' }}
           # Description: Environment
           # Default: development
           UI_MODE: ${{ inputs.ui_mode }}
