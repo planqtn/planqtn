@@ -15,16 +15,25 @@ echo "App version: $APP_VERSION"
 echo "What's the new version? (e.g. 0.1.0-alpha.3)"
 read NEW_VERSION
 
-sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/g" pyproject.toml
+# BSD sed (macOS) requires a backup extension after -i; use '' for none.
+# GNU sed accepts plain -i for no backup.
+sed_inplace() {
+  if [ "$(uname -s)" = "Darwin" ]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
 
+sed_inplace "s/^version = \".*\"/version = \"$NEW_VERSION\"/g" pyproject.toml
 
-sed -i "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/planqtn_cli/package.json
+sed_inplace "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/planqtn_cli/package.json
 npm install --prefix app/planqtn_cli
 
-sed -i "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/ui/package.json
+sed_inplace "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/ui/package.json
 npm install --prefix app/ui
 
-sed -i "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/package.json
+sed_inplace "s/^  \"version\": \".*\"/  \"version\": \"$NEW_VERSION\"/g" app/package.json
 npm install --prefix app
 
 echo "Done. Please check the changes, and commit them."
