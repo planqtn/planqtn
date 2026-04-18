@@ -5,11 +5,8 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic_settings import BaseSettings
-from supabase import create_client, Client
-import supabase
 import jwt
 from jwt import PyJWKClient
-import requests
 
 
 class Settings(BaseSettings):
@@ -20,7 +17,12 @@ class Settings(BaseSettings):
     port: int = os.getenv("PORT", 5005)
     supabase_url: str = os.environ["SUPABASE_APP_URL"]
     supabase_key: str = os.environ["SUPABASE_KEY"]
-    supabase_jwt_secret: str = os.environ["SUPABASE_JWT_SECRET"]
+
+
+@lru_cache(maxsize=8)
+def _jwks_client(supabase_app_url: str) -> PyJWKClient:
+    jwks_url = f"{supabase_app_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    return PyJWKClient(jwks_url)
 
 
 @lru_cache
@@ -47,15 +49,16 @@ def get_supabase_user_from_token(
         if not token:
             raise ValueError("No token")
 
-        # Get the JWT secret from environment
-        jwt_secret = get_settings().supabase_jwt_secret
-
-        # Decode the JWT token
+        settings = get_settings()
+        issuer = f"{settings.supabase_url.rstrip('/')}/auth/v1"
+        jwks = _jwks_client(settings.supabase_url)
+        signing_key = jwks.get_signing_key_from_jwt(token.credentials)
         payload = jwt.decode(
             token.credentials,
-            jwt_secret,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256", "RS256"],
             audience="authenticated",
+            issuer=issuer,
         )
 
         # Extract user information
