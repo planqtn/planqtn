@@ -59,7 +59,9 @@ async function setupSupabase(
   dbPassword: string,
   _supabaseServiceKey: string,
   nonInteractive: boolean,
-  supabaseSessionPoolerRegion: string
+  supabaseSessionPoolerRegion: string,
+  /** From ~/.planqtn/.config/supabase-access-token or SUPABASE_ACCESS_TOKEN env */
+  planqtnSupabaseAccessToken?: string
 ): Promise<void> {
   // Run migrations
   console.log("\nRunning database migrations...");
@@ -89,24 +91,32 @@ async function setupSupabase(
 
   // Link and deploy Supabase functions
   console.log("\nLinking and deploying Supabase functions...");
+  const accessTokenPath = path.join(os.homedir(), ".supabase", "access-token");
+  const tokenFromPlanqtn = planqtnSupabaseAccessToken?.trim();
+  const hasSupabaseAccessToken =
+    Boolean(process.env.SUPABASE_ACCESS_TOKEN) ||
+    Boolean(tokenFromPlanqtn) ||
+    fs.existsSync(accessTokenPath);
+
   const supabaseEnv = {
     ...process.env,
-    SUPABASE_DB_PASSWORD: dbPassword
+    SUPABASE_DB_PASSWORD: dbPassword,
+    ...(tokenFromPlanqtn ? { SUPABASE_ACCESS_TOKEN: tokenFromPlanqtn } : {})
   };
 
-  // Check for Supabase access token
-  const accessTokenPath = path.join(os.homedir(), ".supabase", "access-token");
-  if (!process.env.SUPABASE_ACCESS_TOKEN && !fs.existsSync(accessTokenPath)) {
+  // Supabase CLI accepts ~/.supabase/access-token, SUPABASE_ACCESS_TOKEN, or we pass planqtn's token above.
+  if (!hasSupabaseAccessToken) {
     if (process.stdin.isTTY || !nonInteractive) {
       console.log(
         "Supabase access token not found. Please login to Supabase..."
       );
       execSync(`npx supabase --workdir ${APP_DIR} login`, {
-        stdio: "inherit"
+        stdio: "inherit",
+        env: supabaseEnv
       });
     } else {
       throw new Error(
-        "Supabase access token not found and not in interactive mode. Please run `supabase login` first."
+        "Supabase access token not found and not in interactive mode. Set SUPABASE_ACCESS_TOKEN, save a token in ~/.planqtn/.config/supabase-access-token, or run `supabase login` once (writes ~/.supabase/access-token)."
       );
     }
   }
@@ -119,7 +129,8 @@ async function setupSupabase(
     }
   );
   execSync(`npx supabase --workdir ${APP_DIR} functions deploy`, {
-    stdio: "inherit"
+    stdio: "inherit",
+    env: supabaseEnv
   });
 
   // Save Supabase API URL
@@ -1367,7 +1378,8 @@ export function setupCloudCommand(program: Command): void {
             variableManager.getRequiredValue("dbPassword"),
             variableManager.getRequiredValue("supabaseServiceKey"),
             options.nonInteractive,
-            variableManager.getRequiredValue("supabaseSessionPoolerRegion")
+            variableManager.getRequiredValue("supabaseSessionPoolerRegion"),
+            variableManager.getValue("supabaseAccessToken")
           );
         }
 

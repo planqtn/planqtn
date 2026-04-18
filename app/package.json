@@ -7,7 +7,7 @@
     "dotenv": "^16.5.0",
     "node-pg-migrate": "^8.0.0",
     "pg": "^8.16.0",
-    "supabase": "^2.84.10"
+    "supabase": "^2.90.0"
   },
   "type": "module",
   "devDependencies": {
