@@ -258,6 +258,7 @@ export const ModalRoot: React.FC<ModalRootProps> = ({
           onClose={closeCustomLegoDialog}
           onSubmit={handleCustomLegoSubmit}
           title="Create Custom Lego"
+          submitButtonText="Create Lego"
           showLogicalLegs={true}
         />
       )}
