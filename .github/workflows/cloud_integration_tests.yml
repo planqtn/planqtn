@@ -22,6 +22,10 @@ on:
       - "check/**integration"
       - ".github/workflows/cloud_integration_tests.yml"
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "planqtn/**"
       - "pyproject.toml"

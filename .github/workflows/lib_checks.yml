@@ -7,6 +7,10 @@ on:
       - "pyproject.toml"
 
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "planqtn/**"
       - "pyproject.toml"

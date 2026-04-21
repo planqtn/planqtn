@@ -12,6 +12,10 @@ on:
       - "check/api**"
       - ".github/workflows/api_server_checks.yml"
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "planqtn/**"
       - "pyproject.toml"
