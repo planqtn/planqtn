@@ -17,7 +17,8 @@ export const SelectionManager = forwardRef<SelectionManagerRef>((_, ref) => {
     connections,
     selectionBox,
     setSelectionBox,
-    canvasRef
+    canvasRef,
+    setSuppressNextCanvasClick
   } = useCanvasStore();
 
   const viewport = useCanvasStore((state) => state.viewport);
@@ -55,6 +56,7 @@ export const SelectionManager = forwardRef<SelectionManagerRef>((_, ref) => {
         return; // Don't update tensorNetwork during dragging
       }
 
+      console.log("selectedLegos", selectedLegos);
       // Update selection state based on the selected Legos
       if (selectedLegos.length === 1) {
         if (e.ctrlKey || e.metaKey) {
@@ -127,6 +129,7 @@ export const SelectionManager = forwardRef<SelectionManagerRef>((_, ref) => {
             legos: selectedLegos,
             connections: internalConnections
           });
+          console.log("newNetwork", newNetwork);
           setTensorNetwork(newNetwork);
         }
       } else {
@@ -184,6 +187,11 @@ export const SelectionManager = forwardRef<SelectionManagerRef>((_, ref) => {
     (e: React.MouseEvent) => {
       if (!selectionBox.isSelecting) return;
 
+      // Marquee ends with mousedown on the canvas but mouseup on this overlay. After the
+      // overlay unmounts, Firefox (unlike Chromium) may still fire a click on the canvas,
+      // which would clear the selection we just set — suppress that one click.
+      setSuppressNextCanvasClick(true);
+
       const left = Math.min(selectionBox.startX, selectionBox.currentX);
       const right = Math.max(selectionBox.startX, selectionBox.currentX);
       const top = Math.min(selectionBox.startY, selectionBox.currentY);
@@ -198,7 +206,12 @@ export const SelectionManager = forwardRef<SelectionManagerRef>((_, ref) => {
         justFinished: true
       });
     },
-    [selectionBox, handleSelectionBoxUpdate, setSelectionBox]
+    [
+      selectionBox,
+      handleSelectionBoxUpdate,
+      setSelectionBox,
+      setSuppressNextCanvasClick
+    ]
   );
 
   // Expose handleMouseDown to parent via ref

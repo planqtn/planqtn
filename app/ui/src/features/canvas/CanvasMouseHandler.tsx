@@ -624,8 +624,8 @@ export const CanvasMouseHandler: React.FC<CanvasMouseHandlerProps> = ({
 
     return () => {
       canvas?.removeEventListener("dragover", handleDragOver);
-      canvas?.addEventListener("dragenter", handleCanvasDragEnter);
-      canvas?.addEventListener("dragleave", handleCanvasDragLeave);
+      canvas?.removeEventListener("dragenter", handleCanvasDragEnter);
+      canvas?.removeEventListener("dragleave", handleCanvasDragLeave);
       canvas?.removeEventListener("dragend", handleDragEnd);
       canvas?.removeEventListener("mousedown", handleMouseDown);
       canvas?.removeEventListener("mousemove", handleMouseMove);
