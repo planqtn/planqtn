@@ -11,23 +11,23 @@ educational, small-scale research use cases and experimentation. It is using
 Google Cloud Run to spin up weight enumerator calculation jobs that are subject
 to the following limitations:
 
--   Memory: 1 GB RAM
--   Execution time: 5 minutes
+- Memory: 1 GB RAM
+- Execution time: 5 minutes
 
 Network creation is executed through API calls to the Python framework using a
 Cloud Run Service, and is similarly subject to constraints:
 
--   Memory: 512 MB RAM
--   Execution time: 5 minutes
+- Memory: 512 MB RAM
+- Execution time: 5 minutes
 
 When the user runs into any of these limits, the job or API call will fail.
 
 The current quota system is very simple:
 
--   Every user gets 500 "Cloud minutes" per month.
--   Each job execution costs 5 minutes (independent of the actual runtime
-    length).
--   Each API call costs 0.5 minutes.
+- Every user gets 500 "Cloud minutes" per month.
+- Each job execution costs 5 minutes (independent of the actual runtime
+  length).
+- Each API call costs 0.5 minutes.
 
 <center>
 <img src="/docs/fig/quotas_modal.png" width="50%">
@@ -43,10 +43,10 @@ runtime.
 
 System requirements:
 
--   Docker (Desktop)
--   NodeJS 22+
--   minimum 12 GB Hard disk
--   minimum 8 GB RAM
+- Docker (Desktop)
+- NodeJS 22+
+- minimum 12 GB Hard disk
+- minimum 8 GB RAM
 
 Installation steps:
 
@@ -54,7 +54,7 @@ Installation steps:
    and TN for tensor network)
 
 ```
-pip install planqtn-cli
+npm install planqtn-cli
 ```
 
 2. Run the kernel
