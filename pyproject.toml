@@ -1,52 +1,48 @@
 [project]
 name = "planqtn"
 version = "0.3.0"
-authors = [
-  { name="Balint Pato", email="balint@planqtn.com" },
-]
-maintainers = [
-  { name="PlanqTN Contributors", email="planqtn@planqtn.com" },
-]
+authors = [{ name = "Balint Pato", email = "balint@planqtn.com" }]
+maintainers = [{ name = "PlanqTN Contributors", email = "planqtn@planqtn.com" }]
 description = "PlanqTN is a tensor network quantum error correction library implementation of the quantum LEGO framework."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
-    # pin these for galois - otherwise build errors on 3.12
-    # "llvmlite>=0.43.0",
-    # "numba>=0.61.0",
-    
-    "numpy",
-    "galois > 0.4",
-    "matplotlib",
-    "scipy",
-    "sympy",
-    "pyzx",
-    "cotengra",
-    "cmaes",
-    "attrs",
-    "supabase",
+  # pin these for galois - otherwise build errors on 3.12
+  # "llvmlite>=0.43.0",
+  # "numba>=0.61.0",
+
+  "numpy",
+  "galois > 0.4",
+  "matplotlib",
+  "scipy",
+  "sympy",
+  "pyzx",
+  "cotengra==0.7.5",
+  "cmaes",
+  "attrs",
+  "supabase",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "ipython",
-    "pytest-cov",
-    "aiohttp",
-    # Want to pin to avoid surprise pull request changes
-    "black==25.1.0",
-    "mypy==1.16.0",
-    "pydantic-to-typescript==2.0.0",
-    "scipy-stubs",
-    "types-tqdm",
-    "pylint==3.3.7",
-    "flake8",    
+  "pytest",
+  "ipython",
+  "pytest-cov",
+  "aiohttp",
+  # Want to pin to avoid surprise pull request changes
+  "black==25.1.0",
+  "mypy==1.16.0",
+  "pydantic-to-typescript==2.0.0",
+  "scipy-stubs",
+  "types-tqdm",
+  "pylint==3.3.7",
+  "flake8",
 ]
 
 [project.urls]

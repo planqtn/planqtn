@@ -22,6 +22,7 @@ import { usePanelConfigStore } from "@/stores/panelConfigStore.ts";
 import { SVG_COLORS } from "../../lib/PauliColors.ts";
 import { FaDropletSlash } from "react-icons/fa6";
 import { DroppedLego } from "@/stores/droppedLegoStore.ts";
+import { GF2 } from "../../lib/GF2.ts";
 
 interface ParityCheckMatrixDisplayProps {
   matrix: number[][];
@@ -376,7 +377,8 @@ export const ParityCheckMatrixDisplay: React.FC<
   if (!matrix || matrix.length === 0) return null;
 
   const numLegs = matrix[0].length / 2;
-  const n_stabilizers = matrix.length;
+  const pcmRank = GF2.rank(new GF2(matrix));
+  const nLogicalQubits = numLegs - pcmRank;
 
   // Memoize getPauliString and getPauliColor
   const getPauliString = useCallback((row: number[]) => {
@@ -732,9 +734,9 @@ export const ParityCheckMatrixDisplay: React.FC<
             }}
           >
             <Text fontWeight="bold" fontSize="sm">
-              [[{numLegs}, {numLegs - n_stabilizers}]]{" "}
+              [[{numLegs}, {nLogicalQubits}]]{" "}
               {matrix.every(isCSS) ? "CSS" : "non-CSS"} stabilizer{" "}
-              {numLegs - n_stabilizers > 0 ? " subspace" : " state"}
+              {nLogicalQubits > 0 ? " subspace" : " state"}
               {isDisabled && " (inactive)"}
             </Text>
             <Text fontSize="xs" color="gray.500">
