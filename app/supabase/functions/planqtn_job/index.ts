@@ -17,7 +17,7 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.103.3";
 import { JobRequest, JobResponse } from "../shared/lib/types.ts";
 import { K8sClient } from "../shared/lib/k8s-client.ts";
 import { JOBS_CONFIG } from "../shared/config/jobs_config.ts";

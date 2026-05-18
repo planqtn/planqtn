@@ -2,7 +2,10 @@ name: License Check
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "pyproject.toml"
       - "app/**/requirements.txt"
@@ -15,7 +18,10 @@ on:
       - ".github/workflows/license-check.yml"
 
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "pyproject.toml"
       - "app/**/requirements.txt"

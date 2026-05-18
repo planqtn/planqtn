@@ -22,13 +22,20 @@ import {
   Box,
   Link,
   Icon,
-  useColorModeValue
+  useColorModeValue,
+  FormControl,
+  FormLabel,
+  Input
 } from "@chakra-ui/react";
 import { checkSupabaseStatus } from "../../lib/errors.ts";
 import { FiExternalLink } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-import { privacyPolicyUrl, termsOfServiceUrl } from "../../config/config.ts";
+import {
+  config,
+  privacyPolicyUrl,
+  termsOfServiceUrl
+} from "../../config/config.ts";
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -47,6 +54,8 @@ export default function AuthDialog({
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [retryingConnection, setRetryingConnection] = useState(false);
+  const [devEmail, setDevEmail] = useState("");
+  const [devPassword, setDevPassword] = useState("");
   const linkColor = useColorModeValue("blue.500", "blue.300");
 
   useEffect(() => {
@@ -170,6 +179,65 @@ export default function AuthDialog({
         description:
           "If this is your first time, complete the sign in with GitHub",
         status: "info",
+        duration: 3000,
+        isClosable: true
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+        toast({
+          title: "Error",
+          description: err.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true
+        });
+      } else {
+        setError("An unknown error occurred");
+        toast({
+          title: "Error",
+          description: "An unknown error occurred",
+          status: "error",
+          duration: 5000,
+          isClosable: true
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDevPasswordSignIn = async () => {
+    if (config.env !== "development") {
+      return;
+    }
+    if (!userContextSupabase) {
+      setError("No supabase client available");
+      return;
+    }
+    if (connectionError) {
+      setError("Cannot sign in due to backend connection issues");
+      return;
+    }
+    const email = devEmail.trim();
+    if (!email || !devPassword) {
+      setError("Enter email and password");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { error: signInError } =
+        await userContextSupabase.auth.signInWithPassword({
+          email,
+          password: devPassword
+        });
+      if (signInError) throw signInError;
+      toast({
+        title: "Signed in",
+        description: "Dev password sign-in succeeded",
+        status: "success",
         duration: 3000,
         isClosable: true
       });
@@ -360,6 +428,61 @@ export default function AuthDialog({
                   Sign in with GitHub
                 </Button>
               </VStack>
+
+              {config.env === "development" && (
+                <Box
+                  width="full"
+                  mt={2}
+                  pt={6}
+                  borderTopWidth="1px"
+                  borderColor="chakra-border-color"
+                >
+                  <Alert status="warning" borderRadius="md" mb={4}>
+                    <AlertIcon />
+                    <Box>
+                      <AlertTitle>Warning: dev only!</AlertTitle>
+                      <AlertDescription fontSize="sm">
+                        Email and password sign-in is enabled only when{" "}
+                        <code>VITE_ENV=development</code>. Do not use in
+                        production builds.
+                      </AlertDescription>
+                    </Box>
+                  </Alert>
+                  <VStack spacing={3} width="full" align="stretch">
+                    <FormControl>
+                      <FormLabel mb={1}>Email</FormLabel>
+                      <Input
+                        type="email"
+                        autoComplete="username"
+                        value={devEmail}
+                        onChange={(e) => setDevEmail(e.target.value)}
+                        isDisabled={!!connectionError || isLoading}
+                        placeholder="you@example.com"
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel mb={1}>Password</FormLabel>
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        value={devPassword}
+                        onChange={(e) => setDevPassword(e.target.value)}
+                        isDisabled={!!connectionError || isLoading}
+                      />
+                    </FormControl>
+                    <Button
+                      onClick={handleDevPasswordSignIn}
+                      colorScheme="orange"
+                      width="full"
+                      size="md"
+                      isLoading={isLoading}
+                      isDisabled={!!connectionError}
+                    >
+                      Sign in with email & password (dev)
+                    </Button>
+                  </VStack>
+                </Box>
+              )}
 
               <Text fontSize="sm" textAlign="center" color="gray.600">
                 By signing in, you agree to our{" "}

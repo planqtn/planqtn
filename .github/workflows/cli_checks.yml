@@ -7,6 +7,10 @@ on:
       - "check/cli**"
       - ".github/workflows/cli_checks.yml"
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "app/planqtn_cli/**"
       - "check/cli**"

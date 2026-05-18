@@ -1,4 +1,4 @@
-import { SupabaseClient } from "npm:@supabase/supabase-js@2.50.0";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2.103.3";
 
 export async function reserveQuota(
   user_id: string,

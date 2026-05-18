@@ -9,6 +9,10 @@ on:
       - "pyproject.toml"
       - ".github/workflows/ui_checks.yml"
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "app/ui/**"
       - "check/ui**"

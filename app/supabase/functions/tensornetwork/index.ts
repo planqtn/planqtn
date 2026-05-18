@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { cloudRunHeaders } from "../shared/lib/cloud-run-client.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.103.3";
 import { reserveQuota } from "../shared/lib/quotas.ts";
 
 const URL_CONFIG = {

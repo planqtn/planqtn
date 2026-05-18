@@ -13,6 +13,10 @@ on:
       - ".github/workflows/jobs_checks.yml"
       - "app/planqtn_types/**"
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "planqtn/**"
       - "requirements.txt"

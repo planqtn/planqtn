@@ -84,7 +84,7 @@ Please use the following Zenodo citation to cite PlanqTN:
 
 # License
 
-Copyright 2025 Balint Pato
+Copyright 2025-2026 Balint Pato
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 this file except in compliance with the License. You may obtain a copy of the

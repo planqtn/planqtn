@@ -31,6 +31,7 @@ interface TannerDialogProps {
   cssOnly?: boolean;
   showLogicalLegs?: boolean;
   helpUrl?: string;
+  submitButtonText?: string;
 }
 
 export const TannerDialog: React.FC<TannerDialogProps> = ({
@@ -41,7 +42,8 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
   cssOnly = false,
   showLogicalLegs = true,
   defaultStabilizer = `XXXX\nZZZZ`,
-  helpUrl
+  helpUrl,
+  submitButtonText = "Create Network"
 }) => {
   const [matrixText, setMatrixText] = useState("");
   const [error, setError] = useState("");
@@ -370,7 +372,7 @@ export const TannerDialog: React.FC<TannerDialogProps> = ({
             Cancel (Esc)
           </Button>
           <Button colorScheme="blue" onClick={handleSubmit}>
-            Create Network (Ctrl+Enter)
+            {submitButtonText} (Ctrl+Enter)
           </Button>
         </ModalFooter>
       </ModalContent>

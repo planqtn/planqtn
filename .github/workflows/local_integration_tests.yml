@@ -25,6 +25,10 @@ on:
       - ".github/workflows/local_integration_tests.yml"
 
   push:
+    branches:
+      - main
+      - develop
+      - "hotfix/**"
     paths:
       - "planqtn/**"
       - "requirements.txt"
