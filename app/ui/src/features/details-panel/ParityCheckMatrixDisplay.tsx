@@ -657,9 +657,7 @@ export const ParityCheckMatrixDisplay: React.FC<
     const n = matrix[0].length / 2; // Number of qubits
     // Column spec: n columns for the X block, a vertical bar, then n for the Z block.
     const colSpec = `${"c".repeat(n)}|${"c".repeat(n)}`;
-    const body = matrix
-      .map((row) => `  ${row.join(" & ")} \\\\`)
-      .join("\n");
+    const body = matrix.map((row) => `  ${row.join(" & ")} \\\\`).join("\n");
     const latexStr =
       `\\left[\\begin{array}{${colSpec}}\n` + body + `\n\\end{array}\\right]`;
     try {
