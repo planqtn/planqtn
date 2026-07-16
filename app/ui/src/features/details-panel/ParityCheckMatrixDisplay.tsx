@@ -653,6 +653,20 @@ export const ParityCheckMatrixDisplay: React.FC<
     }
   };
 
+  const copyMatrixAsLatex = () => {
+    const n = matrix[0].length / 2; // Number of qubits
+    // Column spec: n columns for the X block, a vertical bar, then n for the Z block.
+    const colSpec = `${"c".repeat(n)}|${"c".repeat(n)}`;
+    const body = matrix.map((row) => `  ${row.join(" & ")} \\\\`).join("\n");
+    const latexStr =
+      `\\left[\\begin{array}{${colSpec}}\n` + body + `\n\\end{array}\\right]`;
+    try {
+      navigator.clipboard.writeText(latexStr);
+    } catch (error) {
+      setError("Failed to copy to clipboard: " + error);
+    }
+  };
+
   if (isScalar) {
     return (
       <Box>
@@ -796,6 +810,9 @@ export const ParityCheckMatrixDisplay: React.FC<
               </DropdownMenuItem>
               <DropdownMenuItem onClick={copyMatrixAsQdistrnd}>
                 Copy as qdistrnd
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyMatrixAsLatex}>
+                Copy as LaTeX array
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
