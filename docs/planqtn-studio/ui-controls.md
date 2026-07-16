@@ -81,14 +81,14 @@ canvas.
 
 With the panel toolbar the user can control the visibility of the
 
--   [Building Blocks Panel](#building-blocks-panel) - building blocks (tensors
-    and networks) for tensor network construction
--   [Canvases Panel](#canvases-panel) - to manage the user's canvases
--   [Details Panel](#details-panel) - to show the details of the canvas, a
-    selected LEGO or a selected subnetwork
--   [Subnets Panel](#subnets-panel) - to manage cached sub networks and related
-    calculations
--   [Floating toolbar](#floating-toolbar) - for selected subnetworks
+- [Building Blocks Panel](#building-blocks-panel) - building blocks (tensors
+  and networks) for tensor network construction
+- [Canvases Panel](#canvases-panel) - to manage the user's canvases
+- [Details Panel](#details-panel) - to show the details of the canvas, a
+  selected LEGO or a selected subnetwork
+- [Subnets Panel](#subnets-panel) - to manage cached sub networks and related
+  calculations
+- [Floating toolbar](#floating-toolbar) - for selected subnetworks
 
 <center>
 <img src="/docs/fig/panel_toolbar.png" width="50%">
@@ -188,7 +188,13 @@ interactions and allows for certain sorting the generators, combining the
 generators, selecting them for highlights in the tensor network and navigating
 to the columns corresponding to the LEGOs with the given legs.
 
-In these example video snippets we'll walk you through these.
+The PCM can also be copied
+
+- as a LaTeX `array` (with the X and Z blocks separated by a vertical bar) for use in papers and notes
+- as a numpy array using the symplectic representation
+- as qdistRnd format
+
+In these example video snippets we'll walk you through some of these features.
 
 1. In this video we show the parity check matrix of a LEGO on the details panel
    and then calculate the parity check matrix for a subnet, and name it My
@@ -205,13 +211,12 @@ In these example video snippets we'll walk you through these.
    [QDistRnd](https://github.com/QEC-pages/QDistRnd) instruction for distance
    calculation.<div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107481001?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="pcm_03_menu_np_and_gap"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 4. Highlighting the tensor network is possible through LEGO-level row selections
-
-    1. by single click on a row - selects/unselects a single row
-    2. Ctrl+Click / Cmd + Click on a row adds/removes the row to/from the
-       selection
-    3. Clearing the selection is also possible by using the Clear highlights
-       button on the toolbar from the Details Panel
-          <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107484255?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight LEGO legs"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+   1. by single click on a row - selects/unselects a single row
+   2. Ctrl+Click / Cmd + Click on a row adds/removes the row to/from the
+      selection
+   3. Clearing the selection is also possible by using the Clear highlights
+      button on the toolbar from the Details Panel
+         <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1107484255?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1&unmute_button=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="highlight LEGO legs"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 5. Highlight the tensor network using tensor network level stabilizer generator
    is possible for the dangling legs as of now, internal legs have to be
