@@ -10,6 +10,21 @@ import { getApiUrl } from "../config/config";
 import { config } from "../config/config";
 import { Connection } from "./connectionStore";
 
+function connectionsBetweenLegos(
+  connections: Connection[],
+  legoIds: Set<string>
+): Connection[] {
+  return connections.filter(
+    (connection) =>
+      legoIds.has(connection.from.legoId) && legoIds.has(connection.to.legoId)
+  );
+}
+
+function connectionListsEqual(a: Connection[], b: Connection[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((connA) => b.some((connB) => Connection.equal(connA, connB)));
+}
+
 function defaultNameForTensorNetwork(tensorNetwork: TensorNetwork): string {
   if (tensorNetwork.legos.length === 1) {
     return `Lego ${tensorNetwork.legos[0].instance_id} | ${tensorNetwork.legos[0].short_name}`;
@@ -125,6 +140,7 @@ export interface TensorNetworkSlice {
     networkSignature: string,
     newName: string
   ) => void;
+  syncSelectedTensorNetworkWithCanvas: () => void;
 
   unCacheTensorNetwork: (networkSignature: string) => void;
   unCachePCM: (networkSignature: string) => void;
@@ -275,7 +291,9 @@ export const useTensorNetworkSlice: StateCreator<
         });
         const allConnectionsOnCanvas =
           cachedTensorNetwork.tensorNetwork.connections.every((connection) =>
-            connectionsOnCanvasBetweenTNLegos.some((c) => c.equals(connection))
+            connectionsOnCanvasBetweenTNLegos.some((c) =>
+              Connection.equal(c, connection)
+            )
           );
         const noExtraConnectionsOnCanvas =
           connectionsOnCanvasBetweenTNLegos.length ===
@@ -491,6 +509,30 @@ export const useTensorNetworkSlice: StateCreator<
     set({ tensorNetwork: network });
   },
 
+  syncSelectedTensorNetworkWithCanvas: () => {
+    const tensorNetwork = get().tensorNetwork;
+    if (!tensorNetwork) return;
+
+    const legoIds = new Set(
+      tensorNetwork.legos.map((lego) => lego.instance_id)
+    );
+    const currentConnections = connectionsBetweenLegos(
+      get().connections,
+      legoIds
+    );
+
+    if (connectionListsEqual(currentConnections, tensorNetwork.connections)) {
+      return;
+    }
+
+    get().setTensorNetwork(
+      new TensorNetwork({
+        legos: tensorNetwork.legos,
+        connections: currentConnections
+      })
+    );
+  },
+
   clearAllHighlightedTensorNetworkLegs: () => {
     set((state) => {
       state.highlightedTensorNetworkLegs = {};
@@ -618,6 +660,7 @@ export const useTensorNetworkSlice: StateCreator<
     cachedTensorNetwork: CachedTensorNetwork | null;
     weightEnumerator: WeightEnumerator | null;
   }> => {
+    get().syncSelectedTensorNetworkWithCanvas();
     const tensorNetwork = get().tensorNetwork;
     if (!tensorNetwork)
       return {
@@ -781,6 +824,7 @@ export const useTensorNetworkSlice: StateCreator<
   calculateParityCheckMatrix: async (
     onSuccess?: (networkSignature: string, networkName: string) => void
   ): Promise<void> => {
+    get().syncSelectedTensorNetworkWithCanvas();
     const tensorNetwork = get().tensorNetwork;
     if (!tensorNetwork) return;
 

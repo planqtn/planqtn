@@ -1,29 +1,41 @@
 import { StateCreator } from "zustand";
 import { CanvasStore } from "./canvasStateStore";
 
+export type ConnectionEndpoint = {
+  legoId: string;
+  leg_index: number;
+};
+
+export type ConnectionLike = {
+  from: ConnectionEndpoint;
+  to: ConnectionEndpoint;
+};
+
 export class Connection {
   constructor(
-    public from: {
-      legoId: string;
-      leg_index: number;
-    },
-    public to: {
-      legoId: string;
-      leg_index: number;
-    }
+    public from: ConnectionEndpoint,
+    public to: ConnectionEndpoint
   ) {}
 
-  public equals(other: Connection): boolean {
+  public static equal(
+    a: ConnectionLike | null | undefined,
+    b: ConnectionLike | null | undefined
+  ): boolean {
+    if (!a?.from || !a?.to || !b?.from || !b?.to) return false;
     return (
-      (this.from.legoId === other.from.legoId &&
-        this.from.leg_index === other.from.leg_index &&
-        this.to.legoId === other.to.legoId &&
-        this.to.leg_index === other.to.leg_index) ||
-      (this.from.legoId === other.to.legoId &&
-        this.from.leg_index === other.to.leg_index &&
-        this.to.legoId === other.from.legoId &&
-        this.to.leg_index === other.from.leg_index)
+      (a.from.legoId === b.from.legoId &&
+        a.from.leg_index === b.from.leg_index &&
+        a.to.legoId === b.to.legoId &&
+        a.to.leg_index === b.to.leg_index) ||
+      (a.from.legoId === b.to.legoId &&
+        a.from.leg_index === b.to.leg_index &&
+        a.to.legoId === b.from.legoId &&
+        a.to.leg_index === b.from.leg_index)
     );
+  }
+
+  public equals(other: ConnectionLike): boolean {
+    return Connection.equal(this, other);
   }
 
   public containsLego(legoId: string): boolean {
@@ -72,6 +84,7 @@ export const createConnectionsSlice: StateCreator<
       [],
       [...oldConnections, ...connections]
     );
+    get().syncSelectedTensorNetworkWithCanvas();
   },
 
   addConnections: (newConnections) => {
@@ -88,12 +101,16 @@ export const createConnectionsSlice: StateCreator<
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
     get().updateIsActiveForCachedTensorNetworks([], newConnections);
+    get().syncSelectedTensorNetworkWithCanvas();
   },
 
   removeConnections: (connectionsToRemove) => {
     set((state) => {
       state.connections = state.connections.filter(
-        (connection) => !connectionsToRemove.includes(connection)
+        (connection) =>
+          !connectionsToRemove.some((toRemove) =>
+            Connection.equal(connection, toRemove)
+          )
       );
       state.connectedLegos = state.droppedLegos.filter((lego) =>
         state.connections.some(
@@ -106,6 +123,7 @@ export const createConnectionsSlice: StateCreator<
     // Update leg hide states after connections change
     get().updateAllLegHideStates();
     get().updateIsActiveForCachedTensorNetworks([], connectionsToRemove);
+    get().syncSelectedTensorNetworkWithCanvas();
   },
 
   isLegConnected: (legoId, leg_index) => {
