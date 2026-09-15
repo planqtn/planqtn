@@ -480,6 +480,7 @@ describe("updateIsActiveForCachedTensorNetworks", () => {
       cachedTensorNetworks: {},
       droppedLegos: [],
       connections: [],
+      tensorNetwork: null,
       legHideStates: {},
       legConnectionStates: {},
       connectionHighlightStates: {},
@@ -868,5 +869,136 @@ describe("updateIsActiveForCachedTensorNetworks", () => {
       expect(store.getCachedTensorNetwork("network1")?.isActive).toBe(true);
       expect(store.getCachedTensorNetwork("network2")?.isActive).toBe(false);
     });
+  });
+
+  describe("selected tensor network connection sync", () => {
+    it("should drop a removed connection from the selected tensor network", () => {
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const conn1 = createTestConnection("lego1", "lego2", 0, 0);
+      const conn2 = createTestConnection("lego1", "lego2", 1, 1);
+
+      store.addDroppedLegos([lego1, lego2]);
+      store.addConnections([conn1, conn2]);
+      store.setTensorNetwork(
+        new TensorNetwork({
+          legos: [lego1, lego2],
+          connections: [conn1, conn2]
+        })
+      );
+
+      store.removeConnections([conn2]);
+
+      const selected = useCanvasStore.getState().tensorNetwork;
+      expect(selected).not.toBeNull();
+      expect(selected!.connections).toHaveLength(1);
+      expect(Connection.equal(selected!.connections[0], conn1)).toBe(true);
+    });
+
+    it("should add a new connection between selected legos to the selected tensor network", () => {
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const conn1 = createTestConnection("lego1", "lego2", 0, 0);
+      const conn2 = createTestConnection("lego1", "lego2", 1, 1);
+
+      store.addDroppedLegos([lego1, lego2]);
+      store.addConnections([conn1]);
+      store.setTensorNetwork(
+        new TensorNetwork({
+          legos: [lego1, lego2],
+          connections: [conn1]
+        })
+      );
+
+      store.addConnections([conn2]);
+
+      const selected = useCanvasStore.getState().tensorNetwork;
+      expect(selected).not.toBeNull();
+      expect(selected!.connections).toHaveLength(2);
+      expect(
+        selected!.connections.some((connection) =>
+          Connection.equal(connection, conn2)
+        )
+      ).toBe(true);
+    });
+
+    it("should keep the cached tensor network active when selecting a PCM row after disconnecting one of two links", () => {
+      const lego1 = createTestLego("lego1");
+      const lego2 = createTestLego("lego2");
+      const conn1 = createTestConnection("lego1", "lego2", 0, 0);
+      const conn2 = createTestConnection("lego1", "lego2", 1, 1);
+
+      store.addDroppedLegos([lego1, lego2]);
+      store.addConnections([conn1, conn2]);
+      store.setTensorNetwork(
+        new TensorNetwork({
+          legos: [lego1, lego2],
+          connections: [conn1, conn2]
+        })
+      );
+
+      store.removeConnections([conn2]);
+
+      const selected = useCanvasStore.getState().tensorNetwork;
+      expect(selected).not.toBeNull();
+
+      const cachedNetwork = new TensorNetwork({
+        legos: selected!.legos,
+        connections: selected!.connections
+      });
+      store.cacheTensorNetwork({
+        isActive: true,
+        tensorNetwork: cachedNetwork,
+        svg: "<svg></svg>",
+        name: "Two tensors",
+        isLocked: false,
+        lastUpdated: new Date()
+      });
+      store.setParityCheckMatrix(cachedNetwork.signature, {
+        matrix: [
+          [1, 0, 0, 0],
+          [0, 0, 0, 1]
+        ],
+        legOrdering: [
+          { instance_id: "lego1", leg_index: 0 },
+          { instance_id: "lego2", leg_index: 0 }
+        ]
+      });
+
+      store.highlightCachedTensorNetworkLegs(cachedNetwork.signature, [0]);
+
+      expect(
+        store.getCachedTensorNetwork(cachedNetwork.signature)?.isActive
+      ).toBe(true);
+    });
+  });
+});
+
+describe("Connection.equal", () => {
+  it("should treat reversed endpoints as the same connection", () => {
+    const forward = new Connection(
+      { legoId: "a", leg_index: 0 },
+      { legoId: "b", leg_index: 1 }
+    );
+    const reversed = {
+      from: { legoId: "b", leg_index: 1 },
+      to: { legoId: "a", leg_index: 0 }
+    };
+
+    expect(Connection.equal(forward, reversed)).toBe(true);
+    expect(forward.equals(reversed)).toBe(true);
+  });
+
+  it("should compare plain connection objects that lost class methods", () => {
+    const a = {
+      from: { legoId: "a", leg_index: 0 },
+      to: { legoId: "b", leg_index: 1 }
+    };
+    const b = {
+      from: { legoId: "a", leg_index: 0 },
+      to: { legoId: "b", leg_index: 1 }
+    };
+
+    expect(Connection.equal(a, b)).toBe(true);
   });
 });
