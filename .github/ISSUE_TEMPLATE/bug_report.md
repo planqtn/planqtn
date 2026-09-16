@@ -6,7 +6,6 @@ type: 'Bug'
 labels: ''
 assignees: ''
 projects: balopat/5
-milestones: tnqec/milestone/1
 ---
 
 **Describe the bug**

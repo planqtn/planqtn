@@ -7,6 +7,7 @@ on:
       - "check/ui**"
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/ui_checks.yml"
   push:
     branches:
@@ -18,6 +19,7 @@ on:
       - "check/ui**"
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/ui_checks.yml"
 jobs:
   UI-docs-checks:
@@ -40,8 +42,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           pip install --upgrade uv
-          pip install -r docs/requirements.txt
-          uv pip install -r pyproject.toml --all-extras --system
+          uv sync --group docs --frozen
+          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
       - name: Run tests
         run: |
           check/ui-and-docs

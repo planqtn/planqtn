@@ -5,6 +5,7 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
@@ -19,6 +20,7 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
       - "app/conftest.py"
 
       - "app/planqtn_api/**"
@@ -46,7 +48,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade uv
-          uv pip install -r app/planqtn_api/requirements.txt -r app/planqtn_api/requirements.dev.txt -r pyproject.toml --all-extras --system
+          uv sync --group api --python ${{ matrix.python-version }} --frozen
+          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
       - name: Run tests & checks
         run: |
           check/api

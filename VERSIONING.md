@@ -22,7 +22,8 @@ Our version numbers follow the `MAJOR.MINOR.PATCH` format.
 
 - The `main` branch is our primary development branch, containing the latest code.
 - It always reflects the state of the _next_ upcoming release. This means, that the versions in the following files should agree and should be the next version, e.g. 0.1.0-alpha.1:
-  - [setup.py](setup.py) for the python package
+  - [pyproject.toml](pyproject.toml) for the python package
+  - [app/ui/package.json](app/ui/package.json)
   - [app/planqtn_cli/package.json](app/planqtn_cli/package.json)
 - All work is done in feature branches and merged into `main` via pull requests.
 

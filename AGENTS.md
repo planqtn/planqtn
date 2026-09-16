@@ -67,8 +67,7 @@ Notes:
 - `check/planqtn` runs `black --check`, `flake8`, `mypy`, `pylint`, doctests,
   and `pytest`.
 - `check/ui-and-docs` runs markdown doctests, `prettier --check`, `eslint`, the
-  UI build (`tsc` + vite), and the UI test suite. (This is the real UI check;
-  `check/all` currently references a non-existent `check/ui`.)
+  UI build (`tsc` + vite), and the UI test suite.
 - `check/api` and `check/jobs` run `black --check` on the relevant packages plus
   `pytest`.
 - `check/cli` runs `prettier --check`, `eslint`, and the build.

@@ -11,6 +11,6 @@ fi
 check/planqtn
 check/api
 check/jobs
-check/ui
+check/ui-and-docs
 
 
