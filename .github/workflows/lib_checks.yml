@@ -5,6 +5,7 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
 
   push:
     branches:
@@ -14,12 +15,13 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
 
 jobs:
   planqtn-Lib-Checks:
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13"]
 
     runs-on: ubuntu-latest
     steps:
@@ -35,7 +37,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade uv
-          uv pip install -r pyproject.toml --all-extras --system
+          uv sync --python ${{ matrix.python-version }} --frozen
+          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}

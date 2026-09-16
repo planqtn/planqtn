@@ -7,6 +7,7 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
 
       - "app/conftest.py"
 
@@ -29,6 +30,7 @@ on:
     paths:
       - "planqtn/**"
       - "pyproject.toml"
+      - "uv.lock"
 
       - "app/conftest.py"
 
@@ -71,6 +73,7 @@ jobs:
             common: 
               - "planqtn/**"
               - "pyproject.toml"
+              - "uv.lock"
               - "app/conftest.py"
               - "app/supabase/**"
               - "app/migrations/**"
@@ -86,7 +89,7 @@ jobs:
       - name: Install shared dependencies
         run: |
           pip install --upgrade uv
-          uv pip install -r pyproject.toml --all-extras --system
+          uv pip install -r pyproject.toml --system
       - name: Install planqtn cli
         run: |
           hack/cli_build.sh --install

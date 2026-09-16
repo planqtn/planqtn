@@ -5,9 +5,11 @@ authors = [{ name = "Balint Pato", email = "balint@planqtn.com" }]
 maintainers = [{ name = "PlanqTN Contributors", email = "planqtn@planqtn.com" }]
 description = "PlanqTN is a tensor network quantum error correction library implementation of the quantum LEGO framework."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
 ]
 license = "Apache-2.0"
@@ -29,7 +31,11 @@ dependencies = [
   "supabase",
 ]
 
-[project.optional-dependencies]
+[project.urls]
+Homepage = "https://github.com/planqtn/planqtn"
+Issues = "https://github.com/planqtn/planqtn/issues"
+
+[dependency-groups]
 dev = [
   "pytest",
   "ipython",
@@ -44,10 +50,40 @@ dev = [
   "pylint==3.3.7",
   "flake8",
 ]
+docs = [
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs",
+]
+api = [
+  { include-group = "dev" },
+  "fastapi[standard]",
+  "uvicorn[standard]",
+  "pydantic",
+  "pydantic-settings",
+  "python-dotenv",
+  "requests",
+  "httpx",
+  "pytest-asyncio",
+  "kubernetes",
+]
+jobs = [
+  { include-group = "dev" },
+  "fastapi[standard]",
+  "uvicorn[standard]",
+  "pydantic",
+  "pydantic-settings",
+  "python-dotenv",
+  "requests",
+  "kubernetes",
+  "supabase",
+  "httpx",
+  "pytest-asyncio",
+  "google-cloud-run",
+]
 
-[project.urls]
-Homepage = "https://github.com/planqtn/planqtn"
-Issues = "https://github.com/planqtn/planqtn/issues"
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["planqtn"]

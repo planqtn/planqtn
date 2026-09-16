@@ -33,7 +33,7 @@ if __name__ == "__main__":
     basedir = pathlib.Path(__file__).parents[0]
     load_dotenv(basedir / ".env", verbose=True)
 
-    parser = argparse.ArgumentParser(description="Run the TNQEC planqtn_api")
+    parser = argparse.ArgumentParser(description="Run the PlanqTN API")
     parser.add_argument(
         "--port",
         type=int,

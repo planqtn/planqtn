@@ -1,40 +1,40 @@
-# TNQEC Server
+# PlanqTN API
 
-This is the backend server for the TNQEC application, built with FastAPI.
+FastAPI service for PlanqTN Studio. It handles relatively fast, non-JS logic
+such as returning tensor networks and LEGOs.
 
 ## Setup
 
-1. Create a virtual environment (recommended):
+From the repository root:
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+uv venv
+uv sync --group api
+source .venv/bin/activate
 ```
 
-2. Install dependencies:
+## Running the server
+
+From `app/`:
+
 ```bash
-pip install -r requirements.txt
+python planqtn_api/planqtn_server.py --reload
 ```
 
-## Running the Server
+The server listens on `http://localhost:5005` by default (`PORT` or `--port`
+overrides this).
 
-To run the server in development mode:
-```bash
-uvicorn main:app --reload --port 5000
+## API documentation
+
+Once the server is running:
+
+- Interactive API docs (Swagger UI): `http://localhost:5005/docs`
+- Alternative API docs (ReDoc): `http://localhost:5005/redoc`
+
+## Checks
+
+From the repository root:
+
 ```
-
-Or simply run:
-```bash
-python planqtn_server.py
+check/api
 ```
-
-The server will start on `http://localhost:5000`
-
-## API Documentation
-
-Once the server is running, you can access:
-- Interactive API docs (Swagger UI): `http://localhost:5000/docs`
-- Alternative API docs (ReDoc): `http://localhost:5000/redoc`
-
-## Available Endpoints
-
-- `GET /health`: Health check endpoint that returns the server status 

@@ -74,18 +74,36 @@ on the component you want to contribute to.
 
 ### Components
 
-Source code is in `planqtn` (will shortly rename it to `planqtn`). Dependencies
-are in `requirements.txt` and `requirements.dev.txt` for development. `setup.py`
-drives the local installation and eventually the pypi setup.
+Source code is in `planqtn/`. Package metadata and runtime dependencies live in
+[`pyproject.toml`](pyproject.toml). Development tools (pytest, black, mypy,
+pylint, flake8, and so on) are the `[dev]` extra.
 
 ### Development setup
 
-For the python library, just simply clone the repo, and install the
-dependencies:
+Install [uv](https://docs.astral.sh/uv/), then from the repo root:
 
 ```
-pip install -r requirements.txt -r requirements.dev.txt
+uv venv
+uv sync
+source .venv/bin/activate
 ```
+
+`uv venv` creates a Python 3.12 environment (see `.python-version`). The library
+requires Python 3.12+; CI tests 3.12 and 3.13. `uv sync` installs the library in
+editable mode plus the default `dev` tools (pytest, black, mypy, pylint, flake8,
+…).
+
+Additional optional groups:
+
+```
+uv sync --group docs   # MkDocs
+uv sync --group api    # PlanqTN API extras
+uv sync --group jobs   # PlanqTN Jobs extras
+uv sync --all-groups   # everything
+```
+
+`uv sync` creates the venv if it does not exist, so `uv venv` is optional. After
+changing dependencies, run `uv lock` and commit `uv.lock`.
 
 ### Checks and tests
 
@@ -96,7 +114,7 @@ passing:
 check/planqtn
 ```
 
-Note that both PlanqTN APIs and PlanqTN Jobs have depenencies on planqtn, and
+Note that both PlanqTN APIs and PlanqTN Jobs have dependencies on planqtn, and
 changes will trigger integration tests on Github Actions.
 
 ## PlanqTN Studio
@@ -107,8 +125,8 @@ The PlanqTN Studio involves a couple of components:
   Run Service in the hosted version
 - the [API](#planqtn-api) is a web service to serve relatively fast, but
   non-JS implemented logic
-- the [Jobs](#planqtn-background-jobs) are are for executing long running
-  computaitons
+- the [Jobs](#planqtn-background-jobs) are for executing long running
+  computations
 - the [Edge functions](#planqtn-edge-functions)
 - the [Types](#planqtn-types)
 
@@ -154,8 +172,8 @@ hack/htn ui start --dev
 ```
 
 This should give you a http://localhost:5173 URL for the UI. The UI needs a User
-Context for authentication user content presistence in Supabase, so when it
-doesn't have it setup you'll see a "User context unavailable" warning next to
+Context for authentication and user content persistence in Supabase, so when it
+doesn't have it set up you'll see a "User context unavailable" warning next to
 the User menu.
 
 <img src="docs/fig/user_context_unavailable.png"/>
@@ -191,9 +209,9 @@ VITE_ENV=development
 ### Containerization
 
 As you can see from above, as a typical Vite app, the UI uses env vars during
-compilation. However, as in production the UI runs in a Docker container, and we
-need a single image that can run on any environment, we need the ability to
-change the values in the compiled javascript / CSS code at runtime. This is not
+compilation. In production the UI runs in a Docker container, and we need a
+single image that can run on any environment, so we rewrite placeholder
+`RUNTIME_VITE_...` values in the compiled JavaScript at container start.
 
 You can test the scripts used by the containerized setup by:
 
@@ -219,7 +237,7 @@ This should give you an http://localhost:8080 URL for the UI.
 To execute formatting/linting and tests, run:
 
 ```
-check/ui
+check/ui-and-docs
 ```
 
 ## PlanqTN API
@@ -232,14 +250,14 @@ work, for which jobs are a better mechanism.
 
 PlanqTN API consists of the `app/planqtn_api` server, and the `tensornetwork`
 Supabase Edge Function at the moment and no database component yet (however, we
-we will develop quota functionality soon, which will involve database tables).
+will develop quota functionality soon, which will involve database tables).
 
 ### Development setup
 
-After you cloned the repo, you can set up the python dependencies with:
+Install the Python library, then the API extras:
 
 ```
-pip install -r requirements.txt -r requirements.dev.txt -r app/planqtn_api/requirements.dev.txt -r app/planqtn_api/requirements.dev.txt
+uv sync --group api
 ```
 
 ### Checks and tests
@@ -282,7 +300,23 @@ following Supabase edge functions:
 In the database the `tasks` table contains the task execution results and
 `task_updates` contain the realtime updates from the task execution.
 
+### Development setup
+
+Install the Python library, then the jobs extras:
+
+```
+uv sync --group jobs
+```
+
 ### Checks and tests
+
+Unit tests:
+
+```
+check/jobs
+```
+
+Integration tests:
 
 ```
 export KERNEL_ENV=<local/dev/cloud>
@@ -408,7 +442,7 @@ Google Cloud Console in parallel to inspect the kicked off jobs / API call logs.
 
 ## PlanqTN Edge Functions
 
-Edge functions come in two flavor: one for the local kernel that manages jobs on
+Edge functions come in two flavors: one for the local kernel that manages jobs on
 Kubernetes, and one for the Cloud Run environment. Under
 [app/supabase/functions](app/supabase/functions/) you'll find each of these
 functions in a separate folder:
@@ -484,10 +518,11 @@ Requirements:
 - DockerHub identifier, where you can push images to
   - run `docker login` to ensure you're logged in
 
-From the root of the repo we'll start with installing some necessary tools in
-the `node_modules` directory locally.
+From `app/`, install the local Node tools (Supabase CLI, node-pg-migrate, and so
+on):
 
 ```
+cd app
 npm install --include-dev
 ```
 
@@ -498,7 +533,7 @@ npm install --include-dev
 
 1. Setup your account at https://supabase.com/
 2. Create a new organization e.g. "Your Name"
-3. Create a a new project e.g. "<yourname>-planqtn-dev" or similar
+3. Create a new project e.g. "<yourname>-planqtn-dev" or similar
 4. Note down the following secrets:
 
 - note down the database password (though you can reset it from your
@@ -771,7 +806,7 @@ your migrations!
 We use Material for MkDocs for the site, and it's deployed alongside the UI in
 the same container. To test it locally, you have a couple of options:
 
-- docs only: `mkdocs serve` from the repo root
+- docs only: `uv sync --group docs` then `mkdocs serve` from the repo root
 - docs alongside with the app in dev mode:
   - in one terminal I like to run
     `hack/rerun mkdocs build --strict --site-dir app/ui/public/docs` (or run
