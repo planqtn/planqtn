@@ -593,6 +593,14 @@ class TensorNetwork:
         self._coset: Optional[GF2] = None
         self.truncate_length: Optional[int] = truncate_length
 
+    @property
+    def traces(self) -> List[Trace]:
+        """The traces added with [`self_trace`][planqtn.TensorNetwork.self_trace], in order.
+
+        Each trace is a `(node_idx1, node_idx2, join_legs1, join_legs2)` tuple.
+        """
+        return list(self._traces)
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TensorNetwork):
             return False

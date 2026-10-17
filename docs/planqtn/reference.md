@@ -15,6 +15,18 @@
 
 :::planqtn.networks
 
+## The `planqtn.gates` package
+
+:::planqtn.gates
+
+## The `planqtn.signed_stabilizer_tensor` package
+
+:::planqtn.signed_stabilizer_tensor
+
+## The `planqtn.transversal` package
+
+:::planqtn.transversal
+
 # Utilities
 
 ## The `planqtn.progress_reporter` package

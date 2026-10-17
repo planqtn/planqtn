@@ -32,6 +32,11 @@ hear it!
 <td><a href="/docs/planqtn-studio/build/#creating-custom-tensors">Studio docs</a></td>
 </tr>
 <tr>
+<td>Track the signs of stabilizers and trace legs through Clifford-deformed edge states and GHZ hyperedges.</td>
+<td><a href="/docs/planqtn/transversal/#deformed-traces">Library docs</a></td>
+<td>-</td>
+</tr>
+<tr>
 <td>Undo/redo for most operations.</td>
 <td>-</td>
 <td><a href="/docs/planqtn-studio/build">Studio docs</a></td>
@@ -173,6 +178,11 @@ hear it!
 <td style="padding-left: 2em;">Highlight local stabilizers on individual tensors.</td>
 <td>-</td>
 <td><a href="/docs/planqtn-studio/analyze/#operator-pushing-and-matching">Studio docs</a></td>
+</tr>
+<tr>
+<td>Find the logical gate implemented by transversal, weakly transversal, interblock and localized physical gates: the logical action of Clifford gates and the logical phase polynomial of diagonal gates like T, CS and CCZ.</td>
+<td><a href="/docs/planqtn/transversal/#logical-action">Library docs</a></td>
+<td>-</td>
 </tr>
 <tr>
 <td>Export tensor network as Python code and continue working on it on your own computer.</td>
