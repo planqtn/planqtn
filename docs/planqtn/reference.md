@@ -39,6 +39,10 @@
 
 :::planqtn.transversal_search
 
+## The `planqtn.fault_tolerance` package
+
+:::planqtn.fault_tolerance
+
 # Utilities
 
 ## The `planqtn.progress_reporter` package
