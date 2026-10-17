@@ -46,7 +46,8 @@ class IterationState:
         current_item: Current item being processed (0-indexed).
         start_time: Timestamp when the iteration started.
         end_time: Timestamp when the iteration ended (None if not finished).
-        duration: Total duration of the iteration in seconds (None if not finished).
+        duration: Total duration of the iteration in seconds (None if not finished),
+            measured with the monotonic high resolution `time.perf_counter()` clock.
         avg_time_per_item: Average time per item in seconds (None if no items processed).
     """
 
@@ -57,6 +58,7 @@ class IterationState:
     end_time: float | None = attr.ib(default=None)
     duration: float | None = attr.ib(default=None)
     avg_time_per_item: float | None = attr.ib(default=None)
+    _start_counter: float = attr.ib(factory=time.perf_counter, init=False, repr=False)
 
     def update(self, current_item: int | None = None) -> None:
         """Update the iteration state with progress information.
@@ -71,7 +73,7 @@ class IterationState:
         if current_item is None:
             current_item = self.current_item + 1
         self.current_item = current_item
-        self.duration = time.time() - self.start_time
+        self.duration = time.perf_counter() - self._start_counter
         self._update_avg_time_per_item()
 
     def _update_avg_time_per_item(self) -> None:
@@ -87,7 +89,7 @@ class IterationState:
         per item statistics.
         """
         self.end_time = time.time()
-        self.duration = self.end_time - self.start_time
+        self.duration = time.perf_counter() - self._start_counter
         self._update_avg_time_per_item()
 
     def __repr__(self) -> str:
@@ -250,12 +252,15 @@ class ProgressReporter(abc.ABC):
 
         if self.sub_reporter is not None:
             iterable = self.sub_reporter.iterate(iterable, desc, total_size)
-        time_last_report = time.time()
+        time_last_report = time.perf_counter()
         for item in iterable:
             yield item
             bottom_iterator_state.update()
-            if time.time() - time_last_report >= self.iteration_report_frequency:
-                time_last_report = time.time()
+            if (
+                time.perf_counter() - time_last_report
+                >= self.iteration_report_frequency
+            ):
+                time_last_report = time.perf_counter()
 
                 self.log_result(
                     {
