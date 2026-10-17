@@ -9,9 +9,10 @@ Designing Transversal Gates with Tensor Networks", arXiv:2603.03542 (2026)), whi
 
 - for Clifford gates, by conjugating the stabilizers of `|V⟩`, which gives the full Clifford
   logical action ([`CliffordLogicalAction`][planqtn.transversal.CliffordLogicalAction]),
-- for diagonal gates, Clifford or not (T, CS, CCZ, ...), by checking that the phase of `O` is
-  constant on each logical slice of the computational basis support of `|V⟩`, which gives a
-  logical phase polynomial ([`DiagonalLogicalAction`][planqtn.transversal.DiagonalLogicalAction]).
+- for diagonal gates, Clifford or not (T, CS, CCZ, ...), by checking that the phase of `O` only
+  depends on the logical bits on the computational basis support of `|V⟩`, which gives a logical
+  phase polynomial ([`DiagonalLogicalAction`][planqtn.transversal.DiagonalLogicalAction]). This
+  takes polynomial time, see [`planqtn.phase_polynomial`][planqtn.phase_polynomial].
 
 Assignments can mix legs of several blocks, so the same function covers strongly and weakly
 transversal, interblock, intrablock and localized gates. Cleaning operators (Definition 2.5 of the
@@ -37,12 +38,13 @@ Example:
 import abc
 from fractions import Fraction
 import math
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
 from planqtn.gates import Gate, GateAssignment, LegLike, operator_matrix, pauli_matrix
+from planqtn.phase_polynomial import SupportCoordinates
 from planqtn.signed_stabilizer_tensor import (
     SignedStabilizerTensor,
     conjugate_paulis,
@@ -61,6 +63,7 @@ _PHASE_GATE_NAMES = {
     Fraction(7, 8): "T†",
 }
 _MAX_MATRIX_QUBITS = 12
+_MAX_PHASE_TABLE_QUBITS = 24
 
 
 def _leg_label(leg: TensorLeg) -> str:
@@ -196,21 +199,77 @@ class DiagonalLogicalAction(LogicalAction):
     """A logical diagonal gate `diag(exp(2 pi i phases[u] / order))`.
 
     The basis state index `u` has the bit of the first logical leg as its most significant bit.
+    The gate is stored as its phase polynomial, so it can have many logical legs.
     """
 
     def __init__(
-        self, logical_legs: Sequence[TensorLeg], phases: Sequence[int], order: int
+        self,
+        logical_legs: Sequence[TensorLeg],
+        phases: Optional[Sequence[int]],
+        order: int,
+        polynomial: Optional[Mapping[Tuple[TensorLeg, ...], int]] = None,
     ):
-        """Construct the logical action.
+        """Construct the logical action, from its phases or from its phase polynomial.
 
         Args:
             logical_legs: The `k` logical legs, in order.
-            phases: The phase exponent of each of the `2^k` logical basis states.
+            phases: The phase exponent of each of the `2^k` logical basis states, or None to use
+                `polynomial` instead.
             order: The order of the root of unity the exponents refer to.
+            polynomial: The coefficients of the phase polynomial (see
+                [`phase_polynomial`][planqtn.transversal.DiagonalLogicalAction.phase_polynomial]),
+                used when `phases` is None.
+
+        Raises:
+            ValueError: If neither or both of `phases` and `polynomial` are given, or the
+                polynomial refers to other legs.
         """
         super().__init__(logical_legs)
         self.order = order
-        self.phases = np.array(phases, dtype=np.int64) % order
+        k = len(self.logical_legs)
+        if (phases is None) == (polynomial is None):
+            raise ValueError("Give exactly one of phases and polynomial.")
+        self._terms: Dict[int, int] = {}
+        if phases is not None:
+            coefficients = np.array(phases, dtype=np.int64) % order
+            for bit in range(k):
+                mask = 1 << bit
+                for u in range(2**k):
+                    if u & mask:
+                        coefficients[u] -= coefficients[u ^ mask]
+            coefficients %= order
+            self._terms = {u: int(c) for u, c in enumerate(coefficients) if u and c}
+        if polynomial is not None:
+            position = {leg: i for i, leg in enumerate(self.logical_legs)}
+            for legs, coefficient in polynomial.items():
+                if any(leg not in position for leg in legs):
+                    raise ValueError(
+                        f"Polynomial term {legs} is not on the logical legs."
+                    )
+                u = sum(1 << (k - 1 - position[leg]) for leg in set(legs))
+                if u:
+                    self._terms[u] = (self._terms.get(u, 0) + coefficient) % order
+            self._terms = {u: c for u, c in self._terms.items() if c}
+
+    @property
+    def phases(self) -> NDArray[np.int64]:
+        """The phase exponent of each of the `2^k` logical basis states, with `phases[0] = 0`.
+
+        Raises:
+            ValueError: If there are too many logical legs to list all basis states.
+        """
+        k = len(self.logical_legs)
+        if k > _MAX_PHASE_TABLE_QUBITS:
+            raise ValueError(f"Refusing to list the phases of {k} logical legs.")
+        phases = np.zeros(2**k, dtype=np.int64)
+        for u, coefficient in self._terms.items():
+            phases[u] = coefficient
+        for bit in range(k):
+            mask = 1 << bit
+            for u in range(2**k):
+                if u & mask:
+                    phases[u] += phases[u ^ mask]
+        return phases % self.order
 
     def phase_polynomial(self) -> Dict[Tuple[TensorLeg, ...], int]:
         """Return the gate as a multilinear phase polynomial in the logical bits.
@@ -222,23 +281,14 @@ class DiagonalLogicalAction(LogicalAction):
             The nonzero coefficients `c_S` (modulo `order`) for each subset of logical legs.
         """
         k = len(self.logical_legs)
-        coefficients = self.phases.copy()
-        for bit in range(k):
-            mask = 1 << bit
-            for u in range(2**k):
-                if u & mask:
-                    coefficients[u] -= coefficients[u ^ mask]
-        coefficients %= self.order
-        polynomial = {}
-        for u in sorted(range(1, 2**k), key=lambda s: (bin(s).count("1"), -s)):
-            if coefficients[u]:
-                legs = tuple(
-                    leg
-                    for i, leg in enumerate(self.logical_legs)
-                    if (u >> (k - 1 - i)) & 1
-                )
-                polynomial[legs] = int(coefficients[u])
-        return polynomial
+        return {
+            tuple(
+                leg for i, leg in enumerate(self.logical_legs) if (u >> (k - 1 - i)) & 1
+            ): coefficient
+            for u, coefficient in sorted(
+                self._terms.items(), key=lambda t: (t[0].bit_count(), -t[0])
+            )
+        }
 
     def __str__(self) -> str:
         terms = []
@@ -342,6 +392,19 @@ def _diagonal_action(
     )
 
 
+def _polynomial_action(
+    tensor: SignedStabilizerTensor,
+    logical_legs: Sequence[TensorLeg],
+    ops: GateAssignment,
+) -> Optional[DiagonalLogicalAction]:
+    polynomial = SupportCoordinates(tensor, logical_legs).polynomial(ops)
+    if not polynomial.is_logical:
+        return None
+    return DiagonalLogicalAction(
+        logical_legs, None, polynomial.order, polynomial.logical_terms()
+    )
+
+
 def logical_action(
     tensor: SignedStabilizerTensor,
     logical_legs: Sequence[LegLike],
@@ -360,9 +423,13 @@ def logical_action(
         ops: The physical operator, as gates on disjoint physical legs.
         method: `"clifford"` for Clifford gates, `"diagonal"` for diagonal gates, or `"auto"` to
             pick `"clifford"` when all gates are Clifford and `"diagonal"` otherwise. The diagonal
-            method only finds logical gates that are diagonal in the logical computational basis.
-        max_support_dimension: For the diagonal method, the largest dimension of the support of
-            the tensor that is enumerated.
+            method computes the phase polynomial of the operator on the support of the tensor
+            (see [`planqtn.phase_polynomial`][planqtn.phase_polynomial]), and only finds logical
+            gates that are diagonal in the logical computational basis. The `"enumerate"` method
+            finds the same diagonal logical gates by enumerating the support instead, which is
+            exponential in the dimension of the support and meant for cross-checks.
+        max_support_dimension: For the enumeration method, the largest dimension of the support
+            of the tensor that is enumerated.
 
     Returns:
         The logical action, or None if the operator does not implement a logical gate (of the
@@ -394,12 +461,16 @@ def logical_action(
         if non_clifford:
             raise ValueError(f"Gates {non_clifford} are not Clifford gates.")
         return _clifford_action(tensor, logical, resolved)
-    if method == "diagonal":
+    if method in ("diagonal", "enumerate"):
         non_diagonal = [g.name for g in gates if not g.is_diagonal]
         if non_diagonal:
             raise ValueError(
                 f"Gates {non_diagonal} are not diagonal, and only Clifford gates can be "
                 "mixed with non-diagonal ones."
             )
-        return _diagonal_action(tensor, logical, resolved, max_support_dimension)
-    raise ValueError(f"Unknown method {method}, use 'auto', 'clifford' or 'diagonal'.")
+        if method == "enumerate":
+            return _diagonal_action(tensor, logical, resolved, max_support_dimension)
+        return _polynomial_action(tensor, [tensor.legs[i] for i in logical], ops)
+    raise ValueError(
+        f"Unknown method {method}, use 'auto', 'clifford', 'diagonal' or 'enumerate'."
+    )

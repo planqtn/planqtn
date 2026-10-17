@@ -252,6 +252,66 @@ def test_clifford_and_diagonal_methods_agree():
             assert clifford.equals(diagonal.matrix())
 
 
+def paper_examples():
+    """(tensor, logical legs, diagonal operator) for the examples above."""
+    code832 = SignedStabilizerTensor(Legos.code832_encoding_tensor, "c")
+    even, odd = [0, 3, 5, 6], [1, 2, 4, 7]
+    yield code832, [8, 9, 10], bitwise(Gates.T, range(8))
+    yield code832, [8, 9, 10], bitwise(Gates.T, even) + bitwise(Gates.T_DAG, odd)
+    yield code832.apply(bitwise(Gates.X, odd)), [8, 9, 10], bitwise(Gates.T, range(8))
+    for pattern in itertools.islice(
+        itertools.product([Gates.T, Gates.T_DAG], repeat=8), 0, 256, 17
+    ):
+        yield code832, [8, 9, 10], [(g, (v,)) for v, g in enumerate(pattern)]
+
+    logical = [("a", 15), ("b", 15)]
+    phys_a, phys_b = legs("a", range(1, 15)), legs("b", range(1, 15))
+    for deformation in (None, Gates.X):
+        code = qrm("a").merge_with(qrm("b"), [0], [0], [deformation])
+        yield code, logical, bitwise(Gates.T, phys_a + phys_b)
+        yield code, logical, bitwise(Gates.T, phys_a) + bitwise(Gates.T_DAG, phys_b)
+        yield code, logical, bitwise(Gates.S_DAG, legs("a", [2, 4, 5, 8, 9, 11, 14]))
+
+    s = steane("s")
+    yield s, [7, 0], [(Gates.CZ, (1, 2)), (Gates.CZ, (3, 4)), (Gates.CZ, (5, 6))]
+    yield s, [7, 0], [(Gates.CZ, (1, 3)), (Gates.CZ, (2, 4)), (Gates.CZ, (5, 6))]
+
+    code = ghz_joined([steane(f"s{i}") for i in range(3)], 0)
+    logical = [(f"s{i}", 7) for i in range(3)]
+    cz = bitwise(Gates.CZ, legs("s0", range(1, 7)), legs("s1", range(1, 7)))
+    yield code, logical, cz
+    yield code, logical, cz + bitwise(Gates.Z, legs("s2", [2, 4, 6]))
+
+    pair = qrm("a").tensor_with(qrm("b"))
+    for support in (range(7), [0, 2, 4, 6, 8, 10, 12, 14], [1, 2, 3]):
+        yield pair, [("a", 15), ("b", 15)], bitwise(
+            Gates.CZ, legs("a", support), legs("b", support)
+        )
+
+    code = ghz_joined([qrm(f"q{i}") for i in range(3)], 0)
+    logical = [(f"q{i}", 15) for i in range(3)]
+    face = [1, 3, 5, 7, 9, 11, 13]
+    yield code, logical, bitwise(Gates.CZ, legs("q0", face), legs("q1", face))
+    yield code, logical, bitwise(Gates.T, legs("q0", range(1, 15)))
+    yield code, logical, bitwise(Gates.T, legs("q0", range(1, 15))) + bitwise(
+        Gates.T_DAG, legs("q1", range(1, 15))
+    )
+    yield code, logical, bitwise(Gates.CCZ, *(legs(f"q{i}", face) for i in range(3)))
+
+
+def test_phase_polynomial_and_enumeration_agree_on_paper_examples():
+    found = 0
+    for tensor, logical, ops in paper_examples():
+        polynomial = logical_action(tensor, logical, ops, method="diagonal")
+        enumeration = logical_action(tensor, logical, ops, method="enumerate")
+        assert (polynomial is None) == (enumeration is None), ops
+        if polynomial is not None:
+            found += 1
+            assert polynomial.phase_polynomial() == enumeration.phase_polynomial()
+            assert polynomial.equals(enumeration.matrix())
+    assert found == 21
+
+
 def test_identity_and_empty_assignment():
     action = logical_action(steane("s"), [7], [])
     assert action.equals(np.eye(2))

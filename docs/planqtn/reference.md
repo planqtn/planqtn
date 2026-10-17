@@ -27,6 +27,10 @@
 
 :::planqtn.transversal
 
+## The `planqtn.phase_polynomial` package
+
+:::planqtn.phase_polynomial
+
 # Utilities
 
 ## The `planqtn.progress_reporter` package

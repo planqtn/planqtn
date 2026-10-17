@@ -237,6 +237,28 @@ def _row_combination(
     return rest[cols:]
 
 
+def independent_subset(rows: NDArray[np.uint8]) -> List[int]:
+    """Return the indices of the rows that are independent of the earlier rows over GF(2).
+
+    Args:
+        rows: A 2D array of bits.
+
+    Returns:
+        The indices of a maximal independent subset of the rows, chosen greedily in order.
+    """
+    basis: List[Tuple[int, NDArray[np.uint8]]] = []
+    keep = []
+    for i, row in enumerate(rows):
+        v = row.copy()
+        for col, b in basis:
+            if v[col]:
+                v ^= b
+        if v.any():
+            basis.append((int(np.flatnonzero(v)[0]), v))
+            keep.append(i)
+    return keep
+
+
 def _independent_rows(xz: NDArray[np.uint8], ph: NDArray[np.int64]) -> PauliArrays:
     """Drop the rows that are products of earlier rows, keeping the others as they are."""
     n = xz.shape[1] // 2
@@ -768,7 +790,20 @@ class SignedStabilizerTensor:
             xz, self.tensor_id, self.legs, phases=ph, validate=False
         )
 
-    def _support_basis(self) -> Tuple[NDArray[np.uint8], NDArray[np.uint8]]:
+    def support_basis(self) -> Tuple[NDArray[np.uint8], NDArray[np.uint8]]:
+        """Return the computational basis support of a stabilizer state as an affine subspace.
+
+        The support is the set of bit strings `offset + y directions` for all `y` over GF(2).
+        The directions are the X parts of a subset of the stabilizers of the tensor, so they are
+        as sparse as the stabilizers are.
+
+        Returns:
+            The offset, with one bit per leg, and the directions, one row per dimension of the
+            support.
+
+        Raises:
+            ValueError: If the tensor is not a stabilizer state.
+        """
         if self.rank != self.n:
             raise ValueError(
                 f"{self} is not a stabilizer state: it has {self.rank} stabilizers on "
@@ -782,7 +817,9 @@ class SignedStabilizerTensor:
             z_rows.T.copy(), ((ph[rank_x:] // 2) % 2).astype(np.uint8)
         )
         assert offset is not None, "a stabilizer state has a nonempty support"
-        return offset, xz[:rank_x, :n]
+        directions = self._xz[independent_subset(self._xz[:, :n]), :n]
+        assert len(directions) == rank_x, "the X parts span the support directions"
+        return offset, directions
 
     def support(self, max_dimension: int = 20) -> NDArray[np.uint8]:
         """Return the computational basis states on which a stabilizer state is supported.
@@ -799,7 +836,7 @@ class SignedStabilizerTensor:
         Raises:
             ValueError: If the tensor is not a stabilizer state, or the support is too large.
         """
-        offset, directions = self._support_basis()
+        offset, directions = self.support_basis()
         if len(directions) > max_dimension:
             raise ValueError(
                 f"The support of {self} has dimension {len(directions)} > {max_dimension}."
@@ -824,7 +861,7 @@ class SignedStabilizerTensor:
         n = self.n
         if n > 16:
             raise ValueError(f"Refusing to build a state vector for {n} legs.")
-        offset, _ = self._support_basis()
+        offset, _ = self.support_basis()
         weights = 1 << np.arange(n - 1, -1, -1)
         indices = np.arange(2**n)
         state = np.zeros(2**n, dtype=complex)
