@@ -12,8 +12,13 @@ placements. Other Clifford gates are checked one placement at a time.
 
 [`addressable_phase_gates`][planqtn.transversal_search.addressable_phase_gates] turns a global
 transversal phase gate into phase gates addressing single logical qubits, supported on a logical X
-operator (Proposition 2.7 and Corollary 2.8 of the paper), using the low weight logical operators
-of [`logical_pauli_representative`][planqtn.transversal_search.logical_pauli_representative].
+operator (Proposition 2.7 and Corollary 2.8 of the paper), and
+[`addressable_controlled_phase_gates`][\
+planqtn.transversal_search.addressable_controlled_phase_gates]
+derives addressable phase and interblock controlled phase gates from an interblock controlled
+phase gate, e.g. addressable S and CZ gates from a bitwise CS gate (Proposition 2.9 and
+Corollary 2.10). Both use the low weight logical operators of
+[`logical_pauli_representative`][planqtn.transversal_search.logical_pauli_representative].
 
 Searches are exhaustive within their bounds, so their cost is the number of placements, which is
 checked against a limit before starting.
@@ -58,6 +63,7 @@ from planqtn.transversal import (
 
 _CHUNK_ENTRIES = 1 << 22
 _NAMED_PHASE_GATES = [Gates.Z, Gates.S, Gates.S_DAG, Gates.T, Gates.T_DAG]
+_NAMED_CONTROLLED_PHASE_GATES = [Gates.CZ, Gates.CS, Gates.CS_DAG]
 
 
 class PatternMatch(NamedTuple):
@@ -341,3 +347,121 @@ def addressable_phase_gates(
         assert action is not None, "Proposition 2.7 gives a logical gate"
         result[tensor.leg(leg)] = PatternMatch(addressable, action)
     return result
+
+
+def addressable_controlled_phase_gates(
+    tensor: SignedStabilizerTensor,
+    logical_pairs: Sequence[Tuple[LegLike, LegLike]],
+    ops: GateAssignment,
+) -> Dict[Tuple[TensorLeg, TensorLeg], Tuple[PatternMatch, PatternMatch]]:
+    """Derive addressable phase and controlled phase gates from an interblock controlled phase.
+
+    The tensor holds two code blocks, e.g. `a.tensor_with(b)`, and `ops` are controlled phase
+    gates `CP(φ_j)` between matching physical legs of the blocks that implement a logical gate. If
+    `X̄_i` is a Pauli logical X operator of the `i`-th logical qubit of the first block, then
+    `(X̄_i ⊗ I) P (X̄_i ⊗ I) P^dagger` and the same with `X̄_i` on the second block combine into
+    (Proposition 2.9 of the paper):
+
+    - an addressable phase gate on the `i`-th logical qubit of the first block, made of `P(φ_j)` on
+      the legs of the first block where `X̄_i` has an X or Y,
+    - an addressable interblock controlled phase gate between the `i`-th logical qubits of the two
+      blocks, made of `CP(2 φ_j)` between those legs and their partners in the second block.
+
+    For example, a bitwise CS gate gives addressable S and CZ gates (Corollary 2.10).
+
+    Args:
+        tensor: The tensor of the two code blocks.
+        logical_pairs: Matching logical legs `(a_i, b_i)` of the first and the second block.
+        ops: Two qubit controlled phase gates on pairs `(u, v)` of a physical leg `u` of the first
+            block and its partner `v` in the second block, implementing a logical gate.
+
+    Returns:
+        For each logical pair, the addressable phase gate on its first leg and the addressable
+        controlled phase gate on the pair, with their logical gates verified with
+        [`logical_action`][planqtn.transversal.logical_action].
+
+    Raises:
+        ValueError: If the gates are not two qubit controlled phase gates, they don't implement a
+            logical gate, or a logical X operator of the first block touches the second block.
+
+    Example:
+        The bitwise CS gate between two [[15,1,3]] codes gives an addressable S on the support of
+        a logical X operator, and CZs between those legs and their partners, which are one of the
+        15 localized CZs of the pair:
+
+        ```python
+        >>> from planqtn.gates import bitwise
+        >>> from planqtn.legos import Legos
+        >>> a = SignedStabilizerTensor(Legos.qrm15_encoding_tensor, tensor_id="a")
+        >>> b = SignedStabilizerTensor(Legos.qrm15_encoding_tensor, tensor_id="b")
+        >>> pair = a.tensor_with(b)
+        >>> cs = bitwise(Gates.CS, [("a", i) for i in range(15)], [("b", i) for i in range(15)])
+        >>> print(logical_action(pair, [("a", 15), ("b", 15)], cs))
+        CS†(a:15, b:15)
+        >>> found = addressable_controlled_phase_gates(pair, [(("a", 15), ("b", 15))], cs)
+        >>> phase, controlled = found[(("a", 15), ("b", 15))]
+        >>> [gate.name for gate, _ in phase.ops], phase.action.phase_polynomial()
+        (['S', 'S', 'S', 'S', 'S', 'S', 'S'], {(('a', 15),): 3})
+        >>> print(controlled.action)
+        CZ(a:15, b:15)
+
+        ```
+    """
+    exponents = []
+    for gate, legs in ops:
+        if gate.num_qubits != 2 or not gate.is_diagonal:
+            raise ValueError(
+                f"Gate {gate.name} on {legs} is not a controlled phase gate."
+            )
+        phases, order = gate.diagonal_phases()
+        if phases[1] or phases[2]:
+            raise ValueError(
+                f"Gate {gate.name} on {legs} is not a controlled phase gate."
+            )
+        exponents.append((int(phases[3]), order))
+    logical = [leg for pair in logical_pairs for leg in pair]
+    if logical_action(tensor, logical, ops, method="diagonal") is None:
+        raise ValueError("The operator does not implement a logical gate.")
+    partner = {
+        tensor.leg(legs[0]): (tensor.leg(legs[1]), exponent)
+        for (_, legs), exponent in zip(ops, exponents)
+    }
+    second_block = {leg for leg, _ in partner.values()}
+    result = {}
+    for first, second in logical_pairs:
+        representative = logical_pauli_representative(tensor, logical, first, "X")
+        if second_block & set(representative):
+            raise ValueError(
+                f"The logical X operator of {first} touches the legs of the second block."
+            )
+        phase_ops: GateAssignment = []
+        controlled_ops: GateAssignment = []
+        for leg, letter in representative.items():
+            if letter == "Z" or leg not in partner:
+                continue
+            other, (numerator, order) = partner[leg]
+            phase = Gates.phase(numerator, order)
+            controlled = Gates.controlled_phase(2, 2 * numerator, order)
+            if not equal_up_to_phase(phase.matrix, Gates.I.matrix):
+                phase_ops.append((_named(phase, _NAMED_PHASE_GATES), (leg,)))
+            if not equal_up_to_phase(controlled.matrix, np.eye(4, dtype=complex)):
+                named = _named(controlled, _NAMED_CONTROLLED_PHASE_GATES)
+                controlled_ops.append((named, (leg, other)))
+        phase_action = logical_action(tensor, logical, phase_ops, method="diagonal")
+        controlled_action = logical_action(
+            tensor, logical, controlled_ops, method="diagonal"
+        )
+        assert phase_action is not None, "Proposition 2.9 gives a logical gate"
+        assert controlled_action is not None, "Proposition 2.9 gives a logical gate"
+        result[(tensor.leg(first), tensor.leg(second))] = (
+            PatternMatch(phase_ops, phase_action),
+            PatternMatch(controlled_ops, controlled_action),
+        )
+    return result
+
+
+def _named(gate: Gate, candidates: Sequence[Gate]) -> Gate:
+    """The candidate equal to the gate up to a phase, or the gate itself."""
+    return next(
+        (c for c in candidates if equal_up_to_phase(gate.matrix, c.matrix)), gate
+    )

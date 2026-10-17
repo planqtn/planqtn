@@ -6,12 +6,13 @@ import itertools
 import numpy as np
 import pytest
 
-from planqtn.gates import Gates, bitwise
+from planqtn.gates import Gate, Gates, bitwise
 from planqtn.legos import Legos
 from planqtn.signed_stabilizer_tensor import SignedStabilizerTensor
 from planqtn.symmetries import is_symmetry
 from planqtn.transversal import logical_action
 from planqtn.transversal_search import (
+    addressable_controlled_phase_gates,
     addressable_phase_gates,
     logical_pauli_representative,
     search_patterns,
@@ -26,10 +27,10 @@ def qrm(name):
     return SignedStabilizerTensor(Legos.qrm15_encoding_tensor, name)
 
 
-def ghz_joined(blocks, joined_leg):
-    tensor = SignedStabilizerTensor(Legos.z_rep_code(len(blocks)), "g")
+def ghz_joined(blocks, joined_leg, name="g"):
+    tensor = SignedStabilizerTensor(Legos.z_rep_code(len(blocks)), name)
     for i, block in enumerate(blocks):
-        tensor = tensor.merge_with(block, [("g", i)], [joined_leg])
+        tensor = tensor.merge_with(block, [(name, i)], [joined_leg])
     return tensor
 
 
@@ -135,6 +136,81 @@ def test_addressable_s_from_bitwise_t():
     )
     found = addressable_phase_gates(code, logical, ops)
     assert [str(m.action) for m in found.values()] == ["S(q0:15)", "S†(q1:15)", "I"]
+
+
+def test_addressable_s_and_cz_from_bitwise_cs_on_qrm_pair():
+    """Prop. 2.9 and Cor. 2.10: a bitwise CS gives addressable S and CZ gates."""
+    pair = qrm("a").tensor_with(qrm("b"))
+    logical = [("a", 15), ("b", 15)]
+    cs = bitwise(Gates.CS, legs("a", range(15)), legs("b", range(15)))
+    assert str(logical_action(pair, logical, cs)) == "CS†(a:15, b:15)"
+    phase, controlled = addressable_controlled_phase_gates(pair, [tuple(logical)], cs)[
+        tuple(logical)
+    ]
+    assert [g.name for g, _ in phase.ops] == ["S"] * 7
+    assert {leg[0] for _, (leg,) in phase.ops} == {"a"}
+    assert [g.name for g, _ in controlled.ops] == ["CZ"] * 7
+    for match in (phase, controlled):
+        for method in ("clifford", "enumerate"):
+            assert logical_action(pair, logical, match.ops, method=method).equals(
+                match.action.matrix()
+            )
+    assert phase.action.equals([(Gates.S_DAG, (("a", 15),))])
+    assert controlled.action.equals(Gates.CZ)
+    sites = [(("a", i), ("b", i)) for i in range(15)]
+    faces = search_patterns(pair, logical, sites, [None, Gates.CZ], Gates.CZ, weight=7)
+    face_supports = [{legs[0][1] for _, legs in m.ops} for m in faces]
+    assert {legs[0][1] for _, legs in controlled.ops} in face_supports
+
+
+def test_cs_addressability_on_ghz_joined_qrm_codes():
+    """Prop. 2.9 with 3 logical qubits per block: S and CZ address single logical qubits."""
+    copies = {
+        copy: ghz_joined([qrm(f"{copy}{i}") for i in range(3)], 0, f"g{copy}")
+        for copy in "AB"
+    }
+    code = copies["A"].tensor_with(copies["B"])
+    pairs = [((f"A{i}", 15), (f"B{i}", 15)) for i in range(3)]
+    logical = [leg for pair in pairs for leg in pair]
+    ops = bitwise(Gates.CS, legs("A0", range(1, 15)), legs("B0", range(1, 15)))
+    ops += bitwise(Gates.CS_DAG, legs("A1", range(1, 15)), legs("B1", range(1, 15)))
+    assert logical_action(code, logical, ops).equals(
+        [(Gates.CS_DAG, pairs[0]), (Gates.CS, pairs[1])]
+    )
+    found = addressable_controlled_phase_gates(code, pairs, ops)
+    expected = [
+        ([(Gates.S_DAG, (pairs[0][0],))], [(Gates.CZ, pairs[0])]),
+        ([(Gates.S, (pairs[1][0],))], [(Gates.CZ, pairs[1])]),
+        ([], []),
+    ]
+    for pair, (expected_phase, expected_controlled) in zip(pairs, expected):
+        phase, controlled = found[pair]
+        assert phase.action.equals(expected_phase)
+        assert controlled.action.equals(expected_controlled)
+        for match in (phase, controlled):
+            clifford = logical_action(code, logical, match.ops, method="clifford")
+            assert clifford.equals(match.action.matrix())
+            assert {leg[0] for _, legs in match.ops for leg in legs} <= {
+                pair[0][0],
+                pair[1][0],
+            }
+
+
+def test_addressable_controlled_phase_errors():
+    pair = qrm("a").tensor_with(qrm("b"))
+    logical = (("a", 15), ("b", 15))
+    cs = bitwise(Gates.CS, legs("a", range(15)), legs("b", range(15)))
+    with pytest.raises(ValueError, match="controlled phase"):
+        addressable_controlled_phase_gates(pair, [logical], [(Gates.T, (("a", 0),))])
+    not_controlled = Gate("D", np.diag([1, 1j, 1, 1]))
+    with pytest.raises(ValueError, match="controlled phase"):
+        addressable_controlled_phase_gates(
+            pair, [logical], [(not_controlled, (("a", 0), ("b", 0)))]
+        )
+    with pytest.raises(ValueError, match="does not implement"):
+        addressable_controlled_phase_gates(pair, [logical], cs[:3])
+    with pytest.raises(ValueError, match="second block"):
+        addressable_controlled_phase_gates(pair, [logical[::-1]], cs)
 
 
 def test_logical_pauli_representatives():

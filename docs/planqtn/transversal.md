@@ -315,6 +315,28 @@ bitwise T gate gives addressable S gates (Corollary 2.8):
 
 ```
 
+[`addressable_controlled_phase_gates`](reference.md#planqtn.transversal_search.addressable_controlled_phase_gates)
+does the same for an interblock controlled phase gate between two code blocks
+(Proposition 2.9 of the paper): it derives a phase gate addressing a single
+logical qubit, and a controlled phase gate between matching logical qubits of
+the two blocks, both supported on a logical X operator. A bitwise CS gate
+between two [[15,1,3]] codes gives an addressable S gate and an addressable CZ
+gate on 7 legs, which is one of the 15 localized CZs above (Corollary 2.10):
+
+```python
+>>> from planqtn.transversal_search import addressable_controlled_phase_gates
+>>> pair = a.tensor_with(b)
+>>> cs = bitwise(Gates.CS, [("a", i) for i in range(15)], [("b", i) for i in range(15)])
+>>> print(logical_action(pair, two, cs))
+CS†(a:15, b:15)
+>>> phase, controlled = addressable_controlled_phase_gates(pair, [tuple(two)], cs)[tuple(two)]
+>>> print([gate.name for gate, _ in phase.ops], phase.action)
+['S', 'S', 'S', 'S', 'S', 'S', 'S'] S†(a:15)
+>>> print([gate.name for gate, _ in controlled.ops], controlled.action)
+['CZ', 'CZ', 'CZ', 'CZ', 'CZ', 'CZ', 'CZ'] CZ(a:15, b:15)
+
+```
+
 ## Fault tolerance
 
 A single fault before or during a layer of gates can spread to all the qubits of
@@ -357,7 +379,7 @@ the paper uses for the holographic codes of Section 5.
   without the bound on the degree of the phase polynomial.
 - Cleaning operators are Pauli operators, and only Z-type for diagonal
   operators. Their weight is reduced greedily, not minimized.
-- Searches are exhaustive within the given choices, and the derivation of
-  addressable gates covers single qubit phase gates (Proposition 2.7), not the
-  controlled phase gates of Proposition 2.9.
+- Searches are exhaustive within the given choices. The derivations of
+  addressable gates follow Propositions 2.7 and 2.9, from transversal single
+  qubit phase gates and from interblock two qubit controlled phase gates.
 - These features are not in PlanqTN Studio yet.
