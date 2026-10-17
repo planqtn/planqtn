@@ -6,12 +6,19 @@ import itertools
 import numpy as np
 import pytest
 
-from planqtn.gates import Gates, bitwise
+from planqtn.gates import (
+    Gates,
+    bitwise,
+    merge_gates,
+    operator_matrix,
+    pauli_from_matrix,
+)
 from planqtn.legos import Legos
 from planqtn.signed_stabilizer_tensor import SignedStabilizerTensor
 from planqtn.transversal import (
     CliffordLogicalAction,
     DiagonalLogicalAction,
+    find_cleaning,
     logical_action,
 )
 
@@ -310,6 +317,132 @@ def test_phase_polynomial_and_enumeration_agree_on_paper_examples():
             assert polynomial.phase_polynomial() == enumeration.phase_polynomial()
             assert polynomial.equals(enumeration.matrix())
     assert found == 21
+
+
+def is_logical_pauli_away(action, target):
+    """Whether the action is the target gate times a logical Pauli operator."""
+    return pauli_from_matrix(action.matrix() @ target.conj().T) is not None
+
+
+@pytest.mark.parametrize("method", ["clifford", "diagonal"])
+def test_cleaning_of_intrablock_cz_on_ghz_joined_steanes(method):
+    """Prop. 3.9 and Fig. 9: CZs between two blocks need Z gates, found automatically."""
+    code = ghz_joined([steane(f"s{i}") for i in range(3)], 0)
+    logical = [(f"s{i}", 7) for i in range(3)]
+    cz = bitwise(Gates.CZ, legs("s0", range(1, 7)), legs("s1", range(1, 7)))
+    target = [(Gates.CZ, (logical[0], logical[1]))]
+
+    third_block = find_cleaning(
+        code, logical, cz, target=target, legs=legs("s2", range(1, 7)), method=method
+    )
+    assert [g.name for g, _ in third_block.correction] == ["Z"] * 3
+    assert {leg[0] for _, (leg,) in third_block.correction} == {"s2"}
+    assert third_block.action.equals(target)
+    assert logical_action(code, logical, third_block.ops, method=method).equals(target)
+
+    anywhere = find_cleaning(code, logical, cz, target=target, method=method)
+    assert len(anywhere.correction) == 3 and anywhere.action.equals(target)
+
+    untargeted = find_cleaning(code, logical, cz, method=method)
+    expected = operator_matrix(target, logical)
+    assert is_logical_pauli_away(untargeted.action, expected)
+
+    assert find_cleaning(code, logical, cz + third_block.correction) is not None
+
+
+@pytest.mark.parametrize("method", ["clifford", "diagonal"])
+def test_cleaning_of_bell_traced_steanes(method):
+    """Sec. 3.2.2 and Fig. 7: ((IZ)(CZ))^⊗3 (CZ)^⊗3 is the intrablock CZ."""
+    code = steane("a").merge_with(steane("b"), [0], [0])
+    logical = [("a", 7), ("b", 7)]
+    cz = bitwise(Gates.CZ, legs("a", range(1, 7)), legs("b", range(1, 7)))
+    cleaning = find_cleaning(code, logical, cz, target=Gates.CZ, method=method)
+    assert [g.name for g, _ in cleaning.correction] == ["Z"] * 3
+    assert len({leg[0] for _, (leg,) in cleaning.correction}) == 1
+    assert sorted(g.name for g, _ in cleaning.ops) == ["(ZI)·CZ"] * 3 + ["CZ"] * 3
+
+
+def test_cleaning_of_intrablock_cnot_through_h_deformed_edge():
+    """Sec. 3.2.2 and Fig. 8: CNOT^⊗6 plus Paulis on one side is the intrablock CNOT."""
+    code = steane("a").merge_with(steane("b"), [0], [0], [Gates.H])
+    logical = [("a", 7), ("b", 7)]
+    cnot = bitwise(Gates.CNOT, legs("a", range(1, 7)), legs("b", range(1, 7)))
+    assert logical_action(code, logical, cnot) is None
+    cleaning = find_cleaning(code, logical, cnot, target=Gates.CNOT)
+    assert len(cleaning.correction) == 3
+    assert len({leg[0] for _, (leg,) in cleaning.correction}) == 1
+    assert cleaning.action.equals(Gates.CNOT)
+    bell = steane("a").merge_with(steane("b"), [0], [0])
+    assert find_cleaning(bell, logical, cnot, target=Gates.CNOT) is None
+
+
+def test_cleaning_cannot_fix_non_pauli_mismatches():
+    code = ghz_joined([qrm(f"q{i}") for i in range(3)], 0)
+    logical = [(f"q{i}", 15) for i in range(3)]
+    assert (
+        find_cleaning(code, logical, bitwise(Gates.T, legs("q0", range(1, 15)))) is None
+    )
+    x_edge = qrm("a").merge_with(qrm("b"), [0], [0], [Gates.X])
+    two = [("a", 15), ("b", 15)]
+    s_dagger = bitwise(Gates.S_DAG, legs("a", [2, 4, 5, 8, 9, 11, 14]))
+    t_target = bitwise(Gates.T, two)
+    assert find_cleaning(x_edge, two, s_dagger, t_target, method="diagonal") is None
+    assert (
+        find_cleaning(x_edge, two, s_dagger, target=[(Gates.S, (two[0],))]).correction
+        == []
+    )
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_cleaning_undoes_random_paulis(seed):
+    rng = np.random.default_rng(seed)
+    five_y = five_qubit("a").merge_with(five_qubit("b"), [0], [0], [Gates.Y])
+    x_edge = qrm("a").merge_with(qrm("b"), [0], [0], [Gates.X])
+    pair = qrm("a").tensor_with(qrm("b"))
+    logical_5, logical_15 = [("a", 5), ("b", 5)], [("a", 15), ("b", 15)]
+    face = range(7)
+    cases = [
+        (
+            five_y,
+            logical_5,
+            bitwise(Gates.SH, legs("a", range(1, 5)) + legs("b", range(1, 5))),
+            "XYZ",
+        ),
+        (
+            x_edge,
+            logical_15,
+            bitwise(Gates.T, legs("a", range(1, 15)) + legs("b", range(1, 15))),
+            "Z",
+        ),
+        (pair, logical_15, bitwise(Gates.CZ, legs("a", face), legs("b", face)), "XYZ"),
+    ]
+    tensor, logical, ops, letters = cases[seed % 3]
+    expected = logical_action(tensor, logical, ops)
+    physical = [leg for leg in tensor.legs if leg not in logical]
+    chosen = rng.choice(len(physical), size=4, replace=False)
+    noise = [
+        (getattr(Gates, rng.choice(list(letters))), (physical[i],)) for i in chosen
+    ]
+    noisy = merge_gates(ops, noise)
+    target = expected.matrix()
+    cleaning = find_cleaning(tensor, logical, noisy, target=target)
+    assert cleaning is not None and cleaning.action.equals(target)
+    untargeted = find_cleaning(tensor, logical, noisy)
+    assert is_logical_pauli_away(untargeted.action, target)
+
+
+def test_cleaning_errors():
+    s = steane("s")
+    with pytest.raises(ValueError, match="logical legs"):
+        find_cleaning(s, [7], [], legs=[7])
+    with pytest.raises(ValueError, match="2 qubits"):
+        find_cleaning(s, [7], [], target=Gates.CZ)
+    with pytest.raises(ValueError, match="Clifford"):
+        find_cleaning(s, [7], [], target=Gates.T, method="clifford")
+    with pytest.raises(ValueError, match="diagonal"):
+        find_cleaning(s, [7], [], target=Gates.H, method="diagonal")
+    with pytest.raises(ValueError, match="Unknown method"):
+        find_cleaning(s, [7], [], method="enumerate")
 
 
 def test_identity_and_empty_assignment():

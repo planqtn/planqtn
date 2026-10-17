@@ -1,7 +1,17 @@
+import itertools
+
 import numpy as np
 import pytest
 
-from planqtn.gates import Gate, Gates, bitwise, operator_matrix, pauli_matrix
+from planqtn.gates import (
+    Gate,
+    Gates,
+    bitwise,
+    merge_gates,
+    operator_matrix,
+    pauli_from_matrix,
+    pauli_matrix,
+)
 
 
 def conjugate(gate, pauli):
@@ -159,3 +169,36 @@ def test_operator_matrix():
     )
     with pytest.raises(ValueError, match="outside of"):
         operator_matrix([(Gates.X, ("c",))], ["a", "b"])
+
+
+def test_pauli_from_matrix_round_trip():
+    for bits in itertools.product([0, 1], repeat=4):
+        for phase in range(4):
+            found = pauli_from_matrix(pauli_matrix(bits, phase))
+            assert found is not None
+            assert found[0].tolist() == list(bits) and found[1] == phase
+    assert pauli_from_matrix(Gates.H.matrix) is None
+    assert pauli_from_matrix(Gates.T.matrix) is None
+    assert pauli_from_matrix(np.exp(1j * np.pi / 4) * np.eye(2)) is None
+
+
+def test_merge_gates():
+    merged = merge_gates(
+        [(Gates.CZ, (0, 1)), (Gates.CCZ, (2, 3, 4))],
+        [(Gates.X, (1,)), (Gates.Z, (3,)), (Gates.CZ, (2, 4)), (Gates.S, (5,))],
+    )
+    assert [(g.name, legs) for g, legs in merged] == [
+        ("(IX)·CZ", (0, 1)),
+        ("CZ·Z·CCZ", (2, 3, 4)),
+        ("S", (5,)),
+    ]
+    first = [(Gates.CZ, (0, 1)), (Gates.CCZ, (2, 3, 4))]
+    then = [(Gates.X, (1,)), (Gates.Z, (3,)), (Gates.CZ, (2, 4)), (Gates.S, (5,))]
+    order = list(range(6))
+    np.testing.assert_allclose(
+        operator_matrix(merged, order),
+        operator_matrix(then, order) @ operator_matrix(first, order),
+        atol=1e-12,
+    )
+    with pytest.raises(ValueError, match="straddles"):
+        merge_gates([(Gates.CZ, (0, 1))], [(Gates.CZ, (1, 2))])

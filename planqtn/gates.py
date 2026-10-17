@@ -65,8 +65,18 @@ def pauli_matrix(xz: ArrayLike, phase: int = 0) -> NDArray[np.complex128]:
     return complex(1j**phase) * m
 
 
-def _as_xz_pauli(m: NDArray[np.complex128]) -> Optional[Tuple[NDArray[np.uint8], int]]:
-    """Write `m` as `i^p X^x Z^z`, or return None if it is not a phased Pauli operator."""
+def pauli_from_matrix(
+    m: NDArray[np.complex128],
+) -> Optional[Tuple[NDArray[np.uint8], int]]:
+    """Write a matrix as a Pauli operator `i^p X^x Z^z` in the XZ form.
+
+    Args:
+        m: A `2^q x 2^q` matrix.
+
+    Returns:
+        The symplectic bits `(x|z)` and the phase exponent `p`, or None if the matrix is not a
+        Pauli operator with a phase that is a power of `i`.
+    """
     dim = len(m)
     q = dim.bit_length() - 1
     row = int(np.argmax(np.abs(m[:, 0])))
@@ -186,7 +196,7 @@ class Gate:
             phases = np.zeros(4**q, dtype=np.int64)
             for key in range(4**q):
                 bits = [(key >> (2 * q - 1 - i)) & 1 for i in range(2 * q)]
-                image = _as_xz_pauli(
+                image = pauli_from_matrix(
                     self._matrix @ pauli_matrix(bits) @ self._matrix.conj().T
                 )
                 if image is None:
@@ -300,6 +310,61 @@ def operator_matrix(
         op = np.tensordot(g, op, axes=(list(range(q, 2 * q)), axes))
         op = np.moveaxis(op, list(range(q)), axes)
     return np.asarray(op, dtype=complex).reshape(2**k, 2**k)
+
+
+def merge_gates(first: GateAssignment, then: GateAssignment) -> GateAssignment:
+    """Return the operator that applies `first` and then `then`, on disjoint legs.
+
+    Each gate of `then` has to act on legs of a single gate of `first`, which absorbs it, or on
+    legs that `first` does not touch. For example, a Z gate after a CZ becomes the gate `(IZ)·CZ`.
+    Legs have to be given in the same form in both assignments.
+
+    Args:
+        first: The gates applied first, on disjoint legs.
+        then: The gates applied afterwards, on disjoint legs.
+
+    Returns:
+        The product as a gate assignment on disjoint legs.
+
+    Raises:
+        ValueError: If a gate of `then` overlaps with a gate of `first` without being contained
+            in its legs.
+
+    Example:
+        ```python
+        >>> merged = merge_gates([(Gates.CZ, (0, 1))], [(Gates.Z, (1,)), (Gates.X, (2,))])
+        >>> merged
+        [(Gate('(IZ)·CZ'), (0, 1)), (Gate('X'), (2,))]
+        >>> bool(np.allclose(merged[0][0].matrix, np.diag([1, -1, 1, 1])))
+        True
+
+        ```
+    """
+    absorbed: List[GateAssignment] = [[] for _ in first]
+    rest: GateAssignment = []
+    for gate, legs in then:
+        owners = [i for i, (_, f_legs) in enumerate(first) if set(f_legs) & set(legs)]
+        if not owners:
+            rest.append((gate, legs))
+        elif len(owners) == 1 and set(legs) <= set(first[owners[0]][1]):
+            absorbed[owners[0]].append((gate, legs))
+        else:
+            raise ValueError(
+                f"Gate {gate.name} on {legs} straddles gates of the operator."
+            )
+    merged: GateAssignment = []
+    for (gate, legs), extra in zip(first, absorbed):
+        if not extra:
+            merged.append((gate, legs))
+            continue
+        if all(e.num_qubits == 1 for e, _ in extra):
+            labels = {e_legs[0]: e.name for e, e_legs in extra}
+            prefix = "(" + "".join(labels.get(leg, "I") for leg in legs) + ")"
+        else:
+            prefix = "·".join(e.name for e, _ in reversed(extra))
+        matrix = operator_matrix(extra, legs) @ gate.matrix
+        merged.append((Gate(f"{prefix}·{gate.name}", matrix), legs))
+    return merged + rest
 
 
 _SQRT2 = np.sqrt(2)

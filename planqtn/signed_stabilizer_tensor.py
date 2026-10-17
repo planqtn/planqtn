@@ -211,30 +211,50 @@ def _row_combination(
     xz: NDArray[np.uint8], target: NDArray[np.uint8]
 ) -> Optional[NDArray[np.uint8]]:
     """Find `c` with `c xz = target` over GF(2), or None if there is no solution."""
-    r, cols = xz.shape
-    aug = np.concatenate([xz, np.eye(r, dtype=np.uint8)], axis=1)
-    pivots = []
+    solution = solve_gf2(xz.T, target)
+    return None if solution is None else solution[0]
+
+
+def solve_gf2(
+    a: NDArray[np.uint8], b: NDArray[np.uint8]
+) -> Optional[Tuple[NDArray[np.uint8], NDArray[np.uint8]]]:
+    """Solve the linear system `a p = b` over GF(2).
+
+    Args:
+        a: The matrix of the system, of shape `(m, u)`.
+        b: The right hand side, of length `m`.
+
+    Returns:
+        A solution `p` and a basis of the null space of `a` (one vector per row), or None if there
+        is no solution.
+    """
+    num_rows, num_cols = a.shape
+    aug = np.concatenate([a % 2, (b % 2).reshape(-1, 1)], axis=1).astype(np.uint8)
+    pivots: List[int] = []
     row = 0
-    for col in range(cols):
-        if row == r:
+    for col in range(num_cols):
+        if row == num_rows:
             break
         nonzero = np.flatnonzero(aug[row:, col])
         if len(nonzero) == 0:
             continue
         k = row + int(nonzero[0])
-        if k != row:
-            aug[[row, k]] = aug[[k, row]]
+        aug[[row, k]] = aug[[k, row]]
         others = np.flatnonzero(aug[:, col])
         aug[others[others != row]] ^= aug[row]
         pivots.append(col)
         row += 1
-    rest = np.concatenate([target, np.zeros(r, dtype=np.uint8)])
-    for i, col in enumerate(pivots):
-        if rest[col]:
-            rest ^= aug[i]
-    if rest[:cols].any():
+    if aug[row:, num_cols].any():
         return None
-    return rest[cols:]
+    num_pivots = len(pivots)
+    solution = np.zeros(num_cols, dtype=np.uint8)
+    solution[pivots] = aug[:num_pivots, num_cols]
+    free = [c for c in range(num_cols) if c not in set(pivots)]
+    null = np.zeros((len(free), num_cols), dtype=np.uint8)
+    for j, col in enumerate(free):
+        null[j, col] = 1
+        null[j, pivots] = aug[:num_pivots, col]
+    return solution, null
 
 
 def independent_subset(rows: NDArray[np.uint8]) -> List[int]:
