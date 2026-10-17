@@ -180,8 +180,28 @@ hear it!
 <td><a href="/docs/planqtn-studio/analyze/#operator-pushing-and-matching">Studio docs</a></td>
 </tr>
 <tr>
-<td>Find the logical gate implemented by transversal, weakly transversal, interblock and localized physical gates: the logical action of Clifford gates and the logical phase polynomial of diagonal gates like T, CS and CCZ.</td>
+<td>Find the logical gate implemented by transversal, weakly transversal, interblock and localized physical gates: the logical action of Clifford gates and the logical phase polynomial of diagonal gates like T, CS and CCZ, in polynomial time.</td>
 <td><a href="/docs/planqtn/transversal/#logical-action">Library docs</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Find the Pauli corrections (cleaning operators) that turn a physical operator into a logical gate.</td>
+<td><a href="/docs/planqtn/transversal/#cleaning-operators">Library docs</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Check unitary symmetries of tensors, find the deformed edges that preserve them, and push symmetries of LEGOs through the traces of a tensor network.</td>
+<td><a href="/docs/planqtn/transversal/#designing-networks-with-symmetries">Library docs</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Search for transversal and addressable logical gates among placements of gates on legs.</td>
+<td><a href="/docs/planqtn/transversal/#searching-for-logical-gates">Library docs</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Analyze the transversality and the error spread of physical operators, and compute small code distances.</td>
+<td><a href="/docs/planqtn/transversal/#fault-tolerance">Library docs</a></td>
 <td>-</td>
 </tr>
 <tr>
