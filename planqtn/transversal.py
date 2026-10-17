@@ -554,17 +554,20 @@ def find_cleaning(
     obstructions of degree 1 with coefficient `N/2`; X-type corrections are not searched for
     diagonal operators.
 
-    Corrections are unique up to stabilizers and logical Pauli operators, so without a target the
-    logical gate is only determined up to a logical Pauli operator; pass the expected gate as the
-    target to get it exactly. The weight of the correction is reduced greedily, which does not
-    guarantee a minimum weight correction.
+    Corrections are unique up to stabilizers and logical Pauli operators. Without a target, the
+    returned logical gate is therefore only correct up to a logical Pauli operator, e.g. the
+    expected CZ times a logical Z. Passing the expected gate as `target` pins down the exact
+    logical gate: the correction is then chosen so that `P O` implements exactly the target, or
+    None is returned if no Pauli correction does. The weight of the correction is reduced greedily,
+    which does not guarantee a minimum weight correction.
 
     Args:
         tensor: The code tensor.
         logical_legs: The logical legs; all other legs are physical.
         ops: The physical operator, as gates on disjoint physical legs.
-        target: Optionally, the logical gate that `P O` should implement exactly (up to a global
-            phase), given like in [`equals`][planqtn.transversal.LogicalAction.equals].
+        target: Optionally, the logical gate that `P O` must implement exactly (up to a global
+            phase), given like in [`equals`][planqtn.transversal.LogicalAction.equals]. Without it,
+            the logical gate is only determined up to a logical Pauli operator.
         legs: The physical legs that the correction may act on, by default all of them.
         method: `"clifford"` for Clifford operators (Pauli corrections), `"diagonal"` for
             diagonal operators (Z-type corrections), or `"auto"` to pick `"clifford"` when all
@@ -572,7 +575,7 @@ def find_cleaning(
 
     Returns:
         The correction, the corrected operator and its logical action, or None if there is no
-        such correction.
+        such correction. With a target, the logical action equals the target.
 
     Raises:
         ValueError: If the inputs are invalid like in

@@ -207,8 +207,12 @@ True
 Pauli corrections. For Clifford operators it solves a linear system over GF(2)
 for the sign mismatches of the conjugated stabilizers, for diagonal operators it
 fixes obstructions of degree 1 with Z gates. Corrections are unique up to
-stabilizers and logical Pauli operators, so give the expected logical gate as a
-target to get it exactly, and optionally the legs the correction may act on:
+stabilizers and logical Pauli operators, so without a target the logical gate it
+returns is only correct up to a logical Pauli operator, e.g. the expected CZ
+times a logical Z. Passing the expected logical gate as `target` pins down the
+exact logical gate: the correction then makes the operator implement exactly
+that gate, or `find_cleaning` returns `None`. You can also restrict the legs the
+correction may act on:
 
 ```python
 >>> from planqtn.transversal import find_cleaning
@@ -219,6 +223,8 @@ target to get it exactly, and optionally the legs the correction may act on:
 [(Gate('Z'), (('s2', 2),)), (Gate('Z'), (('s2', 3),)), (Gate('Z'), (('s2', 5),))]
 >>> cleaning.action.equals(target)
 True
+>>> print(find_cleaning(code, logical, cz, method="diagonal").action)
+Z(s2:7) · CZ(s0:7, s1:7)
 
 ```
 
