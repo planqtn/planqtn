@@ -332,6 +332,40 @@ def _postselect(
     return xz, ph, k
 
 
+def network_traces(
+    tn: "TensorNetwork",
+    deformations: Optional[Mapping[Tuple[TensorLeg, TensorLeg], Gate]] = None,
+) -> List[Tuple[TensorLeg, TensorLeg, Optional[Gate]]]:
+    """List the traced leg pairs of a tensor network with their deformations.
+
+    Args:
+        tn: The tensor network.
+        deformations: Maps traced leg pairs `(a, b)` to a single qubit Clifford `C`, for tracing
+            them with `(I_a ⊗ C_b)|Φ+⟩` instead of the Bell state. Either order of the pair is
+            accepted.
+
+    Returns:
+        The traces `(leg1, leg2, C)` in order, where `C` acts on `leg2` (None for Bell traces),
+        like in [`self_trace`][planqtn.signed_stabilizer_tensor.SignedStabilizerTensor.self_trace].
+
+    Raises:
+        ValueError: If a deformation is given for a leg pair that is not traced in the network.
+    """
+    remaining: Dict[Tuple[TensorLeg, TensorLeg], Gate] = dict(deformations or {})
+    traces: List[Tuple[TensorLeg, TensorLeg, Optional[Gate]]] = []
+    for _, _, join_legs1, join_legs2 in tn.traces:
+        for leg1, leg2 in zip(join_legs1, join_legs2):
+            deformation = remaining.pop((leg1, leg2), None)
+            if deformation is None and (leg2, leg1) in remaining:
+                deformation = remaining.pop((leg2, leg1)).transpose()
+            traces.append((leg1, leg2, deformation))
+    if remaining:
+        raise ValueError(
+            f"Deformations given for leg pairs that are not traced: {list(remaining)}."
+        )
+    return traces
+
+
 class ContractionVanishesError(ValueError):
     """Raised when a trace annihilates a tensor, i.e. the contraction is the zero tensor."""
 
@@ -488,23 +522,15 @@ class SignedStabilizerTensor:
             ValueError: If the network has no nodes, or a deformation is given for a leg pair that
                 is not traced in the network.
         """
-        remaining: Dict[Tuple[TensorLeg, TensorLeg], Gate] = dict(deformations or {})
         nodes = list(tn.nodes.values())
         if not nodes:
             raise ValueError("The tensor network has no nodes.")
+        traces = network_traces(tn, deformations)
         tensor = cls(nodes[0].h, nodes[0].tensor_id, nodes[0].legs)
         for node in nodes[1:]:
             tensor = tensor.tensor_with(cls(node.h, node.tensor_id, node.legs))
-        for _, _, join_legs1, join_legs2 in tn.traces:
-            for leg1, leg2 in zip(join_legs1, join_legs2):
-                deformation = remaining.pop((leg1, leg2), None)
-                if deformation is None and (leg2, leg1) in remaining:
-                    deformation = remaining.pop((leg2, leg1)).transpose()
-                tensor = tensor.self_trace(leg1, leg2, deformation)
-        if remaining:
-            raise ValueError(
-                f"Deformations given for leg pairs that are not traced: {list(remaining)}."
-            )
+        for leg1, leg2, deformation in traces:
+            tensor = tensor.self_trace(leg1, leg2, deformation)
         return tensor
 
     @property

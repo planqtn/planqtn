@@ -367,6 +367,19 @@ def merge_gates(first: GateAssignment, then: GateAssignment) -> GateAssignment:
     return merged + rest
 
 
+def equal_up_to_phase(a: NDArray[np.complex128], b: NDArray[np.complex128]) -> bool:
+    """Check whether two unitary matrices are equal up to a global phase.
+
+    Args:
+        a: A unitary matrix.
+        b: Another unitary matrix.
+
+    Returns:
+        Whether `a = e^(i phi) b` for some phase `phi`.
+    """
+    return a.shape == b.shape and bool(np.isclose(abs(np.vdot(a, b)), len(a)))
+
+
 _SQRT2 = np.sqrt(2)
 _S = np.diag([1, 1j])
 _H = np.array([[1, 1], [1, -1]]) / _SQRT2
@@ -422,6 +435,29 @@ class Gates:
         )
         / 2,
     )
+
+    @staticmethod
+    def single_qubit_cliffords() -> List[Gate]:
+        """Return the 24 single qubit Clifford gates, up to global phases.
+
+        Gates with a name in this collection (I, X, Y, Z, H, S, S†, SH) keep it, the others are
+        named as a Pauli times one of `H`, `S`, `SH`, `HS` and `HSH`, in matrix order, e.g. `XS`
+        is `X @ S`.
+
+        Returns:
+            The gates, starting with the Paulis.
+        """
+        found = [Gates.I, Gates.X, Gates.Y, Gates.Z, Gates.H, Gates.S, Gates.S_DAG]
+        found.append(Gates.SH)
+        h, s = Gates.H.matrix, Gates.S.matrix
+        cosets = [("H", h), ("S", s), ("SH", s @ h), ("HS", h @ s), ("HSH", h @ s @ h)]
+        for pauli in (Gates.I, Gates.X, Gates.Y, Gates.Z):
+            for coset_name, coset in cosets:
+                matrix = pauli.matrix @ coset
+                if not any(equal_up_to_phase(matrix, g.matrix) for g in found):
+                    name = coset_name if pauli is Gates.I else pauli.name + coset_name
+                    found.append(Gate(name, matrix))
+        return found
 
     @staticmethod
     def phase(numerator: int, order: int) -> Gate:

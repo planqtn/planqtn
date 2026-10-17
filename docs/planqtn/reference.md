@@ -31,6 +31,10 @@
 
 :::planqtn.phase_polynomial
 
+## The `planqtn.symmetries` package
+
+:::planqtn.symmetries
+
 # Utilities
 
 ## The `planqtn.progress_reporter` package
