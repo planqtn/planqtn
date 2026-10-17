@@ -35,6 +35,10 @@
 
 :::planqtn.symmetries
 
+## The `planqtn.transversal_search` package
+
+:::planqtn.transversal_search
+
 # Utilities
 
 ## The `planqtn.progress_reporter` package
